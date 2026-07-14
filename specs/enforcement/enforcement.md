@@ -63,11 +63,11 @@ A model-based (not deterministic) tool-call classifier built into the harness, c
 
 ### 5. Task-boundary review — three lenses, reviewer ≠ executor
 
-- **pauli** (pre-hoc) — the idea isn't stupid and aligns with design intent: premise, worth, and shape, judged **at decomposition time** inside the `decompose` skill (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md)). The former standalone dispatch-time "premise gate" (a two-judge hard-refuse ceremony run at `/pull`/`/dispatch`) is retired; decomposition carries this judgment instead, and dispatch surfaces trust the planner's decomposition rather than re-judging it.
-- **rbg** — rules were followed: boundary review of the task contract and handback only (inputs/outputs), never the transcript.
-- **marsha** (post-hoc) — the task does what it was supposed to and does it _well_: delivered artifact vs. the original aim and acceptance criteria, bar is excellent, not passing.
+- **pauli** (pre-hoc) — the idea isn't stupid and aligns with design intent: premise, worth, and shape. The `decompose` skill (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md)) always emits this as a standing, early-blocking task node **at decomposition time** — the rest of the epic depends on it clearing. The former standalone dispatch-time "premise gate" (a two-judge hard-refuse ceremony run at `/pull`/`/dispatch`) is retired; decomposition carries this judgment instead, and dispatch surfaces trust the planner's decomposition rather than re-judging it.
+- **rbg** — rules were followed: boundary review of the task contract and handback only (inputs/outputs), never the transcript. Always emitted as a standing task node blocking epic acceptance.
+- **marsha** (post-hoc) — the task does what it was supposed to and does it _well_: delivered artifact vs. the original aim and acceptance criteria, bar is excellent, not passing. Always emitted as a standing task node blocking epic acceptance.
 
-Review depth (per-chunk subtasks vs. one consolidated pass at the final PR) is the planner's call at decomposition time, based on the work's risk and blast radius. Full shape: [workflow.md](workflow.md).
+`decompose` plans only: it emits these three tasks and their `depends_on` wiring into the graph; it never dispatches or runs them itself. Review depth (per-chunk subtasks vs. one consolidated pass at the final PR) is the planner's call at decomposition time, based on the work's risk and blast radius. Full shape: [workflow.md](workflow.md).
 
 ### 6. Workflow templates — a prose component library
 

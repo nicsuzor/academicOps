@@ -1,9 +1,10 @@
 ---
 name: decompose
 description: "First-pass decomposition \u2014 when a situated task comes due, cut\
-  \ it into an unexploded subtask DAG, select the epic's workflow, and build its review\
-  \ steps into the plan. Structure and process only; no delegation briefs, no blocking\
-  \ gate nodes. Fires when an epic reaches the front of the queue, before any dispatch."
+  \ it into an unexploded subtask DAG, select the epic's workflow, and always emit\
+  \ standing pauli/rbg/marsha review tasks wired as blocking dependencies. Structure\
+  \ and process only; no delegation briefs, no dispatch. Fires when an epic reaches\
+  \ the front of the queue, before any dispatch."
 context: fork
 agent: pauli
 ---
@@ -54,30 +55,39 @@ Every node must be able to return **DONE** + deliverable, **BLOCKED** + what's m
 cut can't cleanly support that contract, it's cut wrong. Full cutting discipline and a worked
 mini-example: `references/cutting-seams.md`.
 
-## Step 2 — build the review steps into the workflow
+## Step 2 — emit the standing review tasks into the DAG
 
 Pick the process workflow the epic follows from `aops/workflows/INDEX.md`: the **outer**
 workflow (how the epic proceeds to acceptance) and, per subtask, the **inner** workflow (how one
-task proceeds to done). Review is a **step inside those workflows**, stated in plain prose — never a
-separate blocking gate node in the graph.
+task proceeds to done).
 
-Two review steps are near-mandatory. State them once, simply, at epic level on every epic:
+**Always emit three standing review tasks as real DAG nodes, wired with `depends_on` as blocking
+dependencies.** Every epic gets pauli (premise), rbg (rules), and marsha (QA) — not a prose-only
+review step. You plan only: you emit these tasks and wire their edges; you never dispatch them,
+run any agent live, or instrument the executor with anything about review. Whoever later picks up
+each review task is a separate, later dispatch concern — reviewer ≠ executor is an emergent
+property of each review being its own independently-dispatched task, not something you build or
+enforce here.
 
-- **Independent review before the epic is accepted** — a reviewer identity distinct from the author
-  (rbg axioms · pauli premise/strategy · marsha QA, reconciled by james) reviews the work against
-  its brief. The author never reviews their own work.
-- **Human sign-off before anything externally-visible ships** — send, publish, production, spend,
-  delete, or merge to a protected branch. This is the framework's one hard line; carry it whenever a
-  subtask's door-type is one-way (when reversibility is ambiguous, treat it as one-way).
+- **pauli — premise ("is this a good idea?")** — worth, alignment with design intent, and shape.
+  Emit as an early blocking task: the rest of the epic's work depends on it clearing. There is no
+  separate "premise gate" to invoke — this task IS the mechanism.
+- **rbg — rules ("do these changes violate any rules?")** — boundary review of the task contract
+  and handback only (inputs/outputs, never the transcript). Wire it to block epic acceptance.
+- **marsha — QA, post-hoc ("are the changes high-quality and do they achieve the epic's stated
+  purpose?")** — delivered artifact vs. the original aim and acceptance criteria; bar is excellent,
+  not passing. Wire it to block epic acceptance.
 
-Beyond those two, match review to the stakes and don't pile on — reversible, read-only work needs
-none. Consolidate: state the epic's review steps once, not per subtask row. If the workflow lacks a
-review step the stakes clearly call for, name the gap as a `library` issue — don't invent ceremony
-inline.
+**Altitude is your call.** High-risk/wide-blast-radius work gets per-chunk instances of rbg and
+marsha, each wired with `depends_on` at its own juncture; low-risk/narrow-blast-radius work gets
+workers self-assessing (the exit-reflection discipline) with one consolidated rbg + marsha pass at
+the final PR. The only invariant: a complete set of all three review tasks, wired as blocking
+dependencies, before the epic is done — however you distribute them across the graph.
 
-**Enforcement lives outside the session.** You write the review step into the plan; making it stick
-is the _outer loop's_ job — the supervisor's cross-session review and the PR/merge pipeline — never
-a node that blocks a running worker mid-flight. Do not model reviews as blocking gates.
+Separately, carry the framework's one hard line: **human sign-off before anything
+externally-visible ships** — send, publish, production, spend, delete, or merge to a protected
+branch. Carry it whenever a subtask's door-type is one-way (when reversibility is ambiguous, treat
+it as one-way).
 
 If the epic already carries a hydrate bundle's `## Standards` section, treat it as the candidate
 list and cross-check against the INDEX — don't re-derive; hydrate surfaced the obligations, you
@@ -86,19 +96,22 @@ sequence them into the workflow.
 ## Step 3 — persist and stop
 
 Write, in the task body (via the pauli PKB surface — `mcp__pkb__decompose_task` for the subtask
-nodes, `mcp__pkb__append` for the record): the earn-its-keep record, the cut rationale, the DAG
-table (id, subtask, one-line scope, door-type, `depends_on` — nothing more), the chosen workflow by
-name, and the near-mandatory review steps stated once at epic level. Worked specimen for the reasoning shape (not a
-script to copy): [[aops_d6ae35af]] §Pass-1 decomposition.
+nodes, including the three standing review tasks and their `depends_on` wiring, and
+`mcp__pkb__append` for the record): the earn-its-keep record, the cut rationale, the DAG
+table (id, subtask, one-line scope, door-type, `depends_on` — nothing more), and the chosen
+workflow by name. Worked specimen for the reasoning shape (not a script to copy):
+[[aops_d6ae35af]] §Pass-1 decomposition.
 
 ## Must not
 
 - Write full delegation briefs for any subtask — Layer 2, [[skills-brief]]'s job, at dispatch time.
 - Explode or detail subtasks not due next — rolling-wave discipline, not an exhaustive tree.
 - Invent process outside the library without flagging the gap.
-- Model reviews as blocking gate nodes or mid-session approval theatre — reviews are workflow steps,
-  enforced outside the session (supervisor review loop + PR/merge pipeline), not nodes that block a
-  running worker.
+- Skip emitting any of pauli/rbg/marsha for an epic, however small — altitude (per-chunk vs.
+  consolidated) is your call, but the three standing review tasks themselves are non-optional.
+- Dispatch, run, or instrument the three review tasks yourself, or build a reviewer≠executor
+  enforcement mechanism or identity gate — dispatch is a later, separate concern, and reviewer ≠
+  executor is emergent from independent dispatch, not something you construct here.
 
 ## Fitness test (self-check before you stop)
 
