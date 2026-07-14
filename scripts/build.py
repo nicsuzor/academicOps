@@ -305,6 +305,12 @@ def generate_production_marketplace(project_root: Path, dist_root: Path, version
 
     Loads from templates/marketplace.json, updates versions, filters to built plugins,
     and writes to dist/marketplace-production.json.
+
+    Plugin dirs are published to the dist BRANCH ROOT (dist:aops-claude, not
+    dist:dist/aops-claude — see build-extension.yml's "Publish distribution to
+    dist" step), so sources are rewritten ./dist/aops-* → ./aops-* exactly like
+    generate_local_marketplace, keeping both marketplaces' relative-path
+    convention identical to the actual on-branch layout.
     """
     template_path = project_root / "templates" / "marketplace.json"
     if not template_path.exists():
@@ -320,6 +326,7 @@ def generate_production_marketplace(project_root: Path, dist_root: Path, version
         if src.startswith("./dist/"):
             dirname = src[len("./dist/"):]
             if (dist_root / dirname).exists():
+                plugin["source"] = "./" + dirname
                 plugins.append(plugin)
         else:
             plugins.append(plugin)

@@ -184,26 +184,35 @@ jobs:
           SRC="${GITHUB_WORKSPACE}"
 
           # `dist` is the published distribution branch (non-default orphan). Built
-          # plugin dirs live UNDER dist/ on it (e.g. dist:dist/aops-claude),
-          # matching both the marketplace sources (./dist/aops-*, generated at the
-          # SOURCE repo root by build.py) and the local-dev layout — one convention
+          # plugin dirs live AT THE ROOT of it (e.g. dist:aops-claude), matching
+          # both the marketplace sources (./aops-*, generated at the SOURCE repo
+          # root by build.py) and the local-dev layout — one convention
           # everywhere. `claude plugin marketplace add nicsuzor/academicOps@dist`
-          # reads the root marketplace on the dist branch and resolves ./dist/aops-*
+          # reads the root marketplace on the dist branch and resolves ./aops-*
           # within that ref.
           cd "${SRC}/dist-repo"
 
-          # Mirror every built plugin directory under dist/, each kept clean with
-          # --delete. The `*/` glob skips dot-entries, so only the aops-* payload
-          # dirs are copied. Release archives (*.tar.gz / *.zip) are FILES under
-          # ${SRC}/dist/ → not matched by the dir glob; they ship as GitHub
-          # Release assets in the next step (never committed to the dist branch).
-          mkdir -p dist
+          # One-time migration off the old layout: earlier publishes nested
+          # every plugin dir under a `dist/` subdirectory of this branch
+          # (dist:dist/aops-claude). That subdir is superseded by the
+          # root-level layout below — remove it so a stale copy doesn't sit
+          # alongside the new root-level dirs.
+          rm -rf dist
+
+          # Mirror every built plugin directory to the branch root, each kept
+          # clean with --delete. The `*/` glob skips dot-entries, so only the
+          # aops-* payload dirs are copied. Release archives (*.tar.gz / *.zip)
+          # are FILES under ${SRC}/dist/ → not matched by the dir glob; they
+          # ship as GitHub Release assets in the next step (never committed to
+          # the dist branch).
+          plugin_dirs=""
           for d in "${SRC}"/dist/*/; do
             name="$(basename "$d")"
-            rsync -a --delete "$d" "dist/${name}/"
+            rsync -a --delete "$d" "${name}/"
+            plugin_dirs="$plugin_dirs $name"
           done
 
-          # Single Claude marketplace at the dist-branch root (sources ./dist/aops-*).
+          # Single Claude marketplace at the dist-branch root (sources ./aops-*).
           # Gemini ships as a self-contained GitHub Release tarball, so no root
           # gemini-extension.json is published here.
           mkdir -p .claude-plugin
@@ -229,7 +238,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git add -f dist
+          # shellcheck disable=SC2086
+          git add -f $plugin_dirs
           git add -f .github/workflows
           git add -f .claude-plugin/marketplace.json
           if git diff --cached --quiet; then

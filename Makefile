@@ -35,6 +35,15 @@ CLAUDE_PLUGINS := $(CLAUDE_AOPS_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME)
 # and joining the tailnet / shipping transcripts should stay an explicit
 # per-machine choice. Install it by hand: `claude plugin install aops-ts@academicOps`.
 
+# Only the `aops` plugin declares the `pkb_mcp_url` userConfig option (see
+# aops/templates/aops.template.json) — aops-tools has no userConfig at all, so
+# `--config` must never be passed for it (the CLI validates --config keys
+# against the target plugin's schema and errors on an unknown key). Each
+# install loop below therefore checks the loop variable `$$p` against these
+# names and only then forwards a set $$PKB_MCP_URL as the aops plugin's
+# userConfig default, so a fresh install doesn't require a manual
+# `/plugin configure` pass afterward.
+
 # LOCAL-dev marketplace + plugin names. `make dev`/`make install-dev` register the
 # built dist/ as a marketplace named `aops` (generated at dist/.claude-plugin/
 # marketplace.json — see build.py generate_local_marketplace), so a local build is
@@ -177,7 +186,11 @@ cache_root = pathlib.Path.home() / '.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETP
 	@# only plugins that were actually built are listed.
 	@command claude plugin marketplace add $(DIST_DIR)
 	@for p in $(CLAUDE_LOCAL_PLUGINS); do \
-		command claude plugin install $$p && echo "✓ $$p installed" \
+		pkb_config_args=""; \
+		if [ "$$p" = "$(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)" ] && [ -n "$$PKB_MCP_URL" ]; then \
+			pkb_config_args="--config pkb_mcp_url=$$PKB_MCP_URL"; \
+		fi; \
+		command claude plugin install $$p $$pkb_config_args && echo "✓ $$p installed" \
 			|| { echo "  x $$p install failed" >&2; exit 1; }; \
 	done
 	@$(MAKE) install-agy
@@ -196,7 +209,13 @@ uninstall-dev:
 	@echo "Restoring release marketplace ($(DIST_REPO))..."
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
-	@for p in $(CLAUDE_PLUGINS); do command claude plugin install $$p; done
+	@for p in $(CLAUDE_PLUGINS); do \
+		pkb_config_args=""; \
+		if [ "$$p" = "$(CLAUDE_AOPS_PLUGIN_NAME)" ] && [ -n "$$PKB_MCP_URL" ]; then \
+			pkb_config_args="--config pkb_mcp_url=$$PKB_MCP_URL"; \
+		fi; \
+		command claude plugin install $$p $$pkb_config_args; \
+	done
 	@echo "✓ Release marketplace restored"
 
 # Install pre-commit hooks
@@ -293,7 +312,11 @@ install-claude:
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
 	@for p in $(CLAUDE_PLUGINS); do \
-		command claude plugin install $$p && echo "✓ Claude Code $$p installed" \
+		pkb_config_args=""; \
+		if [ "$$p" = "$(CLAUDE_AOPS_PLUGIN_NAME)" ] && [ -n "$$PKB_MCP_URL" ]; then \
+			pkb_config_args="--config pkb_mcp_url=$$PKB_MCP_URL"; \
+		fi; \
+		command claude plugin install $$p $$pkb_config_args && echo "✓ Claude Code $$p installed" \
 			|| { echo "  x Claude $$p install failed — could not install from $(DIST_REPO_URL) marketplace" >&2; exit 1; }; \
 	done
 
@@ -383,8 +406,11 @@ uninstall-cowork:
 # `/releases/latest/download/` assets are NOT usable: GitHub's "latest" excludes
 # prereleases, and the antigravity assets only attach to prerelease builds.)
 # For LOCAL dev (dist/aops-antigravity present) install straight from that dir.
-AGY_CORE_URL  := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-antigravity
-AGY_TOOLS_URL := https://github.com/$(DIST_REPO_SLUG)/tree/dist/dist/aops-tools-antigravity
+# NOTE: plugin dirs live at the dist BRANCH ROOT (dist:aops-antigravity), not
+# under a nested dist/ subpath — see build-extension.yml's "Publish
+# distribution to dist" step.
+AGY_CORE_URL  := https://github.com/$(DIST_REPO_SLUG)/tree/dist/aops-antigravity
+AGY_TOOLS_URL := https://github.com/$(DIST_REPO_SLUG)/tree/dist/aops-tools-antigravity
 # Exactly two plugins ship for agy too — aops + aops-tools, both hard
 # dependencies (no soft-fail exception for either).
 AGY_PLUGINS := aops aops-tools

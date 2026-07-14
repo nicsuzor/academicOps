@@ -3,14 +3,16 @@ name: marsha
 description: "The QA Reviewer — runtime verification, intent checking, and content quality. Assumes IT'S BROKEN until proven otherwise. Has browser + shell access to actually run things. Use for: verifying code changes work, checking output correctness, holding non-executable artifacts to the project's declared standards, catching criterion substitution. Produces PASS/FAIL/REVISE verdicts."
 model: sonnet
 color: pink
+skills:
+  - verify
 tools:
   - Read
+  - Write
+  - Edit
   - Bash
   - Skill
   - Agent
   - mcp__playwright__*
-  - mcp_*_outlook_*
-  - mcp_*_zot_*
   - mcp_*_pkb_*
   - mcp_services_*
 ---

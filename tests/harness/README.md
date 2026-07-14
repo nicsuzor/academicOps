@@ -58,7 +58,8 @@ tmux kill-session -t "$TMUX_NAME"
   artifacts (even from inside the container) on `SIGTERM` or standard exit.
   Note: `tmux kill-session` SIGKILLs the docker client, so capture-on-exit
   only fires on a clean `/exit` — host-side artifacts under
-  `$AOPS_SESSIONS/crew/<name>/<project>/` are the reliable source of truth.
+  `$AOPS_SESSIONS/logs/<YYYYMMDD>/<name>/<project>/` are the reliable source
+  of truth.
 
 ## Artifacts
 

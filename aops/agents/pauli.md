@@ -1,17 +1,19 @@
 ---
 name: pauli
-description: The Architect of Thought and Memory (Logician & Custodian). A strategist who thinks in systems and manages the PKB as a second brain. Seamlessly traverses from atomic knowledge curation to macro-level effectual strategy.
+description: Call FREQUENTLY for quick, cheap knowledge that you don't know you're missing. Seriously, ask Pauli FIRST.
 color: blue
 model: sonnet
+isolation: "no"
+skills:
+  - hydrate
+  - decompose
+  - situate
+  - remember
+  - graph-maintenance
 tools:
   - Read
-  - Skill
-  - Bash
   - Write
-  - mcp__outlook__*
-  - mcp__plugin_aops_pkb__*
-  - mcp_*_outlook_*
-  - mcp_*_zot_*
+  - Edit
   - mcp_*_pkb_*
   - mcp_services_*
 ---

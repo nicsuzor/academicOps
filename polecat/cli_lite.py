@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -194,7 +195,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, extra_args):
     else:
         sessions_base = polecat_home / "sessions"
 
-    session_dir = sessions_base / "crew" / session_id / (project or "workspace")
+    session_date = datetime.now().strftime("%Y%m%d")
+    session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")
     session_dir.mkdir(parents=True, exist_ok=True)
 
     # 4. Resolve PKB URL

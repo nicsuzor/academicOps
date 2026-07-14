@@ -5,6 +5,8 @@ model: sonnet
 color: orange
 tools:
   - Read
+  - Write
+  - Edit
   - Agent
   - Skill
   - mcp__plugin_aops_pkb__*

@@ -1,12 +1,12 @@
 # --- aops dist/ source selection ---------------------------------------
 # The image needs the built dist/aops-* tree + .claude-plugin/marketplace.json.
 # Two interchangeable sources, selected by AOPS_DIST_SOURCE. Both land at
-# /aops-dist, but with different internal shapes (the published `dist` BRANCH
-# still predates the aops-core -> aops rename and nests plugin dirs one level
-# under `dist/`, while our local build.py output is self-contained: dist/ IS
-# the marketplace root, .claude-plugin/marketplace.json included — the
+# /aops-dist, but nested one level differently (the published `dist` BRANCH
+# publishes plugin dirs + .claude-plugin/ at its own root, while the local
+# COPY below lands the checkout's dist/ under /aops-dist/dist — the
 # `claude plugin marketplace add`/`update`/install RUN block below branches on
-# $AOPS_DIST_SOURCE to point at the right root and marketplace name for each):
+# $AOPS_DIST_SOURCE to point $MP_ROOT at the right one for each, and every
+# plugin dir sits directly under $MP_ROOT in both cases):
 #   remote (default) — clone the published `dist` branch. Used by CI
 #     (build-extension.yml builds the image right after publishing that
 #     branch, so this is exactly the release just shipped).
@@ -158,9 +158,11 @@ COPY --chown=worker:worker polecat/defaults/docker_gemini_fixups.py /home/worker
 # $AOPS_DIST_SOURCE picks the marketplace root/name (see aops-dist-local /
 # aops-dist-remote above for why these differ): local's /aops-dist/dist IS
 # the self-contained marketplace root build.py produces (name "aops"); the
-# published `dist` branch has `.claude-plugin/` at its own root with plugin
-# dirs nested one level under `dist/` (name "academicOps"). Antigravity plugin
-# dirs happen to resolve to the same path either way: /tmp/aops-dist/dist/*.
+# published `dist` branch has `.claude-plugin/` AND every plugin dir
+# (aops-claude, aops-antigravity, ...) at its own root (name "academicOps") —
+# see build-extension.yml's "Publish distribution to dist" step. Both shapes
+# put every plugin dir directly under $MP_ROOT, so all COPY/install targets
+# below are $MP_ROOT-relative and need no further local/remote branching.
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
     && if [ "$AOPS_DIST_SOURCE" = "local" ]; then MP_ROOT=/tmp/aops-dist/dist; MP_NAME=aops; else MP_ROOT=/tmp/aops-dist; MP_NAME=academicOps; fi \
@@ -172,9 +174,9 @@ RUN umask 000 \
     && mkdir -p /home/worker/.gemini \
     && echo '{"/home/worker/.gemini/antigravity-cli/plugins/aops": "TRUST_FOLDER", "/home/worker/.gemini/antigravity-cli/plugins/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
     && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
-    && cp -r /tmp/aops-dist/dist/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops \
+    && cp -r "$MP_ROOT"/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops \
-    && cp -r /tmp/aops-dist/dist/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
+    && cp -r "$MP_ROOT"/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \

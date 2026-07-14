@@ -57,12 +57,15 @@ cmd_watch() {
 
 cmd_logs() {
     local name="${1:?usage: dev-crew.sh logs <name>}"
-    # Mirrors polecat/cli.py's _get_sessions_base() fallback chain
-    # ($AOPS_SESSIONS, else $POLECAT_HOME/sessions, else ~/.polecat/sessions).
+    # Mirrors polecat/cli_lite.py's session dir resolution: $AOPS_SESSIONS
+    # (else $POLECAT_HOME/sessions, else ~/.polecat-dev/sessions), then
+    # logs/<YYYYMMDD>/<name>/<project>. Glob the date since we don't know
+    # which day the session started on; take the most recent match.
     local sessions_base="${AOPS_SESSIONS:-${POLECAT_HOME:-$HOME/.polecat-dev}/sessions}"
-    local session_dir="$sessions_base/crew/$name/$PROJECT_SLUG"
-    if [ ! -d "$session_dir" ]; then
-        echo "No session dir found at $session_dir yet (session may still be starting, or ended without a clean /exit)." >&2
+    local session_dir
+    session_dir="$(ls -d "$sessions_base"/logs/*/"$name"/"$PROJECT_SLUG" 2>/dev/null | sort | tail -1)"
+    if [ -z "$session_dir" ] || [ ! -d "$session_dir" ]; then
+        echo "No session dir found under $sessions_base/logs/*/$name/$PROJECT_SLUG yet (session may still be starting, or ended without a clean /exit)." >&2
         exit 1
     fi
     echo "Session dir: $session_dir" >&2

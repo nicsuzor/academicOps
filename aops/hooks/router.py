@@ -96,8 +96,8 @@ def main():
         elif event == "Stop":
             if not raw_input.get("stop_hook_active"):
                 output = {
-                    "decision": "block",
-                    "reason": reminder_content,
+                    # "decision": "block",
+                    # "reason": reminder_content,
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "additionalContext": reminder_content,
@@ -106,8 +106,8 @@ def main():
         elif event == "SubagentStop":
             if not raw_input.get("stop_hook_active"):
                 output = {
-                    "decision": "block",
-                    "reason": verify_content,
+                    # "decision": "block",
+                    # "reason": verify_content,
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "additionalContext": verify_content,

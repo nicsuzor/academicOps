@@ -26,9 +26,9 @@ nicsuzor/academicOps @ dev   (source of truth: dev / feature branches)
         │   vX.Y.Z tag → .github/workflows/build-extension.yml
         ▼
 nicsuzor/academicOps @ dist   (published distribution channel — orphan branch)
-   • built plugin dirs published under dist/:
-     dist/aops-claude/  dist/aops-tools-claude/  dist/aops-cowork/  dist/aops-antigravity/  …
-   • .claude-plugin/marketplace.json at the root (sources ./dist/aops-claude, …)
+   • built plugin dirs published at the branch ROOT:
+     aops-claude/  aops-tools-claude/  aops-cowork/  aops-antigravity/  …
+   • .claude-plugin/marketplace.json at the root (sources ./aops-claude, …)
         │
         ▼
    end-users install from dist  (marketplace nickname: academicOps)
@@ -37,11 +37,14 @@ nicsuzor/academicOps @ dist   (published distribution channel — orphan branch)
 There is no separate dist repo. `nicsuzor/academicOps` is both the source of truth (on
 `dev` / feature branches) and the published distribution: a `vX.Y.Z` tag fires
 `.github/workflows/build-extension.yml`, which builds the per-platform `dist/` artifacts
-and fast-forward-publishes the built plugin directories under `dist/` on the orphan
-**`dist`** branch (`dist/aops-claude/`, `dist/aops-tools-claude/`, `dist/aops-cowork/`,
-`dist/aops-antigravity/`, …) alongside a root `.claude-plugin/marketplace.json` whose
-sources are `./dist/aops-*`. End-users install from `dist` and never build locally — see
-`INSTALL.md` / `README.md` for the canonical install commands.
+and fast-forward-publishes the built plugin directories to the ROOT of the orphan
+**`dist`** branch (`aops-claude/`, `aops-tools-claude/`, `aops-cowork/`,
+`aops-antigravity/`, …) alongside a root `.claude-plugin/marketplace.json` whose
+sources are `./aops-*`. (Older publishes nested these one level under a `dist/`
+subdirectory — `dist:dist/aops-claude` — that layout is superseded; the publish step
+removes the stale subdirectory on first run against a branch still carrying it.)
+End-users install from `dist` and never build locally — see `INSTALL.md` / `README.md`
+for the canonical install commands.
 
 `academicOps`'s `main` branch is a **deprecated** stale orphan from the pre-migration
 topology (pending deletion — full branch-topology decision record in

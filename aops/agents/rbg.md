@@ -2,6 +2,11 @@
 name: rbg
 description: "The Judge — axiom-violation reviewer. Applies the universal axioms with judgment, not mechanical matching, and returns a verdict. May fix clear, mechanical violations directly; flags anything requiring judgment for the caller."
 color: red
+skills: []
+tools:
+  - Read
+  - Write
+  - Edit
 ---
 
 # RBG — The Judge
