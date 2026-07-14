@@ -23,8 +23,9 @@ tags: [spec, polecat, architecture]
 > exposes exactly one subcommand, `run`, which does nothing more than a
 > single `docker run` (bind-mount workspace, forward env, spawn
 > claude/agy/shell/sleep) — no task claiming, no PR filing, no worktree
-> lifecycle. See `tests/harness/README.md` for the current, verified tmux
-> pattern for driving `run` interactively.
+> lifecycle. See `specs/polecat/tmux-interactive-driving.md` for the
+> current, verified tmux pattern for driving `run` interactively, and
+> `aops/skills/debug/SKILL.md` for the operational skill wrapping it.
 >
 > Separately, `aops/commands/pull.md` and `aops/commands/dispatch.md`
 > (referenced below under "Giving Effect") both delegate to a

@@ -30,7 +30,7 @@ Before testing any specific hook behavior, verify that hooks are actually runnin
 
 ## 2. Polecat session validation
 
-Run after changes to `polecat/defaults/*-settings.json`, entrypoint, plugin packaging, or CLI upgrades. Discriminates "infrastructure files present" from "infrastructure actually fires." Run both clients (Claude and Gemini) — asymmetric breakage is common. Mechanics in [[tests/harness/README.md]].
+Run after changes to `polecat/defaults/*-settings.json`, entrypoint, plugin packaging, or CLI upgrades. Discriminates "infrastructure files present" from "infrastructure actually fires." Run both clients (Claude and Gemini) — asymmetric breakage is common. Mechanics in [[specs/polecat/tmux-interactive-driving.md]].
 
 Walk layers in order; stop at first failure:
 
@@ -53,7 +53,7 @@ Walk layers in order; stop at first failure:
 **§6 Cleanup** — `/exit` → `tmux kill-session`. No manual `nuke` step:
 `polecat run`'s underlying `docker run --rm` self-removes the container on
 exit (the `nuke`/`list-crew` subcommands it used to require were deleted
-along with the old `polecat/cli.py`, 2026-07-14 — see [[tests/harness/README.md]]).
+along with the old `polecat/cli.py`, 2026-07-14 — see [[specs/polecat/tmux-interactive-driving.md]]).
 Repeat for other client.
 
 On failure: file one issue per root cause, not per symptom. Append to existing PR/task when one exists. Refs: [[aops-7c45802b]], GH #1237.
@@ -90,4 +90,4 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 
 Any mismatch between the computed expectation and the observed pane/transcript is a **routing bug** — halt and file under [[epic-9fa15948]] with session id, transcript excerpt, agent's verbatim answer, and which `channel_spec()` cell it contradicts. Do not attempt to fix routing in this session.
 
-**No automated probe — use the manual tmux walkthrough.** `scripts/pty_hook_probe.py` (an automated PTY probe) was deleted in the 2026-07-12 aops-core cleanup and was not rebuilt; there is no automated replacement. Drive `claude`/`agy` directly per [[tests/harness/README.md]]'s tmux pattern, `capture-pane` at two points (right after the triggering action, and after a short settle) to distinguish transient toasts from steady-state UI, and cross-check the transcript JSONL (Step 0's stderr-on-every-attachment method) for the agent-side `context_injection`.
+**No automated probe — use the manual tmux walkthrough.** `scripts/pty_hook_probe.py` (an automated PTY probe) was deleted in the 2026-07-12 aops-core cleanup and was not rebuilt; there is no automated replacement. Drive `claude`/`agy` directly per [[specs/polecat/tmux-interactive-driving.md]]'s tmux pattern, `capture-pane` at two points (right after the triggering action, and after a short settle) to distinguish transient toasts from steady-state UI, and cross-check the transcript JSONL (Step 0's stderr-on-every-attachment method) for the agent-side `context_injection`.
