@@ -359,7 +359,6 @@ test_result*.json
 # Pre-built binaries for local hooks
 .bin/
 .antigravitycli
-.claude-plugin/marketplace.json
 .claude/skills
 archived
 .lmnr/

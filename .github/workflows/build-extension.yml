@@ -24,7 +24,7 @@ on:
   # event runs the DEFAULT branch's copy of this file (default-branch semantics)
   # and would double-fire against the tag-triggered run.
   push:
-    tags: ['v*']
+    tags: ["v*"]
 
 concurrency:
   # A stable tag's build-and-deploy job pauses on the `production` environment
@@ -52,7 +52,7 @@ jobs:
     # tag-triggered deploys were cancelled (v0.3.49→v0.3.69 all cancelled unpublished).
     permissions:
       contents: write
-      packages: write   # push ghcr.io/nicsuzor/aops-crew on stable tags (A3)
+      packages: write # push ghcr.io/nicsuzor/aops-crew on stable tags (A3)
     steps:
       - name: Resolve build context
         id: ctx
@@ -101,7 +101,7 @@ jobs:
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -206,8 +206,8 @@ jobs:
           # Single Claude marketplace at the dist-branch root (sources ./dist/aops-*).
           # Gemini ships as a self-contained GitHub Release tarball, so no root
           # gemini-extension.json is published here.
-          mkdir -p .claude-plugin
-          cp "${SRC}/.claude-plugin/marketplace.json" .claude-plugin/marketplace.json
+          mkdir -p dist/.claude-plugin
+          cp "${SRC}/dist/.claude-plugin/marketplace.json" "dist/.claude-plugin/marketplace.json"
 
           # Publish the PR-pipeline reusable workflows so external consumers can
           # pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`
@@ -227,13 +227,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          # The built payload is gitignored (dist/ by .gitignore;
-          # .claude-plugin/marketplace.json by name), so `git add -A` skips it —
-          # force-add it. A missing marketplace is a broken build → `git add -f`
-          # exits non-zero and `set -e` fails the publish loudly rather than
-          # shipping a payload with no marketplace.
           git add -f dist
-          git add -f .claude-plugin/marketplace.json
           git add -f .github/workflows
           if git diff --cached --quiet; then
             echo "dist already in sync — nothing to publish"
