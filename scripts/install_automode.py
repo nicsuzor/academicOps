@@ -96,7 +96,9 @@ def main() -> int:
         print(f"  (could not write {settings_path}: {e} — skipping settings.json merge)")
         return 0
 
-    print(f"✓ Merged {len(aops_rules.get('soft_deny', []))} aops axiom rule(s) into {settings_path}")
+    print(
+        f"✓ Merged {len(aops_rules.get('soft_deny', []))} aops axiom rule(s) into {settings_path}"
+    )
     return 0
 
 

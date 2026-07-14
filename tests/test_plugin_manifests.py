@@ -7,6 +7,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DIST_ROOT = PROJECT_ROOT / "dist"
 
+
 def get_plugin_dirs():
     """Returns a list of all built plugin directories in dist/."""
     if not DIST_ROOT.exists():
@@ -17,6 +18,7 @@ def get_plugin_dirs():
         if d.is_dir() and d.name.startswith("aops-"):
             plugin_dirs.append(d)
     return sorted(plugin_dirs)
+
 
 @pytest.mark.parametrize("plugin_dir", get_plugin_dirs(), ids=lambda d: d.name)
 def test_plugin_validates_against_cli(plugin_dir):
@@ -33,12 +35,7 @@ def test_plugin_validates_against_cli(plugin_dir):
 
     try:
         # Execute the native CLI validation command
-        result = subprocess.run(
-            cli_command,
-            capture_output=True,
-            text=True,
-            check=False
-        )
+        result = subprocess.run(cli_command, capture_output=True, text=True, check=False)
 
         # Ensure the CLI considers the plugin manifest format valid
         assert result.returncode == 0, (
@@ -51,4 +48,6 @@ def test_plugin_validates_against_cli(plugin_dir):
 
     except FileNotFoundError:
         # Gracefully skip if the CLI tool is not installed in the current environment
-        pytest.skip(f"CLI tool '{cli_command[0]}' not found on the system. Skipping native validation test.")
+        pytest.skip(
+            f"CLI tool '{cli_command[0]}' not found on the system. Skipping native validation test."
+        )

@@ -54,20 +54,10 @@ def main():
         if event == "PostInvocation":
             output = {
                 "terminationBehavior": "force_continue",
-                "injectSteps": [
-                    {
-                        "ephemeralMessage": reminder_content
-                    }
-                ]
+                "injectSteps": [{"ephemeralMessage": reminder_content}],
             }
         elif event == "PreInvocation":
-            output = {
-                "injectSteps": [
-                    {
-                        "ephemeralMessage": hydrate_content
-                    }
-                ]
-            }
+            output = {"injectSteps": [{"ephemeralMessage": hydrate_content}]}
     elif client == "claude":
         if event in ("Stop", "SubagentStop"):
             if not raw_input.get("stop_hook_active"):
@@ -76,19 +66,17 @@ def main():
                     "reason": reminder_content,
                     "hookSpecificOutput": {
                         "hookEventName": event,
-                        "additionalContext": reminder_content
-                    }
+                        "additionalContext": reminder_content,
+                    },
                 }
         elif event == "UserPromptSubmit":
             output = {
-                "hookSpecificOutput": {
-                    "hookEventName": event,
-                    "additionalContext": hydrate_content
-                }
+                "hookSpecificOutput": {"hookEventName": event, "additionalContext": hydrate_content}
             }
 
     if output:
         print(json.dumps(output))
+
 
 if __name__ == "__main__":
     main()

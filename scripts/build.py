@@ -5,16 +5,22 @@ Assembles dist versions of the plugins based on client-specific files.
 """
 
 import argparse
-import os
-import shutil
-import re
 import json
+import os
+import re
+import shutil
 from pathlib import Path
 
 # Directories to exclude from copying
 EXCLUDES = {
-    "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-    ".venv", ".uv-cache", ".git", ".DS_Store"
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".venv",
+    ".uv-cache",
+    ".git",
+    ".DS_Store",
 }
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
@@ -48,12 +54,14 @@ def load_axioms(axioms_dir: Path) -> list[dict]:
         if meta.get("trigger") != "always_on":
             continue
 
-        axioms.append({
-            "slug": md_file.stem,
-            "description": meta.get("description", ""),
-            "body": m.group(2).strip(),
-            "source_file": md_file.name,
-        })
+        axioms.append(
+            {
+                "slug": md_file.stem,
+                "description": meta.get("description", ""),
+                "body": m.group(2).strip(),
+                "source_file": md_file.name,
+            }
+        )
 
     return axioms
 
@@ -70,7 +78,7 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
             shutil.rmtree(dist_dir)
         dist_dir.mkdir(parents=True)
 
-        import json
+
         for root, dirs, files in os.walk(src_dir):
             dirs[:] = [d for d in dirs if d not in EXCLUDES]
 
@@ -86,19 +94,19 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
 
                 if file.endswith(".template.json"):
                     stem = file[:-14]
-                    
+
                     with open(src_file) as f:
                         template = json.load(f)
-                        
+
                     data = template.get("__base__", {}).copy()
                     client_data = template.get(client, {})
-                    
+
                     for k, v in client_data.items():
                         if isinstance(v, dict) and k in data and isinstance(data[k], dict):
                             data[k].update(v)
                         else:
                             data[k] = v
-                            
+
                     if stem == "mcp" and client == "antigravity":
                         if "mcpServers" in data and "services" in data["mcpServers"]:
                             # Workaround for antigravity-cli#390: agy doesn't resolve ${extensionPath}
@@ -107,7 +115,7 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                             # with tilde expansion to the default install location.
                             data["mcpServers"]["services"]["args"] = [
                                 "-c",
-                                f"~/.gemini/config/plugins/{plugin_name}/scripts/run-mcp.sh"
+                                f"~/.gemini/config/plugins/{plugin_name}/scripts/run-mcp.sh",
                             ]
                     elif stem == "hooks" and client == "antigravity":
                         if "hooks" in data:
@@ -117,10 +125,16 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                                         if "command" in hook:
                                             # Remove quotes around the script path because agy execs via argv
                                             cmd = hook["command"]
-                                            cmd = cmd.replace('"${AGY_PLUGIN_ROOT}/hooks/router.py"', "hooks/router.py")
-                                            cmd = cmd.replace("${AGY_PLUGIN_ROOT}/hooks/router.py", "hooks/router.py")
+                                            cmd = cmd.replace(
+                                                '"${AGY_PLUGIN_ROOT}/hooks/router.py"',
+                                                "hooks/router.py",
+                                            )
+                                            cmd = cmd.replace(
+                                                "${AGY_PLUGIN_ROOT}/hooks/router.py",
+                                                "hooks/router.py",
+                                            )
                                             hook["command"] = cmd
-                            
+
                     # determine destination
                     if stem == plugin_name:
                         if client == "claude":
@@ -147,17 +161,22 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                             dst_file = dist_dir / "mcp_config.json"
                     else:
                         dst_file = dist_dir / rel_root / f"{stem}.json"
-                        
+
                     dst_file.parent.mkdir(parents=True, exist_ok=True)
                     with open(dst_file, "w") as f:
                         json.dump(data, f, indent=2)
                     continue
-                    
+
                 # Skip the old specific files that might still be lingering
-                if any(file.endswith(suffix) for suffix in [
-                    ".claude.json", ".agy.json",
-                    ".claude-plugin.json", ".antigravity-plugin.json"
-                ]):
+                if any(
+                    file.endswith(suffix)
+                    for suffix in [
+                        ".claude.json",
+                        ".agy.json",
+                        ".claude-plugin.json",
+                        ".antigravity-plugin.json",
+                    ]
+                ):
                     continue
                     
                 # Handle commands to skills for agy. Only antigravity needs the
@@ -205,7 +224,9 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                 rules_dir = dist_dir / "rules"
                 rules_dir.mkdir(parents=True, exist_ok=True)
                 for axiom in axioms:
-                    shutil.copy2(axioms_dir / axiom["source_file"], rules_dir / axiom["source_file"])
+                    shutil.copy2(
+                        axioms_dir / axiom["source_file"], rules_dir / axiom["source_file"]
+                    )
             elif client == "claude":
                 jsonl_path = dist_dir / "axioms.jsonl"
                 with open(jsonl_path, "w") as f:
@@ -224,11 +245,12 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                     plugin_json_path.write_text(json.dumps(manifest, indent=2))
 
         # Cleanup any empty directories that might have been left over
-        for dirpath, dirnames, filenames in os.walk(dist_dir, topdown=False):
+        for dirpath, _dirnames, _filenames in os.walk(dist_dir, topdown=False):
             if not os.listdir(dirpath):
                 os.rmdir(dirpath)
 
         import tarfile
+
         archive_name = f"{dist_dir.name}.tar.gz"
         archive_path = dist_root / archive_name
 
@@ -242,6 +264,7 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
 
         print(f"  ✓ Built {dist_dir.name} and packaged into {archive_name}")
 
+
 def generate_local_marketplace(dist_root: Path):
     """Generate the local marketplace JSON so claude can install from dist/.
 
@@ -249,7 +272,7 @@ def generate_local_marketplace(dist_root: Path):
     a plugin whose source dir doesn't exist is skipped by build_plugin(),
     so listing it here would leave a dangling `source` entry.
     """
-    import json
+
     marketplace_dir = dist_root / ".claude-plugin"
     marketplace_dir.mkdir(exist_ok=True)
 
@@ -268,18 +291,22 @@ def generate_local_marketplace(dist_root: Path):
     marketplace = {
         "name": "aops",
         "description": "Local dev marketplace",
-        "owner": {
-            "name": "Local Dev"
-        },
-        "plugins": plugins
+        "owner": {"name": "Local Dev"},
+        "plugins": plugins,
     }
     with open(marketplace_dir / "marketplace.json", "w") as f:
         json.dump(marketplace, f, indent=2)
     print("✓ Generated local marketplace.json")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Simple build script for plugins")
-    parser.add_argument("--plugins", nargs="+", default=["aops-core", "aops", "aops-tools", "aops-ts"], help="Plugins to build")
+    parser.add_argument(
+        "--plugins",
+        nargs="+",
+        default=["aops-core", "aops", "aops-tools", "aops-ts"],
+        help="Plugins to build",
+    )
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
@@ -295,6 +322,7 @@ def main():
         build_plugin(plugin, src_dir, dist_root)
 
     generate_local_marketplace(dist_root)
+
 
 if __name__ == "__main__":
     main()
