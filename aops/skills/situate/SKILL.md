@@ -45,13 +45,13 @@ a hydration gap — flag it, don't silently backfill by re-doing hydrate's searc
 
 ## Process
 
-1. **Search before create.** Query the PKB (`mcp__pkb__search`, `mcp__pkb__pkb_context`,
-   `mcp__pkb__task_search`) before writing anything. Never create a duplicate — link to or update
+1. **Search before create.** Query the PKB (`mcp__services__pkb__search`, `mcp__services__pkb__pkb_context`,
+   `mcp__services__pkb__task_search`) before writing anything. Never create a duplicate — link to or update
    an existing node if one already covers this ask.
 
 2. **Place the task.** One task, under the right parent (goal → project → epic ladder; see
    [references/graph-placement.md](references/graph-placement.md) for the placement heuristic and
-   `mcp__pkb__create_task` mechanics). If the right parent is genuinely ambiguous, that's a SURFACE
+   `mcp__services__pkb__create_task` mechanics). If the right parent is genuinely ambiguous, that's a SURFACE
    case (below) — don't guess silently.
 
 3. **Wire and densify.** Add a `contributes_to` edge to the target(s) this task actually serves —
@@ -81,7 +81,7 @@ a hydration gap — flag it, don't silently backfill by re-doing hydrate's searc
      section is a dropped decision. If you can't raise it this turn, leave the task `inbox` and ask
      next turn — never let a parked decision settle into `queued`.
 
-7. **Mark `needs_decomposition: true` and stop.** `mcp__pkb__update_task` for the frontmatter flag.
+7. **Mark `needs_decomposition: true` and stop.** `mcp__services__pkb__update_task` for the frontmatter flag.
    Do not create subtasks, do not write a brief, do not dispatch, do not investigate the ask beyond
    what's needed to place and value it — frame the question for decompose's worker to investigate,
    don't answer it yourself.

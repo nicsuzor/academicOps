@@ -26,14 +26,14 @@ Agent(
   prompt='Execute Phase 2 (Transcript Mining) per aops-core/skills/remember/references/maintenance-phases.md. Process up to 15 unmined transcripts under $AOPS_SESSIONS. Report HALT explicitly if any required tool is missing.',
   tools=[
     # PKB MCP — read
-    'mcp__plugin_aops_pkb__pkb__search',
-    'mcp__plugin_aops_pkb__pkb__task_search',
-    'mcp__plugin_aops_pkb__pkb__get_document',
-    'mcp__plugin_aops_pkb__pkb__pkb_context',
+    'mcp__services__pkb__search',
+    'mcp__services__pkb__task_search',
+    'mcp__services__pkb__get_document',
+    'mcp__services__pkb__pkb_context',
     # PKB MCP — write
-    'mcp__plugin_aops_pkb__pkb__append',
-    'mcp__plugin_aops_pkb__pkb__create',
-    'mcp__plugin_aops_pkb__pkb__create_memory',
+    'mcp__services__pkb__append',
+    'mcp__services__pkb__create',
+    'mcp__services__pkb__create_memory',
     # Filesystem / shell
     'Bash',                # transcript listing, git status
     'Glob',                # transcript discovery
@@ -67,7 +67,7 @@ Sub-agents are instructed to emit a literal `HALT:` line and the missing tool na
 
 1. Parse each sub-agent return for any of the markers `HALT:`, `HALTED`, `tool gap`, `tool not available`, or `cannot proceed: missing tool`.
 2. Maintain a halt counter across all dispatched sub-agents in the cycle.
-3. Surface the count in the final cycle report (and in `$GITHUB_STEP_SUMMARY` on CI), with the affected phase names and missing tools listed. Example summary line: `Sub-agent halts: 2 (Phase 2 — missing Bash; Phase 4 — missing mcp__plugin_aops_pkb__pkb__append)`.
+3. Surface the count in the final cycle report (and in `$GITHUB_STEP_SUMMARY` on CI), with the affected phase names and missing tools listed. Example summary line: `Sub-agent halts: 2 (Phase 2 — missing Bash; Phase 4 — missing mcp__services__pkb__append)`.
 4. If the halt count is non-zero, the cycle exit code/PR description must call this out at the TOP — not buried inside per-phase output. This closes the silent-failure mode where halts were only visible inside individual sub-agent returns.
 
 ## Pacing & Mode
@@ -366,8 +366,8 @@ body: |
 
 Detect orphans, stale docs, and under-specified tasks. The agent uses these as **signals**, not deterministic verdicts:
 
-- **Actionable orphan detection**: `mcp__pkb__pkb_orphans()` (defaults to actionable-only: task/epic/project/target). Feeds Phase 9's task/epic strategies.
-- **Knowledge-layer orphan detection**: `mcp__pkb__pkb_orphans(types=["note","knowledge","memory"], include_all=true)`. This is a **separate population** the default actionable call never returns. Feed it to Phase 9's knowledge-layer curation strategy. Do not let an all-green actionable `orphan_count` stand in for knowledge-layer health; they are measured by different calls.
+- **Actionable orphan detection**: `mcp__services__pkb__pkb_orphans()` (defaults to actionable-only: task/epic/project/target). Feeds Phase 9's task/epic strategies.
+- **Knowledge-layer orphan detection**: `mcp__services__pkb__pkb_orphans(types=["note","knowledge","memory"], include_all=true)`. This is a **separate population** the default actionable call never returns. Feed it to Phase 9's knowledge-layer curation strategy. Do not let an all-green actionable `orphan_count` stand in for knowledge-layer health; they are measured by different calls.
 - **Git log**: Recent commits, task changes since last cycle
 - **Own judgment**: The agent reads flagged tasks and decides whether they genuinely need attention.
 
@@ -487,7 +487,7 @@ Don't treat all-green metrics as "done." Spot-check qualitatively.
 
 ### Bounded Effort
 
-Process up to 100 items per cycle (configurable via `batch_limit` workflow input). Use `mcp__pkb__batch_reparent` (passing `dry_run=false` to execute) for efficiency.
+Process up to 100 items per cycle (configurable via `batch_limit` workflow input). Use `mcp__services__pkb__batch_reparent` (passing `dry_run=false` to execute) for efficiency.
 
 ### Terminal Condition
 

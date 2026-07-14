@@ -13,14 +13,14 @@ Perform a fast session exit by creating a resume-ready task and emitting a hando
 
 ### 1. Write Resume Delta
 
-Call `mcp__pkb__update_task` on the bound task:
+Call `mcp__services__pkb__update_task` on the bound task:
 
 - Set `session_id` to `$AOPS_SESSION_ID`. Do not modify other frontmatter or change `status`.
 - Append to the task body a `## Resume <UTC-timestamp>` section containing:
   - **State**: Current state of implementation (one sentence).
   - **Next**: Next concrete action.
   - **Watch out**: Any in-flight side-effects (uncommitted files, running processes, locks).
-- If no task is bound, call `mcp__pkb__create_task` with an appropriate `parent` task, and the resume details as the body.
+- If no task is bound, call `mcp__services__pkb__create_task` with an appropriate `parent` task, and the resume details as the body.
 
 ### 2. Output Handover Block
 

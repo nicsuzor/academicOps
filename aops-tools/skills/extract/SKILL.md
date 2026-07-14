@@ -20,7 +20,7 @@ Universal axioms apply (enforced by `rbg`). P#52 (Read-Then-Write Memory) is esp
 **MANDATORY** before creating any new extracted content: search PKB for existing knowledge on the same subject.
 
 ```
-mcp__pkb__search(query="[topic/person/document subject]")
+mcp__services__pkb__search(query="[topic/person/document subject]")
 ```
 
 - If a match exists → augment it rather than creating a duplicate

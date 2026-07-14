@@ -653,7 +653,7 @@ Add any other documentation created in earlier steps to this list.
 the same project cause downstream confusion (which tasks hang off which?).
 
 ```
-mcp__pkb__task_search(query="<project title or slug>", limit=10)
+mcp__services__pkb__task_search(query="<project title or slug>", limit=10)
 ```
 
 Inspect the results. If a `type=project` node with a matching title or slug
@@ -664,7 +664,7 @@ second node silently.
 If no duplicate exists, create the project node:
 
 ```
-mcp__pkb__create_task(
+mcp__services__pkb__create_task(
   title="Project: <title>",
   type="project",
   body="<description from Phase 1>",

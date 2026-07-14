@@ -19,20 +19,20 @@ Session mining and note creation. Silently extracts information and maintains kn
 
 ### From Conversations
 
-| Signal            | Action                                                                |
-| ----------------- | --------------------------------------------------------------------- |
-| "I'll need to..." | Create a task via `mcp__pkb__create_task`                             |
-| Project updates   | Augment the project hub (`projects/<name>.md`) via `mcp__pkb__append` |
-| Decisions made    | Add observation to relevant file via `mcp__pkb__append`               |
-| Completed work    | Advance/close the task via `mcp__pkb__complete_task`                  |
-| Ruled-out ideas   | Document why not                                                      |
+| Signal            | Action                                                                          |
+| ----------------- | ------------------------------------------------------------------------------- |
+| "I'll need to..." | Create a task via `mcp__services__pkb__create_task`                             |
+| Project updates   | Augment the project hub (`projects/<name>.md`) via `mcp__services__pkb__append` |
+| Decisions made    | Add observation to relevant file via `mcp__services__pkb__append`               |
+| Completed work    | Advance/close the task via `mcp__services__pkb__complete_task`                  |
+| Ruled-out ideas   | Document why not                                                                |
 
 ### From Emails
 
-1. Action items → create a task via `mcp__pkb__create_task`
+1. Action items → create a task via `mcp__services__pkb__create_task`
 2. Project mentions → update project files
 3. Contacts/people → update project files
-4. Deadlines → create a task via `mcp__pkb__create_task`
+4. Deadlines → create a task via `mcp__services__pkb__create_task`
 5. Strategic context → context files
 
 ## How to Capture
@@ -42,14 +42,14 @@ Session mining and note creation. Silently extracts information and maintains kn
 Use `Skill(skill="remember")`. Writes go via PKB MCP only — never the filesystem `Write`/`Edit` tool, and never directly to `$ACA_DATA/**`. PKB IS `$ACA_DATA`; direct filesystem access bypasses indexing, dedup, and permission guarantees.
 
 1. Compose the content (body + title + tags).
-2. Call `mcp__pkb__create_memory` (atomic memories) or `mcp__pkb__create` (full documents).
+2. Call `mcp__services__pkb__create_memory` (atomic memories) or `mcp__services__pkb__create` (full documents).
 
 ### Where to File (MANDATORY SEQUENCE)
 
-1. **Search first**: `mcp__pkb__search(query="topic keywords")`
-2. **Canonical Check Gate**: Check if a canonical note exists for this topic. If it does, you MUST augment the existing canonical document using `mcp__pkb__append`. Do NOT create a new observation-memo if a broader canonical note covers the topic area.
-3. **If match found**: AUGMENT the existing document via `mcp__pkb__append(id=...)` — integrate info, don't append dated entries.
-4. **If no match**: Create a new TOPICAL document (not session/date file) via `mcp__pkb__create`.
+1. **Search first**: `mcp__services__pkb__search(query="topic keywords")`
+2. **Canonical Check Gate**: Check if a canonical note exists for this topic. If it does, you MUST augment the existing canonical document using `mcp__services__pkb__append`. Do NOT create a new observation-memo if a broader canonical note covers the topic area.
+3. **If match found**: AUGMENT the existing document via `mcp__services__pkb__append(id=...)` — integrate info, don't append dated entries.
+4. **If no match**: Create a new TOPICAL document (not session/date file) via `mcp__services__pkb__create`.
 
 ### Augment vs Concatenate
 
@@ -92,7 +92,7 @@ Content with [[wikilinks]] to related concepts.
 - Interrupt user flow to ask clarification
 - Wait until conversation end to capture
 - Announce that you're capturing
-- Create task files directly (use `mcp__pkb__create_task`)
+- Create task files directly (use `mcp__services__pkb__create_task`)
 - Create timestamped session log files (use daily notes or meeting-note type instead)
 - Append date-headers to existing files
 - Skip the search step

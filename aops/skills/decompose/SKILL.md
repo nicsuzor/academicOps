@@ -109,9 +109,9 @@ sequence them into the workflow.
 
 ## Step 3 — persist and stop
 
-Write, in the task body (via the pauli PKB surface — `mcp__pkb__decompose_task` for the subtask
+Write, in the task body (via the pauli PKB surface — `mcp__services__pkb__decompose_task` for the subtask
 nodes, including the three standing review tasks and their `depends_on` wiring, and
-`mcp__pkb__append` for the record): the earn-its-keep record, the cut rationale, the DAG
+`mcp__services__pkb__append` for the record): the earn-its-keep record, the cut rationale, the DAG
 table (id, subtask, one-line scope, door-type, `depends_on` — nothing more), and the chosen
 workflow by name. Worked specimen for the reasoning shape (not a script to copy):
 [[aops_d6ae35af]] §Pass-1 decomposition.

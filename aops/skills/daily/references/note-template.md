@@ -46,7 +46,7 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 
 ## Status
 
-<!-- Factual snapshot. No recommendations, no curated categories, no suggested sequences. Counts come from mcp__pkb__task_summary, never hand-counted. -->
+<!-- Factual snapshot. No recommendations, no curated categories, no suggested sequences. Counts come from mcp__services__pkb__task_summary, never hand-counted. -->
 
 Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 

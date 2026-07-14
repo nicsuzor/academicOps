@@ -33,7 +33,7 @@ Read the full source. Ask: "What would help a future agent or user, independent 
 
 ### 2. Search PKB, then create or augment
 
-**Always search first** (`mcp__pkb__search`). If a match exists, **augment it**. If no match, create new note with provenance:
+**Always search first** (`mcp__services__pkb__search`). If a match exists, **augment it**. If no match, create new note with provenance:
 
 ```yaml
 ---

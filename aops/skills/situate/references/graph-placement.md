@@ -5,13 +5,13 @@ which weight) stay with the agent running the skill.
 
 ## Search before create
 
-- `mcp__pkb__search()` / `mcp__pkb__pkb_context()` — semantic search over the PKB for anything that
+- `mcp__services__pkb__search()` / `mcp__services__pkb__pkb_context()` — semantic search over the PKB for anything that
   already covers this ask.
-- `mcp__pkb__task_search()` — narrower, task-scoped search when you already suspect the right area.
-- `mcp__pkb__get_semantic_neighbors(id)` — once you have a candidate parent or a near-duplicate,
+- `mcp__services__pkb__task_search()` — narrower, task-scoped search when you already suspect the right area.
+- `mcp__services__pkb__get_semantic_neighbors(id)` — once you have a candidate parent or a near-duplicate,
   check its neighbourhood before deciding.
 
-If something already covers this ask: update it (`mcp__pkb__update_task` / `mcp__pkb__append`), do
+If something already covers this ask: update it (`mcp__services__pkb__update_task` / `mcp__services__pkb__append`), do
 not create a sibling. If it partially covers it, extend rather than duplicate.
 
 ## Placement ladder
@@ -23,7 +23,7 @@ not create a sibling. If it partially covers it, extend rather than duplicate.
 | Session/PR-sized verifiable unit  | Task/epic | via PKB, parent = the project or goal it serves     |
 | High uncertainty, need info first | Spike     | task with `classification: spike`, parent unchanged |
 
-Use `mcp__pkb__create_task()` with the resolved parent. If the right parent is genuinely ambiguous
+Use `mcp__services__pkb__create_task()` with the resolved parent. If the right parent is genuinely ambiguous
 between two live candidates — not just unclear from a quick look — that is a SURFACE case (see
 SKILL.md step 6), not a coin flip.
 
@@ -68,5 +68,5 @@ new task where they genuinely exist:
   named in body prose as `[[id]]`. Not a formal typed edge — just don't leave a new task an island
   when the bundle's `## Context`/`## Dependencies` sections already named neighbours.
 
-`mcp__pkb__get_dependency_tree(id)` and `mcp__pkb__get_network_metrics(id)` are useful for checking
+`mcp__services__pkb__get_dependency_tree(id)` and `mcp__services__pkb__get_network_metrics(id)` are useful for checking
 what a candidate parent/target already connects to before you add more.

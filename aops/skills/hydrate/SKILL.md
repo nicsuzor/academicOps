@@ -86,7 +86,7 @@ consume verbatim:
   heading's presence.
 
 **Delivery.** If a task exists (or situate is about to create one in the same turn), write the
-bundle via `mcp__pkb__append(id=task_id, content=bundle)` — append only, never overwrite an
+bundle via `mcp__services__pkb__append(id=task_id, content=bundle)` — append only, never overwrite an
 existing body. If no task exists yet and none is imminent, hand the bundle forward in-turn as your
 response, for stage 3 (`situate`) to consume directly.
 

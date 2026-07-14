@@ -44,7 +44,7 @@ branch / task named in 3–8 words). Use exactly these parts:
 
 ### 2. Checkpoint the bound task with the SAME block
 
-Call `mcp__pkb__update_task` on the bound task:
+Call `mcp__services__pkb__update_task` on the bound task:
 
 - Set `session_id` to `$AOPS_SESSION_ID`.
 - **Do NOT change `status`** — the work is ongoing; the task stays `in_progress`.

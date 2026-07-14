@@ -30,7 +30,7 @@ Identify the active task, in priority order: (1) the `$AOPS_TASK_ID` env var —
 
 #### 1.5. Reconcile native task list with PKB (Cowork only)
 
-Run `TaskList()` and reconcile mirrored tasks. For each native task marked `completed` carrying `PKB <id>` (excluding the bound parent task), if the PKB task is not terminal, call `mcp__pkb__complete_task`.
+Run `TaskList()` and reconcile mirrored tasks. For each native task marked `completed` carrying `PKB <id>` (excluding the bound parent task), if the PKB task is not terminal, call `mcp__services__pkb__complete_task`.
 
 <!-- /cowork:only -->
 
@@ -40,7 +40,7 @@ If files changed, commit, push, and open a PR against **this repo's default work
 
 #### 3. Update Project Breadcrumb
 
-Resolve the parent epic and project node from the bound task, then use `mcp__pkb__append` to add a line to the project file's **Active Epics** section: `- [[<epic-id>]] — <epic title> (task [[<bound-task-id>]], PR <url-or-'none'>)`.
+Resolve the parent epic and project node from the bound task, then use `mcp__services__pkb__append` to add a line to the project file's **Active Epics** section: `- [[<epic-id>]] — <epic title> (task [[<bound-task-id>]], PR <url-or-'none'>)`.
 
 #### 4. Release Task
 

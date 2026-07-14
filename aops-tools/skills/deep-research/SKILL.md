@@ -74,4 +74,4 @@ Follow [[pkb-capture]]. Short version:
 1. Run `scripts/fetch.sh` on a known gdoc — it must produce `.md`, `.docx`, and a `figures/` directory.
 2. Capture produces a knowledge note with: valid frontmatter, `[[wikilinks]]` to task and siblings, alt-text on every figure, preserved Works Cited.
 3. Sourcing task has `research_output:` frontmatter field pointing at the new note's id.
-4. `mcp__plugin_aops-core_pkb__search` for the note title returns the note within a minute (indexing).
+4. `mcp__services__pkb__search` for the note title returns the note within a minute (indexing).

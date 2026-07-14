@@ -20,7 +20,7 @@ domain:
   - framework
   - quality-assurance
   - operations
-allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__pkb__list_tasks, mcp__pkb__get_task, mcp__pkb__create_task, mcp__pkb__update_task, mcp__pkb__append, mcp__pkb__task_search
+allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__services__pkb__list_tasks, mcp__services__pkb__get_task, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__append, mcp__services__pkb__task_search
 version: 1.0.0
 tags:
   - retro

@@ -2,7 +2,7 @@
 
 ## Core process
 
-1. **List targets.** `mcp__pkb__list_tasks(type="target")`.
+1. **List targets.** `mcp__services__pkb__list_tasks(type="target")`.
 2. **Select target.** Present the list; `AskUserQuestion` for which to process this session.
 3. **Find candidates**, per target:
    - Tasks in the same project as the target.

@@ -29,7 +29,7 @@ Defines procedures for aligning the Personal Knowledge Base (PKB) with the Cowor
 - PKB remains the system of record.
 - Mirror claimed tasks from PKB onto the native list at `/pull` claim time.
 - Write native task updates (`in_progress`, `completed`) to the native list.
-- Sync native child completions back to PKB via `mcp__pkb__complete_task` in real time. Parent task sync is deferred to `/end_session`'s `release_task`.
+- Sync native child completions back to PKB via `mcp__services__pkb__complete_task` in real time. Parent task sync is deferred to `/end_session`'s `release_task`.
 - Every native task must store its PKB task ID in its `description` (e.g. `"PKB task-acba1234 — Implement X"`).
 - Only `/pull` and `/end_session` drive this mirror; supervisor ticks and ad-hoc PKB writes bypass it and won't appear on the native list until the next `/pull`.
 
@@ -47,8 +47,8 @@ Invoked by `/pull` claim step.
 
 1. Fetch the PKB task and its children:
    ```json
-   parent = mcp__pkb__get_task(id="<pkb-id>")
-   leaves = mcp__pkb__get_task_children(id="<pkb-id>")
+   parent = mcp__services__pkb__get_task(id="<pkb-id>")
+   leaves = mcp__services__pkb__get_task_children(id="<pkb-id>")
    ```
 2. Create the parent native task:
    ```json
@@ -88,7 +88,7 @@ Execute immediately when setting a native task to `completed`:
 4. If the ID matches the bound parent, skip (handled by `/end_session`).
 5. Otherwise, call:
    ```json
-   mcp__pkb__complete_task(id="<pkb-id>", summary="<native-subject>")
+   mcp__services__pkb__complete_task(id="<pkb-id>", summary="<native-subject>")
    ```
 
 ## Final Reconciliation
@@ -98,8 +98,8 @@ Invoked during `/end_session` before calling `release_task`.
 1. Call `tasks = TaskList()`.
 2. Parse `PKB <id>` from `description` for all tasks.
 3. For each native task marked `completed` whose PKB ID is NOT the bound parent:
-   - Check PKB status using `mcp__pkb__get_task(id="<pkb-id>")`.
-   - If not in a terminal state, call `mcp__pkb__complete_task(id="<pkb-id>", summary="reconciled at session close")`.
+   - Check PKB status using `mcp__services__pkb__get_task(id="<pkb-id>")`.
+   - If not in a terminal state, call `mcp__services__pkb__complete_task(id="<pkb-id>", summary="reconciled at session close")`.
 
 ## Multi-Pull Cleanup
 

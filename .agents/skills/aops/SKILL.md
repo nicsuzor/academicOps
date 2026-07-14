@@ -12,8 +12,8 @@ Coordinate framework operations, maintain institutional memory in the PKB, route
 
 The Personal Knowledge Base (PKB) is the single source of truth.
 
-- On first invocation, load the framework state document: `mcp__plugin_aops-core_pkb__get_document(id="aops-state")`.
-- Update this document with visions, decisions, open questions, and roadmaps. Use `mcp__plugin_aops-core_pkb__append` for incremental updates.
+- On first invocation, load the framework state document: `mcp__services__pkb__get_document(id="aops-state")`.
+- Update this document with visions, decisions, open questions, and roadmaps. Use `mcp__services__pkb__append` for incremental updates.
 - Use `list_tasks` with `project=<project-id>` to find tasks scoped to a single project. Do not infer project membership from IDs.
 
 ## Framework Governance

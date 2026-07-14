@@ -99,7 +99,7 @@ Use `Write` tool for the file write — MCP `create` is unwieldy for 100KB+ bodi
 ## Step 7: Update the sourcing task
 
 ```
-mcp__plugin_aops-core_pkb__update_task(
+mcp__services__pkb__update_task(
   id="<task-id>",
   updates={
     "research_output": "<note-id>",

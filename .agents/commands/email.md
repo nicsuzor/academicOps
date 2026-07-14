@@ -12,7 +12,7 @@ needs_task: false
 mode: execution
 domain:
   - email
-allowed-tools: mcp__outlook__*,mcp__pkb__task_search,mcp__pkb__create_task,mcp__pkb__list_tasks,AskUserQuestion
+allowed-tools: mcp__outlook__*,mcp__services__pkb__task_search,mcp__services__pkb__create_task,mcp__services__pkb__list_tasks,AskUserQuestion
 permalink: commands/email
 ---
 
@@ -26,9 +26,9 @@ The Outlook MCP server is lazy: the **first call after an idle period triggers t
 
 ## Procedure
 
-1. **Fetch & dedup**: Retrieve recent emails via the Outlook MCP tools. Before creating any task, run `mcp__pkb__task_search` on the email subject/key action phrase — if a match exists, skip creation and link to it instead; if ambiguous, ask via `AskUserQuestion`.
+1. **Fetch & dedup**: Retrieve recent emails via the Outlook MCP tools. Before creating any task, run `mcp__services__pkb__task_search` on the email subject/key action phrase — if a match exists, skip creation and link to it instead; if ambiguous, ask via `AskUserQuestion`.
 2. **Classify**: Categorize each email into Actionable, Important FYI, or Safe to Ignore.
-3. **Create tasks**: For each actionable email, create a self-contained task via `mcp__pkb__create_task` with a `parent` epic/project (mandatory linkage), and a body containing the quoted email text, `entry_id`, sender/date, and all links (do not download attachments — link them).
+3. **Create tasks**: For each actionable email, create a self-contained task via `mcp__services__pkb__create_task` with a `parent` epic/project (mandatory linkage), and a body containing the quoted email text, `entry_id`, sender/date, and all links (do not download attachments — link them).
 4. **Present summary**: Present the three sections below.
 
 ## Output Expectations
