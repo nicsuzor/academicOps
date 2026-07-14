@@ -20,8 +20,13 @@ that for anything not covered here; do not duplicate it.
 ```bash
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "polecat run agy -p aops -s $TMUX_NAME"
+  "uv run --project $AOPS python $AOPS/polecat/cli.py run agy -p aops -s $TMUX_NAME"
 ```
+
+Use the explicit `uv run` path shown above, not the bare `polecat`/`pc`
+alias — inside `sh -c` (what tmux spawns) an unresolved alias kills the
+whole tmux server, not just the pane. See
+[[specs/polecat/tmux-interactive-driving.md]] for why.
 
 Swap `agy` for `claude` to debug the Claude client instead, or `shell` for a
 plain shell in the container with no agent. Swap `-p aops` for

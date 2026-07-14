@@ -85,7 +85,8 @@ Route tasks based on scope:
 
 ### Core Conventions
 
-- **One Spec Per Feature**: Specifications are timeless.
+- **Doc placement is authoritative, not discretionary**: `specs/meta/doc-taxonomy.md` is the required reference for where any written content belongs — instructions (`aops/agents/`, `aops/skills/*/SKILL.md`, `.agents/CORE.md`/`rules/*.md`), specs (`specs/<subsystem>/*.md`), state (`specs/<NAME>.md`), audit-artifacts (`specs/audit/`), or top-level docs. Consult it before adding or editing any file in those locations; do not improvise a placement.
+- **One Spec Per Feature**: Specifications are timeless — they state designed/intended behavior, not a log of what was found when. Per `specs/meta/doc-taxonomy.md`, specs carry no provenance and no dated entries: no "verified on <date>", no per-session findings, no PKB task/session IDs, no git-commit narration. A bug or a live-test finding is filed as a PKB/GitHub task and cited there — never narrated inline in a spec body. Drift between a spec and the running code is normal and expected; it means there's a bug or migration to fix, not that the doc is miscategorized.
 - **Single Source of Truth**: Keep data in exactly one location.
 - **Self-Documenting (P#10)**: Embed documentation in code; avoid parallel docs.
 - **Always Dogfooding (P#22)**: Use real projects as development guides.
