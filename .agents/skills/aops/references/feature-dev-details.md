@@ -140,7 +140,7 @@ Feature development follows eight phases:
 
 **Test Location**:
 
-- Framework features: `aops/skills/aops/tests/`
+- Framework features: `.agents/skills/aops/tests/`
 - Project features: Within project test directory
 - Cross-cutting features: Dedicated test directory with clear ownership
 
@@ -370,7 +370,7 @@ Use TodoWrite at key points:
 **This workflow produces**:
 
 - Experiment tracking via tasks (tag: `experiment`)
-- Integration tests in `aops/skills/aops/tests/` or project tests
+- Integration tests in `.agents/skills/aops/tests/` or project tests
 - Features following framework principles
 
 **This workflow enforces**:
