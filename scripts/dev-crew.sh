@@ -57,7 +57,7 @@ cmd_watch() {
 
 cmd_logs() {
     local name="${1:?usage: dev-crew.sh logs <name>}"
-    # Mirrors polecat/cli_lite.py's session dir resolution: $AOPS_SESSIONS
+    # Mirrors polecat/cli.py's session dir resolution: $AOPS_SESSIONS
     # (else $POLECAT_HOME/sessions, else ~/.polecat-dev/sessions), then
     # logs/<YYYYMMDD>/<name>/<project>. Glob the date since we don't know
     # which day the session started on; take the most recent match.

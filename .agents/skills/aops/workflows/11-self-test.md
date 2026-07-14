@@ -50,7 +50,11 @@ Walk layers in order; stop at first failure:
 
 **§5 Observability** — hooks JSONL populated; PKB MCP answers 406 (not refused/timeout); `mcp__services__pkb__*` tool answered in §4. If hooks JSONL is missing or empty, diagnose per **Step 0's stderr-on-every-attachment method** (not a `hook_non_blocking_error` grep): absence does not distinguish a misconfigured log path from an import-time crash from a logger that threw on an exit-0 hook.
 
-**§6 Cleanup** — `/exit` → `tmux kill-session` → `polecat nuke <crew>`. Repeat for other client.
+**§6 Cleanup** — `/exit` → `tmux kill-session`. No manual `nuke` step:
+`polecat run`'s underlying `docker run --rm` self-removes the container on
+exit (the `nuke`/`list-crew` subcommands it used to require were deleted
+along with the old `polecat/cli.py`, 2026-07-14 — see [[tests/harness/README.md]]).
+Repeat for other client.
 
 On failure: file one issue per root cause, not per symptom. Append to existing PR/task when one exists. Refs: [[aops-7c45802b]], GH #1237.
 

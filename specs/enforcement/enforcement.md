@@ -39,7 +39,7 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 
 ### 1. Structural prevention (the only mechanical layer)
 
-- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `polecat/cli.py` / `cli_lite.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
+- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
 - **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`polecat/defaults/polecat.yaml.example`](../../polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
 
 ### 2. The harness delivery channel (reminder, not gate)

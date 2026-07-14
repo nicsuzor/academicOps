@@ -10,6 +10,35 @@ tags: [spec, polecat, architecture]
 
 # Polecat System: Ephemeral Agent Workspaces
 
+> [!warning] STALE as of 2026-07-15 — describes deleted architecture
+> Commit `e70e96475` ("remove old polecat scripts", 2026-07-14) deleted
+> `polecat/cli.py` (5734 lines) and its supporting modules (`manager.py`,
+> `claim.py`, `finalize.py`, `bootstrap.py`, `swarm.py`, `watch.py`,
+> `pkb_bridge.py`, `prompt_template.py`, `summary.py`, `validation.py`,
+> `diagnostics.py`, `observability.py`). Every guarantee, CLI surface, and
+> layout described below (`crew`, `nuke`, `swarm`, `list`, `finish`,
+> atomic claiming, per-task worktrees, self-filed PRs, transcripts) no
+> longer exists in the codebase. The sole survivor,
+> `polecat/cli_lite.py`, was renamed `polecat/cli.py` on 2026-07-15 and
+> exposes exactly one subcommand, `run`, which does nothing more than a
+> single `docker run` (bind-mount workspace, forward env, spawn
+> claude/agy/shell/sleep) — no task claiming, no PR filing, no worktree
+> lifecycle. See `tests/harness/README.md` for the current, verified tmux
+> pattern for driving `run` interactively.
+>
+> Separately, `aops/commands/pull.md` and `aops/commands/dispatch.md`
+> (referenced below under "Giving Effect") both delegate to a
+> `task-lifecycle` skill that does not exist in this repo — not under
+> `aops/skills/`, not in the built `dist/aops-claude/skills/` bundle. It
+> only survives in stale Docker build-cache layers. `/pull` and `/dispatch`
+> are therefore currently broken as written; unclear whether task-claiming
+> moved somewhere else or was dropped along with the rest of `cli.py`.
+>
+> This spec needs a full rewrite once the intended replacement
+> architecture (if any) for claiming/PR-filing/worktree-isolation is
+> decided — not attempted here since that's a real design decision, not a
+> documentation fix. Tracked in [[aops-polecat-architecture-gap]].
+
 The polecat system gives every dispatched task its own isolated, disposable git
 workspace so many agents can work concurrently without touching each other or the
 user's development checkouts. It builds on top of the PKB task system: tasks are the
