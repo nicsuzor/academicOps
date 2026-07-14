@@ -219,10 +219,12 @@ jobs:
           # exactly the kind of second half-trusted path this fix removes.
           mkdir -p .github/workflows
           cp "${SRC}/.github/workflows/pr-pipeline.yml" .github/workflows/pr-pipeline.yml
-          grep -oP 'uses:\s*\./\.github/workflows/\K[\w.-]+\.ya?ml' \
-            "${SRC}/.github/workflows/pr-pipeline.yml" | sort -u | while read -r wf; do
-            cp "${SRC}/.github/workflows/${wf}" ".github/workflows/${wf}"
-          done
+          if grep -qE 'uses:\s*\./\.github/workflows/' "${SRC}/.github/workflows/pr-pipeline.yml"; then
+            grep -oP 'uses:\s*\./\.github/workflows/\K[\w.-]+\.ya?ml' \
+              "${SRC}/.github/workflows/pr-pipeline.yml" | sort -u | while read -r wf; do
+              cp "${SRC}/.github/workflows/${wf}" ".github/workflows/${wf}"
+            done
+          fi
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
