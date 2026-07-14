@@ -44,7 +44,7 @@ All agent and skill files use **Claude Code tool names**:
 | ----------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Built-in          | PascalCase                              | `Read`, `Edit`, `Write`, `Bash`, `Grep`, `Glob`, `Agent`, `Skill`, `TodoWrite`, `AskUserQuestion`, `WebFetch`, `WebSearch`, `NotebookEdit` |
 | MCP               | `mcp__<server>__<tool>`                 | `mcp__pkb__search`, `mcp__playwright__browser_navigate`                                                                                    |
-| Plugin-scoped MCP | `mcp__plugin_<plugin>_<server>__<tool>` | `mcp__plugin_aops-core_pkb__create_task`                                                                                                   |
+| Plugin-scoped MCP | `mcp__plugin_<plugin>_<server>__<tool>` | `mcp__plugin_aops_pkb__create_task`                                                                                                        |
 
 Legacy snake_case names (`read_file`, `run_shell_command`, `mcp_playwright_browser_navigate`) are **not permitted** in source. The build script (see §Build Translation) translates to target-specific forms as needed.
 

@@ -2,13 +2,13 @@
 name: framework-conventions-summary
 title: Framework Conventions Summary
 category: ref
-description: Condensed framework conventions for JIT injection. Full skill at aops-core/skills/aops/SKILL.md.
+description: Condensed framework conventions for JIT injection. Full skill at .agents/skills/aops/SKILL.md.
 permalink: framework-conventions-summary
 ---
 
 # Framework Conventions (Summary)
 
-**Full skill**: [[aops-core/skills/aops/SKILL.md]] - invoke `Skill(skill='aops')` for component patterns, workflows, compliance refactoring.
+**Full skill**: [[.agents/skills/aops/SKILL.md]] - invoke `Skill(skill='aops')` for component patterns, workflows, compliance refactoring.
 
 ## Categorical Imperative (MANDATORY)
 
@@ -118,7 +118,7 @@ Task(subagent_type="aops:pauli", model="opus", prompt="Review this for errors an
 
 ### Terminal Move after Dispatch
 
-After a fire-and-forget dispatch with no follow-up or babysit instruction, the default terminal move is to close the session promptly (via the `dump` or `end_session` skill) instead of idling. (Canonical rule: [[aops-core/skills/aops/SKILL.md#terminal-move-after-dispatch]])
+After a fire-and-forget dispatch with no follow-up or babysit instruction, the default terminal move is to close the session promptly (via the `dump` or `end_session` skill) instead of idling. (Canonical rule: [[.agents/skills/aops/SKILL.md#terminal-move-after-dispatch]])
 
 ### File Categories
 
