@@ -73,66 +73,48 @@ Goals link to projects via the `goals: []` metadata field (many-to-many), not th
 
 ### 2. Axioms — rules that must never be breached
 
-A small, fixed set of universal rules bind every agent, on every surface, with no ad-hoc exceptions: `halt-on-failure`, `honest-epistemics`, `data-boundaries`, `evidence-immutable`, `full-observability`, and a dozen more — each targeting a _class_ of failure, never a single instance. The full set, with the reasoning behind each, is the actual law: [`.agents/rules/AXIOMS.md`](.agents/rules/AXIOMS.md).
+A small, fixed set of universal rules bind every agent, on every surface, with no ad-hoc exceptions: `halt-on-failure`, `honest-epistemics`, `data-boundaries`, `evidence-immutable`, `full-observability`, and a dozen more — each targeting a _class_ of failure, never a single instance. The full set, with the reasoning behind each, is the actual law: [`.agents/AXIOMS.md`](.agents/AXIOMS.md) (`.agents/rules/` holds per-axiom mirror files, not the consolidated source).
 
 Axioms describe what must never happen. They don't enforce themselves — that's part 3.
 
-### 3. Enforcement — hooks, gates, and your own rules
+### 3. Enforcement — a minimal in-session hook, backed by a PR-time review pipeline
 
-Enforcement is graduated: start with an instruction, escalate only when evidence shows the lower tier failing (Design Principle #6), across a cost ladder from a written rule up to human PR approval. Session hooks make every session framework-aware:
+An earlier version of this framework ran a ~40-mechanism in-session gate pyramid — turn-based compliance counters, blocking Stop gates with per-gate mode config, a dedicated `GateConfig` engine. **That engine has been retired in full** (see [`specs/enforcement/enforcement.md`](specs/enforcement/enforcement.md), the current authoritative account). Enforcement's centre of gravity today is the task-graph boundary (claim → execute → release — a convention agents follow, not code that checks it) plus agent judgment at review time, backed by a real, code-checked PR pipeline.
 
-- **SessionStart**: loads principles, pulls latest state
-- **PostToolUse**: boundary detection, warn-tier checks, autocommit
-- **Stop gate**: consolidated exit-reflection discipline before a session ends — full checklist for task-bound sessions, lightweight honesty reminder for everyone else
-- **Transcript capture**: every session recorded for reflection
+The entire in-session hook surface is one 131-line script, [`aops/hooks/router.py`](aops/hooks/router.py), wired to four Claude Code events via [`aops/templates/hooks.template.json`](aops/templates/hooks.template.json):
 
-The gate riding those hooks:
+- **SessionStart** — copies a fixed allowlist of env vars (`AOPS_SESSIONS`, `PKB_MCP_URL`, GitHub tokens, …) into the session; does not load axioms and does not query PKB state. Axioms are baked in separately, at build/install time (`scripts/build.py` → `dist/aops-claude/axioms.jsonl` → merged into `~/.claude/settings.json` by `scripts/install_automode.py`).
+- **UserPromptSubmit** — injects the static template [`aops/templates/ida-hydrate.md`](aops/templates/ida-hydrate.md) as `additionalContext` on every prompt. It's a reminder, not a routing decision — nothing here calls a skill or hook-blocks anything.
+- **Stop** / **SubagentStop** — inject static reminder templates (`ida-reminder.md`, `deliverable-verify-reminder.md`) unless `stop_hook_active` is already set. The `"decision": "block"` line is present in the code but commented out — there is no verdict, no FULL/LITE tier, nothing that can actually stop an agent from exiting.
+- **PostToolUse** — no hook registered for this event at all. There is no boundary detection and no autocommit in the current build.
 
-| Gate              | What it catches                                                                                                                                                            | Default                                                                          |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `exit_reflection` | FULL tier: axiom drift, "done" claimed without verification, exiting without committing/updating tasks/reflecting. LITE tier: honesty / criterion-substitution check only. | FULL tier `block` (polecat/crew) / `warn` (interactive); LITE tier always `warn` |
-| `ida`             | Honesty / criterion-substitution check before stopping (head/interactive surface)                                                                                          | `warn`                                                                           |
+Real enforcement instead runs after the session, as regular CI on the PR — checked by GitHub Actions, not a claim in a doc:
 
-The turn-based `rbg` periodic-compliance gate (every N write ops) is retired — nothing fires mid-session on any surface. (`hydration` is reserved in the config schema but not yet a real gate — its routing-hint injection runs unconditionally.) See [Configuration](#configuration) below for how to change a gate's mode for your own sessions.
+| Workflow | Trigger | What it actually runs |
+| --- | --- | --- |
+| `lint.yml` | push/PR | `ruff check` / `ruff format --check`, MCP-name normalization, ruleset-alignment check |
+| `pytest.yml`, `typecheck.yml` | push/PR | `pytest`, `basedpyright` |
+| `rbg-review.yml` | PR labeled `request-rbg-review` | Claude reviews the diff against `.agents/rules/*.md` and posts inline comments |
+| `agent-enforcer.yml`, `agent-qa.yml` (Marsha), `agent-mechanic.yml`, `agent-pre-admission-responder.yml` | reusable, called from other workflows | each assembles a persona prompt and runs `claude-code-action` |
+| `.github/rulesets/pr-review-and-merge.yml` | branch ruleset on `dev` | requires the human approval click before merge |
 
-**How an action gets enforced, end to end:**
+Two things worth knowing if you're relying on this table: `pr-pipeline.yml` — the file the name implies holds the orchestration — is currently an empty stub (a comment pointing at a spec, no jobs). And `agent-qa.yml` sparse-checks out `aops-pkb/agents/marsha.md`, a path that doesn't exist in this repo (the real file is `aops/agents/marsha.md`) — that job would fail its own fail-fast check on a real run. `pauli` (design-intent review) has no CI wiring at all; it exists only as a persona file and in this doc.
 
-```mermaid
-flowchart TD
-    A[Session start] --> B["Axioms + safety floor injected\n(always-on, every surface)"]
-    B --> C[Agent works: tool calls]
-    C --> F[PostToolUse: boundary\ncheck + autocommit]
-    F --> G[Agent tries to stop]
-    G --> I{exit_reflection gate\nFULL tier if task-bound + did work,\nelse LITE tier}
-    I -- FULL: unverified or\nuncommitted --> IW["WARN interactive /\nBLOCK polecat, until a\nlegal exit (auditor ran,\nhonest release_task, or\n/end-session/dump/continue)"]
-    I -- LITE --> IL["WARN-only honesty\nreminder, never blocks"]
-    I -- clear --> J[Session ends]
-    J --> K[PR opened]
-    K --> L["Automated review:\nrbg (axioms) + marsha (QA)"]
-    L --> M["Advisory review:\npauli (design intent)"]
-    M --> N["Human admit approval\n+ branch protection"]
-    N --> O[Merge]
-```
+Axioms and project rules that DO apply during a session live in `.agents/AXIOMS.md` (framework) and `.agents/rules/` (project) — read by the agent as instructions, not enforced by a hook.
 
-Three postures do the work: **hard blocks** (`exit_reflection` FULL tier on task-bound sessions) stop the action outright; **advisory warns** (`exit_reflection` LITE tier, `ida`, `pauli`) inject a reminder or reopen a review path but let the agent proceed; **post-hoc audit** (PR-time `rbg`/`marsha`, human admit) catches anything that slipped through before merge. Rules themselves live in `.agents/rules/` (project) and `.agents/rules/AXIOMS.md` (framework) — axioms are always enforced, everything else escalates only when a lighter mechanism is shown to fail (Design Principle #6).
-
-The same ladder continues past the session, into GitHub:
-
-```
-PR opened → lint + typecheck + tests → agent review → merge prep → human approval → merge
-```
-
-And it isn't limited to the framework's own axioms — a project extends it under its own `.agents/` directory:
+A project extends this under its own `.agents/` directory:
 
 - **`.agents/rules/`** — project-specific rules loaded as binding constraints
 - **`.agents/workflows/`** — project-specific workflows supplementing the global index
 - **`.agents/INDEX.md`** — plain-text index of project documentation, to aid discovery
 
-### 4. Polecat — work dispatch
+### 4. Task pipeline and Polecat — from a prompt to a dispatched worker
 
-Polecat spins up ephemeral, containerized agents against a specific PKB task — the mechanism behind `/dispatch`, `/pull`, and autonomous background workers. Before a container starts, the polecat launcher resolves gate posture for that session type — `run_defaults` for autonomous workers, `crew_defaults` for interactive crews — from `$AOPS_SESSIONS/polecat.yaml` (schema: [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example)) and stages it into the container; direct CLI sessions skip this and use the plugin's built-in gate defaults instead.
+The intended shape of a task's life is six stages — `hydrate → situate → decompose → brief → execute → evaluate` — coordinated only through the PKB graph (a task's frontmatter + body is the message bus; no stage calls another directly). `hydrate` and `situate` build a task node out of a raw prompt; `decompose` (pauli) breaks it into a subtask DAG with review steps built in; `brief` composes a self-contained delegation brief per subtask at dispatch time (the identity that writes a brief never executes it); `execute` runs it; `evaluate` (`/verify` or `/strategic-review`) judges the emitted evidence against the brief's rubric, not by re-running the work.
 
-Polecat ships as a console-script entry point in this package — see [`INSTALL.md`](INSTALL.md#polecat-installation) to install it.
+**What's actually wired today, not what's planned:** `hydrate` fires automatically — every prompt gets a static reminder injected by the `UserPromptSubmit` hook (see [Enforcement](#3-enforcement--a-minimal-in-session-hook-backed-by-a-pr-time-review-pipeline) above). `/q` → `situate` works (`aops/commands/q.md` → `Skill(skill="situate")`). `decompose` exists as a skill (`aops/skills/decompose/SKILL.md`) but is **not** a registered slash command — it's reachable only via an explicit `Skill()` call from another flow. `/dispatch` and `/pull` both call `Skill(skill="task-lifecycle", ...)`, and that skill **does not exist in this repo** — both commands are currently broken (tracked in PKB as `aops-polecat-architecture-gap`). `/plan` has no command file at all.
+
+Polecat (`polecat/cli.py`, 334 lines) is what actually spins up a containerized worker, but as of this week it's mid-rebuild: the previous 5,734-line CLI and its supporting modules (`manager.py`, `claim.py`, `finalize.py`, `pkb_bridge.py`, and others) were deleted outright, and the file at `polecat/cli.py` today is a minimal replacement (`cli_lite.py`, renamed). It exposes exactly one subcommand, `run` — there is no `crew`, `start`, `finish`, `nuke`, or `swarm`. `run` reads `polecat.yaml` only for the Docker image and project path, builds a `docker run` command that bind-mounts the host repo directly (no per-task worktree isolation), and execs it. It does **not** resolve gate posture from `crew_defaults`/`run_defaults`, does **not** claim or release a PKB task, and does **not** file a PR — none of that logic exists in the current code; `claim_task`/`release_task` remain a documented convention (`specs/enforcement/task-contract.md`), not a checked one. See [`INSTALL.md`](INSTALL.md#polecat-installation) to install it.
 
 ### 5. Full observability — recorded, end to end
 
@@ -230,42 +212,4 @@ paths:
 
 ### Gates (quality checks)
 
-Gates are the runtime quality checks introduced in [Five parts → Enforcement](#3-enforcement--hooks-gates-and-your-own-rules) above. Each gate runs in one of three modes: **`warn`** (reminds the agent but doesn't block), **`block`** (stops the agent until the condition is met), or **`off`** (disabled). This section covers how to change a gate's mode for your own sessions.
-
-#### How to configure gates
-
-There are three ways to configure gates, depending on how you run your sessions:
-
-**1. `polecat.yaml`** — for polecat-managed sessions (autonomous workers and crew). This is the primary configuration file:
-
-```yaml
-# $AOPS_SESSIONS/polecat.yaml
-session_defaults:
-  gates:
-    exit_reflection: warn  # warn | block | off
-    ida: off            # face-scoped honesty gate — head-surface only, off for
-                         # every polecat/crew (dispatched) session; see below
-    hydration: off
-
-# Override per session type
-run_defaults:             # autonomous polecat workers
-  gates:
-    exit_reflection: block  # workers must complete exit-reflection before exiting
-
-crew_defaults: {}         # interactive crew sessions (inherits session_defaults)
-```
-
-See [`polecat/defaults/polecat.yaml.example`](polecat/defaults/polecat.yaml.example) for the full schema.
-
-**2. Environment variables** — for direct CLI sessions (Claude Code on your machine). The plugin's built-in defaults apply automatically; override individual gates by setting environment variables in your shell:
-
-```bash
-export EXIT_REFLECTION_GATE_MODE=off  # skip exit-reflection for quick interactive chats
-export IDA_GATE_MODE=block            # stricter honesty checking on the head surface
-```
-
-The full list: `EXIT_REFLECTION_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`, `EXIT_REFLECTION_DEGRADE_THRESHOLD`.
-
-`IDA_GATE_MODE` defaults to `warn` on this path specifically (every other gate defaults `off`) — a bare direct-CLI session with no `polecat.yaml` is, by construction, the interactive head/face surface the honesty gate exists to protect (see [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md)). Dispatched polecat/crew sessions always get an explicit `off` from `polecat.yaml` instead, regardless of this fallback.
-
-3. Per-directory overrides - to change gate behaviour for a specific project, set the environment variables in your shell environment. Note: on Mac/WSL host, environment variables set in CLI settings env blocks do not reliably reach the hooks.
+`polecat/defaults/polecat.yaml.example` still documents a `session_defaults` / `run_defaults` / `crew_defaults` gate schema (`exit_reflection`, `ida`, `hydration`, each `warn`/`block`/`off`), and this doc used to list matching env vars (`EXIT_REFLECTION_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`). As of the current build, **nothing reads either one** — `polecat/cli.py` never looks at a `gates:` key, and none of those env var names appear anywhere in the hook script (`aops/hooks/router.py`) or elsewhere in source. There is no gate-mode config to set today; see [Enforcement](#3-enforcement--a-minimal-in-session-hook-backed-by-a-pr-time-review-pipeline) above for what actually runs. The config file is left in place because it's the intended shape of a gate-resolution layer that hasn't been rebuilt yet, not because it's live.
