@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 # Directories to exclude from copying
@@ -66,8 +67,8 @@ def load_axioms(axioms_dir: Path) -> list[dict]:
     return axioms
 
 
-def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
-    print(f"Building {plugin_name}...")
+def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path, version: str):
+    print(f"Building {plugin_name} (v{version})...")
 
     for client in ["claude", "antigravity"]:
         if plugin_name == "aops-ts" and client == "antigravity":
@@ -106,6 +107,9 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path):
                             data[k].update(v)
                         else:
                             data[k] = v
+
+                    if stem == plugin_name:
+                        data["version"] = version
 
                     if stem == "mcp" and client == "antigravity":
                         if "mcpServers" in data and "services" in data["mcpServers"]:
@@ -285,6 +289,50 @@ def generate_local_marketplace(dist_root: Path):
     print("✓ Generated local marketplace.json")
 
 
+def get_project_version(project_root: Path) -> str:
+    # Read version from pyproject.toml
+    pyproject_path = project_root / "pyproject.toml"
+    if not pyproject_path.exists():
+        return "0.1.0"
+    content = pyproject_path.read_text(encoding="utf-8")
+    match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', content)
+    if match:
+        version = match.group(1)
+    else:
+        version = "0.1.0"
+
+    # Try to append git metadata
+    try:
+        sha_res = subprocess.run(
+            ["git", "rev-parse", "--short=8", "HEAD"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if sha_res.returncode == 0:
+            sha = sha_res.stdout.strip()
+            if sha:
+                dirty_res = subprocess.run(
+                    ["git", "status", "--porcelain"],
+                    cwd=project_root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                is_dirty = dirty_res.returncode == 0 and bool(dirty_res.stdout.strip())
+                meta = f"g{sha}{'.dirty' if is_dirty else ''}"
+                if is_dirty and "-" not in version:
+                    parts = version.split(".")
+                    if len(parts) == 3 and all(p.isdigit() for p in parts):
+                        major, minor, patch = parts
+                        version = f"{major}.{minor}.{int(patch) + 1}-dev.0"
+                version = f"{version}+{meta}"
+    except Exception:
+        pass
+    return version
+
+
 def main():
     parser = argparse.ArgumentParser(description="Simple build script for plugins")
     parser.add_argument(
@@ -293,11 +341,31 @@ def main():
         default=["aops-core", "aops", "aops-tools", "aops-ts"],
         help="Plugins to build",
     )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Print version and exit",
+    )
+    parser.add_argument(
+        "--set-version",
+        type=str,
+        default=None,
+        help="Override the version to build with",
+    )
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
-    dist_root = project_root / "dist"
 
+    if args.version:
+        print(get_project_version(project_root))
+        return
+
+    if args.set_version:
+        version = args.set_version
+    else:
+        version = get_project_version(project_root)
+
+    dist_root = project_root / "dist"
     dist_root.mkdir(exist_ok=True)
 
     for plugin in args.plugins:
@@ -305,7 +373,7 @@ def main():
         if not src_dir.exists():
             print(f"Warning: Plugin source {src_dir} does not exist. Skipping.")
             continue
-        build_plugin(plugin, src_dir, dist_root)
+        build_plugin(plugin, src_dir, dist_root, version)
 
     generate_local_marketplace(dist_root)
 
