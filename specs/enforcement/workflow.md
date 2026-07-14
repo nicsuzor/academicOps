@@ -37,12 +37,16 @@ subtask, an epic, or a multi-epic release all run the same five steps:
 
 1. **Contract** — the unit's premise, worth, and acceptance criteria are
    settled _at decomposition time_, before compute is spent executing it.
-   This is pauli's pre-hoc lens (premise/worth/shape), carried inside the
-   `decompose` skill (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md)).
-   The previously separate standalone premise-gate concept — a two-judge
-   hard-refuse ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is
-   retired; dispatch surfaces trust the planner's decomposition without
-   re-judging the premise themselves.
+   This is pauli's pre-hoc lens (premise/worth/shape). The `decompose` skill
+   (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md))
+   always emits it as a standing, early-blocking task node in the epic's DAG
+   — the rest of the epic's work depends on it clearing. The previously
+   separate standalone premise-gate concept — a two-judge hard-refuse
+   ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is retired;
+   dispatch surfaces trust the planner's decomposition without re-judging
+   the premise themselves. `/planner` plans only: it emits this task (and
+   the boundary-check/QA-around tasks below) into the graph, it never
+   dispatches or runs them itself.
 2. **Execution** — the claimed agent does the work. This span is
    trust-the-method: no process-level enforcement, evidence-driven
    escalation only if something goes wrong.
