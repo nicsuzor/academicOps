@@ -19,9 +19,11 @@ This document describes the system actually shipped instead: a new, small implem
 v0.3's complexity tax came from a declarative condition DSL (`GateCondition`, ~15 matcher fields) plus `custom_check`/`custom_action` escape hatches needed because the DSL couldn't express everything. At two to five gates that indirection is pure overhead. A gate is a plain Python function:
 
 ```python
-def block_rm_rf(e: Event, state: dict) -> Verdict | None:
-    if e.event == "PreToolUse" and e.tool == "Bash" and "rm -rf" in e.command:
-        return deny("Refuse rm -rf — confirm the exact path explicitly.")
+def require_subagent_model(e: Event, state: dict) -> Verdict | None:
+    if e.event == "PreToolUse" and e.tool == "Agent":
+        tool_input = e.raw.get("tool_input") or {}
+        if tool_input.get("subagent_type") != "fork" and not tool_input.get("model"):
+            return warn("Dispatching a subagent without an explicit model.")
     return None
 ```
 
@@ -43,7 +45,7 @@ The small, normalized shape every gate reads: `event` (the raw `hook_event_name`
 
 ```python
 GATES = [
-    block_rm_rf,
+    require_subagent_model,
     exit_reflection_reminder,
 ]
 ```
@@ -56,7 +58,13 @@ Most gates are stateless. For the "did the agent already do X this session" shap
 
 ### The dispatcher (`gate_dispatch.py`)
 
-One script: read stdin JSON → `normalize()` into an `Event` → `load()` session state → run every gate in `GATES`, passing `(event, state)` → `merge()` the results → `save()` state → `emit()` the client's wire format. Printing nothing is a no-op; the process always exits 0 (blocking, where it happens, is expressed in the JSON payload per the wire contract below, not via a hook exit code).
+One script: read stdin JSON → `normalize()` into an `Event` → a structural self-loop guard (below) → `load()` session state → run every gate in `GATES`, each isolated in its own try/except → `merge()` the results → `save()` state → `emit()` the client's wire format. Printing nothing is a no-op.
+
+**Exception isolation.** Each gate call is wrapped individually (`_run_gate`), not the whole loop in a bare list comprehension. Fail policy for a safety system: a gate that raises is fail-**safe** — its own verdict is skipped (the exception is reported to stderr, not swallowed silently) but every other gate still runs and still merges normally, including any legitimate `deny`. One gate blowing up must never crash the process or discard another gate's verdict.
+
+**Self-loop guard.** For `Stop` and `SubagentStop`, the dispatcher checks the raw payload's `stop_hook_active` field _before_ running any gate. If true, it returns immediately: no gate runs, no state is touched, nothing is printed. This is a dispatcher-level guard, not a per-gate one, so every current and future `Stop`/`SubagentStop` gate is protected without having to remember to check it itself — this is the exact self-loop bug that hit `router.py` on 2026-07-13.
+
+A raising gate no longer propagates and non-zero-exits the interpreter — `main()` catches it per-gate and returns `0` regardless. Blocking, where it happens, is expressed in the JSON payload per the wire contract below, not via a hook exit code.
 
 ### The emit adapter (`gates/emit.py`)
 
@@ -101,7 +109,7 @@ Registered in the plugin's hook manifest source, [`aops/templates/hooks.template
 
 Exactly two, chosen to prove the stateless and stateful shapes end-to-end — not a target catalogue size:
 
-1. **`block_rm_rf`** (`gates/block_rm_rf.py`, stateless) — denies a `Bash` tool call whose command contains `rm -rf`. This is a deliberate, narrow exception to the framework's default no-content-sniffing posture (see [enforcement.md](enforcement.md#governing-principle--agents-all-the-way-down)): one named call-site, not a general destructive-verb classifier.
+1. **`require_subagent_model`** (`gates/require_subagent_model.py`, stateless) — warns (non-blocking `additionalContext`) on `PreToolUse` when `tool_name == "Agent"` and the structured `tool_input.model` field is absent (forked agents, `subagent_type == "fork"`, are exempt — they always inherit the parent's model). Keyed purely off structural fields already present on every hook payload (event type, tool name, a structured input field's presence) — no command-string or content sniffing, no destructive-verb matching. Enforces a documented framework practice (dispatch subagents with an explicit cheap model for routine work) the same way `router.py`'s real handlers key off structured fields like `tool_name` and `background_tasks` length rather than parsing free text.
 2. **`exit_reflection_reminder`** (`gates/exit_reflection.py`, stateful) — on the first `Stop` event of a session, warns (non-blocking `additionalContext`) with a reminder to capture durable knowledge, verify subagent outputs, and confirm the commit/PR reflects the original ask; marks session state so it doesn't repeat for the rest of the session.
 
 Grow the catalogue against real need, not speculatively.

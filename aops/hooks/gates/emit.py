@@ -16,8 +16,8 @@ confirmed (matches aops/hooks/router.py's existing PreInvocation/
 PostInvocation `injectSteps`/`ephemeralMessage` pattern). agy has no
 confirmed equivalent of Claude's permissionDecision:"deny" block. A `deny`
 verdict on agy currently degrades to the same context-injection shape as
-`warn` rather than guessing at a schema — see TODO(agy-deny-format) below
-and follow-up task aops_1626a250.
+`warn` rather than guessing at a schema — see TODO(agy-deny-format) below.
+Tracked as a follow-up.
 """
 
 from __future__ import annotations
@@ -58,8 +58,8 @@ def _emit_claude(verdict: Verdict, event: Event) -> dict:
 
 def _emit_agy(verdict: Verdict, event: Event) -> dict:
     if verdict.outcome == "deny":
-        # TODO(agy-deny-format): agy's blocking wire contract is unconfirmed
-        # (see aops_1626a250). Fall back to context injection rather than
-        # guess at a schema; the message still reaches the agent.
+        # TODO(agy-deny-format): agy's blocking wire contract is unconfirmed.
+        # Fall back to context injection rather than guess at a schema; the
+        # message still reaches the agent. Tracked as a follow-up.
         pass
     return {"injectSteps": [{"ephemeralMessage": verdict.message}]}

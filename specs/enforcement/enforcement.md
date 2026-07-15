@@ -16,8 +16,6 @@ The framework enforces **no programmatic, deterministic, or mechanical verdict o
 
 The only **mechanical** enforcement in the framework is **structural prevention**: credential and workspace isolation (Docker containers for polecat workers, repo-scoped access, no ambient credentials inside a container). Prevention by construction — never reactive detection, never content-sniffing ("no shitty NLP" — no regex-for-meaning, no destructive-verb pattern matching), never a deterministic pass/fail on the substance of an agent's work.
 
-One deliberate, bounded exception: a single hard-coded safety-net block — refusing `rm -rf` from a `PreToolUse` hook — was added by explicit human decision as the minimal proof-of-shape for the function-per-gate system (see [hook-gate-system.md](hook-gate-system.md)). It is one named call-site, not a general destructive-verb classifier, and does not reopen the door to content-sniffing as a default posture.
-
 This is a deliberate, ratified narrowing from an earlier model that ran a ~40-mechanism in-session gate pyramid (turn-based compliance counters, blocking Stop gates with per-gate mode config, a dedicated `GateConfig` engine). That engine has been retired in full; see [Retired](#retired) below. Enforcement's centre of gravity is now the **task-graph boundary** (claim → execute → release, see [task-contract.md](task-contract.md)) and the **agent judgment** applied at review time (see [workflow.md](workflow.md)), not a stack of harness-level gates.
 
 ## Personalities are not skills
@@ -44,19 +42,16 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 - **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
 - **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`polecat/defaults/polecat.yaml.example`](../../polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
 
-### 2. The harness delivery channel (reminder, plus one narrow gate)
+### 2. The harness delivery channel (reminder, not gate)
 
-Two scripts share the in-session hook surface, both wired via [`aops/templates/hooks.template.json`](../../aops/templates/hooks.template.json):
+The entire in-session hook surface is one script: [`aops/hooks/router.py`](../../aops/hooks/router.py), wired via [`aops/templates/hooks.template.json`](../../aops/templates/hooks.template.json) to `Stop` / `SubagentStop` / `UserPromptSubmit` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). It injects two static templates, unconditionally, identically, on every surface — no per-client branching beyond the wire format, no mode key, no blocking:
 
-- **[`aops/hooks/router.py`](../../aops/hooks/router.py)** — `Stop` / `SubagentStop` / `UserPromptSubmit` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). It injects two static templates, unconditionally, identically, on every surface — no per-client branching beyond the wire format, no mode key, no blocking:
-  - **`ida-hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
-  - **`ida-reminder.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative) — this is the exit-reflection discipline from the ratified plan's §1, delivered as a reminder rather than as a blocking gate.
+- **`ida-hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
+- **`ida-reminder.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative) — this is the exit-reflection discipline from the ratified plan's §1, delivered as a reminder rather than as a blocking gate.
 
-  Nothing in `router.py` produces a verdict. It cannot stop an agent from exiting, and it does not check whether the agent actually did what the reminder asked — that is the executing agent's own judgment call, backstopped by the review lenses below, not by the hook.
+Nothing in this layer produces a verdict. It cannot stop an agent from exiting, and it does not check whether the agent actually did what the reminder asked — that is the executing agent's own judgment call, backstopped by the review lenses below, not by the hook.
 
-  **Target vs current, named explicitly:** the ratified plan (§1) envisions the harness eventually _dispatching_ the reflection/audit subagent directly on Stop, where the harness supports it, rather than only injecting reminder text. `router.py` does not do this yet — it injects text only. This is an open implementation gap against the ratified design, not a design ambiguity; flagging it here rather than asserting it as already built.
-
-- **[`aops/hooks/gate_dispatch.py`](../../aops/hooks/gate_dispatch.py)** — the function-per-gate system. Full design: [hook-gate-system.md](hook-gate-system.md). A gate is a plain Python function `(Event, state) -> Verdict | None`; the dispatcher normalizes stdin JSON to an `Event`, runs every gate in the `GATES` list, merges verdicts (deny > warn > allow), and emits the client's wire format. Ships exactly two gates today: a stateless `PreToolUse` block on `rm -rf` (the one content-sniffing exception named above) and a stateful `Stop` exit-reflection reminder (non-blocking `additionalContext`). Registered on `PreToolUse` and alongside `router.py` on `Stop` — both hooks run; they do not interact.
+**Target vs current, named explicitly:** the ratified plan (§1) envisions the harness eventually _dispatching_ the reflection/audit subagent directly on Stop, where the harness supports it, rather than only injecting reminder text. `router.py` does not do this yet — it injects text only. This is an open implementation gap against the ratified design, not a design ambiguity; flagging it here rather than asserting it as already built.
 
 ### 3. Claude Code's native auto-mode classifier
 
@@ -105,7 +100,6 @@ The framework's prior in-session hook/gate engine — a dedicated `GateConfig` f
 
 ## Sibling documents
 
-- [hook-gate-system.md](hook-gate-system.md) — the function-per-gate in-session hook system (`gate_dispatch.py`).
 - [task-contract.md](task-contract.md) — the work-unit contract (`claim_task` → `release_task`).
 - [workflow.md](workflow.md) — the five-step workflow shape (contract → execution → boundary-check → QA-around → sign-off) and the review-depth call.
 - [sign-off.md](sign-off.md) — the workflow-level review, instantiated today as the git PR pipeline.

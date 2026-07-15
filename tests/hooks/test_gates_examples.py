@@ -1,37 +1,53 @@
 """The two shipped example gates: one stateless, one stateful."""
 
-from gates.block_rm_rf import block_rm_rf
 from gates.event import Event
 from gates.exit_reflection import exit_reflection_reminder
+from gates.require_subagent_model import require_subagent_model
 from gates.verdict import Verdict
 
 
-def test_block_rm_rf_denies_matching_bash_command():
-    e = Event(event="PreToolUse", tool="Bash", command="rm -rf /tmp/x")
-    result = block_rm_rf(e, {})
+def test_require_subagent_model_warns_when_model_missing():
+    e = Event(event="PreToolUse", tool="Agent", raw={"tool_input": {"subagent_type": "james"}})
+    result = require_subagent_model(e, {})
     assert isinstance(result, Verdict)
-    assert result.outcome == "deny"
+    assert result.outcome == "warn"
 
 
-def test_block_rm_rf_allows_other_bash_commands():
-    e = Event(event="PreToolUse", tool="Bash", command="ls -la")
-    assert block_rm_rf(e, {}) is None
+def test_require_subagent_model_allows_when_model_set():
+    e = Event(
+        event="PreToolUse",
+        tool="Agent",
+        raw={"tool_input": {"subagent_type": "james", "model": "haiku"}},
+    )
+    assert require_subagent_model(e, {}) is None
 
 
-def test_block_rm_rf_ignores_non_bash_tools():
-    e = Event(event="PreToolUse", tool="Write", command="rm -rf /tmp/x")
-    assert block_rm_rf(e, {}) is None
+def test_require_subagent_model_exempts_forks():
+    e = Event(event="PreToolUse", tool="Agent", raw={"tool_input": {"subagent_type": "fork"}})
+    assert require_subagent_model(e, {}) is None
 
 
-def test_block_rm_rf_ignores_non_pretooluse_events():
-    e = Event(event="PostToolUse", tool="Bash", command="rm -rf /tmp/x")
-    assert block_rm_rf(e, {}) is None
+def test_require_subagent_model_ignores_other_tools():
+    e = Event(event="PreToolUse", tool="Bash", raw={"tool_input": {"command": "ls"}})
+    assert require_subagent_model(e, {}) is None
 
 
-def test_block_rm_rf_is_stateless_state_untouched():
-    e = Event(event="PreToolUse", tool="Bash", command="rm -rf /tmp/x")
+def test_require_subagent_model_ignores_non_pretooluse_events():
+    e = Event(event="PostToolUse", tool="Agent", raw={"tool_input": {}})
+    assert require_subagent_model(e, {}) is None
+
+
+def test_require_subagent_model_tolerates_missing_tool_input():
+    e = Event(event="PreToolUse", tool="Agent", raw={})
+    result = require_subagent_model(e, {})
+    assert isinstance(result, Verdict)
+    assert result.outcome == "warn"
+
+
+def test_require_subagent_model_is_stateless_state_untouched():
+    e = Event(event="PreToolUse", tool="Agent", raw={"tool_input": {"subagent_type": "james"}})
     state = {}
-    block_rm_rf(e, state)
+    require_subagent_model(e, state)
     assert state == {}
 
 

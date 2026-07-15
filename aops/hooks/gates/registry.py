@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from .block_rm_rf import block_rm_rf
 from .exit_reflection import exit_reflection_reminder
+from .require_subagent_model import require_subagent_model
 
 GATES = [
-    block_rm_rf,
+    require_subagent_model,
     exit_reflection_reminder,
 ]

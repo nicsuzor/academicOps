@@ -61,8 +61,8 @@ def test_agy_warn_uses_inject_steps():
 
 
 def test_agy_deny_falls_back_to_context_injection_pending_confirmed_format():
-    # No confirmed agy blocking wire format exists yet (see aops_1626a250);
-    # deny degrades to the same non-blocking shape as warn.
+    # No confirmed agy blocking wire format exists yet (tracked as a
+    # follow-up); deny degrades to the same non-blocking shape as warn.
     e = Event(event="PreInvocation")
     out = emit(deny("nope"), e, "agy")
     assert out == {"injectSteps": [{"ephemeralMessage": "nope"}]}
