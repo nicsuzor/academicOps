@@ -49,7 +49,7 @@ def main():
 
     reminder_content = get_template("ida-reminder.md")
     hydrate_content = get_template("ida-hydrate.md")
-    verify_content = get_template("deliverable-verify-reminder.md")
+    verify_content = get_template("verify-reminder.md")
 
     output = {}
 
@@ -96,27 +96,42 @@ def main():
             output = {
                     "systemMessage": "aOps plugin loaded."}
         elif event == "Stop":
-            if not raw_input.get("stop_hook_active"):
-                output = {
-                    # "decision": "block",
-                    # "reason": reminder_content,
-                    "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
-                    "hookSpecificOutput": {
-                        "hookEventName": event,
-                        "additionalContext": reminder_content,
-                    },
-                }
+            # Skip if the agent is already in a stop loop from a prior hook event
+            if raw_input.get("stop_hook_active"):
+                return 
+            
+            # Skip if the agent is still waiting on input from background tasks:
+            if len(raw_input.get("background_tasks", []))>0:
+                return 
+            
+            # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
+            output = {
+                # "decision": "block",
+                # "reason": reminder_content,
+                "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
+                "hookSpecificOutput": {
+                    "hookEventName": event,
+                    "additionalContext": reminder_content,
+                },
+            }
         elif event == "SubagentStop":
-            if not raw_input.get("stop_hook_active"):
-                output = {
-                    # "decision": "block",
-                    # "reason": verify_content,
-                    "systemMessage": "≡ **Before you hand back — be honest and useful.**",
-                    "hookSpecificOutput": {
-                        "hookEventName": event,
-                        "additionalContext": verify_content,
-                    },
-                }
+            # Skip if the agent is already in a stop loop from a prior hook event
+            if raw_input.get("stop_hook_active"):
+                return 
+            
+            # Skip if the agent is still waiting on input from background tasks:
+            if len(raw_input.get("background_tasks", []))>0:
+                return 
+        
+            output = {
+                # "decision": "block",
+                # "reason": verify_content,
+                "systemMessage": "≡ Always check subagent outputs -- they're lazy and lie often.",
+                "hookSpecificOutput": {
+                    "hookEventName": event,
+                    "additionalContext": verify_content,
+                },
+            }
         elif event == "UserPromptSubmit":
             output = {
                     "systemMessage": "≡ **Don't forget to hydrate.**",
