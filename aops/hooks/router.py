@@ -71,52 +71,43 @@ def main():
                     "AOPS_SESSIONS",
                     "AOPS_BOT_GH_TOKEN",
                     "PKB_MCP_URL",
-                    "PKB_MCP_TOOL_PREFIX",
+                    "PKB_MCP_TOOL_PREFIX"
                 ]
                 persist = {}
                 session_id = raw_input.get("session_id") or raw_input.get("conversationId")
                 if session_id:
                     persist["AOPS_SESSION_ID"] = session_id
-
+                
                 for var in basic_vars:
                     val = os.environ.get(var)
                     if val is not None:
                         persist[var] = val
-
+                
                 bot_token = os.environ.get("AOPS_BOT_GH_TOKEN")
                 if bot_token:
                     persist.setdefault("GH_TOKEN", bot_token)
                     persist.setdefault("GITHUB_TOKEN", bot_token)
-
+                
                 try:
                     with open(env_file, "a") as f:
                         for key, value in persist.items():
                             f.write(f"export {key}={shlex.quote(value)}\n")
                 except Exception as e:
                     print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
-            version_suffix = ""
-            try:
-                plugin_json_path = plugin_root / ".claude-plugin" / "plugin.json"
-                with open(plugin_json_path) as f:
-                    plugin_meta = json.load(f)
-                version = plugin_meta.get("version")
-                if version:
-                    version_suffix = f" (v{version})"
-            except Exception:
-                # Missing/unreadable plugin.json or malformed JSON must never
-                # crash the SessionStart hook — fall back to the unversioned
-                # message.
-                pass
-            output = {"systemMessage": f"aOps plugin loaded.{version_suffix}"}
+            output = {
+                    "systemMessage": "aOps plugin loaded."}
         elif event == "Stop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
                 return 
             
+            # Skip if the agent is still waiting on input from background tasks:
+            if len(raw_input.get("background_tasks", []))>0:
+                return 
+                
             # Ideally I'd like this check to only fire the hook if the agent was 
             # invoked by another agent (i.e. not the outer face agent).
-            # Let's try to detect when the agent is still waiting on input from background tasks:
-            if len(raw_input.get("background_tasks", []))>0:
+            if False:
                 output = {
                     "systemMessage": "≡ **Output honestly in the required format**",
                     "hookSpecificOutput": {
@@ -156,11 +147,8 @@ def main():
             }
         elif event == "UserPromptSubmit":
             output = {
-                "systemMessage": "≡ **Don't forget to hydrate.**",
-                "hookSpecificOutput": {
-                    "hookEventName": event,
-                    "additionalContext": hydrate_content,
-                },
+                    "systemMessage": "≡ **Don't forget to hydrate.**",
+                "hookSpecificOutput": {"hookEventName": event, "additionalContext": hydrate_content}
             }
 
     if output:
