@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS LaunchAgent: export aops env vars into the per-user launchd context
+  so GUI-launched processes (Claude.app -> Claude Code / Cowork tabs) inherit
+  them. Interactive terminal shells do NOT need this -- they read ~/.env.local.
+
+  This only exports the bot PAT + AOPS directory vars globally. It does NOT set
+  any global SSH lockdown or git-config hijack -- that would re-break VS Code
+  and other GUI apps (note-4d4a97c2). Session-scoped credential isolation for
+  Claude/bot sessions is applied per-session by aops/hooks/router.py.
+
+  Install:
+      cp scripts/macos-launchd/com.aops.envvars.plist ~/Library/LaunchAgents/
+      cp scripts/macos-launchd/launchd-env.sh        "$POLECAT_HOME/launchd-env.sh"  # default ~/.aops/
+      launchctl load   ~/Library/LaunchAgents/com.aops.envvars.plist
+      launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
+
+  Verify (token is masked):
+      launchctl getenv AOPS_SESSIONS
+      launchctl getenv GH_TOKEN | awk '{ if (length($0)) print "set, len="length($0); else print "UNSET" }'
+
+  Update:
+      Edit either file -> unload+load -> kickstart -> fully quit Claude.app.
+
+  Uninstall:
+      launchctl unload ~/Library/LaunchAgents/com.aops.envvars.plist
+      launchctl unsetenv AOPS_SESSIONS POLECAT_HOME ACA_DATA \
+                         GH_TOKEN GITHUB_TOKEN AOPS_BOT_GH_TOKEN
+      rm ~/Library/LaunchAgents/com.aops.envvars.plist
+
+  Paths used:
+    $HOME/.env.local        -- sourced for secrets (e.g. AOPS_BOT_GH_TOKEN)
+    $HOME/src/sessions      -- AOPS_SESSIONS (override per machine)
+    $HOME/.aops             -- POLECAT_HOME (override per machine)
+    $HOME/.aops/launchd-env.sh -- bot PAT + directory pass-through (see launchd-env.sh)
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.aops.envvars</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>[ -f "$HOME/.env.local" ] &amp;&amp; . "$HOME/.env.local"; launchctl setenv AOPS_SESSIONS "$HOME/src/sessions"; launchctl setenv POLECAT_HOME "$HOME/.aops"; [ -f "$HOME/.aops/launchd-env.sh" ] &amp;&amp; . "$HOME/.aops/launchd-env.sh"</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
