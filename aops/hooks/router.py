@@ -47,9 +47,10 @@ def main():
             return path.read_text().strip()
         return f"<!-- {name} not found -->"
 
-    reminder_content = get_template("ida-reminder.md")
-    hydrate_content = get_template("ida-hydrate.md")
-    verify_content = get_template("verify-reminder.md")
+    handover_content = get_template("handover.md")
+    hydrate_content = get_template("hydrate.md")
+    verify_content = get_template("verify.md")
+    honesty_content = get_template("honesty.md")
 
     output = {}
 
@@ -57,7 +58,7 @@ def main():
         if event == "PostInvocation":
             output = {
                 "terminationBehavior": "force_continue",
-                "injectSteps": [{"ephemeralMessage": reminder_content}],
+                "injectSteps": [{"ephemeralMessage": handover_content}],
             }
         elif event == "PreInvocation":
             output = {"injectSteps": [{"ephemeralMessage": hydrate_content}]}
@@ -100,20 +101,29 @@ def main():
             if raw_input.get("stop_hook_active"):
                 return 
             
-            # Skip if the agent is still waiting on input from background tasks:
+            # Ideally I'd like this check to only fire the hook if the agent was 
+            # invoked by another agent (i.e. not the outer face agent).
+            # Let's try to detect when the agent is still waiting on input from background tasks:
             if len(raw_input.get("background_tasks", []))>0:
-                return 
+                output = {
+                    "systemMessage": "≡ **Output honestly in the required format**",
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": honesty_content,
+                    },
+                }
             
-            # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
-            output = {
-                # "decision": "block",
-                # "reason": reminder_content,
-                "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
-                "hookSpecificOutput": {
-                    "hookEventName": event,
-                    "additionalContext": reminder_content,
-                },
-            }
+            else:
+                # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
+                output = {
+                    # "decision": "block",
+                    # "reason": reminder_content,
+                    "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": handover_content,
+                    },
+                }
         elif event == "SubagentStop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
