@@ -35,6 +35,27 @@ def fixup_mcp_config_paths() -> None:
             path.write_text(resolved)
 
 
+def fixup_local_marketplace_name(marketplace_root: str, marketplace_name: str) -> None:
+    """Rename a local-dev marketplace.json's `name` field before installing it.
+
+    `scripts/build.py generate_local_marketplace()` deliberately names the
+    dist/ marketplace `aops` (not `academicOps`) so a HOST `make install-dev`
+    lands in its own namespace, distinct from a real `academicOps` install on
+    the same machine (see build.py for the full rationale). Inside a
+    `make build-docker` (AOPS_DIST_SOURCE=local) image there is no such
+    coexistence risk — the container only ever has one aops install — so we
+    rewrite the copied marketplace.json's name to `academicOps` here, making
+    the local-build image install under the SAME key
+    (`aops@academicOps`) that production/CI builds use. That's what keeps
+    `polecat/cli.py`'s staged `pluginConfigs` (hardcoded to `aops@academicOps`)
+    matching the installed plugin key regardless of build source.
+    """
+    marketplace_path = pathlib.Path(marketplace_root) / ".claude-plugin" / "marketplace.json"
+    data = json.loads(marketplace_path.read_text())
+    data["name"] = marketplace_name
+    marketplace_path.write_text(json.dumps(data, indent=2) + "\n")
+
+
 def fixup_marketplace_cache(marketplace_name: str) -> None:
     """Point known_marketplaces.json + marketplace.json at the single dist clone.
 
@@ -78,6 +99,7 @@ def fixup_extension_enablement() -> None:
 
 COMMANDS = {
     "fixup-mcp-config-paths": fixup_mcp_config_paths,
+    "fixup-local-marketplace-name": fixup_local_marketplace_name,
     "fixup-marketplace-cache": fixup_marketplace_cache,
     "fixup-extension-enablement": fixup_extension_enablement,
 }
@@ -89,11 +111,20 @@ def main() -> None:
     parser.add_argument(
         "--marketplace-name",
         default="academicOps",
-        help="Marketplace name to fix up (fixup-marketplace-cache only)",
+        help="Marketplace name to fix up (fixup-marketplace-cache / fixup-local-marketplace-name)",
+    )
+    parser.add_argument(
+        "--marketplace-root",
+        help="Directory containing .claude-plugin/marketplace.json "
+        "(fixup-local-marketplace-name only)",
     )
     args = parser.parse_args()
     if args.command == "fixup-marketplace-cache":
         fixup_marketplace_cache(args.marketplace_name)
+    elif args.command == "fixup-local-marketplace-name":
+        if not args.marketplace_root:
+            parser.error("fixup-local-marketplace-name requires --marketplace-root")
+        fixup_local_marketplace_name(args.marketplace_root, args.marketplace_name)
     else:
         COMMANDS[args.command]()
 
