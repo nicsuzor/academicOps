@@ -1,7 +1,7 @@
 # Hook Client Translation — Spec & SSoT
 
 > **Spec.** The single source of truth for how the Universal Hook Router translates
-> between Claude Code, Gemini CLI, and Antigravity CLI (agy), and how the build keeps
+> between Claude Code and Antigravity CLI (agy), and how the build keeps
 > installed assets in sync with what the hooks expect. Per-gate forensic detail →
 > [`specs/enforcement/GATES.md`](enforcement/GATES.md). Enforcement currency → [`specs/ENFORCEMENT-MAP.md`](ENFORCEMENT-MAP.md).
 
@@ -55,7 +55,7 @@ is currently unknown at runtime, so enforcer/spawn matching silently fails on ag
 
 ### Renderers (thin, structural only)
 
-`render_claude` / `render_gemini` / `render_agy` read Table 1 and map
+`render_claude` / `render_agy` read Table 1 and map
 `CanonicalHookOutput(verdict, system_message, context_injection)` → the wire dict. Policy
 (which channel, can-block, field names) is DATA; only the structural nesting is code.
 
@@ -142,14 +142,6 @@ what the user sees.**
 | `asyncRewake` (Stop, exit 2)                            | ✗ | ✓ | ✓ | Claude-only Stop quiet-split: full instruction body reaches the agent via `<system-reminder>`, user sees only a one-line summary. Not wired by the router — `hooks.json` carries no `asyncRewake`/`rewakeMessage`/`rewakeSummary` keys, and there is no `router.async_rewake_body_for`. Reason: `asyncRewake:true` is a static per-entry hooks.json flag, not something toggled per-turn — flagging the Stop entry would silently discard exit-0 JSON `decision:block` output from EVERY block-mode Stop gate sharing that entry, permanently, not just on turns where a warn-mode gate also fires. Every warn-mode Stop gate instead rides the `additionalContext` (Stop, no-block) row above. Discriminating measurements: `tests/hooks/fixtures/pty_capabilities.json` cells `stop-jsonblock-plain` / `stop-jsonblock-asyncrewake` / `stop-jsonblock-asyncrewake-agentpin` / `stop-jsonblock-plain-agentpin`. |
 | `systemMessage` / `stopReason`                          | ✓ | ✗ | ✗ | USER-only banner `Stop says:`; agent does NOT see it (transcript only). PTY-proven. `router.py:950-952`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
-**Gemini CLI** (`output_for_gemini`):
-
-| channel (wire field)                   | U | C | P | basis                                                                                                                                                                   |
-| :------------------------------------- | - | - | - | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hookSpecificOutput.additionalContext` | ✗ | ✓ | ✓ | injected into agent prompt (BeforeAgent/AfterTool); agent-only. `router.py:869-879`                                                                                     |
-| `reason` (decision="deny")             | ✓ | ✗ | ✗ | USER-visible denial; model never sees it (recovery → `additionalContext`). On **Stop** the agent advisory must ride a block, so its `reason` is U✓. `router.py:865-873` |
-| `systemMessage`                        | ✓ | ✗ | ✗ | USER-only banner. `router.py:859-860`                                                                                                                                   |
-
 **Antigravity (agy)** (`output_for_agy`; `client_spec.py`) — ONE model-facing stream, **no user-only split the router emits**:
 
 | channel (wire field)             | U | C | P | basis                                                                                                                                                                                    |
@@ -160,7 +152,7 @@ what the user sees.**
 | `reason` (Stop)                  | ✗ | ✓ | ✓ | StopHookResult reason fed to the model. `router.py:1087-1095`                                                                                                                            |
 | PreToolUse advisory              | — | — | — | **n/a** — agy PreToolHookResult has only `allowTool`/`denyReason`; advisory on a PreToolUse allow RAISES. `router.py:1058-1061`                                                          |
 
-**Differences that drive the disposition layer:** (1) agy injectSteps are model-facing, never a user banner — `silent`-to-user is automatic and `same` is impossible (no user channel). (2) agy PreToolUse cannot carry advisory at all. (3) Claude/Gemini have **no _user-silent_ (zero user output) Stop channel** — any agent-visible Stop payload is also at least summarised to the user; there is no `asyncRewake`-style quiet split — the router does not wire that channel (see the `asyncRewake` row above). Every warn-mode Stop gate (not just `ida·reminder`) rides the plain `additionalContext` (Stop, no-block) channel — non-blocking, agent-directed, and fully visible to the user too — and carries a real `WARN` verdict at the gate layer (only `block`-mode gates carry `DENY`). Note agy **cannot compel** a continuation on a Stop DENY (`terminationBehavior` unemitted / `AGY_STOP_PROVISIONAL`) — its Stop DENY degrades to best-effort advisory `injectSteps`; no forced continuation means no retry loop, which is why deleting the router `stop_hook_active` bypass is safe on agy. (4) `ephemeral`-to-agent is agy-native (`ephemeralMessage` P✗); Claude/Gemini `additionalContext` persists.
+**Differences that drive the disposition layer:** (1) agy injectSteps are model-facing, never a user banner — `silent`-to-user is automatic and `same` is impossible (no user channel). (2) agy PreToolUse cannot carry advisory at all. (3) Claude has **no _user-silent_ (zero user output) Stop channel** — any agent-visible Stop payload is also at least summarised to the user; there is no `asyncRewake`-style quiet split — the router does not wire that channel (see the `asyncRewake` row above). Every warn-mode Stop gate (not just `ida·reminder`) rides the plain `additionalContext` (Stop, no-block) channel — non-blocking, agent-directed, and fully visible to the user too — and carries a real `WARN` verdict at the gate layer (only `block`-mode gates carry `DENY`). Note agy **cannot compel** a continuation on a Stop DENY (`terminationBehavior` unemitted / `AGY_STOP_PROVISIONAL`) — its Stop DENY degrades to best-effort advisory `injectSteps`; no forced continuation means no retry loop, which is why deleting the router `stop_hook_active` bypass is safe on agy. (4) `ephemeral`-to-agent is agy-native (`ephemeralMessage` P✗); Claude's `additionalContext` persists.
 
 ## Payload Routing Flowchart
 
@@ -172,16 +164,11 @@ flowchart TD
     B -->|Claude| C1(systemMessage / permissionDecisionReason)
     B -->|Claude| C2(additionalContext)
 
-    B -->|Gemini| G1(reason / systemMessage)
-    B -->|Gemini| G2(additionalContext)
-
     B -->|Agy| A1(denyReason / reason)
     B -->|Agy| A2(ephemeralMessage)
 
     C1 -.-> U1((User Terminal))
-    G1 -.-> U1
     C2 -.-> A3((Agent Context))
-    G2 -.-> A3
     A1 -.-> A3
     A2 -.-> A3
 ```
