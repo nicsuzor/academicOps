@@ -13,8 +13,8 @@ tools:
   - Skill
   - Agent
   - mcp__playwright__*
-  - mcp_*_pkb_*
-  - mcp_services_*
+  - mcp__services__pkb__*
+  - mcp__services__*
 ---
 
 # Marsha — The QA Reviewer

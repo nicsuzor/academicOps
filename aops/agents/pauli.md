@@ -14,8 +14,8 @@ tools:
   - Read
   - Write
   - Edit
-  - mcp_*_pkb_*
-  - mcp_services_*
+  - mcp__services__pkb__*
+  - mcp__services__*
 ---
 
 # Pauli — The Architect of Thought and Memory
