@@ -8,10 +8,10 @@ tools:
   - Skill
   - Agent
   - AskUserQuestion
-  - mcp_*_outlook_*
-  - mcp_*_zot_*
-  - mcp_*_pkb_*
-  - mcp_services_*
+  - mcp__email__*
+  - mcp__services__zotmcp__*
+  - mcp__services__pkb__*
+  - mcp__services__*
 ---
 
 # Ida — Interactive Academic-Research Co-Worker
