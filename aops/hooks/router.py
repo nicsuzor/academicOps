@@ -4,7 +4,6 @@ Minimal Hook Router for aops-tools.
 Injects ida-reminder.md and ida-hydrate.md for Claude Code and Antigravity.
 """
 
-from _pytest._io import terminalwriter
 import argparse
 import json
 import os
@@ -114,36 +113,46 @@ def main():
         elif event == "Stop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
-                return 
-            
-            # Skip if the agent is still waiting on input from background tasks:
-            if len(raw_input.get("background_tasks", []))>0:
-                return 
+                # for now, debug only, because I want to use this more.
+                debug_message = [ f"    {k}: {v}" for k,v in raw_input.items() if k in ["agent_type", "agent_id", "tool_name"]]
+                output = {
+                    "systemMessage": "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
+                }
+                # return 
+            else:
+                # Skip if the agent is still waiting on input from background tasks:
+                if len(raw_input.get("background_tasks", []))>0:
+                    return 
 
-            # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
-            output = {
-                # "decision": "block",
-                # "reason": reminder_content,
-                "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
-                "hookSpecificOutput": {
-                    "hookEventName": event,
-                    "additionalContext": handover_content,
-                },
-            }
+                # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
+                output = {
+                    # "decision": "block",
+                    # "reason": reminder_content,
+                    "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": handover_content,
+                    },
+                }
         elif event == "SubagentStop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
-                return 
-            
-            # No need to skip based on `background_tasks` here; these lists are scoped to the main session, not subagent.
-            
-            # Remind subagents to be honest and output with full reasons.
-            output = {
-                "systemMessage": f"≡ **Output honestly in the required format** (dbg: {raw_input.get("agent_id", "no agent_id")}, {raw_input.get("agent_type", "no agent_type")})",
-                "hookSpecificOutput": {
-                    "hookEventName": event,
-                    "additionalContext": honesty_content,
-                },
+                                # for now, debug only, because I want to use this more.
+                debug_message = [ f"    {k}: {v}" for k,v in raw_input.items() if k in ["agent_type", "agent_id", "tool_name"]]
+                output = {
+                    "systemMessage": "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
+                }
+                # return
+            else:
+                # No need to skip based on `background_tasks` here; these lists are scoped to the main session, not subagent.
+                
+                # Remind subagents to be honest and output with full reasons.
+                output = {
+                    "systemMessage": f"≡ **Output honestly in the required format** (dbg: {raw_input.get("agent_id", "no agent_id")}, {raw_input.get("agent_type", "no agent_type")})",
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": honesty_content,
+                    },
             }
 
         elif event == "UserPromptSubmit":
