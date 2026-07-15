@@ -4,6 +4,7 @@ Minimal Hook Router for aops-tools.
 Injects ida-reminder.md and ida-hydrate.md for Claude Code and Antigravity.
 """
 
+from _pytest._io import terminalwriter
 import argparse
 import json
 import os
@@ -130,18 +131,15 @@ def main():
                 },
             }
         elif event == "SubagentStop":
-            # Remind subagents to be honest and output with full reasons.
-
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
                 return 
             
-            # Skip if the agent is still waiting on input from background tasks:
-            if len(raw_input.get("background_tasks", []))>0:
-                return 
+            # No need to skip based on `background_tasks` here; these lists are scoped to the main session, not subagent.
             
+            # Remind subagents to be honest and output with full reasons.
             output = {
-                "systemMessage": "≡ **Output honestly in the required format**",
+                "systemMessage": f"≡ **Output honestly in the required format** (dbg: {raw_input.get("agent_id", "no agent_id")}, {raw_input.get("agent_type", "no agent_type")})",
                 "hookSpecificOutput": {
                     "hookEventName": event,
                     "additionalContext": honesty_content,
