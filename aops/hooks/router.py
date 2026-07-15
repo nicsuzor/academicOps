@@ -96,6 +96,20 @@ def main():
                     print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
             output = {
                     "systemMessage": "aOps plugin loaded."}
+        elif event == "PostToolUse":
+            tool_name = raw_input.get("tool_name")
+            if tool_name == "Agent":
+                # Remind agents to verify the outputs of their subagents when they come back.
+                output = {
+                    # "decision": "block",
+                    # "reason": verify_content,
+                    "systemMessage": "≡ Always check subagent outputs -- they're lazy and lie often.",
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": verify_content,
+                    },
+                }
+
         elif event == "Stop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
@@ -104,30 +118,20 @@ def main():
             # Skip if the agent is still waiting on input from background tasks:
             if len(raw_input.get("background_tasks", []))>0:
                 return 
-                
-            # Ideally I'd like this check to only fire the hook if the agent was 
-            # invoked by another agent (i.e. not the outer face agent).
-            if False:
-                output = {
-                    "systemMessage": "≡ **Output honestly in the required format**",
-                    "hookSpecificOutput": {
-                        "hookEventName": event,
-                        "additionalContext": honesty_content,
-                    },
-                }
-            
-            else:
-                # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
-                output = {
-                    # "decision": "block",
-                    # "reason": reminder_content,
-                    "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
-                    "hookSpecificOutput": {
-                        "hookEventName": event,
-                        "additionalContext": handover_content,
-                    },
-                }
+
+            # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
+            output = {
+                # "decision": "block",
+                # "reason": reminder_content,
+                "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
+                "hookSpecificOutput": {
+                    "hookEventName": event,
+                    "additionalContext": handover_content,
+                },
+            }
         elif event == "SubagentStop":
+            # Remind subagents to be honest and output with full reasons.
+
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
                 return 
@@ -135,16 +139,15 @@ def main():
             # Skip if the agent is still waiting on input from background tasks:
             if len(raw_input.get("background_tasks", []))>0:
                 return 
-        
+            
             output = {
-                # "decision": "block",
-                # "reason": verify_content,
-                "systemMessage": "≡ Always check subagent outputs -- they're lazy and lie often.",
+                "systemMessage": "≡ **Output honestly in the required format**",
                 "hookSpecificOutput": {
                     "hookEventName": event,
-                    "additionalContext": verify_content,
+                    "additionalContext": honesty_content,
                 },
             }
+
         elif event == "UserPromptSubmit":
             output = {
                     "systemMessage": "≡ **Don't forget to hydrate.**",
