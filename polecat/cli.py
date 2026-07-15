@@ -91,6 +91,20 @@ def get_env_forwards():
     return env
 
 
+def _image_available_locally(image):
+    """Return True if `image` already exists in the local Docker image cache.
+
+    Used to gate `docker run` on a preflight check instead of letting Docker's
+    own default pull-if-missing behaviour silently reach out to the registry.
+    """
+    result = subprocess.run(
+        ["docker", "image", "inspect", image],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
 def setup_staging(staging_dir, pkb_url):
     """Stage settings and credentials in staging directory."""
     staging_dir = Path(staging_dir)
@@ -214,6 +228,25 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, extra_args):
         # 6. Gather Docker parameters
         image = config.get("docker", {}).get("image", "ghcr.io/nicsuzor/aops-crew")
 
+        # Local dispatch must always run the image `make build-docker` just built
+        # from THIS branch's dist/ — never a stale or registry copy (Nic ruling,
+        # 2026-07-15: "local polecats must run on the image built by make
+        # build-docker"). `--pull=never` below stops `docker run` from ever
+        # reaching out to the registry itself; this preflight check turns the
+        # resulting "no such image" failure into a clear, actionable message
+        # instead of a bare Docker error.
+        if not _image_available_locally(image):
+            click.echo(
+                f"Error: image '{image}' not found in the local Docker cache.\n"
+                "Polecat only runs images built on this machine — it never pulls "
+                "from a registry (a stale/registry image would silently ship stale "
+                "plugins/MCP config).\n"
+                "Run `make build-docker` (or `make build-docker-dev` for the ':dev' "
+                "tag) to build it from your current branch, then retry.",
+                err=True,
+            )
+            sys.exit(1)
+
         # Build environment forwards
         env = get_env_forwards()
         if pkb_url:
@@ -279,6 +312,13 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, extra_args):
             "docker",
             "run",
             "--rm",
+            # Never let docker fall back to pulling from the registry — local
+            # dispatch must consume the image `make build-docker` just built from
+            # this branch, not a stale/registry copy. The preflight check above
+            # already confirmed the image exists locally; this is defense in
+            # depth against a race (e.g. the image being pruned between check and
+            # run) surfacing as a silent registry pull instead of a clear error.
+            "--pull=never",
             "-u",
             f"{os.getuid()}:{os.getgid()}",
             "-v",
