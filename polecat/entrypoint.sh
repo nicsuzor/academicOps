@@ -43,7 +43,29 @@ if [ -d /tmp/staging ]; then
     while read -r src; do
         dest="$HOME/${src#/tmp/staging/}"
         mkdir -p "$(dirname "$dest")"
-        if ! cp --no-preserve=mode,ownership "$src" "$dest"; then
+        if [ "$dest" = "$HOME/.claude/settings.json" ] && [ -f "$dest" ]; then
+            # Merge, don't overwrite: the baked settings.json
+            # (polecat/defaults/claude-settings.json) is the single source of
+            # truth for `enabledPlugins` — the key that actually activates the
+            # aops/aops-tools plugins (MCP servers + hooks). The staged file
+            # (polecat/cli.py setup_staging()) carries only per-session
+            # overlays (model, pluginConfigs.pkb_mcp_url) and has no
+            # `enabledPlugins` key at all. A plain overwrite here silently
+            # deactivated every plugin inside the container (aops_20d97385).
+            # `jq -s '.[0] * .[1]'` shallow-merges dest then src: baked-only
+            # keys (enabledPlugins, statusLine, autoMode) survive, staged-only
+            # keys (pluginConfigs) are added, and staged wins on any key both
+            # define (model).
+            merged="$(mktemp)"
+            if jq -s '.[0] * .[1]' "$dest" "$src" > "$merged" && [ -s "$merged" ]; then
+                cp --no-preserve=mode,ownership "$merged" "$dest"
+                rm -f "$merged"
+            else
+                rm -f "$merged"
+                echo "Error: failed to merge staged settings '$src' into '$dest'" >&2
+                exit 1
+            fi
+        elif ! cp --no-preserve=mode,ownership "$src" "$dest"; then
             echo "Error: failed to copy staged file '$src' to '$dest'" >&2
             exit 1
         fi
@@ -55,9 +77,12 @@ fi
 # .config at 0644 (non-traversable); this self-heals them on startup.
 chmod 777 "$HOME/.config" 2>/dev/null || true
 
-# Note: Claude settings.json injection (pkb_mcp_url via pluginConfigs) is handled
-# at launch time by polecat/cli.py. Direct container invocations that bypass cli.py
-# will have agy working (PKB_MCP_URL inherited from env) but Claude missing pkb_mcp_url.
+# Note: Claude settings.json injection (pkb_mcp_url via pluginConfigs) is staged
+# at launch time by polecat/cli.py setup_staging() and merged into the baked
+# settings.json above (preserving enabledPlugins). Direct container invocations
+# that bypass cli.py will have agy working (PKB_MCP_URL inherited from env) but
+# Claude missing pkb_mcp_url — and no staged settings.json to merge at all, so
+# the baked enabledPlugins-bearing file is used untouched.
 
 # Execute the agent command (e.g., claude, gemini, bash).
 exec "$@"
