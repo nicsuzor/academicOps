@@ -154,17 +154,34 @@ COPY --chown=worker:worker polecat/defaults/docker_gemini_fixups.py /home/worker
 # The Gemini CLI extension surface is deprecated and intentionally not
 # installed here (matches `make install`, which doesn't install it either).
 #
-# $AOPS_DIST_SOURCE picks the marketplace root/name (see aops-dist-local /
+# $AOPS_DIST_SOURCE picks the marketplace root (see aops-dist-local /
 # aops-dist-remote above for why these differ): local's /aops-dist/dist IS
-# the self-contained marketplace root build.py produces (name "aops"); the
-# published `dist` branch has `.claude-plugin/` AND every plugin dir
-# (aops-claude, aops-antigravity, ...) at its own root (name "academicOps") —
-# see build-extension.yml's "Publish distribution to dist" step. Both shapes
-# put every plugin dir directly under $MP_ROOT, so all COPY/install targets
-# below are $MP_ROOT-relative and need no further local/remote branching.
+# the self-contained marketplace root build.py produces; the published `dist`
+# branch has `.claude-plugin/` AND every plugin dir (aops-claude,
+# aops-antigravity, ...) at its own root — see build-extension.yml's
+# "Publish distribution to dist" step. Both shapes put every plugin dir
+# directly under $MP_ROOT, so all COPY/install targets below are
+# $MP_ROOT-relative and need no further local/remote branching.
+#
+# The marketplace NAME is always academicOps here, regardless of source.
+# build.py's generate_local_marketplace() names the dist/ marketplace `aops`
+# so a HOST `make install-dev` doesn't collide with a real `academicOps`
+# release install on the same machine — but that coexistence concern doesn't
+# apply inside this ephemeral image, and polecat/cli.py's setup_staging()
+# stages `pluginConfigs` under the hardcoded key `aops@academicOps`. A local
+# build that installed as `aops@aops` would silently fail to receive that
+# staged config (pkb_mcp_url never reaching the plugin), so we rewrite the
+# local marketplace.json's name to `academicOps` before installing, making
+# local builds install under the exact same key production/CI builds use.
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
-    && if [ "$AOPS_DIST_SOURCE" = "local" ]; then MP_ROOT=/tmp/aops-dist/dist; MP_NAME=aops; else MP_ROOT=/tmp/aops-dist; MP_NAME=academicOps; fi \
+    && MP_NAME=academicOps \
+    && if [ "$AOPS_DIST_SOURCE" = "local" ]; then \
+        MP_ROOT=/tmp/aops-dist/dist; \
+        python3 /home/worker/docker_gemini_fixups.py fixup-local-marketplace-name --marketplace-root "$MP_ROOT" --marketplace-name "$MP_NAME"; \
+    else \
+        MP_ROOT=/tmp/aops-dist; \
+    fi \
     && claude plugin marketplace add "$MP_ROOT" \
     && claude plugin marketplace update "$MP_NAME" \
     && claude plugin install aops@"$MP_NAME" \
