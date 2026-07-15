@@ -156,7 +156,7 @@ def main():
     pass
 
 
-@main.command()
+@main.command(context_settings={"ignore_unknown_options": True})
 @click.argument("agent_cmd", default="claude")
 @click.option("--project", "-p", help="Project name to run on (resolves via config/local.yaml).")
 @click.option(
@@ -171,9 +171,21 @@ def main():
     help="Name/ID for the session (directories under sessions/ will use this).",
 )
 @click.option("--mcp-url", help="Override the PKB MCP URL forwarded into the container.")
+@click.option(
+    "--task",
+    "-t",
+    help="Task ID to work. When set and no explicit prompt/extra args are given, "
+    "defaults the initial prompt to '/pull <task_id>'.",
+)
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
-def run(agent_cmd, project, repo_dir, session_name, mcp_url, extra_args):
-    """Spin up the polecat container and run CLIs (claude, agy, shell, sleep)."""
+def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
+    """Spin up the polecat container and run CLIs (claude, agy, shell, sleep).
+
+    Anything after AGENT_CMD that isn't one of this command's own options is
+    forwarded verbatim to the inner agent invocation — e.g.
+    `polecat run claude --model opus "/pull task-abc123"` passes `--model opus`
+    to `claude` and seeds `/pull task-abc123` as its initial prompt.
+    """
     config = load_config()
 
     # 1. Resolve POLECAT_HOME
@@ -291,6 +303,9 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, extra_args):
         else:
             container_session_path = "/home/worker/.claude/projects/-workspace"
             inner_cmd = [agent_cmd]
+
+        if not extra_args and task:
+            extra_args = (f"/pull {task}",)
 
         if extra_args:
             inner_cmd.extend(extra_args)
