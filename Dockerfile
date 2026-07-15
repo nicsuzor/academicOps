@@ -194,7 +194,7 @@ RUN umask 000 \
 # pipeline already guarantees by construction. Removed as a redundant, image-build-
 # time-costly check; drift would show up as a build.py bug, not a runtime one.
 
-# Pre-bake Python venvs for Claude plugins, Gemini extensions, AND agy
+# Pre-bake Python venvs for Claude plugins AND agy
 # (Antigravity CLI) plugins in one pass so the first hook call always
 # fast-paths to $HOOK_DIR/.venv/bin/python (router.sh fallback is `uv run`,
 # which resolves the lockfile live on every cold start).
@@ -203,7 +203,7 @@ RUN umask 000 \
 # hooks.json. An inline `uv` build on first call (fetch/resolve pydantic, etc.)
 # can exceed that window and produce `Tool call denied by jsonhook__hooks_*`
 # (agy) or a stalled tool call (Claude). Symmetric pre-bake here + the same
-# pre-bake at `make install-{claude,gemini,agy}` time eliminates the cold-start
+# pre-bake at `make install-{claude,agy}` time eliminates the cold-start
 # failure for every client.
 #
 # Asymmetric pre-bake (one CLI frozen, the other JIT) is a footgun: a broken
