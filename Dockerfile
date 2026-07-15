@@ -104,10 +104,10 @@ RUN npx --yes playwright@1.59.1 install-deps chromium \
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Gemini CLI and code quality tools globally (Claude installed separately below).
-# @playwright/mcp: pre-baked so Gemini agents can call playwright tools without a
+# Install code quality tools globally (Claude/agy installed separately below).
+# @playwright/mcp: pre-baked so agents can call playwright tools without a
 # network download at session start.
-RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
+RUN npm install -g markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
 
 # Create data and workspace directories, hand ownership to worker
 RUN mkdir -p /data /workspace && chown worker:worker /data /workspace
@@ -187,10 +187,6 @@ RUN umask 000 \
 # NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops's
 # scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
 # The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
-
-# Set permissive extension enablement so hooks fire for any workspace path
-# (see docker_gemini_fixups.py:fixup_extension_enablement for why).
-RUN umask 000 && python3 /home/worker/docker_gemini_fixups.py fixup-extension-enablement
 
 # NOTE: Claude/Gemini hook .py sources cannot diverge (see #1384) — scripts/build.py
 # copies both from the single aops/hooks source dir into every platform's dist/
