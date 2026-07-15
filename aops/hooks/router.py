@@ -71,31 +71,68 @@ def main():
                     "AOPS_SESSIONS",
                     "AOPS_BOT_GH_TOKEN",
                     "PKB_MCP_URL",
-                    "PKB_MCP_TOOL_PREFIX"
+                    "PKB_MCP_TOOL_PREFIX",
                 ]
                 persist = {}
                 session_id = raw_input.get("session_id") or raw_input.get("conversationId")
                 if session_id:
                     persist["AOPS_SESSION_ID"] = session_id
-                
+
                 for var in basic_vars:
                     val = os.environ.get(var)
                     if val is not None:
                         persist[var] = val
-                
+
                 bot_token = os.environ.get("AOPS_BOT_GH_TOKEN")
                 if bot_token:
                     persist.setdefault("GH_TOKEN", bot_token)
                     persist.setdefault("GITHUB_TOKEN", bot_token)
-                
+
+                    # Session-scoped credential isolation for bot/agent sessions.
+                    # These live ONLY in this session's CLAUDE_ENV_FILE (this
+                    # process tree), NEVER in global launchctl setenv -- a global
+                    # SSH/git lockdown re-breaks VS Code and every GUI app that
+                    # relies on the user's personal identity (note-4d4a97c2).
+                    #
+                    # 1. Disable personal SSH keys + ssh-agent so git never
+                    #    authenticates to GitHub under the user's personal
+                    #    identity. IdentityAgent=none drops the agent (personal
+                    #    keys), IdentitiesOnly=yes + IdentityFile=/dev/null block
+                    #    default on-disk keys -- any SSH auth fails cleanly.
+                    persist.setdefault(
+                        "GIT_SSH_COMMAND",
+                        "ssh -o IdentityAgent=none -o IdentitiesOnly=yes -o IdentityFile=/dev/null",
+                    )
+                    # 2. Route all github.com git traffic over HTTPS + the bot
+                    #    PAT via a git-config override chain. GIT_CONFIG_* is
+                    #    additive to system/user config and scoped to this
+                    #    process tree only (not global). KEY_0/1 rewrite SSH
+                    #    remotes to HTTPS; KEY_2 clears any inherited credential
+                    #    helper; KEY_3 installs a fail-closed helper emitting the
+                    #    bot PAT (expanded from AOPS_BOT_GH_TOKEN at git-run time).
+                    git_config = [
+                        ("url.https://github.com/.insteadOf", "git@github.com:"),
+                        ("url.https://github.com/.insteadOf", "ssh://git@github.com/"),
+                        ("credential.https://github.com.helper", ""),
+                        (
+                            "credential.https://github.com.helper",
+                            '!f() { test "$1" = get && printf '
+                            '"username=x-access-token\\npassword=%s\\n" '
+                            '"${AOPS_BOT_GH_TOKEN}"; }; f',
+                        ),
+                    ]
+                    persist["GIT_CONFIG_COUNT"] = str(len(git_config))
+                    for i, (cfg_key, cfg_val) in enumerate(git_config):
+                        persist[f"GIT_CONFIG_KEY_{i}"] = cfg_key
+                        persist[f"GIT_CONFIG_VALUE_{i}"] = cfg_val
+
                 try:
                     with open(env_file, "a") as f:
                         for key, value in persist.items():
                             f.write(f"export {key}={shlex.quote(value)}\n")
                 except Exception as e:
                     print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
-            output = {
-                    "systemMessage": "aOps plugin loaded."}
+            output = {"systemMessage": "aOps plugin loaded."}
         elif event == "PostToolUse":
             tool_name = raw_input.get("tool_name")
             if tool_name == "Agent":
@@ -114,15 +151,19 @@ def main():
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
                 # for now, debug only, because I want to use this more.
-                debug_message = [ f"    {k}: {v}" for k,v in raw_input.items() if k in ["agent_type", "agent_id", "tool_name"]]
+                debug_message = [
+                    f"    {k}: {v}"
+                    for k, v in raw_input.items()
+                    if k in ["agent_type", "agent_id", "tool_name"]
+                ]
                 output = {
                     "systemMessage": "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
                 }
-                # return 
+                # return
             else:
                 # Skip if the agent is still waiting on input from background tasks:
-                if len(raw_input.get("background_tasks", []))>0:
-                    return 
+                if len(raw_input.get("background_tasks", [])) > 0:
+                    return
 
                 # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
                 output = {
@@ -138,34 +179,41 @@ def main():
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
                 # for now, debug only, because I want to use this more.
-                debug_message = [ f"    {k}: {v}" for k,v in raw_input.items() if k in ["agent_type", "agent_id", "tool_name"]]
+                debug_message = [
+                    f"    {k}: {v}"
+                    for k, v in raw_input.items()
+                    if k in ["agent_type", "agent_id", "tool_name"]
+                ]
                 debug_message = "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
-                output = {
-                    "systemMessage": debug_message
-                }
+                output = {"systemMessage": debug_message}
                 # return
             else:
                 # No need to skip based on `background_tasks` here; these lists are scoped to the main session, not subagent.
-                
+
                 # Remind subagents to be honest and output with full reasons.
                 output = {
-                    "systemMessage": f"≡ **Output honestly in the required format** (dbg: {raw_input.get("agent_id", "no agent_id")}, {raw_input.get("agent_type", "no agent_type")})",
+                    "systemMessage": f"≡ **Output honestly in the required format** (dbg: {raw_input.get('agent_id', 'no agent_id')}, {raw_input.get('agent_type', 'no agent_type')})",
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "additionalContext": honesty_content,
                     },
-            }
+                }
 
         elif event == "UserPromptSubmit":
             # for now, debug only, because I want to use this more.
-            debug_message = [ f"    {k}: {v}" for k,v in raw_input.items() if k in ["agent_type", "agent_id", "tool_name"]]
+            debug_message = [
+                f"    {k}: {v}"
+                for k, v in raw_input.items()
+                if k in ["agent_type", "agent_id", "tool_name"]
+            ]
             debug_message = "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
+            output = {"systemMessage": debug_message}
             output = {
-                "systemMessage": debug_message
-            }
-            output = {
-                    "systemMessage": f"≡ **Don't forget to hydrate.** {debug_message}",
-                "hookSpecificOutput": {"hookEventName": event, "additionalContext": hydrate_content}
+                "systemMessage": f"≡ **Don't forget to hydrate.** {debug_message}",
+                "hookSpecificOutput": {
+                    "hookEventName": event,
+                    "additionalContext": hydrate_content,
+                },
             }
 
     if output:
