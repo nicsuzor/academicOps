@@ -11,12 +11,32 @@
           ]
         }
       ],
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv",
+              "args": ["run", "python", "${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py", "claude"]
+            }
+          ]
+        }
+      ],
       "Stop": [
         {
           "hooks": [
             {
               "type": "command",
               "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude Stop'"
+            }
+          ]
+        },
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv",
+              "args": ["run", "python", "${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py", "claude"]
             }
           ]
         }
