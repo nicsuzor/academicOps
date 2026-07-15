@@ -41,11 +41,11 @@ Four gap types:
 
 The same reconcile procedure runs in three contexts. The context changes the input subset, not the procedure.
 
-| Context       | Triggering agent                             | Input subset                                                                         |
-| ------------- | -------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Forward sweep | `/daily`                                     | Recently-closed GH issues, recently-merged or closed-not-merged PRs since last sweep |
-| Reverse       | `/end-session` or `/pull` on task completion | The just-completed task and its `closes_issues:` markers                             |
-| On-demand     | User invocation (e.g., `/reconcile`)         | Full sweep across all active tasks and open issues                                   |
+| Context       | Triggering agent                           | Input subset                                                                         |
+| ------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Forward sweep | `/daily`                                   | Recently-closed GH issues, recently-merged or closed-not-merged PRs since last sweep |
+| Reverse       | `/dump full` or `/pull` on task completion | The just-completed task and its `closes_issues:` markers                             |
+| On-demand     | User invocation (e.g., `/reconcile`)       | Full sweep across all active tasks and open issues                                   |
 
 Agents in these contexts invoke the reconcile skill. They do not run scripts. They do not call into a library. The skill body is prose that the invoking agent reads and follows.
 
@@ -108,7 +108,7 @@ These are sequencing checkpoints, not implementation tickets. The implementing a
 
 - **M1 — Skill exists and is manually invocable.** The reconcile procedure is documented as a skill, PKB lint validates the new frontmatter fields, a handful of cases have been worked end-to-end by hand.
 - **M2 — Forward sweep adopted by `/daily`.** `/daily` invokes reconcile in forward-sweep context. Closure-loop fragments in `daily/SKILL.md` and `progress-sync.md` are removed. DRY audit clean.
-- **M3 — Reverse direction adopted by `/end-session` and `/pull`.** Those skills invoke reconcile in reverse context on task completion. No new hooks added.
+- **M3 — Reverse direction adopted by `/dump full` and `/pull`.** Those skills invoke reconcile in reverse context on task completion. No new hooks added.
 - **M4 — Backfill run.** One agent session, scope as above. Done.
 
 ## Open questions

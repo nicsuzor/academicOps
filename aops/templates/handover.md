@@ -1,7 +1,7 @@
 <academicOps handover reminder>
 ≡ **Before you hand back to the user — be honest and land the plane:**
 
-## LAND THE PLANE: run the `/session-end` skill
+## LAND THE PLANE: run the `/dump full` skill
 
 - Finish the job you were asked to do: no more, no less. Restate exactly what you were asked. Did you deliver?
 - DO NOT ask for permission to do your job. Don't create homework for the user if it's your responsibility.
@@ -13,7 +13,7 @@
 
 When you are ready to hand over, revise your output and provide an honest and useful response that:
 
-If you REALLY need to hand back with work UNFINISHED, use `/continue` to pause and checkpoint the bound task WITHOUT concluding.
+If you REALLY need to hand back with work UNFINISHED, use `/dump pause` to pause and checkpoint the bound task WITHOUT concluding.
 
 ## ALWAYS GIVE AN HONEST AND USEFUL RESPONSE
 

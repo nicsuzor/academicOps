@@ -29,9 +29,9 @@ Defines procedures for aligning the Personal Knowledge Base (PKB) with the Cowor
 - PKB remains the system of record.
 - Mirror claimed tasks from PKB onto the native list at `/pull` claim time.
 - Write native task updates (`in_progress`, `completed`) to the native list.
-- Sync native child completions back to PKB via `mcp__services__pkb__complete_task` in real time. Parent task sync is deferred to `/end_session`'s `release_task`.
+- Sync native child completions back to PKB via `mcp__services__pkb__complete_task` in real time. Parent task sync is deferred to `/dump full`'s `release_task`.
 - Every native task must store its PKB task ID in its `description` (e.g. `"PKB task-acba1234 — Implement X"`).
-- Only `/pull` and `/end_session` drive this mirror; supervisor ticks and ad-hoc PKB writes bypass it and won't appear on the native list until the next `/pull`.
+- Only `/pull` and `/dump full` drive this mirror; supervisor ticks and ad-hoc PKB writes bypass it and won't appear on the native list until the next `/pull`.
 
 ## Bootstrap
 
@@ -85,7 +85,7 @@ Execute immediately when setting a native task to `completed`:
    nt = TaskGet(taskId="<native-id>")
    ```
 3. Parse the `PKB <id>` prefix from `nt.description`.
-4. If the ID matches the bound parent, skip (handled by `/end_session`).
+4. If the ID matches the bound parent, skip (handled by `/dump full`).
 5. Otherwise, call:
    ```json
    mcp__services__pkb__complete_task(id="<pkb-id>", summary="<native-subject>")
@@ -93,7 +93,7 @@ Execute immediately when setting a native task to `completed`:
 
 ## Final Reconciliation
 
-Invoked during `/end_session` before calling `release_task`.
+Invoked during `/dump full` before calling `release_task`.
 
 1. Call `tasks = TaskList()`.
 2. Parse `PKB <id>` from `description` for all tasks.

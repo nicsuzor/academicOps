@@ -90,13 +90,13 @@ The entire in-session hook surface is one 131-line script, [`aops/hooks/router.p
 
 Real enforcement instead runs after the session, as regular CI on the PR — checked by GitHub Actions, not a claim in a doc:
 
-| Workflow | Trigger | What it actually runs |
-| --- | --- | --- |
-| `lint.yml` | push/PR | `ruff check` / `ruff format --check`, MCP-name normalization, ruleset-alignment check |
-| `pytest.yml`, `typecheck.yml` | push/PR | `pytest`, `basedpyright` |
-| `rbg-review.yml` | PR labeled `request-rbg-review` | Claude reviews the diff against `.agents/rules/*.md` and posts inline comments |
-| `agent-enforcer.yml`, `agent-qa.yml` (Marsha), `agent-mechanic.yml`, `agent-pre-admission-responder.yml` | reusable, called from other workflows | each assembles a persona prompt and runs `claude-code-action` |
-| `.github/rulesets/pr-review-and-merge.yml` | branch ruleset on `dev` | requires the human approval click before merge |
+| Workflow                                                                                                 | Trigger                               | What it actually runs                                                                 |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------- |
+| `lint.yml`                                                                                               | push/PR                               | `ruff check` / `ruff format --check`, MCP-name normalization, ruleset-alignment check |
+| `pytest.yml`, `typecheck.yml`                                                                            | push/PR                               | `pytest`, `basedpyright`                                                              |
+| `rbg-review.yml`                                                                                         | PR labeled `request-rbg-review`       | Claude reviews the diff against `.agents/rules/*.md` and posts inline comments        |
+| `agent-enforcer.yml`, `agent-qa.yml` (Marsha), `agent-mechanic.yml`, `agent-pre-admission-responder.yml` | reusable, called from other workflows | each assembles a persona prompt and runs `claude-code-action`                         |
+| `.github/rulesets/pr-review-and-merge.yml`                                                               | branch ruleset on `dev`               | requires the human approval click before merge                                        |
 
 Two things worth knowing if you're relying on this table: `pr-pipeline.yml` — the file the name implies holds the orchestration — is currently an empty stub (a comment pointing at a spec, no jobs). And `agent-qa.yml` sparse-checks out `aops-pkb/agents/marsha.md`, a path that doesn't exist in this repo (the real file is `aops/agents/marsha.md`) — that job would fail its own fail-fast check on a real run. `pauli` (design-intent review) has no CI wiring at all; it exists only as a persona file and in this doc.
 
@@ -126,15 +126,14 @@ Skills are Claude Code extensions that know how to do specific things, split int
 
 **User-facing core** (the commands a researcher actually reaches for in their own work):
 
-| Skill          | Purpose                                                         |
-| -------------- | --------------------------------------------------------------- |
-| `/daily`       | Daily notes, briefing, progress sync                            |
-| `/dump`        | Emergency session bail — fast handover, no commit/PR/reflection |
-| `/end-session` | Canonical session close — commit, push, PR, handover            |
-| `/plan` `/q`   | Effectual planning, decomposition, and task capture             |
-| `/project`     | Scaffold a research project repo with smart defaults            |
-| `/remember`    | Persist knowledge to PKB                                        |
-| `/pull`        | Claim the next queued task and run it inline                    |
+| Skill        | Purpose                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| `/daily`     | Daily notes, briefing, progress sync                                                       |
+| `/dump`      | Session exit — bail (default), `full` (canonical close), or `pause` (hand back mid-flight) |
+| `/plan` `/q` | Effectual planning, decomposition, and task capture                                        |
+| `/project`   | Scaffold a research project repo with smart defaults                                       |
+| `/remember`  | Persist knowledge to PKB                                                                   |
+| `/pull`      | Claim the next queued task and run it inline                                               |
 
 **Framework governance** (installed, but not marketed as researcher-facing daily tools — governs the framework's own quality and development process):
 

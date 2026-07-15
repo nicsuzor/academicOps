@@ -110,7 +110,7 @@ Follow the **Plan -> Act -> Validate** cycle:
 
 When a coordinator executes a fire-and-forget dispatch with no follow-up or babysit instruction:
 
-- The default terminal move is to close the session promptly (via the `dump` or `end_session` skill) rather than idling.
+- The default terminal move is to close the session promptly (via the `dump` skill — bail or full path) rather than idling.
 - Do not promise or wait for a completion notification for a non-notifying dispatch form. If the session has nothing to watch and no babysit instruction, close it immediately.
 - Do not create a tracking task per dispatch (dispatch operations should not spawn overhead tracking tasks).
 

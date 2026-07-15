@@ -65,7 +65,7 @@ The framework uses named agents with distinct personalities and areas of experti
 
 - **James (The Orchestrator)**: Manages multi-agent review loops and synthesises conflicting findings.
 - **Ruth (rbg, The Judge)**: Enforces universal axioms and workflow discipline.
-- **Pauli (The Logician)**: Provides strategic review, systems thinking, and acts as the Memory Custodian owning PKB-facing skills (`/remember`, `/planner`, `/dump`, `/daily`, `/sleep`).
+- **Pauli (The Logician)**: Provides strategic review, systems thinking, and acts as the Memory Custodian owning PKB-facing skills (`/remember`, `/planner`, `/dump` [bail/full/pause], `/daily`, `/sleep`).
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
 - **Ida (Interactive Head)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
 

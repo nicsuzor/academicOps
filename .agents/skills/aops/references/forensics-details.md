@@ -156,7 +156,7 @@ The Stop hook enforces session completion requirements (commit, capture, evidenc
 
 **Configuration**:
 
-- `exit_reflection` gate, FULL tier: starts CLOSED when task bound and the turn did work, opens on a reflection-auditor run, an honest `release_task` completion/failure, or `/end-session`/`/dump`/`/continue`.
+- `exit_reflection` gate, FULL tier: starts CLOSED when task bound and the turn did work, opens on a reflection-auditor run, an honest `release_task` completion/failure, or any `/dump` path (bail, full, pause).
 - Escape-hatch: after `EXIT_REFLECTION_DEGRADE_THRESHOLD` (default **5**) consecutive denies within a turn, degrades to WARN-and-allow to prevent deadlock; a residual client-agnostic 5-blocks-in-2-min override also applies. (Historical note: an earlier handover-gate-only version of this doc cited a 4-deny pattern under a different, now-superseded mechanism.)
 
 **Diagnostic commands**:
