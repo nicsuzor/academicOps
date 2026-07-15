@@ -137,10 +137,11 @@ def main():
         elif event == "SubagentStop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
-                                # for now, debug only, because I want to use this more.
+                # for now, debug only, because I want to use this more.
                 debug_message = [ f"    {k}: {v}" for k,v in raw_input.items() if k in ["agent_type", "agent_id", "tool_name"]]
+                debug_message = "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
                 output = {
-                    "systemMessage": "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
+                    "systemMessage": debug_message
                 }
                 # return
             else:
@@ -156,8 +157,14 @@ def main():
             }
 
         elif event == "UserPromptSubmit":
+            # for now, debug only, because I want to use this more.
+            debug_message = [ f"    {k}: {v}" for k,v in raw_input.items() if k in ["agent_type", "agent_id", "tool_name"]]
+            debug_message = "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
             output = {
-                    "systemMessage": "≡ **Don't forget to hydrate.**",
+                "systemMessage": debug_message
+            }
+            output = {
+                    "systemMessage": f"≡ **Don't forget to hydrate.** {debug_message}",
                 "hookSpecificOutput": {"hookEventName": event, "additionalContext": hydrate_content}
             }
 
