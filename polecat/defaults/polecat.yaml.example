@@ -37,15 +37,12 @@ session_defaults:
 
   # Default models for each client. Per-session-type overlays below may
   # override either field independently. The `--model` CLI flag overrides
-  # the entry for the active client (selected by `--gemini` / no flag).
+  # the entry for the active client.
   # `--model claude` (provider alias) resolves to claude_model at runtime —
   # the single source of truth for your default Claude model. To dispatch
   # Opus workers without pinning a version in every command, set this to
   # claude-opus-4-8 and use `--model claude` in dispatch commands.
   claude_model: sonnet
-  # `--model gemini` selects the npm/nvm Gemini CLI; this is the model id
-  # passed to `gemini --model`. Distinct from antigravity_model below.
-  gemini_model: gemini-3.1-pro-preview
   # `--model agy`/`antigravity` selects the agy CLI wrapper (Docker), which
   # runs a Gemini model internally; `agy` is the wrapper's own default.
   antigravity_model: agy
@@ -256,7 +253,7 @@ crew_names:
 # reads or writes. polecat.yaml is the SSoT for *config values* (gates, model,
 # debug, docker image); env vars are reserved for things that genuinely need
 # to be env: filesystem paths, secrets, runtime context injected by the host
-# (Claude Code / Gemini CLI / shell), and signals propagated to subprocesses.
+# (Claude Code / agy / shell), and signals propagated to subprocesses.
 #
 # When you add a new env var, add it here. When you migrate a knob into the
 # YAML schema above, delete its row here. If a row exists below, it is real;
@@ -330,19 +327,13 @@ crew_names:
 #                             injected so in-container lib/session_naming can
 #                             parse artifact filenames WITHOUT reading
 #                             polecat.yaml. Empty string ⇒ none enabled.
-#   GEMINI_SESSION_ID         Set on the Gemini path; also a provider
-#                             discriminator (Gemini CLI sets it itself when
-#                             launched directly).
-#   GEMINI_CLI_HOME           Gemini's ~/.gemini location. Polecat overrides
-#                             to /home/worker for in-container auth staging.
 #
 # ─── Session-scoped (set by SessionStart hook, persisted via CLAUDE_ENV_FILE) ─
 #
 #   AOPS_SESSION_ID           Canonical, vendor-neutral session id. Set by
 #                             aops-core/hooks/session_env_setup.py for Claude
-#                             Code; set by polecat/cli.py for Gemini sessions
-#                             (alongside GEMINI_SESSION_ID). This is the var
-#                             skills, agents, and the gate engine reference.
+#                             Code. This is the var skills, agents, and the
+#                             gate engine reference.
 #   AOPS_SESSION_STATE_DIR    Per-provider tmp dir holding session.json, hook
 #                             JSONL, gate files.
 #   AOPS_HOOK_LOG_PATH        Path to per-session hook JSONL.
@@ -409,10 +400,8 @@ crew_names:
 #
 #   POLECAT_FORCE_STAGING            Force `cp` over bind-mount staging.
 #   POLECAT_DISABLE_STARTUP_STAGGER  Skip startup-stagger sleep.
-#   POLECAT_GEMINI_AUTH_DISABLED     Skip host-side Gemini auth check.
 #   POLECAT_SKIP_PR_URL_CHECK        Skip live `gh` PR URL validation.
 #   POLECAT_E2E, POLECAT_E2E_PROJECT, POLECAT_E2E_PARENT
-#   POLECAT_GEMINI_HOST              Pre-staged Gemini home for sandbox tests.
 #   HEALTH_THRESHOLD_CRITICAL,       Framework-health CLI thresholds.
 #   HEALTH_THRESHOLD_WARNING
 #   PYTEST_XDIST_WORKER              pytest-xdist worker id.

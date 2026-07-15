@@ -123,7 +123,7 @@ jobs:
             # specs/workflows/releasing.md §4). release-please owns the
             # stable tag = manifest; the next step asserts that coherence. For a
             # prerelease, build.py --set-version normalises via sanitize_version() (the
-            # semver-sort invariant the Claude/Gemini installers need).
+            # semver-sort invariant the Claude/agy installers need).
             VERSION="${REF#v}"
           else
             # Non-tag build (manual workflow_dispatch on a SHA): no tag to read, so

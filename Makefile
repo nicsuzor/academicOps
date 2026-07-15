@@ -559,7 +559,7 @@ prerelease:
 DOCKER_IMAGE := ghcr.io/nicsuzor/aops-crew
 SANDBOX_IMAGE := $(DOCKER_IMAGE)
 
-# Build the Docker image used for crew/worker agent environments and Gemini sandboxing.
+# Build the Docker image used for crew/worker agent environments.
 #
 # AOPS_DIST_SOURCE=local: builds from THIS checkout's dist/ output (rebuilt
 # fresh via build-dev first) rather than cloning the published `dist` branch,
@@ -577,7 +577,6 @@ build-docker: build-dev
 	@echo "Building aops crew image..."
 	@docker build --build-arg AOPS_DIST_SOURCE=local --build-arg CLAUDE_CODE_VERSION=$$(date +%Y%m%d) --build-arg RUST_CACHEBUST=$$(date +%Y%m%d) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
 	@echo "✓ Image built: $(DOCKER_IMAGE) (also tagged $(notdir $(DOCKER_IMAGE)):latest)"
-	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 
 # Build a DEV-ONLY image tagged `:dev`, never `:latest`/bare $(DOCKER_IMAGE) —
 # real polecats pull the bare/`:latest` tag (see build-docker above), so this
@@ -603,7 +602,6 @@ verify-docker:
 	@docker build --no-cache --build-arg CLAUDE_CODE_VERSION=$$(date +%s) --build-arg RUST_CACHEBUST=$$(date +%s) -t $(DOCKER_IMAGE) -t $(notdir $(DOCKER_IMAGE)):latest .
 	@echo "✓ Clean build complete: $(DOCKER_IMAGE)"
 	@echo "  Every Dockerfile layer rebuilt from source — no cached layer can produce a false-green result."
-	@echo "  Use with: GEMINI_SANDBOX_IMAGE=$(DOCKER_IMAGE) gemini --sandbox"
 
 # Aliases
 build: build-docker

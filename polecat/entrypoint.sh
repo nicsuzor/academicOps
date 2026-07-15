@@ -59,5 +59,5 @@ chmod 777 "$HOME/.config" 2>/dev/null || true
 # at launch time by polecat/cli.py. Direct container invocations that bypass cli.py
 # will have agy working (PKB_MCP_URL inherited from env) but Claude missing pkb_mcp_url.
 
-# Execute the agent command (e.g., claude, gemini, bash).
+# Execute the agent command (e.g., claude, agy, bash).
 exec "$@"

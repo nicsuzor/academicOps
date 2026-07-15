@@ -25,7 +25,6 @@ polecat_home: ~/.polecat-dev
 session_defaults:
   hooks_enabled: true
   claude_model: sonnet
-  gemini_model: gemini-3.1-pro-preview
   antigravity_model: agy
   debug: false
   gates:
