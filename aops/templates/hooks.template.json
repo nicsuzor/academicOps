@@ -40,6 +40,16 @@
             }
           ]
         }
+      ],
+      "PostToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude PostToolUse'"
+            }
+          ]
+        }
       ]
     }
   },
