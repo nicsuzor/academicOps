@@ -342,7 +342,7 @@ workers:
     speed: 5  # relative scale 1-5
     max_concurrent: 4
 
-  polecat-gemini:
+  polecat-agy:
     capabilities: [code, docs, analysis]
     cost: 1
     speed: 3

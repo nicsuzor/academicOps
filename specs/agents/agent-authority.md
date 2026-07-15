@@ -29,7 +29,7 @@ Agent **permissions** (tools, servers, bash commands, file paths) and **skill de
 ## Principles
 
 1. **Deny-by-default.** An agent may call only what its frontmatter declares. Anything not listed is denied.
-2. **Single source of truth.** Claude Code format is canonical. Other harnesses (Gemini CLI, etc.) are produced by build-time translation.
+2. **Single source of truth.** Claude Code format is canonical. Other harnesses (agy, etc.) are produced by build-time translation.
 3. **Skills stay portable.** Skills declare `allowed-tools` as the set the skill needs to function. Skills do not declare which agents may call them — that restriction lives on the agent side.
 4. **Authority does not transit by spawning.** When agent A spawns agent B via the `Agent` tool, B runs with B's own declared authority. A does not hand B its tools.
 5. **Authority does transit into skills.** When an agent invokes a skill via the `Skill` tool, the skill executes inside the agent's turn and is bounded by the agent's tool allowlist. The skill's `allowed-tools` states what the skill needs; the agent's `tools` states what the agent grants. Effective set = intersection.
@@ -148,15 +148,15 @@ An agent may spawn sub-agent `B` via the `Agent` tool iff (1) `Agent ∈ effecti
 
 Claude Code frontmatter is the source of truth. Other harnesses receive translated output from `scripts/build.py`. Translation rules:
 
-| From (Claude Code) | To (Gemini CLI / google-adk) |
-| ------------------ | ---------------------------- |
-| `Read`             | `read_file`                  |
-| `Write`            | `write_file`                 |
-| `Edit`             | `replace`                    |
-| `Bash`             | `run_shell_command`          |
-| `Grep`             | `grep_search`                |
-| `Glob`             | `glob`                       |
-| `mcp__<s>__<t>`    | `mcp_<s>_<t>` (underscore)   |
+| From (Claude Code) | To (agy / google-adk)      |
+| ------------------ | -------------------------- |
+| `Read`             | `read_file`                |
+| `Write`            | `write_file`               |
+| `Edit`             | `replace`                  |
+| `Bash`             | `run_shell_command`        |
+| `Grep`             | `grep_search`              |
+| `Glob`             | `glob`                     |
+| `mcp__<s>__<t>`    | `mcp_<s>_<t>` (underscore) |
 
 Translation is mechanical. Source files are never hand-edited to target form. Target output directories are build artifacts, not committed source.
 

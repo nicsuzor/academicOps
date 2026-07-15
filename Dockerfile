@@ -104,10 +104,10 @@ RUN npx --yes playwright@1.59.1 install-deps chromium \
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Gemini CLI and code quality tools globally (Claude installed separately below).
-# @playwright/mcp: pre-baked so Gemini agents can call playwright tools without a
+# Install code quality tools globally (Claude/agy installed separately below).
+# @playwright/mcp: pre-baked so agents can call playwright tools without a
 # network download at session start.
-RUN npm install -g @google/gemini-cli markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
+RUN npm install -g markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
 
 # Create data and workspace directories, hand ownership to worker
 RUN mkdir -p /data /workspace && chown worker:worker /data /workspace
@@ -205,17 +205,13 @@ RUN umask 000 \
 # scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
 # The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
 
-# Set permissive extension enablement so hooks fire for any workspace path
-# (see docker_gemini_fixups.py:fixup_extension_enablement for why).
-RUN umask 000 && python3 /home/worker/docker_gemini_fixups.py fixup-extension-enablement
-
 # NOTE: Claude/Gemini hook .py sources cannot diverge (see #1384) — scripts/build.py
 # copies both from the single aops/hooks source dir into every platform's dist/
 # output, so a build-time diff here would only ever re-confirm what the build
 # pipeline already guarantees by construction. Removed as a redundant, image-build-
 # time-costly check; drift would show up as a build.py bug, not a runtime one.
 
-# Pre-bake Python venvs for Claude plugins, Gemini extensions, AND agy
+# Pre-bake Python venvs for Claude plugins AND agy
 # (Antigravity CLI) plugins in one pass so the first hook call always
 # fast-paths to $HOOK_DIR/.venv/bin/python (router.sh fallback is `uv run`,
 # which resolves the lockfile live on every cold start).
@@ -224,7 +220,7 @@ RUN umask 000 && python3 /home/worker/docker_gemini_fixups.py fixup-extension-en
 # hooks.json. An inline `uv` build on first call (fetch/resolve pydantic, etc.)
 # can exceed that window and produce `Tool call denied by jsonhook__hooks_*`
 # (agy) or a stalled tool call (Claude). Symmetric pre-bake here + the same
-# pre-bake at `make install-{claude,gemini,agy}` time eliminates the cold-start
+# pre-bake at `make install-{claude,agy}` time eliminates the cold-start
 # failure for every client.
 #
 # Asymmetric pre-bake (one CLI frozen, the other JIT) is a footgun: a broken

@@ -81,27 +81,10 @@ def fixup_marketplace_cache(marketplace_name: str) -> None:
     marketplace_path.write_text(json.dumps(marketplace, indent=2))
 
 
-def fixup_extension_enablement() -> None:
-    """Allow Gemini extensions to fire hooks for any workspace path.
-
-    `gemini extensions install` restricts extensions to /home/<user>/* by
-    default, which doesn't match mounted worktrees (/workspace, /data, or
-    deeply nested crew paths).
-    """
-    path = GEMINI_HOME / "extensions" / "extension-enablement.json"
-    if not path.exists():
-        return
-    data = json.loads(path.read_text())
-    for key, value in data.items():
-        data[key] = {**value, "overrides": ["*"]}
-    path.write_text(json.dumps(data, indent=2))
-
-
 COMMANDS = {
     "fixup-mcp-config-paths": fixup_mcp_config_paths,
     "fixup-local-marketplace-name": fixup_local_marketplace_name,
     "fixup-marketplace-cache": fixup_marketplace_cache,
-    "fixup-extension-enablement": fixup_extension_enablement,
 }
 
 

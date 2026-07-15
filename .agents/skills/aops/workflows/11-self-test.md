@@ -11,7 +11,7 @@ Testing the four layers of session infrastructure. For each layer, verify it fir
 - RBG rbg: invoke periodic compliance rbg per instructions
 - Skills: invoke /plan, /aops, /remember
 - Subagents: dispatch ida or marsha; verify context passing
-- Polecats: dispatch local workers (gemini and claude) via uv run
+- Polecats: dispatch local workers (agy and claude) via uv run
 - Stop Gates: stop prevented before handover; permitted after
 - Handover: /dump provides useful instructions; execute them all
 
@@ -30,7 +30,7 @@ Before testing any specific hook behavior, verify that hooks are actually runnin
 
 ## 2. Polecat session validation
 
-Run after changes to `polecat/defaults/*-settings.json`, entrypoint, plugin packaging, or CLI upgrades. Discriminates "infrastructure files present" from "infrastructure actually fires." Run both clients (Claude and Gemini) — asymmetric breakage is common. Mechanics in [[specs/polecat/tmux-interactive-driving.md]].
+Run after changes to `polecat/defaults/*-settings.json`, entrypoint, plugin packaging, or CLI upgrades. Discriminates "infrastructure files present" from "infrastructure actually fires." Run both clients (Claude and agy) — asymmetric breakage is common. Mechanics in [[specs/polecat/tmux-interactive-driving.md]].
 
 Walk layers in order; stop at first failure:
 
@@ -64,7 +64,7 @@ Regression cover for [[aops-d10e7db6]] — Stop-hook RBG advisory leaked to user
 
 **Channel model:** `system_message` → user-visible surface; `context_injection` → agent's next-turn context.
 
-Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRouter.output_for_claude` / `output_for_gemini`.
+Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRouter.output_for_claude` / `output_for_agy`.
 
 **Expected disposition is not restated here.** Derive it at test time from the SSoT, not a local copy that can silently drift as gates are added, retired, or reclassified: the **Gate user-visibility** table in [`specs/adhd/surface-contract.md`](../../../../specs/adhd/surface-contract.md#gate-user-visibility) (per-gate `silent` / `same` / `keep`) plus the per-(client, event) capability matrix in [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client) (what a channel can even deliver). For each hook event under test (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStart, SubagentStop, PreCompact, Notification, SessionEnd — see the Walk-through below), look up every gate that fires on it in the surface-contract table before judging pass/fail.
 
@@ -75,7 +75,7 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 **Channel vocabulary — derive, do not restate.** The disposition for a given (client, event) is not a fixed named category memorised here — it is computed from `channel_spec(client, event)` in [`aops/hooks/client_spec.py`](../../../../aops/hooks/client_spec.py) (the same table CLIENT-TRANSLATION.md's authoritative channel matrix renders). Look up the spec for the hook under test and read off its fields:
 
 - `user_message` — does ANY message reach the user on this channel?
-- agent receives context — `agent_context_without_block` (non-blocking delivery) OR `can_block` (block-to-inject; a block's `reason` is the agent's only channel, and on Claude/Gemini that `reason` is ALSO user-visible — there is no agent-only block channel).
+- agent receives context — `agent_context_without_block` (non-blocking delivery) OR `can_block` (block-to-inject; a block's `reason` is the agent's only channel, and on Claude/agy that `reason` is ALSO user-visible — there is no agent-only block channel).
 - `agent_full_user_summary` — the quiet-split disposition: agent gets the FULL body, user sees only a short summary of it (never the body). **Currently `False` for every (client, event) in the table.** The mechanism that would set it True — Claude's `asyncRewake` (Stop, exit 2) — was retired 2026-07-08 (GH #2181, fixed by PR #2189) after it was found to silently discard `decision:block` output from co-located block-mode gates sharing the same Stop entry. See `ChannelSpec.agent_full_user_summary`'s docstring and `tests/hooks/test_client_spec.py::TestChannelTable::test_claude_stop_asyncrewake_quiet_split_retired` / `test_no_client_event_has_the_retired_quiet_split`. Do not assume this disposition is exercised anywhere live; if a probe shows it True and the code disagrees, that is itself a finding (channel_spec has drifted from the client) — file it, don't force a pass.
 
 **Pass / fail — computed from the fields above, not a restated table:**
@@ -85,7 +85,7 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 | `True`                    | —              | —                  | `agent-full / user-summary` | Agent transcript contains the FULL body. User pane shows ONLY a short summary line — the full body must never render to the user. (Not currently reachable — see note above; a live hit here is a drift finding, not a routine pass.) |
 | `False`                   | `False`        | `True`             | `agent-only`                | `system_message` user-side: **No**. `context_injection`/agent-side: Yes.                                                                                                                                                              |
 | `False`                   | `True`         | `False`            | `user-only`                 | `system_message` user-side: Yes. Agent-side: No.                                                                                                                                                                                      |
-| `False`                   | `True`         | `True`             | `both`                      | `system_message` user-side: Yes. `context_injection`/agent-side: Yes — and (Claude/Gemini Stop/block) it is the SAME text on both sides, since `reason` is the only agent channel and it is also user-visible.                        |
+| `False`                   | `True`         | `True`             | `both`                      | `system_message` user-side: Yes. `context_injection`/agent-side: Yes — and (Claude/agy Stop/block) it is the SAME text on both sides, since `reason` is the only agent channel and it is also user-visible.                           |
 | —                         | `False`        | `False`            | _(unmapped/inert)_          | No live channel — the event is log-only or the client drops it. Record and move on; not a routing bug.                                                                                                                                |
 
 Any mismatch between the computed expectation and the observed pane/transcript is a **routing bug** — halt and file under [[epic-9fa15948]] with session id, transcript excerpt, agent's verbatim answer, and which `channel_spec()` cell it contradicts. Do not attempt to fix routing in this session.

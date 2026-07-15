@@ -8,7 +8,7 @@ description: academicOps hook architecture, PATH bootstrap, MCP server config, a
 
 # Hooks & MCP: academicOps Reference
 
-> **Scope split with `GATES.md`.** This file is the **hook infrastructure** reference: router architecture, PATH bootstrap, MCP wiring, hook I/O schemas, Gemini differences. For the **runtime catalogue of gates that fire via this router** (what each gate is, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it), see [`specs/enforcement/GATES.md`](../../../../specs/enforcement/GATES.md). For raw JSONL forensics, see [[forensics-details]].
+> **Scope split with `GATES.md`.** This file is the **hook infrastructure** reference: router architecture, PATH bootstrap, MCP wiring, hook I/O schemas. For the **runtime catalogue of gates that fire via this router** (what each gate is, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it), see [`specs/enforcement/GATES.md`](../../../../specs/enforcement/GATES.md). For raw JSONL forensics, see [[forensics-details]].
 
 For Claude Code's hook system in general, see the [official docs](https://code.claude.com/docs/en/hooks) and [plugins reference](https://code.claude.com/docs/en/plugins-reference). This document covers the academicOps-specific implementation.
 
@@ -132,14 +132,3 @@ if __name__ == "__main__":
 ## Debugging
 
 Hook I/O logged to `~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl`. Run `claude --debug` for execution details.
-
-## Gemini Differences
-
-| Aspect          | Claude Code                | Gemini CLI                                    |
-| --------------- | -------------------------- | --------------------------------------------- |
-| Config file     | `~/.claude/settings.json`  | `~/.gemini/settings.json`                     |
-| Plugin path var | `${CLAUDE_PLUGIN_ROOT}`    | `${extensionPath}`                            |
-| Extension hooks | `hooks` in plugin settings | `hooks/hooks.json` in extension dir           |
-| Safe settings   | N/A                        | `{"hooksConfig":{"enabled":true}}` (no auth!) |
-
-When using `GEMINI_CLI_HOME` (polecat crew), don't set `security.auth.selectedType` — Gemini exits before hooks fire if auth doesn't match. Don't set `tools.sandbox.enabled: true` either.

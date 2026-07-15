@@ -84,5 +84,5 @@ chmod 777 "$HOME/.config" 2>/dev/null || true
 # Claude missing pkb_mcp_url — and no staged settings.json to merge at all, so
 # the baked enabledPlugins-bearing file is used untouched.
 
-# Execute the agent command (e.g., claude, gemini, bash).
+# Execute the agent command (e.g., claude, agy, bash).
 exec "$@"
