@@ -30,10 +30,14 @@
       rm ~/Library/LaunchAgents/com.aops.envvars.plist
 
   Paths used:
-    $HOME/.env.local        -- sourced for secrets (e.g. AOPS_BOT_GH_TOKEN)
-    $HOME/src/sessions      -- AOPS_SESSIONS (override per machine)
-    $HOME/.aops             -- POLECAT_HOME (override per machine)
-    $HOME/.aops/launchd-env.sh -- bot PAT + directory pass-through (see launchd-env.sh)
+    $HOME/.env.local        -- single machine-local source of truth: exports
+                               AOPS_SESSIONS, POLECAT_HOME, ACA_DATA, and the
+                               bot PAT (AOPS_BOT_GH_TOKEN). No machine-specific
+                               paths live in this committed plist.
+    ${POLECAT_HOME:-$HOME/.aops}/launchd-env.sh
+                            -- bot PAT + directory pass-through: does all the
+                               launchctl setenv from the environment that
+                               ~/.env.local established (see launchd-env.sh)
 -->
 <plist version="1.0">
 <dict>
@@ -43,7 +47,7 @@
     <array>
         <string>/bin/sh</string>
         <string>-c</string>
-        <string>[ -f "$HOME/.env.local" ] &amp;&amp; . "$HOME/.env.local"; launchctl setenv AOPS_SESSIONS "$HOME/src/sessions"; launchctl setenv POLECAT_HOME "$HOME/.aops"; [ -f "$HOME/.aops/launchd-env.sh" ] &amp;&amp; . "$HOME/.aops/launchd-env.sh"</string>
+        <string>[ -f "$HOME/.env.local" ] &amp;&amp; . "$HOME/.env.local"; [ -f "${POLECAT_HOME:-$HOME/.aops}/launchd-env.sh" ] &amp;&amp; . "${POLECAT_HOME:-$HOME/.aops}/launchd-env.sh"</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
