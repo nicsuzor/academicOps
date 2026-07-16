@@ -30,7 +30,7 @@
 [ -n "$AOPS_BOT_GH_TOKEN" ] && launchctl setenv GH_TOKEN "$AOPS_BOT_GH_TOKEN"
 [ -n "$AOPS_BOT_GH_TOKEN" ] && launchctl setenv GITHUB_TOKEN "$AOPS_BOT_GH_TOKEN"
 
-# --- TRACING ---
+# --- TRACING via OTEL ---
 [ -n "$OTEL_METRICS_EXPORTER" ] && launchctl setenv OTEL_METRICS_EXPORTER "$OTEL_METRICS_EXPORTER"
 [ -n "$OTEL_LOGS_EXPORTER" ] && launchctl setenv OTEL_LOGS_EXPORTER "$OTEL_LOGS_EXPORTER"
 [ -n "$OTEL_TRACES_EXPORTER" ] && launchctl setenv OTEL_TRACES_EXPORTER "$OTEL_TRACES_EXPORTER"

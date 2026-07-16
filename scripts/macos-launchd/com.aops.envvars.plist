@@ -11,10 +11,14 @@
   Claude/bot sessions is applied per-session by aops/hooks/router.py.
 
   Install:
-      cp scripts/macos-launchd/com.aops.envvars.plist ~/Library/LaunchAgents/
-      cp scripts/macos-launchd/launchd-env.sh        "$POLECAT_HOME/launchd-env.sh"  # default ~/.aops/
-      launchctl load   ~/Library/LaunchAgents/com.aops.envvars.plist
-      launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
+
+```sh
+cp scripts/macos-launchd/com.aops.envvars.plist ~/Library/LaunchAgents/
+cp scripts/macos-launchd/launchd-env.sh        "$POLECAT_HOME/launchd-env.sh"  # default ~/.aops/
+launchctl unload ~/Library/LaunchAgents/com.aops.envvars.plist
+launchctl load ~/Library/LaunchAgents/com.aops.envvars.plist
+launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
+```
 
   Verify (token is masked):
       launchctl getenv AOPS_SESSIONS
