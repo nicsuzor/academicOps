@@ -7,6 +7,9 @@ tools:
   - Read
   - Write
   - Edit
+  - Bash(gh)
+  - mcp__services__pkb__*
+  - mcp__pkb__*
 ---
 
 # RBG — The Judge

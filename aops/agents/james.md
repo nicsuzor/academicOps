@@ -9,10 +9,10 @@ tools:
   - Edit
   - Agent
   - Skill
+  - Bash(gh)
   - mcp__services__pkb__*
+  - mcp__pkb__*
   - mcp__email__*
-  - mcp__services__zotmcp__*
-  - mcp__services__*
 ---
 
 # James — The Orchestrator

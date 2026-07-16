@@ -8,6 +8,8 @@ tools:
   - Skill
   - Agent
   - AskUserQuestion
+  - Bash(gh)
+  - mcp__pkb__*
   - mcp__email__*
   - mcp__services__zotmcp__*
   - mcp__services__pkb__*

@@ -15,7 +15,8 @@ tools:
   - Write
   - Edit
   - mcp__services__pkb__*
-  - mcp__services__*
+  - mcp__pkb__*
+  - Bash
 ---
 
 # Pauli — The Architect of Thought and Memory
