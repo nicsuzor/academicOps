@@ -13,7 +13,7 @@ This directory contains real, anonymized transcript fixtures used for testing th
   - Sensitive token lengths/endings preserved in original shape but verified to not contain actual usable secrets.
 
 ### `agy_session.jsonl`
-- **Provenance**: Extracted from a real agy session (specifically the initial steps of the current active session executing under `epic_912eec6e`).
+- **Provenance**: Extracted from a real agy session (specifically the initial steps of the current active session executing under `epic_XXXXXXXX`).
 - **Anonymization**:
   - Raw PKB epic and task IDs masked (e.g., `epic_XXXXXXXX`, `aops_XXXXXXXX`, `task-XX`).
   - Conversation ID masked to `conversation_XXXXXXXX`.
