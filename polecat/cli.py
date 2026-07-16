@@ -155,17 +155,31 @@ def setup_staging(staging_dir, pkb_url):
             agy_dst.mkdir(parents=True, exist_ok=True)
             for f in ["antigravity-oauth-token", "settings.json", "installation_id"]:
                 src_file = agy_src / f
-                if src_file.exists():
+                if not src_file.exists():
+                    continue
+                if f == "settings.json":
+                    # agy 1.1.3's authoritative folder-trust store is this
+                    # file's `trustedWorkspaces` array — NOT the top-level
+                    # ~/.gemini/trustedFolders.json, which is the legacy
+                    # gemini-cli mechanism that agy 1.1.3 ignores. The host
+                    # file lists host paths only, so the container's
+                    # /workspace stays untrusted and agy blocks the boot on
+                    # its "Do you trust the contents of this project?" dialog
+                    # (swallowing any seeded prompt — aops_428fe64b). Inject
+                    # /workspace so interactive and dispatched sessions boot
+                    # straight to a ready prompt.
+                    try:
+                        agy_settings = json.loads(src_file.read_text())
+                    except (OSError, ValueError):
+                        shutil.copy2(src_file, agy_dst / f)
+                    else:
+                        trusted = agy_settings.get("trustedWorkspaces") or []
+                        if "/workspace" not in trusted:
+                            trusted.append("/workspace")
+                        agy_settings["trustedWorkspaces"] = trusted
+                        (agy_dst / f).write_text(json.dumps(agy_settings, indent=2))
+                else:
                     shutil.copy2(src_file, agy_dst / f)
-
-        # Write trustedFolders.json to bypass trust prompt inside /workspace
-        trusted_folders = {
-            "/workspace": "TRUST_FOLDER",
-            "/home/worker/.gemini/extensions/aops-core": "TRUST_FOLDER",
-            "/home/worker/.gemini/extensions/aops-tools": "TRUST_FOLDER",
-        }
-        with open(gemini_dst / "trustedFolders.json", "w") as f:
-            json.dump(trusted_folders, f, indent=2)
 
 
 @click.group()

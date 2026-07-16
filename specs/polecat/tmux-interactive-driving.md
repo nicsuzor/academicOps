@@ -65,12 +65,16 @@ form): `... run claude -p aops -s $TMUX_NAME`. For a plain shell in the
 container (no agent, just a debug prompt): `... run shell -p aops -s
 $TMUX_NAME`.
 
-`agy` boots into a folder-trust confirmation dialog ("Do you trust the
-contents of this project?") ahead of the ready prompt — `setup_staging()`
-writes a `trustedFolders.json` intended to bypass it, but the pattern must
-tolerate the dialog appearing anyway: send `Enter` once after boot to accept
-the default ("Yes, I trust this folder") before sending any real prompt, or
-the prompt lands on the dialog instead of the agent.
+`agy` gates its ready prompt behind a folder-trust dialog ("Do you trust the
+contents of this project?") for any workspace not in its trust store. For
+polecat-launched `agy`, `setup_staging()` pre-trusts `/workspace` by injecting
+it into `antigravity-cli/settings.json`'s `trustedWorkspaces` array (the
+authoritative store for agy 1.1.x — the top-level `trustedFolders.json` is the
+legacy gemini-cli mechanism agy ignores), so the container boots straight to
+the ready prompt with no dialog and no swallowed seed prompt. If you drive a
+**bare** `agy` (outside polecat) against an untrusted folder, the dialog will
+still appear: send `Enter` once after boot to accept the default ("Yes, I
+trust this folder") before sending any real prompt.
 
 ## Log & artifact locations
 

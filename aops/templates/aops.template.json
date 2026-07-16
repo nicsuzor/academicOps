@@ -13,10 +13,7 @@
       "framework",
       "workflow",
       "pkb",
-      "enforcement",
-      "task-lifecycle",
-      "academic",
-      "extras"
+      "enforcement"
     ]
   },
   "claude": {
