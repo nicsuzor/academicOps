@@ -167,8 +167,8 @@ def main():
 
                 # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
                 output = {
-                    # "decision": "block",
-                    # "reason": reminder_content,
+                    "decision": "block",
+                    "reason": handover_content,
                     "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
                     "hookSpecificOutput": {
                         "hookEventName": event,
