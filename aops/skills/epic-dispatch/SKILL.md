@@ -18,9 +18,10 @@ a flat list. Dispatch only leaves with no unmet dependency.
 
 If a subtask is a **de-risking spike** — its finding could reshape what
 comes after it — treat everything downstream as blocked on your judgment of
-that finding even where no `depends_on` edge says so yet. Once you've read
-the finding, either clear the block or file the edge for real, so the next
-pass doesn't need you to remember it.
+that finding even where no `depends_on` edge says so yet. Resolve it
+yourself: re-decompose the downstream chunk if the finding changes it, file
+the edge for real, then keep dispatching. This is your call, not a reason to
+stop and wait.
 
 ## Brief and dispatch each ready leaf
 
@@ -72,10 +73,15 @@ same unit with the finding appended to its brief. Either way, wire it into
 the graph rather than holding it in your head — the next pass has to see it
 without you.
 
-## Judgment stays with Nic
+## One human touchpoint: sign-off, not mid-epic
 
-A spike finding that reshapes architecture, methodology, or anything
-published under his name gets surfaced to him directly — don't auto-dispatch
-the next phase off your own reading of it. If a finding needs his call
-before anything downstream can proceed, set the blocked task to `review`;
-dispatch skips it there until he moves it back to `queued`.
+Once an epic is decomposed, dispatch runs it to completion without Nic —
+architecture calls, spike findings, methodology judgment, react-and-redispatch
+decisions are all yours to make. His one enforced checkpoint is admit-status
+at the PR (`specs/enforcement/sign-off.md`), outside this skill's scope entirely;
+don't recreate an earlier one by surfacing findings to him mid-epic.
+
+The `review` status hold still exists, but reserve it for the framework's
+actual one-way-door line — the epic is about to send, publish, spend, delete,
+or ship something externally-visible that can't be undone at PR review — not
+for an architecture or methodology call you're equipped to make yourself.
