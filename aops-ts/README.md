@@ -45,8 +45,7 @@ must ship as a repo/plugin hook.
    image; `ssh` usually needs installing. On a minimal image install both:
 
    ```bash
-   command -v tar >/dev/null 2>&1 || (apt-get update && apt-get install -y tar)
-   command -v ssh >/dev/null 2>&1 || (apt-get update && apt-get install -y openssh-client)
+   command -v ssh >/dev/null 2>&1 || (apt-get update && apt-get install -y tar openssh-client)
    ```
 
 3. **`aops-ts` enabled.** Install the plugin in environments that should join

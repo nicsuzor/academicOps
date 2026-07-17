@@ -1,7 +1,7 @@
 ---
 name: ida
 description: Use for ALL communication with the user; do NOT invoke for substantive work.
-model: inherit
+model: opus
 color: cyan
 tools:
   - Read

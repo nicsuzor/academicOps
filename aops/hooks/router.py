@@ -150,15 +150,7 @@ def main():
         elif event == "Stop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
-                # for now, debug only, because I want to use this more.
-                debug_message = [
-                    f"    {k}: {v}"
-                    for k, v in raw_input.items()
-                    if k in ["agent_type", "agent_id", "tool_name"]
-                ]
-                output = {
-                    "systemMessage": "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
-                }
+                pass
                 # return
             else:
                 # Skip if the agent is still waiting on input from background tasks:
@@ -178,14 +170,7 @@ def main():
         elif event == "SubagentStop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):
-                # for now, debug only, because I want to use this more.
-                debug_message = [
-                    f"    {k}: {v}"
-                    for k, v in raw_input.items()
-                    if k in ["agent_type", "agent_id", "tool_name"]
-                ]
-                debug_message = "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
-                output = {"systemMessage": debug_message}
+                pass
                 # return
             else:
                 # No need to skip based on `background_tasks` here; these lists are scoped to the main session, not subagent.
@@ -217,6 +202,13 @@ def main():
             }
 
     if output:
+        debug_message = [
+            f"    {k}: {v}"
+            for k, v in raw_input.items()
+            if k in ["agent_type", "agent_id", "tool_name"]
+        ]
+        debug_message = "<-- hook debug. vars: " + "\n".join(debug_message) + "-->"
+        output["systemMessage"] = "\n".join([debug_message, output.get("systemMessage", "")]).strip()
         print(json.dumps(output))
 
 
