@@ -7,7 +7,12 @@
   "json": {},
   "toml": {},
   "includes": ["**/*.md", "**/*.json", "**/*.toml"],
-  "excludes": ["node_modules", ".git", "**/*.excalidraw"],
+  "excludes": [
+    "node_modules",
+    ".git",
+    "**/*.excalidraw",
+    "tests/transcripts/fixtures/*.snapshot.*"
+  ],
   "plugins": [
     "https://plugins.dprint.dev/markdown-0.21.1.wasm",
     "https://plugins.dprint.dev/json-0.21.3.wasm",

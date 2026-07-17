@@ -1,0 +1,49 @@
+name: Transcript Adapter Drift
+
+# Runs the LIVE (unpinned) claude-code-log release against our committed
+# fixture corpus, decoupled from pushes, so an upstream release that
+# changes parsing/rendering surfaces as a scheduled, diffable CI failure
+# instead of a silent break the next time someone happens to touch this code.
+on:
+  schedule:
+    - cron: '15 3 * * *' # Daily at 03:15 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: transcript-adapter-drift
+  cancel-in-progress: true
+
+jobs:
+  contract-tests:
+    name: Claude adapter contract + snapshot tests (latest claude-code-log)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Upgrade claude-code-log to latest release
+        run: uv lock --upgrade-package claude-code-log && uv sync
+
+      - name: Run Claude adapter contract + snapshot tests
+        env:
+          AOPS: ${{ github.workspace }}
+        run: uv run pytest tests/transcripts/test_claude_adapter.py -v
+
+      - name: Report drift
+        if: failure()
+        run: |
+          echo "::error::claude-code-log drift detected — a new upstream release changed parsing or rendered output. Review the failing test diff, update aops/lib/transcripts/adapters/claude.py and/or the snapshot fixtures under tests/transcripts/fixtures/, then bump the pin in pyproject.toml."
