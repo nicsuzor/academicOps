@@ -12,6 +12,14 @@ shows a spinner or `Working...`, sleep and re-capture until the final response a
 clean prompt are visible. Passing a test without observing its final state is a failure
 of your judgment, not a pass.
 
+A **persistently blank pane — no spinner, no text at all** — is a different failure
+signature from a busy spinner, not just a slower version of the same thing: it can mean
+an unrendered confirmation dialog (a trust prompt, an onboarding wizard) is sitting there
+waiting for input nobody sent, which looks identical to a dead hang from the process
+state alone (alive, idle, zero CPU). Before concluding the worker is truly stuck, check
+for exactly this — sending one blind `Enter` is a cheap, non-destructive way to find out
+(`aops_cbeb71dc`: this is exactly what an unattended agy dispatch hit).
+
 **Computed ≠ Delivered ≠ Seen:** a hooks-JSONL record proves a gate _computed_ output;
 `exit_code: 0` plus the client wire payload proves it was _delivered_; only the rendered
 transcript/pane proves the agent or user _saw_ it. State which layer each piece of

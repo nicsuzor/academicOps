@@ -20,7 +20,7 @@ that for anything not covered here; do not duplicate it.
 ```bash
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $AOPS python $AOPS/polecat/cli.py run agy -p aops -s $TMUX_NAME"
+  "uv run --project $AOPS python $AOPS/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
 ```
 
 Use the explicit `uv run` path shown above, not the bare `polecat`/`pc`
@@ -34,6 +34,29 @@ plain shell in the container with no agent. Swap `-p aops` for
 `~/.aops/local.yaml`. Passing `-s "$TMUX_NAME"` ties the tmux session name
 to the host log directory name — do this every time so the two are trivial
 to correlate afterward.
+
+**Match the real failure's exact invocation before simplifying.** A bare
+no-prompt launch (no `-t <task>`, no trailing prompt string) can exercise a
+genuinely different code path than a real `/pull <task>` dispatch — whether
+a prompt is present at all changed what agy rendered before going idle in
+the investigation that produced this note (`aops_cbeb71dc`: a simplified
+no-prompt repro looked like a dead hang and pointed at the wrong layer
+entirely). Reproduce with the same prompt/task/flags the real dispatch used
+first; only strip things down after the symptom reproduces as-is.
+
+**Check the client's actual flag surface before assuming its behavior.**
+One cheap command beats guessing:
+
+```bash
+docker run --rm --entrypoint agy ghcr.io/nicsuzor/aops-crew --help
+```
+
+(swap `--entrypoint claude` for the Claude client). agy in particular has no
+bare-positional-prompt convention — an initial prompt only lands via
+`-i`/`--prompt-interactive` (session continues) or `-p`/`--print` (headless,
+exits after one response); `polecat/cli.py`'s `run()` already handles this
+for you, but know it's there before you assume a silently-dropped prompt
+means the worker crashed.
 
 ## Interact with it
 

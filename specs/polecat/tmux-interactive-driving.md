@@ -37,9 +37,12 @@ launched inside tmux gets full interactive Docker behavior.
 #    path, not the bare `polecat`/`pc` alias — see Gotchas.
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $AOPS python $AOPS/polecat/cli.py run agy -p aops -s $TMUX_NAME"
+  "uv run --project $AOPS python $AOPS/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
 # -s ties the host log dir's session-id to the tmux session name — see
-# "Log & artifact locations" below.
+# "Log & artifact locations" below. A bare no-prompt launch exercises a
+# different code path than a real /pull <task> dispatch — reproduce with a
+# representative prompt first (aops_cbeb71dc), only drop it once the
+# symptom is confirmed to reproduce either way.
 
 # 2. Send literal text and an Enter keystroke
 # NOTE: -l ensures special characters aren't interpreted as tmux commands
@@ -128,6 +131,16 @@ unset. This directory is designed to contain:
 
 Read the raw transcript directly (`jq`, `grep`, `less`) — there is currently
 no transcript-to-markdown conversion tool in this repo.
+
+**`docker logs` is not a reliable source for agy.** agy redirects its own
+stdout/stderr to its internal log file rather than the container's actual
+stdout/stderr streams, so `docker logs <container>` reads empty even while
+agy is fully alive and working — this is not evidence that nothing is
+happening. `polecat/cli.py`'s `run()` passes agy `--log-file
+/home/worker/.gemini/antigravity-cli/cli.log`, bind-mounted straight to
+`agy-cli.log` in the session directory above, so the real log is readable
+directly on the host (`tail`/`grep`, no `docker exec` needed) without racing
+container teardown to grab it.
 
 ## Gotchas
 
