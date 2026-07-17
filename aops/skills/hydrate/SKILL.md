@@ -2,7 +2,7 @@
 name: hydrate
 description: Put an inbound ask or an existing task into full current context before any downstream judgment (situate, decompose, brief) acts on it — the always-first, never-skipped trust precondition. Searches the PKB and the workflow-library index, then emits a right-sized context bundle. Personality-agnostic; zero planning judgment.
 context: fork
-agent: pauli
+agent: "aops:pauli"
 ---
 
 # Hydrate Skill

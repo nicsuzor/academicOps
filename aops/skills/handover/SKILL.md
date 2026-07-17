@@ -1,7 +1,7 @@
 ---
 name: dump
 description: 'Session exit — one skill, three paths. Bare `/dump` (default) is the emergency bail: fast resume task + short handover, no commit/PR/reflection. `/dump full` is the canonical close: commit, push, PR, release_task, reflection blocks. `/dump pause` hands back with work still IN PROGRESS: checkpoints the bound task without concluding it.'
-agent: pauli
+agent: "aops:pauli"
 ---
 
 # /dump: Session Exit (Bail, Full Close, or Pause)

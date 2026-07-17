@@ -2,7 +2,7 @@
 name: daily
 description: Daily note lifecycle — compose and maintain a factual daily note. Reports the state of the day; does not prioritise or recommend. SSoT for daily note structure.
 context: fork
-agent: pauli
+agent: "aops:pauli"
 ---
 
 # Daily Note
