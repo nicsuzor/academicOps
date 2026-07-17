@@ -57,27 +57,49 @@ def fixup_local_marketplace_name(marketplace_root: str, marketplace_name: str) -
 
 
 def fixup_marketplace_cache(marketplace_name: str) -> None:
-    """Point known_marketplaces.json + marketplace.json at the single dist clone.
+    """Point known_marketplaces.json + marketplace.json at the durable marketplaces/ dir.
 
-    Both CLIs install from one shallow clone/copy of the dist tree (see
-    comment above the git clone in the Dockerfile); this rewrites the
-    marketplace metadata to reference the permanent plugin cache location
-    instead of the ephemeral /tmp/aops-dist dir that no longer exists
-    post-install (rm -rf'd at the end of the plugin-install RUN step).
+    The marketplace manifest MUST live under ~/.claude/plugins/marketplaces/<name>/,
+    NOT under ~/.claude/plugins/cache/<name>/. The cache/ tree is managed by Claude
+    Code's plugin in-use sweeper (it stamps .last_inuse_sweep on startup): the sweep
+    walks cache/<marketplace>/ treating every child as a <plugin>/<version> install
+    and prunes anything not registered as an in-use version in installed_plugins.json.
+    A marketplace manifest parked at cache/<name>/.claude-plugin/ is not such a
+    version, so the FIRST session's sweep deletes it — and every subsequent session
+    fails to load the marketplace with `cache-miss` (the plugins show
+    "✘ failed to load"). marketplaces/ is outside the swept tree; that's where
+    github-source marketplaces (e.g. claude-plugins-official) durably live, and it
+    survives the sweep.
+
+    Plugin *payloads* still live in cache/<name>/<plugin>/<version>/ — that's what
+    installed_plugins.json points at and how already-installed plugins load, so only
+    the manifest moves. Plugin `source` fields are rewritten to ABSOLUTE cache paths
+    (a relative `./<plugin>/<version>` would now resolve under marketplaces/, where
+    no payload exists) so a re-install/update can still find the payloads.
+
+    Ordering contract: the Dockerfile copies the manifest to
+    marketplaces/<name>/.claude-plugin/marketplace.json BEFORE invoking this, and
+    the ephemeral /tmp/aops-dist source is rm -rf'd first, so this is the step that
+    gives the marketplace its permanent, sweep-proof home.
     """
     plugin_cache = pathlib.Path(f"/home/worker/.claude/plugins/cache/{marketplace_name}")
+    marketplace_dir = pathlib.Path(f"/home/worker/.claude/plugins/marketplaces/{marketplace_name}")
+
     known = json.loads(KNOWN_MARKETPLACES.read_text())
-    known[marketplace_name]["source"]["path"] = str(plugin_cache)
-    known[marketplace_name]["installLocation"] = str(plugin_cache)
+    known[marketplace_name]["source"] = {"source": "directory", "path": str(marketplace_dir)}
+    known[marketplace_name]["installLocation"] = str(marketplace_dir)
     KNOWN_MARKETPLACES.write_text(json.dumps(known, indent=2))
 
-    marketplace_path = plugin_cache / ".claude-plugin" / "marketplace.json"
+    marketplace_path = marketplace_dir / ".claude-plugin" / "marketplace.json"
     marketplace = json.loads(marketplace_path.read_text())
     for plugin in marketplace["plugins"]:
         plugin_dir = plugin_cache / plugin["name"]
         if plugin_dir.is_dir():
-            version_dir = next((e.name for e in plugin_dir.iterdir() if e.is_dir()), "")
-            plugin["source"] = f"./{plugin['name']}/{version_dir}"
+            version_dir = next(
+                (e.name for e in plugin_dir.iterdir() if e.is_dir() and not e.name.startswith(".")),
+                "",
+            )
+            plugin["source"] = str(plugin_dir / version_dir)
     marketplace_path.write_text(json.dumps(marketplace, indent=2))
 
 

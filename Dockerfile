@@ -196,8 +196,8 @@ RUN umask 000 \
     && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
-    && mkdir -p /home/worker/.claude/plugins/cache/"$MP_NAME"/.claude-plugin \
-    && cp "$MP_ROOT"/.claude-plugin/marketplace.json /home/worker/.claude/plugins/cache/"$MP_NAME"/.claude-plugin/marketplace.json \
+    && mkdir -p /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin \
+    && cp "$MP_ROOT"/.claude-plugin/marketplace.json /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin/marketplace.json \
     && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
 
