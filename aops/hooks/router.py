@@ -189,9 +189,9 @@ def main():
             debug_message = [
                 f"    {k}: {v}"
                 for k, v in raw_input.items()
-                if k in ["agent_type", "agent_id", "tool_name"]
+                if k in ["stop_hook_active", "agent_type", "agent_id", "tool_name"]
             ]
-            debug_message = "<-- stop loop. vars: " + "\n".join(debug_message) + "-->"
+            debug_message = "<-- stop loop. vars: " + " ".join(debug_message) + "-->"
             output = {"systemMessage": debug_message}
             output = {
                 "systemMessage": f"≡ **Don't forget to hydrate.** {debug_message}",
