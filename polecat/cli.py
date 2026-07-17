@@ -325,7 +325,12 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             ]
         elif agent_cmd == "agy":
             container_session_path = "/home/worker/.gemini/tmp/workspace"
-            inner_cmd = ["agy", "--dangerously-skip-permissions"]
+            inner_cmd = [
+                "agy",
+                "--dangerously-skip-permissions",
+                "--log-file",
+                "/home/worker/.gemini/antigravity-cli/cli.log",
+            ]
         elif agent_cmd in ("shell", "bash"):
             container_session_path = "/home/worker/.claude/projects/-workspace"
             inner_cmd = ["bash"]
@@ -340,7 +345,27 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             extra_args = (f"/pull {task}",)
 
         if extra_args:
-            inner_cmd.extend(extra_args)
+            # agy has no bare-positional-prompt convention (unlike claude) — a
+            # prompt must go via -i/--prompt-interactive (session continues) or
+            # -p/--print (headless, exits after). A bare string like the
+            # seeded "/pull <task>" is silently dropped, leaving agy idling at
+            # a ready prompt forever (root cause, aops_cbeb71dc — verified
+            # live 2026-07-16, since lost from the tree). Only wrap when the
+            # caller hasn't already picked an explicit agy prompt/session flag.
+            agy_prompt_flags = {
+                "-p",
+                "--print",
+                "--prompt",
+                "-i",
+                "--prompt-interactive",
+                "-c",
+                "--continue",
+                "--conversation",
+            }
+            if agent_cmd == "agy" and not agy_prompt_flags.intersection(extra_args):
+                inner_cmd.extend(["--prompt-interactive", extra_args[0], *extra_args[1:]])
+            else:
+                inner_cmd.extend(extra_args)
 
         # Assemble environment flags
         env["AOPS_POLECAT_CONTAINER"] = "1"
@@ -353,6 +378,18 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             env[f"AOPS_GATE_FILE_{gate.upper()}"] = (
                 f"{container_session_path}/polecat-session-{gate}.md"
             )
+
+        # Pre-create agy's bind-mount targets under the invoking host user
+        # before docker run touches them. Without this, dockerd (running as
+        # root) auto-vivifies missing bind sources as root-owned/0755 —
+        # unwritable by the container's non-root `-u {uid}:{gid}` user, which
+        # silently breaks agy's conversation persistence and log capture
+        # (aops_cbeb71dc). agy's real active log always lives under
+        # antigravity-cli/log/ via a cli.log.tmp symlink regardless of
+        # --log-file, so that directory needs its own mount too.
+        (session_dir / "agy-brain").mkdir(parents=True, exist_ok=True)
+        (session_dir / "agy-cli.log").touch(exist_ok=True)
+        (session_dir / "agy-logs").mkdir(parents=True, exist_ok=True)
 
         # Construct raw docker run command
         cmd = [
@@ -380,6 +417,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             f"{session_dir}/agy-brain:/home/worker/.gemini/antigravity-cli/brain",
             "-v",
             f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
+            "-v",
+            f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
             "-v",
             "/var/run/docker.sock:/var/run/docker.sock",
             "--add-host",
