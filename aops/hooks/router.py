@@ -197,8 +197,10 @@ def main():
         debug_message = [
             f"    {k}: {v}"
             for k, v in raw_input.items()
-            if k in ["agent_type", "agent_id", "tool_name"]
+            if k in ["agent_type", "agent_id", "tool_name", "background_tasks"]
         ]
+        if background_tasks := raw_input.get("background_tasks"):
+            debug_message.append(f"    background_tasks: {len(background_tasks)}")
         debug_message = "<-- hook debug. vars: " + "\n".join(debug_message) + "-->"
         output["systemMessage"] = "\n".join([debug_message, output.get("systemMessage", "")]).strip()
         print(json.dumps(output))
