@@ -1,7 +1,7 @@
 # AcademicOps Makefile
 # Unified build and installation entry point
 
-.PHONY: help dev build-dev install-dev uninstall-dev install install-remote clean-local install-claude install-agy install-windows package-cowork package-cowork-windows install-cowork uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker build-docker-dev verify-docker shell docker-push
+.PHONY: help dev build-dev install-dev uninstall-dev install install-remote clean-local install-claude install-agy install-windows package-cowork package-cowork-windows install-cowork install-cowork-windows uninstall-cowork install-cli install-crontab install-hooks nextver release prerelease clean clean-plugins build build-docker build-docker-dev verify-docker shell docker-push
 
 # --- Configuration ---
 
@@ -375,7 +375,7 @@ package-cowork-windows:
 	if [ -z "$$ZIPS" ]; then \
 		echo "  ⚠️ No Cowork zips found in $(COWORK_DIST_DIR) — run 'make package-cowork' first."; exit 1; \
 	fi; \
-	WIN_USER=$$(cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r' | tr -d '\n'); \
+	WIN_USER=$$(scripts/win-username.sh) || exit 1; \
 	DEST="/mnt/c/Users/$$WIN_USER/Downloads"; \
 	if [ ! -d "$$DEST" ]; then \
 		echo "  ⚠️ Windows Downloads not found at $$DEST — skipping."; exit 0; \
@@ -434,6 +434,78 @@ uninstall-cowork:
 	-command claude plugin marketplace remove $(CLAUDE_COWORK_MARKETPLACE)
 	@echo "✓ Cowork plugins + '$(CLAUDE_COWORK_MARKETPLACE)' removed"
 	@echo "  (aops/aops-tools are now uninstalled everywhere — run 'make install' or 'make dev' to reinstall.)"
+
+# Install the Cowork plugins DIRECTLY into the Windows-side Claude Desktop
+# surface from WSL — no GUI zip-upload (package-cowork/package-cowork-windows
+# stay as the manual fallback for machines where this doesn't work).
+#
+# Why this exists (task_bec9d6a1): `install-cowork` above runs the WSL-native
+# `claude` binary, so it only ever writes to the WSL-side `~/.claude` config —
+# never the Windows-side `/mnt/c/Users/<user>/.claude` tree that Claude
+# Desktop/Cowork actually reads. It is a no-op for that surface.
+# `install-windows` DOES bridge to Windows via `cmd.exe`, but it registers a
+# GITHUB-source marketplace, which Cowork's RemotePluginManager.syncPlugins
+# wipes on every restart (see install-cowork's comment above; cf. claude-code
+# issues #38429/#40600) — so it doesn't survive in Cowork either.
+#
+# This target bridges to Windows AND uses a DIRECTORY-source marketplace
+# (copied straight from dist/cowork into the Windows user's .claude tree),
+# which is the combination that actually survives a Cowork restart.
+#
+# UNVALIDATED ASSUMPTION (flagging per Nic's request, not yet confirmed
+# end-to-end): that the plugin registry the Windows claude.exe CLI writes to
+# is the SAME registry Cowork/Claude Desktop reads at runtime. Everything
+# else here (directory-source semantics, restart-survival) is spec-documented
+# (specs/build-and-install.md §3, §5.4); this one link has not been
+# independently verified. Restart the Claude desktop app after running this
+# and confirm the plugins actually appear in Cowork before trusting it.
+#
+# Installs aops + aops-tools + aops-ts (unlike install-cowork, which leaves
+# aops-ts as an explicit opt-in) because dist/cowork ships all three and the
+# Windows-side desktop surface has no separate "opt in later" mechanism this
+# target manages — drop aops-ts from the loop below if that default proves
+# wrong in practice.
+install-cowork-windows: package-cowork
+	@if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
+		echo "  x Not on WSL — install-cowork-windows only runs from a WSL host with a Windows-side Claude Desktop." >&2; \
+		exit 1; \
+	fi; \
+	if ! command -v wslpath >/dev/null 2>&1; then \
+		echo "  x wslpath not found — cannot translate the marketplace path for Windows-side claude.exe." >&2; \
+		exit 1; \
+	fi; \
+	WIN_USER=$$(scripts/win-username.sh) || exit 1; \
+	echo "Windows user: $$WIN_USER"; \
+	if ! (cd /mnt/c && cmd.exe /c "where claude" >/dev/null 2>&1); then \
+		echo "  x No Windows-side claude.exe found (cmd.exe /c \"where claude\" failed) — install Claude Code on the Windows side first." >&2; \
+		exit 1; \
+	fi; \
+	for p in aops aops-tools aops-ts; do \
+		if [ ! -d "$(COWORK_DIST_DIR)/$$p" ]; then \
+			echo "  x $(COWORK_DIST_DIR)/$$p missing — run 'make package-cowork' first." >&2; \
+			exit 1; \
+		fi; \
+	done; \
+	WIN_MARKETPLACE_DIR="/mnt/c/Users/$$WIN_USER/.claude/plugins/marketplaces/$(CLAUDE_COWORK_MARKETPLACE)"; \
+	echo "Copying $(COWORK_DIST_DIR) -> $$WIN_MARKETPLACE_DIR ..."; \
+	rm -rf "$$WIN_MARKETPLACE_DIR"; \
+	mkdir -p "$$WIN_MARKETPLACE_DIR"; \
+	cp -r "$(COWORK_DIST_DIR)/.claude-plugin" "$$WIN_MARKETPLACE_DIR/"; \
+	for p in aops aops-tools aops-ts; do \
+		cp -r "$(COWORK_DIST_DIR)/$$p" "$$WIN_MARKETPLACE_DIR/"; \
+	done; \
+	WIN_PATH=$$(wslpath -w "$$WIN_MARKETPLACE_DIR"); \
+	echo "Registering directory marketplace '$(CLAUDE_COWORK_MARKETPLACE)' at $$WIN_PATH ..."; \
+	(cd /mnt/c && cmd.exe /c "claude plugin marketplace remove $(CLAUDE_COWORK_MARKETPLACE)" >/dev/null 2>&1 || true); \
+	(cd /mnt/c && cmd.exe /c "claude plugin marketplace add \"$$WIN_PATH\"" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+		|| { echo "  x Windows Claude marketplace add failed for $$WIN_PATH" >&2; exit 1; }; \
+	for p in aops aops-tools aops-ts; do \
+		(cd /mnt/c && cmd.exe /c "claude plugin install $$p@$(CLAUDE_COWORK_MARKETPLACE)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
+			&& echo "✓ Windows Cowork $$p installed" \
+			|| { echo "  x Windows Cowork $$p install failed — check $$WIN_MARKETPLACE_DIR" >&2; exit 1; }; \
+	done; \
+	echo "✓ Cowork plugins installed directly into Windows Claude Desktop at $$WIN_PATH"; \
+	echo "  Restart the Claude desktop app to pick the plugins up in Cowork."
 
 # Install into Antigravity CLI (agy) via agy's OFFICIAL `agy plugin install`
 # command — no hand-copying of plugin source. agy has no user-addable marketplace
