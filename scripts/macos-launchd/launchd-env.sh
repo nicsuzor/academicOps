@@ -23,6 +23,9 @@
 [ -n "$ACA_DATA" ] && launchctl setenv ACA_DATA "$ACA_DATA"
 [ -n "$POLECAT_HOME" ] && launchctl setenv POLECAT_HOME "$POLECAT_HOME"
 
+# --- AOPS URLs ---
+[ -n "$PKB_MCP_URL" ] && launchctl setenv PKB_MCP_URL "$PKB_MCP_URL"
+
 # --- Bot PAT pass-through ---
 # AOPS_BOT_GH_TOKEN is expected in ~/.env.local (sourced by the plist before
 # this file). Each export is gated on a non-empty token; skip silently if absent.

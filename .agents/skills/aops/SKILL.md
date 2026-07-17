@@ -72,8 +72,8 @@ Route tasks based on scope:
 | **Process-level review (dogfooding)**                                      | [10-reflective-execution](workflows/10-reflective-execution.md)                                                          |
 | **Verify session infrastructure**                                          | [11-self-test](workflows/11-self-test.md)                                                                                |
 | **Verify hook routing**                                                    | [11-self-test §3](workflows/11-self-test.md#3-hook-output-channel-routing)                                               |
-| **Agent-led E2E certification (framework + polecat)**                      | [12-agentic-e2e-certification](workflows/12-agentic-e2e-certification.md)                                                |
-| **Verify polecat container dispatch (hooks, gates, plugins, credentials)** | [12-agentic-e2e-certification §Part 2](workflows/12-agentic-e2e-certification.md#part-2-polecat-container-certification) |
+| **Agent-led E2E certification (all surfaces + polecat)**                   | [12-agentic-e2e-certification](workflows/12-agentic-e2e-certification.md)                                                |
+| **Verify polecat container dispatch (hooks, gates, plugins, credentials)** | [12-agentic-e2e-certification §3](workflows/12-agentic-e2e-certification.md#3-container-deep-dive-surfaces-67)           |
 | **Change enforced behaviour / gate / ENFORCEMENT-MAP / axiom**             | Follow `specs/enforcement/enforcement.md §4` (CBA + pyramid position required); do NOT edit an instruction file in place |
 
 ## Categorical Conventions

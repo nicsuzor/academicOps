@@ -1,9 +1,6 @@
 ---
 name: deep-research
-description: "Author high-quality deep-research prompts (Gemini / ChatGPT Pro / Perplexity\
-  \ Deep Research), then capture the resulting documents into the PKB \u2014 including\
-  \ figure extraction, agent-transcribed alt-text for load-bearing images, frontmatter,\
-  \ and wikilink wiring to the sourcing task."
+description: Author high-quality deep-research prompts (Gemini / ChatGPT Pro / Perplexity Deep Research), then capture the resulting documents into the PKB — including figure extraction, agent-transcribed alt-text for load-bearing images, frontmatter, and wikilink wiring to the sourcing task.
 ---
 
 # Deep Research

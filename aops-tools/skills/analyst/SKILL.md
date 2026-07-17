@@ -1,12 +1,6 @@
 ---
 name: analyst
-description: "Support academic research data analysis with technology-agnostic principles\
-  \ \u2014 research-data immutability, a versioned/tested/reproducible transformation\
-  \ layer, statistical methodology, and self-documenting research. Use this skill\
-  \ for any computational research project with an empirical data pipeline. The skill\
-  \ enforces academicOps best practices for reproducible, transparent research with\
-  \ a collaborative single-step workflow. Tech-specific how-to (dbt, Streamlit, Python\
-  \ plotting/stats) lives in the aops-tools package."
+description: Support academic research data analysis with technology-agnostic principles — research-data immutability, a versioned/tested/reproducible transformation layer, statistical methodology, and self-documenting research. Use this skill for any computational research project with an empirical data pipeline. The skill enforces academicOps best practices for reproducible, transparent research with a collaborative single-step workflow. Tech-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the aops-tools package.
 ---
 
 # Analyst

@@ -15,6 +15,7 @@ tools:
   - mcp__playwright__*
   - mcp__services__pkb__*
   - mcp__services__*
+  - mcp__plugin_aops_services__*
 ---
 
 # Marsha — The QA Reviewer

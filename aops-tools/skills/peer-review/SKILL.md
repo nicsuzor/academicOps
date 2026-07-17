@@ -1,9 +1,8 @@
 ---
 name: peer-review
-description: "Peer review of research funding applications and academic submissions.\
-  \ Scheme-agnostic \u2014 fetches current criteria from the relevant handbook each\
-  \ round, since weights and language change. Covers Detailed Assessor and College-of-Experts\
-  \ / General Assessor roles, plus collegial draft review.\n"
+description: 'Peer review of research funding applications and academic submissions. Scheme-agnostic — fetches current criteria from the relevant handbook each round, since weights and language change. Covers Detailed Assessor and College-of-Experts / General Assessor roles, plus collegial draft review.
+
+  '
 ---
 
 # Peer Review Skill

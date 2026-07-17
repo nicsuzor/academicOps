@@ -13,6 +13,7 @@ tools:
   - mcp__services__pkb__*
   - mcp__pkb__*
   - mcp__email__*
+  - mcp__plugin_aops_services__*
 ---
 
 # James — The Orchestrator

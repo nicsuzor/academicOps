@@ -6,7 +6,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SessionStart'"
+              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SessionStart'"
             }
           ]
         }
@@ -16,7 +16,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude Stop'"
+              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude Stop'"
             }
           ]
         }
@@ -26,7 +26,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SubagentStop'"
+              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SubagentStop'"
             }
           ]
         }
@@ -36,7 +36,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude UserPromptSubmit'"
+              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude UserPromptSubmit'"
             }
           ]
         }
@@ -46,7 +46,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "bash -c 'uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude PostToolUse'"
+              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude PostToolUse'"
             }
           ]
         }

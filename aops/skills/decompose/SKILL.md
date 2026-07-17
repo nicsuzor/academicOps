@@ -1,10 +1,6 @@
 ---
 name: decompose
-description: "First-pass decomposition \u2014 when a situated task comes due, cut\
-  \ it into an unexploded subtask DAG, select the epic's workflow, and always emit\
-  \ standing pauli/rbg/marsha review tasks wired as blocking dependencies. Structure\
-  \ and process only; no delegation briefs, no dispatch. Fires when an epic reaches\
-  \ the front of the queue, before any dispatch."
+description: First-pass decomposition — when a situated task comes due, cut it into an unexploded subtask DAG, select the epic's workflow, and always emit standing pauli/rbg/marsha review tasks wired as blocking dependencies. Structure and process only; no delegation briefs, no dispatch. Fires when an epic reaches the front of the queue, before any dispatch.
 context: fork
 agent: pauli
 ---

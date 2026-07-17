@@ -121,9 +121,13 @@ After the plugins are built, `main()` generates **two marketplaces** from
 
 `templates/marketplace.json` (name `academicOps`) is the source of truth for the shipped
 plugin set: `aops` → `./dist/aops-claude`, `aops-tools` → `./dist/aops-tools-claude`,
-`aops-ts` → `./dist/aops-ts-claude`. `aops-cowork` and the `*-antigravity` builds are
-**not** in the marketplace (cowork is a manual upload, §3; antigravity installs go through
-`agy plugin install`, §5.5).
+`aops-ts` → `./dist/aops-ts-claude`. The `*-antigravity` builds are **not** in the
+marketplace (antigravity installs go through `agy plugin install`, §5.5); Cowork gets its
+own generated marketplace at `dist/cowork` (§3).
+
+After the marketplaces, `main()` runs `generate_cowork_dist` → `dist/cowork`, the
+self-contained Cowork channel (directory marketplace `academicOps-cowork` + per-plugin
+upload zips) — see §3.
 
 Version comes from `get_project_version`: the top-level `pyproject.toml` `version`, with
 git short-SHA / `.dirty` metadata appended for local builds.
@@ -146,43 +150,49 @@ git short-SHA / `.dirty` metadata appended for local builds.
   `claude plugin install aops-ts@academicOps`.
 - **`aops-cowork`** — a Cowork-specific package; see §3.
 
-## 3. The cowork variant
+## 3. The cowork channel (`dist/cowork`)
 
-`aops-cowork` is a **real, tracked package** (`aops-cowork/`) — an additive, skills-only
-layer meant to be installed alongside the main `aops` plugin on Claude Cowork. Its tree is
-deliberately tiny:
+Cowork ships the **same two plugins as Claude Code — `aops` + `aops-tools`, in their
+Claude-shaped builds** (decision 2026-07-16); there is no separate cowork plugin build.
+What is cowork-specific is the _channel_, not the content: Cowork has no marketplace
+mechanism on personal accounts, and its `RemotePluginManager.syncPlugins` nukes
+github-source marketplaces on every restart (cf. claude-code issues #38429/#40600), so a
+plain `aops@academicOps` (github-source) install never survives in Cowork. The install
+channel must therefore be a **local directory marketplace**.
+
+`generate_cowork_dist` in `scripts/build.py` assembles that channel on every build:
 
 ```
-aops-cowork/.claude-plugin/plugin.json      # names the plugin `aops-cowork`
-aops-cowork/skills/cowork-sync/SKILL.md     # the PKB → native task-list mirror skill
+dist/cowork/.claude-plugin/marketplace.json   # marketplace name: academicOps-cowork
+dist/cowork/aops/                             # verbatim copy of dist/aops-claude
+dist/cowork/aops-tools/                       # verbatim copy of dist/aops-tools-claude
+dist/cowork/aops-v{VERSION}.zip               # manual-upload fallback
+dist/cowork/aops-tools-v{VERSION}.zip         # manual-upload fallback
 ```
 
-Users install `aops` (from the main dist marketplace) AND `aops-cowork` side by side;
-`aops` supplies every shared agent/skill/command/lib file and the one shared hook stack,
-so `aops-cowork` ships only the Cowork-specific `cowork-sync` skill (which describes the
-PKB → native task-list mirror the Cowork harness depends on). It carries **no hooks and no
-Python deps** — installing `aops` provides the shared hook stack, and bundling hooks here
-too would double-register the router.
+The marketplace is generated from `templates/marketplace.json` filtered to
+`aops`/`aops-tools`, renamed `academicOps-cowork`, with sources rewritten to the
+co-located `./aops` / `./aops-tools` copies. The per-plugin zips (plugin dir at the zip
+root) serve the manual path — Claude desktop → **Cowork → Customize → Add plugins →
+Upload a file** — for accounts where even a local marketplace isn't usable.
 
-The published plugin is `aops-cowork` (intended dist dir `dist/aops-cowork`); a
-local-dev rename copy `aops-coworklocal` (`dist/aops-coworklocal`) exists so a local
-install can't clobber a real published `aops-cowork`. Cowork has **no marketplace
-mechanism on personal accounts**, so the intended distribution is a manual zip upload via
-Claude desktop (**Cowork → Customize → Add plugins → Upload a file**).
+**Cowork-only content markers.** Skill/command sources may wrap Cowork-specific
+instructions in `<!-- cowork:only --> … <!-- /cowork:only -->` (today:
+`aops/skills/handover/SKILL.md` §1.5, the native-task-list reconcile step).
+`build_plugin` strips both the markers and the content from every claude/antigravity
+`.md`; `generate_cowork_dist` then re-applies the marker-carrying source files into the
+cowork copies with the content **kept** and the markers dropped. (This enforcement
+existed in the old `build_aops_core`, was lost in the generic-builder rewrite — blocks
+shipped verbatim everywhere as inert comments — and was restored 2026-07-16.)
 
-> **⚠️ Known gap — the cowork build path is currently defunct.** `scripts/build.py` does
-> **not** build `aops-cowork` or `aops-coworklocal` (neither is in the default plugin set,
-> and there is no cowork-specific build function). The Makefile's `package-cowork` target
-> runs `build-dev` and then looks for `dist/aops-coworklocal-v*.zip`, but `build-dev`
-> never produces that zip (build.py emits per-plugin `.tar.gz`, not a cowork `.zip`), so
-> the target falls through to `"(missing — check build output above)"`. The Makefile
-> comments still reference a `build_coworklocal_plugin` function and a
-> `build_aops_core(platform="cowork", …)` path — **neither exists in the current
-> `scripts/build.py`.** There is no working automated build/package path for cowork today;
-> producing an installable `aops-cowork` artifact requires either restoring a cowork build
-> step in `build.py` or assembling the zip by hand from `aops-cowork/` plus the shared
-> `run-mcp.sh`/`ensure-path.sh` launcher. (verify + fix separately; tracked as a cleanup
-> item — do not treat `make package-cowork` as functional.)
+> **Legacy note.** The earlier design shipped a separate skills-only `aops-cowork` plugin
+> (source still tracked at `aops-cowork/`, containing the `cowork-sync` skill) with a
+> local-dev rename `aops-coworklocal`. That build path was defunct for a long period and
+> has been **retired** in favour of shipping the real `aops`/`aops-tools` builds through
+> `dist/cowork`. `install-cowork`/`uninstall-cowork`/`clean-local` still tear down a
+> lingering `aops-coworklocal@academicOps-cowork` install on sight. Folding the
+> `cowork-sync` skill into `aops` (or re-adding `aops-cowork` to the cowork marketplace)
+> is a separate decision — today `aops-cowork/` is source-only and unshipped.
 
 ## 4. The plugin manifest contract
 
@@ -262,28 +272,35 @@ into `~/.claude/settings.json`.
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `clean-local`                                          | Uninstalls the local-dev Claude plugins (`aops@aops`, `aops-tools@aops`) and removes the `aops` marketplace; uninstalls the released plugins and removes the `academicOps` marketplace; uninstalls agy's `aops`/`aops-tools`; deletes `dist/aops-antigravity` + `dist/aops-tools-antigravity`; strips any leftover **symlink** (never a real copy) at the agy plugin paths so a dangling dev-symlink can't collide with the release install that follows (§5.5). | Automatically, as the first step of `make install`. Idempotent and quiet.                   |
 | `uninstall-dev`                                        | Inverse of the dev install: tears down the local `aops` marketplace/plugins and restores the release `academicOps` marketplace + plugins.                                                                                                                                                                                                                                                                                                                        | Manually, when done dev-testing.                                                            |
-| `uninstall-cowork`                                     | Removes _only_ the isolated `academicOps-cowork` marketplace + `aops-coworklocal` plugin. Leaves `academicOps`/`aops`/`aops-tools` untouched.                                                                                                                                                                                                                                                                                                                    | Manually.                                                                                   |
+| `uninstall-cowork`                                     | Removes the isolated `academicOps-cowork` marketplace + its `aops`/`aops-tools` installs (and any legacy `aops-coworklocal`). Leaves the `academicOps`/`aops` marketplaces alone — but note the plugins are then uninstalled everywhere (the cowork copies _were_ the install); re-run `make install` or `make dev`.                                                                                                                                             | Manually.                                                                                   |
 | `clean` / `clean-plugins` (`scripts/clean_plugins.py`) | Disk hygiene, not marketplace/plugin-identity cleanup: prunes CLI-surface cache versions not referenced by `installed_plugins.json` plus orphaned `.install-manifests/*.json`; on the desktop GUI surface, force-strips the aops plugin entries (drop-set: `aops-core`, `aops`, `aops-ts`, `aops-tools`) from `local-agent-mode-sessions/*/rpm/manifest.json` and deletes their unpacked dirs (for when the GUI's own uninstall button fails).                   | Manually (`make clean`/`make clean-plugins`), or whenever the GUI uninstall path is broken. |
 
 There is currently **no mechanism, anywhere in this pipeline, that removes stray/orphan
 MCP server entries** from a user's `~/.claude.json`. If stray MCP servers need removing,
 that's a manual edit today.
 
-### 5.4 Cowork install (no marketplace mechanism, mac vs Windows)
+### 5.4 Cowork install
 
-Cowork has **no marketplace mechanism on personal accounts**, so both platforms funnel to
-the same manual step: build a zip, then upload it through Claude desktop's **Cowork →
-Customize → Add plugins → Upload a file** UI. `make package-cowork` is meant to produce the
-zip and (on WSL) copy it into the Windows-side `Downloads` folder via
-`package-cowork-windows` (UNC paths are flaky in the native file-picker). `make
-install-cowork` registers a separate `academicOps-cowork` marketplace over a local
-directory (`dist/aops-coworklocal`) and installs from it, so it never touches the genuine
-`academicOps` marketplace.
+`make install-cowork` (depends on `build-dev`) registers `dist/cowork` as the
+`academicOps-cowork` directory marketplace and installs `aops@academicOps-cowork` +
+`aops-tools@academicOps-cowork` from it, halting on the first failure (same
+no-soft-fail rule as `install-claude`) and forwarding `PKB_MCP_URL` as the `aops`
+plugin's `pkb_mcp_url` userConfig when set. Restart the Claude desktop app afterwards so
+Cowork picks the plugins up.
 
-> **⚠️** As noted in §3, the automated cowork build path is currently defunct —
-> `make package-cowork` will not produce a zip until the cowork build step is restored.
-> `make install-cowork` similarly depends on a `dist/aops-coworklocal` that nothing builds
-> today.
+**These are the same plugins the CLI installs** — every user-scope install loads in every
+Claude session — so `install-cowork` _replaces_ any other copy of `aops`/`aops-tools`
+(dev `@aops`, released `@academicOps`, legacy `aops-coworklocal`) rather than sitting
+alongside it; a second copy would double-register the hook router and MCP server.
+Symmetrically, `install-dev` and `clean-local` (and therefore `make install`) tear down
+the `@academicOps-cowork` copies — after a `make install`, re-run `make install-cowork`
+on a machine that uses Cowork. Pick one channel per machine.
+
+Where a local marketplace isn't usable, `make package-cowork` surfaces the per-plugin
+zips (`dist/cowork/aops-v*.zip`, `aops-tools-v*.zip`) for manual upload via **Cowork →
+Customize → Add plugins → Upload a file**, and on WSL `package-cowork-windows` copies
+them into the Windows-side `Downloads` folder (UNC paths are flaky in the native
+file-picker).
 
 ### 5.5 Antigravity (`agy`) install: release vs local
 
@@ -302,12 +319,12 @@ post-install `sed` step. Remove that workaround once #390 is fixed upstream.
 
 ### 5.6 Plugin → surface matrix
 
-| Plugin        | Claude Code CLI                                                                                  | Claude Cowork                                           | Antigravity/agy       | Windows-side Claude (WSL) |
-| ------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------- | --------------------- | ------------------------- |
-| `aops`        | ✅ `aops@academicOps` — hard-fail gate (the success criterion of the whole `make install` chain) | ➖ via `aops-cowork` side-by-side (manual upload, §5.4) | ✅ (`install-agy`)    | ✅                        |
-| `aops-tools`  | ✅ (soft-fail — asset can legitimately be absent from a dist build)                              | —                                                       | ✅ (`install-agy`)    | ✅                        |
-| `aops-ts`     | manual only — `claude plugin install aops-ts@academicOps` (§2)                                   | —                                                       | — (Claude-only build) | —                         |
-| `aops-cowork` | —                                                                                                | manual upload (§3/§5.4) — **build path defunct**        | —                     | —                         |
+| Plugin        | Claude Code CLI                                                                                  | Claude Cowork                                               | Antigravity/agy       | Windows-side Claude (WSL) |
+| ------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- | --------------------- | ------------------------- |
+| `aops`        | ✅ `aops@academicOps` — hard-fail gate (the success criterion of the whole `make install` chain) | ✅ `aops@academicOps-cowork` (`install-cowork`, §5.4)       | ✅ (`install-agy`)    | ✅                        |
+| `aops-tools`  | ✅ (hard-fail — every plugin in `CLAUDE_PLUGINS` halts the chain on failure)                     | ✅ `aops-tools@academicOps-cowork` (`install-cowork`, §5.4) | ✅ (`install-agy`)    | ✅                        |
+| `aops-ts`     | manual only — `claude plugin install aops-ts@academicOps` (§2)                                   | —                                                           | — (Claude-only build) | —                         |
+| `aops-cowork` | —                                                                                                | — (retired from the ship set, §3 legacy note; source-only)  | —                     | —                         |
 
 ## 6. Release path (`dev` → tag → publish)
 
@@ -388,8 +405,15 @@ echo '{"hook_event_name":"SessionStart","session_id":"diag","transcript_path":"/
   installs are **copies** (§5.5) — an edit needs `build-dev` + `install-agy` re-run. If
   `~/.gemini/config/plugins/aops` is a leftover symlink from an older dev workflow, remove
   it (`make clean-local` strips stray symlinks at those paths).
-- **`make package-cowork` produces no zip.** Expected — the cowork build path is currently
-  defunct (§3). This is a known gap, not a local misconfiguration.
+- **Plugins vanish from Cowork after a desktop-app restart.** They were installed from a
+  github-source marketplace (`@academicOps`) — Cowork's `RemotePluginManager.syncPlugins`
+  nukes those on every restart. Use `make install-cowork` (local `dist/cowork` directory
+  marketplace) on machines that run Cowork (§3/§5.4).
+- **aops appears twice in a session (double hooks/MCP).** Two copies of the same plugin
+  are installed under different marketplace names (e.g. `@academicOps` +
+  `@academicOps-cowork`). Every install target tears the other namespaces down first, so
+  this only happens after hand-installs — uninstall one copy, or re-run the one `make`
+  install target you actually want (§5.4).
 
 ## 9. Do not modify
 

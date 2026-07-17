@@ -1,9 +1,6 @@
 ---
 name: streamlit
-description: "Streamlit implementation of the analyst presentation layer. Use when\
-  \ building or updating a Streamlit dashboard that displays pre-computed research\
-  \ data. This is the Streamlit-specific HOW for the tech-agnostic principles in the\
-  \ aops-tools analyst skill \u2014 display only, never transform."
+description: Streamlit implementation of the analyst presentation layer. Use when building or updating a Streamlit dashboard that displays pre-computed research data. This is the Streamlit-specific HOW for the tech-agnostic principles in the aops-tools analyst skill — display only, never transform.
 ---
 
 # Streamlit — Presentation Layer (academicOps)

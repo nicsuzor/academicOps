@@ -1,7 +1,6 @@
 ---
 name: diagram
-description: "Creating diagrams in any style \u2014 Mermaid flowcharts (structured,\
-  \ code-based) or Excalidraw (hand-drawn, organic). Use style parameter to select."
+description: Creating diagrams in any style — Mermaid flowcharts (structured, code-based) or Excalidraw (hand-drawn, organic). Use style parameter to select.
 ---
 
 # Diagram Design Skill

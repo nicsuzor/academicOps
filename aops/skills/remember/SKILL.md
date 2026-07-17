@@ -1,8 +1,6 @@
 ---
 name: remember
-description: "Unified memory skill: immediate mode (/remember) persists knowledge\
-  \ via PKB MCP; maintenance mode (/sleep, GHA cron) runs periodic consolidation \u2014\
-  \ transcript mining, knowledge synthesis, data quality, brain sync."
+description: 'Unified memory skill: immediate mode (/remember) persists knowledge via PKB MCP; maintenance mode (/sleep, GHA cron) runs periodic consolidation — transcript mining, knowledge synthesis, data quality, brain sync.'
 context: fork
 agent: pauli
 ---

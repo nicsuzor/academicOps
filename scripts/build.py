@@ -26,6 +26,36 @@ EXCLUDES = {
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 
+# Cowork-only content markers. Skill/command sources wrap Cowork-specific
+# instructions in <!-- cowork:only --> ... <!-- /cowork:only -->. The cowork
+# dist (generate_cowork_dist) keeps the content with the markers stripped;
+# the claude/antigravity builds drop both the markers AND the content.
+# (Restored 2026-07-16 — the old build_aops_core carried this and it was lost
+# in the generic-builder rewrite, which shipped the blocks verbatim everywhere.)
+_COWORK_OPEN = "<!-- cowork:only -->"
+_COWORK_CLOSE = "<!-- /cowork:only -->"
+_COWORK_BLOCK_RE = re.compile(
+    r"\n*[ \t]*"
+    + re.escape(_COWORK_OPEN)
+    + r"[ \t]*\n(.*?)\n*[ \t]*"
+    + re.escape(_COWORK_CLOSE)
+    + r"[ \t]*\n*",
+    re.DOTALL,
+)
+
+
+def process_cowork_markers(text: str, keep: bool) -> str:
+    """Apply cowork-only marker handling.
+
+    keep=True (cowork dist): replace each block with its content, markers
+    stripped, padded by one blank line so neighbouring sections stay separated.
+    keep=False (claude/antigravity): remove the markers and the content,
+    leaving a single blank line.
+    """
+    if keep:
+        return _COWORK_BLOCK_RE.sub(lambda m: "\n\n" + m.group(1).strip() + "\n\n", text)
+    return _COWORK_BLOCK_RE.sub("\n\n", text)
+
 
 def load_axioms(axioms_dir: Path) -> list[dict]:
     """Parse the `trigger: always_on` rule files out of aops/axioms/*.md.
@@ -195,11 +225,22 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path, version: str)
                     dst_file.parent.mkdir(parents=True, exist_ok=True)
                     content = src_file.read_text(encoding="utf-8")
                     content = re.sub(r"(?m)^type:\s*command\s*$", "type: skill", content)
+                    content = process_cowork_markers(content, keep=False)
                     dst_file.write_text(content, encoding="utf-8")
                     continue
 
                 dst_file = dst_root / file
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
+                # Strip cowork-only blocks from every shipped markdown file —
+                # the cowork dist re-applies the kept content from source
+                # (see generate_cowork_dist).
+                if file.endswith(".md"):
+                    text = src_file.read_text(encoding="utf-8")
+                    if _COWORK_OPEN in text:
+                        dst_file.write_text(
+                            process_cowork_markers(text, keep=False), encoding="utf-8"
+                        )
+                        continue
                 shutil.copy2(src_file, dst_file)
 
         # Wire always-on axioms into each client's native rule mechanism.
@@ -253,6 +294,149 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path, version: str)
                 tar.add(dist_dir, arcname=".")
 
         print(f"  ✓ Built {dist_dir.name} and packaged into {archive_name}")
+
+
+def generate_cowork_dist(project_root: Path, dist_root: Path, version: str):
+    """Assemble the Cowork distribution at dist/cowork.
+
+    Cowork ships the SAME two plugins as Claude Code — `aops` + `aops-tools`,
+    in their Claude-shaped builds — there is no separate cowork plugin build.
+    But Cowork has no marketplace mechanism on personal accounts, and its
+    RemotePluginManager.syncPlugins nukes github-source marketplaces on every
+    restart (cf. claude-code #38429/#40600), so the Cowork install channel must
+    be a LOCAL DIRECTORY marketplace. dist/cowork is that directory:
+
+        dist/cowork/.claude-plugin/marketplace.json   (name: academicOps-cowork)
+        dist/cowork/aops/                             (copy of dist/aops-claude)
+        dist/cowork/aops-tools/                       (copy of dist/aops-tools-claude)
+        dist/cowork/aops-ts/                          (copy of dist/aops-ts-claude)
+        dist/cowork/aops-v{version}.zip               (manual-upload fallback)
+        dist/cowork/aops-tools-v{version}.zip         (manual-upload fallback)
+        dist/cowork/aops-ts-v{version}.zip            (manual-upload fallback)
+
+    The marketplace name is `academicOps-cowork`, isolated from both the
+    released `academicOps` marketplace and the local-dev `aops` one, so the
+    Makefile's install-cowork/uninstall-cowork can manage it independently.
+    The per-plugin zips serve the manual path (Claude desktop → Cowork →
+    Customize → Add plugins → Upload a file) for accounts where even a local
+    marketplace isn't usable.
+    """
+    import zipfile
+
+    cowork_root = dist_root / "cowork"
+    if cowork_root.exists():
+        shutil.rmtree(cowork_root)
+    cowork_root.mkdir(parents=True)
+
+    template_path = project_root / "templates" / "marketplace.json"
+    if not template_path.exists():
+        raise FileNotFoundError(f"templates/marketplace.json not found at {template_path}")
+    with open(template_path) as f:
+        data = json.load(f)
+
+    # The cowork channel ships these plugins (Nic ruling 2026-07-16), reusing
+    # the Claude-shaped builds verbatim. aops-ts is included because CLOUD
+    # Cowork sessions need the tailnet bring-up to reach the PKB MCP (a
+    # tailnet-only URL); it stays opt-in on local machines (install-cowork
+    # doesn't auto-install it — see the Makefile).
+    wanted = {
+        "aops": "aops-claude",
+        "aops-tools": "aops-tools-claude",
+        "aops-ts": "aops-ts-claude",
+    }
+    plugins = []
+    for plugin in data.get("plugins", []):
+        name = plugin.get("name")
+        if name not in wanted:
+            continue
+        src = dist_root / wanted[name]
+        if not src.exists():
+            print(f"Warning: {src} missing — skipping {name} in cowork dist")
+            continue
+        dst = cowork_root / name
+        shutil.copytree(src, dst)
+        plugin["version"] = version
+        plugin["source"] = f"./{name}"
+        plugins.append(plugin)
+
+        # Re-apply cowork-only content. The claude build this copy came from
+        # has the <!-- cowork:only --> blocks REMOVED (build_plugin strips
+        # them), so rewrite any marker-carrying source .md here with the
+        # content KEPT and the markers dropped.
+        src_plugin = project_root / name
+        for md in src_plugin.rglob("*.md"):
+            if any(part in EXCLUDES for part in md.parts):
+                continue
+            text = md.read_text(encoding="utf-8")
+            if _COWORK_OPEN not in text:
+                continue
+            rel = md.relative_to(src_plugin)
+            out = dst / rel
+            if out.parent.exists():
+                out.write_text(process_cowork_markers(text, keep=True), encoding="utf-8")
+                print(f"    kept cowork:only content in {name}/{rel}")
+
+        # Versioned zip for the manual Cowork upload path. The plugin directory
+        # itself sits at the zip root (same convention as the claude tarballs).
+        #
+        # The ZIP variant's .mcp.json differs from the directory copy: the
+        # claude.ai upload validator rejects `${user_config.pkb_mcp_url}`
+        # placeholders, and Cowork won't install remote-HTTP plugin MCP
+        # servers at all (Nic ruling 2026-07-16) — so the zip replaces the
+        # HTTP transport with the STDIO launcher the plugin already ships
+        # (scripts/run-mcp.sh, which proxies PKB_MCP_URL over stdio via
+        # `uvx fastmcp run`). $PKB_MCP_URL at build time is baked into the
+        # server's env block; without it the launcher hard-fails at runtime
+        # unless the session env supplies PKB_MCP_URL. The directory copy
+        # keeps the HTTP-transport placeholder — `claude plugin install
+        # --config` resolves it there.
+        def _zip_mcp_json(mcp_path: Path) -> str:
+            data = json.loads(mcp_path.read_text(encoding="utf-8"))
+            servers = data.get("mcpServers", {})
+            baked_url = os.environ.get("PKB_MCP_URL", "").strip()
+            for sname, cfg in list(servers.items()):
+                if "${user_config" not in str(cfg.get("url", "")):
+                    continue
+                stdio = {
+                    "command": "bash",
+                    "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
+                }
+                if baked_url:
+                    stdio["env"] = {"PKB_MCP_URL": baked_url}
+                    print(f"    zip: '{sname}' → stdio launcher, PKB_MCP_URL baked ({name})")
+                else:
+                    print(
+                        f"    zip: '{sname}' → stdio launcher WITHOUT baked URL ({name}) — "
+                        "set PKB_MCP_URL at build time or the session env must supply it"
+                    )
+                servers[sname] = stdio
+            return json.dumps(data, indent=2)
+
+        zip_path = cowork_root / f"{name}-v{version}.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in sorted(dst.rglob("*")):
+                if not path.is_file():
+                    continue
+                arcname = str(path.relative_to(cowork_root))
+                if path.name == ".mcp.json" and path.parent == dst:
+                    zf.writestr(arcname, _zip_mcp_json(path))
+                else:
+                    zf.write(path, arcname)
+        print(f"  ✓ Cowork: {name} → dist/cowork/{name} + {zip_path.name}")
+
+    data["name"] = "academicOps-cowork"
+    data["description"] = (
+        "academicOps Cowork channel — local directory marketplace "
+        "(github-source marketplaces get nuked on Cowork restart)"
+    )
+    data["plugins"] = plugins
+
+    marketplace_dir = cowork_root / ".claude-plugin"
+    marketplace_dir.mkdir(parents=True, exist_ok=True)
+    with open(marketplace_dir / "marketplace.json", "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print(f"✓ Generated cowork dist at {cowork_root} (plugins: {[p['name'] for p in plugins]})")
 
 
 def generate_local_marketplace(project_root: Path, dist_root: Path, version: str):
@@ -428,6 +612,7 @@ def main():
 
     generate_local_marketplace(project_root, dist_root, version)
     generate_production_marketplace(project_root, dist_root, version)
+    generate_cowork_dist(project_root, dist_root, version)
 
 
 if __name__ == "__main__":

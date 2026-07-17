@@ -14,6 +14,7 @@ tools:
   - mcp__services__zotmcp__*
   - mcp__services__pkb__*
   - mcp__services__*
+  - mcp__plugin_aops_services__*
 ---
 
 # Ida — Interactive Academic-Research Co-Worker
