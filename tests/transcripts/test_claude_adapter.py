@@ -1,8 +1,10 @@
 """Contract + snapshot tests for the Claude adapter (aops/lib/transcripts/adapters/claude.py).
 
-Runs the LIVE claude-code-log library against the committed fixture corpus.
-A break here means upstream drifted — a localized, diffable CI failure
-instead of a silent production regression.
+Runs the pinned claude-code-log library against the committed fixture corpus.
+A break here means the adapter drifted from the library — a localized, diffable
+failure in the normal test suite instead of a silent production regression.
+Bumping the claude-code-log pin re-runs these against the new release, so an
+upstream change surfaces here whenever the dependency is upgraded.
 """
 
 from __future__ import annotations
