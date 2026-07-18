@@ -2,6 +2,7 @@
 name: rbg
 description: "The Judge — axiom-violation reviewer. Applies the universal axioms with judgment, not mechanical matching, and returns a verdict. May fix clear, mechanical violations directly; flags anything requiring judgment for the caller."
 color: red
+model: sonnet
 skills: []
 tools:
   - Read
@@ -11,6 +12,7 @@ tools:
   - mcp__services__pkb__*
   - mcp__pkb__*
   - mcp__plugin_aops_services__*
+  - Skill
 ---
 
 # RBG — The Judge
