@@ -16,7 +16,7 @@ tags: [enforcement, automode, classifier, judgment, framework-architecture]
 > Code auto-mode classifier is _for_: the policy that decides which rules
 > belong in it and the cost model that shapes how those rules must be
 > written. The rules themselves are installed in
-> `polecat/defaults/claude-settings.json`; this spec tracks the mechanism's
+> `aops-jr/polecat/defaults/claude-settings.json`; this spec tracks the mechanism's
 > design and cost model, not a per-rule copy.
 
 Claude Code's auto mode delegates tool-call approvals to a model-based
@@ -56,7 +56,7 @@ Write each rule as **prose stating principle + reasoning + cue + carve-outs**, n
 
 Default every new behavioural rule to `soft_deny` (context-overridable); escalate to `hard_deny` only on evidence that a `soft_deny` was bypassed with reproducible consequences.
 
-**Current state: the rule set is seeded and populated.** `autoMode` rules live in `polecat/defaults/claude-settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here — this spec tracks the mechanism, not each entry. New rules still follow the evidence loop above before landing.
+**Current state: the rule set is seeded and populated.** `autoMode` rules live in `aops-jr/polecat/defaults/claude-settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here — this spec tracks the mechanism, not each entry. New rules still follow the evidence loop above before landing.
 
 ## References
 

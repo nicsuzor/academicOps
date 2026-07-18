@@ -52,7 +52,7 @@ daemon that runs polecats** (the WSL host `nicwin`), then pick the matching form
 ```bash
 # You can dispatch LOCALLY (no ssh) iff the polecat CLI is on this filesystem
 # AND you can reach a Docker daemon from here.
-test -f "$AOPS/polecat/cli.py" && docker info >/dev/null 2>&1 && echo LOCAL || echo REMOTE
+test -f "$AOPS/aops-jr/polecat/cli.py" && docker info >/dev/null 2>&1 && echo LOCAL || echo REMOTE
 ```
 
 - `LOCAL` → you are **on the WSL host**, or **inside a container with the host's
@@ -67,17 +67,17 @@ The launch command (substitute one of the three transports):
 ```bash
 # The inner command (identical in all three contexts):
 #   tmux new-session -d -s pc-<id> \
-#     "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+#     "uv run --project $AOPS/aops-jr $AOPS/aops-jr/polecat/cli.py run agy -p <project> -t <id> \
 #      2>&1 | tee /tmp/pc-<id>.log"
 
 # --- Context A: REMOTE (another host) ---
 ssh wsl 'tmux new-session -d -s pc-<id> \
-  "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+  "uv run --project $AOPS/aops-jr $AOPS/aops-jr/polecat/cli.py run agy -p <project> -t <id> \
    2>&1 | tee /tmp/pc-<id>.log"'
 
 # --- Context B: LOCAL, on the WSL host itself ---
 tmux new-session -d -s pc-<id> \
-  "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+  "uv run --project $AOPS/aops-jr $AOPS/aops-jr/polecat/cli.py run agy -p <project> -t <id> \
    2>&1 | tee /tmp/pc-<id>.log"
 
 # --- Context C: LOCAL, already inside a WSL Docker container (DooD) ---
@@ -85,7 +85,7 @@ tmux new-session -d -s pc-<id> \
 # `polecat run` launch sibling containers. Do NOT ssh (there is usually no
 # `wsl` host alias inside the container, and no interactive SSH agent).
 tmux new-session -d -s pc-<id> \
-  "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+  "uv run --project $AOPS/aops-jr $AOPS/aops-jr/polecat/cli.py run agy -p <project> -t <id> \
    2>&1 | tee /tmp/pc-<id>.log"
 ```
 

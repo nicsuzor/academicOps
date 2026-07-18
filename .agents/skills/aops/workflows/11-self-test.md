@@ -30,13 +30,13 @@ Before testing any specific hook behavior, verify that hooks are actually runnin
 
 ## 2. Polecat session validation
 
-Run after changes to `polecat/defaults/*-settings.json`, entrypoint, plugin packaging, or CLI upgrades. Discriminates "infrastructure files present" from "infrastructure actually fires." Run both clients (Claude and agy) — asymmetric breakage is common. Mechanics in [[specs/polecat/tmux-interactive-driving.md]].
+Run after changes to `aops-jr/polecat/defaults/*-settings.json`, entrypoint, plugin packaging, or CLI upgrades. Discriminates "infrastructure files present" from "infrastructure actually fires." Run both clients (Claude and agy) — asymmetric breakage is common. Mechanics in [[specs/polecat/tmux-interactive-driving.md]].
 
 Walk layers in order; stop at first failure:
 
 **§0 Image freshness** — `docker images aops-crew --format '{{.CreatedAt}}'` vs last commit touching Dockerfile or bundled files. Stale → `make verify-docker` (**not** `make build-docker` — verification requires a clean build; `--no-cache` prevents stale cached layers from producing a false-green result; issue #1452).
 
-**§0.5 Plugin pre-check** — Before any boot signal checks, run `claude plugin list` inside the container to verify exactly two plugins loaded (`aops`, `aops-tools` — see `polecat/defaults/claude-settings.json`'s `enabledPlugins`). For agy, there is no `list` subcommand; confirm the install structurally with `ls ~/.gemini/antigravity-cli/plugins/` (expect `aops/` and `aops-tools/` only). The Gemini CLI extension surface is deprecated and intentionally not installed (see Dockerfile) — do not check `gemini extensions list`. A marketplace cache-miss or install failure is silent at startup and only manifests later as hook failures or missing tools; this step catches it in seconds. If either check comes back empty or wrong, halt and diagnose before proceeding.
+**§0.5 Plugin pre-check** — Before any boot signal checks, run `claude plugin list` inside the container to verify exactly two plugins loaded (`aops`, `aops-tools` — see `aops-jr/polecat/defaults/claude-settings.json`'s `enabledPlugins`). For agy, there is no `list` subcommand; confirm the install structurally with `ls ~/.gemini/antigravity-cli/plugins/` (expect `aops/` and `aops-tools/` only). The Gemini CLI extension surface is deprecated and intentionally not installed (see Dockerfile) — do not check `gemini extensions list`. A marketplace cache-miss or install failure is silent at startup and only manifests later as hook failures or missing tools; this step catches it in seconds. If either check comes back empty or wrong, halt and diagnose before proceeding.
 
 **§1 Boot signals** — spin via tmux using the **same permission flags that `polecat run` uses** (auto-approval / `--dangerously-skip-permissions`, not plan mode), then `capture-pane -p -S -2000`. Look for router banner, no onboarding/trust prompts. Do NOT use footer text as a boot signal (#1197).
 
@@ -53,7 +53,7 @@ Walk layers in order; stop at first failure:
 **§6 Cleanup** — `/exit` → `tmux kill-session`. No manual `nuke` step:
 `polecat run`'s underlying `docker run --rm` self-removes the container on
 exit (the `nuke`/`list-crew` subcommands it used to require were deleted
-along with the old `polecat/cli.py`, 2026-07-14 — see [[specs/polecat/tmux-interactive-driving.md]]).
+along with the old `polecat/cli.py`, 2026-07-14 — see [[specs/polecat/tmux-interactive-driving.md]]. As of 2026-07-18 the survivor lives at `aops-jr/polecat/cli.py`).
 Repeat for other client.
 
 On failure: file one issue per root cause, not per symptom. Append to existing PR/task when one exists. Refs: [[aops-7c45802b]], GH #1237.

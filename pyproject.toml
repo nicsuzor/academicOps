@@ -31,7 +31,7 @@ notify = [
 anthropic = ["anthropic>=0.75.0"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["lib", "skills", "tests", "scripts", "polecat"]
+packages = ["lib", "skills", "tests", "scripts"]
 
 [build-system]
 requires = ["hatchling"]
@@ -187,4 +187,4 @@ markers = [
 ]
 
 [project.scripts]
-polecat = "polecat.cli:main"
+# `polecat` now lives in aops-jr/pyproject.toml (standalone coordinator package)

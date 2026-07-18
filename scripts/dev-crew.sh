@@ -23,9 +23,9 @@ PROJECT_SLUG="aops-dev"
 
 # tmux's default shell is /bin/sh, so aliases like `polecat`/`pc` don't
 # resolve — always invoke the CLI by full path (tests/harness/README.md
-# gotcha). Runs THIS worktree's polecat/cli.py (unmodified by this dev loop).
+# gotcha). Runs THIS worktree's aops-jr/polecat/cli.py (unmodified by this dev loop).
 polecat_cmd() {
-    echo "AOPS_POLECAT_CONFIG=$DEV_CONFIG uv run --project $REPO_ROOT $REPO_ROOT/polecat/cli.py $*"
+    echo "AOPS_POLECAT_CONFIG=$DEV_CONFIG uv run --project $REPO_ROOT/aops-jr $REPO_ROOT/aops-jr/polecat/cli.py $*"
 }
 
 cmd_start() {
@@ -57,7 +57,7 @@ cmd_watch() {
 
 cmd_logs() {
     local name="${1:?usage: dev-crew.sh logs <name>}"
-    # Mirrors polecat/cli.py's session dir resolution: $AOPS_SESSIONS
+    # Mirrors aops-jr/polecat/cli.py's session dir resolution: $AOPS_SESSIONS
     # (else $POLECAT_HOME/sessions, else ~/.polecat-dev/sessions), then
     # logs/<YYYYMMDD>/<name>/<project>. Glob the date since we don't know
     # which day the session started on; take the most recent match.

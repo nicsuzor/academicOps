@@ -39,7 +39,7 @@ never confuse the two.
 | 3 | Cowork, on-computer                  | desktop app mirrors user scope on restart                                                                    | `mcp__plugin_aops_services__*`                                                                                           |
 | 4 | Cowork, cloud + desktop connected    | desktop syncs local installs into the session (no zip upload needed)                                         | `mcp__remote-devices__plugin_aops_services__*`                                                                           |
 | 5 | Cloud Claude Code (claude.ai/code)   | the project's committed setup (`.claude/setup.sh` / settings) — plugin names must match the current ship set | `mcp__plugin_aops_services__*`                                                                                           |
-| 6 | Polecat container, `--client claude` | `polecat run`/`polecat crew` + `entrypoint.sh` + `polecat/defaults/claude-settings.json`                     | `mcp__plugin_aops_services__*`                                                                                           |
+| 6 | Polecat container, `--client claude` | `polecat run`/`polecat crew` + `entrypoint.sh` + `aops-jr/polecat/defaults/claude-settings.json`                     | `mcp__plugin_aops_services__*`                                                                                           |
 | 7 | Polecat container, `--client agy`    | same dispatch, agy client                                                                                    | agy namespace; NO `agy plugin list` — check `~/.gemini/antigravity-cli/plugins/` structurally                            |
 
 Surfaces 1–5 are quick probes (§2). Surfaces 6–7 add the container deep-dive (§3) —
@@ -101,7 +101,7 @@ State these axes up front, then judge each with evidence (pass / fail / inconclu
    match `PolecatConfig.for_mode(...)` for the dispatch mode. A `block` gate that never
    visibly blocks anything is **inconclusive**, not a pass.
 5. **Plugins** — exactly the allowlisted set (diff against
-   `polecat/defaults/claude-settings.json` `enabledPlugins`), with positive-absence
+   `aops-jr/polecat/defaults/claude-settings.json` `enabledPlugins`), with positive-absence
    checks for everything else.
 6. **Credentials** — bot identity only: `git config user.name/email`,
    `env | grep -i 'GIT_\|GH_\|GITHUB_'`, `SSH_AUTH_SOCK` unset, HTTPS-forced

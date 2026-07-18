@@ -20,7 +20,7 @@ that for anything not covered here; do not duplicate it.
 ```bash
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $AOPS python $AOPS/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
+  "uv run --project $AOPS/aops-jr python $AOPS/aops-jr/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
 ```
 
 Use the explicit `uv run` path shown above, not the bare `polecat`/`pc`
@@ -54,7 +54,7 @@ docker run --rm --entrypoint agy ghcr.io/nicsuzor/aops-crew --help
 (swap `--entrypoint claude` for the Claude client). agy in particular has no
 bare-positional-prompt convention — an initial prompt only lands via
 `-i`/`--prompt-interactive` (session continues) or `-p`/`--print` (headless,
-exits after one response); `polecat/cli.py`'s `run()` already handles this
+exits after one response); `aops-jr/polecat/cli.py`'s `run()` already handles this
 for you, but know it's there before you assume a silently-dropped prompt
 means the worker crashed.
 

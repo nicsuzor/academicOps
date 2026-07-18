@@ -70,7 +70,7 @@ The dispatch is fit if:
 - A polecat dispatched this way completes after the parent container is killed (not paused — `docker kill`'d).
 - Worktree and session artefacts land at the canonical host paths (`$POLECAT_HOME/polecat/<task-id>`, `$AOPS_SESSIONS/...`), identical to a host-initiated dispatch.
 - The orchestrator can re-discover and re-attach to the tmux session by name after restart.
-- No code path in `polecat/cli.py` is modified.
+- No code path in `aops-jr/polecat/cli.py` is modified.
 
 ## Open questions
 

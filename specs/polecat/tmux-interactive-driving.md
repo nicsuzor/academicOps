@@ -14,7 +14,7 @@ Canonical spec for how an agent (or a human) drives a `polecat run` container
 interactively — sending input, reading output, and locating logs — without a
 wrapper harness.
 
-> **Scope note:** `polecat/cli.py` exposes a single `run` subcommand
+> **Scope note:** `aops-jr/polecat/cli.py` exposes a single `run` subcommand
 > (bind-mount workspace, forward env, `docker run` claude/agy/shell/sleep) —
 > no task claiming, no PR filing, no `crew`/`nuke`/`swarm`/`list`. This spec
 > covers driving `run` only. The task-claiming/PR-filing architecture is a
@@ -24,7 +24,7 @@ wrapper harness.
 
 A tmux pane — even one spawned detached (`tmux new-session -d`) — presents a
 real TTY to the process running inside it. `polecat run` decides whether to
-pass Docker's `-it` flag by checking `sys.stdin.isatty()` (`polecat/cli.py`,
+pass Docker's `-it` flag by checking `sys.stdin.isatty()` (`aops-jr/polecat/cli.py`,
 `run()`, "Determine interactive TTY flag" block) unless `-p` (a headless
 prompt) is present in the trailing args. So `polecat run <agent> -p <project>`
 launched inside tmux gets full interactive Docker behavior.
@@ -37,7 +37,7 @@ launched inside tmux gets full interactive Docker behavior.
 #    path, not the bare `polecat`/`pc` alias — see Gotchas.
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $AOPS python $AOPS/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
+  "uv run --project $AOPS/aops-jr python $AOPS/aops-jr/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
 # -s ties the host log dir's session-id to the tmux session name — see
 # "Log & artifact locations" below. A bare no-prompt launch exercises a
 # different code path than a real /pull <task> dispatch — reproduce with a
@@ -94,7 +94,7 @@ alive (or until scrollback rotates out).
 
 ### 2. Official: the host-side session directory (what's actually recorded)
 
-`polecat/cli.py` bind-mounts a host directory straight into the container —
+`aops-jr/polecat/cli.py` bind-mounts a host directory straight into the container —
 not a copy-on-exit step, a live mount — so everything the agent writes to
 its own session-state path is visible on the host in real time, session
 alive or dead:
@@ -136,7 +136,7 @@ no transcript-to-markdown conversion tool in this repo.
 stdout/stderr to its internal log file rather than the container's actual
 stdout/stderr streams, so `docker logs <container>` reads empty even while
 agy is fully alive and working — this is not evidence that nothing is
-happening. `polecat/cli.py`'s `run()` passes agy `--log-file
+happening. `aops-jr/polecat/cli.py`'s `run()` passes agy `--log-file
 /home/worker/.gemini/antigravity-cli/cli.log`, bind-mounted straight to
 `agy-cli.log` in the session directory above, so the real log is readable
 directly on the host (`tail`/`grep`, no `docker exec` needed) without racing
@@ -154,7 +154,7 @@ container teardown to grab it.
   `no server running on /tmp/tmux-...-default`, which reads like a
   tmux/environment problem rather than a command-not-found. Always use the
   explicit path, never the bare command, when spawning inside tmux:
-  `uv run --project $AOPS python $AOPS/polecat/cli.py run ...` (the `pc`
+  `uv run --project $AOPS/aops-jr python $AOPS/aops-jr/polecat/cli.py run ...` (the `pc`
   alias has the identical failure mode for the identical reason).
 - **Enter key:** Always send `Enter` as a separate `send-keys` invocation
   after sending literal text with `-l`. Do not embed `\n` in the literal

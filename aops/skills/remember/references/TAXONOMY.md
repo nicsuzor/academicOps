@@ -196,7 +196,7 @@ Goals represent identity-level commitments — _who I am / how I define myself_.
 
 ## Project (operational routing field)
 
-**"Project" is a repository registered in `polecat.yaml`.** Carried on tasks as the `project: <slug>` metadata field. Polecat dispatch reads this field to choose the worktree for the worker (`polecat/cli.py` resolves `project_slug = task.project` against the registry).
+**"Project" is a repository registered in `polecat.yaml`.** Carried on tasks as the `project: <slug>` metadata field. Polecat dispatch reads this field to choose the worktree for the worker (`aops-jr/polecat/cli.py` resolves `project_slug = task.project` against the registry).
 
 | Property      | Value                                                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------------------------------- |

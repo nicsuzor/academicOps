@@ -39,8 +39,8 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 
 ### 1. Structural prevention (the only mechanical layer)
 
-- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
-- **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`polecat/defaults/polecat.yaml.example`](../../polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
+- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `aops-jr/polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
+- **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`polecat/defaults/polecat.yaml.example`](../../aops-jr/polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
 
 ### 2. The harness delivery channel (reminder, not gate)
 
@@ -55,7 +55,7 @@ Nothing in this layer produces a verdict. It cannot stop an agent from exiting, 
 
 ### 3. Claude Code's native auto-mode classifier
 
-A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`polecat/defaults/claude-settings.json`](../../polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
+A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`polecat/defaults/claude-settings.json`](../../aops-jr/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
 
 ### 4. Task-graph boundary — the primary enforcement point
 

@@ -14,11 +14,17 @@ tags: [spec, polecat, architecture]
 > `polecat/cli.py` currently implements only a `run` subcommand — bind-mount
 > workspace, forward env, spawn claude/agy/shell/sleep (see
 > `specs/polecat/tmux-interactive-driving.md` for driving it interactively,
-> and `aops/skills/debug/SKILL.md` for the operational skill wrapping that
+> and `.agents/skills/debug/SKILL.md` for the operational skill wrapping that
 > pattern). The claiming, PR-filing, worktree-isolation, and
 > `crew`/`nuke`/`swarm`/`list` surfaces this spec describes below are not
 > currently implemented. Whether and how this design is restored is an open
 > decision, tracked outside this document rather than resolved here.
+>
+> As of 2026-07-18, `polecat/` and the coordinator-side `dispatch` skill moved
+> to the new `aops-jr` plugin (`aops-jr/polecat/cli.py`,
+> `aops-jr/skills/dispatch/SKILL.md`) — a standalone coordination-layer
+> package, separate from the `aops` task-execution package. See
+> `aops-jr/README.md` for scope and current placeholders.
 
 The polecat system gives every dispatched task its own isolated, disposable git
 workspace so many agents can work concurrently without touching each other or the
@@ -27,15 +33,16 @@ queue; polecat is the workspace and execution surface.
 
 ## Giving Effect
 
-- [[polecat/cli.py]] — CLI (`polecat run`, `polecat start`, `polecat finish`, …)
+- [[aops-jr/polecat/cli.py]] — CLI (`polecat run`, `polecat start`, `polecat finish`, …)
 - [[polecat/manager.py]] — workspace lifecycle (mirrors, clones, claiming, nuking)
 - [[polecat/finalize.py]] — `finish`: push, PR detection (for CI-gating), status transition
 - [[polecat/pkb_bridge.py]] — task reads/writes against the PKB MCP server
 - [[polecat/prompt_template.py]] — self-contained worker prompt built from the task
 - [[polecat/observability.py]] + lifecycle events in `cli.py` — metrics and per-task
   transcript stubs
-- `aops/commands/pull.md` and `aops/commands/dispatch.md` — commands which route
-  work onto this surface
+- `aops-jr/skills/dispatch/SKILL.md` (coordinator side) and
+  `aops/skills/pull/SKILL.md` (worker side) — the skills which route work onto
+  this surface
 
 ## Guarantees
 
