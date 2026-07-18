@@ -4,3 +4,17 @@ Each source (Claude Code, agy) gets a thin adapter delegating to a
 maintained parser where one exists. See specs/ (transcript pipeline,
 once written) and PKB task aops_82823c43 for the architecture.
 """
+
+from transcripts.model import (
+    NormalizedEvent,
+    NormalizedRawEntry,
+    NormalizedSession,
+    NormalizedToolCall,
+)
+
+__all__ = [
+    "NormalizedEvent",
+    "NormalizedRawEntry",
+    "NormalizedSession",
+    "NormalizedToolCall",
+]
