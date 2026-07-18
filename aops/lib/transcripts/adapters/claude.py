@@ -27,6 +27,13 @@ from claude_code_log.converter import load_transcript
 from claude_code_log.models import TranscriptEntry
 from claude_code_log.renderer import get_renderer
 
+from transcripts.model import (
+    NormalizedEvent,
+    NormalizedRawEntry,
+    NormalizedSession,
+    NormalizedToolCall,
+)
+
 logger = logging.getLogger(__name__)
 
 # The top-level `type` values claude_code_log parses into typed Pydantic
@@ -132,3 +139,140 @@ def render_claude_session(
     # generate_session returns Optional[str] (None for an empty session); we
     # always hand back a str so callers get a predictable, never-None contract.
     return renderer.generate_session(entries, session_id, title=title) or ""
+
+
+def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSession:
+    """Map a ClaudeTranscript into the common NormalizedSession model."""
+    # Session ID detection
+    session_id = "unknown"
+    for entry in transcript.entries:
+        if hasattr(entry, "sessionId") and entry.sessionId:
+            session_id = entry.sessionId
+            break
+
+    events: list[NormalizedEvent] = []
+    for entry in transcript.entries:
+        entry_type = entry.type
+        if entry_type == "user":
+            content_parts = []
+            if entry.message and entry.message.content:
+                for block in entry.message.content:
+                    if hasattr(block, "text") and block.text:
+                        content_parts.append(block.text)
+            content = "".join(content_parts)
+            events.append(
+                NormalizedEvent(
+                    event_id=entry.uuid,
+                    timestamp=entry.timestamp,
+                    source="user",
+                    type="message",
+                    content=content,
+                    meta={"user_type": entry.userType, "cwd": entry.cwd},
+                )
+            )
+        elif entry_type == "assistant":
+            content_parts = []
+            thinking_parts = []
+            tool_calls = []
+            if entry.message and entry.message.content:
+                for block in entry.message.content:
+                    if block.type == "text" and hasattr(block, "text") and block.text:
+                        content_parts.append(block.text)
+                    elif block.type == "thinking" and hasattr(block, "thinking") and block.thinking:
+                        thinking_parts.append(block.thinking)
+                    elif block.type == "tool_use":
+                        tool_calls.append(
+                            NormalizedToolCall(
+                                name=block.name,
+                                args=block.input if isinstance(block.input, dict) else {},
+                            )
+                        )
+            content = "".join(content_parts)
+            thinking = "".join(thinking_parts) if thinking_parts else None
+            events.append(
+                NormalizedEvent(
+                    event_id=entry.uuid,
+                    timestamp=entry.timestamp,
+                    source="model",
+                    type="message",
+                    content=content,
+                    thinking=thinking,
+                    tool_calls=tool_calls if tool_calls else None,
+                    meta={"cwd": entry.cwd},
+                )
+            )
+        elif entry_type == "attachment":
+            att = entry.attachment or {}
+            content = att.get("content") or att.get("stdout") or att.get("stderr") or ""
+            events.append(
+                NormalizedEvent(
+                    event_id=entry.uuid,
+                    timestamp=entry.timestamp,
+                    source="tool",
+                    type="tool_output",
+                    content=content,
+                    meta={"attachment": att, "cwd": entry.cwd},
+                )
+            )
+        elif entry_type == "queue-operation":
+            op = getattr(entry, "operation", "")
+            content = getattr(entry, "content", "") or ""
+            events.append(
+                NormalizedEvent(
+                    event_id=f"queue_{entry.timestamp}",
+                    timestamp=entry.timestamp,
+                    source="system",
+                    type="checkpoint",
+                    content=f"Queue operation: {op}" + (f"\nContent: {content}" if content else ""),
+                    meta={"operation": op},
+                )
+            )
+        elif entry_type == "summary":
+            events.append(
+                NormalizedEvent(
+                    event_id=entry.leafUuid or "",
+                    timestamp="",
+                    source="system",
+                    type="checkpoint",
+                    content=entry.summary,
+                    meta={"cwd": entry.cwd},
+                )
+            )
+        elif entry_type == "system":
+            sys_content = entry.content or ""
+            if isinstance(sys_content, list):
+                sys_content = "".join(getattr(b, "text", str(b)) for b in sys_content)
+            else:
+                sys_content = str(sys_content)
+            events.append(
+                NormalizedEvent(
+                    event_id=entry.uuid,
+                    timestamp=entry.timestamp,
+                    source="system",
+                    type="system",
+                    content=sys_content,
+                    meta={"subtype": getattr(entry, "subtype", None), "cwd": entry.cwd},
+                )
+            )
+        elif entry_type == "ai-title":
+            events.append(
+                NormalizedEvent(
+                    event_id=f"title_{entry.sessionId}",
+                    timestamp="",
+                    source="system",
+                    type="system",
+                    content=entry.aiTitle or "",
+                )
+            )
+
+    raw_events = [
+        NormalizedRawEntry(line_no=raw.line_no, type=raw.type, raw=raw.raw)
+        for raw in transcript.raw_entries
+    ]
+
+    return NormalizedSession(
+        session_id=session_id,
+        source_file=transcript.source,
+        events=events,
+        raw_events=raw_events,
+    )
