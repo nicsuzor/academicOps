@@ -47,6 +47,8 @@ An automation framework for academic work, built as a Claude Code plugin.
 
 The framework improves as a side-effect of doing normal work. When agents hit friction, they file it via `/learn`. Findings become tasks. Tasks get prioritised. Instructions get better. The system compounds.
 
+For the full picture — every component, exactly **what triggers movement between them**, and where the security / review / QA mechanisms sit — see the flow-and-trigger map: [`specs/FLOW-MAP.md`](specs/FLOW-MAP.md).
+
 ## Five parts
 
 Strip away the tooling and academicOps reduces to five things, each holding up the one after it.
