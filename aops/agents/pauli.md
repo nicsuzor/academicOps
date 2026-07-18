@@ -11,6 +11,8 @@ skills:
   - remember
   - graph-maintenance
 tools:
+  - Skill
+  - Agent
   - Read
   - Write
   - Edit

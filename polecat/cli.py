@@ -74,24 +74,23 @@ def get_env_forwards():
         "NO_COLOR",
         "CI",
         "NONINTERACTIVE",
-        
-		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
-		"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP",
-		"ANTIGRAVITY_ENABLE_TELEMETRY",
-		"CLAUDE_CODE_ENABLE_TELEMETRY",
-		"CLAUDE_CODE_ENHANCED_TELEMETRY_BETA",
-		"ENABLE_BETA_TRACING_DETAILED",
-		"BETA_TRACING_ENDPOINT",
-		"OTEL_METRICS_EXPORTER",
-		"OTEL_LOGS_EXPORTER",
-		"OTEL_TRACES_EXPORTER",
-		"OTEL_EXPORTER_OTLP_ENDPOINT",
-		"OTEL_EXPORTER_OTLP_PROTOCOL",
-		"OTEL_RESOURCE_ATTRIBUTES",
-		"OTEL_LOG_USER_PROMPTS",
-		"OTEL_LOG_RAW_API_BODIES",
-		"OTEL_LOG_TOOL_DETAILS",
-		"OTEL_LOG_ASSISTANT_RESPONSES"
+        "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+        "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP",
+        "ANTIGRAVITY_ENABLE_TELEMETRY",
+        "CLAUDE_CODE_ENABLE_TELEMETRY",
+        "CLAUDE_CODE_ENHANCED_TELEMETRY_BETA",
+        "ENABLE_BETA_TRACING_DETAILED",
+        "BETA_TRACING_ENDPOINT",
+        "OTEL_METRICS_EXPORTER",
+        "OTEL_LOGS_EXPORTER",
+        "OTEL_TRACES_EXPORTER",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "OTEL_RESOURCE_ATTRIBUTES",
+        "OTEL_LOG_USER_PROMPTS",
+        "OTEL_LOG_RAW_API_BODIES",
+        "OTEL_LOG_TOOL_DETAILS",
+        "OTEL_LOG_ASSISTANT_RESPONSES",
     ]
     for k in standard_keys:
         if os.environ.get(k):
@@ -363,7 +362,31 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 "--conversation",
             }
             if agent_cmd == "agy" and not agy_prompt_flags.intersection(extra_args):
-                inner_cmd.extend(["--prompt-interactive", extra_args[0], *extra_args[1:]])
+                # Autonomous dispatch (seeded `/pull <task>` via -t, or any
+                # one-shot prompt): run headless with `--print` so agy runs the
+                # full agentic loop and then EXITS — the --rm container tears
+                # down and the tmux session ends. The previous default,
+                # `--prompt-interactive`, ran the loop but then sat idle at a
+                # ready prompt forever, leaking a live container that looks like
+                # progress (aops_5e7c6cc0 — the P2 dispatch reproduced it after
+                # completing all its work + opening a PR, 2026-07-18).
+                #
+                # agy's `--print-timeout` defaults to 5m, which guillotines any
+                # real agentic task; raise it to a generous, env-tunable ceiling
+                # (POLECAT_AGY_PRINT_TIMEOUT) so long tasks complete but a wedged
+                # session still cannot idle unbounded. Callers who genuinely want
+                # an interactive/supervised session pass `-i`/`--prompt-interactive`
+                # explicitly (honoured by the flag-intersection check above).
+                agy_print_timeout = os.environ.get("POLECAT_AGY_PRINT_TIMEOUT", "60m")
+                inner_cmd.extend(
+                    [
+                        "--print",
+                        "--print-timeout",
+                        agy_print_timeout,
+                        extra_args[0],
+                        *extra_args[1:],
+                    ]
+                )
             else:
                 inner_cmd.extend(extra_args)
 

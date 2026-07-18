@@ -43,19 +43,70 @@ First, claim the Epic through the Personal Knowledge Base (PKB) tool: `claim_tas
 
 4. Dispatch workers
 
-To launch a polecat worker, use:
+The polecat launch command is the same everywhere — only the _transport_ to the
+Docker host changes. First figure out **where you are relative to the Docker
+daemon that runs polecats** (the WSL host `nicwin`), then pick the matching form.
+
+**Detect your context** (run this — it decides the form for you):
 
 ```bash
-ssh wsl 'tmux new-session -d -s pc-<id> \
-  "uv run --project $AOPS $AOPS/polecat/cli.py \
-   run agy -p <project> -t <id> 2>&1 | tee /tmp/pc-<id>.log"'
+# You can dispatch LOCALLY (no ssh) iff the polecat CLI is on this filesystem
+# AND you can reach a Docker daemon from here.
+test -f "$AOPS/polecat/cli.py" && docker info >/dev/null 2>&1 && echo LOCAL || echo REMOTE
 ```
 
-- `-t <id>` seeds `/pull <id>` as the container's initial prompt.
+- `LOCAL` → you are **on the WSL host**, or **inside a container with the host's
+  Docker socket mounted (Docker-out-of-Docker / DooD)**. In both cases `polecat
+  run` spawns _sibling_ containers on the host daemon. Dispatch directly — **do
+  not** wrap in `ssh wsl`.
+- `REMOTE` → you are on a different host (e.g. a cloud Cowork box). Reach the WSL
+  host over SSH.
+
+The launch command (substitute one of the three transports):
+
+```bash
+# The inner command (identical in all three contexts):
+#   tmux new-session -d -s pc-<id> \
+#     "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+#      2>&1 | tee /tmp/pc-<id>.log"
+
+# --- Context A: REMOTE (another host) ---
+ssh wsl 'tmux new-session -d -s pc-<id> \
+  "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+   2>&1 | tee /tmp/pc-<id>.log"'
+
+# --- Context B: LOCAL, on the WSL host itself ---
+tmux new-session -d -s pc-<id> \
+  "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+   2>&1 | tee /tmp/pc-<id>.log"
+
+# --- Context C: LOCAL, already inside a WSL Docker container (DooD) ---
+# Same as B — you are already on the daemon side; the mounted docker.sock makes
+# `polecat run` launch sibling containers. Do NOT ssh (there is usually no
+# `wsl` host alias inside the container, and no interactive SSH agent).
+tmux new-session -d -s pc-<id> \
+  "uv run --project $AOPS $AOPS/polecat/cli.py run agy -p <project> -t <id> \
+   2>&1 | tee /tmp/pc-<id>.log"
+```
+
+- `-t <id>` seeds `/pull <id>` as the container's initial prompt. For `agy` this
+  is delivered headless via `--print` so the worker **runs the task and exits**
+  (the container tears down on completion). Do not add `-i`/`--prompt-interactive`
+  for autonomous dispatch — that leaves agy idling at a ready prompt forever, a
+  live container that looks like progress but never finishes (bug `aops_5e7c6cc0`).
 - `-p <project>` is the task's own target repo — check the task, not the epic's
   `project` field; they can differ.
 
-Confirm the session came up (`tmux ls | grep pc-`) and is executing (`tail /tmp/pc-<id>.log`).
+**Transport gotchas:**
+
+- `ssh wsl` needs a working SSH key. In a non-interactive session the 1Password
+  (or any agent-backed) key may refuse to sign (`agent refused operation`) — if
+  the detect step says `LOCAL`, prefer that and skip SSH entirely.
+- The `tee /tmp/pc-<id>.log` path is on **whichever host the command runs on**
+  (the WSL host for A/B, the container's own `/tmp` for C). Read the log from the
+  same side you launched it.
+
+Confirm the session came up (`tmux ls | grep pc-`) and is executing (`tail /tmp/pc-<id>.log`; for agy, `docker ps` should show a fresh `aops-crew` container and the task status should flip to `in_progress` once `/pull` claims it).
 
 ## Verify by side-effect, never by self-report
 
