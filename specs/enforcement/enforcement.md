@@ -61,7 +61,7 @@ A model-based (not deterministic) tool-call classifier built into the harness, c
 
 `claim_task` in, `release_task` out. A completion claim must carry independent-verification evidence or a stated failure reason — this is where the framework actually holds agents accountable, because it binds to the claim act rather than to session mechanics. Full contract: [task-contract.md](task-contract.md); the universal claim-evidence shape every boundary reads: [evidence-contract.md](evidence-contract.md).
 
-### 5. Task-boundary review — three lenses, reviewer ≠ executor
+### 5. Task-boundary review — three pauli-specified lenses
 
 - **pauli** (pre-hoc) — the premise standard: the idea is sound, elegant, and strongly aligned with the project's strategic aims when evaluated in the full context. The `decompose` skill (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md)) always emits this as a standing, early-blocking task node **at decomposition time** — the rest of the epic depends on it clearing. The former standalone dispatch-time "premise gate" (a two-judge hard-refuse ceremony run at `/pull`/`/dispatch`) is retired; decomposition carries this judgment instead, and dispatch surfaces trust the planner's decomposition rather than re-judging it.
 - **rbg** — rules were followed: boundary review of the task contract and handback only (inputs/outputs), never the transcript. Always emitted as a standing task node blocking epic acceptance.
@@ -69,9 +69,9 @@ A model-based (not deterministic) tool-call classifier built into the harness, c
 
 `decompose` plans only: it emits these three tasks and their `depends_on` wiring into the graph; it never dispatches or runs them itself. Review depth (per-chunk subtasks vs. one consolidated pass at the final PR) is the planner's call at decomposition time, based on the work's risk and blast radius. Full shape: [workflow.md](workflow.md).
 
-### 6. Workflow templates — a prose component library
+### 6. Workflow components for assembly
 
-A set of composable gate _components_ — prose, not code — that a decomposition can wire into a plan: [`aops/workflows/gates/`](../../aops/workflows/gates/) (`outbound-review`, `verification`, `handover`, `constraint-check`, `qa`, `human-approval`). Each names its own stakes, door-type (one-way/two-way), and category. The `decompose` skill selects and composes these at planning time rather than every task inventing its own review ceremony.
+A set of composable gate _components_ — prose, not code — that an assembled workflow can wire into a pipeline: [`aops/workflows/gates/`](../../aops/workflows/gates/) (`outbound-review`, `verification`, `handover`, `constraint-check`, `qa`, `human-approval`). Each names its own stakes, door-type (one-way/two-way), and category. Workflows assemble these at generation time rather than every task inventing its own review ceremony.
 
 ### 7. Sign-off — the workflow-level instantiation
 
@@ -105,4 +105,4 @@ The framework's prior in-session hook/gate engine — a dedicated `GateConfig` f
 - [sign-off.md](sign-off.md) — the workflow-level review, instantiated today as the git PR pipeline.
 - [evidence-contract.md](evidence-contract.md) — the single universal claim-evidence shape every boundary above reads.
 - [auto-mode-classifier.md](auto-mode-classifier.md) — design statement for Claude Code's native per-action classifier.
-- [`aops/workflows/gates/`](../../aops/workflows/gates/) — the prose workflow-gate component library composed at decomposition time.
+- [`aops/workflows/gates/`](../../aops/workflows/gates/) — the prose workflow-gate component library for assembled workflows.

@@ -9,14 +9,14 @@ agent: "aops:pauli"
 Every session exit runs through this skill. Pick a path with the first word after
 `/dump`; a bare `/dump` defaults to **bail**.
 
-| Path               | Invocation    | When                                                | Commits/PR? | Task status                            |
-| ------------------ | ------------- | --------------------------------------------------- | ----------- | -------------------------------------- |
-| **Bail** (default) | `/dump`       | You need a clean context NOW                        | No          | Resume task created/updated, left open |
-| **Full**           | `/dump full`  | The task is genuinely done                          | Yes         | Released via `release_task`            |
-| **Pause**          | `/dump pause` | Work is mid-flight — waiting on the user or blocked | No          | Stays `in_progress`, checkpointed      |
+| Path               | Invocation      | When                                                   | Commits/PR?   | Task status                                       |
+| ------------------ | --------------- | ------------------------------------------------------ | ------------- | ------------------------------------------------- |
+| **Bail** (default) | `/dump`         | You need a clean context NOW                           | No            | Resume task created/updated, left open            |
+| **Full**           | `/dump full`    | The task is genuinely done                             | Yes           | Released via `release_task`                       |
+| **Pause**          | `/dump pause`   | Work is mid-flight — waiting on the user or blocked    | No            | Stays `in_progress`, checkpointed                 |
+| **Partial**        | `/dump partial` | The worker refused some choices but attempted the rest | Yes (if code) | Released via `release_task` with status `partial` |
 
-Do not guess which path fits. If the task isn't actually finished, use **bail** or
-**pause** — never **full**.
+Do not guess which path fits. If the task isn't actually finished, use **bail**, **pause**, or **partial** — never **full**.
 
 ## Path: Bail (default) — Emergency Handover, Fast
 
@@ -122,6 +122,30 @@ Finally, output a final summary:
 ##### 8. Exit
 
 Terminate execution immediately after the handover or thread pickup blocks. Do not add trailing text.
+
+## Path: Partial — Refuse and Attempt
+
+Use this path when following the unified worker contract: you attempted everything you could derive with confidence, but refused decisions that weren't derivable from the brief and axioms. You are handing back a partially completed task as a first-class terminal state.
+
+### 1. Checkpoint and Commit
+
+Commit any code you successfully wrote. Push if working on a branch.
+If the deliverable is a PR, ensure it's opened as a draft PR.
+
+### 2. Update the Task
+
+Call `mcp__services__pkb__update_task` on the bound task:
+
+- Set `session_id` to `$AOPS_SESSION_ID`.
+- Append a `## Deliberately deferred` section to the task body, listing explicitly the decisions you refused to make and the corresponding acceptance criteria that remain unmet.
+
+### 3. Release Task
+
+Call `release_task` with `id`, `status="partial"`, `session_id="$AOPS_SESSION_ID"`, and a `release_summary` describing what was completed and what was refused. Follow-up tasks for the deferred work must be filed and linked via `follow_up_tasks`.
+
+### 4. Output Blocks
+
+Emit the standard completion blocks as in the Full path, noting the `partial` status and pointing to the deferred issues. Terminate execution immediately.
 
 ## Path: Pause — Hand Back, Work Still In Progress
 

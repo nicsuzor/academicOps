@@ -70,8 +70,8 @@ belongs (and doesn't) in each element, is `references/brief-template.md`. In bri
    ids, file paths, prior decisions). Withhold the epic's broader strategic reasoning — extraneous
    strategy distorts tactical judgment, it doesn't sharpen it.
 3. **Constraints** — left/right limits: what must not change, what's out of bounds.
-4. **Autonomy + non-goals** — what the executor decides alone, and what's explicitly not theirs to
-   do.
+4. **Autonomy + non-goals** — what the executor decides alone, what's explicitly not theirs to
+   do, and explicit permission to follow the worker contract: attempt everything derivable, refuse choices you cannot confidently make, and hand back `partial`.
 5. **Done + observable acceptance criteria** — set now, at design time, not left for the executor to
    infer. Frame the _outcome to verify_, not the edit you imagine produces it (never prescribe file
    paths, function names, or a step list — the one exception is a READ-DO sequence for genuinely

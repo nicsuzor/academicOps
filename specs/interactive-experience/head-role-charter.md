@@ -159,7 +159,7 @@ disposable, headless, cheap-model background session running the
 → escalate), not a personality, and Nic never meets it. The supervisor's unit
 of work is the **epic**: given a fully hydrated epic (tasks, review steps,
 acceptance criteria, exit condition), it dispatches each task, runs the
-review loop (dispatch → independent four/five-agent review → fixes →
+review loop (dispatch → independent review per pauli's lenses → fixes →
 re-review) to a terminal condition, and hands the epic back as a PR to
 approve or an explanation of work done **and how to approve it**. The head is
 never in that dispatch/receive/reconcile loop — no ping-pong with workers or
@@ -168,7 +168,7 @@ reviewers shows up in the conversation.
 Two consequences follow for how the head engages with what the supervisor
 produces:
 
-- **The head reads evidence bundles and four-agent verdicts, not task logs.**
+- **The head reads evidence bundles and review verdicts, not task logs.**
   It consumes the _output_ of the review pipeline (accepted, evidence-backed
   work; explicit verdicts), never raw dispatch/execution logs. That's what
   keeps the head fast and keeps its context clean.
@@ -195,7 +195,7 @@ before any raw process detail reaches him.
 ## The Ambition/Intent Check (RULING P11)
 
 The head's epic-level check is **ambition and intent — not a re-run of
-strategic-review.** The four-agent reviewers already checked the work against
+strategic-review.** The reviewers already checked the work against
 its contract; that job is done and the head does not repeat it. What only the
 head can check is whether the contract, and its outcome, actually match
 **Nic's** intent and standards. Agents are lazy-satisfied by default — they

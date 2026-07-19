@@ -77,23 +77,7 @@ A chunk passing all of 1, 2, 2b, 3, 4 is `partial`. A chunk failing any is eithe
 
 ## 5. Eligibility — a composable workflow rule (re-cut 2026-07-19; supersedes the NARROW two-tier fork)
 
-The original fork was resolved to **NARROW**: epics kept a mandatory heavy gate, single-session dispatches could take a thin brief. The 2026-07-19 rulings (R1/R3/R4, [[note_ad2ed3d2]]) dissolve that two-tier machinery — an "epic" is just a task with children, with no special gating machinery. What replaces it:
-
-- **Thin-brief/`partial` eligibility is one of the composable rules pauli records when ASSEMBLING the task's workflow at decomposition** (the current decompose skill, `aops/skills/decompose/SKILL.md`). An eligible task ships a **thin brief** (intent + AC, no implementation steps; per `authoring-discipline.md`), the worker plans in-flight, and may stop at `partial`. This is the tight-loop path.
-- Heavy work is not routed through a separate mandatory epic gate; it gets the **level of independent review pauli specifies at decomposition** (R3), assembled into the same workflow.
-- The anti-thrash rationale survives, restated: **tasks must be FULLY-SPEC'D before claim** (R1). The Polecat-#3 failure mode (workers thrashing on under-specified work) is prevented by the fully-spec'd bar, not by epic-special gating.
-
-**Guardrail (principle preserved intact) — eligibility is an auditable decision recorded by someone other than the worker, NOT worker self-declaration.**
-The Stage-3 seam: `uncertainty < 0.3 + single component` is gameable if it reads worker-set frontmatter. **Definition of the auditable signal:** thin-brief/`partial` eligibility is a property the **decomposing agent (pauli) decides and records** when assembling the workflow, alongside the effort estimate. Concretely:
-
-- Eligibility is recorded in the **promotion log entry** — an explicit `thin-brief-eligible: true` decision by the recording agent, auditable in the task's promotion history.
-- The signal is **the recorded eligibility decision + a single-session effort estimate set by the recorder, not the worker.** A worker cannot set its own task to thin-brief-eligible by editing frontmatter `uncertainty`/`effort`; those fields are advisory inputs to the _recorder's_ decision, not the decision itself.
-- A worker that receives a thin brief but discovers the work is actually multi-session scale does NOT self-authorize `partial`-and-stop on the whole thing — it ships the genuinely-complete sub-leaf (if any) and **bounces the rest up** with the corrected scope estimate, so decomposition re-fires at the right altitude. Mis-set frontmatter cannot bypass the rule because it keys off the _recorder's_ log, not the worker's frontmatter.
-
-**Documented alternatives (so a Nic redirect is localized):**
-
-- **REPLACE** — thin-brief/`partial` becomes the default for _all_ dispatches; the eligibility rule and pauli-specified review levels are removed. Rejected: re-opens the Polecat-#3 failure mode (unplanned workers thrash on under-specified work) and the fully-spec'd bar exists precisely to prevent that. A redirect to REPLACE = delete the eligibility rule + guardrail in §5.
-- **COEXIST** — both paths run in parallel on every task (full decomposition _and_ thin brief). Rejected: double-pays the task (the exact "stop paying twice" the thesis forbids) and doubles review load against the [[kb-524d60d7]] ceiling. A redirect to COEXIST = make both the assembled-workflow outputs and thin-brief mandatory simultaneously.
+This section is superseded by the unified worker contract and the 2026-07-19 rulings; thin-brief/`partial` eligibility and review depth are now composable rules recorded at decomposition. See [[note_ad2ed3d2]] and the updated workflow spec.
 
 ## 6. Q3 — net review load + the anti-sprawl backstop
 
