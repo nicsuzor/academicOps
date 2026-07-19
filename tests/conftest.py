@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 # that need a different config monkeypatch it per-test via the autouse
 # `ensure_test_environment` fixture below.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_POLECAT_EXAMPLE = _REPO_ROOT / "polecat" / "defaults" / "polecat.yaml.example"
+_POLECAT_EXAMPLE = _REPO_ROOT / "aops-jr" / "polecat" / "defaults" / "polecat.yaml.example"
 if _POLECAT_EXAMPLE.exists():
     os.environ["AOPS_POLECAT_CONFIG"] = str(_POLECAT_EXAMPLE)
 
@@ -53,6 +53,7 @@ CLAUDE_BASE_ARGS = [
     "--max-turns",
     TEST_CLAUDE_MAX_TURNS,
 ]
+
 
 def build_claude_agent_cmd(
     prompt: str,
@@ -1478,9 +1479,9 @@ def claude_docker(tmp_path):
             "No Claude auth: neither ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, nor OAuth credentials found"
         )
 
-    # Import _build_docker_cmd from polecat
+    # Import _build_docker_cmd from polecat (now in the aops-jr coordinator package)
     repo_root = get_repo_root()
-    polecat_dir = str(repo_root / "polecat")
+    polecat_dir = str(repo_root / "aops-jr" / "polecat")
     if polecat_dir not in sys.path:
         sys.path.insert(0, polecat_dir)
 
