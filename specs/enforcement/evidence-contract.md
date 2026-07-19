@@ -75,7 +75,7 @@ Concretely:
   never isolated, the command was never run, the file was never opened — is a
   contract violation, not a technicality. See `CONFOUND CHECK: NOT RUN` below.
 - **A self-graded ritual does not satisfy this contract.** A worker asserting
-  its own success in the prescribed format, unread by an independent reviewer,
+  its own success in the prescribed format, unread by the workflow's reviewer,
   is not a boundary check — it is the worker completing a form. The point of
   the six-field shape is to make a claim _cheap to verify_, not to make
   verification optional. Presence of the form is what makes the check fast;

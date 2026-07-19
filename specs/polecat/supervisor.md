@@ -43,9 +43,8 @@ Placement heuristics:
 - **Isolation**: repo-scoped work that mutates files benefits from a **polecat**'s
   isolated workspace and branch; the PR is the code-surface instance of the
   deliverable, not a routing determinant.
-- **Review steps**: carry a pauli-specified lens and independence requirement set
-  at decomposition, and are placed on any surface satisfying WHO-independence —
-  never the worker's own session.
+- **Review steps**: carry a pauli-specified lens set at decomposition, and run per the assembled
+  workflow (see [[specs/enforcement/workflow.md]]).
 - **Findings returned inline**: research or synthesis whose output the current
   conversation needs suits a **local subagent** (a wait-cadence choice).
 - **User in the loop (preference, not a rule)**: route inline via `/pull` when a

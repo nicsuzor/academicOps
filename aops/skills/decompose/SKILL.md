@@ -1,6 +1,6 @@
 ---
 name: decompose
-description: First-pass decomposition — when a situated task comes due, cut it into an unexploded subtask DAG, assemble the task's workflow from composable rule components, specify the required independent review, and by default emit standing pauli/rbg/marsha review tasks wired as blocking dependencies. Structure and process only; no delegation briefs, no dispatch. Fires when a situated task (an "epic" is just a task with children) reaches the front of the queue, before any dispatch.
+description: First-pass decomposition — when a situated task comes due, cut it into an unexploded subtask DAG, assemble the task's workflow from composable rule components, specify the task's review steps, and by default emit standing pauli/rbg/marsha review tasks wired as blocking dependencies. Structure and process only; no delegation briefs, no dispatch. Fires when a situated task (an "epic" is just a task with children) reaches the front of the queue, before any dispatch.
 context: fork
 agent: "aops:pauli"
 ---
@@ -64,9 +64,8 @@ acceptance) and, per subtask, the **inner** workflow (how one task proceeds to d
 separate research path — a literature review, a paper critique, and a code change are the same
 contract with different assembled workflows.
 
-Part of assembly is **specifying the required independent review** (doctrine:
-`../../../specs/enforcement/workflow.md`; this skill is its operational home). Independence is about WHO —
-never the executing worker's own session — not where. Match the lens to the work type: code → an
+Part of assembly is **specifying the task's review steps**, chosen by pauli from base-workflow templates (doctrine:
+`../../../specs/enforcement/workflow.md`; this skill is its operational home). Match the lens to the work type: code → an
 independent polecat session spins the container and validates (marsha lens); textual/rules
 compliance → dispatch-layer subagents (rbg lens); research → citation-verification /
 methodological-soundness lenses. Specify the altitude (below), and emit the corresponding review

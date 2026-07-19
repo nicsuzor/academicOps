@@ -79,17 +79,9 @@ carries checkable evidence or a stated failure reason, and the reviewer
 checks the actual criterion was met, not merely that the right fields were
 filled in (see [Substance over form](evidence-contract.md#substance-over-form)).
 
-### Independence — who, never where
+### Review composition
 
-Steps 3–5 must run under an identity independent of the worker's own
-session. Independence is about _who_ reviews, never _where_ the review runs:
-any surface satisfying the identity requirement qualifies — an independent
-polecat session that spins the container and validates with the marsha lens
-for code changes, or dispatch-layer subagents running the rbg lens for
-textual/rules compliance. Proof is ALWAYS written to the PKB, typically as a
-review task plus receipt. GitHub/GHA is merely one _optional_ executor of
-code review — currently manual and deferred — never the review system
-itself.
+Steps 3–5 are assembled by pauli from composable rules at decomposition time. Review composition (the lenses, the depth, and whether reviewers are independent from authors) is one design consideration among several, and is structural rather than an agent-facing instruction. Base workflows (living as PKB templates) set the default standard for these choices and evolve over time. Any surface satisfying the assembled workflow's requirements qualifies as an executor — an independent polecat session that spins the container and validates with the marsha lens for code changes, or dispatch-layer subagents running the rbg lens for textual/rules compliance. Proof is ALWAYS written to the PKB, typically as a review task plus receipt. GitHub/GHA is merely one _optional_ executor of code review — currently manual and deferred — never the review system itself.
 
 ### Recursion
 
@@ -116,15 +108,14 @@ contracts:
 - **Low-risk / narrow blast radius** — workers self-assess against the
   exit-reflection checklist and hand back separate commits under one shared
   branch; a single consolidated boundary-check + QA-around pass runs once —
-  an independent review (per [Independence](#independence--who-never-where))
-  whose receipt lands in the PKB. The final PR (the `cohesive-pr-epic`
+  a review pass whose receipt lands in the PKB. The final PR (the `cohesive-pr-epic`
   mechanism above) is the PR-surface instance of that pass, and the GHA PR
   pipeline is one optional executor of it.
 
-The only invariant across the whole range: a complete, independent set of
-steps 3–5 runs before a workflow is marked done, regardless of how pauli
+The only invariant across the whole range: a complete set of
+steps 3–5 runs per the assembled workflow before a workflow is marked done, regardless of how pauli
 chose to distribute it. A unit may also legally terminate `partial` (see
 [spec-partial-work-tight-loop-delivery.md §4](../polecat/spec-partial-work-tight-loop-delivery.md#4-the-partial-terminal-state)):
 steps 3–5 then review the shipped chunk plus its declared-deferred
 remainder, and draft → ready-for-the-principal still requires the
-pauli-specified independent review.
+pauli-specified review.

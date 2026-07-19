@@ -7,8 +7,7 @@ contract.
 
 Cutting on **responsibility boundaries first** means the DAG's shape follows who's accountable, not
 an arbitrary task-size heuristic — an author subtask and its reviewer subtask are structurally
-distinct even if they'd fit in one session together, because self-review doesn't bind
-(evaluator-optimizer bias). Only once boundaries are drawn does **session-sizing** apply within each
+distinct even if they'd fit in one session together, because the review step is a distinct workflow stage. Only once boundaries are drawn does **session-sizing** apply within each
 boundary — merge micro-steps a single owner would just relay, split anything too large for one
 sitting. **Dependencies** come last and are read off the boundaries already drawn, not invented
 independently — if two subtasks have no true data dependency, they're parallel even if one "feels"
@@ -43,7 +42,7 @@ An epic that spans a librarian pass, a strategist pass, and three parallel autho
 | A3 | Build part Y       | Owner-assignable, session-sized, no data dep on A2 | two-way     | A1         |
 | A4 | Assemble + open PR | Integrate A2+A3, open the PR                       | **one-way** | A2, A3     |
 
-**Epic review steps** (stated once, _not_ DAG rows): independent review of the assembled work before
+**Epic review steps** (stated once, _not_ DAG rows): review of the assembled work per the epic's workflow before
 acceptance (rbg · pauli · marsha → james), and human sign-off before the one-way merge. Both are
 enforced **outside the session** — by the supervisor's review loop and the PR/merge pipeline — never
 as a blocking node in this DAG.

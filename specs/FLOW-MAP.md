@@ -13,7 +13,7 @@ component classes, and — the load-bearing part — **what triggers movement be
 where the security / review / QA mechanisms sit. This is a **state** doc: current truth stays
 accurate, and the adopted **target architecture** (the FACE → DISPATCHER → WORKERS → REVIEW
 layering, ratified 2026-07-19 and refined the same day by Nic's rulings, `note_ad2ed3d2`: unified
-worker contract, pauli-specified independent review, any-deny-wins accepted) is carried alongside
+worker contract, pauli-specified review, any-deny-wins accepted) is carried alongside
 it, with every missing piece honestly marked.
 For _why_ enforcement is shaped this way (the "agents all the way down" design), read the spec:
 [`specs/enforcement/enforcement.md`](enforcement/enforcement.md). One fact, one home — where a
@@ -55,11 +55,10 @@ _within_ a single dispatcher session, with outcomes still recorded to the PKB:
    in-container crew: do the work + anti-laziness QA before the PR goes up (○ planned — these
    instructions do not exist today, smeared across the dispatch skill and
    [`supervisor.md`](polecat/supervisor.md)). Because the crew runs inside the worker's own
-   container, it can never discharge the layer-4 independence requirement.
-4. **REVIEW — pauli-specified independence** ([`workflow.md`](enforcement/workflow.md) is the
-   doctrine home): at decomposition, pauli specifies the required level of **independent** review
-   for the assembled workflow. Independence is about **who** reviews (never the worker's own
-   session), not where. Executors are WHO-independent surfaces only: an independent polecat
+   container, it is a separate stage from the assembled workflow's review step.
+4. **REVIEW — pauli-specified review** ([`workflow.md`](enforcement/workflow.md) is the
+   doctrine home): at decomposition, pauli specifies the review steps for the assembled workflow.
+   Executors run per the assembled workflow: an independent polecat
    session validating a code change (marsha lens); dispatch-layer subagents for textual/rules
    compliance (rbg lens). Proof is always written to the PKB — typically a review task + receipt.
    The GHA PR pipeline is one **optional executor, currently deferred** — approval stays manual
@@ -99,8 +98,8 @@ flowchart TD
         CREW["in-container crew — worker-internal QA:<br/>do the work + anti-laziness check before PR ○"]
     end
 
-    subgraph REV["REVIEW — reviewer never the executor"]
-        SREV["pauli-specified independent review —<br/>premise · rbg rules · marsha QA"]
+    subgraph REV["REVIEW — review per pauli's assembled workflow"]
+        SREV["pauli-specified review —<br/>premise · rbg rules · marsha QA"]
         GHA["optional GHA executor (deferred):<br/>PR pipeline ○ dormant"]
     end
 
@@ -261,7 +260,7 @@ mechanism. (`workflow.md`, `specs/polecat/supervisor.md`.)
 | `aops-strict` deny gates (task-bound, handover)                                                                   | code verdict          | `Stop` on strict-equipped surfaces                                                               | ○ planned — yes, deny                            |
 | Task-graph boundary (`claim`→`release`)                                                                           | accountability        | at claim-in and release-out                                                                      | convention today; deny gate when strict lands    |
 | Dispatcher supervision loop                                                                                       | agent judgment        | on every sync-worker handback                                                                    | ⚠ yes by re-dispatch, instruction-led            |
-| In-container crew QA — **worker-internal QA, not review** (layer 3; never satisfies pauli-specified independence) | agent judgment        | inside the polecat, before the PR goes up                                                        | ○ planned — yes, PR doesn't go up                |
+| In-container crew QA — **worker-internal QA, not review** (layer 3; the review step is a separate workflow stage) | agent judgment        | inside the polecat, before the PR goes up                                                        | ○ planned — yes, PR doesn't go up                |
 | pauli / rbg / marsha lenses                                                                                       | agent judgment        | premise (pre-hoc); rules + QA (post-hoc) — as specified at decomposition, uniform across cadence | yes — block epic acceptance                      |
 | Workflow gate templates                                                                                           | prose components      | assembled into a plan at decomposition time                                                      | via the plan they assemble into                  |
 | GHA PR pipeline (optional executor, deferred / sign-off)                                                          | workflow-level review | on PR                                                                                            | yes when active — required checks + human click  |
