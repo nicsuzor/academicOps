@@ -20,25 +20,26 @@ DIST_REPO := $(DIST_REPO_SLUG)@dist
 DIST_REPO_URL := https://github.com/$(DIST_REPO_SLUG)
 
 # Extension names. The live `make install` flow no longer installs the
-# deprecated Gemini CLI extension (see install / install-windows). Exactly two
-# plugins ship: aops (core) + aops-tools. `aops-core`/`aops-pkb`/`aops-extras`
-# are gone from source (folded into aops/ or never existed here) and are no
-# longer installed by anything in this file.
+# deprecated Gemini CLI extension (see install / install-windows). Three
+# plugins ship: aops (core) + aops-tools + aops-jr (coordinator). `aops-core`/
+# `aops-pkb`/`aops-extras` are gone from source (folded into aops/ or never
+# existed here) and are no longer installed by anything in this file.
 CLAUDE_TOOLS_PLUGIN_NAME := aops-tools@academicOps
+CLAUDE_JR_PLUGIN_NAME := aops-jr@academicOps
 CLAUDE_AOPS_PLUGIN_NAME := aops@academicOps
 CLAUDE_AOPS_MARKETPLACE := academicOps
 # The full set of Claude plugins a live `make install` must successfully install.
 # install-claude/install-windows loop over this list and HALT on the first
 # failure — no per-plugin soft-fail exceptions.
-CLAUDE_PLUGINS := $(CLAUDE_AOPS_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME)
+CLAUDE_PLUGINS := $(CLAUDE_AOPS_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME) $(CLAUDE_JR_PLUGIN_NAME)
 # aops-ts is intentionally NOT auto-installed by any target here: it's an
 # opt-in Tailscale bring-up hook for remote/cloud sessions (specs/build-and-install.md),
 # and joining the tailnet / shipping transcripts should stay an explicit
 # per-machine choice. Install it by hand: `claude plugin install aops-ts@academicOps`.
 
 # Only the `aops` plugin declares the `pkb_mcp_url` userConfig option (see
-# aops/templates/aops.template.json) — aops-tools has no userConfig at all, so
-# `--config` must never be passed for it (the CLI validates --config keys
+# aops/templates/aops.template.json) — aops-tools and aops-jr have no
+# userConfig at all, so `--config` must never be passed for them (the CLI validates --config keys
 # against the target plugin's schema and errors on an unknown key). Each
 # install loop below therefore checks the loop variable `$$p` against these
 # names and only then forwards a set $$PKB_MCP_URL as the aops plugin's
@@ -54,10 +55,11 @@ CLAUDE_PLUGINS := $(CLAUDE_AOPS_PLUGIN_NAME) $(CLAUDE_TOOLS_PLUGIN_NAME)
 CLAUDE_LOCAL_MARKETPLACE := aops
 CLAUDE_LOCAL_AOPS_PLUGIN_NAME := aops@aops
 CLAUDE_LOCAL_TOOLS_PLUGIN_NAME := aops-tools@aops
-CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)
+CLAUDE_LOCAL_JR_PLUGIN_NAME := aops-jr@aops
+CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME) $(CLAUDE_LOCAL_JR_PLUGIN_NAME)
 
-# Cowork ships the SAME two plugins (aops + aops-tools, Claude-shaped builds) —
-# there is no separate cowork plugin build. They install from dist/cowork, a
+# Cowork ships the SAME plugins (aops + aops-tools + aops-jr, Claude-shaped
+# builds) — there is no separate cowork plugin build. They install from dist/cowork, a
 # self-contained LOCAL DIRECTORY marketplace assembled by scripts/build.py's
 # generate_cowork_dist. A directory source is REQUIRED for Cowork: its
 # RemotePluginManager.syncPlugins nukes github-source marketplaces on every
@@ -70,7 +72,8 @@ CLAUDE_LOCAL_PLUGINS := $(CLAUDE_LOCAL_AOPS_PLUGIN_NAME) $(CLAUDE_LOCAL_TOOLS_PL
 CLAUDE_COWORK_MARKETPLACE := academicOps-cowork
 CLAUDE_COWORK_AOPS_PLUGIN_NAME := aops@$(CLAUDE_COWORK_MARKETPLACE)
 CLAUDE_COWORK_TOOLS_PLUGIN_NAME := aops-tools@$(CLAUDE_COWORK_MARKETPLACE)
-CLAUDE_COWORK_PLUGINS := $(CLAUDE_COWORK_AOPS_PLUGIN_NAME) $(CLAUDE_COWORK_TOOLS_PLUGIN_NAME)
+CLAUDE_COWORK_JR_PLUGIN_NAME := aops-jr@$(CLAUDE_COWORK_MARKETPLACE)
+CLAUDE_COWORK_PLUGINS := $(CLAUDE_COWORK_AOPS_PLUGIN_NAME) $(CLAUDE_COWORK_TOOLS_PLUGIN_NAME) $(CLAUDE_COWORK_JR_PLUGIN_NAME)
 # aops-ts IS packaged in dist/cowork (cloud Cowork sessions need the tailnet
 # bring-up to reach the PKB MCP's tailnet-only URL) but — same as the CLI rule
 # above — it is NOT auto-installed locally; joining the tailnet stays an
@@ -114,8 +117,8 @@ help:
 	@echo "Live Installation (Install from remote releases):"
 	@echo "  make install        - Clean local installs, then install live plugins (Claude + agy) from the dist channel"
 	@echo "  make clean-local    - Remove local/dev installs + marketplace override (run before a live install)"
-	@echo "  make package-cowork - Build the Cowork dist + upload zips (dist/cowork/{aops,aops-tools}-vX.Y.Z.zip)"
-	@echo "  make install-cowork - Install aops + aops-tools for Cowork from the dist/cowork directory marketplace"
+	@echo "  make package-cowork - Build the Cowork dist + upload zips (dist/cowork/{aops,aops-tools,aops-jr}-vX.Y.Z.zip)"
+	@echo "  make install-cowork - Install aops + aops-tools + aops-jr for Cowork from the dist/cowork directory marketplace"
 	@echo "  make uninstall-cowork - Remove the Cowork install + its isolated 'academicOps-cowork' marketplace"
 	@echo "  make install-windows - (WSL only) Install into Windows-side Claude if present"
 	@echo "  make install-crontab - Setup background sync"
@@ -154,9 +157,11 @@ build-dev:
 	@echo "Validating Claude plugins..."
 	@command -v claude >/dev/null 2>&1 && claude plugin validate $(DIST_DIR)/aops-claude || echo "  (claude not on PATH, skipping validation)"
 	@command -v claude >/dev/null 2>&1 && claude plugin validate $(DIST_DIR)/aops-tools-claude || echo "  (claude not on PATH, skipping validation)"
+	@command -v claude >/dev/null 2>&1 && claude plugin validate $(DIST_DIR)/aops-jr-claude || echo "  (claude not on PATH, skipping validation)"
 	@echo "Verifying Antigravity plugins..."
 	@command -v agy >/dev/null 2>&1 && agy plugin validate $(DIST_DIR)/aops-antigravity || echo "  (agy not on PATH, skipping verification)"
 	@command -v agy >/dev/null 2>&1 && agy plugin validate $(DIST_DIR)/aops-tools-antigravity || echo "  (agy not on PATH, skipping verification)"
+	@command -v agy >/dev/null 2>&1 && agy plugin validate $(DIST_DIR)/aops-jr-antigravity || echo "  (agy not on PATH, skipping verification)"
 	@echo "✓ Build artifacts in $(DIST_DIR)"
 
 # Install local build artifacts directly into BOTH Claude Code and Antigravity
@@ -188,7 +193,7 @@ install-dev: build-dev
 import json, shutil, pathlib; \
 f = pathlib.Path.home() / '.claude/plugins/installed_plugins.json'; \
 data = json.load(open(f))['plugins'] if f.exists() else {}; \
-active = {p.split('@')[0] for p in ['$(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)', '$(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)']}; \
+active = {p.split('@')[0] for p in ['$(CLAUDE_LOCAL_AOPS_PLUGIN_NAME)', '$(CLAUDE_LOCAL_TOOLS_PLUGIN_NAME)', '$(CLAUDE_LOCAL_JR_PLUGIN_NAME)']}; \
 cache_root = pathlib.Path.home() / '.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETPLACE)'; \
 [shutil.rmtree(d) or print(f'  removed stale cache dir {d.name}') for d in (cache_root.iterdir() if cache_root.exists() else []) if d.is_dir() and d.name not in active] \
 "
@@ -284,7 +289,7 @@ clean-local:
 	@for p in $(CLAUDE_PLUGINS); do command claude plugin uninstall $$p >/dev/null 2>&1 || true; done
 	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
 	@# Cowork install (`@academicOps-cowork`, from `make install-cowork`) — the SAME
-	@# aops/aops-tools plugins under another marketplace name, so they'd double-load
+	@# aops/aops-tools/aops-jr plugins under another marketplace name, so they'd double-load
 	@# alongside the live install this clean precedes. NOTE: `make install` therefore
 	@# removes a Cowork install; re-run `make install-cowork` afterwards if this
 	@# machine uses Cowork.
@@ -292,7 +297,7 @@ clean-local:
 	@command claude plugin marketplace remove $(CLAUDE_COWORK_MARKETPLACE) >/dev/null 2>&1 || true
 	@rm -rf $(HOME)/.claude/plugins/cache/$(CLAUDE_LOCAL_MARKETPLACE) $(HOME)/.claude/plugins/cache/$(CLAUDE_AOPS_MARKETPLACE)
 	@command -v agy >/dev/null 2>&1 && for p in $(AGY_PLUGINS); do agy plugin uninstall $$p >/dev/null 2>&1 || true; done || true
-	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity"
+	@rm -rf "$(DIST_DIR)/aops-antigravity" "$(DIST_DIR)/aops-tools-antigravity" "$(DIST_DIR)/aops-jr-antigravity"
 	@# `agy plugin uninstall` only knows about plugins IT installed (via its own
 	@# copy-based `agy plugin install`); it has no record of any symlinks a prior
 	@# dev workflow may have dropped at these same paths pointing at
@@ -300,7 +305,7 @@ clean-local:
 	@# real agy-installed copy) so a stale/dangling dev link can never shadow or
 	@# collide with the live install-agy run that follows.
 	@for d in "$(HOME)/.gemini/config/plugins" "$(HOME)/.gemini/antigravity-cli/plugins"; do \
-		for p in aops aops-tools; do \
+		for p in aops aops-tools aops-jr; do \
 			[ -L "$$d/$$p" ] && rm -f "$$d/$$p" && echo "  removed stale dev symlink $$d/$$p"; \
 		done; \
 	done; true
@@ -354,7 +359,7 @@ install-claude:
 # normal dev machine prefer `make install-cowork` below.
 package-cowork: build-dev
 	@echo "Cowork upload packages built at:"
-	@ls -1t $(COWORK_DIST_DIR)/aops-v*.zip $(COWORK_DIST_DIR)/aops-tools-v*.zip $(COWORK_DIST_DIR)/aops-ts-v*.zip 2>/dev/null || \
+	@ls -1t $(COWORK_DIST_DIR)/aops-v*.zip $(COWORK_DIST_DIR)/aops-tools-v*.zip $(COWORK_DIST_DIR)/aops-jr-v*.zip $(COWORK_DIST_DIR)/aops-ts-v*.zip 2>/dev/null || \
 		echo "  (missing — check build output above)"
 	@echo ""
 	@echo "Upload via Claude desktop app:"
@@ -370,7 +375,7 @@ package-cowork-windows:
 	@if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
 		echo "Not on WSL — nothing to copy."; exit 0; \
 	fi; \
-	ZIPS="$$(ls -1t $(COWORK_DIST_DIR)/aops-v*.zip 2>/dev/null | head -1) $$(ls -1t $(COWORK_DIST_DIR)/aops-tools-v*.zip 2>/dev/null | head -1) $$(ls -1t $(COWORK_DIST_DIR)/aops-ts-v*.zip 2>/dev/null | head -1)"; \
+	ZIPS="$$(ls -1t $(COWORK_DIST_DIR)/aops-v*.zip 2>/dev/null | head -1) $$(ls -1t $(COWORK_DIST_DIR)/aops-tools-v*.zip 2>/dev/null | head -1) $$(ls -1t $(COWORK_DIST_DIR)/aops-jr-v*.zip 2>/dev/null | head -1) $$(ls -1t $(COWORK_DIST_DIR)/aops-ts-v*.zip 2>/dev/null | head -1)"; \
 	ZIPS=$$(echo $$ZIPS); \
 	if [ -z "$$ZIPS" ]; then \
 		echo "  ⚠️ No Cowork zips found in $(COWORK_DIST_DIR) — run 'make package-cowork' first."; exit 1; \
@@ -385,7 +390,7 @@ package-cowork-windows:
 	done; \
 	echo "  In Claude desktop: Cowork → Customize → Add plugins → Upload a file → pick from Downloads."
 
-# Install the Cowork plugins (aops + aops-tools) from the dist/cowork
+# Install the Cowork plugins (aops + aops-tools + aops-jr) from the dist/cowork
 # DIRECTORY marketplace ('academicOps-cowork'). A directory source is the whole
 # point: Cowork nukes github-source marketplaces on every restart
 # (RemotePluginManager.syncPlugins; cf. claude-code issues #38429/#40600), so a
@@ -395,8 +400,8 @@ package-cowork-windows:
 # install loads in every Claude session, so a second copy of aops under a
 # different marketplace name would double-register the hook router and MCP
 # server. install-cowork therefore REPLACES any other install of aops/
-# aops-tools (dev `@aops`, released `@academicOps`, legacy `aops-coworklocal`)
-# rather than sitting alongside it. Halt on the first failed plugin — same
+# aops-tools/aops-jr (dev `@aops`, released `@academicOps`, legacy
+# `aops-coworklocal`) rather than sitting alongside it. Halt on the first failed plugin — same
 # no-soft-fail rule as install-claude (Nic ruling 2026-07-12).
 install-cowork: build-dev
 	@echo "Installing Cowork plugins from isolated marketplace '$(CLAUDE_COWORK_MARKETPLACE)'..."
@@ -421,7 +426,7 @@ install-cowork: build-dev
 	done
 	@echo "✓ Cowork install complete — '$(CLAUDE_COWORK_MARKETPLACE)' → $(COWORK_DIST_DIR)"
 	@echo "  Restart the Claude desktop app to pick the plugins up in Cowork."
-	@echo "  (This replaced any @aops / @academicOps installs of aops+aops-tools;"
+	@echo "  (This replaced any @aops / @academicOps installs of aops+aops-tools+aops-jr;"
 	@echo "   run 'make install' to switch back to the released channel.)"
 
 # Remove the Cowork plugins and their isolated marketplace. Touches ONLY the
@@ -433,7 +438,7 @@ uninstall-cowork:
 	done
 	-command claude plugin marketplace remove $(CLAUDE_COWORK_MARKETPLACE)
 	@echo "✓ Cowork plugins + '$(CLAUDE_COWORK_MARKETPLACE)' removed"
-	@echo "  (aops/aops-tools are now uninstalled everywhere — run 'make install' or 'make dev' to reinstall.)"
+	@echo "  (aops/aops-tools/aops-jr are now uninstalled everywhere — run 'make install' or 'make dev' to reinstall.)"
 
 # Install the Cowork plugins DIRECTLY into the Windows-side Claude Desktop
 # surface from WSL — no GUI zip-upload (package-cowork/package-cowork-windows
@@ -460,11 +465,11 @@ uninstall-cowork:
 # independently verified. Restart the Claude desktop app after running this
 # and confirm the plugins actually appear in Cowork before trusting it.
 #
-# Installs aops + aops-tools + aops-ts (unlike install-cowork, which leaves
-# aops-ts as an explicit opt-in) because dist/cowork ships all three and the
-# Windows-side desktop surface has no separate "opt in later" mechanism this
-# target manages — drop aops-ts from the loop below if that default proves
-# wrong in practice.
+# Installs aops + aops-tools + aops-jr + aops-ts (unlike install-cowork, which
+# leaves aops-ts as an explicit opt-in) because dist/cowork ships all four and
+# the Windows-side desktop surface has no separate "opt in later" mechanism
+# this target manages — drop aops-ts from the loop below if that default
+# proves wrong in practice.
 install-cowork-windows: package-cowork
 	@if [ ! -d /mnt/c ] || ! grep -qi microsoft /proc/version 2>/dev/null; then \
 		echo "  x Not on WSL — install-cowork-windows only runs from a WSL host with a Windows-side Claude Desktop." >&2; \
@@ -480,7 +485,7 @@ install-cowork-windows: package-cowork
 		echo "  x No Windows-side claude.exe found (cmd.exe /c \"where claude\" failed) — install Claude Code on the Windows side first." >&2; \
 		exit 1; \
 	fi; \
-	for p in aops aops-tools aops-ts; do \
+	for p in aops aops-tools aops-jr aops-ts; do \
 		if [ ! -d "$(COWORK_DIST_DIR)/$$p" ]; then \
 			echo "  x $(COWORK_DIST_DIR)/$$p missing — run 'make package-cowork' first." >&2; \
 			exit 1; \
@@ -491,7 +496,7 @@ install-cowork-windows: package-cowork
 	rm -rf "$$WIN_MARKETPLACE_DIR"; \
 	mkdir -p "$$WIN_MARKETPLACE_DIR"; \
 	cp -r "$(COWORK_DIST_DIR)/.claude-plugin" "$$WIN_MARKETPLACE_DIR/"; \
-	for p in aops aops-tools aops-ts; do \
+	for p in aops aops-tools aops-jr aops-ts; do \
 		cp -r "$(COWORK_DIST_DIR)/$$p" "$$WIN_MARKETPLACE_DIR/"; \
 	done; \
 	WIN_PATH=$$(wslpath -w "$$WIN_MARKETPLACE_DIR"); \
@@ -499,7 +504,7 @@ install-cowork-windows: package-cowork
 	(cd /mnt/c && cmd.exe /c "claude plugin marketplace remove $(CLAUDE_COWORK_MARKETPLACE)" >/dev/null 2>&1 || true); \
 	(cd /mnt/c && cmd.exe /c "claude plugin marketplace add \"$$WIN_PATH\"" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
 		|| { echo "  x Windows Claude marketplace add failed for $$WIN_PATH" >&2; exit 1; }; \
-	for p in aops aops-tools aops-ts; do \
+	for p in aops aops-tools aops-jr aops-ts; do \
 		(cd /mnt/c && cmd.exe /c "claude plugin install $$p@$(CLAUDE_COWORK_MARKETPLACE)" 2>&1 | grep -v -E '^(UNC paths|Defaulting to)') \
 			&& echo "✓ Windows Cowork $$p installed" \
 			|| { echo "  x Windows Cowork $$p install failed — check $$WIN_MARKETPLACE_DIR" >&2; exit 1; }; \
@@ -524,9 +529,10 @@ install-cowork-windows: package-cowork
 # distribution to dist" step.
 AGY_CORE_URL  := https://github.com/$(DIST_REPO_SLUG)/tree/dist/aops-antigravity
 AGY_TOOLS_URL := https://github.com/$(DIST_REPO_SLUG)/tree/dist/aops-tools-antigravity
-# Exactly two plugins ship for agy too — aops + aops-tools, both hard
-# dependencies (no soft-fail exception for either).
-AGY_PLUGINS := aops aops-tools
+AGY_JR_URL    := https://github.com/$(DIST_REPO_SLUG)/tree/dist/aops-jr-antigravity
+# Exactly three plugins ship for agy too — aops + aops-tools + aops-jr, all
+# hard dependencies (no soft-fail exception for any).
+AGY_PLUGINS := aops aops-tools aops-jr
 
 install-agy:
 	@if ! command -v agy >/dev/null 2>&1; then \
@@ -539,6 +545,7 @@ install-agy:
 		case $$p in \
 			aops) local_dir="$(DIST_DIR)/aops-antigravity"; url="$(AGY_CORE_URL)" ;; \
 			aops-tools) local_dir="$(DIST_DIR)/aops-tools-antigravity"; url="$(AGY_TOOLS_URL)" ;; \
+			aops-jr) local_dir="$(DIST_DIR)/aops-jr-antigravity"; url="$(AGY_JR_URL)" ;; \
 		esac; \
 		if [ -d "$$local_dir" ]; then \
 			echo "  Source ($$p): $$local_dir (local build)"; \

@@ -1,0 +1,19 @@
+{
+  "__base__": {
+    "name": "aops-jr",
+    "version": "0.1.0",
+    "description": "aops-jr — the sole coordinator package. A coordination layer between Nic and the automation framework: dispatches polecat workers, holds coordinator-only doctrine. Contains no task-execution skills of its own.",
+    "author": {
+      "name": "Nicolas Suzor"
+    },
+    "license": "MIT",
+    "keywords": [
+      "academicOps",
+      "polecat",
+      "dispatch",
+      "coordinator"
+    ]
+  },
+  "claude": {},
+  "antigravity": {}
+}
