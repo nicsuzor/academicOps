@@ -40,6 +40,17 @@ violated by silence, by a claim with no evidence, or by evidence that does not
 actually support the claim. It is never violated by an honest "I could not do
 X, because Y."
 
+**A partial handback is distinct from a failure exit.** It satisfies option 1
+— checkable evidence — for everything that shipped, plus explicit deferral
+disclosure for the remainder under the partial-work spec's AC coverage
+partition (`tested | declared-deferred | illegal-gap` — the partition is
+defined in
+[`spec-partial-work-tight-loop-delivery.md`](../polecat/spec-partial-work-tight-loop-delivery.md),
+not here). Partial completion is a first-class terminal state, not a species
+of failure. The two-option rule above is untouched: partial is not a third
+option — it is option 1 for the shipped chunk, with the deferred remainder
+disclosed rather than silent.
+
 This generalises the six-field structured handback the supervisor skill has
 used for its own worker briefs (VERDICT/CLAIM/GATE/EVIDENCE/CONFIDENCE/CONFOUND
 CHECK — see below) into the universal shape every module boundary in the
@@ -87,7 +98,7 @@ and any task brief that asks for a handback — links here rather than
 restating the field definitions.
 
 ```
-VERDICT: <PASS | FAIL | BLOCKED | NEEDS-PRINCIPAL>
+VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
 CLAIM: <one sentence — the conclusion>
 GATE: <the acceptance criterion tested, and the observed result against it>
 EVIDENCE: <pointers — command+output, file:line, resolving URL, quoted source — NOT pasted dumps>
@@ -95,6 +106,14 @@ CONFIDENCE: <high|med|low> + <what single check would falsify this>
 CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT RUN">
 ```
 
+- `PARTIAL` = a legal partial completion per
+  [`spec-partial-work-tight-loop-delivery.md` §4](../polecat/spec-partial-work-tight-loop-delivery.md#4-the-partial-terminal-state) —
+  the existing PKB terminal status `partial`, already in the canonical status
+  taxonomy, not a new status. It means: the shipped chunk carries checkable
+  evidence, every remaining acceptance criterion is declared-deferred with a
+  live continue task, and refused judgment calls are surfaced as decisions.
+  The discriminator clauses (partial vs broken-ship) live in that spec and
+  are not restated here.
 - `CONFOUND CHECK` is mandatory whenever the verdict blames anything outside
   the agent's own change. `NOT RUN` means the claim is not relayed as
   established until the control is run — this rule generalises past the
@@ -140,6 +159,12 @@ no programmatic, deterministic, or mechanical enforcement of quality, ever).
 - **Supervisor per-tick handback** ([`specs/polecat/supervisor.md`](../polecat/supervisor.md)).
   Same contract, applied to a background worker reporting to its supervisor
   rather than a task boundary reporting to a reviewer.
+
+At every binding above, the handback — including the output URL of the
+deliverable — is written to the PKB task record, the only message bus; it is
+never held only in a session transcript or a PR body. The full unified worker
+return contract (evidence + output URL, one deliverable per claimed task)
+lives in [task-contract.md](task-contract.md) and is not restated here.
 
 ## Cutover / grandfather policy
 

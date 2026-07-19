@@ -1,19 +1,19 @@
 ---
 name: dispatch
-description: Dispatch and supervise the distributed execution of an Epic task with sequenced and parallel polecat workers.
+description: Dispatch and supervise the distributed execution of a task with children — routing each task unit to the right worker surface (polecat container, in-session subagent, or agent team) per the workflow pauli assembled.
 ---
 
 # Epic Dispatch
 
-An Epic is an assembled workflow of related tasks that form a whole.
+An epic is just a task with children — no special machinery. What governs it is the workflow pauli assembled at decomposition ("assemble" is reserved for workflows built from composable rules, not for collections of tasks).
 
 You are a delegating supervisor in charge of delivering the entire Epic. Importantly:
 
 - You never do the work yourself, but you are responsible for coordinating the distributed execution of an Epic task with sequenced and parallel workers.
 - You must not delegate a task that is not 'queued' or that has unmet dependencies.
-- You must inspect completed work; distributed workers are notoriously lazy and sometimes stupid. It is up to you to ensure that each task is FULLY completed to a world-leading standard. You do NOT want to hand back work that does not meet our expectations.
+- You must inspect completed work: verify the return contract by side-effect (status flip + evidence + output URL on the PKB task), and ensure the pauli-specified independent review tasks execute with receipts landing in the PKB. You do NOT substitute your own quality certification for the worker's internal QA (that is the worker's business) or for independent review.
 - All steps of an Epic must be worked and completed before the tasks are considered done; the whole Epic must be delivered and assessed in its entirety.
-- Your responsibility ends when all an Epic's tasks are completed, failed, or blocked.
+- Your responsibility ends when all an Epic's tasks are completed, partial, failed, or blocked. `partial` is a legal, expected handback — NOT a failure (see [spec-partial-work-tight-loop-delivery §4](../../../specs/polecat/spec-partial-work-tight-loop-delivery.md)). Read it as new graph information: verify its continue tasks exist and route the remainder.
 - You are not responsible for the separate approval process once these tasks are completed.
 
 ## Instructions
@@ -30,8 +30,8 @@ First, claim the Epic through the Personal Knowledge Base (PKB) tool: `claim_tas
 
 - Use `get_dependency_tree(<epic-id>)` to get the dependency tree.
 - A child with an unmet `depends_on` is not dispatchable this pass.
-- Only 'leaf' tasks (tasks with no children) are eligible for dispatch.
-- You must dispatch each of a task's subtasks and verify completion before you dispatch a task with children.
+- Eligibility = FULLY-SPEC'D + queued + dependencies met — regardless of children. A task with children may be dispatched whole to ONE worker, who owns internal sequencing/decomposition and returns ONE deliverable: evidence + an output URL written to the PKB task (contract home: [specs/enforcement/task-contract.md](../../../specs/enforcement/task-contract.md)).
+- If you do route children separately, the assembled workflow must still consolidate into one deliverable for the principal — never a spray of per-child PRs reviewed individually.
 - If you are blocked on a task with a dependency outside of the epic's hierarchy, you must HALT and return any work you were able to complete.
 
 3. Sequence tasks and plan your dispatch process.
@@ -43,7 +43,9 @@ First, claim the Epic through the Personal Knowledge Base (PKB) tool: `claim_tas
 
 4. Dispatch workers
 
-The polecat launch command is the same everywhere — only the _transport_ to the
+At dispatch time you choose, per task, a surface (polecat container | in-session subagent | agent team) and a cadence (wait vs fire-and-forget). Cadence is a routing detail, not architecture — review shape does not depend on it. The machinery below is the polecat (fire-and-forget) instance.
+
+**Polecat (fire-and-forget) launch.** The polecat launch command is the same everywhere — only the _transport_ to the
 Docker host changes. First figure out **where you are relative to the Docker
 daemon that runs polecats** (the WSL host `nicwin`), then pick the matching form.
 
@@ -111,9 +113,10 @@ Confirm the session came up (`tmux ls | grep pc-`) and is executing (`tail /tmp/
 ## Verify by side-effect, never by self-report
 
 A live session is not success; exit-0 on the launch wrapper is not success.
-A unit is done when its task status actually flips or the review-surface
-artifact (PR, doc) actually exists — checked directly by you or a subagent. Never relay
-a worker's own "confirmed" as fact.
+A unit is done when the return contract actually lands on the PKB task —
+status flip + evidence + output URL — checked directly by you or a subagent.
+The review-surface artifact (PR, doc) is one possible form of output URL, not
+the assumed per-unit artifact. Never relay a worker's own "confirmed" as fact.
 
 Always verify completion specifically against the brief's expected outputs and acceptance criteria.
 

@@ -12,7 +12,9 @@ tags: [flow-map, enforcement, triggers, lifecycle, ssot, target-architecture]
 component classes, and — the load-bearing part — **what triggers movement between them**, including
 where the security / review / QA mechanisms sit. This is a **state** doc: current truth stays
 accurate, and the adopted **target architecture** (the FACE → DISPATCHER → WORKERS → REVIEW
-layering, ratified 2026-07-19) is carried alongside it, with every missing piece honestly marked.
+layering, ratified 2026-07-19 and refined the same day by Nic's rulings, `note_ad2ed3d2`: unified
+worker contract, pauli-specified independent review, any-deny-wins accepted) is carried alongside
+it, with every missing piece honestly marked.
 For _why_ enforcement is shaped this way (the "agents all the way down" design), read the spec:
 [`specs/enforcement/enforcement.md`](enforcement/enforcement.md). One fact, one home — where a
 mechanism's detail lives in its own spec, this map links out rather than restating it.
@@ -37,23 +39,31 @@ _within_ a single dispatcher session, with outcomes still recorded to the PKB:
    cross-project orchestrator, out of this repo's scope — but its coordinator _machinery_ (polecat
    CLI + dispatch skill) now lives here as the `aops-jr` plugin (commit `44aef037`). ⚠ personas
    shipped; face-exclusivity is convention, not enforced.
-2. **DISPATCHER** — receives epic-sized chunks, briefs and delegates to workers, **checks** their
+2. **DISPATCHER** — receives fully-spec'd tasks too big for a light subagent, briefs and delegates to workers, **checks** their
    work, and re-dispatches when it's not good enough. This layer is the forcing function for
    scope→surface mapping (field finding #1844: a program-scope node was mis-routed straight to a
    single polecat worker). ⚠ `aops-jr` dispatch skill exists; the supervision loop is
    instruction-led.
-3. **WORKERS** — two kinds, different contracts:
-   - **Sync workers** (subagents): the dispatcher waits, inspects the handback, re-dispatches on
-     failure. Full supervision loop.
-   - **Async polecats**: one whole epic → **one** polecat container, fire-and-forget. The
-     dispatcher must **not** wait; the polecat uploads a GitHub PR when done.
-4. **REVIEW — exactly two layers for async polecat work**:
-   - Layer 1, _inside the container_: an agent crew does the work **and** checks the subagents
-     aren't lazy and the work is genuinely done, before the PR goes up. ○ planned — these
-     instructions do not exist today (smeared across the dispatch skill and
-     [`supervisor.md`](polecat/supervisor.md)).
-   - Layer 2, _on GHA_: the PR pipeline reviews the uploaded PR. ○ dormant (see Known gaps).
-   - Sync work keeps the full pauli/rbg/marsha review shape ([`workflow.md`](enforcement/workflow.md)).
+3. **WORKERS — one unified contract** ([`task-contract.md`](enforcement/task-contract.md) is the
+   home): any worker on any surface — polecat container, in-session subagent, agent team — claims
+   a fully-spec'd task (an "epic" is just a task with children) and returns **evidence + an output
+   URL, written to the PKB task**. Whether the dispatcher sync-waits on the handback or
+   fires-and-forgets is a **cadence choice made at dispatch**, not a contract difference. The
+   polecat instance keeps its shape: one claimed task → **one** container → one PR. With the full
+   harness comes the obligation to demonstrate compliance + QA **internally** — that is the
+   worker's business, not review. The polecat instance of this internal-QA obligation is the
+   in-container crew: do the work + anti-laziness QA before the PR goes up (○ planned — these
+   instructions do not exist today, smeared across the dispatch skill and
+   [`supervisor.md`](polecat/supervisor.md)). Because the crew runs inside the worker's own
+   container, it can never discharge the layer-4 independence requirement.
+4. **REVIEW — pauli-specified independence** ([`workflow.md`](enforcement/workflow.md) is the
+   doctrine home): at decomposition, pauli specifies the required level of **independent** review
+   for the assembled workflow. Independence is about **who** reviews (never the worker's own
+   session), not where. Executors are WHO-independent surfaces only: an independent polecat
+   session validating a code change (marsha lens); dispatch-layer subagents for textual/rules
+   compliance (rbg lens). Proof is always written to the PKB — typically a review task + receipt.
+   The GHA PR pipeline is one **optional executor, currently deferred** — approval stays manual
+   for now. ○ dormant (see Known gaps).
 5. **Human approval** — unchanged one-way door: a GitHub APPROVED review from Nic's account on the
    SHA, branch-protection enforced.
 
@@ -80,18 +90,18 @@ flowchart TD
     PKB[("PKB task graph — the only message bus")]
 
     subgraph DISP["DISPATCHER ⚠"]
-        JRD["aops-jr dispatch — claim epic ·<br/>brief · dispatch · inspect"]
+        JRD["aops-jr dispatch — claim task ·<br/>brief · dispatch · inspect"]
     end
 
     subgraph WORK["WORKERS"]
         SYNC["sync workers — supervised subagents ⚠"]
-        POLE["async polecat — one epic, one container"]
-        CREW["in-container crew — do the work +<br/>anti-laziness QA before PR ○"]
+        POLE["async polecat — one claimed task, one container"]
+        CREW["in-container crew — worker-internal QA:<br/>do the work + anti-laziness check before PR ○"]
     end
 
     subgraph REV["REVIEW — reviewer never the executor"]
-        SREV["sync path: pauli premise · rbg rules · marsha QA"]
-        GHA["async layer 2: GHA PR pipeline ○ dormant"]
+        SREV["pauli-specified independent review —<br/>premise · rbg rules · marsha QA"]
+        GHA["optional GHA executor (deferred):<br/>PR pipeline ○ dormant"]
     end
 
     HUM{{"Human approval — one-way door"}}
@@ -104,19 +114,20 @@ flowchart TD
     PKB -->|"epic ready"| DEC
     DEC -->|"subtask DAG"| PKB
     DEC -.->|"premise gates the epic"| SREV
-    PKB -->|"big-enough chunk (epic)"| JRD
+    PKB -->|"fully-spec'd task too big for a light subagent"| JRD
     IDA -.->|"simple stuff only"| LIGHT
     LIGHT -.->|"result — face's own loop,<br/>never the dispatcher's"| IDA
-    JRD -->|"per-leaf brief"| BRF
+    JRD -->|"per-claimed-task brief"| BRF
     BRF -->|"claim_task ⚠"| SYNC
     BRF -->|"fire-and-forget — dispatcher does NOT wait ⚠"| POLE
     POLE --> CREW
     SYNC -->|"handback + evidence"| JRD
     JRD -->|"not good enough: re-dispatch ⚠"| SYNC
     JRD -->|"accepted"| SREV
-    CREW -->|"PR upload"| GHA
+    CREW -->|"handback — evidence + output URL<br/>on the PKB task"| SREV
+    SREV -.->|"one optional executor (deferred) ○"| GHA
+    GHA -.->|"review receipt → PKB"| SREV
     SREV --> HUM
-    GHA --> HUM
     HUM -->|"approved SHA"| PKB
     PKB -.->|"rolling state read (mem_7ec4564b)"| IDA
     IDA -->|"narrative / evidence-bundle summary"| NIC
@@ -171,19 +182,20 @@ Current-truth rows first, then the target-layer rows the new architecture adds.
 
 **Target-layer rows** (the new architecture; nothing below is fully wired yet):
 
-| From → To                        | Trigger                                                    | Mechanism                                                                                                                                                                                                                               | Status                                                                                            |
-| -------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| FACE → **dispatcher**            | chunk is epic-sized (too big for a light subagent)         | face files/points at the epic in the PKB; dispatcher claims it — face never supervises workers                                                                                                                                          | ⚠ `aops-jr/skills/dispatch/SKILL.md` exists; the face/dispatcher split is convention              |
-| dispatcher → **sync worker**     | leaf subtask due                                           | brief-then-dispatch per leaf (dispatch skill)                                                                                                                                                                                           | ⚠ instruction-led                                                                                 |
-| sync worker → **dispatcher**     | handback                                                   | dispatcher **checks** the work; re-dispatches when not good enough — a full supervision loop                                                                                                                                            | ⚠ "inspect completed work" is in the dispatch skill; the re-dispatch loop has no forcing function |
-| dispatcher → **async polecat**   | whole epic assigned to one polecat                         | polecat CLI spins the container; dispatcher does **not** wait — review happens downstream                                                                                                                                               | ⚠ CLI wired (`aops-jr/polecat/cli.py`); non-waiting is convention                                 |
-| polecat internal → **PR**        | crew judges the work genuinely done                        | in-container agent crew: workers + anti-laziness check before the PR goes up (review layer 1) — target home `aops/skills/crew`, seeded via `/crew` in `cli.py` (container enables only aops/aops-tools, so the skill must live in core) | ○ planned — instructions do not exist today                                                       |
-| polecat PR → **GHA review**      | PR opened by a polecat                                     | GHA PR pipeline reviews the PR (review layer 2)                                                                                                                                                                                         | ○ dormant — see Known gaps #5                                                                     |
-| PKB / review outcomes → **FACE** | rolling state read (`mem_7ec4564b`)                        | face launders evidence bundles into narrative for Nic; never re-reviews                                                                                                                                                                 | ⚠ convention                                                                                      |
-| work session → **Stop denied**   | session did work with no task bound                        | `gate_task_bound` — stateful Stop **deny** gate; full predicate design in Known gaps #2                                                                                                                                                 | ○ planned (`aops-strict`)                                                                         |
-| work session → **Stop denied**   | bound task concluded without the handover skill having run | `gate_handover_called` — stateful Stop gate, **deny** verdict                                                                                                                                                                           | ○ planned (`aops-strict`)                                                                         |
-| surface → **its own gate set**   | which plugins the surface loads                            | plugin-scoped hooks: core ships warn-level gates everywhere; `aops-strict` adds the deny gates only where it's installed. Gate code never branches on session type (`note_296e5520`)                                                    | ○ — mechanism sanctioned; `aops-strict` not built; `aops-jr` ships no hooks yet                   |
-| merged PR → **epic complete**    | PR merged after human approval                             | someone must `complete_task` the epic and unblock dependents — currently unowned (dispatcher's next queue pass, or a GHA step)                                                                                                          | ○ unowned today                                                                                   |
+| From → To                           | Trigger                                                        | Mechanism                                                                                                                                                                                                                        | Status                                                                                                            |
+| ----------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| FACE → **dispatcher**               | a fully-spec'd task too big for a light subagent               | face files/points at the task in the PKB; dispatcher claims it — face never supervises workers                                                                                                                                   | ⚠ `aops-jr/skills/dispatch/SKILL.md` exists; the face/dispatcher split is convention                              |
+| dispatcher → **worker**             | fully-spec'd task due                                          | brief-then-dispatch per claimed task (dispatch skill) — the worker owns internal decomposition of its children                                                                                                                   | ⚠ instruction-led                                                                                                 |
+| sync worker → **dispatcher**        | handback                                                       | dispatcher **checks** the work; re-dispatches when not good enough — a full supervision loop                                                                                                                                     | ⚠ "inspect completed work" is in the dispatch skill; the re-dispatch loop has no forcing function                 |
+| dispatcher → **async polecat**      | whole claimed task (may have children) assigned to one polecat | polecat CLI spins the container; dispatcher does **not** wait — review happens downstream                                                                                                                                        | ⚠ CLI wired (`aops-jr/polecat/cli.py`); non-waiting is convention                                                 |
+| polecat internal → **PR**           | crew judges the work genuinely done                            | in-container agent crew: workers + anti-laziness check before the PR goes up (crew QA) — target home `aops/skills/crew`, seeded via `/crew` in `cli.py` (container enables only aops/aops-tools, so the skill must live in core) | ○ planned — instructions do not exist today                                                                       |
+| worker → **PKB** (partial handback) | work partially completed (non-derivable choices refused)       | `partial` terminal status + draft deliverable + continue task, per [`spec-partial-work-tight-loop-delivery.md`](polecat/spec-partial-work-tight-loop-delivery.md) §§3–4                                                          | ⚠ `partial` in taxonomy + mem server enum (#414); client emit (`aops-8d3e43a1`) and §6 orphan loop-closer still ○ |
+| polecat PR → **GHA review**         | PR opened by a polecat                                         | GHA PR pipeline reviews the PR (optional GHA executor, deferred)                                                                                                                                                                 | ○ dormant — see Known gaps #5                                                                                     |
+| PKB / review outcomes → **FACE**    | rolling state read (`mem_7ec4564b`)                            | face launders evidence bundles into narrative for Nic; never re-reviews                                                                                                                                                          | ⚠ convention                                                                                                      |
+| work session → **Stop denied**      | session did work with no task bound                            | `gate_task_bound` — stateful Stop **deny** gate; full predicate design in Known gaps #2                                                                                                                                          | ○ planned (`aops-strict`)                                                                                         |
+| work session → **Stop denied**      | bound task concluded without the handover skill having run     | `gate_handover_called` — stateful Stop gate, **deny** verdict                                                                                                                                                                    | ○ planned (`aops-strict`)                                                                                         |
+| surface → **its own gate set**      | which plugins the surface loads                                | plugin-scoped hooks: core ships warn-level gates everywhere; `aops-strict` adds the deny gates only where it's installed. Gate code never branches on session type (`note_296e5520`)                                             | ○ — mechanism sanctioned; `aops-strict` not built; `aops-jr` ships no hooks yet                                   |
+| merged PR → **epic complete**       | PR merged after human approval                                 | someone must `complete_task` the epic and unblock dependents — currently unowned (dispatcher's next queue pass, or a GHA step)                                                                                                   | ○ unowned today                                                                                                   |
 
 ## Component-assignment rule
 
@@ -240,32 +252,35 @@ mechanism. (`workflow.md`, `specs/polecat/supervisor.md`.)
 
 ## Where the review / QA / security mechanisms sit
 
-| Mechanism                                                                | Class                 | When it fires                                                             | Can it block?                                    |
-| ------------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------- | ------------------------------------------------ |
-| Container isolation                                                      | structural prevention | around every polecat worker, always                                       | yes — by construction                            |
-| Auto-mode classifier                                                     | harness judgment      | per tool call, before the agent's own loop closes                         | yes — admission                                  |
-| Hook injections (`hydrate.md`, `handover.md`, `honesty.md`, `verify.md`) | delivery channel      | prompt submit; `Stop`; `SubagentStop`; `PostToolUse` on subagent handback | **no** — reminders only                          |
-| Gate engine (`gate_dispatch.py`) — warn gates                            | code verdict          | `PreToolUse`, `Stop`; verdict merge deny>warn>allow                       | plumbing yes; **no deny gates registered today** |
-| `aops-strict` deny gates (task-bound, handover)                          | code verdict          | `Stop` on strict-equipped surfaces                                        | ○ planned — yes, deny                            |
-| Task-graph boundary (`claim`→`release`)                                  | accountability        | at claim-in and release-out                                               | convention today; deny gate when strict lands    |
-| Dispatcher supervision loop                                              | agent judgment        | on every sync-worker handback                                             | ⚠ yes by re-dispatch, instruction-led            |
-| In-container crew QA (review layer 1)                                    | agent judgment        | inside the polecat, before the PR goes up                                 | ○ planned — yes, PR doesn't go up                |
-| pauli / rbg / marsha lenses                                              | agent judgment        | premise (pre-hoc); rules + QA (post-hoc) — full re-review on sync work    | yes — block epic acceptance                      |
-| Workflow gate templates                                                  | prose components      | composed into a plan at decomposition time                                | via the plan they compose                        |
-| GHA PR pipeline (review layer 2 / sign-off)                              | workflow-level review | on PR                                                                     | yes when active — required checks + human click  |
+| Mechanism                                                                                                         | Class                 | When it fires                                                                                    | Can it block?                                    |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Container isolation                                                                                               | structural prevention | around every polecat worker, always                                                              | yes — by construction                            |
+| Auto-mode classifier                                                                                              | harness judgment      | per tool call, before the agent's own loop closes                                                | yes — admission                                  |
+| Hook injections (`hydrate.md`, `handover.md`, `honesty.md`, `verify.md`)                                          | delivery channel      | prompt submit; `Stop`; `SubagentStop`; `PostToolUse` on subagent handback                        | **no** — reminders only                          |
+| Gate engine (`gate_dispatch.py`) — warn gates                                                                     | code verdict          | `PreToolUse`, `Stop`; verdict merge deny>warn>allow                                              | plumbing yes; **no deny gates registered today** |
+| `aops-strict` deny gates (task-bound, handover)                                                                   | code verdict          | `Stop` on strict-equipped surfaces                                                               | ○ planned — yes, deny                            |
+| Task-graph boundary (`claim`→`release`)                                                                           | accountability        | at claim-in and release-out                                                                      | convention today; deny gate when strict lands    |
+| Dispatcher supervision loop                                                                                       | agent judgment        | on every sync-worker handback                                                                    | ⚠ yes by re-dispatch, instruction-led            |
+| In-container crew QA — **worker-internal QA, not review** (layer 3; never satisfies pauli-specified independence) | agent judgment        | inside the polecat, before the PR goes up                                                        | ○ planned — yes, PR doesn't go up                |
+| pauli / rbg / marsha lenses                                                                                       | agent judgment        | premise (pre-hoc); rules + QA (post-hoc) — as specified at decomposition, uniform across cadence | yes — block epic acceptance                      |
+| Workflow gate templates                                                                                           | prose components      | assembled into a plan at decomposition time                                                      | via the plan they assemble into                  |
+| GHA PR pipeline (optional executor, deferred / sign-off)                                                          | workflow-level review | on PR                                                                                            | yes when active — required checks + human click  |
 
 ## Build order
 
 The dependency-ordered next moves (each an `aops`-project epic; numbers cross-reference Known gaps
 below — detail lives there, one fact one home):
 
-1. **Spike gap #7 first** — multi-plugin Stop-hook merge semantics; everything strict depends on it.
-2. **`aops-strict`**: recorders + task-bound / handover **deny** gates (gaps #1–#3).
-3. **`/crew` skill in core** + seeding via `cli.py` (gap #4).
-4. **GHA layer-2 activation**, including restoring the `admit-status` setter (gap #5).
-5. **Router reminder migration** into the gate engine (gap #8).
+1. **`aops-strict`**: recorders + task-bound / handover **deny** gates (gaps #1–#3). Any-deny-wins
+   is accepted by ruling (`note_ad2ed3d2`; gap #7 resolved) — the multi-plugin Stop-hook merge
+   spike is **dropped**, so this is the next build.
+2. **`/crew` skill in core** + seeding via `cli.py` (gap #4).
+3. **Router reminder migration** into the gate engine (gap #8).
 
-Everything else in Known gaps is background hygiene or awaits a ruling (open questions).
+**Deferred (background, not in the ordered list):** optional-GHA-executor activation, including
+restoring the `admit-status` setter (gap #5) — human approval stays manual for now
+(`note_ad2ed3d2`). Everything else in Known gaps is background hygiene or awaits a ruling (open
+questions).
 
 ## Known gaps (honest wired-vs-planned)
 
@@ -285,7 +300,7 @@ source before implementing.
    skill and [`supervisor.md`](polecat/supervisor.md). Target: `aops/skills/crew` in **core** (the
    container enables only aops/aops-tools, so a skill in `aops-jr` could never execute there),
    seeded via a `/crew` invocation in the polecat CLI's initial prompt (`aops-jr/polecat/cli.py`). ○
-5. **GHA review layer (layer 2) is dormant.** `pr-pipeline.yml` is a stub; the review workflows are
+5. **Optional GHA executor (deferred) is dormant.** `pr-pipeline.yml` is a stub; the review workflows are
    `workflow_call`-only with no caller; `rbg-review.yml` is gated on a human label + non-bot actor,
    so nothing fires on polecat PRs. Single-reader recon — grep `.github/workflows/` before
    building on any row. ○ activation needed. **Also: the human-approval mechanism is half-wired** —
@@ -298,18 +313,16 @@ source before implementing.
    verdict to `injectSteps` (`TODO(agy-deny-format)`), and polecats run via agy — so requirement-5
    guarantees cannot land inside containers today; the guarantee relocates to the container exit
    check (crew, gap #4). ○
-7. **Multi-plugin Stop-hook merge semantics are unverified.** The core-warn + strict-deny design
-   assumes Claude Code merges multiple plugins' hooks on one event with any-deny-blocks. `aops-ts`
-   shipping its own `hooks/hooks.json` makes per-plugin discovery near-certain, but merge semantics
-   were not verified — **spike this first**; the two-plugin gate design depends on it. ○
+7. **Multi-plugin Stop-hook merge semantics — resolved by ruling** (2026-07-19, `note_ad2ed3d2`):
+   any-deny-wins is **accepted**; the verification spike is dropped. The core-warn + strict-deny
+   two-plugin design proceeds on that basis.
 8. **`router.py` retirement.** Two hook systems fire on the same events (router reminder injections
    - gate engine). Target: router's SessionStart env plumbing stays as infra; its reminders become
      core **warn** gates in the gate engine. Must preserve the Stop early-return when
      `background_tasks` is non-empty (`router.py`) and honesty always-on in core (`note-36c15a69`). ○
-9. **Async-epic review-node re-scope.** `decompose` always emits standing pauli/rbg/marsha DAG
-   nodes — a third review layer for async epics, where exactly two are wanted. Resolution: on
-   async epics the rbg/marsha nodes close by _citing_ crew + GHA evidence; full re-review runs only
-   on sync work. Nic may rule differently — flagged, not settled. ○
+9. **Async-epic review-node re-scope — resolved by ruling** (2026-07-19, `note_ad2ed3d2`): review
+   nodes are determined by the workflow pauli assembles at decomposition, uniform across cadence
+   ([`workflow.md`](enforcement/workflow.md)); there is no per-surface layer-count question.
 10. **`claim_task` / `release_task` is a documented convention**, not a code-enforced boundary — no
     hook verifies it today. ⚠ convention; gap #2 is the closing move.
 11. **Dispatcher supervision loop has no forcing function.** "Inspect completed work" is in the
@@ -322,14 +335,15 @@ source before implementing.
 14. **`decompose` is not a registered slash command** — reachable only via an explicit `Skill()`
     call from another flow. ⚠
 
-### Open questions (≤3, carried from the ratified blueprint)
+### Open questions (carried from the ratified blueprint; 1 remains)
 
 1. **`aops-strict` universality** — does the face machine ever load the strict plugin (deny gates
    on Ida sessions that do claim work), or is strict strictly a dispatcher/worker concern?
-2. **Gap #7 outcome** — if Claude Code does _not_ merge multi-plugin Stop hooks with any-deny-wins,
-   the two-plugin gate split needs a redesign (e.g. one hook entry that dispatches both registries).
-3. **Gap #9 ruling** — accept the async-epic re-scope of decompose's standing review nodes, or keep
-   three layers on async work?
+2. ~~**Gap #7 outcome**~~ — closed by ruling (2026-07-19, `note_ad2ed3d2`): any-deny-wins accepted;
+   no redesign needed.
+3. ~~**Gap #9 ruling**~~ — closed by ruling (2026-07-19, `note_ad2ed3d2`): review nodes are
+   determined by the workflow pauli assembles at decomposition, uniform across cadence
+   ([`workflow.md`](enforcement/workflow.md)); no per-surface layer-count question remains.
 
 ## Sibling documents
 
@@ -338,7 +352,7 @@ source before implementing.
 - [`specs/enforcement/hook-gate-system.md`](enforcement/hook-gate-system.md) — the function-per-gate
   engine: registry, per-session state, verdict merge, emit formats.
 - [`specs/enforcement/workflow.md`](enforcement/workflow.md) — the five-step workflow shape and the
-  planner's risk-scaled review-depth call.
+  risk-scaled review-depth call (pauli's, at decomposition).
 - [`specs/enforcement/task-contract.md`](enforcement/task-contract.md) · [`evidence-contract.md`](enforcement/evidence-contract.md) — the claim/release boundary and the universal evidence shape.
 - [`specs/interactive-experience/head-role-charter.md`](interactive-experience/head-role-charter.md) —
   the FACE role: what the head is and is never allowed to become.

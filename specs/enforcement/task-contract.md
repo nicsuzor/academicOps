@@ -16,6 +16,20 @@ Operative from PKB `claim_task` → `release_task`. That pair is the contract fo
 single agent session's single unit of work: one claimed unit, released under
 contract.
 
+**The unified worker contract (this is its canonical home; other docs link
+here).** Any FULLY-SPEC'D task — including a task with children; an "epic" is
+just a task with children, no special machinery — can be claimed by any worker
+on any surface (polecat container, in-session subagent, agent team). Workers
+use every harness feature they have; with that comes the obligation to
+demonstrate compliance and QA internally (e.g. via separate subagents — how is
+the worker's business). The return contract: **evidence + an output URL,
+written to the PKB task record**. ONE deliverable per claimed task — never a
+spray of per-child PRs the principal reviews individually. Task scope = one
+project/repo. Sync-wait vs fire-and-forget is a dispatch-time cadence choice,
+not a contract difference. This makes explicit what the task-binding
+invariant below already permits — "one session claims exactly one task
+(possibly multiple subtasks of it)" covers claiming a task with children.
+
 **aops is the sole owner of the verification invariant.** The `release_task` /
 `complete_task` call is the authoritative completion claim — the task graph is the
 single source of truth, and a prose "done" that never moves task state is cheap
@@ -43,8 +57,13 @@ work.
 - **Evidence contract** — at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,
   or a stated failure reason. **This is the primary enforcement point** (H7).
-  Framed to agents as "land the plane" — commit → push → `release_task`, or
-  the work is garbage-collected (H10): incentive-first, this machinery is the
+  Framed to agents as "land the plane" — commit → push → `release_task` with
+  either a completion claim or a `partial` handback per
+  [spec-partial-work-tight-loop-delivery.md §4](../polecat/spec-partial-work-tight-loop-delivery.md)
+  (the existing terminal status in the canonical taxonomy — a partial handback
+  is a legal terminal outcome, not a failure; that spec owns partial
+  semantics, which this bullet does not restate). Only silent, undisclosed
+  abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the
   `mem` MCP server predicate — the contract is only as strong as that floor.
   This is Layer 2's instantiation of the universal task-boundary contract —

@@ -28,19 +28,30 @@ piece of work leaves a trace I can inspect — a task record, a transcript, and 
 recorded verdict — so that work is proven before it is trusted and nothing is ever
 fire-and-forgotten.
 
-## Routing: Local Subagent vs Polecat
+## Routing: Surface and Cadence
 
-The orchestrator chooses the execution surface; the user does not have to specify.
-Routing keys on:
+Routing is a cadence-and-placement choice over one unified worker contract
+([[specs/enforcement/task-contract.md]]); the user does not have to specify. The
+orchestrator picks the surface (in-session subagent | polecat | agent team) and
+the cadence (wait vs fire-and-forget) for latency and isolation convenience;
+eligibility and deliverable shape are surface-agnostic — the deliverable is
+whatever output URL the assembled workflow specifies. A literature review and a
+code change are the same contract with different assembled workflows.
 
-- **Named specialist**: a task (or parent) assigned to a known specialist (`marsha`,
-  `rbg`, `pauli`, …) goes to that subagent.
-- **Isolation and mutation**: repo-scoped work that mutates files and must ship as
-  its own branch + PR goes to a **polecat**.
+Placement heuristics:
+
+- **Isolation**: repo-scoped work that mutates files benefits from a **polecat**'s
+  isolated workspace and branch; the PR is the code-surface instance of the
+  deliverable, not a routing determinant.
+- **Review steps**: carry a pauli-specified lens and independence requirement set
+  at decomposition, and are placed on any surface satisfying WHO-independence —
+  never the worker's own session.
 - **Findings returned inline**: research or synthesis whose output the current
-  conversation needs goes to a **local subagent**.
-- **User in the loop**: work needing the user's answers runs inline via `/pull`,
-  never on a background surface.
+  conversation needs suits a **local subagent** (a wait-cadence choice).
+- **User in the loop (preference, not a rule)**: route inline via `/pull` when a
+  blocking judgment call is known up-front; otherwise a background worker
+  legitimately attempts everything derivable and hands back `partial` with the
+  refused decisions surfaced.
 - **Not dispatchable**: missing inputs or blockers → record a block note and defer.
 
 This routing is implemented in the `/dispatch` command. Weighing
@@ -52,7 +63,8 @@ implemented.
 Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
 
 - **Task record**: every dispatch is recorded on a PKB task (status, assignee,
-  dispatch note, PR URL where applicable).
+  dispatch note, and on completion the evidence + output URL — the PR URL where
+  the surface is code).
 - **Transcript**: the worker's run is retained and locatable (polecat lifecycle
   events at `$POLECAT_HOME/transcripts/<task-id>.jsonl`; session transcripts under
   `$AOPS_SESSIONS`). Where a surface does not yet persist transcripts automatically,
@@ -65,7 +77,8 @@ Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
 Any orchestrator that delegates work and must verify it gets done invokes the
 `supervisor` skill — never hand-rolled inline. This covers:
 
-- Epic-level orchestration (one PKB epic, state in the epic body)
+- Epic-level orchestration (one PKB epic — an epic is just a task with children —
+  state in the epic body)
 - Portfolio/release supervision (many epics, state in the release task body)
 - Conversational orchestration of background workers (e.g. "don't get involved
   yourself, make sure it gets done")
@@ -84,9 +97,14 @@ Every supervisor tick performs the same four concerns:
 | **Evaluate** | Judge whether worker output is acceptable    | Agent (LLM judgment) |
 | **Persist**  | Record state for recovery across invocations | Task body (PKB)      |
 
-Evaluation yields one of three outcomes: **Accept** (meets criteria, move on),
-**Revise** (specific problems found, create a new worker task with feedback), or
-**Fail** (fundamental issues or retry budget exhausted, escalate to a human).
+Evaluation yields one of four outcomes: **Accept** (meets criteria, move on),
+**Accept-partial** (the handed-back `partial` chunk passes its clauses — see
+[[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §3 — refused choices
+are surfaced as decisions and continue tasks carry the remainder; the supervisor
+accepts the chunk and routes the remainder rather than treating it as Revise or
+Fail), **Revise** (specific problems found, create a new worker task with
+feedback), or **Fail** (fundamental issues or retry budget exhausted, escalate to
+a human).
 
 The supervisor stays responsible for the work until it reaches a terminal state — it
 checks progress on every tick, it does not fire-and-forget.
@@ -94,7 +112,8 @@ checks progress on every tick, it does not fire-and-forget.
 ## Relationship to `/pull` and `/dispatch`
 
 `/pull`, `/dispatch`, and `/supervisor` are three verbs over the same queue, differing
-in where work runs and whether they loop:
+in where work runs and whether they loop — a cadence choice made at dispatch, not a
+difference in worker contract:
 
 | Verb              | Where work runs                      | Loops?                         |
 | ----------------- | ------------------------------------ | ------------------------------ |
@@ -122,15 +141,21 @@ user manually wiring `/loop`. It stops self-arming at the terminal state.
 ## Status Lifecycle
 
 ```
-queued → in_progress → merge_ready → done (PR merged)
+queued → in_progress → merge_ready → done (deliverable accepted)
                 │              │
                 │              └→ review (needs human judgment; finish/merge failed)
+                ├→ partial (terminal: chunk handed back, remainder carried by
+                │           continue tasks — see
+                │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
                 └→ blocked (external dependency)
 ```
 
+`done` means the deliverable was accepted — evidence + output URL recorded on the
+PKB task; a merged PR is the code-surface instance of this.
+
 See [[aops/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
 for canonical status definitions. The supervisor uses the canonical set without
-extensions.
+extensions (`partial` is part of that canonical set).
 
 ## Related
 
