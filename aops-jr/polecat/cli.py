@@ -233,9 +233,18 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         if proj_path:
             workspace_dir = Path(os.path.expandvars(os.path.expanduser(proj_path))).resolve()
 
-    # Default fallback: if aops, use current repo root
+    # Default fallback: if aops, use current repo root. $AOPS (when set) is
+    # the canonical monorepo root and is correct even when this file is
+    # running from an installed plugin location — Path(__file__).parent.parent
+    # would resolve to the plugin cache dir there, not a monorepo checkout.
+    # Fall back to the historical __file__-relative heuristic only for
+    # in-repo dev invocations that don't export $AOPS.
     if not workspace_dir and (project == "aops" or not project):
-        workspace_dir = Path(__file__).resolve().parent.parent.resolve()
+        aops_root = os.environ.get("AOPS")
+        if aops_root:
+            workspace_dir = Path(os.path.expandvars(os.path.expanduser(aops_root))).resolve()
+        else:
+            workspace_dir = Path(__file__).resolve().parent.parent.resolve()
 
     if not workspace_dir or not workspace_dir.exists():
         click.echo(
