@@ -42,16 +42,16 @@ def _emit_claude(verdict: Verdict, event: Event) -> dict:
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason": verdict.message,
+                "permissionDecisionReason": verdict.inject_text,
             }
         }
     if verdict.outcome == "deny":
-        return {"decision": "block", "reason": verdict.message}
+        return {"decision": "block", "reason": verdict.inject_text}
     # warn, any event: non-blocking context injection.
     return {
         "hookSpecificOutput": {
             "hookEventName": event.event,
-            "additionalContext": verdict.message,
+            "additionalContext": verdict.inject_text,
         }
     }
 
@@ -62,4 +62,4 @@ def _emit_agy(verdict: Verdict, event: Event) -> dict:
         # Fall back to context injection rather than guess at a schema; the
         # message still reaches the agent. Tracked as a follow-up.
         pass
-    return {"injectSteps": [{"ephemeralMessage": verdict.message}]}
+    return {"injectSteps": [{"ephemeralMessage": verdict.inject_text}]}

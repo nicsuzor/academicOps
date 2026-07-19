@@ -15,7 +15,8 @@ Outcome = Literal["warn", "deny"]
 @dataclass(frozen=True)
 class Verdict:
     outcome: Outcome
-    message: str
+    inject_text: str
+    user_text: str | None
 
 
 def warn(message: str) -> Verdict:
