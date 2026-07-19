@@ -3,7 +3,7 @@
 The sole coordinator package. `aops-jr` is a coordination layer between Nic and
 the automation framework — it dispatches polecat workers and holds
 coordinator-only doctrine. It is deliberately **not** a task-execution
-package: skills that run *inside* a dispatched worker (`pull`, `verify`,
+package: skills that run _inside_ a dispatched worker (`pull`, `verify`,
 `handover`, `situate`, …) stay in the `aops` plugin. Anything that runs on the
 coordinator's side of the fence — deciding what to dispatch, spinning up the
 container, driving it — belongs here.
@@ -24,6 +24,11 @@ container, driving it — belongs here.
 - [`skills/dispatch/`](skills/dispatch/SKILL.md) — the coordinator-side
   dispatch instructions: claims an Epic, sequences its subtasks, and launches
   polecat workers against them.
+
+`debug` (`.agents/skills/debug/SKILL.md`) intentionally stays a framework-dev-only
+tool in `.agents/skills/` rather than moving here: it debugs the polecat _system
+itself_ (verifying hooks fired, tmux internals, the aops-crew docker entrypoint) —
+maintainer tooling, not a coordinator operation.
 
 ## Not yet implemented (placeholders — do not treat as live)
 
@@ -46,12 +51,3 @@ gaps, tracked but not yet built here:
   (`specs/polecat/polecat-system.md`) but not implemented in the current
   `polecat/cli.py`, which exposes only `run`. Whether/how this is rebuilt is
   an open decision (see that spec's stale-implementation banner).
-- **Build/marketplace packaging.** Unlike `aops` / `aops-tools` / `aops-ts`,
-  `aops-jr` is not yet wired into `scripts/build.py`, the `Makefile`
-  build/install targets, or `templates/marketplace.json` — there is no
-  `dist/aops-jr-claude` output today. It is source-only until that pipeline
-  work happens.
-- **`debug` skill relocation.** `.agents/skills/debug/SKILL.md` (interactive
-  polecat driving) is conceptually coordinator-side but currently lives in
-  `.agents/skills/` as a framework-dev-only tool, not a distributable skill.
-  Left in place pending a decision on whether it ships as part of this plugin.

@@ -299,19 +299,22 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path, version: str)
 def generate_cowork_dist(project_root: Path, dist_root: Path, version: str):
     """Assemble the Cowork distribution at dist/cowork.
 
-    Cowork ships the SAME two plugins as Claude Code — `aops` + `aops-tools`,
-    in their Claude-shaped builds — there is no separate cowork plugin build.
-    But Cowork has no marketplace mechanism on personal accounts, and its
-    RemotePluginManager.syncPlugins nukes github-source marketplaces on every
-    restart (cf. claude-code #38429/#40600), so the Cowork install channel must
-    be a LOCAL DIRECTORY marketplace. dist/cowork is that directory:
+    Cowork ships the SAME plugins as Claude Code — `aops` + `aops-tools` +
+    `aops-jr`, in their Claude-shaped builds — there is no separate cowork
+    plugin build. But Cowork has no marketplace mechanism on personal
+    accounts, and its RemotePluginManager.syncPlugins nukes github-source
+    marketplaces on every restart (cf. claude-code #38429/#40600), so the
+    Cowork install channel must be a LOCAL DIRECTORY marketplace. dist/cowork
+    is that directory:
 
         dist/cowork/.claude-plugin/marketplace.json   (name: academicOps-cowork)
         dist/cowork/aops/                             (copy of dist/aops-claude)
         dist/cowork/aops-tools/                       (copy of dist/aops-tools-claude)
+        dist/cowork/aops-jr/                          (copy of dist/aops-jr-claude)
         dist/cowork/aops-ts/                          (copy of dist/aops-ts-claude)
         dist/cowork/aops-v{version}.zip               (manual-upload fallback)
         dist/cowork/aops-tools-v{version}.zip         (manual-upload fallback)
+        dist/cowork/aops-jr-v{version}.zip            (manual-upload fallback)
         dist/cowork/aops-ts-v{version}.zip            (manual-upload fallback)
 
     The marketplace name is `academicOps-cowork`, isolated from both the
@@ -342,6 +345,7 @@ def generate_cowork_dist(project_root: Path, dist_root: Path, version: str):
     wanted = {
         "aops": "aops-claude",
         "aops-tools": "aops-tools-claude",
+        "aops-jr": "aops-jr-claude",
         "aops-ts": "aops-ts-claude",
     }
     plugins = []
@@ -573,7 +577,7 @@ def main():
     parser.add_argument(
         "--plugins",
         nargs="+",
-        default=["aops", "aops-tools", "aops-ts"],
+        default=["aops", "aops-tools", "aops-jr", "aops-ts"],
         help="Plugins to build",
     )
     parser.add_argument(

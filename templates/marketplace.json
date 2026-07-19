@@ -36,6 +36,16 @@
       },
       "source": "./dist/aops-ts-claude",
       "category": "productivity"
+    },
+    {
+      "name": "aops-jr",
+      "description": "aops-jr — the sole coordinator package. A coordination layer between Nic and the automation framework: dispatches polecat workers, holds coordinator-only doctrine. Contains no task-execution skills of its own.",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-jr-claude",
+      "category": "productivity"
     }
   ]
 }
