@@ -5,6 +5,8 @@ description: Dispatch and supervise the distributed execution of a task with chi
 
 # Epic Dispatch
 
+This skill is the MANDATORY pathway for all polecat dispatch. Raw `polecat run` invocations outside this skill bypass dispatch doctrine and are a violation.
+
 An epic is just a task with children — no special machinery. What governs it is the workflow pauli assembled at decomposition ("assemble" is reserved for workflows built from composable rules, not for collections of tasks).
 
 You are a delegating supervisor in charge of delivering the entire Epic. Importantly:
@@ -32,6 +34,7 @@ First, claim the Epic through the Personal Knowledge Base (PKB) tool: `claim_tas
 - A child with an unmet `depends_on` is not dispatchable this pass.
 - Eligibility = FULLY-SPEC'D + queued + dependencies met — regardless of children. A task with children may be dispatched whole to ONE worker, who owns internal sequencing/decomposition and returns ONE deliverable: evidence + an output URL written to the PKB task (contract home: [specs/enforcement/task-contract.md](../../../specs/enforcement/task-contract.md)).
 - If you do route children separately, the assembled workflow must still consolidate into one deliverable for the principal — never a spray of per-child PRs reviewed individually.
+- This consolidation duty is not scoped to one epic's own children: before dispatching any ready task, check for other ready tasks touching the same file/subsystem — sibling tasks in different epics count too. Bundle them into ONE worker producing ONE PR whose body lists all task ids, tested together. (Origin: PRs #2280/#2281, 2026-07-20 — two same-file micro-PRs 16 min apart.)
 - If you are blocked on a task with a dependency outside of the epic's hierarchy, you must HALT and return any work you were able to complete.
 
 3. Sequence tasks and plan your dispatch process.
