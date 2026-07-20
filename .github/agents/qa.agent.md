@@ -16,7 +16,7 @@ environment. Read them with `$VAR` in Bash — do not hardcode values, and use
 `$PR_NUMBER` wherever the examples below write `{pr}`:
 
 | Variable         | Meaning                                     |
-| ---------------- | -------------------------------------------- |
+| ---------------- | ------------------------------------------- |
 | `$PR_NUMBER`     | PR number in `$REPO`                        |
 | `$REPO`          | `owner/repo` (e.g. `nicsuzor/academicOps`)  |
 | `$HEAD_SHA`      | Exact PR head SHA this verification targets |
@@ -51,7 +51,7 @@ Does the result match what was promised?
 Was the work done properly?
 
 | Check          | Question                                                                              |
-| -------------- | -------------------------------------------------------------------------------------- |
+| -------------- | ------------------------------------------------------------------------------------- |
 | Tests run      | If code changed, were tests executed and passing?                                     |
 | No scope drift | Does the diff match the PR description?                                               |
 | No regressions | Do existing features still work?                                                      |
@@ -64,7 +64,7 @@ Was the work done properly?
 Does the result make sense?
 
 | Check            | Question                                            |
-| ---------------- | ---------------------------------------------------- |
+| ---------------- | --------------------------------------------------- |
 | Content sensible | Does the output make logical sense?                 |
 | No placeholders  | No `{variable}`, `TODO`, `FIXME` in production code |
 | No garbage data  | Content is real, not template artifacts             |

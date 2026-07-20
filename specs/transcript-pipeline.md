@@ -5,6 +5,7 @@ This spec outlines the design, scope, and integration of the session-transcript 
 ## 1. Intent & Scope
 
 The transcript pipeline is responsible for:
+
 - Ingesting raw JSONL session logs from Claude Code and agy clients.
 - Normalizing them into a single, unified data model.
 - Performing domain analysis (slugs, context classification, event timestamps, correlation, insights).
@@ -12,6 +13,7 @@ The transcript pipeline is responsible for:
 - Committing and pushing session transcripts to the central sessions repository.
 
 ### Excluded Scope
+
 - **Gemini logs (a2a-serv):** Explicitly excluded due to excessive volume/heartbeat noise.
 - **Observability schema:** The broader crew/surface/observability schemas are handled by external tools; the transcript pipeline focuses exclusively on session-level metadata.
 
@@ -29,12 +31,16 @@ graph TD
 ```
 
 ### Layer A: Parse & Render (Adapters)
+
 Layer A decouples the system from external raw log formats, converting raw logs into a common typed model (`NormalizedSession`).
+
 - **Claude Adapter:** Wraps the live, unpinned `claude-code-log` library. It translates Claude's Pydantic entry union models and handles CLI-level formatting. Unknown top-level entry types are gracefully captured as raw entries and logged rather than causing parser failure.
 - **agy Adapter:** A lightweight, hand-written parser for agy TUI JSONL log streams.
 
 ### Layer B: academicOps Domain Layer
+
 Layer B consumes typed `NormalizedSession` objects exclusively and enforces the core business rules:
+
 - **Stable Slug:** Deterministic `session_id`-derived slugs (first part of UUID or first 8 chars) ensuring filenames do not churn if content changes.
 - **Semantic User Context (`has_user_context`):** Classifies sessions as interactive (human) vs automated (cron/worker) by checking event structure, entrypoints, and prompt XML envelopes (e.g. `<USER_REQUEST>`) rather than a simple surface whitelist.
 - **Event-Time Timestamps:** Derives session lifecycle timestamps (`started_at`, `last_modified`, `ended_at`) exclusively from event-stream timestamps, never relying on filesystem metadata (`mtime`).
