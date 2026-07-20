@@ -6,7 +6,7 @@ description: Daily note structure template (SSoT). Section order is load-bearing
 
 # Daily Note Structure (SSoT)
 
-Order is fixed: **Lede → Project Rollup → My priorities → (Escalated Deadlines, if any) → What Needs Attention → Carryover → Today's Log → Status → Prompt Ledger → Work Log.** Omit any empty section. Fill the skeleton below.
+Order is fixed: **Lede → My priorities → (Escalated Deadlines, if any) → Calendar (today) → What Needs Attention → Carryover → Today's Log → Project Rollup → Status → Prompt Ledger → Work Log.** Time-sensitive, decision-critical content (deadlines, calendar, needs-your-call items) sits in the actionable zone at the top; the per-project rollup and raw status logging sit below the fold. Omit any empty section. Fill the skeleton below.
 
 ```markdown
 ---
@@ -25,17 +25,6 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 
 <!-- Degraded sources: one line, ONLY when a source genuinely failed after a real attempt. Omit otherwise. -->
 
-## Project Rollup
-
-<!-- One line per active project showing queued/blocked/needs-Nic state. -->
-
-- **academicOps**: Q: 3 | B: 0 | Needs Nic: 1 (PR review)
-- **brain**: Q: 1 | B: 2 | Needs Nic: 0
-- **buttermilk**: Q: 0 | B: 0 | Needs Nic: 0
-- **mem**: Q: 0 | B: 0 | Needs Nic: 0
-- **sessions**: Q: 5 | B: 1 | Needs Nic: 2 (transcript audit)
-- **overwhelm**: Q: 10 | B: 3 | Needs Nic: 1
-
 ### My priorities
 
 <!-- User-owned. Create this heading empty; never write here. Preserve anything the user adds. Omission is blocked by template guard. -->
@@ -50,6 +39,12 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 >
 > **Consequence if missed**: <verbatim consequence prose>
 > **Due**: YYYY-MM-DD (today) | **Effort**: M [IMMOVABLE]
+
+## Calendar (today)
+
+<!-- Always rendered, even on a quiet day ("No events today.") — this is decision-relevant, so it belongs in the actionable zone, not buried in Status. If calendar/email tools were unavailable this run, say so honestly ("Not fetched this run.") rather than fabricating or omitting. -->
+
+- 09:00 — [[Meeting]] — (location)
 
 ## What Needs Attention
 
@@ -78,6 +73,17 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 
 **What you were trying to do**: dispatch a chain of SEV2 framework tasks; a stale-yaml bug ate ~75 min — caught it, cut a prerelease, dispatch reopened.
 
+## Project Rollup
+
+<!-- One line per active project showing queued/blocked/needs-Nic state. Below the fold — decision-critical content (Escalated Deadlines, Calendar, Needs your call) already ran above; this is reference detail, not orientation. -->
+
+- **academicOps**: Q: 3 | B: 0 | Needs Nic: 1 (PR review)
+- **brain**: Q: 1 | B: 2 | Needs Nic: 0
+- **buttermilk**: Q: 0 | B: 0 | Needs Nic: 0
+- **mem**: Q: 0 | B: 0 | Needs Nic: 0
+- **sessions**: Q: 5 | B: 1 | Needs Nic: 2 (transcript audit)
+- **overwhelm**: Q: 10 | B: 3 | Needs Nic: 1
+
 ## Status
 
 <!-- Curated focus. Top 3 highest focus tasks and one-line count delta since last run. Raw counts must be collapsed. -->
@@ -89,10 +95,6 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 3. [task-id] [[Title]] — due YYYY-MM-DD (6d)
 
 **Daily Movement:** +2 ready, -1 blocked, 0 closed since yesterday
-
-**Calendar (today):**
-
-- 09:00 — [[Meeting]] — (location)
 
 <details>
 <summary>(collapsed — raw status logging & PR status)</summary>
