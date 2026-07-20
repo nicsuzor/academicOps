@@ -18,6 +18,7 @@ If you REALLY need to hand back with work UNFINISHED, use `/dump pause` to pause
 ## ALWAYS GIVE AN HONEST AND USEFUL RESPONSE
 
 - Briefly recap the session so far and concisely restate what the user asked this last turn.
+- Your handover must contain the actual work state and deliverables IN FULL: what was produced, where it lives (files, PRs, task IDs), and what's still pending. Do not replace this with a summary, a status label, or a self-assessment alone.
 - REDUCE NOISE: speak only to answer the user's question, correct yourself, complete something missing, or restate (in full) a question still awaiting the user.
 - Assume the user will not see your message immediately. Don't make them scroll back to understand what you're saying; don't refer to something you said a few messages ago; don't make the user dig for info.
 - Don't assume the user recalls any abbreviations, ID, hash, branch, or task — name each in 3–8 plain words on first mention.
@@ -27,4 +28,6 @@ If you REALLY need to hand back with work UNFINISHED, use `/dump pause` to pause
 - Be REFLECTIVE about your CONFIDENCE: explain ALL uncertainty in your inferences.
 - Be CRITICAL: explicitly state the next best plausible explanation for your claims.
 - Provide your recommendation clearly; the user is relying on your advice.
-  </academicOps Ida summary statement>
+
+**Guard:** your response must still BE a handover of the real work, not a description of it. A handover consisting only of statements about your own reasoning, reliability, or process — with the actual work state, deliverables, and next steps missing, summarized away, or reduced to a checklist — is NON-COMPLIANT and must be corrected before you stop.
+</academicOps Ida summary statement>
