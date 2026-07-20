@@ -7,6 +7,20 @@ import json
 from transcripts.model import NormalizedSession
 
 
+def _get_filename_base(slug: str, started_at: str, correlation: dict[str, str | None]) -> str:
+    from datetime import UTC, datetime
+
+    try:
+        dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+    except ValueError:
+        dt = datetime.now(UTC)
+
+    date_str = dt.strftime("%Y%m%d")
+    hour_str = dt.strftime("%H")
+    project = correlation.get("project") or "adhoc"
+    return f"{date_str}-{hour_str}-{project}-{slug}"
+
+
 def render_to_markdown(
     session: NormalizedSession,
     slug: str,
@@ -17,7 +31,7 @@ def render_to_markdown(
     correlation: dict[str, str | None],
     insights: str | None,
 ) -> str:
-    """Render a NormalizedSession to Markdown with YAML front-matter."""
+    """Render a summary/index of NormalizedSession to Markdown with YAML front-matter."""
     yaml_lines = [
         "---",
         f"session_id: {session.session_id}",
@@ -29,12 +43,100 @@ def render_to_markdown(
         f"project: {correlation.get('project') or ''}",
         f"task_id: {correlation.get('task_id') or ''}",
         f"pr_number: {correlation.get('pr_number') or ''}",
+        f"tokens_used: {session.tokens_used}",
+        f"cost_usd: {session.cost_usd:.6f}",
         "---",
         "",
     ]
 
+    filename_base = _get_filename_base(slug, started_at, correlation)
     content_lines = [
-        f"# Session {session.session_id}",
+        f"# Session {session.session_id} Summary",
+        "",
+        f"For the complete chronological details, see the [Full Markdown Details](./{filename_base}.full.md) or the [HTML View](./{filename_base}.html).",
+        "",
+    ]
+
+    if insights:
+        content_lines.extend(
+            [
+                "## 📝 Insights & Reflections",
+                "",
+                insights,
+                "",
+            ]
+        )
+
+    content_lines.extend(
+        [
+            "## 📊 Event Index",
+            "",
+            "| # | Event Type | Source | Timestamp | Summary / Snippet |",
+            "|---|------------|--------|-----------|-------------------|",
+        ]
+    )
+
+    for idx, event in enumerate(session.events, start=1):
+        source_name = event.source or "unknown"
+        event_type = event.type or "unknown"
+        ts = event.timestamp or ""
+
+        # Make a short single-line snippet of the content
+        content_snippet = ""
+        content_str = event.content or ""
+        if not isinstance(content_str, str):
+            if isinstance(content_str, list):
+                content_str = "\n".join(str(item) for item in content_str)
+            else:
+                content_str = str(content_str)
+        if content_str:
+            content_snippet = content_str.strip().replace("\n", " ")
+            if len(content_snippet) > 80:
+                content_snippet = content_snippet[:77] + "..."
+        # Escape any pipe symbols in markdown table cell
+        content_snippet = content_snippet.replace("|", "\\|")
+
+        content_lines.append(
+            f"| {idx} | `{event_type}` | **{source_name}** | {ts} | {content_snippet} |"
+        )
+
+    content_lines.append("")
+    return "\n".join(yaml_lines) + "\n".join(content_lines)
+
+
+def render_to_full_markdown(
+    session: NormalizedSession,
+    slug: str,
+    started_at: str,
+    last_modified: str,
+    ended_at: str,
+    has_user_context: bool,
+    correlation: dict[str, str | None],
+    insights: str | None,
+) -> str:
+    """Render a NormalizedSession to full chronological Markdown with YAML front-matter."""
+    yaml_lines = [
+        "---",
+        f"session_id: {session.session_id}",
+        f"slug: {slug}",
+        f"started_at: {started_at}",
+        f"last_modified: {last_modified}",
+        f"ended_at: {ended_at}",
+        f"has_user_context: {str(has_user_context).lower()}",
+        f"project: {correlation.get('project') or ''}",
+        f"task_id: {correlation.get('task_id') or ''}",
+        f"pr_number: {correlation.get('pr_number') or ''}",
+        f"tokens_used: {session.tokens_used}",
+        f"cost_usd: {session.cost_usd:.6f}",
+        "---",
+        "",
+    ]
+
+    filename_base = _get_filename_base(slug, started_at, correlation)
+    content_lines = [
+        f"# Session {session.session_id} Full Transcript",
+        "",
+        f"Back to [Summary View](./{filename_base}.md) or see the [HTML View](./{filename_base}.html).",
         "",
     ]
 
@@ -56,7 +158,6 @@ def render_to_markdown(
     )
 
     for event in session.events:
-        # Determine source emoji
         emoji = "📋"
         if event.source == "user":
             emoji = "🤷 User"
@@ -272,6 +373,8 @@ def render_to_html(
             <div class="meta-item"><strong>User Context</strong>{str(has_user_context)}</div>
             <div class="meta-item"><strong>Project</strong>{correlation.get("project") or "N/A"}</div>
             <div class="meta-item"><strong>Task ID</strong>{correlation.get("task_id") or "N/A"}</div>
+            <div class="meta-item"><strong>Tokens Used</strong>{session.tokens_used}</div>
+            <div class="meta-item"><strong>Cost (USD)</strong>${session.cost_usd:.6f}</div>
         </div>
     </div>
 
@@ -320,11 +423,14 @@ def render_to_json(
         "pr_number": correlation.get("pr_number"),
         "insights": insights,
         "event_count": len(session.events),
+        "tokens_used": session.tokens_used,
+        "cost_usd": session.cost_usd,
         "user_prompts": user_prompts,
         # For compatibility with ledger checks:
         "surface": correlation.get("project") or "cli",
         "date": started_at,
     }
+
     return json.dumps(data, indent=2)
 
 

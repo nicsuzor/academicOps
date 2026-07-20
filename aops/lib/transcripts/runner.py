@@ -16,7 +16,7 @@ from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
 from transcripts.domain.ledger import generate_prompt_ledger
-from transcripts.domain.renderer import render_session_to_all_formats
+from transcripts.domain.renderer import render_session_to_all_formats, render_to_full_markdown
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
 from transcripts.domain.time import get_event_timestamps
@@ -114,13 +114,17 @@ def process_single_session(
     dest_dir = output_dir / "transcripts" / year_month
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Render all 3 outputs
+    # Render all outputs
     md, html, json_sidecar = render_session_to_all_formats(
+        session, slug, started_at, last_modified, ended_at, has_user, correlation, insights
+    )
+    full_md = render_to_full_markdown(
         session, slug, started_at, last_modified, ended_at, has_user, correlation, insights
     )
 
     # Write files
     (dest_dir / f"{filename_base}.md").write_text(md, encoding="utf-8")
+    (dest_dir / f"{filename_base}.full.md").write_text(full_md, encoding="utf-8")
     (dest_dir / f"{filename_base}.html").write_text(html, encoding="utf-8")
     (dest_dir / f"{filename_base}.json").write_text(json_sidecar, encoding="utf-8")
 
