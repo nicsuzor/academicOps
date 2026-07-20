@@ -166,9 +166,9 @@ reportImplicitOverride = false
 reportUnusedVariable = false
 reportUnusedImport = false
 [tool.pytest.ini_options]
-testpaths = ["tests", "aops/tests"]
+testpaths = ["tests", "aops/tests", "aops-jr/tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "aops", "aops/hooks", "aops/lib"]
+pythonpath = [".", "aops", "aops/hooks", "aops/lib", "aops-jr"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
