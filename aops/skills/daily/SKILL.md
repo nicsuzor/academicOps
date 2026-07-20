@@ -1,6 +1,6 @@
 ---
 name: daily
-description: Daily note lifecycle — compose and maintain a factual daily note. Reports the state of the day; does not prioritise or recommend. SSoT for daily note structure.
+description: Daily note lifecycle — compose and maintain a factual daily note that makes the next action obvious (per Nic's ruling, 2026-07-20 era correction cluster). SSoT for daily note structure.
 context: fork
 agent: "aops:pauli"
 ---
@@ -13,7 +13,7 @@ Fill out the template in `references/note-template.md`. That file is the structu
 
 ## What this note is
 
-A factual, reportive snapshot of the day: what happened, what's open, what's due, what's in the inbox. It is **not** prescriptive — never rank what the user should do next or suggest a sequence. Forward prioritisation is the user's, in `### My priorities` (create the empty heading; never write under it).
+A factual snapshot of the day that prioritises and recommends actions to make the next action obvious (per Nic's ruling, 2026-07-20 era correction cluster). The note should dynamically orient the user. Forward prioritisation is still reserved for the user via the `### My priorities` heading (which MUST always be created empty as a structural guard in the template scaffold; never write under it).
 
 ## Core rules
 
@@ -40,7 +40,9 @@ Available, not mandatory steps. Use them when the day's content calls for them:
 - **Verify carryover against live PKB before listing.** For each task carried from yesterday, call `mcp__services__pkb__get_task`; drop it if it's missing, `done`, `cancelled`, or already ticked in today's note. Copying blindly produces phantom-overdue items.
 - **PR display state may read `$AOPS_SESSIONS/state/pr-state.json`** for the "Outstanding Workflows" / open-PR snapshot (it is cheap and good enough for a display list). Do NOT run a bulk `gh pr list` just to populate that display. The reconcile sweep below is the exception: it resolves and checks PRs **one task at a time against live `gh`**, because a pre-baked feed's recent-window misses older merges and silently leaves tasks parked.
 - **Consequence text is printed verbatim, never paraphrased.** Pull it from the task, or from a linked target in the task's `goals` field.
-- **Counts come from `mcp__services__pkb__task_summary`.** Never count tasks yourself — aggregation is the PKB's job.
+- **Lede is frontmatter-only.** Set the 2-3 present-tense lines summary in the `daily_narrative` frontmatter field. Do NOT repeat it in the body to avoid duplication.
+- **Top 3 ready tasks and deltas replace raw aggregate counts.** Present the top 3 ready tasks by focus score and a one-line task count delta (comparing today's counts to yesterday's) at the top of the Status section. Raw counts from `mcp__services__pkb__task_summary` are preserved below-the-fold in a collapsed `<details>` block.
+- **Add per-project rollups.** Query `mcp__services__pkb__list_tasks` to list queued, blocked, and needs-Nic (status: review) tasks for each active project: academicOps (slug: `aops`), brain, buttermilk, mem, sessions, and overwhelm. Render one line per project.
 
 ## Escalated deadlines (simple rule)
 

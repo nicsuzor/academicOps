@@ -13,15 +13,13 @@ Order is fixed: **Lede → Today's Log → (Escalated Deadlines, if any) → Sta
 title: "Daily Summary - YYYY-MM-DD"
 type: daily
 date: YYYY-MM-DD
-daily_narrative: null
+daily_narrative: "2-3 present-tense lines — the shape of right now. The distilled version of Today's Log. Populated ONLY in this frontmatter field; do not repeat in the body."
 daily_story: []
 ---
 
 # Daily Summary - YYYY-MM-DD
 
-<!-- Lede: 2–3 present-tense lines — the shape of right now. The distilled version of Today's Log; also persist to the daily_narrative frontmatter field. -->
-
-A stale-config bug ate the morning before polecat dispatch came back online; you cut a prerelease to clear it. Nothing on fire — one decision (v2-obsoletes-v1) is waiting on you.
+<!-- Lede: The present-tense summary is stored only in the frontmatter daily_narrative field. The body must NOT repeat this text. -->
 
 <!-- Degraded sources: one line, ONLY when a source genuinely failed after a real attempt. Omit otherwise. -->
 
@@ -46,9 +44,30 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 
 ## Status
 
-<!-- Factual snapshot. No recommendations, no curated categories, no suggested sequences. Counts come from mcp__services__pkb__task_summary, never hand-counted. -->
+<!-- Prioritised snapshot. Curated top-3 ready tasks by focus score and one-line deltas replace raw aggregate counts. Raw counts are collapsed below the fold. Per-project rollup is included. -->
 
-Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
+**Top 3 Ready Tasks:**
+- [task-id] [[Title]] (Focus: score, Project: slug, Priority: N)
+- [task-id] [[Title]] (Focus: score, Project: slug, Priority: N)
+- [task-id] [[Title]] (Focus: score, Project: slug, Priority: N)
+
+**Task Count Deltas:**
+- Net change since yesterday: +N ready, -M blocked (Total: X ready, Y blocked)
+
+**Project Rollup:**
+- **academicOps**: Q: 0 | B: 0 | N: 0
+- **brain**: Q: 0 | B: 0 | N: 0
+- **buttermilk**: Q: 0 | B: 0 | N: 0
+- **mem**: Q: 0 | B: 0 | N: 0
+- **sessions**: Q: 0 | B: 0 | N: 0
+- **overwhelm**: Q: 0 | B: 0 | N: 0
+
+<details>
+<summary>Raw Task Counts (collapsed)</summary>
+
+Ready by priority: P0 A · P1 B · P2 C · P3 D
+Ready: X | Blocked: Y
+</details>
 
 **Deadlines (≤ 7 days):**
 
@@ -60,11 +79,14 @@ Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 
 ### My priorities
 
-<!-- User-owned. Create this heading empty; never write here. Preserve anything the user adds. -->
+<!-- STRUCTURAL GUARD (User-owned): Create this heading empty; never write here. Preserve anything the user adds. Omission of this heading is prohibited. -->
 
 ## What Needs Attention
 
-<!-- Inbox (from /email): self-contained FYI items with verbatim quotes + a "[ ] acknowledged" line. Mobile captures routed via /q or /remember (one line each). Outstanding Workflows: PR buckets from pr-state.json; ready-to-merge PRs as "- [ ]" checkboxes. "Needs your call": ambiguous task completions, plus stale-claim/ready-queue items flagged by the reconcile sweep (task ID + one-line reason) — never auto-closed or auto-cancelled. -->
+<!-- Needs your call and time-sensitive items FIRST. Inbox, mobile captures, ambiguous completions, and stale-claim/ready-queue items. PR/workflow status collapsed inside details below. -->
+
+### Needs your call / Time-sensitive
+- [ ] **[task-id]** Title / Action needed — Reason/details
 
 ### [[Contact]] — Subject
 
@@ -73,11 +95,12 @@ Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 - **→ Task**: [task-id] Reply to [[Contact]]
 - [ ] acknowledged
 
-### Outstanding Workflows
+<details>
+<summary>Outstanding Workflows (collapsed)</summary>
 
 **Ready to merge:**
-
 - [ ] [#489](url) [[repo]] — title
+</details>
 
 ## Carryover
 
