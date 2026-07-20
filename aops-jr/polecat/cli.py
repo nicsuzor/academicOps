@@ -108,6 +108,50 @@ def get_env_forwards():
     return env
 
 
+def _seed_confirmed(session_dir, task_id):
+    """Best-effort check that agy actually saw the seeded task, not just that
+    the container exited 0.
+
+    A clean container exit with no trace of the task id anywhere agy actually
+    records it saw is exactly the "live container, zero work" failure mode
+    this function exists to catch (aops_5e7c6cc0): the seed can be silently
+    dropped by a bug upstream of this check (e.g. Go flag-parser swallowing,
+    a boot-time trust-dialog race) while the process still exits cleanly.
+    This is deliberately conservative (a false "confirmed" is possible if the
+    id happens to appear for unrelated reasons) — the goal is to catch the
+    total-silence case, not certify correctness.
+
+    Primary evidence: agy's own conversation transcript, written under the
+    `agy-brain` mount at `<session-uuid>/.system_generated/logs/
+    transcript*.jsonl`. Live-verified (2026-07-20 acceptance run against a
+    real PKB task) to contain the seeded prompt verbatim as the first
+    USER_INPUT entry — e.g. `"<USER_REQUEST>\\n/pull <task_id>\\n
+    </USER_REQUEST>"`. `agy-cli.log`/`agy-logs/cli-*.log` are diagnostic/
+    telemetry logs, NOT the conversation — an earlier version of this check
+    looked there and produced false negatives (retried and then failed a
+    dispatch that had, in fact, fully completed the task) because the task
+    id never appears in those files. Kept as a secondary check only.
+    """
+    brain_dir = Path(session_dir) / "agy-brain"
+    candidates = []
+    if brain_dir.is_dir():
+        candidates.extend(sorted(brain_dir.glob("*/.system_generated/logs/transcript*.jsonl")))
+    agy_logs = Path(session_dir) / "agy-logs"
+    if agy_logs.is_dir():
+        candidates.extend(sorted(agy_logs.glob("cli-*.log")))
+    cli_log = Path(session_dir) / "agy-cli.log"
+    if cli_log.exists():
+        candidates.append(cli_log)
+    for path in candidates:
+        try:
+            content = path.read_text(errors="replace")
+        except OSError:
+            continue
+        if task_id in content:
+            return True
+    return False
+
+
 def _image_available_locally(image):
     """Return True if `image` already exists in the local Docker image cache.
 
@@ -404,6 +448,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             container_session_path = "/home/worker/.claude/projects/-workspace"
             inner_cmd = [agent_cmd]
 
+        seeded_from_task = bool(task) and not extra_args
+
         if not extra_args and task:
             extra_args = (f"/pull {task}",)
 
@@ -556,10 +602,54 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
 
         click.echo(f"📁 Workspace: {workspace_dir}")
         click.echo(f"📝 Sessions Logs: {session_dir}")
-        click.echo(f"🚀 Running: {' '.join(cmd[:15])} ...")
 
-        # Execute the container
-        subprocess.run(cmd)
+        # Execute the container. For an autonomous agy dispatch seeded via
+        # `-t <task_id>` (the exact path repeatedly reproduced as a silent
+        # no-op — aops_5e7c6cc0/aops_c40125ba), a clean process exit is not
+        # by itself evidence the task was ever worked: the seed can be
+        # dropped upstream (flag-parser swallowing, boot-time trust-dialog
+        # race) while the container still exits 0. Verify agy's own log
+        # actually references the task id; retry once on failure; fail fast
+        # (non-zero exit, clear message) rather than silently reporting
+        # success when seeding cannot be confirmed. Every other invocation
+        # shape (claude, explicit prompts, interactive `-i`) is unaffected —
+        # only propagating the real exit code instead of masking it.
+        verify_seed = agent_cmd == "agy" and seeded_from_task
+        max_attempts = 2 if verify_seed else 1
+        returncode = 1
+        seed_ok = not verify_seed  # non-seeded runs don't need this signal
+        for attempt in range(1, max_attempts + 1):
+            suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
+            click.echo(f"🚀 Running{suffix}: {' '.join(cmd[:15])} ...")
+            returncode = subprocess.run(cmd).returncode
+
+            if not verify_seed:
+                break
+            seed_ok = returncode == 0 and _seed_confirmed(session_dir, task)
+            if seed_ok:
+                break
+            if attempt < max_attempts:
+                click.echo(
+                    f"⚠️  Could not confirm agy processed seeded task {task!r} "
+                    f"(exit={returncode}, no trace of the task id in "
+                    f"{session_dir}/agy-logs). Retrying once.",
+                    err=True,
+                )
+
+        if not seed_ok:
+            click.echo(
+                f"Error: seeding task {task!r} into agy could not be "
+                f"confirmed after {max_attempts} attempt(s) (last exit="
+                f"{returncode}). agy's log shows no trace of the task id — "
+                "the seed was likely dropped before delivery rather than "
+                "processed and failed. Inspect "
+                f"{session_dir}/agy-logs and {session_dir}/agy-cli.log. "
+                "Refusing to report success.",
+                err=True,
+            )
+            sys.exit(returncode if returncode else 1)
+        if returncode != 0:
+            sys.exit(returncode)
 
     finally:
         # Clean up staging directory
