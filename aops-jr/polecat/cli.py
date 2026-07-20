@@ -521,21 +521,30 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
             "-v",
             f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
-            "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
             "--add-host",
             "host.docker.internal:host-gateway",
         ]
 
+        # Docker socket access: sandbox escape protection (aops_e3b194fb)
+        # By default, containers do NOT have access to the host Docker socket
+        # (which would allow privilege escalation / escape from the container).
+        # Set docker.enable_socket: true in polecat.yaml ONLY if the container
+        # legitimately needs to spawn other containers or access host Docker.
+        # This is a scoped need and must be documented with its justification.
+        if config.get("docker", {}).get("enable_socket", False):
+            cmd.extend([
+                "-v",
+                "/var/run/docker.sock:/var/run/docker.sock",
+            ])
+            # Add groups for Docker socket permission
+            try:
+                docker_gid = Path("/var/run/docker.sock").stat().st_gid
+                cmd.extend(["--group-add", str(docker_gid)])
+            except Exception:
+                pass
+
         # Add TTY flags
         cmd.extend(docker_args)
-
-        # Add groups for Docker socket permission
-        try:
-            docker_gid = Path("/var/run/docker.sock").stat().st_gid
-            cmd.extend(["--group-add", str(docker_gid)])
-        except Exception:
-            pass
 
         # Add env vars to command line
         for k, v in env.items():
