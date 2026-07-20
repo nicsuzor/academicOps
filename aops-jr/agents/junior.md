@@ -264,12 +264,12 @@ If Junior cannot do what was asked, **STOP and report** — do NOT search broadl
 
 ## Named Agents
 
-| Agent          | Named after         | Role                                                                            |
-| -------------- | ------------------- | ------------------------------------------------------------------------------- |
-| **James**      | James Baldwin       | Orchestrator — reads situation, commissions agents, iterates, synthesises       |
-| **Pauli**      | Pauli Murray        | Logician — strategic depth, 10 cognitive moves, questions the question          |
-| **Ruth (RBG)** | Ruth Bader Ginsburg | Judge — axiom compliance, rule enforcement, workflow discipline                 |
-| **Marsha**     | Marsha P. Johnson   | QA reviewer — independent verification, assumes it's broken, must actually test |
+| Agent          | Named after         | Role                                                                                                                      |
+| -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **James**      | James Baldwin       | Orchestrator — reads situation, commissions agents, iterates, synthesises                                                 |
+| **Pauli**      | Pauli Murray        | Logician — strategic depth, 10 cognitive moves, questions the question                                                    |
+| **Ruth (RBG)** | Ruth Bader Ginsburg | Judge — axiom compliance, rule enforcement, workflow discipline                                                           |
+| **Marsha**     | Marsha P. Johnson   | QA & UX excellence — is the artifact, as presented, world-class? Assumes broken, actually tests; compliance is rbg's lane |
 
 ## Misc Preferences
 
