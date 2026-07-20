@@ -58,11 +58,12 @@ mini-example: `references/cutting-seams.md`.
 
 ## Step 2 — emit the standing review tasks into the DAG
 
-**Assemble** the process workflow the decomposed task follows from the composable rule components
-catalogued in `../../workflows/INDEX.md`: the **outer** workflow (how the epic proceeds to
-acceptance) and, per subtask, the **inner** workflow (how one task proceeds to done). There is no
-separate research path — a literature review, a paper critique, and a code change are the same
-contract with different assembled workflows.
+**Assemble** the process workflow the decomposed task follows:
+1. Identify candidate process templates from the catalog in `../../workflows/INDEX.md` (which points to static files under `../../workflows/process/`).
+2. **Discover and load workflow templates (gates) from the PKB.** Because workflow templates (IDs matching `wf-*`) live dynamically in the PKB as documents tagged `wf-template`, you must run `pkb__list_documents(tag="wf-template")` to discover the full library of available workflow templates.
+3. For any referenced or matching `wf-*` template (e.g. `[[wf-verification]]`, `[[wf-qa]]`), fetch its full contents and rules from the PKB using `pkb__get_document(id="wf-template-name")`.
+4. Compose the **outer** workflow (how the epic proceeds to acceptance) and, per subtask, the **inner** workflow (how one task proceeds to done). There is no separate research path — a literature review, a paper critique, and a code change are the same contract with different assembled workflows.
+
 
 Part of assembly is **specifying the task's review steps**, chosen by pauli from base-workflow templates (doctrine:
 `../../../specs/enforcement/workflow.md`; this skill is its operational home). Match the lens to the work type: code → an
@@ -118,8 +119,9 @@ branch. Carry it whenever a subtask's door-type is one-way (when reversibility i
 it as one-way).
 
 If the epic already carries a hydrate bundle's `## Standards` section, treat it as the candidate
-list and cross-check against the INDEX — don't re-derive; hydrate surfaced the obligations, you
-sequence them into the workflow.
+list and cross-check against the INDEX and the PKB (documents tagged `wf-template`) — don't re-derive;
+hydrate surfaced the obligations, you sequence them into the workflow.
+
 
 ## Step 3 — persist and stop
 

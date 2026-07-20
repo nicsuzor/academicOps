@@ -142,6 +142,10 @@ Request
 
 ## Workflow Templates (formerly Gate Templates)
 
+> [!IMPORTANT]
+> **Source of Truth:** Workflow templates live dynamically in the PKB as documents tagged `wf-template` (e.g. `wf-verification`, `wf-qa`, etc.).
+> The table below is a cached documentation reference. During task hydration and decomposition, agents MUST NOT rely solely on this static table; they MUST query the PKB using `pkb__list_documents(tag="wf-template")` to discover templates and load their authoritative rules via `pkb__get_document(id="wf-...")`.
+
 | Template             | Door-type            | Stakes                                                                       | Skip-when                                                                    |
 | -------------------- | -------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | [[wf-verification]]  | two-way              | Shifting goalposts / "looks done" on routine work                            | Trivial changes                                                              |
