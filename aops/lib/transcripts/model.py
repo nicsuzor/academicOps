@@ -50,3 +50,5 @@ class NormalizedSession:
     source_file: Path
     events: list[NormalizedEvent] = field(default_factory=list)
     raw_events: list[NormalizedRawEntry] = field(default_factory=list)
+    tokens_used: int = 0
+    cost_usd: float = 0.0
