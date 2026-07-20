@@ -217,6 +217,35 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     `polecat run claude --model opus "/pull task-abc123"` passes `--model opus`
     to `claude` and seeds `/pull task-abc123` as its initial prompt.
     """
+    # Defensive guard: this command sets `ignore_unknown_options=True` so
+    # flags meant for the inner agent CLI (e.g. `claude --model opus`) pass
+    # through without click erroring on them. The side effect: if AGENT_CMD
+    # is omitted and the first token is instead an unrecognized flag (e.g.
+    # a stale `polecat run --model antigravity --force`, or any typo'd
+    # option), click does NOT error — it silently assigns that flag to the
+    # AGENT_CMD positional (e.g. agent_cmd='--model',
+    # extra_args=('antigravity', '--force')). That garbage then flows
+    # through inner_cmd all the way into the container's `exec "$@"`, which
+    # dies deep inside Docker with a cryptic
+    # "entrypoint.sh: line 88: exec: --: invalid option" instead of a clear
+    # top-level error. Fail fast here with an actionable message instead
+    # (bug: polecat container entrypoint.sh exec '--' invalid option breaks
+    # all dispatch).
+    if agent_cmd.startswith("-"):
+        click.echo(
+            f"Error: AGENT_CMD resolved to {agent_cmd!r}, which looks like "
+            "an option, not an agent name.\n"
+            "AGENT_CMD is a plain positional (e.g. `polecat run agy -t "
+            "<task-id>`) — an unrecognized flag placed before it gets "
+            "silently absorbed here instead of being rejected, corrupting "
+            "the container invocation.\n"
+            f"Parsed: agent_cmd={agent_cmd!r} extra_args={extra_args!r}\n"
+            "Valid AGENT_CMD values: claude, agy, shell, bash, sleep[...]. "
+            "See the aops-jr dispatch skill for canonical usage.",
+            err=True,
+        )
+        sys.exit(1)
+
     config = load_config()
 
     # 1. Resolve POLECAT_HOME
