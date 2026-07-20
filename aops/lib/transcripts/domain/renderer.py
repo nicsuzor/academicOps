@@ -6,6 +6,13 @@ import json
 
 from transcripts.model import NormalizedSession
 
+# The summary .md is meant to stay comfortably readable (~25K tokens or
+# less) even for very large sessions — the full chronological detail
+# already lives in the separate `.full.md` render. An uncapped Event Index
+# (one row per event) defeats that: a 2000-event session produced a
+# ~250K-char "summary". Cap the table and point overflow at the full file.
+MAX_EVENT_INDEX_ROWS = 200
+
 
 def _get_filename_base(slug: str, started_at: str, correlation: dict[str, str | None]) -> str:
     from datetime import UTC, datetime
@@ -76,7 +83,11 @@ def render_to_markdown(
         ]
     )
 
-    for idx, event in enumerate(session.events, start=1):
+    total_events = len(session.events)
+    truncated = total_events > MAX_EVENT_INDEX_ROWS
+    events_to_index = session.events[:MAX_EVENT_INDEX_ROWS] if truncated else session.events
+
+    for idx, event in enumerate(events_to_index, start=1):
         source_name = event.source or "unknown"
         event_type = event.type or "unknown"
         ts = event.timestamp or ""
@@ -98,6 +109,13 @@ def render_to_markdown(
 
         content_lines.append(
             f"| {idx} | `{event_type}` | **{source_name}** | {ts} | {content_snippet} |"
+        )
+
+    if truncated:
+        remaining = total_events - MAX_EVENT_INDEX_ROWS
+        content_lines.append(
+            f"| … | … | … | … | **+{remaining} more events — see the "
+            f"[Full Markdown Details](./{filename_base}.full.md)** |"
         )
 
     content_lines.append("")
