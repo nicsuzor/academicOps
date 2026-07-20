@@ -1,6 +1,6 @@
 ---
 name: daily
-description: Daily note lifecycle — compose and maintain a factual daily note. Reports the state of the day; does not prioritise or recommend. SSoT for daily note structure.
+description: Daily note lifecycle — compose and maintain a cognitive prosthetic that makes the next action obvious. SSoT for daily note structure.
 context: fork
 agent: "aops:pauli"
 ---
@@ -13,7 +13,7 @@ Fill out the template in `references/note-template.md`. That file is the structu
 
 ## What this note is
 
-A factual, reportive snapshot of the day: what happened, what's open, what's due, what's in the inbox. It is **not** prescriptive — never rank what the user should do next or suggest a sequence. Forward prioritisation is the user's, in `### My priorities` (create the empty heading; never write under it).
+A cognitive prosthetic designed to make the next action obvious (per Nic's ruling in the 2026-07-20 era correction cluster). It reports the state of the day, but it may also prioritise and recommend next actions to reduce cognitive load. Forward prioritisation is still supported by the user-owned `### My priorities` heading, which must be created empty and preserved across regenerations.
 
 ## Core rules
 
@@ -21,7 +21,12 @@ A factual, reportive snapshot of the day: what happened, what's open, what's due
 - **Update throughout the day.** Re-run freely; update in place with Edit, not full rewrites. Consolidate where it helps readability.
 - **Never remove user notes.** Preserve everything the user wrote, plus their ticks (`[x]`) and annotations, across regenerations. Match items by ID/PR/subject and carry ticks forward.
 - **You may turn user notes into neat, well-formatted prose** — but only if you lose no truth. When unsure, keep the original wording.
-- **No empty sections.** Omit a section rather than render an empty heading. On a morning with no sessions yet, omit Today's Log entirely.
+- **No empty sections (except My priorities).** Omit a section rather than render an empty heading. On a morning with no sessions yet, omit Today's Log entirely. The `### My priorities` heading is a structural guard and must always be rendered empty if no user priorities exist.
+- **Add a per-project rollup section.** Ensure the note contains a project rollup showing one line per active project (`academicOps`, `brain`, `buttermilk`, `mem`, `sessions`, `overwhelm`) with its queued/blocked/needs-Nic state.
+- **Dedup the lede.** The `daily_narrative` frontmatter field and the body lede must not contain duplicate content. Hard cap the lede to 2-3 present-tense lines at the very top.
+- **Prioritize decisions and reorder What Needs Attention.** Actionable "needs Nic's call" and time-sensitive items must rank FIRST. Collapsible audit logging, PR/workflow status, and raw task counts must default to collapsed below the fold, so that a cold reader gets full orientation from the top 10 lines of the note.
+- **Never omit or delete the `### My priorities` heading.** The generator must write this heading and keep it empty initially, and preserve anything the user writes under it. Its omission is blocked by a structural template guard.
+- **Replace raw aggregate counts with curated focus.** In the Status section, display the top-3 highest-priority or focus tasks and a one-line count delta (e.g. `+2 ready, -1 blocked`) since the last run. Hide raw task counts inside a collapsed details block.
 - **Today's Log is reconstructed from primary sources, never substituted.** Before writing Today's Log you MUST open today's session transcripts — `$AOPS_SESSIONS/transcripts/$(date +%Y-%m)/$(date +%Y%m%d)-*-claude-*.md` (prefer `-abridged.md`) — and reconstruct the day from them. Assembling it from artifacts already in the note (prior retro stamps, yesterday's log) or from the reconcile sweep's merged-PR list is a criterion substitution: it reproduces the file, not the day. If no same-day interactive transcript exists, omit the section — do not back-fill it from second-hand artifacts.
 - **Prompt Ledger is generated, never hand-transcribed.** If `$AOPS_SESSIONS/state/prompt_ledger.md` is missing or stale (not regenerated today), refresh it: `uv run python aops/scripts/transcript.py --ledger --since <7-days-ago>` from the academicOps checkout. Tail its most recent ~10 lines into `## Prompt Ledger` verbatim. Never write ledger lines by hand and never fill in a blank outcome/link yourself — they're blank because the pipeline couldn't honestly resolve them from the session summary, not because the field was skipped.
 
