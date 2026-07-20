@@ -386,12 +386,27 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 # session still cannot idle unbounded. Callers who genuinely want
                 # an interactive/supervised session pass `-i`/`--prompt-interactive`
                 # explicitly (honoured by the flag-intersection check above).
+                # agy's flag parser is Go stdlib `flag`-based: a value-taking
+                # flag unconditionally consumes the very next argv token as its
+                # value, even if that token itself looks like another flag (it
+                # never checks for a leading `-`). `--print`/`-p` is such a
+                # value-taking flag — its value IS the prompt (confirmed via
+                # `agy changelog` 1.1.2: "...when a prompt is provided via a
+                # flag"). Putting `--print-timeout <dur>` directly after
+                # `--print` therefore made `--print-timeout` (the literal
+                # string) BECOME the prompt, silently dropping the real one —
+                # the worker then dutifully investigated its own "prompt"
+                # (aops_87e6964a: agy ran `--help`, read the antigravity-guide
+                # skill, and wrote a print_timeout_guide.md instead of ever
+                # touching `/pull <task>`). Fix: keep `--print-timeout <dur>`
+                # BEFORE `--print`, and nothing else between `--print` and its
+                # prompt value.
                 agy_print_timeout = os.environ.get("POLECAT_AGY_PRINT_TIMEOUT", "60m")
                 inner_cmd.extend(
                     [
-                        "--print",
                         "--print-timeout",
                         agy_print_timeout,
+                        "--print",
                         extra_args[0],
                         *extra_args[1:],
                     ]
