@@ -111,6 +111,10 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
             created_at = obj.get("created_at", "")
             source = obj.get("source", "")
             content = obj.get("content", "")
+            if isinstance(content, list):
+                content = "".join(str(item) for item in content)
+            elif not isinstance(content, str):
+                content = str(content)
 
             # Normalize source
             norm_source = "system"

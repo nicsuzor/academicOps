@@ -204,6 +204,10 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
         elif entry_type == "attachment":
             att = entry.attachment or {}
             content = att.get("content") or att.get("stdout") or att.get("stderr") or ""
+            if isinstance(content, list):
+                content = "".join(str(item) for item in content)
+            elif not isinstance(content, str):
+                content = str(content)
             events.append(
                 NormalizedEvent(
                     event_id=entry.uuid,
@@ -217,6 +221,10 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
         elif entry_type == "queue-operation":
             op = getattr(entry, "operation", "")
             content = getattr(entry, "content", "") or ""
+            if isinstance(content, list):
+                content = "".join(str(item) for item in content)
+            elif not isinstance(content, str):
+                content = str(content)
             events.append(
                 NormalizedEvent(
                     event_id=f"queue_{entry.timestamp}",
