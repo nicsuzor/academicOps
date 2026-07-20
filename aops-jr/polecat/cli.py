@@ -122,6 +122,27 @@ def _image_available_locally(image):
     return result.returncode == 0
 
 
+def _minimal_gemini_settings(host_settings):
+    """Derive a secret-free ~/.gemini/settings.json for the container.
+
+    The host file's `mcpServers` (live API keys, internal Tailscale-only
+    URLs) and `hooks` (host-filesystem-only command paths) must never reach
+    a container — every polecat worker got a byte-identical copy of the
+    launching user's live credentials and internal network map (aops_624a462e).
+    aops/aops-tools MCP tooling is installed into the image as agy plugins
+    (see Dockerfile `agy plugin install`), not through this file's
+    `mcpServers` key, so dropping it costs the container nothing. The only
+    value carried over is the auth mechanism selector, needed for the
+    staged oauth_creds.json / GEMINI_API_KEY credential to actually be
+    honoured.
+    """
+    minimal = {}
+    auth_type = ((host_settings.get("security") or {}).get("auth") or {}).get("selectedType")
+    if auth_type:
+        minimal["security"] = {"auth": {"selectedType": auth_type}}
+    return minimal
+
+
 def setup_staging(staging_dir, pkb_url):
     """Stage settings and credentials in staging directory."""
     staging_dir = Path(staging_dir)
@@ -142,7 +163,20 @@ def setup_staging(staging_dir, pkb_url):
     if gemini_src.is_dir():
         gemini_dst = staging_dir / ".gemini"
         gemini_dst.mkdir(parents=True, exist_ok=True)
-        for f in ["settings.json", "google_accounts.json", "oauth_creds.json", "installation_id"]:
+
+        # settings.json is regenerated minimal, never copied verbatim — see
+        # _minimal_gemini_settings (aops_624a462e).
+        settings_src = gemini_src / "settings.json"
+        if settings_src.exists():
+            try:
+                host_settings = json.loads(settings_src.read_text())
+            except (OSError, ValueError):
+                host_settings = {}
+            (gemini_dst / "settings.json").write_text(
+                json.dumps(_minimal_gemini_settings(host_settings), indent=2)
+            )
+
+        for f in ["google_accounts.json", "oauth_creds.json", "installation_id"]:
             src_file = gemini_src / f
             if src_file.exists():
                 shutil.copy2(src_file, gemini_dst / f)
@@ -152,33 +186,25 @@ def setup_staging(staging_dir, pkb_url):
         if agy_src.is_dir():
             agy_dst = gemini_dst / "antigravity-cli"
             agy_dst.mkdir(parents=True, exist_ok=True)
-            for f in ["antigravity-oauth-token", "settings.json", "installation_id"]:
+            for f in ["antigravity-oauth-token", "installation_id"]:
                 src_file = agy_src / f
-                if not src_file.exists():
-                    continue
-                if f == "settings.json":
-                    # agy 1.1.3's authoritative folder-trust store is this
-                    # file's `trustedWorkspaces` array — NOT the top-level
-                    # ~/.gemini/trustedFolders.json, which is the legacy
-                    # gemini-cli mechanism that agy 1.1.3 ignores. The host
-                    # file lists host paths only, so the container's
-                    # /workspace stays untrusted and agy blocks the boot on
-                    # its "Do you trust the contents of this project?" dialog
-                    # (swallowing any seeded prompt — aops_428fe64b). Inject
-                    # /workspace so interactive and dispatched sessions boot
-                    # straight to a ready prompt.
-                    try:
-                        agy_settings = json.loads(src_file.read_text())
-                    except (OSError, ValueError):
-                        shutil.copy2(src_file, agy_dst / f)
-                    else:
-                        trusted = agy_settings.get("trustedWorkspaces") or []
-                        if "/workspace" not in trusted:
-                            trusted.append("/workspace")
-                        agy_settings["trustedWorkspaces"] = trusted
-                        (agy_dst / f).write_text(json.dumps(agy_settings, indent=2))
-                else:
+                if src_file.exists():
                     shutil.copy2(src_file, agy_dst / f)
+
+            # agy 1.1.3's authoritative folder-trust store is this file's
+            # `trustedWorkspaces` array — NOT the top-level
+            # ~/.gemini/trustedFolders.json, which is the legacy gemini-cli
+            # mechanism that agy 1.1.3 ignores. Regenerated minimal, never
+            # copied: the host file's `mcpServers` key can carry API keys
+            # the same way the top-level settings.json's does, and its
+            # `trustedWorkspaces` lists host project paths the container
+            # has no use for — it only ever needs /workspace trusted so
+            # agy skips the "Do you trust the contents of this project?"
+            # dialog (which would otherwise swallow any seeded prompt —
+            # aops_428fe64b) (aops_624a462e).
+            (agy_dst / "settings.json").write_text(
+                json.dumps({"trustedWorkspaces": ["/workspace"]}, indent=2)
+            )
 
 
 @click.group()
@@ -495,21 +521,30 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
             "-v",
             f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
-            "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
             "--add-host",
             "host.docker.internal:host-gateway",
         ]
 
+        # Docker socket access: sandbox escape protection (aops_e3b194fb)
+        # By default, containers do NOT have access to the host Docker socket
+        # (which would allow privilege escalation / escape from the container).
+        # Set docker.enable_socket: true in polecat.yaml ONLY if the container
+        # legitimately needs to spawn other containers or access host Docker.
+        # This is a scoped need and must be documented with its justification.
+        if config.get("docker", {}).get("enable_socket", False):
+            cmd.extend([
+                "-v",
+                "/var/run/docker.sock:/var/run/docker.sock",
+            ])
+            # Add groups for Docker socket permission
+            try:
+                docker_gid = Path("/var/run/docker.sock").stat().st_gid
+                cmd.extend(["--group-add", str(docker_gid)])
+            except Exception:
+                pass
+
         # Add TTY flags
         cmd.extend(docker_args)
-
-        # Add groups for Docker socket permission
-        try:
-            docker_gid = Path("/var/run/docker.sock").stat().st_gid
-            cmd.extend(["--group-add", str(docker_gid)])
-        except Exception:
-            pass
 
         # Add env vars to command line
         for k, v in env.items():

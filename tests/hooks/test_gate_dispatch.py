@@ -122,6 +122,7 @@ def test_a_raising_gate_cannot_suppress_another_gates_deny(monkeypatch, capsys):
         "session_id": "dispatch-test-isolation",
     }
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(raw)))
+    monkeypatch.setattr(sys, "argv", ["gate_dispatch.py", "claude"])
 
     rc = gate_dispatch.main()
 

@@ -79,4 +79,4 @@ def test_stop_hook_block():
         check=True,
     )
     output = json.loads(result.stdout)
-    assert output["decision"] == "block"
+    assert output.get("hookSpecificOutput", {}).get("hookEventName") == "Stop"
