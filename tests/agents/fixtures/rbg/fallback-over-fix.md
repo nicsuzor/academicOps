@@ -1,7 +1,7 @@
 ---
 id: rbg-regression-fallback-over-fix
 title: "rbg regression case: explicit-but-tolerating fallback (fallback-over-fix)"
-source_task: aops-6003701f
+source_task: task-XXXX
 source_incident: "PR #1653 (closed unmerged), issue #1585"
 verified_against: aops/agents/rbg.md + .agents/rules/halt-on-failure.md + .agents/rules/single-source-of-truth.md @ v0.4-pre fb9bd5342
 verified_date: 2026-07-21
@@ -82,13 +82,15 @@ violation, or emits one but excuses it as compliant because the fallback is
 Both citations were independently spot-checked against the live rule files
 this session (exact match). Re-run twice (blind first pass, non-blind
 confirmation pass after this fixture was committed) with a consistent
-verdict — see task [[aops-6003701f]], children `task_c068195b` (blind
-run + investigation) and `task_b5adf6c1` (confirmation run), for the full
-transcript excerpts and PKB-recorded evidence trail.
+verdict — see the internal tracking task recorded in this file's
+`source_task` frontmatter field (masked here per the framework's PKB
+egress-guard rule; resolve `task-XXXX` via internal PKB search on this
+fixture's `id`, not by copying the raw ID into this public file) for the
+full transcript excerpts and PKB-recorded evidence trail.
 
-**Conclusion:** the fallback-over-fix loophole named in `aops-6003701f` is not
-currently reproducible against canonical doctrine. No edit to `rbg.md` or
-`halt-on-failure.md` was made — there was nothing to fix. This fixture is
-committed so the case is re-checked automatically (by a future harness) or
-manually (by a reviewer working `aops-6003701f`'s sibling/adjacent tasks)
-rather than re-discovered from scratch.
+**Conclusion:** the fallback-over-fix loophole this fixture was filed
+against is not currently reproducible against canonical doctrine. No edit to
+`rbg.md` or `halt-on-failure.md` was made — there was nothing to fix. This
+fixture is committed so the case is re-checked automatically (by a future
+harness) or manually (by a future reviewer) rather than re-discovered from
+scratch.
