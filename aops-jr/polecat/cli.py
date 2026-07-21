@@ -108,6 +108,50 @@ def get_env_forwards():
     return env
 
 
+def _seed_confirmed(session_dir, task_id):
+    """Best-effort check that agy actually saw the seeded task, not just that
+    the container exited 0.
+
+    A clean container exit with no trace of the task id anywhere agy actually
+    records it saw is exactly the "live container, zero work" failure mode
+    this function exists to catch (aops_5e7c6cc0): the seed can be silently
+    dropped by a bug upstream of this check (e.g. Go flag-parser swallowing,
+    a boot-time trust-dialog race) while the process still exits cleanly.
+    This is deliberately conservative (a false "confirmed" is possible if the
+    id happens to appear for unrelated reasons) — the goal is to catch the
+    total-silence case, not certify correctness.
+
+    Primary evidence: agy's own conversation transcript, written under the
+    `agy-brain` mount at `<session-uuid>/.system_generated/logs/
+    transcript*.jsonl`. Live-verified (2026-07-20 acceptance run against a
+    real PKB task) to contain the seeded prompt verbatim as the first
+    USER_INPUT entry — e.g. `"<USER_REQUEST>\\n/pull <task_id>\\n
+    </USER_REQUEST>"`. `agy-cli.log`/`agy-logs/cli-*.log` are diagnostic/
+    telemetry logs, NOT the conversation — an earlier version of this check
+    looked there and produced false negatives (retried and then failed a
+    dispatch that had, in fact, fully completed the task) because the task
+    id never appears in those files. Kept as a secondary check only.
+    """
+    brain_dir = Path(session_dir) / "agy-brain"
+    candidates = []
+    if brain_dir.is_dir():
+        candidates.extend(sorted(brain_dir.glob("*/.system_generated/logs/transcript*.jsonl")))
+    agy_logs = Path(session_dir) / "agy-logs"
+    if agy_logs.is_dir():
+        candidates.extend(sorted(agy_logs.glob("cli-*.log")))
+    cli_log = Path(session_dir) / "agy-cli.log"
+    if cli_log.exists():
+        candidates.append(cli_log)
+    for path in candidates:
+        try:
+            content = path.read_text(errors="replace")
+        except OSError:
+            continue
+        if task_id in content:
+            return True
+    return False
+
+
 def _image_available_locally(image):
     """Return True if `image` already exists in the local Docker image cache.
 
@@ -120,6 +164,27 @@ def _image_available_locally(image):
         stderr=subprocess.DEVNULL,
     )
     return result.returncode == 0
+
+
+def _minimal_gemini_settings(host_settings):
+    """Derive a secret-free ~/.gemini/settings.json for the container.
+
+    The host file's `mcpServers` (live API keys, internal Tailscale-only
+    URLs) and `hooks` (host-filesystem-only command paths) must never reach
+    a container — every polecat worker got a byte-identical copy of the
+    launching user's live credentials and internal network map (aops_624a462e).
+    aops/aops-tools MCP tooling is installed into the image as agy plugins
+    (see Dockerfile `agy plugin install`), not through this file's
+    `mcpServers` key, so dropping it costs the container nothing. The only
+    value carried over is the auth mechanism selector, needed for the
+    staged oauth_creds.json / GEMINI_API_KEY credential to actually be
+    honoured.
+    """
+    minimal = {}
+    auth_type = ((host_settings.get("security") or {}).get("auth") or {}).get("selectedType")
+    if auth_type:
+        minimal["security"] = {"auth": {"selectedType": auth_type}}
+    return minimal
 
 
 def setup_staging(staging_dir, pkb_url):
@@ -142,7 +207,20 @@ def setup_staging(staging_dir, pkb_url):
     if gemini_src.is_dir():
         gemini_dst = staging_dir / ".gemini"
         gemini_dst.mkdir(parents=True, exist_ok=True)
-        for f in ["settings.json", "google_accounts.json", "oauth_creds.json", "installation_id"]:
+
+        # settings.json is regenerated minimal, never copied verbatim — see
+        # _minimal_gemini_settings (aops_624a462e).
+        settings_src = gemini_src / "settings.json"
+        if settings_src.exists():
+            try:
+                host_settings = json.loads(settings_src.read_text())
+            except (OSError, ValueError):
+                host_settings = {}
+            (gemini_dst / "settings.json").write_text(
+                json.dumps(_minimal_gemini_settings(host_settings), indent=2)
+            )
+
+        for f in ["google_accounts.json", "oauth_creds.json", "installation_id"]:
             src_file = gemini_src / f
             if src_file.exists():
                 shutil.copy2(src_file, gemini_dst / f)
@@ -152,33 +230,25 @@ def setup_staging(staging_dir, pkb_url):
         if agy_src.is_dir():
             agy_dst = gemini_dst / "antigravity-cli"
             agy_dst.mkdir(parents=True, exist_ok=True)
-            for f in ["antigravity-oauth-token", "settings.json", "installation_id"]:
+            for f in ["antigravity-oauth-token", "installation_id"]:
                 src_file = agy_src / f
-                if not src_file.exists():
-                    continue
-                if f == "settings.json":
-                    # agy 1.1.3's authoritative folder-trust store is this
-                    # file's `trustedWorkspaces` array — NOT the top-level
-                    # ~/.gemini/trustedFolders.json, which is the legacy
-                    # gemini-cli mechanism that agy 1.1.3 ignores. The host
-                    # file lists host paths only, so the container's
-                    # /workspace stays untrusted and agy blocks the boot on
-                    # its "Do you trust the contents of this project?" dialog
-                    # (swallowing any seeded prompt — aops_428fe64b). Inject
-                    # /workspace so interactive and dispatched sessions boot
-                    # straight to a ready prompt.
-                    try:
-                        agy_settings = json.loads(src_file.read_text())
-                    except (OSError, ValueError):
-                        shutil.copy2(src_file, agy_dst / f)
-                    else:
-                        trusted = agy_settings.get("trustedWorkspaces") or []
-                        if "/workspace" not in trusted:
-                            trusted.append("/workspace")
-                        agy_settings["trustedWorkspaces"] = trusted
-                        (agy_dst / f).write_text(json.dumps(agy_settings, indent=2))
-                else:
+                if src_file.exists():
                     shutil.copy2(src_file, agy_dst / f)
+
+            # agy 1.1.3's authoritative folder-trust store is this file's
+            # `trustedWorkspaces` array — NOT the top-level
+            # ~/.gemini/trustedFolders.json, which is the legacy gemini-cli
+            # mechanism that agy 1.1.3 ignores. Regenerated minimal, never
+            # copied: the host file's `mcpServers` key can carry API keys
+            # the same way the top-level settings.json's does, and its
+            # `trustedWorkspaces` lists host project paths the container
+            # has no use for — it only ever needs /workspace trusted so
+            # agy skips the "Do you trust the contents of this project?"
+            # dialog (which would otherwise swallow any seeded prompt —
+            # aops_428fe64b) (aops_624a462e).
+            (agy_dst / "settings.json").write_text(
+                json.dumps({"trustedWorkspaces": ["/workspace"]}, indent=2)
+            )
 
 
 @click.group()
@@ -378,6 +448,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             container_session_path = "/home/worker/.claude/projects/-workspace"
             inner_cmd = [agent_cmd]
 
+        seeded_from_task = bool(task) and not extra_args
+
         if not extra_args and task:
             extra_args = (f"/pull {task}",)
 
@@ -495,21 +567,30 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
             "-v",
             f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
-            "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
             "--add-host",
             "host.docker.internal:host-gateway",
         ]
 
+        # Docker socket access: sandbox escape protection (aops_e3b194fb)
+        # By default, containers do NOT have access to the host Docker socket
+        # (which would allow privilege escalation / escape from the container).
+        # Set docker.enable_socket: true in polecat.yaml ONLY if the container
+        # legitimately needs to spawn other containers or access host Docker.
+        # This is a scoped need and must be documented with its justification.
+        if config.get("docker", {}).get("enable_socket", False):
+            cmd.extend([
+                "-v",
+                "/var/run/docker.sock:/var/run/docker.sock",
+            ])
+            # Add groups for Docker socket permission
+            try:
+                docker_gid = Path("/var/run/docker.sock").stat().st_gid
+                cmd.extend(["--group-add", str(docker_gid)])
+            except Exception:
+                pass
+
         # Add TTY flags
         cmd.extend(docker_args)
-
-        # Add groups for Docker socket permission
-        try:
-            docker_gid = Path("/var/run/docker.sock").stat().st_gid
-            cmd.extend(["--group-add", str(docker_gid)])
-        except Exception:
-            pass
 
         # Add env vars to command line
         for k, v in env.items():
@@ -521,10 +602,54 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
 
         click.echo(f"📁 Workspace: {workspace_dir}")
         click.echo(f"📝 Sessions Logs: {session_dir}")
-        click.echo(f"🚀 Running: {' '.join(cmd[:15])} ...")
 
-        # Execute the container
-        subprocess.run(cmd)
+        # Execute the container. For an autonomous agy dispatch seeded via
+        # `-t <task_id>` (the exact path repeatedly reproduced as a silent
+        # no-op — aops_5e7c6cc0/aops_c40125ba), a clean process exit is not
+        # by itself evidence the task was ever worked: the seed can be
+        # dropped upstream (flag-parser swallowing, boot-time trust-dialog
+        # race) while the container still exits 0. Verify agy's own log
+        # actually references the task id; retry once on failure; fail fast
+        # (non-zero exit, clear message) rather than silently reporting
+        # success when seeding cannot be confirmed. Every other invocation
+        # shape (claude, explicit prompts, interactive `-i`) is unaffected —
+        # only propagating the real exit code instead of masking it.
+        verify_seed = agent_cmd == "agy" and seeded_from_task
+        max_attempts = 2 if verify_seed else 1
+        returncode = 1
+        seed_ok = not verify_seed  # non-seeded runs don't need this signal
+        for attempt in range(1, max_attempts + 1):
+            suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
+            click.echo(f"🚀 Running{suffix}: {' '.join(cmd[:15])} ...")
+            returncode = subprocess.run(cmd).returncode
+
+            if not verify_seed:
+                break
+            seed_ok = returncode == 0 and _seed_confirmed(session_dir, task)
+            if seed_ok:
+                break
+            if attempt < max_attempts:
+                click.echo(
+                    f"⚠️  Could not confirm agy processed seeded task {task!r} "
+                    f"(exit={returncode}, no trace of the task id in "
+                    f"{session_dir}/agy-logs). Retrying once.",
+                    err=True,
+                )
+
+        if not seed_ok:
+            click.echo(
+                f"Error: seeding task {task!r} into agy could not be "
+                f"confirmed after {max_attempts} attempt(s) (last exit="
+                f"{returncode}). agy's log shows no trace of the task id — "
+                "the seed was likely dropped before delivery rather than "
+                "processed and failed. Inspect "
+                f"{session_dir}/agy-logs and {session_dir}/agy-cli.log. "
+                "Refusing to report success.",
+                err=True,
+            )
+            sys.exit(returncode if returncode else 1)
+        if returncode != 0:
+            sys.exit(returncode)
 
     finally:
         # Clean up staging directory

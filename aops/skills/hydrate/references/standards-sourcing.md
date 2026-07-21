@@ -7,12 +7,12 @@ composition (selecting and ordering gate/process templates proportionate to stak
 
 ## Sources, in order
 
-1. **`aops/workflows/INDEX.md`** — the workflow-library index (owned by the library, not by
-   this skill). Read its routing table/descriptions; name any template whose "when it applies"
-   signal matches this ask's subject (e.g. "outbound-facing" → the outbound-review gate template;
-   "irreversible/one-way-door" → an approval-gate template). If the index isn't present yet or
-   doesn't cover this class of work, say so — that's a library gap to flag, not something to
-   invent a template for.
+1. **`aops/workflows/INDEX.md` and PKB Workflow Templates** — Read the routing table and
+   descriptions in `aops/workflows/INDEX.md` to identify candidate process and workflow templates.
+   Because workflow templates (`wf-*` gates) live dynamically in the PKB, you must query the PKB
+   (using `pkb__list_documents(tag="wf-template")`) to discover them and fetch their contents
+   (using `pkb__get_document(id="wf-...")`) to verify their applicability and stakes.
+   If a needed template is missing from both the index and the PKB, report that as a library gap.
 2. **Project-local standards** — `.agents/rules/*.md` (e.g. `cite-sources.md`,
    `evidence-immutable.md`, `single-source-of-truth.md`) and any `AXIOMS.md` in the project root, if
    present. These are per-project overrides/extensions, same pattern as the old

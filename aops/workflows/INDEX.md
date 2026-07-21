@@ -14,14 +14,14 @@ comprehension** — never parsed or solved. Two kinds:
 
 - **Process templates** (`process/`) — how a class of work proceeds. Carry
   routing signals, NOT-this signals, unique steps, exit routing.
-- **Gate templates** (`gates/`) — reusable QA/vetting/approval obligations.
-  _Door-type (two-way vs. one-way) is expressed as which gate templates get
+- **Workflow templates (formerly Gate templates)** (living in the PKB as `wf-*` templates) — reusable QA/vetting/approval obligations.
+  _Door-type (two-way vs. one-way) is expressed as which templates get
   composed in_ — one vocabulary for proportionate process everywhere.
 
 Frontmatter dependency hints (`requires` / `pairs-with` / `conflicts` /
 `recommends`) are the only vocabulary a composer reasons over — no solver, no
 richer ontology. `requires` = fragments this template always pulls in;
-`pairs-with` = gates/templates composed proportionate to stakes, not always;
+`pairs-with` = templates/gates composed proportionate to stakes, not always;
 `recommends` = soft suggestion; `conflicts` = mutually exclusive with.
 
 **Project-local extension**: a project's `.agent/workflows/*.md` and
@@ -57,8 +57,8 @@ Request
   |       +-- Cause unknown -----------------------------------------> [[investigation]]
   |       +-- Cause known, clear fix -------------------------------> [[feature-dev]]
   +-- Planning/designing known work? -------------------------------> [[feature-dev]] or [[develop-specification]]
-  +-- Sharing/sending/publishing externally? -----------------------> [[outbound-review]] (gate)
-  +-- Need QA verification? -----------------------------------------> [[qa]] (gate) or [[verification]] (gate)
+  +-- Sharing/sending/publishing externally? -----------------------> [[wf-outbound-review]] (workflow template)
+  +-- Need QA verification? -----------------------------------------> [[wf-qa]] or [[wf-verification]] (workflow templates)
   +-- Human corrected an agent assumption? --------------------------> [[correction-capture]]
   +-- Decision needed to unblock work? ------------------------------> [[decision-briefing]]
   +-- Testing a new framework approach? -----------------------------> [[experiment-design]]
@@ -74,63 +74,63 @@ Request
 
 ### Development & Investigation
 
-| Template                     | Routing description                              | Requires           | Pairs-with             |
-| ---------------------------- | ------------------------------------------------ | ------------------ | ---------------------- |
-| [[feature-dev]]              | Test-first feature/known-cause-bug, idea to ship | task-tracking, tdd | verification, handover |
-| [[investigation]] (fragment) | Hypothesis→probe→conclude for unknown-cause work | —                  | memory-capture         |
+| Template                     | Routing description                              | Requires           | Pairs-with                           |
+| ---------------------------- | ------------------------------------------------ | ------------------ | ------------------------------------ |
+| [[feature-dev]]              | Test-first feature/known-cause-bug, idea to ship | task-tracking, tdd | [[wf-verification]], [[wf-handover]] |
+| [[investigation]] (fragment) | Hypothesis→probe→conclude for unknown-cause work | —                  | memory-capture                       |
 
 ### Email & Communications
 
-| Template          | Routing description                            | Requires      | Pairs-with |
-| ----------------- | ---------------------------------------------- | ------------- | ---------- |
-| [[email-triage]]  | Classify inbox into Task/FYI/Skip/Uncertain    | task-tracking | handover   |
-| [[email-capture]] | Extract a ready-to-work task with attachments  | task-tracking | handover   |
-| [[email-reply]]   | Draft (never send) a reply in the user's voice | task-tracking | handover   |
+| Template          | Routing description                            | Requires      | Pairs-with      |
+| ----------------- | ---------------------------------------------- | ------------- | --------------- |
+| [[email-triage]]  | Classify inbox into Task/FYI/Skip/Uncertain    | task-tracking | [[wf-handover]] |
+| [[email-capture]] | Extract a ready-to-work task with attachments  | task-tracking | [[wf-handover]] |
+| [[email-reply]]   | Draft (never send) a reply in the user's voice | task-tracking | [[wf-handover]] |
 
 ### Academic
 
-| Template             | Routing description                                                                                                                    | Requires      | Pairs-with      |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------- | --------------- |
-| [[peer-review]]      | Grant/fellowship/paper review, read to submit                                                                                          | task-tracking | handover        |
-| [[reference-letter]] | Request → draft → review → send a reference letter                                                                                     | task-tracking | handover        |
-| [[finalize-report]]  | Revise a report after reviewer/stakeholder feedback (id: `report-finalization`; filename avoids the harness's report-file write guard) | task-tracking | outbound-review |
-| [[review-response]]  | Threaded docx replies showing how each comment was addressed                                                                           | task-tracking | —               |
+| Template             | Routing description                                                                                                                    | Requires      | Pairs-with             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------- |
+| [[peer-review]]      | Grant/fellowship/paper review, read to submit                                                                                          | task-tracking | [[wf-handover]]        |
+| [[reference-letter]] | Request → draft → review → send a reference letter                                                                                     | task-tracking | [[wf-handover]]        |
+| [[finalize-report]]  | Revise a report after reviewer/stakeholder feedback (id: `report-finalization`; filename avoids the harness's report-file write guard) | task-tracking | [[wf-outbound-review]] |
+| [[review-response]]  | Threaded docx replies showing how each comment was addressed                                                                           | task-tracking | —                      |
 
 ### Operations & Batch
 
-| Template                      | Routing description                                   | Requires                    | Pairs-with                     |
-| ----------------------------- | ----------------------------------------------------- | --------------------------- | ------------------------------ |
-| [[batch]] (fragment)          | Parallel processing of independent items, one session | —                           | task-tracking                  |
-| [[burst]] (fragment)          | Multi-session stateful batch lifecycle                | task-tracking               | —                              |
-| [[external-batch-submission]] | Submit/monitor/retrieve external batch API jobs       | task-tracking, verification | —                              |
-| [[worktree-merge]]            | Merge a `merge_ready` worktree branch to main         | —                           | handover                       |
-| [[pr-review]]                 | Triage PRs, dispatch reviewers, synthesize verdicts   | batch                       | worktree-merge, human-approval |
+| Template                      | Routing description                                   | Requires                           | Pairs-with                            |
+| ----------------------------- | ----------------------------------------------------- | ---------------------------------- | ------------------------------------- |
+| [[batch]] (fragment)          | Parallel processing of independent items, one session | —                                  | task-tracking                         |
+| [[burst]] (fragment)          | Multi-session stateful batch lifecycle                | task-tracking                      | —                                     |
+| [[external-batch-submission]] | Submit/monitor/retrieve external batch API jobs       | task-tracking, [[wf-verification]] | —                                     |
+| [[worktree-merge]]            | Merge a `merge_ready` worktree branch to main         | —                                  | [[wf-handover]]                       |
+| [[pr-review]]                 | Triage PRs, dispatch reviewers, synthesize verdicts   | batch                              | worktree-merge, [[wf-human-approval]] |
 
 ### Session & Routing
 
-| Template                 | Routing description                                       | Requires     | Pairs-with                            |
-| ------------------------ | --------------------------------------------------------- | ------------ | ------------------------------------- |
-| [[simple-question]]      | Pure information request — answer and halt                | —            | —                                     |
-| [[interactive-followup]] | Bounded follow-up in an active session, skip re-hydration | verification | —                                     |
-| [[framework-gate]]       | Detect framework-modification intent, checked first       | —            | develop-specification, human-approval |
+| Template                 | Routing description                                       | Requires            | Pairs-with                                   |
+| ------------------------ | --------------------------------------------------------- | ------------------- | -------------------------------------------- |
+| [[simple-question]]      | Pure information request — answer and halt                | —                   | —                                            |
+| [[interactive-followup]] | Bounded follow-up in an active session, skip re-hydration | [[wf-verification]] | —                                            |
+| [[framework-gate]]       | Detect framework-modification intent, checked first       | —                   | develop-specification, [[wf-human-approval]] |
 
 ### General & Decision Support
 
-| Template                  | Routing description                                       | Requires      | Pairs-with     |
-| ------------------------- | --------------------------------------------------------- | ------------- | -------------- |
-| [[decision-briefing]]     | Structured consequence briefing for a blocked decision    | task-tracking | human-approval |
-| [[experiment-design]]     | Design/run/evaluate a discrete framework experiment       | task-tracking | verification   |
-| [[develop-specification]] | Collaboratively spec a feature/automation before building | task-tracking | human-approval |
+| Template                  | Routing description                                       | Requires      | Pairs-with            |
+| ------------------------- | --------------------------------------------------------- | ------------- | --------------------- |
+| [[decision-briefing]]     | Structured consequence briefing for a blocked decision    | task-tracking | [[wf-human-approval]] |
+| [[experiment-design]]     | Design/run/evaluate a discrete framework experiment       | task-tracking | [[wf-verification]]   |
+| [[develop-specification]] | Collaboratively spec a feature/automation before building | task-tracking | [[wf-human-approval]] |
 
 ### Meta & Framework Governance
 
-| Template                  | Routing description                                                              | Requires       | Pairs-with            |
-| ------------------------- | -------------------------------------------------------------------------------- | -------------- | --------------------- |
-| [[monitor-prevent-bloat]] | Detect and remove doc/skill bloat and duplication                                | —              | verification          |
-| [[session-effectiveness]] | Qualitative transcript assessment of framework performance                       | —              | dogfooding            |
-| [[dogfooding]]            | Execute→reflect→codify self-improvement loop (supersedes duplicate `reflect.md`) | memory-capture | session-effectiveness |
-| [[correction-capture]]    | Capture a human's mid-session correction as a durable fix                        | memory-capture | —                     |
-| [[audit]]                 | Framework governance audit — structure, indices, tests, report                   | handover       | monitor-prevent-bloat |
+| Template                  | Routing description                                                              | Requires        | Pairs-with            |
+| ------------------------- | -------------------------------------------------------------------------------- | --------------- | --------------------- |
+| [[monitor-prevent-bloat]] | Detect and remove doc/skill bloat and duplication                                | —               | [[wf-verification]]   |
+| [[session-effectiveness]] | Qualitative transcript assessment of framework performance                       | —               | dogfooding            |
+| [[dogfooding]]            | Execute→reflect→codify self-improvement loop (supersedes duplicate `reflect.md`) | memory-capture  | session-effectiveness |
+| [[correction-capture]]    | Capture a human's mid-session correction as a durable fix                        | memory-capture  | —                     |
+| [[audit]]                 | Framework governance audit — structure, indices, tests, report                   | [[wf-handover]] | monitor-prevent-bloat |
 
 ### Fragments (composed, not routed to directly)
 
@@ -140,18 +140,22 @@ Request
 | [[tdd]]            | Red-green-refactor cycle                              |
 | [[memory-capture]] | Store durable findings to the PKB                     |
 
-## Gate Templates (declared stakes)
+## Workflow Templates (formerly Gate Templates)
 
-| Gate                 | Door-type            | Stakes                                                                       | Skip-when                                                                    |
-| -------------------- | -------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [[verification]]     | two-way              | Shifting goalposts / "looks done" on routine work                            | Trivial changes                                                              |
-| [[qa]]               | two-way              | Feature-complete/user-facing work ships without independent evidence         | Trivial, or user waives                                                      |
-| [[outbound-review]]  | one-way              | External deliverable ships with an uncaught strategic/factual/tonal error    | Still an internal draft, or audience already trusted                         |
-| [[handover]]         | two-way (asymmetric) | Session abandoned with no PR/commit/task-update — traceability lost          | No file modifications made                                                   |
-| [[constraint-check]] | two-way              | A composed plan silently violates its own templates' rules                   | No declared constraints, or single atomic action                             |
-| [[human-approval]]   | one-way              | An irreversible/highly consequential action executes on agent judgment alone | Action is two-way-door, or already covered by a named standing authorisation |
+> [!IMPORTANT]
+> **Source of Truth:** Workflow templates live dynamically in the PKB as documents tagged `wf-template` (e.g. `wf-verification`, `wf-qa`, etc.).
+> The table below is a cached documentation reference. During task hydration and decomposition, agents MUST NOT rely solely on this static table; they MUST query the PKB using `pkb__list_documents(tag="wf-template")` to discover templates and load their authoritative rules via `pkb__get_document(id="wf-...")`.
 
-`human-approval` is a **newly authored** gate — it did not exist in the
-migrated library; it was a flagged gap this migration fills, and is the gate
-[[framework-gate]], [[outbound-review]], [[pr-review]], and
+| Template                | Door-type            | Stakes                                                                       | Skip-when                                                                    |
+| ----------------------- | -------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [[wf-verification]]     | two-way              | Shifting goalposts / "looks done" on routine work                            | Trivial changes                                                              |
+| [[wf-qa]]               | two-way              | Feature-complete/user-facing work ships without independent evidence         | Trivial, or user waives                                                      |
+| [[wf-outbound-review]]  | one-way              | External deliverable ships with an uncaught strategic/factual/tonal error    | Still an internal draft, or audience already trusted                         |
+| [[wf-handover]]         | two-way (asymmetric) | Session abandoned with no PR/commit/task-update — traceability lost          | No file modifications made                                                   |
+| [[wf-constraint-check]] | two-way              | A composed plan silently violates its own templates' rules                   | No declared constraints, or single atomic action                             |
+| [[wf-human-approval]]   | one-way              | An irreversible/highly consequential action executes on agent judgment alone | Action is two-way-door, or already covered by a named standing authorisation |
+
+`wf-human-approval` is a **newly authored** template — it did not exist in the
+migrated library; it was a flagged gap this migration fills, and is the template
+[[framework-gate]], [[wf-outbound-review]], [[pr-review]], and
 [[decision-briefing]] all hand off to at their one-way-door crossing.

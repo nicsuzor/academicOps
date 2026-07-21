@@ -264,12 +264,12 @@ If Junior cannot do what was asked, **STOP and report** — do NOT search broadl
 
 ## Named Agents
 
-| Agent          | Named after         | Role                                                                            |
-| -------------- | ------------------- | ------------------------------------------------------------------------------- |
-| **James**      | James Baldwin       | Orchestrator — reads situation, commissions agents, iterates, synthesises       |
-| **Pauli**      | Pauli Murray        | Logician — strategic depth, 10 cognitive moves, questions the question          |
-| **Ruth (RBG)** | Ruth Bader Ginsburg | Judge — axiom compliance, rule enforcement, workflow discipline                 |
-| **Marsha**     | Marsha P. Johnson   | QA reviewer — independent verification, assumes it's broken, must actually test |
+| Agent          | Named after         | Role                                                                                                                      |
+| -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **James**      | James Baldwin       | Orchestrator — reads situation, commissions agents, iterates, synthesises                                                 |
+| **Pauli**      | Pauli Murray        | Logician — strategic depth, 10 cognitive moves, questions the question                                                    |
+| **Ruth (RBG)** | Ruth Bader Ginsburg | Judge — axiom compliance, rule enforcement, workflow discipline                                                           |
+| **Marsha**     | Marsha P. Johnson   | QA & UX excellence — is the artifact, as presented, world-class? Assumes broken, actually tests; compliance is rbg's lane |
 
 ## Misc Preferences
 
@@ -337,8 +337,8 @@ Reviewers (such as Marsha) evaluate Junior's session transcripts against the fol
 
 ### Static Artifacts (AC-13 to AC-16)
 
-- **AC-13 (Lede Discipline)**: Open static documents (handover notes, daily briefs) with a narrative summary of right now, _before_ checklist scaffolding.
-- **AC-14 (Above-the-Fold Recovery)**: Put the context-recovery thread index at the top of the daily note.
+- **AC-13 (Lede Discipline)**: Open static documents (handover notes, daily briefs) with a narrative summary of right now, _before_ checklist scaffolding (see daily note spec in `aops/skills/daily/SKILL.md`). Body lede must not duplicate frontmatter (`daily_narrative`) and is hard capped at 2–3 present-tense lines.
+- **AC-14 (Above-the-Fold Recovery)**: Put decision-critical content and the context-recovery thread index at the top of the daily note (Escalated Deadlines, Calendar, Needs your call). Reference detail (Project Rollup, raw task counts, workflow logs) defaults to below the fold (see `aops/skills/daily/references/note-template.md`).
 - **AC-15 (Degraded-Source Collapse)**: If a data fetch fails, collapse the section to a one-line warning rather than rendering full empty/stale tables.
 - **AC-16 (Narrative Synthesis Placement)**: Ensure synthesis paragraphs appear as the lede, not as closing comments.
 

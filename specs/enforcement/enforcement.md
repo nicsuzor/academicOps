@@ -71,7 +71,7 @@ A model-based (not deterministic) tool-call classifier built into the harness, c
 
 ### 6. Workflow components for assembly
 
-A set of composable gate _components_ — prose, not code — that an assembled workflow can wire into a pipeline: [`aops/workflows/gates/`](../../aops/workflows/gates/) (`outbound-review`, `verification`, `handover`, `constraint-check`, `qa`, `human-approval`). Each names its own stakes, door-type (one-way/two-way), and category. Workflows assemble these at generation time rather than every task inventing its own review ceremony.
+A set of composable workflow templates — prose, not code — that live in the PKB task/knowledge graph under `wf-*` IDs (`wf-outbound-review`, `wf-verification`, `wf-handover`, `wf-constraint-check`, `wf-qa`, `wf-human-approval`). Each names its own stakes, door-type (one-way/two-way), and category. Workflows assemble these at generation/decomposition time rather than every task inventing its own review ceremony.
 
 ### 7. Sign-off — the workflow-level instantiation
 
@@ -105,4 +105,4 @@ The framework's prior in-session hook/gate engine — a dedicated `GateConfig` f
 - [sign-off.md](sign-off.md) — the workflow-level review, instantiated today as the git PR pipeline.
 - [evidence-contract.md](evidence-contract.md) — the single universal claim-evidence shape every boundary above reads.
 - [auto-mode-classifier.md](auto-mode-classifier.md) — design statement for Claude Code's native per-action classifier.
-- [`aops/workflows/gates/`](../../aops/workflows/gates/) — the prose workflow-gate component library for assembled workflows.
+- **PKB Workflow Templates** (`wf-*` nodes in the PKB) — the prose workflow template component library for assembled workflows.

@@ -150,6 +150,33 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
             session_id = entry.sessionId
             break
 
+    # Accumulate token usage and cost
+    total_input = 0
+    total_cache_creation = 0
+    total_cache_read = 0
+    total_output = 0
+
+    for entry in transcript.entries:
+        if (
+            hasattr(entry, "message")
+            and entry.message
+            and hasattr(entry.message, "usage")
+            and entry.message.usage
+        ):
+            u = entry.message.usage
+            total_input += getattr(u, "input_tokens", 0) or 0
+            total_cache_creation += getattr(u, "cache_creation_input_tokens", 0) or 0
+            total_cache_read += getattr(u, "cache_read_input_tokens", 0) or 0
+            total_output += getattr(u, "output_tokens", 0) or 0
+
+    tokens_used = total_input + total_cache_creation + total_cache_read + total_output
+    cost_usd = (
+        total_input * 3.0
+        + total_cache_creation * 3.75
+        + total_cache_read * 0.3
+        + total_output * 15.0
+    ) / 1_000_000
+
     events: list[NormalizedEvent] = []
     for entry in transcript.entries:
         entry_type = entry.type
@@ -159,17 +186,60 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
                 for block in entry.message.content:
                     if hasattr(block, "text") and block.text:
                         content_parts.append(block.text)
-            content = "".join(content_parts)
-            events.append(
-                NormalizedEvent(
-                    event_id=entry.uuid,
-                    timestamp=entry.timestamp,
-                    source="user",
-                    type="message",
-                    content=content,
-                    meta={"user_type": entry.userType, "cwd": entry.cwd},
+                    elif getattr(block, "type", None) == "tool_result":
+                        # Extract and format tool result content
+                        result_content = ""
+                        if hasattr(block, "content") and block.content is not None:
+                            if isinstance(block.content, str):
+                                result_content = block.content
+                            elif isinstance(block.content, list):
+                                text_parts = []
+                                for item in block.content:
+                                    if isinstance(item, dict) and item.get("type") == "text":
+                                        text_parts.append(str(item.get("text", "")))
+                                    else:
+                                        text_parts.append(json.dumps(item, ensure_ascii=False))
+                                result_content = "\n".join(text_parts)
+                            else:
+                                result_content = str(block.content)
+
+                        # Truncate to prevent bloat (keep file sizes efficient)
+                        limit = 4000
+                        if len(result_content) > limit:
+                            truncated_part = len(result_content) - limit
+                            result_content = (
+                                result_content[:limit]
+                                + f"\n\n... [TRUNCATED - {truncated_part} chars of tool result output omitted]"
+                            )
+
+                        tool_use_id = getattr(block, "tool_use_id", "unknown")
+                        is_error = getattr(block, "is_error", False)
+                        events.append(
+                            NormalizedEvent(
+                                event_id=f"{entry.uuid}_tool_{tool_use_id}",
+                                timestamp=entry.timestamp,
+                                source="tool",
+                                type="tool_output",
+                                content=result_content,
+                                meta={
+                                    "tool_use_id": tool_use_id,
+                                    "is_error": is_error,
+                                    "cwd": entry.cwd,
+                                },
+                            )
+                        )
+            content = "".join(content_parts).strip()
+            if content:
+                events.append(
+                    NormalizedEvent(
+                        event_id=entry.uuid,
+                        timestamp=entry.timestamp,
+                        source="user",
+                        type="message",
+                        content=content,
+                        meta={"user_type": entry.userType, "cwd": entry.cwd},
+                    )
                 )
-            )
         elif entry_type == "assistant":
             content_parts = []
             thinking_parts = []
@@ -275,4 +345,6 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
         source_file=transcript.source,
         events=events,
         raw_events=raw_events,
+        tokens_used=tokens_used,
+        cost_usd=cost_usd,
     )
