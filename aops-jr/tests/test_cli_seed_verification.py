@@ -89,11 +89,19 @@ def test_seed_confirmed_checks_agy_cli_log_as_secondary_fallback(tmp_path):
 def _base_mocks(monkeypatch, tmp_path):
     """Patch out everything docker/filesystem-heavy so `run()` is exercised
     as a pure control-flow unit. Each test installs its own `subprocess.run`
-    and `_seed_confirmed` fakes afterwards."""
+    and `_seed_confirmed` fakes afterwards.
+
+    `get_env_forwards()` is stubbed to a fixed dummy dict — left unmocked it
+    reads real host secrets (GH_TOKEN, GEMINI_API_KEY, etc.) into the `cmd`
+    list `run()` builds, which any future assertion that inspects `cmd` (e.g.
+    on failure, via pytest's assertion introspection) would print straight
+    into the test/CI log. Do not remove this without confirming no test in
+    this file ever touches the built `cmd`/`inner_cmd`."""
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
     monkeypatch.setattr(cli, "load_config", lambda: {})
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
     monkeypatch.setattr(cli, "setup_staging", lambda staging_dir, pkb_url: None)
+    monkeypatch.setattr(cli, "get_env_forwards", lambda: {"DUMMY_TEST_ENV": "1"})
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("AOPS", str(tmp_path / "repo"))
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
@@ -189,6 +197,41 @@ def test_agy_seeded_dispatch_recovers_on_retry(tmp_path, monkeypatch):
 
     assert result.exit_code == 0
     assert attempts["n"] == 2
+
+
+def test_agy_seeded_dispatch_puts_print_timeout_before_print(tmp_path, monkeypatch):
+    """Regression test for aops_0964f17a / aops_87e6964a: agy's Go
+    stdlib-`flag`-based parser makes `--print`/`-p` consume the very next
+    argv token as the prompt, even if that token looks like another flag.
+    `--print --print-timeout 60m "/pull <task>"` silently fed agy the
+    literal string "--print-timeout" as its prompt, dropping the real one.
+    This asserts the actual argv order built for docker, not just the
+    retry/fail-fast wrapper around it — a previous regression here left the
+    ordering bug live in the code while these tests still passed."""
+    captured_cmd = {}
+
+    def fake_run(cmd, *a, **kw):
+        captured_cmd["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0)
+
+    _base_mocks(monkeypatch, tmp_path)
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    monkeypatch.setattr(cli, "_seed_confirmed", lambda session_dir, task: True)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli.main, ["run", "agy", "-d", str(tmp_path / "repo"), "-t", "task_deadbeef"]
+    )
+
+    assert result.exit_code == 0
+    cmd = captured_cmd["cmd"]
+    timeout_idx = cmd.index("--print-timeout")
+    print_idx = cmd.index("--print")
+    assert timeout_idx < print_idx, f"--print-timeout must come before --print: {cmd}"
+    assert cmd[print_idx + 1] == "/pull task_deadbeef", (
+        f"--print's very next token must be the real prompt, nothing else "
+        f"may sit between --print and its value: {cmd}"
+    )
 
 
 def test_agy_with_explicit_prompt_flag_is_not_seed_verified(tmp_path, monkeypatch):

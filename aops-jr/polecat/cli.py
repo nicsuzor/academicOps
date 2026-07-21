@@ -502,6 +502,28 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 # touching `/pull <task>`). Fix: keep `--print-timeout <dur>`
                 # BEFORE `--print`, and nothing else between `--print` and its
                 # prompt value.
+                #
+                # Regression note (aops_0964f17a, 2026-07-21): this exact
+                # failure mode reproduced again after the fix above had
+                # already merged (commit 75563e612, PR #2281) — root cause
+                # was NOT a code regression but a stale published plugin
+                # distribution (v0.3.80-beta.10, published ~17min before the
+                # fix landed) still in use by the reporting dispatch. Verified
+                # live against the real `agy` 1.1.4 binary: the buggy order
+                # (`--print --print-timeout <dur> "<prompt>"`) reproduces
+                # bit-for-bit (agy investigates its own `--print-timeout`
+                # flag); the order below does not. Also empirically confirmed
+                # (not merely assumed) that a trailing positional after
+                # `--print <prompt>` is silently ignored by agy's flag
+                # parser rather than erroring or corrupting the prompt, so
+                # `*extra_args[1:]` below is safe even though `extra_args`
+                # only ever has one element on the seeded `-t <task>` path.
+                # Third failure mode in this same argv-construction region
+                # after aops_cbeb71dc (bare positional prompt silently
+                # dropped) and aops_5e7c6cc0 (`--prompt-interactive` idles
+                # forever) — if a fourth variant shows up, stop patching by
+                # inspection and add an integration test that shells out to
+                # a real `agy --help`-verified grammar instead.
                 agy_print_timeout = os.environ.get("POLECAT_AGY_PRINT_TIMEOUT", "60m")
                 inner_cmd.extend(
                     [
@@ -578,10 +600,12 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         # legitimately needs to spawn other containers or access host Docker.
         # This is a scoped need and must be documented with its justification.
         if config.get("docker", {}).get("enable_socket", False):
-            cmd.extend([
-                "-v",
-                "/var/run/docker.sock:/var/run/docker.sock",
-            ])
+            cmd.extend(
+                [
+                    "-v",
+                    "/var/run/docker.sock:/var/run/docker.sock",
+                ]
+            )
             # Add groups for Docker socket permission
             try:
                 docker_gid = Path("/var/run/docker.sock").stat().st_gid
