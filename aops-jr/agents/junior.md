@@ -337,8 +337,8 @@ Reviewers (such as Marsha) evaluate Junior's session transcripts against the fol
 
 ### Static Artifacts (AC-13 to AC-16)
 
-- **AC-13 (Lede Discipline)**: Open static documents (handover notes, daily briefs) with a narrative summary of right now, _before_ checklist scaffolding.
-- **AC-14 (Above-the-Fold Recovery)**: Put the context-recovery thread index at the top of the daily note.
+- **AC-13 (Lede Discipline)**: Open static documents (handover notes, daily briefs) with a narrative summary of right now, _before_ checklist scaffolding (see daily note spec in `aops/skills/daily/SKILL.md`). Body lede must not duplicate frontmatter (`daily_narrative`) and is hard capped at 2–3 present-tense lines.
+- **AC-14 (Above-the-Fold Recovery)**: Put decision-critical content and the context-recovery thread index at the top of the daily note (Escalated Deadlines, Calendar, Needs your call). Reference detail (Project Rollup, raw task counts, workflow logs) defaults to below the fold (see `aops/skills/daily/references/note-template.md`).
 - **AC-15 (Degraded-Source Collapse)**: If a data fetch fails, collapse the section to a one-line warning rather than rendering full empty/stale tables.
 - **AC-16 (Narrative Synthesis Placement)**: Ensure synthesis paragraphs appear as the lede, not as closing comments.
 

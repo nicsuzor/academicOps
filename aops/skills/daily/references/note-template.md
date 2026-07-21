@@ -6,7 +6,7 @@ description: Daily note structure template (SSoT). Section order is load-bearing
 
 # Daily Note Structure (SSoT)
 
-Order is fixed: **Lede → Today's Log → (Escalated Deadlines, if any) → Status → What Needs Attention → Carryover → Prompt Ledger → Work Log.** Omit any empty section. Fill the skeleton below.
+Order is fixed: **Lede → (Escalated Deadlines, if any) → Calendar (today) → What Needs Attention → Carryover → ### My priorities → Today's Log → Project Rollup → Status → Prompt Ledger → Work Log.** Omit any empty section (except `### My priorities` template guard). Fill the skeleton below.
 
 ```markdown
 ---
@@ -19,19 +19,11 @@ daily_story: []
 
 # Daily Summary - YYYY-MM-DD
 
-<!-- Lede: 2–3 present-tense lines — the shape of right now. The distilled version of Today's Log; also persist to the daily_narrative frontmatter field. -->
+<!-- Lede: 2–3 present-tense lines — the shape of right now. The distilled version of Today's Log; also persist to the daily_narrative frontmatter field. Do not duplicate content between daily_narrative and body lede. -->
 
 A stale-config bug ate the morning before polecat dispatch came back online; you cut a prerelease to clear it. Nothing on fire — one decision (v2-obsoletes-v1) is waiting on you.
 
 <!-- Degraded sources: one line, ONLY when a source genuinely failed after a real attempt. Omit otherwise. -->
-
-## Today's Log
-
-<!-- What happened so far today. SOURCE (mandatory): reconstruct this from today's PRIMARY sources — the session transcripts at `$AOPS_SESSIONS/transcripts/$(date +%Y-%m)/$(date +%Y%m%d)-*-claude-*.md` (prefer `-abridged.md`). You MUST open them before writing this section. Do NOT synthesise it from artifacts already in the note (prior retro stamps, yesterday's log) or from the reconcile sweep's merged-PR list — those are second-hand and reproduce the file, not the day. While the day is in flight: verbatim user prompts in time order, one outcome line each, then a "what you were trying to do" line. At day's end: an editorial synthesis (proportional detail, named patterns, honest about dropped threads). Describe the past factually; never rank future work. Omit this whole section on an empty morning (no same-day interactive session transcripts). -->
-
-**11:50 (nicwin/WSL, brain)** — _"/pull aops-2b248ee4 and dispatch locally"_ → failed at the config layer: `unknown gates keys: ['commit']`; blocked all dispatch on this host.
-
-**What you were trying to do**: dispatch a chain of SEV2 framework tasks; a stale-yaml bug ate ~75 min — caught it, cut a prerelease, dispatch reopened.
 
 ## 🚨 ESCALATED DEADLINES
 
@@ -44,40 +36,24 @@ A stale-config bug ate the morning before polecat dispatch came back online; you
 > **Consequence if missed**: <verbatim consequence prose>
 > **Due**: YYYY-MM-DD (today) | **Effort**: M [IMMOVABLE]
 
-## Status
+## Calendar (today)
 
-<!-- Factual snapshot. No recommendations, no curated categories, no suggested sequences. Counts come from mcp__services__pkb__task_summary, never hand-counted. -->
-
-Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
-
-**Deadlines (≤ 7 days):**
-
-- [task-id] [[Title]] — due YYYY-MM-DD (3d)
-
-**Calendar (today):**
+<!-- Always rendered, even on a quiet day ("No events today.") — this is decision-relevant, so it belongs in the actionable zone, not buried in Status. If calendar/email tools were unavailable this run, say so honestly ("Not fetched this run.") rather than fabricating or omitting. -->
 
 - 09:00 — [[Meeting]] — (location)
 
-### My priorities
-
-<!-- User-owned. Create this heading empty; never write here. Preserve anything the user adds. -->
-
 ## What Needs Attention
 
-<!-- Inbox (from /email): self-contained FYI items with verbatim quotes + a "[ ] acknowledged" line. Mobile captures routed via /q or /remember (one line each). Outstanding Workflows: PR buckets from pr-state.json; ready-to-merge PRs as "- [ ]" checkboxes. "Needs your call": ambiguous task completions, plus stale-claim/ready-queue items flagged by the reconcile sweep (task ID + one-line reason) — never auto-closed or auto-cancelled. -->
+<!-- Inbox (from /email): FYI items with verbatim quotes + a "[ ] acknowledged" line. Mobile captures routed via /q or /remember (one line each). "Needs your call": ambiguous task completions, plus stale-claim/ready-queue items flagged by the reconcile sweep (task ID + one-line reason) — never auto-closed or auto-cancelled. -->
 
-### [[Contact]] — Subject
+### Needs your call
 
-> verbatim quote of the key content
+- [task-id] [[Title]] — ambiguous completion / stale claim reason
+
+### Inbox & Mobile Captures
 
 - **→ Task**: [task-id] Reply to [[Contact]]
 - [ ] acknowledged
-
-### Outstanding Workflows
-
-**Ready to merge:**
-
-- [ ] [#489](url) [[repo]] — title
 
 ## Carryover
 
@@ -85,9 +61,59 @@ Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
 
 - [ ] [task-id] [[Title]] — 2d overdue
 
+### My priorities
+
+<!-- User-owned. Create this heading empty; never write here. Preserve anything the user adds. Omission is blocked by template guard. -->
+
+## Today's Log
+
+<!-- What happened so far today. SOURCE (mandatory): reconstruct this from today's PRIMARY sources — the session transcripts at `$AOPS_SESSIONS/transcripts/$(date +%Y-%m)/$(date +%Y%m%d)-*-claude-*.md` (prefer `-abridged.md`). You MUST open them before writing this section. Do NOT synthesise it from artifacts already in the note (prior retro stamps, yesterday's log) or from the reconcile sweep's merged-PR list — those are second-hand and reproduce the file, not the day. While the day is in flight: verbatim user prompts in time order, one outcome line each, then a "what you were trying to do" line. At day's end: an editorial synthesis (proportional detail, named patterns, honest about dropped threads). Describe the past factually; never rank future work. Omit this whole section on an empty morning (no same-day interactive session transcripts). -->
+
+**11:50 (nicwin/WSL, brain)** — _"/pull aops-2b248ee4 and dispatch locally"_ → failed at the config layer: `unknown gates keys: ['commit']`; blocked all dispatch on this host.
+
+**What you were trying to do**: dispatch a chain of SEV2 framework tasks; a stale-yaml bug ate ~75 min — caught it, cut a prerelease, dispatch reopened.
+
+## Project Rollup
+
+<!-- One line per active project showing queued/blocked/needs-Nic state. Below the fold — decision-critical content (Escalated Deadlines, Calendar, Needs your call) already ran above; this is reference detail, not orientation. -->
+
+- **academicOps**: Q: 3 | B: 0 | Needs Nic: 1 (PR review)
+- **brain**: Q: 1 | B: 2 | Needs Nic: 0
+- **buttermilk**: Q: 0 | B: 0 | Needs Nic: 0
+- **mem**: Q: 0 | B: 0 | Needs Nic: 0
+- **sessions**: Q: 5 | B: 1 | Needs Nic: 2 (transcript audit)
+- **overwhelm**: Q: 10 | B: 3 | Needs Nic: 1
+
+## Status
+
+<!-- Curated focus. Top 3 highest focus tasks (by PKB focus_score) and one-line count delta since last run. Raw counts & PR status must be collapsed. -->
+
+**Top Focus Tasks:**
+
+1. [task-id] [[Title]] — due YYYY-MM-DD (3d)
+2. [task-id] [[Title]] — due YYYY-MM-DD (5d)
+3. [task-id] [[Title]] — due YYYY-MM-DD (6d)
+
+**Daily Movement:** +2 ready, -1 blocked, 0 closed since yesterday
+
+<details>
+<summary>(collapsed — raw status logging & PR status)</summary>
+
+Ready by priority: P0 0 · P1 3 · P2 107 · P3 265
+
+**Deadlines (≤ 7 days):**
+
+- [task-id] [[Title]] — due YYYY-MM-DD (3d)
+
+**Outstanding Workflows:**
+
+- [ ] [#489](url) [[repo]] — title
+
+</details>
+
 ## Prompt Ledger
 
-<!-- Tail the most recent ~10 lines from `$AOPS_SESSIONS/state/prompt_ledger.md`. Regenerate first if missing or stale (older than today): `uv run python aops/scripts/transcript.py --ledger --since <7-days-ago>` from the academicOps checkout. Reverse-date-sorted, one line per genuine Nic-typed prompt; outcome/link are blank when not resolvable from the session summary — never fill them in by hand or infer them from the transcript yourself. Omit this whole section if the ledger file doesn't exist and can't be generated. -->
+<!-- Tail the most recent ~10 lines from `$AOPS_SESSIONS/state/prompt_ledger.md`. Reverse-date-sorted, one line per genuine Nic-typed prompt; outcome/link are blank when not resolvable from the session summary — never fill them in by hand or infer them from the transcript yourself. Omit this whole section if the ledger file doesn't exist and can't be generated. -->
 
 - [2026-07-09 12:40] [claude-code-cli] [f355deff] [short summary of the question] [short summary of the outcome, or blank] [link to task/PR/PKB note, or blank]
 
