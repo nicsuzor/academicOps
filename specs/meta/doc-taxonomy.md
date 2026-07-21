@@ -64,6 +64,43 @@ Live in-repo at `specs/audit/AGENT-*.md`.
 
 **Shouldn't contain**: anything edited by hand between regenerations.
 
+## Release evidence — a dated acceptance ledger for one release, hand-authored
+
+Live in `specs/releases/<version>-<slug>.md`.
+
+**Generally contain**: for a named release, per headline feature: the
+governing spec, the user story, the acceptance criteria, and a citation to
+the concrete evidence each criterion was met (PR, commit, or a directly
+quoted agent-dispatch transcript) — plus an explicit list of what the
+release does not cover. This is the one deliberate exception to the specs
+tree's "no provenance" rule (below): a release evidence ledger's entire
+purpose is dated, citable provenance for a point-in-time acceptance
+decision, not a description of designed subsystem behavior.
+
+**Shouldn't contain**: raw PKB task IDs or copied task titles (the PKB
+egress-guard rule still applies in full — cite PRs, commits, file paths, and
+quoted transcripts, never a bare internal tracking ID); narrative design
+rationale that belongs in an ordinary spec (link it instead); anything about
+a release that hasn't shipped yet as though it had.
+
+**Distinct from Audit-artifact**: an audit-artifact is script-generated and
+never hand-edited between regenerations; a release evidence ledger is
+hand-authored once, for one release, and is not regenerated — closer to a
+dated snapshot report than a machine-maintained state doc. It does not fit
+State either (no single canonical "current truth," and it does not update as
+the system changes — it is frozen to what was true at release time).
+
+**Provenance note**: `specs/releases/` previously held free-form,
+occasionally-duplicative release narrative that PR #2035 (2026-06-xx)
+removed in a specs-simplification pass, folding surviving content into
+`RELEASING.md`. That removal targeted narrative prose that duplicated other
+specs; it did not consider (and this category did not exist at the time) a
+structured, citation-only acceptance ledger. Reviving the directory for this
+narrower, more disciplined purpose is a deliberate decision, not a silent
+reversal — if it turns out to reproduce the same bloat, retire it the same
+way, but that's a call for the next doc-hygiene pass to make with real
+instances in hand, not a reason to avoid ever using the directory again.
+
 ## Docs — for humans using the framework
 
 Top-level entry points: README.md, INSTALL.md, CHANGELOG.md.
