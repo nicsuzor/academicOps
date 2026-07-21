@@ -19,14 +19,14 @@ class Verdict:
     user_text: str | None
 
 
-def warn(message: str) -> Verdict:
+def warn(message: str, user_text: str | None = None) -> Verdict:
     """Non-blocking: surface ``message`` to the agent, let it proceed."""
-    return Verdict("warn", message)
+    return Verdict("warn", message, user_text)
 
 
-def deny(reason: str) -> Verdict:
+def deny(reason: str, user_text: str | None = None) -> Verdict:
     """Blocking: refuse the action, tell the agent why."""
-    return Verdict("deny", reason)
+    return Verdict("deny", reason, user_text)
 
 
 _RANK: dict[Outcome, int] = {"warn": 1, "deny": 2}

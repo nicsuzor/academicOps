@@ -14,8 +14,11 @@ from tests.paths import get_hook_script
 
 def _run(raw: dict, client: str = "claude", env: dict | None = None):
     dispatch_path = get_hook_script("gate_dispatch.py")
+    cmd = [sys.executable, str(dispatch_path)]
+    if client:
+        cmd.append(client)
     result = subprocess.run(
-        [sys.executable, str(dispatch_path), client],
+        cmd,
         input=json.dumps(raw),
         capture_output=True,
         text=True,
@@ -123,6 +126,8 @@ def test_a_raising_gate_cannot_suppress_another_gates_deny(monkeypatch, capsys):
     }
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(raw)))
 
+    # Mock sys.argv
+    monkeypatch.setattr(sys, "argv", ["gate_dispatch.py", "claude"])
     rc = gate_dispatch.main()
 
     assert rc == 0

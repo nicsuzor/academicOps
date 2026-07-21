@@ -4,8 +4,8 @@ from gates.verdict import Verdict, deny, merge, warn
 
 
 def test_warn_and_deny_construct_expected_shape():
-    assert warn("careful") == Verdict("warn", "careful")
-    assert deny("no") == Verdict("deny", "no")
+    assert warn("careful") == Verdict("warn", "careful", None)
+    assert deny("no") == Verdict("deny", "no", None)
 
 
 def test_merge_all_allow_is_none():
