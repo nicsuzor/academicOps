@@ -310,4 +310,4 @@ The `audit` skill ensures the framework remains healthy by:
 - [[framework-observability]] - What we observe and how
 - [[enforcement]] - Enforcement mechanism details
 - [[commands/learn]] - The /learn command reference
-- `specs/ENFORCEMENT-MAP.md` - Current enforcement rules (operative SSoT; redirect stub at `specs/enforcement/enforcement-map.md`)
+- [[enforcement]] (`specs/enforcement/enforcement.md`) - current enforcement doctrine. (The former `ENFORCEMENT-MAP.md` register was deleted in the v0.4 hook simplification; no redirect stub exists. Remaining stale citations tracked in task `aops_97666109`.)

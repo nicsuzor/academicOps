@@ -1,9 +1,10 @@
 # Hook Client Translation — Spec & SSoT
 
-> **Spec.** The single source of truth for how the Universal Hook Router translates
-> between Claude Code and Antigravity CLI (agy), and how the build keeps
-> installed assets in sync with what the hooks expect. Per-gate forensic detail →
-> [`specs/enforcement/GATES.md`](enforcement/GATES.md). Enforcement currency → [`specs/ENFORCEMENT-MAP.md`](ENFORCEMENT-MAP.md).
+> **⚠ Describes a superseded architecture (v0.4 hook simplification).** This spec documents the old `client_spec.py`-based Universal Hook Router and its `_CHANNELS` translation layer, which were **deleted**. Per-client wire translation now lives in [`aops/hooks/gates/emit.py`](../aops/hooks/gates/emit.py) (a small per-client `emit()` branch) and inline in [`aops/hooks/router.py`](../aops/hooks/router.py); the authoritative mechanism SSoT is [`specs/enforcement/hook-gate-system.md`](enforcement/hook-gate-system.md). The referenced `GATES.md` and `ENFORCEMENT-MAP.md` register docs were also deleted. A full rewrite-or-retire of this file is tracked alongside `aops_769f4973`. Read the sections below as historical context, not current behaviour.
+>
+> **Spec (historical).** The prior single source of truth for how the Universal Hook Router translated
+> between Claude Code and Antigravity CLI (agy), and how the build kept
+> installed assets in sync with what the hooks expected.
 
 ## Problem this solves
 
