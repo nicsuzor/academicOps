@@ -135,7 +135,10 @@ do_transcript() {
 
 do_sync() {
     echo "==> Syncing repositories..."
-    uv run --project "${AOPS}" "${AOPS}/aops-jr/polecat/cli.py" sync --quiet 2>&1 || echo "Warning: polecat sync failed"
+    # NOTE: this used to also shell out to `polecat/cli.py sync`, but that
+    # subcommand was never implemented (polecat's cli only exposes `run`) —
+    # it always failed with "Error: No such command 'sync'." and was a no-op
+    # dead fallback. Removed rather than repaired: there is nothing to call.
     git -C "${AOPS}" fetch --prune --quiet 2>&1 || echo "Warning: git fetch --prune failed"
 }
 
