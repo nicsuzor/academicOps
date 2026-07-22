@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .exit_reflection import exit_reflection_reminder
+from .reflexes_evaluator import reflexes_evaluator
 from .require_aops_bot_gh_token import require_aops_bot_gh_token
 from .require_subagent_model import require_subagent_model
 
@@ -10,5 +11,5 @@ GATES = [
     require_subagent_model,
     exit_reflection_reminder,
     require_aops_bot_gh_token,
+    reflexes_evaluator,
 ]
-
