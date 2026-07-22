@@ -16,7 +16,8 @@ Outcome = Literal["warn", "deny"]
 class Verdict:
     outcome: Outcome
     inject_text: str
-    user_text: str | None
+    user_text: str | None = None
+
 
 
 def warn(message: str) -> Verdict:
