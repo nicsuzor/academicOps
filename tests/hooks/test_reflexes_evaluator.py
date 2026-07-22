@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from gates.event import Event
-from gates.reflexes_evaluator import reflexes_evaluator, set_evaluator_backend
+from gates.reflexes_evaluator import evaluate_cope_policy, reflexes_evaluator
 from gates.registry import GATES
 from gates.verdict import deny
 
@@ -24,23 +24,21 @@ def test_evaluator_config_loading():
     assert config.fail_open is True
 
 
-def test_fail_open_on_exception(capsys):
+def test_fail_open_on_exception(capsys, monkeypatch):
     """Verify fail-open contract: backend exception returns None and logs to stderr."""
 
-    def faulting_backend(e, policies, config):
+    def faulting_evaluator(slug, event, model):
         raise RuntimeError("Evaluator endpoint unreachable / timeout")
 
-    set_evaluator_backend(faulting_backend)
-    try:
-        event = Event(event="PreToolUse", tool="Bash", command="ls", session_id="test-session")
-        verdict = reflexes_evaluator(event, {})
-        assert verdict is None
+    monkeypatch.setattr("gates.reflexes_evaluator.evaluate_cope_policy", faulting_evaluator)
 
-        captured = capsys.readouterr()
-        assert "reflexes_evaluator: policy evaluation raised" in captured.err
-        assert "failing open (allow)" in captured.err
-    finally:
-        set_evaluator_backend(None)
+    event = Event(event="PreToolUse", tool="Bash", command="ls", session_id="test-session")
+    verdict = reflexes_evaluator(event, {})
+    assert verdict is None
+
+    captured = capsys.readouterr()
+    assert "reflexes_evaluator: evaluation error:" in captured.err
+    assert "failing open (allow)" in captured.err
 
 
 def test_unmatched_event_returns_none():
@@ -50,18 +48,15 @@ def test_unmatched_event_returns_none():
     assert verdict is None
 
 
-def test_evaluator_backend_verdict_propagation():
-    """Verify custom/mock evaluator backend verdicts propagate when returned."""
+def test_evaluator_verdict_propagation(monkeypatch):
+    """Verify evaluator verdicts propagate when returned."""
     mock_verdict = deny("CoPE policy violation detected: BE-01")
 
-    def mock_backend(e, policies, config):
-        assert len(policies) > 0
+    def mock_evaluator(slug, event, model):
         return mock_verdict
 
-    set_evaluator_backend(mock_backend)
-    try:
-        event = Event(event="PreToolUse", tool="Bash", command="tail -f /var/log/syslog")
-        verdict = reflexes_evaluator(event, {})
-        assert verdict == mock_verdict
-    finally:
-        set_evaluator_backend(None)
+    monkeypatch.setattr("gates.reflexes_evaluator.evaluate_cope_policy", mock_evaluator)
+
+    event = Event(event="PreToolUse", tool="Bash", command="tail -f /var/log/syslog")
+    verdict = reflexes_evaluator(event, {})
+    assert verdict == mock_verdict

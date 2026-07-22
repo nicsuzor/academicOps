@@ -19,6 +19,7 @@ DEFAULT_EVALUATOR_MODEL = "claude-3-5-haiku-20241022"
 @dataclass(frozen=True)
 class ReflexesConfig:
     evaluator_model: str = DEFAULT_EVALUATOR_MODEL
+    evaluator_provider: str = "anthropic"
     provider: str = "anthropic"
     timeout_seconds: float = 5.0
     fail_open: bool = True
@@ -30,9 +31,11 @@ def load_config() -> ReflexesConfig:
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            provider_val = data.get("evaluator_provider", data.get("provider", "anthropic"))
             return ReflexesConfig(
                 evaluator_model=data.get("evaluator_model", DEFAULT_EVALUATOR_MODEL),
-                provider=data.get("provider", "anthropic"),
+                evaluator_provider=provider_val,
+                provider=provider_val,
                 timeout_seconds=float(data.get("timeout_seconds", 5.0)),
                 fail_open=bool(data.get("fail_open", True)),
             )
