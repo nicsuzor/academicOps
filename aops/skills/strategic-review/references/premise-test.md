@@ -78,4 +78,4 @@ This review-time test and the source-level premise gate (`premise-gate.md`) are 
 - [[../SKILL.md]] — forced step-0 Premise Test in the arch-fit lens
 - [[../../triage/SKILL.md]] — `/learn` retro §2a, bad-premise-approval recurrence scoring
 - `premise-gate.md` (sibling PR #1733) — the source-level counterpart at `→ queued`; upgrade to a wikilink once both land on `dev`
-- [[../../../../specs/ENFORCEMENT-MAP.md]] — `judgment-non-delegable` enforcement row
+- [[../../../../specs/enforcement/enforcement.md]] — the `judgment-non-delegable` / agents-all-the-way-down principle

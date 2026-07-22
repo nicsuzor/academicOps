@@ -81,7 +81,7 @@ Rungs 1–4 are the strength axis already captured by 1a–1c plus the "Prompt S
 
 ### Level 1d: Structured Justification Format
 
-**Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, `specs/ENFORCEMENT-MAP.md`, hooks/*.py, settings.json deny rules).
+**Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, `specs/enforcement/enforcement.md`, hooks/*.py, settings.json deny rules).
 
 **How it works**: Before any framework modification, agent must emit a structured justification block. The tight format forces explicit reasoning through each checkpoint.
 
@@ -90,12 +90,12 @@ Rungs 1–4 are the strength axis already captured by 1a–1c plus the "Prompt S
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [AXIOMS.md | HEURISTICS.md | specs/ENFORCEMENT-MAP.md | hooks/*.py | settings.json]
+**Scope**: [AXIOMS.md | HEURISTICS.md | specs/enforcement/enforcement.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
 - AXIOMS.md: [P#X, P#Y - or "not relevant"]
 - HEURISTICS.md: [H#X, H#Y - or "not relevant"]
-- specs/ENFORCEMENT-MAP.md: [enforcement entry name - or "not relevant"]
+- specs/enforcement/enforcement.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
 - Search query: "[keywords used in task search]"

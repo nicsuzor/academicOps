@@ -16,7 +16,7 @@ Live in `aops/agents/<name>.md` (personas, loaded via the `Agent` tool), `aops/s
 
 **Shouldn't contain**: dated log entries (git knows), spec-style "how could this work differently" debate (that's a spec), SSoT claims about system facts (that's state), or pasted-in generator output (that's an audit-artifact).
 
-This spec answers _which file_ by audience. For _which injection tier_ and enforcement mechanism applies by type and frequency, see [ENFORCEMENT-MAP.md](../ENFORCEMENT-MAP.md) §Pyramid.
+This spec answers _which file_ by audience. For how enforcement mechanisms apply (the levers, and the delivery-channel-vs-verdict split), see [enforcement.md](../enforcement/enforcement.md).
 
 <!-- NS: We should make some brief quality and substance notes about what info each doc should and shouldn't contain and how to know it's good. -->
 

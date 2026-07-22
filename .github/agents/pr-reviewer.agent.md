@@ -54,7 +54,7 @@ Check the diff against the framework axioms (Section 4 below). Focus on the prin
 - **Untested assumptions (P#26)** — are there claims without evidence?
 - **Workarounds (P#25)** — does the PR bypass tooling or skip checks?
 - **Data boundaries (P#6)** — does the PR expose private data?
-- **Enforcement-change CBA (`specs/ENFORCEMENT-MAP.md`)** — if the PR adds, modifies, or removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body MUST include the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (friction evidence), 4 (ongoing cost), or 5 (reversibility).
+- **Enforcement-change CBA (`specs/enforcement/enforcement.md`)** — if the PR adds, modifies, or removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body MUST include the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (friction evidence), 4 (ongoing cost), or 5 (reversibility).
 - **`exercise-authority` Edge 3 (script abdication)** — did the PR introduce regex/keyword/checklist scaffolding for a decision that requires qualitative judgment? Recommend agent-invocation alternative where the underlying decision is "does this serve its purpose?".
 
 ### Disposition: Fix Don't Ask (`exercise-authority` Edge 2)

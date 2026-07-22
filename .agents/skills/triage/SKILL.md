@@ -223,7 +223,7 @@ For proposals that **add or escalate** a rule, perform this review before assign
 1. Generalize the failure into a Root Cause Category.
 2. Map to existing mechanisms in the enforcement map and axioms.
 3. Classify: _Propagation failure_ (fix via L1 propagation) vs. _Escalation candidate_ (requires CBA: ≥3 recurrence links).
-4. Default to the cheapest tier (L1 propagation). Flag missing `specs/ENFORCEMENT-MAP.md` rows as a pipeline gap.
+4. Default to the cheapest tier (L1 propagation). Flag enforcement changes not reflected in `specs/enforcement/enforcement.md` as a pipeline gap.
 
 ### 2c. Output Cycle Report
 

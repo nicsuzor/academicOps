@@ -128,11 +128,11 @@ The framework improves through structured feedback loops that connect observatio
 │     - Intervention level + change                                       │
 │     - Minimality (why not lower level)                                  │
 │                                                                         │
-│  3. Update enforcement-map.md:                                          │
+│  3. Update specs/enforcement/enforcement.md:                            │
 │     - Map new rule to enforcement mechanism                             │
 │     - Document enforcement point (SessionStart, PreToolUse, etc.)       │
 │                                                                         │
-│  See: specs/ENFORCEMENT-MAP.md (operative SSoT)                       │
+│  See: specs/enforcement/enforcement.md (operative SSoT)               │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
