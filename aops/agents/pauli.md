@@ -16,9 +16,9 @@ tools:
   - Read
   - Write
   - Edit
-  - mcp__services__pkb__*
   - mcp__pkb__*
   - mcp__plugin_aops_services__*
+  - mcp__services__*
   - Bash
 ---
 
