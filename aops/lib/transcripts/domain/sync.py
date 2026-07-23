@@ -35,8 +35,41 @@ def git_sync_sessions(sessions_dir: Path) -> bool:
             logger.info("No changes to sync in sessions repo")
             return True
 
-        # Git add
-        subprocess.run(["git", "add", "."], cwd=sessions_dir, check=True)
+        # Git add. Use --ignore-errors so a single bad path (most commonly a
+        # stray nested-git checkout left behind by a polecat/agy worker under
+        # logs/ — git treats a directory containing its own .git as a broken
+        # submodule/gitlink and refuses to add it if that nested repo has no
+        # commit checked out) degrades gracefully instead of aborting the
+        # entire sync (see aops_5c2f2a59). Everything else still gets staged.
+        add_result = subprocess.run(
+            ["git", "add", "--ignore-errors", "."],
+            cwd=sessions_dir,
+            capture_output=True,
+            text=True,
+        )
+        if add_result.returncode != 0:
+            logger.warning(
+                "git add reported errors on some paths (continuing with what "
+                "could be staged): %s",
+                add_result.stderr.strip(),
+            )
+
+        # If nothing actually got staged (e.g. every changed path errored, or
+        # the only changes were to paths that failed to add), there's nothing
+        # to commit — bail out cleanly rather than creating an empty commit.
+        staged = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=sessions_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        if not staged.stdout.strip():
+            logger.warning(
+                "git add staged no files (all changed paths failed to add); "
+                "skipping commit/push"
+            )
+            return False
 
         # Git commit
         commit_msg = "auto: update session transcripts and metadata"

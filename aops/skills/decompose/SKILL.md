@@ -1,7 +1,6 @@
 ---
 name: decompose
 description: First-pass decomposition — when a situated task comes due, cut it into an unexploded subtask DAG, assemble the task's workflow from composable rule components, specify the task's review steps, and by default emit standing pauli/rbg/marsha review tasks wired as blocking dependencies. Structure and process only; no delegation briefs, no dispatch. Fires when a situated task (an "epic" is just a task with children) reaches the front of the queue, before any dispatch.
-context: fork
 agent: "aops:pauli"
 ---
 
