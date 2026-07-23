@@ -1,7 +1,6 @@
 ---
 name: graph-maintenance
 description: Keep the PKB task/knowledge graph structurally sound — wire weighted contributes_to edges from deliverables to type:target nodes, and run garden/densify passes (parent-type hierarchy, wikilink/dedup hygiene, orphan reconnection, target/edge quality flags). Fires on graph-hygiene asks, not task valuation or decomposition. Bound to pauli as the graph's sole shaper.
-context: fork
 agent: "aops:pauli"
 ---
 
