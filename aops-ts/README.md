@@ -97,15 +97,18 @@ producing the same redacted markdown + summary JSON the local pipeline commits t
 tar-over-`tailscale ssh` (the remote only needs `tar`; `rsync` is not required).
 Under the destination base directory the payload lands as:
 
-| Subdir         | Contents                                                  |
-| -------------- | --------------------------------------------------------- |
-| `transcripts/` | redacted markdown (full + abridged), from `transcript.py` |
-| `summaries/`   | session summary JSON, from `transcript.py`                |
-| `incoming/`    | **raw JSONL** — fallback only, see below                  |
+| Subdir         | Contents                                                         |
+| -------------- | ---------------------------------------------------------------- |
+| `transcripts/` | redacted markdown (full + abridged), from the transcripts runner |
+| `summaries/`   | session summary JSON, from the transcripts runner                |
 
-If `aops-core`/`transcript.py` can't be run, it falls back to shipping the **raw
-JSONL** into `incoming/`, which is **unredacted** — so only sync to a trusted
-tailnet host you control. Auth is via **Tailscale SSH** (no ssh keys) when the
+**The sync fails closed.** If the aops plugin's transcripts runner can't be
+run, nothing is shipped — the sync is skipped and the reason logged to stderr.
+There is no raw-JSONL fallback: the runner is what applies secret redaction, so
+shipping raw would silently downgrade you from the redacted pipeline with no
+signal. Skipping loses a transcript; shipping raw can lose a credential.
+
+Auth is via **Tailscale SSH** (no ssh keys) when the
 destination runs the Tailscale SSH server with an ACL permitting this node;
 otherwise set `AOPS_TS_SSH_CMD=ssh` and provide your own key. It exits 0 on every
 legitimate skip (not remote, no dest, tailnet down, missing tools) and only
