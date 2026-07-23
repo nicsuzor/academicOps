@@ -5,9 +5,7 @@ description: Analyze writing samples and create a comprehensive personal writing
 
 # Personal Writing Style Guide Creation Assistant
 
-**Instructions for Large Language Models**
-
-_This document provides step-by-step instructions for an LLM to analyze someone's writing samples and create a comprehensive personal writing style guide. Follow each phase sequentially, asking for user input only when specified._
+Follow each phase below sequentially, asking for user input only when specified.
 
 ---
 

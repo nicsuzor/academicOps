@@ -158,6 +158,5 @@ Add to Claude Desktop/Code/Cursor config:
 - **MCP Server**: Production ready (local & Docker)
 - **NPM Publishing**: Development/testing phase
 
-**Last Updated**: 2025-11-18
 **Maintainer**: excalidraw skill
 **Source**: https://github.com/yctimlin/mcp_excalidraw

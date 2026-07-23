@@ -525,6 +525,5 @@ Study existing .excalidraw files to understand working patterns.
 - [Issue #4797: Arrows shouldn't bind to any shapes](https://github.com/excalidraw/excalidraw/issues/4797)
 - [DeepWiki: Linear Element Editor](https://deepwiki.com/excalidraw/excalidraw/6.1-linear-element-editor)
 
-**Last Updated**: 2025-11-26
 **Maintainer**: excalidraw skill
 **Status**: Reverse-engineered specification with official API documentation

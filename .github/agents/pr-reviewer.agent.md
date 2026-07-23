@@ -47,7 +47,7 @@ Evaluate the PR through these lenses:
 
 ### Axiom Compliance
 
-Check the diff against the framework axioms (Section 4 below). Focus on the principles most relevant to the change — not every axiom applies to every PR. Key violations to watch for:
+Check the diff against the framework axioms (Section 6 below). Focus on the principles most relevant to the change — not every axiom applies to every PR. Key violations to watch for:
 
 - **Scope creep (P#5)** — does the PR do more than what it claims?
 - **Silent defaults (P#8, P#12)** — does new code introduce implicit fallbacks or magic values?

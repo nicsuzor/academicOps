@@ -38,7 +38,7 @@ Do not invent phantom approval gates. The framework has a canonical review pipel
 
 ## 3. Compose-then-Dispatch Separation
 
-_The agent that composed a brief should not, in the same invocation, also perform the dispatch. Same agent identity, same in-context reasoning trace — same-context self-instruction has been observed not to bind ([[aops-e4bf292a]] incident reports 2026-05-16, 2026-05-19)._
+_The agent that composed a brief should not, in the same invocation, also perform the dispatch. Same agent identity, same in-context reasoning trace — same-context self-instruction has been observed not to bind._
 
 The canonical pattern is **two agent invocations, mediated by PKB**:
 

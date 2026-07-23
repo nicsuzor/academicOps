@@ -38,11 +38,11 @@ to correlate afterward.
 **Match the real failure's exact invocation before simplifying.** A bare
 no-prompt launch (no `-t <task>`, no trailing prompt string) can exercise a
 genuinely different code path than a real `/pull <task>` dispatch — whether
-a prompt is present at all changed what agy rendered before going idle in
-the investigation that produced this note (`aops_cbeb71dc`: a simplified
-no-prompt repro looked like a dead hang and pointed at the wrong layer
-entirely). Reproduce with the same prompt/task/flags the real dispatch used
-first; only strip things down after the symptom reproduces as-is.
+a prompt is present at all changes what agy renders before going idle, and a
+simplified repro can look like a dead hang while actually pointing at the
+wrong layer entirely. Reproduce with the same prompt/task/flags the real
+dispatch used first; only strip things down after the symptom reproduces
+as-is.
 
 **Check the client's actual flag surface before assuming its behavior.**
 One cheap command beats guessing:

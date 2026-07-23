@@ -34,7 +34,7 @@ First, claim the Epic through the Personal Knowledge Base (PKB) tool: `claim_tas
 - A child with an unmet `depends_on` is not dispatchable this pass.
 - Eligibility = FULLY-SPEC'D + queued + dependencies met — regardless of children. A task with children may be dispatched whole to ONE worker, who owns internal sequencing/decomposition and returns ONE deliverable: evidence + an output URL written to the PKB task (contract home: [specs/enforcement/task-contract.md](../../../specs/enforcement/task-contract.md)).
 - If you do route children separately, the assembled workflow must still consolidate into one deliverable for the principal — never a spray of per-child PRs reviewed individually.
-- This consolidation duty is not scoped to one epic's own children: before dispatching any ready task, check for other ready tasks touching the same file/subsystem — sibling tasks in different epics count too. Bundle them into ONE worker producing ONE PR whose body lists all task ids, tested together. (Origin: PRs #2280/#2281, 2026-07-20 — two same-file micro-PRs 16 min apart.)
+- This consolidation duty is not scoped to one epic's own children: before dispatching any ready task, check for other ready tasks touching the same file/subsystem — sibling tasks in different epics count too. Bundle them into ONE worker producing ONE PR whose body lists all task ids, tested together.
 - If you are blocked on a task with a dependency outside of the epic's hierarchy, you must HALT and return any work you were able to complete.
 
 3. Sequence tasks and plan your dispatch process.
@@ -57,10 +57,9 @@ daemon that runs polecats** (the WSL host `nicwin`), then pick the matching form
 ```bash
 # ${CLAUDE_PLUGIN_ROOT} is the documented Claude Code plugin-root token, but
 # it is NOT reliably exposed as a live shell variable to skill-invoked bash
-# commands on every client (verified empirically: unset under a real agy
-# dispatch-skill invocation, task_e3979720) — so treat it as a first try,
-# not the sole mechanism. Fall back to a filesystem search of the known
-# per-client install locations (where the core plugin ships polecat/cli.py),
+# commands on every client — so treat it as a first try, not the sole
+# mechanism. Fall back to a filesystem search of the known per-client
+# install locations (where the core plugin ships polecat/cli.py),
 # then to $AOPS/aops or $AOPS for in-repo dev.
 POLECAT_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then
@@ -132,7 +131,7 @@ tmux new-session -d -s pc-<id> \
   is delivered headless via `--print` so the worker **runs the task and exits**
   (the container tears down on completion). Do not add `-i`/`--prompt-interactive`
   for autonomous dispatch — that leaves agy idling at a ready prompt forever, a
-  live container that looks like progress but never finishes (bug `aops_5e7c6cc0`).
+  live container that looks like progress but never finishes.
 - `-p <project>` is the task's own target repo — check the task, not the epic's
   `project` field; they can differ.
 

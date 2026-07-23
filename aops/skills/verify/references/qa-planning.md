@@ -122,7 +122,7 @@ Before finalizing, self-check:
 
 ## Worked Example
 
-This example uses the task map visualization from the overwhelm dashboard (session 2026-02-23) to show the transformation from mechanical criteria to qualitative criteria.
+This example uses the task map visualization from the overwhelm dashboard to show the transformation from mechanical criteria to qualitative criteria.
 
 ### Before (mechanical criteria — the anti-pattern)
 

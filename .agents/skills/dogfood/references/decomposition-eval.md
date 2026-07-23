@@ -1,7 +1,5 @@
 # Evaluating decomposition quality (a dogfood application)
 
-<!-- NS: i think this whole file belongs in a planning skill?           -->
-
 A reusable way to test whether a planner — or any decompose-mode instruction set —
 _critically thinks through the constituent components of a high-level abstract task_,
 not just whether it produces a well-formed task tree. This is `/dogfood` (delegated
@@ -61,7 +59,7 @@ It is whether the same _kinds_ of considerations surface. Two classes:
 Capture pairs opportunistically from real work. If you want a standing bank, make it
 _several diverse_ pairs treated as calibration snapshots, not a pass/fail gate.
 
-## Worked example (2026-06-04 — non-blind illustration only)
+## Worked example (non-blind illustration only)
 
 **Request:** "Find the most frustrating and trickiest issues with the aops framework that
 can only really be addressed by qualitatively applying generally expressed rules, and create
@@ -74,5 +72,5 @@ explicitly _non-mechanical_ test plan for a qualitative artifact (D10).
 
 **Result:** scoring a blind decomposition exposed exactly that cluster — strong structure,
 weak task-epistemics. The fix (planner `decompose.md` step 3.5 "Interrogate the task's
-epistemics") closed D4/D6/D9/D10 on a blind re-run (N=1; PR #1594). This pair is retained as
+epistemics") closed D4/D6/D9/D10 on a blind re-run (N=1). This pair is retained as
 illustration only — it is now contaminated by appearing here, so it is _not_ a blind fixture.
