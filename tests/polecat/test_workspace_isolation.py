@@ -1,4 +1,5 @@
-"""Regression tests for polecat/cli.py workspace isolation (aops_f74aafce).
+"""Regression tests for polecat/cli.py workspace isolation (aops_f74aafce,
+aops_aef75b26).
 
 polecat used to bind-mount the shared canonical checkout (e.g.
 /home/nic/src/academicOps) READ-WRITE straight into every worker container
@@ -7,10 +8,23 @@ their own `git checkout <task-branch>` inside that ONE shared tree, racing
 every other container and every live interactive session reading the same
 directory (confirmed via `git reflog` showing interleaved checkout/reset
 across 3+ branches in quick succession — see aops_f74aafce for the full
-containment evidence). The fix (`resolve_isolated_workspace` /
-`cleanup_isolated_workspace` in cli.py): every dispatch that doesn't pass an
-explicit --repo-dir gets its own throwaway `git worktree`, never the
-canonical checkout path itself.
+containment evidence). The first fix (`resolve_isolated_workspace` /
+`cleanup_isolated_workspace` in cli.py) gave every dispatch that doesn't pass
+an explicit --repo-dir its own throwaway `git worktree`, never the canonical
+checkout path itself.
+
+That first fix used `git worktree add`, which creates a *linked* worktree
+whose `.git` is a plain-text file pointing at an admin dir living inside the
+canonical repo's own `.git/worktrees/<name>` — a host-only path never
+mounted into the container, so every git operation inside the container
+failed with `fatal: not a git repository: <host-path>` (aops_aef75b26). The
+mechanism was changed to a fully standalone `git clone --local` instead: the
+isolated workspace now has its own complete `.git` directory, not a pointer
+file, so git is fully self-contained inside the container. One consequence
+worth noting in these tests: since the clone is standalone, cleanup no
+longer needs (or performs) any `git worktree remove` / `branch -D` against
+the canonical repo — the worker's branch only ever exists inside the
+isolated clone, never leaks into the canonical repo's branch list at all.
 """
 
 import subprocess
@@ -63,7 +77,7 @@ def test_isolated_workspace_is_never_the_canonical_path(fake_canonical_repo, tmp
 
 
 def test_isolated_workspace_is_a_real_independent_worktree(fake_canonical_repo, tmp_path):
-    """The isolated path must be a working, independent git worktree sharing
+    """The isolated path must be a working, independent git clone sharing
     the canonical repo's history — not just an arbitrary empty directory."""
     polecat_home = tmp_path / "polecat-home"
     isolated_path, cleanup_info = resolve_isolated_workspace(
@@ -72,6 +86,10 @@ def test_isolated_workspace_is_a_real_independent_worktree(fake_canonical_repo, 
 
     assert (isolated_path / "README.md").read_text() == "hello\n"
     assert (isolated_path / ".git").exists()
+    # The core fix under aops_aef75b26: `.git` must be a real directory
+    # (self-contained), never a linked-worktree pointer *file* referencing a
+    # host-only admin path that a container could never resolve.
+    assert (isolated_path / ".git").is_dir()
 
     # Branch-switching inside the isolated worktree must never touch the
     # canonical checkout's HEAD — this is the exact race that caused the bug.
@@ -122,11 +140,52 @@ def test_cleanup_removes_worktree_and_branch(fake_canonical_repo, tmp_path):
     )
     assert isolated_path.exists()
 
+    # The worker branch must exist inside the isolated clone before
+    # cleanup...
+    isolated_branches = _run("git", "branch", "--list", cleanup_info["branch"], cwd=isolated_path)
+    assert cleanup_info["branch"] in isolated_branches
+
     cleanup_isolated_workspace(cleanup_info)
 
     assert not isolated_path.exists()
+    # ...and must never have leaked into the canonical repo's own branch
+    # list at any point — the standalone-clone mechanism means there is
+    # nothing in the canonical repo for cleanup to remove.
     branches = _run("git", "branch", "--list", cleanup_info["branch"], cwd=fake_canonical_repo)
     assert cleanup_info["branch"] not in branches
+
+
+def test_isolated_workspace_gitdir_is_self_contained(fake_canonical_repo, tmp_path):
+    """The container only ever gets the isolated path mounted, never the
+    canonical checkout or its .git admin dir. Prove that `git`'s own gitdir
+    resolution from inside the isolated clone never points outside the
+    isolated tree — the exact defect this fix addresses (aops_aef75b26): the
+    prior linked-worktree mechanism resolved `.git` to a host-only path
+    under the CANONICAL repo's `.git/worktrees/<name>`, which a container
+    with only the isolated path mounted could never reach."""
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo, "session-selfcontained", polecat_home
+    )
+
+    git_dir = _run("git", "-C", str(isolated_path), "rev-parse", "--absolute-git-dir", cwd=isolated_path).strip()
+    resolved_git_dir = Path(git_dir).resolve()
+
+    # The resolved gitdir must live inside the isolated clone itself, not
+    # inside the canonical repo (fake_canonical_repo) or any other host-only
+    # location a container mount wouldn't include.
+    assert resolved_git_dir.is_relative_to(isolated_path.resolve())
+    assert not resolved_git_dir.is_relative_to(fake_canonical_repo.resolve())
+
+    # And basic git operations (status/log) must work standalone — the best
+    # available proxy, without docker, for "this is git-functional inside a
+    # container that only has this directory mounted".
+    status = _run("git", "-C", str(isolated_path), "status", "--porcelain", cwd=isolated_path)
+    assert status == ""
+    log = _run("git", "-C", str(isolated_path), "log", "--oneline", cwd=isolated_path)
+    assert "initial" in log
+
+    cleanup_isolated_workspace(cleanup_info)
 
 
 def test_non_git_directory_is_not_isolated_but_flagged(tmp_path):
