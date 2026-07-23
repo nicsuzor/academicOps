@@ -153,9 +153,9 @@ def _seed_confirmed(session_dir, task_id):
 
 
 def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
-    """Create a per-session `git worktree` off `canonical_dir` and return the
-    path that should actually be mounted into the container, instead of
-    `canonical_dir` itself.
+    """Create a per-session standalone git clone off `canonical_dir` and
+    return the path that should actually be mounted into the container,
+    instead of `canonical_dir` itself.
 
     Root cause fixed here (aops_f74aafce, Nic ruling 2026-07-23: "It should
     be a clone in a container!"): polecat used to bind-mount the shared
@@ -165,17 +165,34 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     with 6+ concurrent containers observed doing this at once, racing each
     other AND every live interactive session reading the same directory
     (confirmed via `git reflog` showing interleaved checkout/reset/amend
-    across 3+ branches in quick succession). A `git worktree` shares the
-    canonical repo's object database and remotes (so fetch/push still work
-    against the same origin) but gives each container a fully independent
-    working directory and index — no container can ever touch another
-    session's checkout state again.
+    across 3+ branches in quick succession).
+
+    Revision (aops_aef75b26, 2026-07-24): the first fix for the above used
+    `git worktree add`, which creates a *linked* worktree whose `.git` is a
+    plain-text file pointing at an admin directory living inside the
+    canonical repo's OWN `.git/worktrees/<name>` — a path on the host that
+    is never mounted into the container. Every git operation run inside the
+    container (status/diff/commit/push) failed with `fatal: not a git
+    repository: <host-only-path>` because the container can't resolve that
+    gitdir pointer; the isolation fix was itself non-functional for any
+    git-dependent work. Fixed by making the isolated workspace a fully
+    standalone local clone (`git clone --local`) instead of a linked
+    worktree: the container-mounted directory then has its own complete
+    `.git` directory (not a pointer file into the host), so git is fully
+    self-contained inside the container. `--local` hardlinks objects from
+    the canonical repo's `.git/objects` (same filesystem, no network, no
+    full object copy) so this keeps nearly all of the disk/time cheapness of
+    a worktree while giving up the (broken-anyway, container-incompatible)
+    shared-admin-dir trick. `origin` is repointed to the canonical repo's
+    real upstream remote (not the canonical checkout's local path, which is
+    `git clone`'s default for a local source) so `git push` from inside the
+    container reaches the actual remote, not a dead-end clone-of-a-clone.
 
     Returns `(workspace_path, cleanup_info)`. `cleanup_info` is `None` when
     `canonical_dir` is not inside a git repository at all — nothing to
     isolate, so `canonical_dir` is returned unchanged (with a warning);
     otherwise it's a dict consumed by `cleanup_isolated_workspace` to tear
-    the worktree back down.
+    the clone back down.
     """
     canonical_dir = Path(canonical_dir).resolve()
 
@@ -187,7 +204,7 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     if toplevel.returncode != 0:
         click.echo(
             f"Warning: {canonical_dir} is not inside a git repository — "
-            "cannot create an isolated worktree; mounting it directly "
+            "cannot create an isolated clone; mounting it directly "
             "(no per-task isolation possible for a non-git workspace).",
             err=True,
         )
@@ -204,18 +221,71 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     wt_path = worktrees_dir / session_id
     branch_name = f"polecat/{session_id}"
 
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), "worktree", "add", "-B", branch_name, str(wt_path), "HEAD"],
+    # Resolve the exact commit currently checked out in the canonical repo
+    # (whatever branch/detached state it's in at dispatch time) so the
+    # isolated clone starts from the same point a `git worktree add ... HEAD`
+    # would have — before cloning, since `git clone` alone would instead
+    # check out the *source repo's* default branch, not necessarily its
+    # currently checked-out commit.
+    head_result = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
         capture_output=True,
         text=True,
     )
-    if result.returncode != 0:
+    if head_result.returncode != 0:
         click.echo(
-            f"Error: failed to create isolated worktree for session "
-            f"{session_id!r} from {repo_root}:\n{result.stderr}",
+            f"Error: failed to resolve HEAD in {repo_root}:\n{head_result.stderr}",
             err=True,
         )
         sys.exit(1)
+    head_sha = head_result.stdout.strip()
+
+    # Capture the canonical repo's real upstream so the clone can be
+    # repointed at it after cloning (git defaults a local clone's `origin`
+    # to the source path, which is useless for `git push` from a container).
+    # Not fatal if there's no `origin` configured (e.g. a bare test fixture).
+    origin_url = None
+    origin_result = subprocess.run(
+        ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+    )
+    if origin_result.returncode == 0:
+        origin_url = origin_result.stdout.strip()
+
+    clone_result = subprocess.run(
+        ["git", "clone", "--local", "--no-checkout", str(repo_root), str(wt_path)],
+        capture_output=True,
+        text=True,
+    )
+    if clone_result.returncode != 0:
+        click.echo(
+            f"Error: failed to create isolated clone for session "
+            f"{session_id!r} from {repo_root}:\n{clone_result.stderr}",
+            err=True,
+        )
+        sys.exit(1)
+
+    checkout_result = subprocess.run(
+        ["git", "-C", str(wt_path), "checkout", "-B", branch_name, head_sha],
+        capture_output=True,
+        text=True,
+    )
+    if checkout_result.returncode != 0:
+        click.echo(
+            f"Error: failed to check out {head_sha} as {branch_name!r} in "
+            f"isolated clone {wt_path}:\n{checkout_result.stderr}",
+            err=True,
+        )
+        shutil.rmtree(wt_path, ignore_errors=True)
+        sys.exit(1)
+
+    if origin_url:
+        subprocess.run(
+            ["git", "-C", str(wt_path), "remote", "set-url", "origin", origin_url],
+            capture_output=True,
+            text=True,
+        )
 
     isolated_path = (wt_path / rel).resolve() if str(rel) != "." else wt_path.resolve()
 
@@ -237,36 +307,18 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
 
 
 def cleanup_isolated_workspace(cleanup_info):
-    """Best-effort teardown of a worktree created by resolve_isolated_workspace."""
+    """Best-effort teardown of the standalone clone created by
+    `resolve_isolated_workspace`.
+
+    Unlike the linked-worktree implementation this replaced, the isolated
+    workspace is a fully standalone `git clone` with its own `.git`
+    directory — there is no registration living in the canonical repo to
+    remove (no `git worktree remove` / `branch -D` needed there anymore),
+    so teardown is just deleting the clone's directory tree.
+    """
     if not cleanup_info:
         return
-    repo_root = cleanup_info["repo_root"]
-    wt_path = cleanup_info["path"]
-    branch_name = cleanup_info["branch"]
-
-    subprocess.run(
-        ["git", "-C", str(repo_root), "worktree", "remove", "--force", str(wt_path)],
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        ["git", "-C", str(repo_root), "branch", "-D", branch_name],
-        capture_output=True,
-        text=True,
-    )
-
-    # Belt-and-suspenders: if `worktree remove` failed (e.g. the worker left
-    # uncommitted changes behind) don't leave stray directories accumulating
-    # forever, but don't blindly rmtree something git still tracks as a live
-    # worktree either — prune the registration first, then check.
-    if Path(wt_path).exists():
-        listing = subprocess.run(
-            ["git", "-C", str(repo_root), "worktree", "list", "--porcelain"],
-            capture_output=True,
-            text=True,
-        )
-        if str(wt_path) not in listing.stdout:
-            shutil.rmtree(wt_path, ignore_errors=True)
+    shutil.rmtree(cleanup_info["path"], ignore_errors=True)
 
 
 def _image_available_locally(image):
