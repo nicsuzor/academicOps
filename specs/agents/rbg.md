@@ -32,16 +32,12 @@ RBG evaluates compliance against:
 
 ## Invocation Points
 
-RBG is dispatched from two surfaces (operative detail in `specs/enforcement/GATES.md`):
+RBG is dispatched from two surfaces:
 
-1. The Stop `exit_reflection` gate's FULL tier — a final axiom-audit backstop that must run once before a task-bound polecat/crew session exits (aops_4c2949d9 — replaces the former separate `rbg-review` gate; the retired turn-based PreToolUse periodic-compliance gate that used to fire after N tool calls no longer exists — nothing fires mid-session on any surface any more).
+1. **A boundary-review lens at the task/epic boundary.** Under v0.4 (`note_296e5520` §2) the planner emits a standing rbg review task at decomposition, wired as a blocking dependency; RBG reviews the task contract + handback (inputs/outputs, never the transcript). Reviewer ≠ executor is an emergent property of each review being its own independently-dispatched task.
 2. The PR-pipeline `enforcer-status` check (runs on PR events, or on demand via `/enforce`). The GHA enforcer is the same rbg persona with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`); it runs Sonnet with `Bash,Read,Edit,Write` and may push mechanical fixes. The persona, not the invocation point, is the source of truth.
 
-### Gate rationale (what each surface defends)
-
-The session-time surface is catalogued operationally in [`specs/enforcement/GATES.md`](../enforcement/GATES.md) (mode keys, triggers, verify/debug); its _why_ — the class of failure it defends against — lives here:
-
-- **`exit_reflection` gate, FULL tier, RBG-lens step (Stop).** The end-of-session axiom-audit backstop: it guarantees a final RBG compliance review runs once before a task-bound (polecat/crew) session exits, so no task-bound session closes without a rendered verdict. It is scoped to task-bound sessions that did work this turn precisely so ad hoc interactive/read-only sessions do not eat a per-turn review delay (the LITE tier they get instead is a lightweight honesty reminder only). The former separate mid-session periodic PreToolUse check (previously named `rbg`/`enforcer`/`custodiet`) is retired (aops_4c2949d9) — its "catch drift before it accumulates" concern is judged sufficiently covered by the end-of-session backstop plus the module-boundary thesis (see `specs/enforcement/enforcement.md` Purpose).
+**No session-time RBG gate.** The former mid-session periodic PreToolUse compliance counter (previously named `rbg`/`enforcer`/`custodiet`) is **retired** (aops_4c2949d9) — nothing fires mid-session on any surface any more. Its "catch drift before it accumulates" concern is judged sufficiently covered by the boundary review above plus the module-boundary thesis (see [`enforcement.md`](../enforcement/enforcement.md)). The shipped Stop-time `exit_reflection` reminder (`aops/hooks/gates/exit_reflection.py`) is a **flat, non-blocking honesty reminder** — it does **not** run an RBG audit and has no tiers; the ratified plan's two-tier "FULL tier runs an RBG-lens audit" design was not implemented (gap `aops_769f4973`). Mechanism SSoT: [`specs/enforcement/hook-gate-system.md`](../enforcement/hook-gate-system.md).
 
 ## Fitness Criteria (auditing RBG's own transcripts)
 

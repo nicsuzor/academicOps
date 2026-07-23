@@ -29,8 +29,9 @@ responsibility**, not personality-splitting:
 - **Ida is the framework's one shipped, user-facing head.** She carries a
   **superset**: the academic-rigor/research-integrity register that was
   always hers, plus the general dispatch-discipline and self-maintenance
-  doctrine that used to be described as Junior's. Ida ships in `aops-core`
-  (runtime definition: [`aops/agents/ida.md`](../../aops/agents/ida.md))
+  doctrine that used to be described as Junior's. Ida ships in the
+  head-persona plugin `aops-jr` (runtime definition:
+  [`aops-jr/agents/ida.md`](../../aops-jr/agents/ida.md))
   and is what this charter binds. There is no separate Junior skin in the
   framework — see the section below for what carried over.
 - **Junior is Nic's personal, machine-local orchestrator** —
@@ -434,12 +435,15 @@ research/teaching/publication outputs):
   reviewing the final version first.
 
 **Enforcement note.** This charter is the conduct/role SSoT for the Ida skin;
-it does not hold, move, or duplicate the live enforcement tie. The `ida`
-honesty-at-Stop gate's design rationale and its binding to
-[`specs/enforcement/GATES.md#ida-gate`](../enforcement/GATES.md#ida-gate)
-remain owned by
-[`specs/agents/ida.md#honesty-at-stop--the-ida-gate`](../agents/ida.md#honesty-at-stop--the-ida-gate)
-— read there for the live gate binding.
+it does not hold or duplicate the enforcement mechanism. The _why_ of the
+honesty-at-Stop discipline lives in
+[`specs/agents/ida.md#honesty-at-stop--the-exit-reflection-reminder`](../agents/ida.md#honesty-at-stop--the-exit-reflection-reminder);
+the shipped mechanism (the persona-agnostic `exit_reflection` gate +
+`router.py` reminders — non-blocking, no mode keys) is documented in
+[`specs/enforcement/hook-gate-system.md`](../enforcement/hook-gate-system.md).
+The old `GATES.md` catalogue and the face-scoped `ida`-gate design it described
+were retired; the honesty reminder currently fires on every session, not just
+the head (design-vs-code gap `aops_769f4973`).
 
 ---
 
@@ -458,7 +462,7 @@ remain owned by
 | Fitness Criteria & Anti-Patterns                   | `brain/junior.md` AC-1..17 + 14 anti-patterns, cross-checked against `ida.md`'s fitness criteria/anti-patterns              | Overlapping items (delegate-don't-absorb, don't relay inference as fact, PKB-only persistence) merged once rather than duplicated per source. Ida-specific fitness items (research-integrity-in-transcript) moved to Ida's skin instead, so they don't overclaim onto Junior.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Skin: Junior                                       | `brain/junior.md` — persona intro, US-1..8, `SOUL.md` Boundaries + Vibe                                                     | **Removed** SOUL.md's "Standing program — I own driving v0.4" section entirely: it has Junior directly owning a continuous supervision obligation over a program dashboard and dispatching a supervisor-skill subagent itself — precisely the "head runs day-to-day supervision" shape P4/P8/P10 rule out. That obligation now belongs to the headless supervisor loop, not to any head personality, and is out of scope for a role charter. US-6 (Brevity) and US-7 (Cross-Device) are not restated as their own bullets: US-6 folds into the Cold-Open bullet's sub-4-line brevity, and US-7 folds into the shared "PKB as the only persistence surface" fitness criterion above the fold, which is what makes cross-device state sync possible — named here so the fold isn't silent. |
 | Skin: Ida                                          | `aops/agents/ida.md` in full — persona, dispatch default, standard of work, research integrity, academic-output corollaries | Needed the least surgery of the four; no dispatch/supervision framing to remove. Co-working disposition and delegate-for-hygiene were pulled up into the shared charter above so they aren't stated twice. "Standard of work" was further trimmed to drop obligations already binding above the fold (cite-evidence-not-inference, declare-unobserved-unverified — see Fitness Criteria/Anti-Patterns), and the dropped "record durable facts and keep the bound task current" clause was restored. The sign-off corollary's attribution was corrected from a vague "shared charter" self-reference back to the source's named `data-boundaries` axiom.                                                                                                                                  |
-| Ida sibling / enforcement split                    | `specs/agents/ida.md` (status: ready, in-repo, not superseded)                                                              | `specs/agents/ida.md` predates and remains canonical for the live `ida` honesty-at-Stop gate binding to `specs/enforcement/GATES.md#ida-gate` — that tie is not moved or duplicated into this charter. Split: this charter is the conduct/role SSoT for the Ida skin (and for the head role generally); `specs/agents/ida.md` keeps sole ownership of the gate's design rationale and its enforcement wiring. The charter's Skin: Ida section cross-references `ida.md#honesty-at-stop--the-ida-gate` explicitly for this reason.                                                                                                                                                                                                                                                        |
+| Ida sibling / enforcement split                    | `specs/agents/ida.md` (status: ready, in-repo, not superseded)                                                              | Split: this charter is the conduct/role SSoT for the Ida skin (and the head role generally); `specs/agents/ida.md` owns the _why_ of the honesty-at-Stop discipline; the shipped mechanism lives in `specs/enforcement/hook-gate-system.md`. The former `specs/enforcement/GATES.md` gate catalogue was deleted in the v0.4 hook simplification and is not referenced here.                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Tool/PKB permissions (deliberately not carried in) | `brain/junior.md` "Capabilities & Tool Surface" — Junior does not hold graph-mutation permissions (reserved for Pauli)      | Cut, not merged: tool/permission grants are runtime agent-definition matter (frontmatter `tools:` lists), not role/conduct charter matter — this charter binds obligations, not capability grants. The permission split itself is unchanged and still lives in the runtime agent definitions, not here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 **Stranded material found, mostly not moved**: `~/junior/.agents/CORE.md` is

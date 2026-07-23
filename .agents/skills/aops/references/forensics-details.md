@@ -8,7 +8,7 @@ description: How to read hook JSONL logs, diagnose gate failures, trace session 
 
 # Session Hook Forensics — Detailed Procedures
 
-> **Scope split with `GATES.md`.** This file is the **JSONL forensics procedure** — how to read raw hook log files and diagnose specific session artifacts. For the **catalogue of which gates exist, how each is configured, and how to verify it's firing**, see [`specs/enforcement/GATES.md`](../../../../specs/enforcement/GATES.md) (the canonical state SSoT). For hook architecture and I/O schemas, see [[hooks]]. For general framework debugging, see [[debug-details]].
+> **Scope split.** This file is the **JSONL forensics procedure** — how to read raw hook log files and diagnose specific session artifacts. For the **catalogue of which gates exist and how each behaves**, see [`specs/enforcement/hook-gate-system.md`](../../../../specs/enforcement/hook-gate-system.md) (the mechanism SSoT; the old `GATES.md` register was deleted in the v0.4 hook simplification). For hook architecture and I/O schemas, see [[hooks]]. For general framework debugging, see [[debug-details]].
 
 This reference provides the specific knowledge needed to diagnose hook and gate behavior from raw session artifacts.
 
@@ -97,7 +97,7 @@ All session artefacts share one base name `<base> = {date}-{time}-{shorthash}-{s
 
 ### RBG / RBG Gate (RETIRED — aops_4c2949d9)
 
-**The turn-based periodic PreToolUse compliance-counter gate described in this subsection no longer exists in code.** It fired mid-session on a rolling operation count (`gates.rbg_threshold`); that whole mechanism — `GateConfig`, threshold config, counter, countdown — is deleted, not disabled. Nothing fires mid-session (PreToolUse) on any surface any more. The RBG-lens self-audit concern survives as one step of the consolidated `exit_reflection` gate's FULL tier at Stop — see [`GATES.md#exit_reflection-gate`](../../../specs/enforcement/GATES.md#exit_reflection-gate). The commands below are kept for historical-session forensics (older transcripts still show this gate firing) but do not describe current behaviour.
+**The turn-based periodic PreToolUse compliance-counter gate described in this subsection no longer exists in code.** It fired mid-session on a rolling operation count (`gates.rbg_threshold`); that whole mechanism — `GateConfig`, threshold config, counter, countdown — is deleted, not disabled. Nothing fires mid-session (PreToolUse) on any surface any more. The RBG-lens self-audit concern is now handled by boundary review at the task/epic boundary, not a session-time gate (see [`specs/agents/rbg.md`](../../../specs/agents/rbg.md)); the shipped Stop-time `exit_reflection` reminder is a flat non-blocking honesty reminder (see [`specs/enforcement/hook-gate-system.md`](../../../specs/enforcement/hook-gate-system.md)). The commands below are kept for historical-session forensics (older transcripts still show this gate firing) but do not describe current behaviour.
 
 The compliance gate periodically required the agent to invoke the rbg (Haiku) or rbg (Sonnet) subagent.
 

@@ -8,13 +8,13 @@ description: academicOps hook architecture, PATH bootstrap, MCP server config, a
 
 # Hooks & MCP: academicOps Reference
 
-> **Scope split with `GATES.md`.** This file is the **hook infrastructure** reference: router architecture, PATH bootstrap, MCP wiring, hook I/O schemas. For the **runtime catalogue of gates that fire via this router** (what each gate is, how it's configured in `polecat.yaml`, how to verify it's firing, how to debug it), see [`specs/enforcement/GATES.md`](../../../../specs/enforcement/GATES.md). For raw JSONL forensics, see [[forensics-details]].
+> **⚠ Partially stale (v0.4 hook simplification).** The gate catalogue and the mechanism SSoT are now [`specs/enforcement/hook-gate-system.md`](../../../../specs/enforcement/hook-gate-system.md); the old `GATES.md` register, `client_spec.py` channel matrix, and block/warn/mode/DENY machinery this file references were **deleted**. The shipped hook system is `aops/hooks/router.py` (reminder-injection) + `aops/hooks/gate_dispatch.py` (a two-gate registry) — all non-blocking. Sections below that describe modes/DENY/channel-capabilities predate that and are being reworked (task `aops_769f4973` covers the honesty-gate portion). For raw JSONL forensics, see [[forensics-details]].
 
 For Claude Code's hook system in general, see the [official docs](https://code.claude.com/docs/en/hooks) and [plugins reference](https://code.claude.com/docs/en/plugins-reference). This document covers the academicOps-specific implementation.
 
 ## Hook message visibility quick-reference
 
-Per-client channel capability (which wire field reaches the user vs. the agent, and whether it persists) is the `_CHANNELS` table in [`aops/hooks/client_spec.py`](../../../../aops/hooks/client_spec.py) — rendered as a readable matrix in [`specs/CLIENT-TRANSLATION.md`](../../../../specs/CLIENT-TRANSLATION.md#authoritative-channel-matrix-per-client). Raw PTY-probe measurements backing that table live in `tests/hooks/fixtures/pty_capabilities.json`.
+Per-client wire mapping (how a verdict becomes each client's output shape) now lives in [`aops/hooks/gates/emit.py`](../../../../aops/hooks/gates/emit.py) — one small `emit(verdict, event, client)` function with a branch per client (`claude`, `agy`). The former `client_spec.py` `_CHANNELS` capability matrix was deleted in the v0.4 simplification; see [`specs/enforcement/hook-gate-system.md#the-emit-adapter-gatesemitpy`](../../../../specs/enforcement/hook-gate-system.md). Raw PTY-probe measurements live in `tests/hooks/fixtures/pty_capabilities.json`.
 
 ## Active Hooks
 
@@ -95,7 +95,7 @@ Exit 2 ignores stdout entirely. For other hook types, always exit 0.
 
 ### Stop/SubagentStop Behavior
 
-The Stop hook enforces the gate contract for final-turn verifications. **Stop-gate modes are the SSoT of [`specs/enforcement/GATES.md`](../../../../specs/enforcement/GATES.md)** — both `warn` and `block` gates emit a `DENY` (hard block); the mode selects only the re-fire latch (warn = fire-once, block = persist-until-satisfied). This section describes the wire _capabilities_ the renderer maps those verdicts onto, not how a gate enforces.
+The Stop hook injects a final-turn honesty/handover reminder. **This is now non-blocking** (Observed: every `decision: block` in `aops/hooks/router.py` is commented out; the `exit_reflection` gate returns a `warn`, delivered via `additionalContext`). The old block/warn _mode_ machinery — where both modes emitted a `DENY` and the mode only selected the re-fire latch — was **deleted** in the v0.4 simplification along with `GATES.md`. Mechanism SSoT: [`specs/enforcement/hook-gate-system.md`](../../../../specs/enforcement/hook-gate-system.md).
 
 `additionalContext`-without-block is a wire capability (Claude Code >= 2.1.191): it injects context on a non-blocking Stop, but it is **not** how warn-mode gates enforce (they DENY to force one continuation). Note it is **not user-silent** — the delivered `additionalContext` also renders to the user as a `Stop hook feedback:` line (PTY-confirmed on 2.1.195, task aops-c0363bf8). No _user-silent_ (zero user output) Stop channel exists. This is the channel `ida·reminder`'s warn-mode delivery uses on Claude (`router.ida_warn_solo_decision_for`). Caveat: delivery ≠ compulsion (the woken agent weighs it as advisory).
 

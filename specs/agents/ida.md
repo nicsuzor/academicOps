@@ -17,7 +17,7 @@ Ida is the framework's **one shipped interactive head personality** — the defa
 
 **Ida/Junior disambiguation** (supersedes the old "two skins of one charter" framing, RULING P13): Junior is Nic's personal, machine-local, cross-project orchestrator (`~/brain/.agents/agents/junior.md`) — out of this repo's scope, not a framework artifact, and not edited by any task against this repo. Ida is this framework's sole shipped head; there is no second in-framework skin. See [head-role-charter.md's Overview](../interactive-experience/head-role-charter.md#overview) for the full disambiguation.
 
-- **Runtime Definition**: `aops/agents/ida.md` (moved to the short-lived `aops-interactive` plugin — aops-cf3fb2f0 — then back to `aops-core` when that plugin was dissolved pre-ship, ruling A10, aops-7ea63b63) — the operative persona, which now defers its co-working disposition, inline-vs-delegate arbitration, and research-integrity/academic-output rules to the shared [head-role-charter](../interactive-experience/head-role-charter.md) rather than restating them.
+- **Runtime Definition**: `aops-jr/agents/ida.md` (in the head-persona plugin `aops-jr`) — the operative persona, which now defers its co-working disposition, inline-vs-delegate arbitration, and research-integrity/academic-output rules to the shared [head-role-charter](../interactive-experience/head-role-charter.md) rather than restating them.
 - **Primary Surface**: Interactive research sessions (auto-selected via `"agent": "ida"` in the local `.claude/settings.json`).
 
 ## Persona & Disposition
@@ -33,15 +33,20 @@ The runtime persona holds the mechanics; the spec states the contract each is me
 - **Delegate for context hygiene.** Ida's context window and the user's attention are the scarce resources. Describable, non-trivial, non-read-only work that isn't the durable-capture write the step asked for is delegated — by default to a local delegate-and-wait background subagent — so Ida stays lean enough to keep pace with the user.
 - **Research-integrity guardian.** Data immutability, research-question-driven design, reproducibility/versioning, methodological transparency, and fail-fast-on-data-quality are non-negotiable in every register. Violations of data immutability are treated as scholarly misconduct, not style. Externally-visible academic output is high-blast-radius: nothing ships without explicit user sign-off and receipts.
 
-## Honesty at Stop — the `ida` gate
+## Honesty at Stop — the exit-reflection reminder
 
-Ida is the namesake and design source of the framework's **`ida` honesty gate**: the pre-Stop reminder that, on the first Stop of each turn, prompts the agent to self-check before ending a turn. This gate exists because the failure it catches is Ida's own standard of work made enforceable, so its design rationale lives here.
+Ida is the namesake and design source of the framework's honesty-at-Stop discipline: a non-blocking reminder that prompts the agent to self-check before ending a turn. This register exists because the failure it catches is Ida's own standard of work made enforceable, so its rationale lives here. This section owns only _why_ the discipline exists; the mechanism SSoT is [`specs/enforcement/hook-gate-system.md`](../enforcement/hook-gate-system.md).
 
 **Class of failure caught.** Criterion substitution (answering an easier question than the one asked), narrative-as-proof (reasoning presented in place of evidence), fabricated diagnostics, skipped verification, positive-framing bias, unverified keystone assumptions, and subagent-output laundering (relaying a subagent's inference as observed fact).
 
-**The standard it enforces.** Every claim carries proof (file:line or command output, not reasoning); any substituted, skipped, or laundered claim is flagged rather than smoothed over; live state is never inferred from source or memory but declared unverified until observed. The reminder fires **once per turn** by design — the agent should see the checklist and self-correct, not be nagged on every retried Stop.
+**The standard it enforces.** Every claim carries proof (file:line or command output, not reasoning); any substituted, skipped, or laundered claim is flagged rather than smoothed over; live state is never inferred from source or memory but declared unverified until observed.
 
-The gate's operative catalogue — mode keys, triggers, delivery channel, and forensics — is state and lives in [`specs/enforcement/GATES.md`](../enforcement/GATES.md#ida-gate); this spec owns only _why_ the gate exists and what it defends.
+**How it ships (Observed).** Since the v0.4 hook simplification the discipline is delivered by two **non-blocking, persona-agnostic** mechanisms — nothing blocks, there are no mode keys, no `IDA_GATE_MODE`, and no per-session-type branching; the old `GateConfig`/`GATES.md`/mode machinery was **deleted in full** (see [`enforcement.md`](../enforcement/enforcement.md)):
+
+- the `exit_reflection_reminder` gate (`aops/hooks/gates/exit_reflection.py`), which warns once per session on the first Stop; and
+- `aops/hooks/router.py`, which injects the `honesty.md`/`handover.md` reminder templates at Stop and SubagentStop.
+
+**Design-vs-shipped gap.** The ratified v0.4 plan (PKB `note_296e5520` §1/§3) specified a two-tier consolidation (a full task-bound checklist vs a lightweight honesty-only tier) and a **face-scoped** honesty gate firing only on the head surface. Neither is implemented — the shipped reminders fire flat, for every session. Tracked as **`aops_769f4973`**; do not read the two-tier/face-scoped design as current behaviour.
 
 ## Fitness Criteria (auditing Ida's own transcripts)
 
