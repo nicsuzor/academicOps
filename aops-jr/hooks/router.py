@@ -66,7 +66,8 @@ def main():
     elif client == "claude":
         if event == "PostToolUse":
             tool_name = raw_input.get("tool_name")
-            if tool_name == "Agent":
+            tool_input = raw_input.get("tool_input") or {}
+            if tool_name == "Agent" and not (isinstance(tool_input, dict) and tool_input.get("run_in_background")):
                 output = {
                     "systemMessage": "≡ Always check subagent outputs -- they're lazy and lie often.",
                     "hookSpecificOutput": {
