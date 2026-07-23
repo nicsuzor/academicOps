@@ -17,6 +17,7 @@ from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
 from transcripts.domain.ledger import generate_prompt_ledger
 from transcripts.domain.renderer import render_session_to_all_formats, render_to_full_markdown
+from transcripts.domain.secret_redaction import redact_secrets
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
 from transcripts.domain.time import get_event_timestamps
@@ -122,11 +123,17 @@ def process_single_session(
         session, slug, started_at, last_modified, ended_at, has_user, correlation, insights
     )
 
-    # Write files
-    (dest_dir / f"{filename_base}.md").write_text(md, encoding="utf-8")
-    (dest_dir / f"{filename_base}.full.md").write_text(full_md, encoding="utf-8")
-    (dest_dir / f"{filename_base}.html").write_text(html, encoding="utf-8")
-    (dest_dir / f"{filename_base}.json").write_text(json_sidecar, encoding="utf-8")
+    # Write files. Redaction is applied here, at the single write chokepoint,
+    # rather than inside each renderer: these four artifacts are the only
+    # things that leave the machine, so scrubbing here means a new renderer
+    # cannot accidentally ship an unredacted format. See
+    # transcripts/domain/secret_redaction.py for what is scrubbed and why.
+    (dest_dir / f"{filename_base}.md").write_text(redact_secrets(md), encoding="utf-8")
+    (dest_dir / f"{filename_base}.full.md").write_text(redact_secrets(full_md), encoding="utf-8")
+    (dest_dir / f"{filename_base}.html").write_text(redact_secrets(html), encoding="utf-8")
+    (dest_dir / f"{filename_base}.json").write_text(
+        redact_secrets(json_sidecar), encoding="utf-8"
+    )
 
     logger.info("Processed session %s -> %s", session_id, filename_base)
     return True

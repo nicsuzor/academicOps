@@ -37,7 +37,7 @@
 #                      base directory; the payload lands under it as:
 #                        <base>/transcripts/  redacted markdown (transcript.py)
 #                        <base>/summaries/    summary JSON      (transcript.py)
-#                        <base>/incoming/     raw JSONL         (fallback only)
+#                      (no raw-JSONL path: the sync fails closed instead)
 #   AOPS_TS_SSH_CMD    remote-shell override (optional); defaults to
 #                      "tailscale ssh" when tailscale is present, else "ssh".
 #                      Set e.g. to "ssh" to use key-based auth to a plain host.
@@ -45,11 +45,12 @@
 #                      "-o StrictHostKeyChecking=accept-new"
 #   AOPS_SRC_DIR       aops plugin source dir (optional; else the plugin cache is used)
 #
-# Dependency: parsing requires the aops plugin (transcript.py). In single-session mode,
-# if the aops plugin cannot be run, the hook falls back to shipping the RAW JSONL
-# (unredacted — see note). Batch mode has no such fallback — shipping every
-# session on disk unredacted is a materially bigger exposure than shipping one,
-# so a failed transcript.py run in batch mode just skips the sync instead.
+# Dependency: parsing requires the aops plugin (the transcripts runner), which is
+# what applies secret redaction. If it cannot be run, the hook SKIPS THE SYNC in
+# both single-session and batch mode. There is deliberately no raw-JSONL fallback:
+# raw transcripts are unredacted, and silently downgrading from the redacted
+# pipeline to raw is precisely the failure this hook must not have — the operator
+# opted into redaction and would get no signal that it had stopped.
 # Never blocks session end: always exits 0. Diagnostics → stderr.
 
 set -uo pipefail
@@ -98,23 +99,27 @@ fi
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/aops-ts-sync.XXXXXX")" || { echo "[aops-ts] mktemp failed; skipping."; exit 0; }
 trap 'rm -rf "$STAGE"' EXIT
 
-# --- locate the aops plugin (sibling) so we can run transcript.py ---
+# --- locate the aops plugin (sibling) so we can run the transcripts runner ---
+# The pipeline is the `transcripts.runner` module under `<plugin>/lib`, invoked
+# with `python -m`. It was previously a `scripts/transcript.py` script; that file
+# was removed when the pipeline became a package, and this hook was not updated
+# — which silently dropped every sync to the raw/unredacted fallback.
 # Use a while-read over process substitution so paths containing spaces don't
-# word-split (a silent split would drop us to the raw/unredacted fallback).
+# word-split (a silent split would skip the sync entirely).
 AOPS_CORE=""
-if [ -f "${AOPS_SRC_DIR:-/nonexistent}/aops/scripts/transcript.py" ]; then
+if [ -f "${AOPS_SRC_DIR:-/nonexistent}/aops/lib/transcripts/runner.py" ]; then
   AOPS_CORE="${AOPS_SRC_DIR}/aops"
 else
   while IFS= read -r c; do
     [ -n "$c" ] || continue
-    if [ -f "${c%/}/scripts/transcript.py" ]; then AOPS_CORE="${c%/}"; break; fi
+    if [ -f "${c%/}/lib/transcripts/runner.py" ]; then AOPS_CORE="${c%/}"; break; fi
   done < <(ls -d "$HOME"/.claude/plugins/cache/academicOps/aops/*/ 2>/dev/null | sort -rV)
 fi
 
-# transcript.py writes transcripts/ + summaries/ under $AOPS_SESSIONS; point that
+# The runner writes transcripts/ + summaries/ under $AOPS_SESSIONS; point that
 # at the staging dir and pass --no-sync so it never tries to git-commit/push.
 # Single-session mode names the one file that just ended; batch mode passes
-# --all and no file argument, so transcript.py's own find_sessions() discovers
+# --all and no file argument, so the runner's own find_session_files() discovers
 # every session across every provider it knows about.
 if [ -n "$BATCH_MODE" ]; then
   TP_ARGS=(--all)
@@ -126,30 +131,31 @@ processed=""
 if [ -n "$AOPS_CORE" ]; then
   py="$AOPS_CORE/.venv/bin/python"
   if [ -x "$py" ]; then
-    AOPS_SESSIONS="$STAGE" "$py" "$AOPS_CORE/scripts/transcript.py" "${TP_ARGS[@]}" --no-sync \
+    AOPS_SESSIONS="$STAGE" PYTHONPATH="$AOPS_CORE/lib${PYTHONPATH:+:$PYTHONPATH}" \
+      "$py" -m transcripts.runner "${TP_ARGS[@]}" --no-sync \
       >"$STAGE/transcript.log" 2>&1 && processed=1
   elif command -v uv >/dev/null 2>&1; then
-    AOPS_SESSIONS="$STAGE" uv --directory "$AOPS_CORE" run python \
-      "$AOPS_CORE/scripts/transcript.py" "${TP_ARGS[@]}" --no-sync \
+    AOPS_SESSIONS="$STAGE" PYTHONPATH="$AOPS_CORE/lib${PYTHONPATH:+:$PYTHONPATH}" \
+      uv --directory "$AOPS_CORE" run python -m transcripts.runner "${TP_ARGS[@]}" --no-sync \
       >"$STAGE/transcript.log" 2>&1 && processed=1
   fi
 fi
 
 if [ -n "$processed" ]; then
   if [ -n "$BATCH_MODE" ]; then
-    echo "[aops-ts] transcript.py processed all available sessions into staging dir"
+    echo "[aops-ts] transcripts runner processed all available sessions into staging dir"
   else
-    echo "[aops-ts] transcript.py processed session into staging dir"
+    echo "[aops-ts] transcripts runner processed session into staging dir"
   fi
-elif [ -n "$BATCH_MODE" ]; then
-  echo "[aops-ts] transcript.py unavailable/failed; no raw fallback in batch mode; skipping sync."
-  exit 0
 else
-  # Fallback: ship the raw JSONL. NOTE: raw transcripts are UNREDACTED — only do
-  # this to a trusted tailnet host you control.
-  echo "[aops-ts] transcript.py unavailable/failed; shipping RAW (unredacted) JSONL"
-  mkdir -p "$STAGE/incoming"
-  cp "$tp" "$STAGE/incoming/${sid:-session}.jsonl"
+  # FAIL CLOSED. The transcripts runner is what applies secret redaction, so if
+  # it did not run we have no redacted artifact — and the raw JSONL is
+  # unredacted by definition. Shipping it would silently downgrade the operator
+  # from the redacted pipeline they opted into, with only this line as warning.
+  # Skipping loses a transcript; shipping raw can lose a credential.
+  echo "[aops-ts] transcripts runner unavailable/failed; NOT shipping raw (unredacted) JSONL; skipping sync."
+  echo "[aops-ts] to sync this session, fix the aops plugin path (AOPS_SRC_DIR) and re-run."
+  exit 0
 fi
 
 # --- push everything to the tailnet host (REMOTE_HS/REMOTE_PATH parsed above) ---
