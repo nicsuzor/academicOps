@@ -1479,9 +1479,9 @@ def claude_docker(tmp_path):
             "No Claude auth: neither ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, nor OAuth credentials found"
         )
 
-    # Import _build_docker_cmd from polecat (now in the aops-jr coordinator package)
+    # Import _build_docker_cmd from polecat (relocated into the aops core package)
     repo_root = get_repo_root()
-    polecat_dir = str(repo_root / "aops-jr" / "polecat")
+    polecat_dir = str(repo_root / "aops" / "polecat")
     if polecat_dir not in sys.path:
         sys.path.insert(0, polecat_dir)
 

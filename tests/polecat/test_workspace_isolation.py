@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_POLECAT_DIR = str(_REPO_ROOT / "aops-jr" / "polecat")
+_POLECAT_DIR = str(_REPO_ROOT / "aops" / "polecat")
 if _POLECAT_DIR not in sys.path:
     sys.path.insert(0, _POLECAT_DIR)
 
