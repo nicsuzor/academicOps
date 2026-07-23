@@ -212,8 +212,8 @@ Level 2 provides task-aware guidance through two mechanisms:
 
 **Evidence**:
 
-- 2025-12-26: Router correctly steered agent to framework skill
-- 2026-01-09: `/learn` command strengthened with root-cause escape prevention
+- Router correctly steered agent to framework skill
+- `/learn` command strengthened with root-cause escape prevention
 
 **Lesson**: For `/commands`, edit the command file directly. For user prompts, use the router.
 
@@ -285,7 +285,7 @@ TodoWrite(todos=[
 
 **Evidence**:
 
-- 2026-01-06: test-skill-chain validated pattern works
+- test-skill-chain validated pattern works
 - audit skill (v5.0.0) chains to framework and flowchart skills via TodoWrite
 
 **Lesson**: Solves "skills can't invoke skills" without hooks. Makes skill invocation a mandatory workflow step rather than an optional suggestion. See [[skills/aops/SKILL.md]] for pattern details.

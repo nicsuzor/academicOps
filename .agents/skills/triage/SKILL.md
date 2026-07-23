@@ -32,8 +32,6 @@ tags:
 
 # /triage — Unified Triage Skill
 
-<!-- NS: can we go back to /learn for this skill? or something that is more descriptive? -->
-
 Triage a corpus, classify findings, and dispatch outputs according to the selected mode.
 
 | Mode    | Corpus                              | Primary output                 |
@@ -68,8 +66,6 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 - **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
-
-<!-- NS: we have review modes. shouldn't we just call them? -->
 
 - Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g., `/craft` defects: compliance framing, missing artifact chain, etc.).
 - **Immediate Fixes Policy — retro fixes the reviewed session, never the framework's future behavior**:

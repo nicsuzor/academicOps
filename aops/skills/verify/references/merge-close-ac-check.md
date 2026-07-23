@@ -1,6 +1,6 @@
 # AC-Verification Step (merge_ready → done)
 
-The verification surface that sits on the `merge_ready → done` transition. Source: nicsuzor/academicOps#1426 — before this step existed, every auto-close path confirmed only that a PR _corresponds_ to a task ("is this the right PR?"), never that the task's **acceptance criteria are actually satisfied by the merged artifact**. Judgment-laden criteria — taste, "is X genuinely good", "does this serve the user" — passed the correspondence check and shipped to `done` silently.
+The verification surface that sits on the `merge_ready → done` transition. Before this step existed, every auto-close path confirmed only that a PR _corresponds_ to a task ("is this the right PR?"), never that the task's **acceptance criteria are actually satisfied by the merged artifact**. Judgment-laden criteria — taste, "is X genuinely good", "does this serve the user" — passed the correspondence check and shipped to `done` silently.
 
 This step closes that gap. It is invoked by every surface that auto-closes a task on a merged PR (`/daily` Task Completion Sweep, `/sleep` PR-state sweep). It does **not** define a new lifecycle state and does **not** introduce a blocking gate — per framework doctrine it _surfaces_ unverified criteria rather than halting the pipeline.
 
@@ -30,7 +30,7 @@ Run this **after** PR↔task correspondence is confirmed (the candidate PR genui
 
 ## Why surface and not block
 
-Doctrine forbids a new blocking gate on this transition (#1426 explicitly: "without adding a new blocking gate where doctrine forbids it"). The merged work is already on the default branch — blocking the _status_ transition would not un-merge anything; it would only strand the task. The honest move is to let the work land and make the **unverified judgment-laden criterion visible** to the person who can judge it, instead of laundering it into `done` on the strength of a correspondence match.
+Doctrine forbids a new blocking gate on this transition. The merged work is already on the default branch — blocking the _status_ transition would not un-merge anything; it would only strand the task. The honest move is to let the work land and make the **unverified judgment-laden criterion visible** to the person who can judge it, instead of laundering it into `done` on the strength of a correspondence match.
 
 ## What this is not
 

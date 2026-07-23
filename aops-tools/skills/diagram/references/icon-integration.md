@@ -369,6 +369,5 @@ For agent or manual diagramming:
 
 **Current state**: Manual import workflow functional, good enough for most use cases.
 
-**Last Updated**: 2025-11-19
 **Related**: [[theme-colors]], [[library-guide]]
 **Icon Sources**: Material Symbols (Google), awesome-icons library (built-in)

@@ -214,17 +214,15 @@ done
 
 ### Pattern: RBG firing repeatedly in long sessions
 
-**Sessions**: `fafa268a` (193 ops, 10+ dispatches), `c7909ba1` (211 ops), `ac37cbc3` (268 ops)
-**Meaning**: Normal. Long sessions accumulate many operations. The gate fires every ~50 ops, rbg evaluates, returns OK, counter resets, work continues.
+**Meaning**: Normal. Observed across multiple long sessions accumulating many operations (100s of ops, 10+ dispatches). The gate fires every ~50 ops, rbg evaluates, returns OK, counter resets, work continues.
 
 ### Pattern: 4 Stop denies then auto-approve
 
-**Sessions**: `00d1f873`, `08a89782`, `0adf0325`, and many others
-**Meaning**: Agent tried to stop but had uncommitted changes. Ignored 3 denies. Safety override on 4th. Investigate whether the agent attempted to commit between denies or just retried Stop.
+**Meaning**: Observed across multiple sessions. Agent tried to stop but had uncommitted changes. Ignored 3 denies. Safety override on 4th. Investigate whether the agent attempted to commit between denies or just retried Stop.
 
 ### Pattern: Zero Gemini hook JSONL
 
-**As of 2026-04-09**: No Gemini-prefixed sessions exist in hook JSONL. Either Gemini polecats haven't been run with the current hook system, or the integration is broken. This is an open question.
+No Gemini-prefixed sessions exist in hook JSONL. Either Gemini polecats haven't been run with the current hook system, or the integration is broken. This is an open question.
 
 ### Pattern: Operations vs turns confusion
 

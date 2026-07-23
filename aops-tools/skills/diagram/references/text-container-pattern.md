@@ -449,5 +449,4 @@ When creating text-in-container:
 
 **Result**: Text and container move together, text auto-wraps to fit container width.
 
-**Last Updated**: 2025-11-19
 **Related**: [[theme-colors]], [[technical-details]]

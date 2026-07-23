@@ -92,7 +92,7 @@ Yours sincerely, ← Closing
 
 ### Signature Insertion (Letters)
 
-For letters, insert the user's signature image between the closing and name. Use inline HTML:
+Before generating a PDF for a letter, check whether the markdown already contains a signature image; if not, insert one between the closing line (e.g., "Yours sincerely,") and the name block, using inline HTML:
 
 ```markdown
 Yours sincerely,
@@ -103,8 +103,6 @@ Nicolas Suzor
 ```
 
 **Signature location**: `$ACA_DATA/assets/signature.png` (user's personal data directory)
-
-**Before generating PDF for a letter**: Check if the markdown already contains a signature image. If not, insert one between the closing line (e.g., "Yours sincerely,") and the name block.
 
 ## Using Pandoc Directly
 
@@ -150,18 +148,7 @@ weasyprint --version
 
 ## Workflow
 
-When a user requests PDF generation:
-
-1. **Identify the input file**: Confirm the markdown file path
-2. **Determine output location**: Use same directory with `.pdf` extension if not specified
-3. **Detect document type**: Script auto-detects based on content (letter vs academic)
-4. **Extract title**: From filename or ask user if important (less relevant for letters)
-5. **Choose approach**:
-   - Use `scripts/generate_pdf.py` for automatic styling (recommended)
-   - Use pandoc directly if user needs custom options
-   - Override auto-detection with `--type` if needed
-6. **Generate PDF**: Execute the chosen command
-7. **Report results**: Confirm success and show output path
+Default to the same directory with a `.pdf` extension when no output path is given. Prefer `scripts/generate_pdf.py` — it auto-detects document type and applies the right stylesheet; fall back to invoking pandoc directly only when the user needs custom options beyond the script's `--type`/`--title` flags.
 
 ## Common Patterns
 
@@ -181,11 +168,7 @@ done
 - Weasyprint automatically loads fonts from CSS `@font-face` rules
 - No system font installation required
 
-**Weasyprint not found:**
-
-```bash
-uv tool install weasyprint
-```
+**Weasyprint not found:** see Requirements above for the install command.
 
 **CSS warnings:**
 

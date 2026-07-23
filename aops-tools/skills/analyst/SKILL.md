@@ -215,9 +215,7 @@ cat data/README.md
 > The example commands above assume a dbt + Streamlit stack. For the concrete
 > per-engine discovery commands, see the aops-tools `dbt` and `streamlit` skills.
 
-After context discovery, summarize findings to user:
-
-`"I've reviewed the project context. This is a <research topic> project investigating <questions>. The transformation layer has <N> staging models and <M> mart models. I see existing work on <areas>. What would you like me to help with?"`
+After context discovery, summarize findings to the user — research topic and questions, transformation-layer scope (staging/mart model counts), existing work areas — then ask what to help with.
 
 ## Follow Data Access Workflow
 
@@ -392,9 +390,14 @@ Research projects MUST maintain:
 
 ### Prohibited
 
-❌ Create `analysis_report.md]] or any random markdown files ❌ Create`findings_summary.docx` ❌ Proliferate documentation files without defined structure ❌ Leave documentation stale when code changes
+- ❌ Create `analysis_report.md` or any random markdown files
+- ❌ Create `findings_summary.docx`
+- ❌ Proliferate documentation files without defined structure
+- ❌ Leave documentation stale when code changes
 
-✅ Follow strict structure defined in [[instructions/research-documentation.md]] ✅ Update documentation in SAME commit as code changes ✅ One source of truth for each piece of information
+- ✅ Follow strict structure defined in [[instructions/research-documentation.md]]
+- ✅ Update documentation in SAME commit as code changes
+- ✅ One source of truth for each piece of information
 
 ## Collaborative Workflow Principles
 
