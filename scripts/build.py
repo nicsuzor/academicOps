@@ -347,6 +347,7 @@ def generate_cowork_dist(project_root: Path, dist_root: Path, version: str):
         "aops-tools": "aops-tools-claude",
         "aops-jr": "aops-jr-claude",
         "aops-ts": "aops-ts-claude",
+        "aops-pkb": "aops-pkb-claude",
     }
     plugins = []
     for plugin in data.get("plugins", []):
@@ -577,7 +578,7 @@ def main():
     parser.add_argument(
         "--plugins",
         nargs="+",
-        default=["aops", "aops-tools", "aops-jr", "aops-ts"],
+        default=["aops", "aops-tools", "aops-jr", "aops-ts", "aops-pkb"],
         help="Plugins to build",
     )
     parser.add_argument(
