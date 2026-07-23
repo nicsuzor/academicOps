@@ -578,7 +578,7 @@ def main():
     parser.add_argument(
         "--plugins",
         nargs="+",
-        default=["aops", "aops-tools", "aops-jr", "aops-ts", "aops-pkb"],
+        default=["aops", "aops-tools", "aops-jr", "aops-ts", "aops-pkb", "reflexes-cope"],
         help="Plugins to build",
     )
     parser.add_argument(

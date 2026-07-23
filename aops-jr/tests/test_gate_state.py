@@ -1,6 +1,13 @@
 """State helper: one JSON file per session, in a temp dir."""
 
-from gates import state as gate_state
+import sys
+from pathlib import Path
+
+_JR_HOOKS = str(Path(__file__).resolve().parent.parent / "hooks")
+if _JR_HOOKS not in sys.path:
+    sys.path.insert(0, _JR_HOOKS)
+
+from hooks.gates import state as gate_state
 
 
 def test_load_missing_session_returns_empty_dict(tmp_path, monkeypatch):

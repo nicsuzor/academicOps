@@ -13,6 +13,20 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
+
+_HOOKS_DIR = Path(__file__).resolve().parent
+_JR_DIR = _HOOKS_DIR.parent
+for d in [str(_HOOKS_DIR), str(_JR_DIR)]:
+    if d in sys.path:
+        sys.path.remove(d)
+    sys.path.insert(0, d)
+
+if "gates" in sys.modules and not hasattr(sys.modules["gates"], "emit"):
+    del sys.modules["gates"]
+    for mod in list(sys.modules.keys()):
+        if mod.startswith("gates."):
+            del sys.modules[mod]
 
 from gates.emit import emit
 from gates.event import Event, normalize
