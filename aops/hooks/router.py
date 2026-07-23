@@ -9,6 +9,7 @@ import json
 import os
 import shlex
 import sys
+from pathlib import Path
 
 
 def main():
@@ -83,6 +84,21 @@ def main():
             except Exception as e:
                 print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
         output = {"systemMessage": "aOps plugin loaded."}
+    elif event == "PostToolUse" or (client == "claude" and event == "PostToolUse"):
+        tool_name = raw_input.get("tool_name")
+        tool_input = raw_input.get("tool_input") or {}
+        if tool_name == "Agent" and not (isinstance(tool_input, dict) and tool_input.get("run_in_background")):
+            plugin_root = Path(__file__).resolve().parent.parent
+            templates_dir = plugin_root / "templates"
+            verify_file = templates_dir / "verify.md"
+            verify_content = verify_file.read_text().strip() if verify_file.exists() else "<!-- verify.md not found -->"
+            output = {
+                "systemMessage": "≡ Always check subagent outputs -- they're lazy and lie often.",
+                "hookSpecificOutput": {
+                    "hookEventName": event,
+                    "additionalContext": verify_content,
+                },
+            }
 
     if output:
         print(json.dumps(output))

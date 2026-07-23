@@ -82,3 +82,47 @@ def test_stop_is_not_handled_by_router():
         check=True,
     )
     assert result.stdout.strip() == ""
+
+
+def test_posttooluse_agent_synchronous_emits_reminder():
+    """Synchronous Agent tool calls (run_in_background not set or False) emit the verify reminder."""
+    router_path = get_hook_script("router.py")
+    input_data = {
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Agent",
+        "tool_input": {"prompt": "do research"},
+    }
+    cmd = [sys.executable, str(router_path), "claude", "PostToolUse"]
+    result = subprocess.run(
+        cmd,
+        input=json.dumps(input_data),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.returncode == 0
+    parsed = json.loads(result.stdout)
+    assert "≡ Always check subagent outputs" in parsed.get("systemMessage", "")
+    assert "additionalContext" in parsed.get("hookSpecificOutput", {})
+    assert "<academicOps deliverable-verify reminder>" in parsed["hookSpecificOutput"]["additionalContext"]
+
+
+def test_posttooluse_agent_background_suppressed():
+    """Background Agent tool calls (run_in_background=True) suppress the verify reminder."""
+    router_path = get_hook_script("router.py")
+    input_data = {
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Agent",
+        "tool_input": {"prompt": "do research", "run_in_background": True},
+    }
+    cmd = [sys.executable, str(router_path), "claude", "PostToolUse"]
+    result = subprocess.run(
+        cmd,
+        input=json.dumps(input_data),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
