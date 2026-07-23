@@ -1,0 +1,6 @@
+{
+  "evaluator_model": "claude-3-5-haiku-20241022",
+  "provider": "anthropic",
+  "timeout_seconds": 5.0,
+  "fail_open": true
+}

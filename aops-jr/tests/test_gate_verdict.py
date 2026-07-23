@@ -1,6 +1,11 @@
-"""Verdict merge rule: deny > warn > allow (None)."""
+import sys
+from pathlib import Path
 
-from gates.verdict import Verdict, deny, merge, warn
+_JR_HOOKS = str(Path(__file__).resolve().parent.parent / "hooks")
+if _JR_HOOKS not in sys.path:
+    sys.path.insert(0, _JR_HOOKS)
+
+from hooks.gates.verdict import Verdict, deny, merge, warn
 
 
 def test_warn_and_deny_construct_expected_shape():
