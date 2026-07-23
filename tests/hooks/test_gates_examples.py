@@ -63,6 +63,29 @@ def test_exit_reflection_warns_once_per_session():
     assert second is None
 
 
+def test_exit_reflection_injects_handover_template():
+    # The consolidated Stop reminder carries the full handover.md content
+    # (formerly injected by router.py's Stop branch), plus the short
+    # user-visible line.
+    e = Event(event="Stop", session_id="s1")
+    result = exit_reflection_reminder(e, {})
+    assert "academicOps handover reminder" in result.inject_text
+    assert result.user_text
+
+
+def test_exit_reflection_skips_while_background_tasks_pending():
+    # Pending background tasks: no reminder yet, and state stays unmarked so
+    # the reminder still fires on the session's next clean Stop.
+    e = Event(
+        event="Stop",
+        session_id="s1",
+        raw={"background_tasks": [{"id": "bg1"}]},
+    )
+    state = {}
+    assert exit_reflection_reminder(e, state) is None
+    assert state == {}
+
+
 def test_exit_reflection_ignores_non_stop_events():
     e = Event(event="PreToolUse", session_id="s1")
     assert exit_reflection_reminder(e, {}) is None
