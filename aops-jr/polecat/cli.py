@@ -153,9 +153,9 @@ def _seed_confirmed(session_dir, task_id):
 
 
 def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
-    """Create a per-session `git worktree` off `canonical_dir` and return the
-    path that should actually be mounted into the container, instead of
-    `canonical_dir` itself.
+    """Create a per-session, fully self-contained local `git clone` of
+    `canonical_dir` and return the path that should actually be mounted
+    into the container, instead of `canonical_dir` itself.
 
     Root cause fixed here (aops_f74aafce, Nic ruling 2026-07-23: "It should
     be a clone in a container!"): polecat used to bind-mount the shared
@@ -165,17 +165,28 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     with 6+ concurrent containers observed doing this at once, racing each
     other AND every live interactive session reading the same directory
     (confirmed via `git reflog` showing interleaved checkout/reset/amend
-    across 3+ branches in quick succession). A `git worktree` shares the
-    canonical repo's object database and remotes (so fetch/push still work
-    against the same origin) but gives each container a fully independent
-    working directory and index — no container can ever touch another
-    session's checkout state again.
+    across 3+ branches in quick succession).
+
+    This used to be implemented as a `git worktree add` (shares the
+    canonical repo's object database, gives each container an independent
+    working directory/index). That closed the race but introduced a new
+    failure (aops_aef75b26, reproduced live against this fix's own
+    acceptance test 2026-07-23): a linked worktree's `.git` is not a
+    directory but a *file* containing an absolute host path
+    (`<repo_root>/.git/worktrees/<name>`) — invisible inside a container
+    that only mounts the isolated workspace, so every git command inside
+    the container failed with `fatal: not a git repository`. A real `git
+    clone --local` gives each session a complete, independent `.git`
+    directory instead — no dependency on any path outside the mounted
+    workspace. `--local` hardlinks the object store when clone source and
+    destination share a filesystem, so it costs negligible extra disk/time
+    over the worktree it replaces.
 
     Returns `(workspace_path, cleanup_info)`. `cleanup_info` is `None` when
     `canonical_dir` is not inside a git repository at all — nothing to
     isolate, so `canonical_dir` is returned unchanged (with a warning);
     otherwise it's a dict consumed by `cleanup_isolated_workspace` to tear
-    the worktree back down.
+    the clone back down.
     """
     canonical_dir = Path(canonical_dir).resolve()
 
@@ -187,7 +198,7 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     if toplevel.returncode != 0:
         click.echo(
             f"Warning: {canonical_dir} is not inside a git repository — "
-            "cannot create an isolated worktree; mounting it directly "
+            "cannot create an isolated clone; mounting it directly "
             "(no per-task isolation possible for a non-git workspace).",
             err=True,
         )
@@ -204,15 +215,28 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     wt_path = worktrees_dir / session_id
     branch_name = f"polecat/{session_id}"
 
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), "worktree", "add", "-B", branch_name, str(wt_path), "HEAD"],
+    clone_result = subprocess.run(
+        ["git", "clone", "--local", str(repo_root), str(wt_path)],
         capture_output=True,
         text=True,
     )
-    if result.returncode != 0:
+    if clone_result.returncode != 0:
         click.echo(
-            f"Error: failed to create isolated worktree for session "
-            f"{session_id!r} from {repo_root}:\n{result.stderr}",
+            f"Error: failed to create isolated clone for session "
+            f"{session_id!r} from {repo_root}:\n{clone_result.stderr}",
+            err=True,
+        )
+        sys.exit(1)
+
+    branch_result = subprocess.run(
+        ["git", "-C", str(wt_path), "checkout", "-b", branch_name],
+        capture_output=True,
+        text=True,
+    )
+    if branch_result.returncode != 0:
+        click.echo(
+            f"Error: failed to create session branch {branch_name!r} in "
+            f"isolated clone {wt_path}:\n{branch_result.stderr}",
             err=True,
         )
         sys.exit(1)
@@ -237,36 +261,17 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
 
 
 def cleanup_isolated_workspace(cleanup_info):
-    """Best-effort teardown of a worktree created by resolve_isolated_workspace."""
+    """Best-effort teardown of a clone created by resolve_isolated_workspace.
+
+    A full clone is entirely self-contained under `wt_path` — unlike the
+    former worktree approach, there is no parent-repo worktree registration
+    or throwaway branch living in the canonical checkout to unwind. Cleanup
+    is just removing the clone's directory.
+    """
     if not cleanup_info:
         return
-    repo_root = cleanup_info["repo_root"]
     wt_path = cleanup_info["path"]
-    branch_name = cleanup_info["branch"]
-
-    subprocess.run(
-        ["git", "-C", str(repo_root), "worktree", "remove", "--force", str(wt_path)],
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        ["git", "-C", str(repo_root), "branch", "-D", branch_name],
-        capture_output=True,
-        text=True,
-    )
-
-    # Belt-and-suspenders: if `worktree remove` failed (e.g. the worker left
-    # uncommitted changes behind) don't leave stray directories accumulating
-    # forever, but don't blindly rmtree something git still tracks as a live
-    # worktree either — prune the registration first, then check.
-    if Path(wt_path).exists():
-        listing = subprocess.run(
-            ["git", "-C", str(repo_root), "worktree", "list", "--porcelain"],
-            capture_output=True,
-            text=True,
-        )
-        if str(wt_path) not in listing.stdout:
-            shutil.rmtree(wt_path, ignore_errors=True)
+    shutil.rmtree(wt_path, ignore_errors=True)
 
 
 def _image_available_locally(image):
