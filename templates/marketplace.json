@@ -46,6 +46,16 @@
       },
       "source": "./dist/aops-jr-claude",
       "category": "productivity"
+    },
+    {
+      "name": "aops-pkb",
+      "description": "AcademicOps PKB package — pauli agent, PKB graph maintenance, task intake (hydrate/situate/decompose), memory (remember), and delegation briefs",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/aops-pkb-claude",
+      "category": "productivity"
     }
   ]
 }

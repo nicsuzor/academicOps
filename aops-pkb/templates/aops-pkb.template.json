@@ -1,0 +1,20 @@
+{
+  "__base__": {
+    "name": "aops-pkb",
+    "version": "0.1.0",
+    "description": "AcademicOps PKB package — pauli agent, PKB graph maintenance, task intake (hydrate/situate/decompose), memory (remember), and delegation briefs",
+    "author": {
+      "name": "Nicolas Suzor"
+    },
+    "license": "MIT",
+    "keywords": [
+      "academicOps",
+      "pkb",
+      "pauli",
+      "graph",
+      "knowledge-base"
+    ]
+  },
+  "claude": {},
+  "antigravity": {}
+}
