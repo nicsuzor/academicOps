@@ -1,15 +1,9 @@
 [project]
 name = "aops-jr"
 version = "0.0.1"
-description = "aops-jr coordinator package — the polecat dispatch CLI, standalone from the aops framework package"
+description = "aops-jr persona plugin — jr/ida personas and templates awaiting v0.5 face-extraction"
 requires-python = ">=3.11"
-dependencies = ["pyyaml>=6.0", "click>=8.2.0"]
-
-[project.scripts]
-polecat = "polecat.cli:main"
-
-[tool.hatch.build.targets.wheel]
-packages = ["polecat"]
+dependencies = []
 
 [build-system]
 requires = ["hatchling"]

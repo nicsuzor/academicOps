@@ -146,7 +146,7 @@ RUN umask 000 && uv tool install ruff
 # (see #1384: different gate_config.py versions crashed Gemini hooks).
 
 # Fixup script for post-install Gemini/Antigravity config (see file for why).
-COPY --chown=worker:worker aops-jr/polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
+COPY --chown=worker:worker aops/polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
 
 # Both CLIs internally set 444 on git objects — chmod after each install.
 #
@@ -167,7 +167,7 @@ COPY --chown=worker:worker aops-jr/polecat/defaults/docker_gemini_fixups.py /hom
 # build.py's generate_local_marketplace() names the dist/ marketplace `aops`
 # so a HOST `make install-dev` doesn't collide with a real `academicOps`
 # release install on the same machine — but that coexistence concern doesn't
-# apply inside this ephemeral image, and aops-jr/polecat/cli.py's setup_staging()
+# apply inside this ephemeral image, and aops/polecat/cli.py's setup_staging()
 # stages `pluginConfigs` under the hardcoded key `aops@academicOps`. A local
 # build that installed as `aops@aops` would silently fail to receive that
 # staged config (pkb_mcp_url never reaching the plugin), so we rewrite the
@@ -268,14 +268,14 @@ RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --gr
 # --chmod to auto-created intermediate dirs, producing 0644 (non-traversable)
 # via umask: 666 & ~022 = 644. Pre-existing dirs are left untouched by COPY.
 RUN umask 000 && mkdir -p /home/worker/.config/ccstatusline
-COPY --chown=worker:worker --chmod=666 aops-jr/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
-COPY --chown=worker:worker --chmod=666 aops-jr/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
+COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
+COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 # Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
 # via CLAUDE_CODE_OAUTH_TOKEN skip the interactive theme/login prompts. The
-# env-only auth model (aops-jr/polecat/cli.py:_require_claude_oauth_or_exit) stages no
+# env-only auth model (aops/polecat/cli.py:_require_claude_oauth_or_exit) stages no
 # files, so without this seed claude regenerates a minimal .claude.json that
 # triggers onboarding even when the token is set.
-COPY --chown=worker:worker --chmod=666 aops-jr/polecat/defaults/claude-config.json /home/worker/.claude.json
+COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/claude-config.json /home/worker/.claude.json
 
 # Seed agy's (Antigravity CLI) onboarding-complete marker so headless/crew
 # workers skip its interactive first-run wizard (theme picker → migration →
@@ -286,7 +286,7 @@ COPY --chown=worker:worker --chmod=666 aops-jr/polecat/defaults/claude-config.js
 # agy analog of the Claude `hasCompletedOnboarding` seed above. Pre-create the
 # cache dir so BuildKit doesn't auto-create it 0644 (non-traversable).
 RUN umask 000 && mkdir -p /home/worker/.gemini/antigravity-cli/cache
-COPY --chown=worker:worker --chmod=666 aops-jr/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
+COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
 
 # Install Rust toolchain (nothing in this image's build needs cargo/rustc —
 # it's provided for agents that use it at runtime). Deliberately placed this
@@ -302,7 +302,7 @@ ARG RUST_CACHEBUST
 RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Copy entrypoint script
-COPY --chown=worker:worker --chmod=777 aops-jr/polecat/entrypoint.sh /home/worker/entrypoint.sh
+COPY --chown=worker:worker --chmod=777 aops/polecat/entrypoint.sh /home/worker/entrypoint.sh
 
 # Make home dir itself traversable/writable for any UID — polecat crew runs
 # containers as the host UID (non-root), which may differ from worker UID 1000.
