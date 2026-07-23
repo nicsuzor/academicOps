@@ -23,9 +23,9 @@ PROJECT_SLUG="aops-dev"
 
 # tmux's default shell is /bin/sh, so aliases like `polecat`/`pc` don't
 # resolve — always invoke the CLI by full path (tests/harness/README.md
-# gotcha). Runs THIS worktree's aops-jr/polecat/cli.py (unmodified by this dev loop).
+# gotcha). Runs THIS worktree's aops/polecat/cli.py.
 polecat_cmd() {
-    echo "AOPS_POLECAT_CONFIG=$DEV_CONFIG uv run --project $REPO_ROOT/aops-jr $REPO_ROOT/aops-jr/polecat/cli.py $*"
+    echo "AOPS_POLECAT_CONFIG=$DEV_CONFIG uv run --project $REPO_ROOT $REPO_ROOT/aops/polecat/cli.py $*"
 }
 
 cmd_start() {

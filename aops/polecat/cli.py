@@ -512,7 +512,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         if aops_root:
             workspace_dir = Path(os.path.expandvars(os.path.expanduser(aops_root))).resolve()
         else:
-            workspace_dir = Path(__file__).resolve().parent.parent.resolve()
+            workspace_dir = Path(__file__).resolve().parents[2].resolve()
 
     if not workspace_dir or not workspace_dir.exists():
         click.echo(

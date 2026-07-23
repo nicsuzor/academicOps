@@ -52,7 +52,7 @@ At dispatch time you choose, per task, a surface (polecat container | in-session
 Docker host changes. First figure out **where you are relative to the Docker
 daemon that runs polecats** (the WSL host `nicwin`), then pick the matching form.
 
-**Resolve the aops-jr root** (run this first — it decides every path below):
+**Resolve the polecat root** (run this first — it decides every path below):
 
 ```bash
 # ${CLAUDE_PLUGIN_ROOT} is the documented Claude Code plugin-root token, but
@@ -60,17 +60,20 @@ daemon that runs polecats** (the WSL host `nicwin`), then pick the matching form
 # commands on every client (verified empirically: unset under a real agy
 # dispatch-skill invocation, task_e3979720) — so treat it as a first try,
 # not the sole mechanism. Fall back to a filesystem search of the known
-# per-client install locations (no monorepo checkout exists there — the
-# plugin ships its own pyproject.toml + uv.lock at its install root), then
-# to $AOPS/aops-jr for in-repo dev.
-JR_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
-if [ -z "$JR_ROOT" ] || [ ! -f "$JR_ROOT/polecat/cli.py" ]; then
-  JR_ROOT="$(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" \
-    -maxdepth 7 -type f -path '*aops-jr*/polecat/cli.py' 2>/dev/null \
+# per-client install locations (where the core plugin ships polecat/cli.py),
+# then to $AOPS/aops or $AOPS for in-repo dev.
+POLECAT_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then
+  POLECAT_ROOT="$(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" \
+    -maxdepth 7 -type f -path '*aops*/polecat/cli.py' 2>/dev/null \
     | head -1 | xargs -r dirname | xargs -r dirname)"
 fi
-if [ -z "$JR_ROOT" ] || [ ! -f "$JR_ROOT/polecat/cli.py" ]; then
-  JR_ROOT="$AOPS/aops-jr"
+if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then
+  if [ -f "$AOPS/aops/polecat/cli.py" ]; then
+    POLECAT_ROOT="$AOPS/aops"
+  else
+    POLECAT_ROOT="$AOPS"
+  fi
 fi
 ```
 
@@ -79,7 +82,7 @@ fi
 ```bash
 # You can dispatch LOCALLY (no ssh) iff the polecat CLI is on this filesystem
 # AND you can reach a Docker daemon from here.
-test -f "$JR_ROOT/polecat/cli.py" && docker info >/dev/null 2>&1 && echo LOCAL || echo REMOTE
+test -f "$POLECAT_ROOT/polecat/cli.py" && docker info >/dev/null 2>&1 && echo LOCAL || echo REMOTE
 ```
 
 - `LOCAL` → you are **on the WSL host**, or **inside a container with the host's
@@ -94,24 +97,26 @@ The launch command (substitute one of the three transports):
 ```bash
 # The inner command (identical in all three contexts):
 #   tmux new-session -d -s pc-<id> \
-#     "uv run --project $JR_ROOT $JR_ROOT/polecat/cli.py run agy -p <project> -t <id> \
+#     "uv run --project ${POLECAT_ROOT%/aops} $POLECAT_ROOT/polecat/cli.py run agy -p <project> -t <id> \
 #      2>&1 | tee /tmp/pc-<id>.log"
 
 # --- Context A: REMOTE (another host) ---
-# Note: JR_ROOT here resolves on the REMOTE (WSL host) side, not locally —
+# Note: POLECAT_ROOT here resolves on the REMOTE (WSL host) side, not locally —
 # the single-quoted ssh payload is deliberately unexpanded on this end.
-ssh wsl 'JR_ROOT="${CLAUDE_PLUGIN_ROOT:-}"; \
-  if [ -z "$JR_ROOT" ] || [ ! -f "$JR_ROOT/polecat/cli.py" ]; then \
-    JR_ROOT="$(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" -maxdepth 7 -type f -path "*aops-jr*/polecat/cli.py" 2>/dev/null | head -1 | xargs -r dirname | xargs -r dirname)"; \
+ssh wsl 'POLECAT_ROOT="${CLAUDE_PLUGIN_ROOT:-}"; \
+  if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then \
+    POLECAT_ROOT="$(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" -maxdepth 7 -type f -path "*aops*/polecat/cli.py" 2>/dev/null | head -1 | xargs -r dirname | xargs -r dirname)"; \
   fi; \
-  if [ -z "$JR_ROOT" ] || [ ! -f "$JR_ROOT/polecat/cli.py" ]; then JR_ROOT="$AOPS/aops-jr"; fi; \
+  if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then \
+    if [ -f "$AOPS/aops/polecat/cli.py" ]; then POLECAT_ROOT="$AOPS/aops"; else POLECAT_ROOT="$AOPS"; fi; \
+  fi; \
   tmux new-session -d -s pc-<id> \
-  "uv run --project $JR_ROOT $JR_ROOT/polecat/cli.py run agy -p <project> -t <id> \
+  "uv run --project ${POLECAT_ROOT%/aops} $POLECAT_ROOT/polecat/cli.py run agy -p <project> -t <id> \
    2>&1 | tee /tmp/pc-<id>.log"'
 
 # --- Context B: LOCAL, on the WSL host itself ---
 tmux new-session -d -s pc-<id> \
-  "uv run --project $JR_ROOT $JR_ROOT/polecat/cli.py run agy -p <project> -t <id> \
+  "uv run --project ${POLECAT_ROOT%/aops} $POLECAT_ROOT/polecat/cli.py run agy -p <project> -t <id> \
    2>&1 | tee /tmp/pc-<id>.log"
 
 # --- Context C: LOCAL, already inside a WSL Docker container (DooD) ---
@@ -119,7 +124,7 @@ tmux new-session -d -s pc-<id> \
 # `polecat run` launch sibling containers. Do NOT ssh (there is usually no
 # `wsl` host alias inside the container, and no interactive SSH agent).
 tmux new-session -d -s pc-<id> \
-  "uv run --project $JR_ROOT $JR_ROOT/polecat/cli.py run agy -p <project> -t <id> \
+  "uv run --project ${POLECAT_ROOT%/aops} $POLECAT_ROOT/polecat/cli.py run agy -p <project> -t <id> \
    2>&1 | tee /tmp/pc-<id>.log"
 ```
 

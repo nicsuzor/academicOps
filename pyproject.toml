@@ -166,9 +166,9 @@ reportImplicitOverride = false
 reportUnusedVariable = false
 reportUnusedImport = false
 [tool.pytest.ini_options]
-testpaths = ["tests", "aops/tests", "aops-jr/tests"]
+testpaths = ["tests", "aops/tests", "aops-jr/tests", "reflexes-cope/tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "aops", "aops/hooks", "aops/lib", "aops-jr"]
+pythonpath = [".", "aops-jr", "aops-jr/hooks", "aops", "aops/hooks", "aops/lib", "reflexes-cope"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -187,4 +187,4 @@ markers = [
 ]
 
 [project.scripts]
-# `polecat` now lives in aops-jr/pyproject.toml (standalone coordinator package)
+polecat = "aops.polecat.cli:main"

@@ -20,9 +20,11 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+repo_root = Path(__file__).resolve().parent.parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
-from polecat import cli  # noqa: E402
+from aops.polecat import cli  # noqa: E402
 
 # --------------------------------------------------------------------------
 # _seed_confirmed
