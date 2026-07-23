@@ -152,6 +152,123 @@ def _seed_confirmed(session_dir, task_id):
     return False
 
 
+def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
+    """Create a per-session `git worktree` off `canonical_dir` and return the
+    path that should actually be mounted into the container, instead of
+    `canonical_dir` itself.
+
+    Root cause fixed here (aops_f74aafce, Nic ruling 2026-07-23: "It should
+    be a clone in a container!"): polecat used to bind-mount the shared
+    canonical checkout (e.g. `/home/nic/src/academicOps`) READ-WRITE
+    straight into every worker container as `/workspace`. Every worker then
+    ran its own `git checkout <task-branch>` inside that ONE shared tree —
+    with 6+ concurrent containers observed doing this at once, racing each
+    other AND every live interactive session reading the same directory
+    (confirmed via `git reflog` showing interleaved checkout/reset/amend
+    across 3+ branches in quick succession). A `git worktree` shares the
+    canonical repo's object database and remotes (so fetch/push still work
+    against the same origin) but gives each container a fully independent
+    working directory and index — no container can ever touch another
+    session's checkout state again.
+
+    Returns `(workspace_path, cleanup_info)`. `cleanup_info` is `None` when
+    `canonical_dir` is not inside a git repository at all — nothing to
+    isolate, so `canonical_dir` is returned unchanged (with a warning);
+    otherwise it's a dict consumed by `cleanup_isolated_workspace` to tear
+    the worktree back down.
+    """
+    canonical_dir = Path(canonical_dir).resolve()
+
+    toplevel = subprocess.run(
+        ["git", "-C", str(canonical_dir), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+    )
+    if toplevel.returncode != 0:
+        click.echo(
+            f"Warning: {canonical_dir} is not inside a git repository — "
+            "cannot create an isolated worktree; mounting it directly "
+            "(no per-task isolation possible for a non-git workspace).",
+            err=True,
+        )
+        return canonical_dir, None
+
+    repo_root = Path(toplevel.stdout.strip()).resolve()
+    try:
+        rel = canonical_dir.relative_to(repo_root)
+    except ValueError:
+        rel = Path(".")
+
+    worktrees_dir = Path(polecat_home) / "worktrees"
+    worktrees_dir.mkdir(parents=True, exist_ok=True)
+    wt_path = worktrees_dir / session_id
+    branch_name = f"polecat/{session_id}"
+
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "worktree", "add", "-B", branch_name, str(wt_path), "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        click.echo(
+            f"Error: failed to create isolated worktree for session "
+            f"{session_id!r} from {repo_root}:\n{result.stderr}",
+            err=True,
+        )
+        sys.exit(1)
+
+    isolated_path = (wt_path / rel).resolve() if str(rel) != "." else wt_path.resolve()
+
+    # Defense in depth: the whole point of this function is that the
+    # returned path is never the canonical checkout. Structurally it can't
+    # be (worktrees_dir lives under polecat_home, a different directory
+    # tree entirely) but fail loudly rather than silently mounting the
+    # shared tree if that invariant is ever somehow violated.
+    if isolated_path == canonical_dir or isolated_path == repo_root:
+        click.echo(
+            f"Error: isolated workspace path {isolated_path} resolved to "
+            f"the canonical checkout {canonical_dir} — refusing to mount "
+            "the shared tree.",
+            err=True,
+        )
+        sys.exit(1)
+
+    return isolated_path, {"repo_root": repo_root, "branch": branch_name, "path": wt_path}
+
+
+def cleanup_isolated_workspace(cleanup_info):
+    """Best-effort teardown of a worktree created by resolve_isolated_workspace."""
+    if not cleanup_info:
+        return
+    repo_root = cleanup_info["repo_root"]
+    wt_path = cleanup_info["path"]
+    branch_name = cleanup_info["branch"]
+
+    subprocess.run(
+        ["git", "-C", str(repo_root), "worktree", "remove", "--force", str(wt_path)],
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo_root), "branch", "-D", branch_name],
+        capture_output=True,
+        text=True,
+    )
+
+    # Belt-and-suspenders: if `worktree remove` failed (e.g. the worker left
+    # uncommitted changes behind) don't leave stray directories accumulating
+    # forever, but don't blindly rmtree something git still tracks as a live
+    # worktree either — prune the registration first, then check.
+    if Path(wt_path).exists():
+        listing = subprocess.run(
+            ["git", "-C", str(repo_root), "worktree", "list", "--porcelain"],
+            capture_output=True,
+            text=True,
+        )
+        if str(wt_path) not in listing.stdout:
+            shutil.rmtree(wt_path, ignore_errors=True)
+
+
 def _image_available_locally(image):
     """Return True if `image` already exists in the local Docker image cache.
 
@@ -363,6 +480,21 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     session_date = datetime.now().strftime("%Y%m%d")
     session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")
     session_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3b. Isolate the workspace: never bind-mount a shared canonical checkout
+    # READ-WRITE into the container (aops_f74aafce). Skipped only when the
+    # caller passed --repo-dir explicitly — that flag's contract is "mount
+    # this exact path", e.g. a worktree the caller already isolated
+    # themselves (the `git worktree add` convention documented in
+    # aops-jr/agents/junior.md §6) — an explicit path is the caller's
+    # isolation to own, not polecat's to second-guess. Every other path
+    # (the --project lookup and the bare-aops fallback above) resolves
+    # straight to a shared canonical checkout and MUST be isolated.
+    worktree_cleanup = None
+    if repo_dir is None:
+        workspace_dir, worktree_cleanup = resolve_isolated_workspace(
+            workspace_dir, session_id, polecat_home
+        )
 
     # 4. Resolve PKB URL
     pkb_url = mcp_url or os.environ.get("PKB_MCP_URL")
@@ -655,6 +787,9 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         # Clean up staging directory
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
+        # Tear down the isolated per-session worktree (no-op if isolation
+        # wasn't applicable, e.g. an explicit --repo-dir or a non-git path).
+        cleanup_isolated_workspace(worktree_cleanup)
 
 
 if __name__ == "__main__":
