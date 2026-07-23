@@ -103,14 +103,14 @@ Registered in the plugin's hook manifest source, [`aops/templates/hooks.template
 }
 ```
 
-`gate_dispatch.py` is registered once per Claude Code event it needs to see (`PreToolUse`, `Stop`) — it is the same script and the same `GATES` list both times; only the client argument (`claude`) is fixed at registration, since the dispatcher itself doesn't need to know which event fired ahead of time — `hook_event_name` arrives on stdin and each gate self-filters on `e.event`. It runs on `Stop` alongside `router.py`'s existing reminder hook; Claude Code runs both and they do not interact.
+`gate_dispatch.py` is registered once per Claude Code event it needs to see (`PreToolUse`, `Stop`) — it is the same script and the same `GATES` list both times; only the client argument (`claude`) is fixed at registration, since the dispatcher itself doesn't need to know which event fired ahead of time — `hook_event_name` arrives on stdin and each gate self-filters on `e.event`. It is the only `Stop`-time hook: `router.py`'s former Stop reminder branch was consolidated into the `exit_reflection_reminder` gate (2026-07-23, task `aops_cace51f9`), so `router.py` no longer registers on `Stop` at all.
 
 ## The two shipped gates
 
 Exactly two, chosen to prove the stateless and stateful shapes end-to-end — not a target catalogue size:
 
 1. **`require_subagent_model`** (`gates/require_subagent_model.py`, stateless) — warns (non-blocking `additionalContext`) on `PreToolUse` when `tool_name == "Agent"` and the structured `tool_input.model` field is absent (forked agents, `subagent_type == "fork"`, are exempt — they always inherit the parent's model). Keyed purely off structural fields already present on every hook payload (event type, tool name, a structured input field's presence) — no command-string or content sniffing, no destructive-verb matching. Enforces a documented framework practice (dispatch subagents with an explicit cheap model for routine work) the same way `router.py`'s real handlers key off structured fields like `tool_name` and `background_tasks` length rather than parsing free text.
-2. **`exit_reflection_reminder`** (`gates/exit_reflection.py`, stateful) — on the first `Stop` event of a session, warns (non-blocking `additionalContext`) with a reminder to capture durable knowledge, verify subagent outputs, and confirm the commit/PR reflects the original ask; marks session state so it doesn't repeat for the rest of the session.
+2. **`exit_reflection_reminder`** (`gates/exit_reflection.py`, stateful) — the single Stop-time handover reminder. On the first clean `Stop` event of a session, warns (non-blocking `additionalContext`) with the full `templates/handover.md` reminder plus a short user-visible `systemMessage` line; marks session state so it doesn't repeat for the rest of the session, and skips (without marking state) while `background_tasks` are pending so the reminder lands on the next clean Stop. This absorbed `router.py`'s former Stop branch — one mechanism, once per session, never blocks.
 
 Grow the catalogue against real need, not speculatively.
 

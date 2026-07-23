@@ -64,7 +64,10 @@ def test_session_start_hook_env_copy():
         if os.path.exists(temp_env_path):
             os.remove(temp_env_path)
 
-def test_stop_hook_block():
+def test_stop_is_not_handled_by_router():
+    """The Stop-time handover reminder is owned by the exit_reflection gate
+    (gate_dispatch.py); router.py's superseded Stop branch is deleted and
+    must stay deleted — no output, no second reminder path."""
     router_path = get_hook_script("router.py")
     input_data = {
         "hook_event_name": "Stop",
@@ -78,5 +81,4 @@ def test_stop_hook_block():
         text=True,
         check=True,
     )
-    output = json.loads(result.stdout)
-    assert output["decision"] == "block"
+    assert result.stdout.strip() == ""

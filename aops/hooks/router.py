@@ -147,26 +147,10 @@ def main():
                     },
                 }
 
-        elif event == "Stop":
-            # Skip if the agent is already in a stop loop from a prior hook event
-            if raw_input.get("stop_hook_active"):
-                pass
-                # return
-            else:
-                # Skip if the agent is still waiting on input from background tasks:
-                if len(raw_input.get("background_tasks", [])) > 0:
-                    return
-
-                # Otherwise interrupt the agent (once) with instructions they should follow before ending their turn.
-                output = {
-                    # "decision": "block",
-                    # "reason": reminder_content,
-                    "systemMessage": "≡ **Before you hand back to the user — be honest and useful.**",
-                    "hookSpecificOutput": {
-                        "hookEventName": event,
-                        "additionalContext": handover_content,
-                    },
-                }
+        # NOTE: no "Stop" branch here — the Stop-time handover reminder is
+        # owned by the exit_reflection_reminder gate (hooks/gates/
+        # exit_reflection.py), dispatched via gate_dispatch.py. Do not add a
+        # second Stop-time reminder path.
         elif event == "SubagentStop":
             # Skip if the agent is already in a stop loop from a prior hook event
             if raw_input.get("stop_hook_active"):

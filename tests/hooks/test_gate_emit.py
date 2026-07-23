@@ -54,6 +54,14 @@ def test_claude_stop_warn_uses_additional_context():
     assert "decision" not in out
 
 
+def test_claude_warn_with_user_text_adds_system_message():
+    e = Event(event="Stop")
+    out = emit(warn("reflect first", user_text="≡ heads up"), e, "claude")
+    assert out["systemMessage"] == "≡ heads up"
+    assert out["hookSpecificOutput"]["additionalContext"] == "reflect first"
+    assert "decision" not in out
+
+
 def test_agy_warn_uses_inject_steps():
     e = Event(event="PreInvocation")
     out = emit(warn("careful"), e, "agy")

@@ -47,13 +47,17 @@ def _emit_claude(verdict: Verdict, event: Event) -> dict:
         }
     if verdict.outcome == "deny":
         return {"decision": "block", "reason": verdict.inject_text}
-    # warn, any event: non-blocking context injection.
-    return {
+    # warn, any event: non-blocking context injection, plus an optional
+    # short user-visible line (systemMessage) when the gate provided one.
+    output = {
         "hookSpecificOutput": {
             "hookEventName": event.event,
             "additionalContext": verdict.inject_text,
         }
     }
+    if verdict.user_text:
+        output["systemMessage"] = verdict.user_text
+    return output
 
 
 def _emit_agy(verdict: Verdict, event: Event) -> dict:
