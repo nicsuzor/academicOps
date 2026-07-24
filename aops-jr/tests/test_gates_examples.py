@@ -7,9 +7,9 @@ _JR_HOOKS = str(Path(__file__).resolve().parent.parent / "hooks")
 if _JR_HOOKS not in sys.path:
     sys.path.insert(0, _JR_HOOKS)
 
-from hooks.gates.event import Event
-from hooks.gates.require_subagent_model import require_subagent_model
-from hooks.gates.verdict import Verdict
+from gates.event import Event
+from gates.require_subagent_model import require_subagent_model
+from gates.verdict import Verdict
 
 
 def test_require_subagent_model_warns_when_model_missing():

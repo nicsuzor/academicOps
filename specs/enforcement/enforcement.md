@@ -44,10 +44,11 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 
 ### 2. The harness delivery channel (reminder, not gate)
 
-The reminder hook surface is one script: [`aops/hooks/router.py`](../../aops/hooks/router.py), wired via [`aops/templates/hooks.template.json`](../../aops/templates/hooks.template.json) to `SubagentStop` / `UserPromptSubmit` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). The `Stop`-time handover reminder moved into the gate engine's `exit_reflection_reminder` gate (task `aops_cace51f9`, 2026-07-23; see [hook-gate-system.md](hook-gate-system.md)) — `router.py` no longer registers on `Stop`. It injects two static templates, unconditionally, identically, on every surface — no per-client branching beyond the wire format, no mode key, no blocking:
+The core hook surface carries structural prevention (`SessionStart` credential isolation) in [`aops/hooks/router.py`](../../aops/hooks/router.py). Face discipline reminders live in the optional `aops-jr` plugin ([`aops-jr/hooks/router.py`](../../aops-jr/hooks/router.py) and [`aops-jr/hooks/gate_dispatch.py`](../../aops-jr/hooks/gate_dispatch.py)), wired to `SubagentStop` / `UserPromptSubmit` / `PostToolUse` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). The `Stop`-time handover reminder lives in `aops-jr`'s `exit_reflection_reminder` gate ([`aops-jr/hooks/gates/exit_reflection.py`](../../aops-jr/hooks/gates/exit_reflection.py)). It injects static templates as non-blocking context:
 
-- **`ida-hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
-- **`ida-reminder.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative) — this is the exit-reflection discipline from the ratified plan's §1, delivered as a reminder rather than as a blocking gate.
+- **`hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
+- **`handover.md`** / **`honesty.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative).
+- **`verify.md`** — on PostToolUse (Agent tool execution): remind the agent to verify subagent outputs.
 
 Nothing in this layer produces a verdict. It cannot stop an agent from exiting, and it does not check whether the agent actually did what the reminder asked — that is the executing agent's own judgment call, backstopped by the review lenses below, not by the hook.
 
