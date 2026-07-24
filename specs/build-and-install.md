@@ -71,11 +71,14 @@ the two client formats — `claude` and `antigravity` — except `aops-ts`, whic
 Claude-only. Output goes to `dist/<plugin>-<client>` and each dir is also tarred to
 `dist/<plugin>-<client>.tar.gz`:
 
-| Plugin       | Claude build             | Antigravity build             |
-| ------------ | ------------------------ | ----------------------------- |
-| `aops`       | `dist/aops-claude`       | `dist/aops-antigravity`       |
-| `aops-tools` | `dist/aops-tools-claude` | `dist/aops-tools-antigravity` |
-| `aops-ts`    | `dist/aops-ts-claude`    | _(skipped — Claude-only)_     |
+| Plugin          | Claude build                | Antigravity build                |
+| --------------- | --------------------------- | -------------------------------- |
+| `aops`          | `dist/aops-claude`          | `dist/aops-antigravity`          |
+| `aops-tools`    | `dist/aops-tools-claude`    | `dist/aops-tools-antigravity`    |
+| `aops-ts`       | `dist/aops-ts-claude`       | _(skipped — Claude-only)_        |
+| `aops-jr`       | `dist/aops-jr-claude`       | `dist/aops-jr-antigravity`       |
+| `aops-pkb`      | `dist/aops-pkb-claude`      | `dist/aops-pkb-antigravity`      |
+| `reflexes-cope` | `dist/reflexes-cope-claude` | `dist/reflexes-cope-antigravity` |
 
 The core of `build_plugin` is an `os.walk` of the plugin's source tree that copies files
 verbatim into the dist dir (skipping `__pycache__`, `.venv`, `.git`, and the other
@@ -121,7 +124,7 @@ After the plugins are built, `main()` generates **two marketplaces** from
 
 `templates/marketplace.json` (name `academicOps`) is the source of truth for the shipped
 plugin set: `aops` → `./dist/aops-claude`, `aops-tools` → `./dist/aops-tools-claude`,
-`aops-ts` → `./dist/aops-ts-claude`. The `*-antigravity` builds are **not** in the
+`aops-ts` → `./dist/aops-ts-claude`, `aops-jr` → `./dist/aops-jr-claude`, `aops-pkb` → `./dist/aops-pkb-claude`, `reflexes-cope` → `./dist/reflexes-cope-claude`. The `*-antigravity` builds are **not** in the
 marketplace (antigravity installs go through `agy plugin install`, §5.5); Cowork gets its
 own generated marketplace at `dist/cowork` (§3).
 
@@ -148,6 +151,8 @@ git short-SHA / `.dirty` metadata appended for local builds.
   sync hook reuses the `aops` plugin's `transcript.py` when present and falls back to
   shipping raw JSONL. **No `make` target installs it** — install by hand:
   `claude plugin install aops-ts@academicOps`.
+- **`aops-jr`** — an **opt-in** optional plugin providing face discipline for the interactive head (`ida`/`junior` personas, interactive prompt reminders, process gates). Install by hand: `claude plugin install aops-jr@academicOps`.
+- **`reflexes-cope`** — an **opt-in** optional plugin providing axiom-derived policy assembly and advisory evaluation. Install by hand: `claude plugin install reflexes-cope@academicOps`.
 - **`aops-cowork`** — a Cowork-specific package; see §3.
 
 ## 3. The cowork channel (`dist/cowork`)

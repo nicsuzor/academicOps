@@ -348,6 +348,7 @@ def generate_cowork_dist(project_root: Path, dist_root: Path, version: str):
         "aops-jr": "aops-jr-claude",
         "aops-ts": "aops-ts-claude",
         "aops-pkb": "aops-pkb-claude",
+        "reflexes-cope": "reflexes-cope-claude",
     }
     plugins = []
     for plugin in data.get("plugins", []):
