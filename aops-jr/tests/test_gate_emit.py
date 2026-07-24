@@ -7,9 +7,9 @@ _JR_HOOKS = str(Path(__file__).resolve().parent.parent / "hooks")
 if _JR_HOOKS not in sys.path:
     sys.path.insert(0, _JR_HOOKS)
 
-from hooks.gates.emit import emit
-from hooks.gates.event import Event
-from hooks.gates.verdict import deny, warn
+from gates.emit import emit
+from gates.event import Event
+from gates.verdict import deny, warn
 
 
 def test_allow_produces_no_output_any_client():
