@@ -5,9 +5,16 @@ description = "aops-jr persona plugin — jr/ida personas and templates awaiting
 requires-python = ">=3.11"
 dependencies = []
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = []
+# aops-jr ships persona charters (agents/), templates, and hook scripts that are
+# consumed by file path / pythonpath injection (see root pyproject.toml's
+# [tool.pytest.ini_options] pythonpath), never imported as `import aops_jr`.
+# There is no importable package here, so it must not be built as a wheel.
+# `packages = []` (PR #2324) was insufficient: hatchling's wheel builder still
+# runs its default file-selection heuristic on `build_editable`, which raises
+# because no directory named `aops_jr` exists — this is what broke every
+# polecat dispatch that `uv run`s with this directory as the project root.
+# `package = false` tells uv this is a dependency-only ("virtual") project and
+# skips the build step entirely, matching what aops-jr actually is post
+# epic_725fd517 (polecat relocated into aops core; see aops-jr/README.md).
+[tool.uv]
+package = false
