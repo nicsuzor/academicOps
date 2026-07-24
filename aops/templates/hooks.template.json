@@ -16,49 +16,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "uv",
-              "args": ["run", "python", "${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py", "claude"]
-            }
-          ]
-        }
-      ],
-      "Stop": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "uv",
-              "args": ["run", "python", "${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py", "claude"]
-            }
-          ]
-        }
-      ],
-      "SubagentStop": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude SubagentStop'"
-            }
-          ]
-        }
-      ],
-      "UserPromptSubmit": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude UserPromptSubmit'"
-            }
-          ]
-        }
-      ],
-      "PostToolUse": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude PostToolUse'"
+              "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-path.sh\" >/dev/null 2>&1 || true; uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/router.py\" claude PreToolUse'"
             }
           ]
         }
