@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -150,6 +151,155 @@ def _seed_confirmed(session_dir, task_id):
         if task_id in content:
             return True
     return False
+
+
+def _get_git_head(repo_path):
+    """Return HEAD commit SHA if `repo_path` is inside a git repo, else None."""
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(repo_path), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode == 0 and res.stdout:
+            return res.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
+def _verify_workspace_delivery(workspace_dir, initial_head=None):
+    """Verify that the workspace git tree has no uncommitted changes and no unpushed commits.
+
+    Returns (ok: bool, error_message: str | None).
+    """
+    workspace_path = Path(workspace_dir)
+    is_git = subprocess.run(
+        ["git", "-C", str(workspace_path), "rev-parse", "--is-inside-work-tree"],
+        capture_output=True,
+        text=True,
+    )
+    if is_git.returncode != 0:
+        return True, None
+
+    status_res = subprocess.run(
+        ["git", "-C", str(workspace_path), "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+    )
+    uncommitted = (status_res.stdout or "").strip()
+    if uncommitted:
+        return False, f"uncommitted changes present in workspace:\n{uncommitted}"
+
+    current_head = _get_git_head(workspace_path)
+    if current_head and initial_head and current_head != initial_head:
+        ls_remote = subprocess.run(
+            ["git", "-C", str(workspace_path), "ls-remote", "origin"],
+            capture_output=True,
+            text=True,
+        )
+        if ls_remote.returncode == 0:
+            remote_out = ls_remote.stdout or ""
+            if current_head not in remote_out:
+                return False, (
+                    f"local commits created (HEAD={current_head[:8]}) "
+                    "but no pushed branch found on origin"
+                )
+        else:
+            contains_res = subprocess.run(
+                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", "HEAD"],
+                capture_output=True,
+                text=True,
+            )
+            if not (contains_res.stdout or "").strip():
+                return False, (
+                    f"local commits created (HEAD={current_head[:8]}) "
+                    "but not present on any remote branch"
+                )
+
+    return True, None
+
+
+def _revert_pkb_task_if_done(pkb_url, task_id):
+    """If the task in PKB was marked done/completed/merge_ready during the run,
+    revert its status back to in_progress to prevent silent delivery loss."""
+    if not pkb_url or not task_id:
+        return None
+
+    def _call_tool(tool_name, arguments):
+        init_req = urllib.request.Request(
+            pkb_url,
+            data=json.dumps({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "polecat-cli", "version": "1.0"},
+                },
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"},
+        )
+        sess_id = None
+        try:
+            resp = urllib.request.urlopen(init_req, timeout=5)
+            sess_id = resp.headers.get("Mcp-Session-Id")
+            noti_req = urllib.request.Request(
+                pkb_url,
+                data=json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Accept": "application/json", "Mcp-Session-Id": sess_id},
+            )
+            urllib.request.urlopen(noti_req, timeout=5)
+        except Exception:
+            pass
+
+        headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+        if sess_id:
+            headers["Mcp-Session-Id"] = sess_id
+
+        candidates = [tool_name]
+        if tool_name.startswith("pkb__"):
+            candidates.append(tool_name[5:])
+        else:
+            candidates.append(f"pkb__{tool_name}")
+
+        for candidate in candidates:
+            call_req = urllib.request.Request(
+                pkb_url,
+                data=json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": candidate, "arguments": arguments},
+                }).encode("utf-8"),
+                headers=headers,
+            )
+            try:
+                resp = urllib.request.urlopen(call_req, timeout=5)
+                body = resp.read().decode("utf-8")
+                for line in body.split("\n"):
+                    if line.startswith("data: "):
+                        data = json.loads(line[6:])
+                        if "result" in data:
+                            return data["result"]
+            except Exception:
+                continue
+        return None
+
+    try:
+        res = _call_tool("pkb__get_task", {"id": task_id})
+        if res and "content" in res and res["content"]:
+            text = res["content"][0].get("text", "")
+            task_info = json.loads(text)
+            status = task_info.get("status") or (task_info.get("frontmatter") or {}).get("status")
+            if status in ("done", "completed", "merge_ready", "complete"):
+                _call_tool("pkb__update_task", {"id": task_id, "status": "in_progress"})
+                return status
+    except Exception as e:
+        click.echo(f"Warning: Failed to check/revert PKB task status: {e}", err=True)
+
+    return None
 
 
 def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
@@ -548,6 +698,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             workspace_dir, session_id, polecat_home
         )
 
+    initial_head = _get_git_head(workspace_dir)
+
     # 4. Resolve PKB URL
     pkb_url = mcp_url or os.environ.get("PKB_MCP_URL")
 
@@ -834,6 +986,27 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             sys.exit(returncode if returncode else 1)
         if returncode != 0:
             sys.exit(returncode)
+
+        # Harness delivery guard: verify workspace git tree has no uncommitted changes or unpushed commits
+        delivery_ok, delivery_err = _verify_workspace_delivery(
+            workspace_dir, initial_head=initial_head
+        )
+        if not delivery_ok:
+            reverted_status = _revert_pkb_task_if_done(pkb_url, task)
+            task_handle = task or 'session'
+            click.echo(
+                f"Error: Harness delivery guard failed for task {task_handle!r}:\n"
+                f"{delivery_err}\n"
+                "Refusing to report success.",
+                err=True,
+            )
+            if reverted_status:
+                click.echo(
+                    f"⚠️  Reverted task {task!r} status in PKB from {reverted_status!r} "
+                    "back to 'in_progress' to prevent silent delivery loss.",
+                    err=True,
+                )
+            sys.exit(1)
 
     finally:
         # Clean up staging directory

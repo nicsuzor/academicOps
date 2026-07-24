@@ -125,7 +125,8 @@ def test_agy_seeded_dispatch_fails_fast_when_seed_never_confirmed(tmp_path, monk
     attempts = {"n": 0}
 
     def fake_run(cmd, *a, **kw):
-        attempts["n"] += 1
+        if cmd[0] == "docker":
+            attempts["n"] += 1
         return subprocess.CompletedProcess(cmd, 0)  # container "succeeds"
 
     _base_mocks(monkeypatch, tmp_path)
@@ -148,7 +149,8 @@ def test_agy_seeded_dispatch_succeeds_when_confirmed_on_first_attempt(tmp_path, 
     attempts = {"n": 0}
 
     def fake_run(cmd, *a, **kw):
-        attempts["n"] += 1
+        if cmd[0] == "docker":
+            attempts["n"] += 1
         return subprocess.CompletedProcess(cmd, 0)
 
     _base_mocks(monkeypatch, tmp_path)
@@ -170,7 +172,8 @@ def test_agy_seeded_dispatch_recovers_on_retry(tmp_path, monkeypatch):
     attempts = {"n": 0}
 
     def fake_run(cmd, *a, **kw):
-        attempts["n"] += 1
+        if cmd[0] == "docker":
+            attempts["n"] += 1
         return subprocess.CompletedProcess(cmd, 0)
 
     _base_mocks(monkeypatch, tmp_path)
@@ -200,7 +203,8 @@ def test_agy_with_explicit_prompt_flag_is_not_seed_verified(tmp_path, monkeypatc
     attempts = {"n": 0}
 
     def fake_run(cmd, *a, **kw):
-        attempts["n"] += 1
+        if cmd[0] == "docker":
+            attempts["n"] += 1
         return subprocess.CompletedProcess(cmd, 0)
 
     _base_mocks(monkeypatch, tmp_path)
