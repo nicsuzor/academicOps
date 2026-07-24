@@ -15,7 +15,7 @@ def get_plugin_dirs():
 
     plugin_dirs = []
     for d in DIST_ROOT.iterdir():
-        if d.is_dir() and d.name.startswith("aops-"):
+        if d.is_dir() and (d.name.endswith("-claude") or d.name.endswith("-antigravity")):
             plugin_dirs.append(d)
     return sorted(plugin_dirs)
 

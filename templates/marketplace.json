@@ -39,7 +39,7 @@
     },
     {
       "name": "aops-jr",
-      "description": "aops-jr — the sole coordinator package. A coordination layer between Nic and the automation framework: dispatches polecat workers, holds coordinator-only doctrine. Contains no task-execution skills of its own.",
+      "description": "aops-jr — optional academicOps plugin providing face discipline for the interactive head (Ida/Junior personas, prompt reminders, process gates)",
       "version": "__VERSION__",
       "author": {
         "name": "Nicolas Suzor"
@@ -55,6 +55,16 @@
         "name": "Nicolas Suzor"
       },
       "source": "./dist/aops-pkb-claude",
+      "category": "productivity"
+    },
+    {
+      "name": "reflexes-cope",
+      "description": "reflexes-cope — optional academicOps plugin providing axiom-derived policy assembly and advisory evaluation",
+      "version": "__VERSION__",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./dist/reflexes-cope-claude",
       "category": "productivity"
     }
   ]

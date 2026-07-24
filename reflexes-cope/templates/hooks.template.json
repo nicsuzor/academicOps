@@ -1,0 +1,80 @@
+{
+  "claude": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py\" claude"
+            }
+          ]
+        }
+      ],
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py\" claude"
+            }
+          ]
+        }
+      ],
+      "SubagentStop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py\" claude"
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py\" claude"
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run python \"${CLAUDE_PLUGIN_ROOT}/hooks/gate_dispatch.py\" claude"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "antigravity": {
+    "hooks": {
+      "PostInvocation": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run python \"${AGY_PLUGIN_ROOT}/hooks/gate_dispatch.py\" agy"
+            }
+          ]
+        }
+      ],
+      "PreInvocation": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run python \"${AGY_PLUGIN_ROOT}/hooks/gate_dispatch.py\" agy"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
