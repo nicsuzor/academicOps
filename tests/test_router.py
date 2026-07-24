@@ -126,3 +126,30 @@ def test_posttooluse_agent_background_suppressed():
     assert result.returncode == 0
     assert result.stdout.strip() == ""
 
+
+def test_pretooluse_ask_question_denied_in_headless_mode():
+    """Interactive question tools in PreToolUse must be denied in headless/non-interactive mode."""
+    router_path = get_hook_script("router.py")
+    input_data = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "ask_question",
+        "tool_input": {"question": "Should I proceed?"},
+    }
+    env = os.environ.copy()
+    env["NONINTERACTIVE"] = "1"
+
+    cmd = [sys.executable, str(router_path), "claude", "PreToolUse"]
+    result = subprocess.run(
+        cmd,
+        input=json.dumps(input_data),
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
+    )
+    assert result.returncode == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert "forbidden in a headless / non-interactive context" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
+
+

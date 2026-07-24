@@ -84,6 +84,30 @@ def main():
             except Exception as e:
                 print(f"WARNING: Failed to write to CLAUDE_ENV_FILE: {e}", file=sys.stderr)
         output = {"systemMessage": "aOps plugin loaded."}
+    elif event == "PreToolUse" or (client in ("claude", "agy") and event == "PreToolUse"):
+        tool_name = raw_input.get("tool_name") or raw_input.get("toolName")
+        interactive_tools = {"ask_question", "AskFollowupQuestion", "ask_followup_question", "Question"}
+        is_headless = (
+            not sys.stdin.isatty()
+            or os.environ.get("NONINTERACTIVE") == "1"
+            or os.environ.get("CI") == "1"
+            or os.environ.get("AOPS_POLECAT_CONTAINER") == "1"
+            or os.environ.get("CLAUDE_CODE_NON_INTERACTIVE") == "1"
+        )
+        if tool_name in interactive_tools and is_headless:
+            if client == "agy":
+                output = {
+                    "allowTool": False,
+                    "denyReason": "Interactive prompt ('ask_question') is forbidden in a headless / non-interactive context. Proceed automatically using fallback logic."
+                }
+            else:
+                output = {
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": "Interactive prompt ('ask_question') is forbidden in a headless / non-interactive context. Proceed automatically using fallback logic."
+                    }
+                }
     elif event == "PostToolUse" or (client == "claude" and event == "PostToolUse"):
         tool_name = raw_input.get("tool_name")
         tool_input = raw_input.get("tool_input") or {}

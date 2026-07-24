@@ -753,10 +753,15 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         # sibling implementation that fix never touched.
         # Fix: never request -it without a real TTY on our side, and still honour
         # an explicit `-p` (headless prompt) flag as an unconditional override.
-        explicit_headless = "-p" in extra_args
+        explicit_headless = "-p" in extra_args or "--print" in extra_args or "--non-interactive" in extra_args
         is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
+        else:
+            env["NONINTERACTIVE"] = "1"
+            env["CI"] = "1"
+            env["CLAUDE_CODE_NON_INTERACTIVE"] = "1"
+            env["CLAUDE_NON_INTERACTIVE"] = "1"
 
         # Set container local state directories
         if agent_cmd == "claude":
@@ -766,6 +771,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 "--permission-mode=auto",
                 "--setting-sources=user,project",
             ]
+            if not is_interactive and not any(f in extra_args for f in ("-p", "--print", "--non-interactive")):
+                inner_cmd.append("--non-interactive")
         elif agent_cmd == "agy":
             container_session_path = "/home/worker/.gemini/tmp/workspace"
             inner_cmd = [
