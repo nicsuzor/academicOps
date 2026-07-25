@@ -100,7 +100,7 @@ Real enforcement instead runs after the session, as regular CI on the PR — che
 | `agent-enforcer.yml`, `agent-qa.yml` (Marsha), `agent-mechanic.yml`, `agent-pre-admission-responder.yml` | reusable, called from other workflows | each assembles a persona prompt and runs `claude-code-action`                         |
 | `.github/rulesets/pr-review-and-merge.yml`                                                               | branch ruleset on `dev`               | requires the human approval click before merge                                        |
 
-Two things worth knowing if you're relying on this table: `pr-pipeline.yml` — the file the name implies holds the orchestration — is currently an empty stub (a comment pointing at a spec, no jobs). And `agent-qa.yml` sparse-checks out `aops-pkb/agents/marsha.md`, a path that doesn't exist in this repo (the real file is `aops/agents/marsha.md`) — that job would fail its own fail-fast check on a real run. `pauli` (design-intent review) has no CI wiring at all; it exists only as a persona file and in this doc.
+Two things worth knowing if you're relying on this table: `pr-pipeline.yml` — the file the name implies holds the orchestration — is currently an empty stub (a comment pointing at a spec, no jobs). And `agent-qa.yml` sparse-checks out `aops/agents/marsha.md`. `pauli` (design-intent review) has no CI wiring at all; it exists only as a persona file and in this doc.
 
 Axioms and project rules that DO apply during a session live in `.agents/AXIOMS.md` (framework) and `.agents/rules/` (project) — read by the agent as instructions, not enforced by a hook.
 
@@ -116,7 +116,7 @@ The intended shape of a task's life is six stages — `hydrate → situate → d
 
 **What's actually wired today, not what's planned:** `hydrate` fires automatically — every prompt gets a static reminder injected by the `UserPromptSubmit` hook (see [Enforcement](#3-enforcement--a-minimal-in-session-hook-backed-by-a-pr-time-review-pipeline) above). `/q` → `situate` works (`aops/commands/q.md` → `Skill(skill="situate")`). `decompose` exists as a skill (`aops/skills/decompose/SKILL.md`) but is **not** a registered slash command — it's reachable only via an explicit `Skill()` call from another flow. `/dispatch` and `/pull` both call `Skill(skill="task-lifecycle", ...)`, and that skill **does not exist in this repo** — both commands are currently broken (tracked in PKB as `aops-polecat-architecture-gap`). `/plan` has no command file at all.
 
-Polecat (`aops-jr/polecat/cli.py`, 334 lines) is what actually spins up a containerized worker, but as of this week it's mid-rebuild: the previous 5,734-line CLI and its supporting modules (`manager.py`, `claim.py`, `finalize.py`, `pkb_bridge.py`, and others) were deleted outright, and the file at `aops-jr/polecat/cli.py` today is a minimal replacement (`cli_lite.py`, renamed). It exposes exactly one subcommand, `run` — there is no `crew`, `start`, `finish`, `nuke`, or `swarm`. `run` reads `polecat.yaml` only for the Docker image and project path, builds a `docker run` command that bind-mounts the host repo directly (no per-task worktree isolation), and execs it. It does **not** resolve gate posture from `crew_defaults`/`run_defaults`, does **not** claim or release a PKB task, and does **not** file a PR — none of that logic exists in the current code; `claim_task`/`release_task` remain a documented convention (`specs/enforcement/task-contract.md`), not a checked one. See [`INSTALL.md`](INSTALL.md#polecat-installation) to install it.
+Polecat (`aops/polecat/cli.py`, 334 lines) is what actually spins up a containerized worker, but as of this week it's mid-rebuild: the previous 5,734-line CLI and its supporting modules (`manager.py`, `claim.py`, `finalize.py`, `pkb_bridge.py`, and others) were deleted outright, and the file at `aops/polecat/cli.py` today is a minimal replacement (`cli_lite.py`, renamed). It exposes exactly one subcommand, `run` — there is no `crew`, `start`, `finish`, `nuke`, or `swarm`. `run` reads `polecat.yaml` only for the Docker image and project path, builds a `docker run` command that bind-mounts the host repo directly (no per-task worktree isolation), and execs it. It does **not** resolve gate posture from `crew_defaults`/`run_defaults`, does **not** claim or release a PKB task, and does **not** file a PR — none of that logic exists in the current code; `claim_task`/`release_task` remain a documented convention (`specs/enforcement/task-contract.md`), not a checked one. See [`INSTALL.md`](INSTALL.md#polecat-installation) to install it.
 
 ### 5. Full observability — recorded, end to end
 
@@ -128,14 +128,14 @@ Skills are Claude Code extensions that know how to do specific things, split int
 
 **User-facing core** (the commands a researcher actually reaches for in their own work):
 
-| Skill        | Purpose                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| `/daily`     | Daily notes, briefing, progress sync                                                       |
-| `/dump`      | Session exit — bail (default), `full` (canonical close), or `pause` (hand back mid-flight) |
-| `/plan` `/q` | Effectual planning, decomposition, and task capture                                        |
-| `/project`   | Scaffold a research project repo with smart defaults                                       |
-| `/remember`  | Persist knowledge to PKB                                                                   |
-| `/pull`      | Claim the next queued task and run it inline                                               |
+| Skill       | Purpose                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| `/daily`    | Daily notes, briefing, progress sync                                                       |
+| `/dump`     | Session exit — bail (default), `full` (canonical close), or `pause` (hand back mid-flight) |
+| `/q`        | Effectual planning, decomposition, and task capture                                        |
+| `/project`  | Scaffold a research project repo with smart defaults                                       |
+| `/remember` | Persist knowledge to PKB                                                                   |
+| `/pull`     | Claim the next queued task and run it inline                                               |
 
 **Framework governance** (installed, but not marketed as researcher-facing daily tools — governs the framework's own quality and development process):
 
@@ -213,4 +213,4 @@ paths:
 
 ### Gates (quality checks)
 
-`aops-jr/polecat/defaults/polecat.yaml.example` still documents a `session_defaults` / `run_defaults` / `crew_defaults` gate schema (`exit_reflection`, `ida`, `hydration`, each `warn`/`block`/`off`), and this doc used to list matching env vars (`EXIT_REFLECTION_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`). As of the current build, **nothing reads either one** — `aops-jr/polecat/cli.py` never looks at a `gates:` key, and none of those env var names appear anywhere in the hook script (`aops/hooks/router.py`) or elsewhere in source. There is no gate-mode config to set today; see [Enforcement](#3-enforcement--a-minimal-in-session-hook-backed-by-a-pr-time-review-pipeline) above for what actually runs. The config file is left in place because it's the intended shape of a gate-resolution layer that hasn't been rebuilt yet, not because it's live.
+`aops/polecat/defaults/polecat.yaml.example` still documents a `session_defaults` / `run_defaults` / `crew_defaults` gate schema (`exit_reflection`, `ida`, `hydration`, each `warn`/`block`/`off`), and this doc used to list matching env vars (`EXIT_REFLECTION_GATE_MODE`, `IDA_GATE_MODE`, `HYDRATION_GATE_MODE`). As of the current build, **nothing reads either one** — `aops/polecat/cli.py` never looks at a `gates:` key, and none of those env var names appear anywhere in the hook script (`aops/hooks/router.py`) or elsewhere in source. There is no gate-mode config to set today; see [Enforcement](#3-enforcement--a-minimal-in-session-hook-backed-by-a-pr-time-review-pipeline) above for what actually runs. The config file is left in place because it's the intended shape of a gate-resolution layer that hasn't been rebuilt yet, not because it's live.
