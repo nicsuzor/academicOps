@@ -8,8 +8,10 @@ This project contains the **academicOps** framework itself. You are currently wo
 
 Specifically for this project:
 
-- Specs: `specs/INDEX.md` (MOC) — read this first when scoping any change
+- Guide & Topology: [`.agents/GUIDE.md`](.agents/GUIDE.md) and [`specs/meta/repository-map.md`](specs/meta/repository-map.md) — read these first to understand repository architecture and rules
 - Rules: universal axioms in [`.agents/AXIOMS.md`](.agents/AXIOMS.md), project-specific rules in [`.agents/rules/RULES.md`](.agents/rules/RULES.md) plus any one-off files in `.agents/rules/*.md` — both bind as instructions, read them before acting
+
+@GUIDE.md
 
 ## Fail-Fast / Halt Rule
 
