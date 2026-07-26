@@ -4,7 +4,7 @@ description: Just before dispatch, expand exactly the subtask(s) due next into a
   delegation brief (intent, scoped context, limits, autonomy, acceptance criteria,
   evaluation-evidence contract, effort/door-type) a contextless smart agent can execute
   and be judged on. Personality-agnostic; the composer must never be the executor.
-agent: "aops:pauli"
+agent: "aops-pkb:pauli"
 ---
 
 # Brief Skill

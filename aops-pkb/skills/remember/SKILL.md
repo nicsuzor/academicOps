@@ -1,7 +1,7 @@
 ---
 name: remember
 description: 'Unified memory skill: immediate mode (/remember) persists knowledge via PKB MCP; maintenance mode (/sleep, GHA cron) runs periodic consolidation — transcript mining, knowledge synthesis, data quality, brain sync.'
-agent: "aops:pauli"
+agent: "aops-pkb:pauli"
 ---
 
 # Memory Skill
