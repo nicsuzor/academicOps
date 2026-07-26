@@ -246,7 +246,8 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path, version: str)
         # Fan out canonical gate primitives from aops/hooks/gates to plugins
         # that ship gate/router infrastructure, so built plugins are self-contained
         # without duplicating source files in the source tree.
-        aops_gates_dir = src_dir.parent / "aops" / "hooks" / "gates"
+        aops_hooks_dir = src_dir.parent / "aops" / "hooks"
+        aops_gates_dir = aops_hooks_dir / "gates"
         if plugin_name != "aops" and aops_gates_dir.exists() and (dist_dir / "hooks").exists():
             dst_gates_dir = dist_dir / "hooks" / "gates"
             dst_gates_dir.mkdir(parents=True, exist_ok=True)
@@ -255,6 +256,11 @@ def build_plugin(plugin_name: str, src_dir: Path, dist_root: Path, version: str)
                 dst_primitive = dst_gates_dir / gate_file
                 if src_primitive.exists() and not dst_primitive.exists():
                     shutil.copy2(src_primitive, dst_primitive)
+
+            src_dispatch = aops_hooks_dir / "gate_dispatch.py"
+            dst_dispatch = dist_dir / "hooks" / "gate_dispatch.py"
+            if src_dispatch.exists() and not dst_dispatch.exists():
+                shutil.copy2(src_dispatch, dst_dispatch)
 
         # Wire always-on axioms into each client's native rule mechanism.
         # axioms/*.md is already copied verbatim above (part of the generic

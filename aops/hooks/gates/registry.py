@@ -22,4 +22,9 @@ try:
 except ImportError:
     pass
 
+try:
+    from .reflexes_evaluator import reflexes_evaluator
+    GATES.append(reflexes_evaluator)
+except ImportError:
+    pass
 
