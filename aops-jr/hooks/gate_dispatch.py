@@ -17,10 +17,12 @@ from pathlib import Path
 
 _HOOKS_DIR = Path(__file__).resolve().parent
 _JR_DIR = _HOOKS_DIR.parent
-for d in [str(_HOOKS_DIR), str(_JR_DIR)]:
+_AOPS_HOOKS = _JR_DIR.parent / "aops" / "hooks"
+for d in [str(_AOPS_HOOKS), str(_HOOKS_DIR), str(_JR_DIR)]:
     if d in sys.path:
         sys.path.remove(d)
-    sys.path.insert(0, d)
+    if Path(d).exists():
+        sys.path.insert(0, d)
 
 if "gates" in sys.modules and not hasattr(sys.modules["gates"], "emit"):
     del sys.modules["gates"]

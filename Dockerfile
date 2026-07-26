@@ -146,7 +146,7 @@ RUN umask 000 && uv tool install ruff
 # (see #1384: different gate_config.py versions crashed Gemini hooks).
 
 # Fixup script for post-install Gemini/Antigravity config (see file for why).
-COPY --chown=worker:worker aops/polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
+COPY --chown=worker:worker scripts/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
 
 # Both CLIs internally set 444 on git objects — chmod after each install.
 #
@@ -302,7 +302,7 @@ ARG RUST_CACHEBUST
 RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Copy entrypoint script
-COPY --chown=worker:worker --chmod=777 aops/polecat/entrypoint.sh /home/worker/entrypoint.sh
+COPY --chown=worker:worker --chmod=777 scripts/entrypoint.sh /home/worker/entrypoint.sh
 
 # Make home dir itself traversable/writable for any UID — polecat crew runs
 # containers as the host UID (non-root), which may differ from worker UID 1000.
