@@ -14,6 +14,20 @@
       "coordinator"
     ]
   },
-  "claude": {},
+  "claude": {
+    "userConfig": {
+      "gate_state_dir": {
+        "type": "string",
+        "title": "Gate State Directory",
+        "description": "Directory for storing persistent session gate state files (AOPS_GATE_STATE_DIR)."
+      },
+      "require_subagent_model": {
+        "type": "boolean",
+        "title": "Require Subagent Model Parameter",
+        "description": "Enforce that subagent invocations specify an explicit model parameter.",
+        "default": true
+      }
+    }
+  },
   "antigravity": {}
 }

@@ -1,112 +1,78 @@
-# aops-ts
+# aops-ts: Tailscale Bring-Up & Transcript Egress
 
-Opt-in Tailscale bring-up + transcript egress for academicOps remote/cloud sessions.
+`aops-ts` provides opt-in Tailscale bring-up and transcript egress synchronization for academicOps remote and cloud sessions.
 
 `aops-ts` ships two hooks:
+- **`SessionStart`**: Runs `tailscale up` so tailnet-only services — most importantly the **PKB MCP server** at `*.ts.net` — resolve inside a remote session.
+- **`SessionEnd`**: Parses session transcripts and ships them to a tailnet host over `tailscale ssh`, preserving transcript records when cloud containers are reclaimed.
 
-- A **`SessionStart`** hook that runs `tailscale up` so tailnet-only services —
-  most importantly the **PKB MCP server** at `*.ts.net` — resolve inside a remote
-  session (e.g. Claude Code on the web).
-- A **`SessionEnd`** hook that parses the session transcript and ships it to a
-  tailnet host (tar-over-`tailscale ssh`), so cloud sessions (which have no
-  durable filesystem and no inbound access) don't lose their transcript when the
-  container is reclaimed.
+## Control Flow & Architecture
 
-It is deliberately **separate from `aops-core`** so joining the tailnet is an
-explicit choice. Installing `aops-core` never brings up Tailscale on its own;
-you must add `aops-ts` to an environment that should be on the tailnet. The
-`SessionStart` bring-up is a self-contained bash hook with no dependencies; the
-`SessionEnd` sync hook reuses `aops-core`'s `transcript.py` when available and
-falls back to shipping the raw JSONL otherwise.
+```mermaid
+flowchart TD
+    subgraph SessionStartFlow ["SessionStart Hook (hooks/tailscale-up.sh)"]
+        S1["Event: SessionStart"]
+        S2{"Check Env: CLAUDE_CODE_REMOTE=true & TS_AUTHKEY set?"}
+        S3["Start tailscaled daemon if needed"]
+        S4["Run tailscale up --accept-dns=true"]
+        S5["No-op (exit 0)"]
+    end
 
-## Why a hook (and not the setup script)
+    subgraph SessionEndFlow ["SessionEnd Hook (hooks/session-end-sync.sh)"]
+        E1["Event: SessionEnd"]
+        E2{"Check Env: CLAUDE_CODE_REMOTE=true & AOPS_TS_SYNC_DEST set?"}
+        E3{"Validate AOPS_TS_SYNC_DEST format ([user@]host:path)"}
+        E4["Run transcript.py -> staging directory"]
+        E5["Stream tarball via tailscale ssh (or AOPS_TS_SSH_CMD)"]
+        E6["Fail fast (exit 1) on malformed dest"]
+        E7["No-op (exit 0)"]
+    end
 
-The authkey (`TS_AUTHKEY`) is injected at **session runtime**, not at container
-init. So bring-up cannot live in the environment's setup script — it must run at
-`SessionStart`, which is exactly what this hook does. User-level
-(`~/.claude/settings.json`) hooks do not run in cloud sessions, so the bring-up
-must ship as a repo/plugin hook.
+    S1 --> S2
+    S2 -- Yes --> S3 --> S4
+    S2 -- No --> S5
 
-## Prerequisites
+    E1 --> E2
+    E2 -- Yes --> E3
+    E2 -- No --> E7
+    E3 -- Valid --> E4 --> E5
+    E3 -- Malformed --> E6
+```
 
-1. **Tailscale installed.** This plugin does **not** install Tailscale (that
-   needs root + `curl | sh` at container init). Add the install to your
-   environment's setup script:
+## Customisation Surface
 
-   ```bash
-   command -v tailscale >/dev/null 2>&1 || curl -fsSL https://tailscale.com/install.sh | sh
-   ```
+### Plugin Configuration (`userConfig`)
 
-2. **`TS_AUTHKEY` available at session time.** Provision it as an environment
-   variable for the remote environment.
+| Option | Type | Description |
+| :--- | :--- | :--- |
+| `sync_dest` | `string` | Transcript egress destination `[user@]host:path` on the tailnet. Maps to `AOPS_TS_SYNC_DEST`. |
+| `ssh_cmd` | `string` | Custom SSH command override for transcript egress. Maps to `AOPS_TS_SSH_CMD`. |
 
-   The `SessionEnd` sync also needs `tar` and `ssh` (openssh-client) on `PATH` —
-   `tailscale ssh` wraps the system `ssh`. `tar` ships in virtually every base
-   image; `ssh` usually needs installing. On a minimal image install both:
+### Environment Variables
 
-   ```bash
-   command -v ssh >/dev/null 2>&1 || (apt-get update && apt-get install -y tar openssh-client)
-   ```
+| Variable | Required | Meaning | Default |
+| :--- | :--- | :--- | :--- |
+| `CLAUDE_CODE_REMOTE` | Yes (activation) | Hook no-ops unless set to `true` (remote/cloud session indicator). | None |
+| `TS_AUTHKEY` | Yes (SessionStart) | Tailscale authentication key used for container bring-up. | None |
+| `AOPS_TS_SYNC_DEST` | Yes (SessionEnd) | Destination `[user@]host:path` on the tailnet. Both host and `:path` are required. Malformed destination exits 1. | None |
+| `AOPS_TS_SSH_CMD` | Optional | Full remote-shell command override. Defaults to `tailscale ssh` when tailscale is present. | `tailscale ssh` |
+| `AOPS_TS_SSH_OPTS` | Optional | Extra SSH options for fallback plain `ssh` (ignored if `AOPS_TS_SSH_CMD` is set). | None |
+| `AOPS_SRC_DIR` | Optional | `aops-core` source directory used to locate `transcript.py`. | Plugin cache search |
 
-3. **`aops-ts` enabled.** Install the plugin in environments that should join
-   the tailnet:
+## Behaviour & Prerequisites
 
-   ```bash
-   claude plugin install aops-ts@academicOps
-   ```
+1. **Tailscale installed**: Prerequisites require `tailscale` binary on `PATH`.
+2. **`TS_AUTHKEY` set**: Injected at session runtime.
+3. **Session Egress Layout**: Destination receives payload structured into `transcripts/`, `summaries/`, and raw JSONL fallback in `incoming/`.
 
-## Behaviour
+## Installation
 
-The hook no-ops (exit 0) unless **all** of these hold:
+```bash
+claude plugin install aops-ts@academicOps
+```
 
-- `CLAUDE_CODE_REMOTE=true` (only acts in remote/cloud sessions)
-- `TS_AUTHKEY` is set
-- `tailscale` is on `PATH`
+## Contents
 
-When it acts, it starts `tailscaled` if needed, then runs `tailscale up` with
-`--accept-dns=true` (required for MagicDNS resolution of `*.ts.net` hosts). It
-always exits 0 — a Tailscale failure must never block session start. Diagnostics
-go to stderr (SessionStart stdout is injected into the model context, so it is
-kept empty). In non-root environments it auto-detects passwordless `sudo`.
-
-## Session transcript sync (SessionEnd)
-
-The `SessionEnd` hook (`session-end-sync.sh`) ships this session's transcript to
-a tailnet host. It no-ops (exit 0) unless **all** of these hold:
-
-- `CLAUDE_CODE_REMOTE=true`
-- `AOPS_TS_SYNC_DEST` is set (the destination)
-- the tailnet is up (`tailscale status` succeeds)
-- `tar` and `ssh` are on `PATH`
-
-Once it is acting, a **malformed** `AOPS_TS_SYNC_DEST` (no host, or no `:path`) is
-a hard error (exit 1) — it fails fast and loud rather than guessing a default.
-
-Config (env):
-
-| Var                 | Required | Meaning                                                                                                                                                                                                                                                                           |
-| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AOPS_TS_SYNC_DEST` | yes      | `[user@]host:path` on the tailnet, e.g. `nic@services-new:src/sessions/`. **Both** host and `path` are required — `path` is the **base** directory (see layout below). A malformed dest (no host, or no `:path`) is a hard error (exit 1), not a silent default.                  |
-| `AOPS_TS_SSH_CMD`   | no       | remote-shell override, used **verbatim** (a full override — bake any ssh options into it). Defaults to `tailscale ssh` when tailscale is present, else the plain-ssh fallback. Set e.g. to `ssh -i ~/key -o StrictHostKeyChecking=accept-new` for key-based auth to a plain host. |
-| `AOPS_TS_SSH_OPTS`  | no       | extra ssh options for the **auto-selected** plain-ssh fallback only (when tailscale is absent and `AOPS_TS_SSH_CMD` is unset), e.g. `-o StrictHostKeyChecking=accept-new`. Ignored when `AOPS_TS_SSH_CMD` is set.                                                                 |
-| `AOPS_SRC_DIR`      | no       | aops-core source dir (else the plugin cache is searched)                                                                                                                                                                                                                          |
-
-It runs `aops-core`'s `transcript.py` (with `--no-sync`) into a staging dir —
-producing the same redacted markdown + summary JSON the local pipeline commits to
-`$AOPS_SESSIONS` — then streams the staging dir to `AOPS_TS_SYNC_DEST` with
-tar-over-`tailscale ssh` (the remote only needs `tar`; `rsync` is not required).
-Under the destination base directory the payload lands as:
-
-| Subdir         | Contents                                                  |
-| -------------- | --------------------------------------------------------- |
-| `transcripts/` | redacted markdown (full + abridged), from `transcript.py` |
-| `summaries/`   | session summary JSON, from `transcript.py`                |
-| `incoming/`    | **raw JSONL** — fallback only, see below                  |
-
-If `aops-core`/`transcript.py` can't be run, it falls back to shipping the **raw
-JSONL** into `incoming/`, which is **unredacted** — so only sync to a trusted
-tailnet host you control. Auth is via **Tailscale SSH** (no ssh keys) when the
-destination runs the Tailscale SSH server with an ACL permitting this node;
-otherwise set `AOPS_TS_SSH_CMD=ssh` and provide your own key. It exits 0 on every
-legitimate skip (not remote, no dest, tailnet down, missing tools) and only
-exits non-zero on a malformed destination.
+- `hooks/tailscale-up.sh` — `SessionStart` Tailscale bring-up script.
+- `hooks/session-end-sync.sh` — `SessionEnd` transcript packaging and SSH streaming script.
+- `hooks/hooks.json` — Manifest declaring `SessionStart` and `SessionEnd` hooks.

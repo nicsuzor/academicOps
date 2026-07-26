@@ -15,6 +15,19 @@
       "knowledge-base"
     ]
   },
-  "claude": {},
+  "claude": {
+    "userConfig": {
+      "pkb_mcp_url": {
+        "type": "string",
+        "title": "PKB MCP Server URL",
+        "description": "URL of the PKB MCP HTTP endpoint (PKB_MCP_URL)."
+      },
+      "aca_data": {
+        "type": "string",
+        "title": "Personal Knowledge Base Data Root",
+        "description": "Path to local personal knowledge base root directory (ACA_DATA)."
+      }
+    }
+  },
   "antigravity": {}
 }

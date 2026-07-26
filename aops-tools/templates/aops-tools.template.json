@@ -14,6 +14,26 @@
       "skills"
     ]
   },
-  "claude": {},
+  "claude": {
+    "userConfig": {
+      "default_diagram_style": {
+        "type": "string",
+        "title": "Default Diagram Style",
+        "description": "Default diagram style for /diagram skill ('mermaid' or 'excalidraw').",
+        "default": "mermaid"
+      },
+      "pdf_engine": {
+        "type": "string",
+        "title": "PDF Rendering Engine",
+        "description": "Preferred PDF compilation tool for /pdf skill ('typst', 'pandoc', 'weasyprint').",
+        "default": "typst"
+      },
+      "src_dir": {
+        "type": "string",
+        "title": "Source Search Directory",
+        "description": "Root path for finding project repositories (AOPS_SRC_DIR)."
+      }
+    }
+  },
   "antigravity": {}
 }

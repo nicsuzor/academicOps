@@ -14,5 +14,18 @@
       "remote"
     ]
   },
-  "claude": {}
+  "claude": {
+    "userConfig": {
+      "sync_dest": {
+        "type": "string",
+        "title": "Transcript Egress Destination",
+        "description": "Tailnet host and base directory [user@]host:path for shipping session transcripts (AOPS_TS_SYNC_DEST)."
+      },
+      "ssh_cmd": {
+        "type": "string",
+        "title": "Remote SSH Command",
+        "description": "Custom SSH binary or command string override for transcript egress (AOPS_TS_SSH_CMD). Defaults to 'tailscale ssh'."
+      }
+    }
+  }
 }

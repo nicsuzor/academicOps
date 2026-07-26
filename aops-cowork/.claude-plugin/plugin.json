@@ -13,5 +13,19 @@
     "workflow",
     "cowork"
   ],
-  "mcpServers": "./.mcp.json"
+  "mcpServers": "./.mcp.json",
+  "userConfig": {
+    "auto_sync": {
+      "type": "boolean",
+      "title": "Auto-sync Native Tasks",
+      "description": "Automatically mirror PKB tasks onto the Cowork harness-native task list at claim time.",
+      "default": true
+    },
+    "sync_children": {
+      "type": "boolean",
+      "title": "Sync Subtask Leaves",
+      "description": "Mirror PKB subtask leaf nodes as blocking native subtasks on the native task list.",
+      "default": true
+    }
+  }
 }

@@ -2,7 +2,7 @@
   "__base__": {
     "name": "aops",
     "version": "0.5.0",
-    "description": "AcademicOps core framework \u2014 combining task/work-unit modules, strategic planning, task-lifecycle, dispatch, session lifecycle, and swappable technology-specific academic skills.",
+    "description": "AcademicOps core framework — combining task/work-unit modules, strategic planning, task-lifecycle, dispatch, session lifecycle, and swappable technology-specific academic skills.",
     "author": {
       "name": "Nicolas Suzor"
     },
@@ -21,8 +21,23 @@
     "userConfig": {
       "pkb_mcp_url": {
         "type": "string",
-        "title": "PKB MCP server URL",
-        "description": "URL of your academicOps PKB MCP server (Streamable HTTP), e.g. http://services-new.stoat-musical.ts.net:8020/mcp. Supplied to the pkb MCP server as PKB_MCP_URL. Leave blank only if PKB_MCP_URL is already exported in the environment that launches the MCP server; there is no ~/.env.local fallback."
+        "title": "PKB MCP Server URL",
+        "description": "URL of your academicOps PKB MCP server (Streamable HTTP), e.g. http://services-new.stoat-musical.ts.net:8020/mcp. Supplied to the pkb MCP server as PKB_MCP_URL."
+      },
+      "bot_gh_token": {
+        "type": "string",
+        "title": "GitHub Bot Token",
+        "description": "GitHub personal access token for automated git/gh operations. Overrides or populates AOPS_BOT_GH_TOKEN."
+      },
+      "src_dir": {
+        "type": "string",
+        "title": "Source Root Directory",
+        "description": "Default root path for discovering project repositories (AOPS_SRC_DIR). Defaults to ~/src."
+      },
+      "sessions_dir": {
+        "type": "string",
+        "title": "Sessions Registry Path",
+        "description": "Path to local sessions registry repository (AOPS_SESSIONS). Defaults to $POLECAT_HOME/sessions."
       }
     }
   }
