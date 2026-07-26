@@ -15,6 +15,8 @@ nothing meaningful to set.
 
 from __future__ import annotations
 
+import os
+
 from .event import Event
 from .verdict import Verdict, warn
 
@@ -25,7 +27,23 @@ _REMINDER = (
 )
 
 
+def _enabled() -> bool:
+    """Read the `require_subagent_model` userConfig knob.
+
+    Same convention as the sibling `AOPS_GATE_STATE_DIR` knob in this same
+    plugin (state.py): a plain process env var, defaulting on. Set
+    `AOPS_REQUIRE_SUBAGENT_MODEL=false` to disable the reminder.
+    """
+    return os.environ.get("AOPS_REQUIRE_SUBAGENT_MODEL", "true").strip().lower() not in (
+        "false",
+        "0",
+        "no",
+    )
+
+
 def require_subagent_model(e: Event, state: dict) -> Verdict | None:
+    if not _enabled():
+        return None
     if e.event != "PreToolUse" or e.tool != "Agent":
         return None
     tool_input = e.raw.get("tool_input")

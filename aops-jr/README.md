@@ -38,17 +38,20 @@ flowchart TD
 
 ### Plugin Configuration (`userConfig`)
 
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `gate_state_dir` | `string` | Auto-resolved | Directory path for storing persistent session gate state files. Maps to `AOPS_GATE_STATE_DIR`. |
-| `require_subagent_model` | `boolean` | `true` | Enforce that subagent invocations specify an explicit model parameter. |
+| Option                   | Type      | Default       | Description                                                                                                   |
+| :----------------------- | :-------- | :------------ | :------------------------------------------------------------------------------------------------------------ |
+| `gate_state_dir`         | `string`  | Auto-resolved | Directory path for storing persistent session gate state files. Maps to `AOPS_GATE_STATE_DIR`.                |
+| `require_subagent_model` | `boolean` | `true`        | Enforce that subagent invocations specify an explicit model parameter. Maps to `AOPS_REQUIRE_SUBAGENT_MODEL`. |
+
+**Note on wiring**: like every `userConfig` knob in this framework except `aops-pkb`'s `pkb_mcp_url`, these are read as plain process environment variables (`os.environ`), not through Claude Code's per-option `CLAUDE_PLUGIN_OPTION_<KEY>` hook-process injection — the manifest declaration above is a discoverability aid, not a live UI-to-hook wire. Set the corresponding env var directly (shell profile, `polecat.yaml`, or Docker env) for it to take effect.
 
 ### Environment Variables
 
-| Variable | Required | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `AOPS_GATE_STATE_DIR` | Optional | Directory where gate state JSON files are saved. | System temp directory |
-| `AOPS_HOOK_LOG_PATH` | Optional | Log file path for gate event execution details. | None |
+| Variable                      | Required | Description                                                          | Default               |
+| :---------------------------- | :------- | :------------------------------------------------------------------- | :-------------------- |
+| `AOPS_GATE_STATE_DIR`         | Optional | Directory where gate state JSON files are saved.                     | System temp directory |
+| `AOPS_REQUIRE_SUBAGENT_MODEL` | Optional | Set to `false`/`0`/`no` to disable the subagent-model reminder gate. | `true` (enabled)      |
+| `AOPS_HOOK_LOG_PATH`          | Optional | Log file path for gate event execution details.                      | None                  |
 
 ## Installation & Quickstart
 

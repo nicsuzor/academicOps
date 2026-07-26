@@ -20,25 +20,25 @@
       "evaluator_model": {
         "type": "string",
         "title": "Evaluator Model",
-        "description": "Model ID used for evaluating policy adherence (default: claude-3-5-haiku-20241022).",
+        "description": "Model ID used for evaluating policy adherence (default: claude-3-5-haiku-20241022). Not yet wired: evaluate_cope_policy() is currently a stub, see reflexes-cope/README.md#customisation-surface.",
         "default": "claude-3-5-haiku-20241022"
       },
       "provider": {
         "type": "string",
         "title": "Evaluator Provider",
-        "description": "LLM provider for policy evaluation (default: anthropic).",
+        "description": "LLM provider for policy evaluation (default: anthropic). Not yet wired: evaluate_cope_policy() is currently a stub, see reflexes-cope/README.md#customisation-surface.",
         "default": "anthropic"
       },
       "timeout_seconds": {
         "type": "number",
         "title": "Evaluator Timeout (seconds)",
-        "description": "Timeout in seconds for evaluator LLM calls before failing open (default: 5.0).",
+        "description": "Timeout in seconds for evaluator LLM calls before failing open (default: 5.0). Not yet wired: evaluate_cope_policy() is currently a stub, see reflexes-cope/README.md#customisation-surface.",
         "default": 5.0
       },
       "fail_open": {
         "type": "boolean",
         "title": "Fail Open on Exception",
-        "description": "Return an allow verdict on evaluator exceptions or timeouts (default: true).",
+        "description": "Return an allow verdict on evaluator exceptions or timeouts (default: true). Not yet wired: evaluate_cope_policy() is currently a stub, see reflexes-cope/README.md#customisation-surface.",
         "default": true
       }
     }

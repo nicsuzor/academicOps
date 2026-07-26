@@ -36,15 +36,15 @@ flowchart TD
 
 ### Plugin Index
 
-| Plugin | Core Function | Documentation & Flowchart |
-| :--- | :--- | :--- |
-| [`aops`](aops/) | Core framework: session hooks (`router.py`), Polecat runtime (`cli.py`), core skills (`/pull`, `/dispatch`, `/verify`, `/handover`). | [aops/README.md](aops/README.md) |
-| [`aops-cowork`](aops-cowork/) | Cowork harness task list synchronization and PKB reconciliation. | [aops-cowork/README.md](aops-cowork/README.md) |
-| [`aops-jr`](aops-jr/) | Coordinator charters (`ida`, `junior`), gate dispatcher, and face-discipline hooks. | [aops-jr/README.md](aops-jr/README.md) |
-| [`aops-pkb`](aops-pkb/) | Personal Knowledge Base task intake (`hydrate`, `situate`, `decompose`), brief composition, memory (`remember`), and `pauli` agent. | [aops-pkb/README.md](aops-pkb/README.md) |
-| [`aops-tools`](aops-tools/) | Fungible domain skills (`diagram`, `pdf`, `extract`, `analyst`, `dbt`, `streamlit`, `python-viz`, `peer-review`, `deep-research`). | [aops-tools/README.md](aops-tools/README.md) |
-| [`aops-ts`](aops-ts/) | Opt-in Tailscale bring-up (`SessionStart`) and transcript egress sync (`SessionEnd`). | [aops-ts/README.md](aops-ts/README.md) |
-| [`reflexes-cope`](reflexes-cope/) | Axiom safety harness policies, config loader, and advisory evaluation gate. | [reflexes-cope/README.md](reflexes-cope/README.md) |
+| Plugin                            | Core Function                                                                                                                        | Documentation & Flowchart                          |
+| :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------- |
+| [`aops`](aops/)                   | Core framework: session hooks (`router.py`), Polecat runtime (`cli.py`), core skills (`/pull`, `/dispatch`, `/verify`, `/handover`). | [aops/README.md](aops/README.md)                   |
+| [`aops-cowork`](aops-cowork/)     | Cowork harness task list synchronization and PKB reconciliation.                                                                     | [aops-cowork/README.md](aops-cowork/README.md)     |
+| [`aops-jr`](aops-jr/)             | Coordinator charters (`ida`, `junior`), gate dispatcher, and face-discipline hooks.                                                  | [aops-jr/README.md](aops-jr/README.md)             |
+| [`aops-pkb`](aops-pkb/)           | Personal Knowledge Base task intake (`hydrate`, `situate`, `decompose`), brief composition, memory (`remember`), and `pauli` agent.  | [aops-pkb/README.md](aops-pkb/README.md)           |
+| [`aops-tools`](aops-tools/)       | Fungible domain skills (`diagram`, `pdf`, `extract`, `analyst`, `dbt`, `streamlit`, `python-viz`, `peer-review`, `deep-research`).   | [aops-tools/README.md](aops-tools/README.md)       |
+| [`aops-ts`](aops-ts/)             | Opt-in Tailscale bring-up (`SessionStart`) and transcript egress sync (`SessionEnd`).                                                | [aops-ts/README.md](aops-ts/README.md)             |
+| [`reflexes-cope`](reflexes-cope/) | Axiom safety harness policies, config loader, and advisory evaluation gate.                                                          | [reflexes-cope/README.md](reflexes-cope/README.md) |
 
 ## How it works
 
@@ -111,17 +111,28 @@ Task lifecycle stages (`hydrate → situate → decompose → brief → execute 
 
 Audit traces recorded via transcripts, hook JSONL logs, and opt-in Tailscale egress syncing (`SessionEnd`). See [`aops-ts/README.md`](aops-ts/README.md).
 
+## Design Principles
+
+1. **Qualitative over quantitative** — evaluate fitness-for-purpose, not compliance with templates
+2. **Delegate agency** — specify WHAT and WHY, not HOW
+3. **Fail-fast** — no defaults, no silent failures
+4. **Minimal** — fight bloat. A working simple system beats an elegant complex one
+5. **Components earn their keep** — assessed against: used voluntarily? reduces friction? agents understand it? survives neglect?
+6. **Graduated enforcement** — start with instructions, escalate only when evidence shows lower levels failing
+7. **Anti-bloat** — before creating anything new, check if an existing thing already does it. Two okay things are worse than one good thing.
+8. **Don't over-fit to one incident** — the evidence base for a framework change is _recurrence_, not the salience of the most recent failure. `/learn` files the forensic facts of an incident; a separate, detached pass (`/issue-sweep`) later weighs accumulated reports and decides whether a rule change is warranted. A single salient incident shouldn't drive a framework change that doesn't generalise.
+
 ## Customisation Overview
 
 Each plugin provides discoverable configuration knobs via manifest `userConfig` options and environment variables:
 
 - **`aops`**: Configure `PKB_MCP_URL`, `AOPS_BOT_GH_TOKEN`, `AOPS_SRC_DIR`, `AOPS_SESSIONS`. See [`aops/README.md`](aops/README.md#customisation-surface).
-- **`aops-cowork`**: Configure `auto_sync` and `sync_children`. See [`aops-cowork/README.md`](aops-cowork/README.md#customisation-surface).
+- **`aops-cowork`**: No configurable knobs yet — see [`aops-cowork/README.md`](aops-cowork/README.md#customisation-surface).
 - **`aops-jr`**: Configure `AOPS_GATE_STATE_DIR` and `require_subagent_model`. See [`aops-jr/README.md`](aops-jr/README.md#customisation-surface).
 - **`aops-pkb`**: Configure `PKB_MCP_URL` and `ACA_DATA`. See [`aops-pkb/README.md`](aops-pkb/README.md#customisation-surface).
-- **`aops-tools`**: Configure `default_diagram_style`, `pdf_engine`, `AOPS_SRC_DIR`. See [`aops-tools/README.md`](aops-tools/README.md#customisation-surface).
+- **`aops-tools`**: Configure `AOPS_SRC_DIR`. See [`aops-tools/README.md`](aops-tools/README.md#customisation-surface).
 - **`aops-ts`**: Configure `AOPS_TS_SYNC_DEST` and `AOPS_TS_SSH_CMD`. See [`aops-ts/README.md`](aops-ts/README.md#customisation-surface).
-- **`reflexes-cope`**: Configure `evaluator_model`, `provider`, `timeout_seconds`, `fail_open`. See [`reflexes-cope/README.md`](reflexes-cope/README.md#customisation-surface).
+- **`reflexes-cope`**: Declares `evaluator_model`, `provider`, `timeout_seconds`, `fail_open` — **not yet wired**, the policy evaluator is a stub. See [`reflexes-cope/README.md`](reflexes-cope/README.md#customisation-surface).
 
 ## Installation
 

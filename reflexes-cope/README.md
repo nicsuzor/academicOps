@@ -5,11 +5,14 @@
 ## Control Flow & Advisory Contract
 
 Per v0.5 topology rules, `reflexes-cope` operates under an **advisory-only** contract:
+
 - Policy evaluator output is an overridable advisory consumed by a deciding agent.
 - No autonomous deny or blocking verdicts are produced.
 - Strict fail-open resilience on evaluator outage or exception.
 
 ## Control Flow & Architecture
+
+**As of the current build, `evaluate_cope_policy()` is an unimplemented stub.** It unconditionally `return`s `None` for every policy, every event — see `hooks/gates/reflexes_evaluator.py`. The flowchart below reflects what actually runs today, not the intended design; the "Invoke LLM Evaluator" behaviour it will eventually gain is tracked as a separate follow-up (see Customisation Surface below).
 
 ```mermaid
 flowchart TD
@@ -17,35 +20,38 @@ flowchart TD
         E["Harness Event (PreToolUse, Stop, etc.)"]
     end
 
-    subgraph Evaluator ["reflexes_evaluator.py & Harness"]
-        C["load_config(): Read reflexes/config.json & userConfig"]
-        P["Load Policy Files (reflexes/policies/*.md)"]
-        L["Invoke LLM Evaluator (evaluator_model, timeout_seconds)"]
-        F{"Error or Timeout?"}
+    subgraph Evaluator ["reflexes_evaluator.py (current implementation)"]
+        C["load_config(): read reflexes/config.json (evaluator_model, provider, timeout_seconds, fail_open) -- values parsed but not yet consumed below"]
+        T["Map event -> trigger (before_tool_call / before_response / after_tool_call)"]
+        M["Filter AXIOM_POLICIES matching trigger"]
+        S["evaluate_cope_policy(policy_slug, event, model): STUB -- always returns None, no LLM call"]
+        X{"Exception raised anywhere above?"}
     end
 
-    subgraph Verdicts ["Advisory Verdicts"]
-        V1["Return Advisory Warning (additionalContext)"]
-        V2["Fail Open: Return Allow Verdict (fail_open=true)"]
+    subgraph Verdicts ["Actual Outcome Today"]
+        V1["Allow (None) -- always, regardless of config or matched policies"]
+        V2["Allow (None) -- exception caught, logged to stderr"]
     end
 
-    E --> C --> P --> L --> F
-    F -- Evaluation OK --> V1
-    F -- Error / Timeout --> V2
+    E --> C --> T --> M --> S --> X
+    X -- No --> V1
+    X -- Yes --> V2
 ```
 
 ## Customisation Surface
+
+**As of the current build, none of these knobs change runtime behaviour.** `reflexes/config.py` genuinely parses `reflexes/config.json` into a `ReflexesConfig` dataclass, and the `userConfig` manifest entries below are declared — but `evaluate_cope_policy()`, the only place that would consult `evaluator_model`, `provider`/`evaluator_provider`, or `timeout_seconds` to make an LLM call, is a stub that returns `None` before looking at any of them. `fail_open` is likewise unread; the code fails open by construction (the `try`/`except` in `reflexes_evaluator()` always returns `None` on error) regardless of this flag's value. Tracked: `aops` task for implementing `evaluate_cope_policy` (filed alongside this PR revision — see repo task tracker).
 
 `reflexes-cope` is configurable via `reflexes/config.json` and plugin manifest `userConfig`.
 
 ### Plugin Configuration (`userConfig` & `config.json`)
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `evaluator_model` | `string` | `"claude-3-5-haiku-20241022"` | LLM model used for policy evaluation. |
-| `provider` / `evaluator_provider` | `string` | `"anthropic"` | LLM provider for evaluator model calls. |
-| `timeout_seconds` | `number` | `5.0` | Timeout threshold in seconds before failing open. |
-| `fail_open` | `boolean` | `true` | Return allow verdict when evaluator encounters an exception or timeout. |
+| Parameter                         | Type      | Default                       | Description                                                                                                                                       |
+| :-------------------------------- | :-------- | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `evaluator_model`                 | `string`  | `"claude-3-5-haiku-20241022"` | LLM model used for policy evaluation. **Not yet wired** — see caveat above.                                                                       |
+| `provider` / `evaluator_provider` | `string`  | `"anthropic"`                 | LLM provider for evaluator model calls. **Not yet wired** — see caveat above.                                                                     |
+| `timeout_seconds`                 | `number`  | `5.0`                         | Timeout threshold in seconds before failing open. **Not yet wired** — see caveat above.                                                           |
+| `fail_open`                       | `boolean` | `true`                        | Return allow verdict when evaluator encounters an exception or timeout. **Not yet wired** — see caveat above (already fail-open unconditionally). |
 
 ### Configuration File (`reflexes/config.json`)
 

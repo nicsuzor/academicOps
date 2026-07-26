@@ -45,18 +45,18 @@ flowchart TD
 
 ### Plugin Configuration (`userConfig`)
 
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `default_diagram_style` | `string` | `"mermaid"` | Default rendering style for the `/diagram` skill (`mermaid` or `excalidraw`). |
-| `pdf_engine` | `string` | `"typst"` | Preferred PDF rendering backend for the `/pdf` skill (`typst`, `pandoc`, `weasyprint`). |
+| Option    | Type     | Default       | Description                                                    |
+| :-------- | :------- | :------------ | :------------------------------------------------------------- |
 | `src_dir` | `string` | Auto-resolved | Search root for project repository discovery (`AOPS_SRC_DIR`). |
+
+**As of the current build, `default_diagram_style` and `pdf_engine` are not declared here.** An earlier draft added them as `userConfig` options, but nothing in `skills/diagram/` or `skills/pdf/scripts/generate_pdf.py` reads them — the `/diagram` skill's style is chosen per-invocation via the `style=` argument (see `SKILL.md`), and `generate_pdf.py` hardcodes pandoc+weasyprint regardless of the claimed `typst`/`pandoc`/`weasyprint` default. Removed rather than left as decoration; re-add only alongside real code (or an explicit `SKILL.md` instruction) that consults them.
 
 ### Environment Variables
 
-| Variable | Required | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `ACA_DATA` | Optional | Path to personal knowledge base data root. | None |
-| `AOPS_SRC_DIR` | Optional | Root path for project discovery. | `~/src` |
+| Variable       | Required | Description                                | Default |
+| :------------- | :------- | :----------------------------------------- | :------ |
+| `ACA_DATA`     | Optional | Path to personal knowledge base data root. | None    |
+| `AOPS_SRC_DIR` | Optional | Root path for project discovery.           | `~/src` |
 
 ## Discovery & Path Discipline
 

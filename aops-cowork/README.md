@@ -33,12 +33,7 @@ flowchart TD
 
 ## Customisation Surface
 
-### Plugin Configuration (`userConfig`)
-
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `auto_sync` | `boolean` | `true` | Automatically mirror PKB tasks onto the Cowork native task list during `/pull`. |
-| `sync_children` | `boolean` | `true` | Mirror PKB subtask leaf nodes as blocking native tasks on the Cowork task list. |
+**As of the current build, this plugin has no configurable knobs.** An earlier draft declared `auto_sync` and `sync_children` `userConfig` booleans, but `aops-cowork` ships no executable hook or script code — its only artifact is `skills/cowork-sync/SKILL.md`, a prompt-driven procedure that never reads or references either key. Sync-to-native and subtask-mirroring behavior described in the Control Flow diagram above is always-on and not currently adjustable. The declarations were removed rather than left as decoration; re-add them only alongside real code (or an explicit prompt instruction in `SKILL.md`) that consults them.
 
 ## Installation & Quickstart
 
@@ -51,4 +46,4 @@ claude plugin install aops-cowork@academicOps-cowork
 ## Contents
 
 - `skills/cowork-sync/` — Procedures for mirroring tasks and reconciling status between PKB and Cowork native tasks.
-- `.claude-plugin/plugin.json` — Plugin manifest with `userConfig` options.
+- `.claude-plugin/plugin.json` — Plugin manifest (no `userConfig` options; see Customisation Surface above).
