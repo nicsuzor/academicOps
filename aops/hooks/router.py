@@ -10,6 +10,9 @@ import os
 import shlex
 import sys
 
+from gates.event import normalize
+from gates.require_aops_bot_gh_token import require_aops_bot_gh_token
+
 
 def main():
     parser = argparse.ArgumentParser(description="Core hook router for credential isolation")
@@ -93,18 +96,36 @@ def main():
             or os.environ.get("AOPS_POLECAT_CONTAINER") == "1"
             or os.environ.get("CLAUDE_CODE_NON_INTERACTIVE") == "1"
         )
+        deny_reason = None
         if tool_name in interactive_tools and is_headless:
+            deny_reason = (
+                "Interactive prompt ('ask_question') is forbidden in a headless / "
+                "non-interactive context. Proceed automatically using fallback logic."
+            )
+        else:
+            # Structural prevention (stays in core, per
+            # specs/packaging/v0.5-modular-topology.md Finding 3): fail-closed
+            # credential isolation. SessionStart above only rewrites git/gh
+            # credentials `if bot_token:` — when AOPS_BOT_GH_TOKEN is unset that
+            # branch is a silent no-op and ambient personal credentials stay
+            # live. This gate is what makes the unset-token case fail closed
+            # for the git/gh push commands it recognizes.
+            verdict = require_aops_bot_gh_token(normalize(raw_input), {})
+            if verdict is not None and verdict.outcome == "deny":
+                deny_reason = verdict.inject_text
+
+        if deny_reason:
             if client == "agy":
                 output = {
                     "allowTool": False,
-                    "denyReason": "Interactive prompt ('ask_question') is forbidden in a headless / non-interactive context. Proceed automatically using fallback logic."
+                    "denyReason": deny_reason,
                 }
             else:
                 output = {
                     "hookSpecificOutput": {
                         "hookEventName": event,
                         "permissionDecision": "deny",
-                        "permissionDecisionReason": "Interactive prompt ('ask_question') is forbidden in a headless / non-interactive context. Proceed automatically using fallback logic."
+                        "permissionDecisionReason": deny_reason,
                     }
                 }
 

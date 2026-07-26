@@ -15,6 +15,7 @@
 !/.claude-plugin/**
 
 # Allow source code
+!/aops/**
 !/aops-jr/**
 !/scripts/**
 !/specs/**
