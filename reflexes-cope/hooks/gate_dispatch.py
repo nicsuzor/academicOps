@@ -13,10 +13,25 @@ from pathlib import Path
 
 _HOOKS_DIR = Path(__file__).resolve().parent
 _COPE_DIR = _HOOKS_DIR.parent
-for d in [str(_HOOKS_DIR), str(_COPE_DIR)]:
+_AOPS_HOOKS = _COPE_DIR.parent / "aops" / "hooks"
+for d in [str(_AOPS_HOOKS), str(_HOOKS_DIR), str(_COPE_DIR)]:
     if d in sys.path:
         sys.path.remove(d)
-    sys.path.insert(0, d)
+    if Path(d).exists():
+        sys.path.insert(0, d)
+
+# In the source tree (unbuilt), reflexes-cope/hooks/gates/ only ships its
+# own reflexes_evaluator.py — event/verdict/emit are canonical and live in
+# aops/hooks/gates/, fanned into the built plugin's gates/ dir by
+# scripts/build.py. Bust a stale partial "gates" namespace-package import
+# (e.g. one that resolved only reflexes-cope's local gates/ before aops/hooks
+# was on sys.path) so the merged namespace package is rebuilt with emit.py
+# visible.
+if "gates" in sys.modules and not hasattr(sys.modules["gates"], "emit"):
+    del sys.modules["gates"]
+    for mod in list(sys.modules.keys()):
+        if mod.startswith("gates."):
+            del sys.modules[mod]
 
 from gates.emit import emit
 from gates.event import normalize
