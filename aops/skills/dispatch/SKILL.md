@@ -61,18 +61,48 @@ daemon that runs polecats** (the WSL host `nicwin`), then pick the matching form
 # mechanism. Fall back to a filesystem search of the known per-client
 # install locations (where the core plugin ships polecat/cli.py),
 # then to $AOPS/aops or $AOPS for in-repo dev.
+#
+# Every candidate is validated to actually CONTAIN the workspace-isolation
+# fix (`resolve_isolated_workspace`) before being accepted (aops_63985c64:
+# an installed plugin/dist copy can silently predate that fix — a stale
+# ~/.gemini/config/plugins/aops-jr build from before the fix landed was
+# found on this host, matched this same find, and would have been silently
+# selected and used to bind-mount the shared canonical checkout read-write
+# into the container). A stale/invalid candidate is skipped, never used; if
+# nothing valid is found the resolution fails closed with a clear error
+# instead of silently dispatching on unvalidated code.
+_pc_isolation_ok() {
+  [ -f "$1/polecat/cli.py" ] && grep -q "resolve_isolated_workspace" "$1/polecat/cli.py" 2>/dev/null
+}
+
 POLECAT_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
-if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then
-  POLECAT_ROOT="$(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" \
-    -maxdepth 7 -type f -path '*aops*/polecat/cli.py' 2>/dev/null \
-    | head -1 | xargs -r dirname | xargs -r dirname)"
+_pc_isolation_ok "$POLECAT_ROOT" || POLECAT_ROOT=""
+
+if [ -z "$POLECAT_ROOT" ] && [ -n "$AOPS" ] && _pc_isolation_ok "$AOPS/aops"; then
+  POLECAT_ROOT="$AOPS/aops"
 fi
-if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then
-  if [ -f "$AOPS/aops/polecat/cli.py" ]; then
-    POLECAT_ROOT="$AOPS/aops"
-  else
-    POLECAT_ROOT="$AOPS"
-  fi
+
+if [ -z "$POLECAT_ROOT" ]; then
+  for _pc_candidate in $(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" \
+      -maxdepth 7 -type f -path '*aops*/polecat/cli.py' 2>/dev/null \
+      | xargs -r -n1 dirname | xargs -r -n1 dirname); do
+    if _pc_isolation_ok "$_pc_candidate"; then
+      POLECAT_ROOT="$_pc_candidate"
+      break
+    fi
+  done
+fi
+
+if [ -z "$POLECAT_ROOT" ] && [ -n "$AOPS" ] && _pc_isolation_ok "$AOPS"; then
+  POLECAT_ROOT="$AOPS"
+fi
+
+if [ -z "$POLECAT_ROOT" ]; then
+  echo "FATAL: no polecat/cli.py with workspace isolation (resolve_isolated_workspace)" \
+       "found in \$CLAUDE_PLUGIN_ROOT, \$AOPS/aops, installed plugins, or \$AOPS." \
+       "Refusing to dispatch on unvalidated/stale code — sync or rebuild the plugin" \
+       "install before retrying." >&2
+  return 1 2>/dev/null || exit 1
 fi
 ```
 
@@ -101,14 +131,21 @@ The launch command (substitute one of the three transports):
 
 # --- Context A: REMOTE (another host) ---
 # Note: POLECAT_ROOT here resolves on the REMOTE (WSL host) side, not locally —
-# the single-quoted ssh payload is deliberately unexpanded on this end.
-ssh wsl 'POLECAT_ROOT="${CLAUDE_PLUGIN_ROOT:-}"; \
-  if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then \
-    POLECAT_ROOT="$(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" -maxdepth 7 -type f -path "*aops*/polecat/cli.py" 2>/dev/null | head -1 | xargs -r dirname | xargs -r dirname)"; \
+# the single-quoted ssh payload is deliberately unexpanded on this end. Same
+# freshness-validated resolution as the LOCAL block above (aops_63985c64) —
+# every candidate must actually contain `resolve_isolated_workspace`, and
+# resolution fails closed (non-zero exit, no dispatch) if none do.
+ssh wsl '_pc_isolation_ok() { [ -f "$1/polecat/cli.py" ] && grep -q "resolve_isolated_workspace" "$1/polecat/cli.py" 2>/dev/null; }; \
+  POLECAT_ROOT="${CLAUDE_PLUGIN_ROOT:-}"; \
+  _pc_isolation_ok "$POLECAT_ROOT" || POLECAT_ROOT=""; \
+  if [ -z "$POLECAT_ROOT" ] && [ -n "$AOPS" ] && _pc_isolation_ok "$AOPS/aops"; then POLECAT_ROOT="$AOPS/aops"; fi; \
+  if [ -z "$POLECAT_ROOT" ]; then \
+    for _pc_candidate in $(find "$HOME/.claude/plugins" "$HOME/.gemini/config/plugins" -maxdepth 7 -type f -path "*aops*/polecat/cli.py" 2>/dev/null | xargs -r -n1 dirname | xargs -r -n1 dirname); do \
+      if _pc_isolation_ok "$_pc_candidate"; then POLECAT_ROOT="$_pc_candidate"; break; fi; \
+    done; \
   fi; \
-  if [ -z "$POLECAT_ROOT" ] || [ ! -f "$POLECAT_ROOT/polecat/cli.py" ]; then \
-    if [ -f "$AOPS/aops/polecat/cli.py" ]; then POLECAT_ROOT="$AOPS/aops"; else POLECAT_ROOT="$AOPS"; fi; \
-  fi; \
+  if [ -z "$POLECAT_ROOT" ] && [ -n "$AOPS" ] && _pc_isolation_ok "$AOPS"; then POLECAT_ROOT="$AOPS"; fi; \
+  if [ -z "$POLECAT_ROOT" ]; then echo "FATAL: no polecat/cli.py with workspace isolation found on remote host — refusing to dispatch." >&2; exit 1; fi; \
   tmux new-session -d -s pc-<id> \
   "uv run --project ${POLECAT_ROOT%/aops} $POLECAT_ROOT/polecat/cli.py run agy -p <project> -t <id> \
    2>&1 | tee /tmp/pc-<id>.log"'
