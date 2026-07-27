@@ -9,5 +9,13 @@
         "url": "${user_config.pkb_mcp_url}"
       }
     }
+  },
+  "agy": {
+    "mcpServers": {
+      "services": {
+        "command": "bash",
+        "args": ["${extensionPath}/scripts/run-mcp.sh"]
+      }
+    }
   }
 }
