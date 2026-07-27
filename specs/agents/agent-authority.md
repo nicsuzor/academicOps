@@ -114,6 +114,37 @@ frontmatter ground truth for these four agents until the harness is fixed and
 `tools` is restored. Restore `tools` on all four the moment upstream ships a
 fix that lets an explicit allowlist materialize MCP tools again.
 
+**Verified on the built/installed dist, repeated trials, one agent still
+fails.** Spawning each of the four via the `Agent` tool against the
+`make install-dev` marketplace (async spawns, notification-confirmed results,
+no worktree isolation — worktree spawns lose MCP entirely per upstream
+anthropics/claude-code#47733 and would confound this test): james 3/3 trials
+received `ToolSearch` and a working `mcp__services__pkb__status` call; marsha
+3/3; rbg 3/3 — all PASS, all via the deferred-tools → `ToolSearch` → direct
+call path described above. `pauli` failed 9/9 trials across three frontmatter
+variants (`isolation: "no"`, `isolation: false`, `isolation` omitted
+entirely) — no `mcp__*` tool and no `ToolSearch` ever materialized, only the
+harness's six built-ins. The `isolation: "no"` value was itself invalid
+against this schema (`<bool | "worktree">` — a quoted string is neither) and
+has been corrected by removing the field, matching the other three agents;
+that correction did not change the outcome. The remaining pauli-specific gap
+is unexplained: pauli is the only one of the four whose owning plugin
+(`aops-pkb`) ships its own `.mcp.json` declaring a `services` server (resolved
+via `userConfig.pkb_mcp_url`), which is otherwise identical in this
+environment to the session's global `services` MCP registration — a
+plugin-scoped-vs-global name collision is the leading suspect but is
+unconfirmed, since testing it further would require changing this developer's
+own `~/.claude.json` / `~/.claude/settings.json`, both outside this repository
+and out of bounds. Prior PKB records (`aops_b2b3e821`, `task_2c737b81`)
+describe this symptom as nondeterministic; these 21 trials (12 across
+james/marsha/rbg, 9 against pauli) instead show a fully deterministic split by
+agent, not a flaky one — treat the "nondeterministic" framing as superseded by
+this session's evidence until someone reproduces the flake directly. Until
+resolved, pauli itself cannot reach the PKB or any other MCP tool when run as
+a spawned subagent — only when driven directly by a user or top-level
+session — which blocks any workflow that depends on delegating a PKB write to
+a spawned pauli instance.
+
 ### Wildcards
 
 `skills` and `subagents` accept the single-element wildcard list `["*"]` meaning "any installed skill" / "any defined agent". The wildcard is an explicit, auditable declaration — the lint treats `["*"]` as a signal that the agent is intentionally open, not as a missing gate. Tools do not accept a wildcard: the `tools` list is always explicit.
