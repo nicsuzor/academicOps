@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +37,34 @@ from context import HookContext, normalize  # noqa: E402
 from result import Result, merge  # noqa: E402
 
 Handler = Callable[[HookContext], "Result | None"]
+
+
+def _log_fire(client: str, event: str, ctx: HookContext) -> None:
+    """Append one record to ``$AOPS_HOOK_LOG_PATH``, if set.
+
+    This is the primary evidence "did the framework actually fire" that
+    specs/polecat/tmux-interactive-driving.md names — distinct from "did the
+    client's UI render something." No env var, no record: nothing here sets
+    a default path or invents one, and nothing here may raise into the hook
+    it is trying to record — a logging failure must never break the call.
+    """
+    log_path = os.environ.get("AOPS_HOOK_LOG_PATH")
+    if not log_path:
+        return
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "client": client,
+        "event": event,
+        "session_id": ctx.session_id,
+        "tool": ctx.tool,
+    }
+    try:
+        path = Path(log_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except OSError:
+        pass
 
 
 def _load_handlers(event: str) -> list[Handler]:
@@ -135,6 +165,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     ctx = normalize(client, event, raw, _HOOKS_DIR)
+    _log_fire(client, event, ctx)
     handlers = _for_client(_load_handlers(event), client)
     results = [_run_handler(h, ctx) for h in handlers]
     # Whatever the handlers had to say, plus anything the framework broke on

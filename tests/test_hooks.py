@@ -675,6 +675,94 @@ def test_dispatch_bad_stdin_json_does_not_crash(injected_plugin):
 
 
 # ---------------------------------------------------------------------------
+# dispatch.py: $AOPS_HOOK_LOG_PATH — "did the framework actually fire"
+# ---------------------------------------------------------------------------
+#
+# polecat wires this env var (plugins/aops/polecat/cli.py) to
+# polecat-session-hooks.jsonl and specs/polecat/tmux-interactive-driving.md
+# names its absence a functional defect. Nothing in the hook runtime read the
+# var at all until this writer existed, so the file was never produced in any
+# session — proven here end to end, through the real dispatch subprocess.
+
+
+def test_dispatch_logs_a_hook_fire_when_the_path_is_set(injected_plugin, tmp_path):
+    log_path = tmp_path / "polecat-session-hooks.jsonl"
+    env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(log_path)}
+    result = _run_dispatch(
+        injected_plugin,
+        "claude",
+        "PreToolUse",
+        {"hook_event_name": "PreToolUse", "tool_name": "Bash", "session_id": "session-a"},
+        env=env,
+    )
+    assert result.returncode == 0
+    lines = log_path.read_text().splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["client"] == "claude"
+    assert record["event"] == "PreToolUse"
+    assert record["session_id"] == "session-a"
+    assert record["tool"] == "Bash"
+    assert "ts" in record
+
+
+def test_dispatch_logs_even_with_no_handlers_registered(injected_plugin, tmp_path):
+    """ "Did the framework fire" is a fact about dispatch running the event
+    through, not about whether a handler had something to say."""
+    log_path = tmp_path / "hooks.jsonl"
+    env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(log_path)}
+    result = _run_dispatch(injected_plugin, "claude", "Stop", {"hook_event_name": "Stop"}, env=env)
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+    assert len(log_path.read_text().splitlines()) == 1
+
+
+def test_dispatch_appends_one_line_per_fire(injected_plugin, tmp_path):
+    log_path = tmp_path / "hooks.jsonl"
+    env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(log_path)}
+    _run_dispatch(injected_plugin, "claude", "Stop", {"hook_event_name": "Stop"}, env=env)
+    _run_dispatch(
+        injected_plugin, "claude", "SubagentStop", {"hook_event_name": "SubagentStop"}, env=env
+    )
+    lines = log_path.read_text().splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[1])["event"] == "SubagentStop"
+
+
+def test_dispatch_does_not_log_an_event_with_no_wire_mapping(injected_plugin, tmp_path):
+    """agy's untranslated tool events (see clients.py) never reach a canonical
+    event at all — nothing fired, so nothing is recorded."""
+    log_path = tmp_path / "hooks.jsonl"
+    env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(log_path)}
+    result = _run_dispatch(injected_plugin, "agy", "SomeFutureEvent", {}, env=env)
+    assert result.returncode == 0
+    assert not log_path.exists()
+
+
+def test_dispatch_writes_nothing_when_the_path_is_unset(injected_plugin, tmp_path):
+    env = {k: v for k, v in os.environ.items() if k != "AOPS_HOOK_LOG_PATH"}
+    result = _run_dispatch(injected_plugin, "claude", "Stop", {"hook_event_name": "Stop"}, env=env)
+    assert result.returncode == 0
+    assert not list(tmp_path.glob("*.jsonl"))
+
+
+def test_dispatch_survives_an_unwritable_log_path(injected_plugin, tmp_path):
+    """A logging failure must never break the hook it is trying to record —
+    same fail-open contract as degraded.py's own once-per-session marker."""
+    blocked = tmp_path / "not-a-directory"
+    blocked.write_text("")
+    env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(blocked / "hooks.jsonl")}
+    result = _run_dispatch(
+        injected_plugin,
+        "claude",
+        "PreToolUse",
+        {"hook_event_name": "PreToolUse", "tool_name": "Bash"},
+        env=env,
+    )
+    assert result.returncode == 0
+
+
+# ---------------------------------------------------------------------------
 # degraded.py: the framework's own failures, given a reader
 # ---------------------------------------------------------------------------
 #
