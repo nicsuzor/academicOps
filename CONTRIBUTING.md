@@ -1,31 +1,41 @@
 # Contributing
 
-How academicOps itself is developed — repo setup, tests, and the release path. Researchers installing the plugin for their own work want [`README.md`](README.md) (repo root); this doc is for people developing academicOps.
+For people developing academicOps itself. Installing it for your own work starts
+at [`README.md`](README.md).
 
-## Development setup
+## Setup
 
 ```bash
 git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
-uv sync                    # install dependencies
-make install-hooks         # activate pre-commit hooks
+uv sync
+make install-dev   # build, install the local marketplace, activate pre-commit
 ```
 
-Or use `make install-dev` to build, install the plugin locally, and activate hooks in one step.
+## Before you change anything
 
-Run `./scripts/format.sh` manually before committing if pre-commit hooks aren't firing.
+Read [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) — it is authoritative for
+the layout, the plugin boundaries, and the constraints on both. Then
+[`.agents/CORE.md`](.agents/CORE.md) for the rules that bind agents and people
+working in this repository.
+
+## Checks
+
+```bash
+make test     # uv run pytest tests/
+make lint     # ruff check
+make format   # ruff format + dprint fmt
+make build    # must assemble every plugin for both clients without error
+make docker   # build the crew worker image
+```
+
+Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
+JSON, and TOML.
 
 ## Pull requests
 
-Open PRs against `dev`. Structure the PR body as a reviewer-decision aid so the maintainer can decide to approve in ~60s — the required sections (Summary, Posture, Why now / alignment, Change, Risk & blast radius, Sequencing, Verification) live in [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md), which GitHub pre-fills on hand-opened PRs.
+Open against `dev`. Structure the body as a reviewer-decision aid — the sections
+are pre-filled from
+[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
 
-## Testing and release
-
-```bash
-uv run pytest                              # fast unit tests (default, CI)
-make build                                 # build Docker image
-uv run pytest -m slow -n 0 --timeout=300   # container e2e + live session tests
-```
-
-Before releasing, build the image and run slow tests on a Docker-capable host. Releases are cut via release-please PRs on `dev`.
-
-For how plugin artifacts are built, packaged per platform, installed (including the `make dev`/`make install` local dev loop), and cleaned up, see [`specs/build-and-install.md`](specs/build-and-install.md).
+Releases are cut by release-please on `dev`; `CHANGELOG.md` is generated, never
+hand-edited.

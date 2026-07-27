@@ -40,6 +40,5 @@ claude plugin marketplace add nicsuzor/academicOps#dist
 claude plugin install aops@academicOps --config pkb_mcp_url="PKB_SERVER"
 claude plugin install aops-ts@academicOps
 claude plugin install aops-tools@academicOps
-#claude plugin install aops-cowork@academicOps
 # env vars don't resolve this early in the boot process.
 claude mcp add --transport http --scope local services "PKB_SERVER" 

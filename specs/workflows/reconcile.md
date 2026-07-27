@@ -4,11 +4,8 @@ title: GH ↔ PKB Reconcile (Close-the-Loop)
 type: spec
 category: workflow
 status: ready
-created: 2026-05-13
-updated: 2026-05-13
 tags: [spec, workflow, reconcile, github, pkb, closure-loop]
 related: [[feedback-loops]], [[pr-pipeline]], [[work-management]]
-supersedes: academicOps PR #985 (closed)
 ---
 
 # GH ↔ PKB Reconcile
@@ -34,7 +31,7 @@ Four gap types:
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.
 5. **`needs_user_call` has exactly one rendering consumer**: `/daily`'s "What Needs Attention → Needs your call" section. Writing the flag without that consumer is a `halt-on-failure` violation.
 6. **Reverse direction default**: comment-only on GH (cite PKB task ID + closing commit SHA). Auto-close the GH issue only for framework-owned repos and only when the task carries an explicit `closes_issues:` marker (not `gates_on:`).
-7. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write). _(This is the revision from PR #985: the prior design proposed `aops-core/lib/reconcile/` + `scripts/reconcile.py --forward/--reverse/--full` + cron wiring + a `pkb__complete_task` hook. Nic's review: "no scripts. trust agents to take care of this in a smart way, don't delegate to dumb bash." The script layer is removed.)_
+7. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write).
 8. **Implementing agent owns file layout, naming, invocation grammar, and verification approach.** This spec does not mandate a directory tree, file names, mode flags, or audit mechanism. Those are downstream decisions the agent makes when landing the work, defended by the constraints above.
 
 ## Invocation contexts
@@ -115,9 +112,3 @@ These are sequencing checkpoints, not implementation tickets. The implementing a
 
 - Where does an `issue-state.json` (analogous to `pr-state.json`) get populated? Candidate: the same cron that refreshes `pr-state.json`. Resolved separately — not blocking this spec.
 - Should `closes_issues` accept cross-repo references like `owner/repo#N`? Default no (single-repo numeric). Revisit if a use case emerges.
-
-## Provenance and revision history
-
-- **2026-05-13 — Originating session.** PKB task `aops-ea3eaa53`. PR #985 on `nicsuzor/academicOps` shipped a script-heavy version (`aops-core/lib/reconcile/` + `scripts/reconcile.py` + cron + hook). Nic closed with "no scripts. trust agents to take care of this in a smart way."
-- **2026-05-13 — Relocation to brain.** Spec moved here, script layer removed.
-- **2026-05-13 — Revision after `/learn`.** Pauli's forensic review (issues [#1001–#1004](https://github.com/nicsuzor/academicOps/issues/1004) on academicOps) flagged residual script-shaped grammar in the relocated spec: a mandated directory tree (`aops/skills/reconcile/{SKILL.md, references/...}`), CLI-flag-shaped mode names (`--backfill`), grep-based DRY verification, and over-specified JSON for prose-payload events. This revision removes all four: file layout left to the implementing agent (new constraint #8), modes named by English clause not flag, DRY verification described as a qualitative audit, event-log schema described in prose with the agent choosing concrete shape. The "no scripts" principle now extends to the grammar of the spec itself.

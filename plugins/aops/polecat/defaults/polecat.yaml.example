@@ -1,0 +1,39 @@
+# polecat operator config — EXAMPLE
+#
+# This file is an example and nothing more. Every line in it is commented out,
+# on purpose: it sets no defaults, and polecat has none. Copy it, uncomment
+# what you need, and fill in values that belong to your machine.
+#
+# Where polecat looks for the real file (plugins/aops/polecat/cli.py,
+# load_config): $AOPS_POLECAT_CONFIG if set, otherwise polecat.yaml under
+# $AOPS_SESSIONS. Having no config file at all is legal — every required value
+# can arrive from the environment instead.
+#
+# Two values are REQUIRED. `polecat run` exits non-zero naming the one that is
+# missing; it never guesses.
+#
+#   POLECAT_HOME  or  polecat_home below   (resolve_polecat_home)
+#   POLECAT_IMAGE or  docker.image below   (resolve_image)
+#
+# The environment variable wins over the file in both cases.
+
+# Local cache root for isolated clones, staging, and session logs. Must be on
+# the same filesystem as the repositories polecat clones — the clone hardlinks
+# objects. Shown here only to illustrate the shape.
+# polecat_home: /path/to/your/polecat-home
+
+# Container image reference. An image reference names a registry and an
+# account, which belong to your installation, so there is no value this file
+# could sensibly ship.
+# docker:
+#   image: your-registry/your-account/polecat:your-tag
+
+# Per-machine workspace paths are NOT read from this file. They live in
+# <polecat_home>/local.yaml (cli.py, load_local_overlay), which maps a
+# --project name to a checkout on this machine:
+#
+#   paths:
+#     your-project: /path/to/your/checkout
+#
+# Without a mapping, pass --repo-dir. Unresolvable means a loud failure; there
+# is no default workspace.

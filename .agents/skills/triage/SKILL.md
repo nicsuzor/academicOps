@@ -62,7 +62,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 - **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
 - **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
-- Resolve target session ID to `$AOPS_SESSIONS/transcripts/YYYY-MM/*-${SID}-*-claude-abridges.md`. Use `-full.md` only as a fallback if `-abridged.mf` is incomplete for your needs.
+- Resolve the target session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/`. Each session has a markdown, an HTML, and a JSON sidecar artifact — see [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#3-output-formats). Read the markdown.
 - **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
@@ -83,7 +83,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 
 When the transcript shows an artifact whose **premise** a sharp principal would have bounced — _"was this a good idea?"_ answered no; good, working, well-tested work done for a bad idea (canonical instance: a deterministic rig — regex/threshold/NLP/checklist — built for a call a smart agent should just make, `judgment-non-delegable`) — that nonetheless passed review, classify it as a **bad-premise approval** and score the miss **against the reviewer who approved it**, not only the author:
 
-- Identify the review surface that emitted PASS / MERGE / APPROVE on the bad premise (arch-fit / `/verify` / rbg / pauli). Each of those carries a forced step-0 **Premise Test** (canonical definition: [[premise-test.md]]); an approval means that forcing function was skipped or rationalised past — a reviewer failure, with test-passing as its expected surface, never an excuse.
+- Identify the review surface that emitted PASS / MERGE / APPROVE on the bad premise (arch-fit / `/verify` / rbg / pauli). Each of those carries a forced step-0 premise test — _was this worth building at all, in this shape?_ An approval means that forcing function was skipped or rationalised past — a reviewer failure, with test-passing as its expected surface, never an excuse.
 - The filed issue names the **approving reviewer/surface as the locus of the miss** (anonymised per the Privacy Rule) alongside the premise that should have been bounced — not just the authoring agent.
 - Generalised framing: this is "was this worth building at all, in this shape?", **not** an overengineering-only pattern. Overengineering (deterministic-rig-for-a-judgment-call) is one worked instance of the broader "dumb idea" class.
 
@@ -93,7 +93,7 @@ This makes the reviewer's miss visible and attributed: a slipped-through bad pre
 
 A fix that changes what an agent is directed to do — an instruction, persona edit, axiom, rule, hook, gate, or chokepoint — is a framework change, not a fix to the reviewed session. Retro does not apply these, at any tier, no matter how minor, obviously-correct, or narrowly-scoped to the one incident it looks from inside the review. This holds even under the `/learn that last task should have been xyz` invocation: "fix the immediate problem" there still means the reviewed session's own mistake, never the instructions that govern future sessions.
 
-Recurrence across multiple filed issues, not the salience of one transcript, is the evidence base for a framework change — and deciding on one, including tier selection (Braithwaite responsive regulation, [[enforcement.md]] §4), `{#enforcement-map-currency}` recording, and canonical-layer propagation, is a separate, deliberate pass outside retro. Retro's job stops at naming the gap precisely in the filed issue.
+Recurrence across multiple filed issues, not the salience of one transcript, is the evidence base for a framework change — and deciding on one — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro. Retro's job stops at naming the gap precisely in the filed issue.
 
 ### 3. Output Requirements
 
@@ -141,7 +141,7 @@ Produce a review in this exact format. Keep text concise:
 Review multiple sessions to identify systemic effectiveness and trends.
 
 > **Corpus selection — prompt mining vs trend reading.**
-> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. See `specs/summaries-schema.md` for full field reference. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content that summaries don't capture (agent reasoning, tool calls).
+> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. Read the field set off a sidecar itself; there is no schema doc. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content the sidecars don't capture (agent reasoning, tool calls).
 
 ### 1. Sampling & Reading
 
@@ -185,7 +185,7 @@ Analyze aggregate true/false rates, temporal trends, coverage, and cost-benefit.
 ## Confidence and Limitations
 ```
 
-Save the report to `~/.aops/sessions/reviews/<component>-trend-<date>.md`.
+Save the report to `$AOPS_SESSIONS/reviews/<component>-trend-<date>.md`.
 
 ---
 
@@ -246,10 +246,8 @@ Log results in the following format:
 
 ### 3. Execution Rules
 
-- **Task Creation**: Omit `severity` (or set `severity=0`) on tasks created during the sweep. Assigning non-zero severity to ordinary tasks is prohibited; severity belongs exclusively on target milestones (see [[../remember/references/TAXONOMY.md#severity-target-boundary]]). Set any status only from the canonical set ([[../remember/references/TAXONOMY.md#status-values-and-transitions]]); created tasks default to `inbox` and `ready` is computed downstream — do not hand-write it.
-- **Priority (leave at default; only Nic sets intent)**: Leave `priority` at the uncurated default band on swept tasks — never infer, estimate, or propagate a band ([[framework-conventions-summary#intent-authority]]). To make a swept task **more important**, raise the `stated_weight` of its `contributes_to` edge (Renooij-Witteman verbal scale; see [[wire-edges]] / [[../remember/references/TAXONOMY.md#target-nodes]]), never bump priority. Do not set `priority=0` (P0) on swept tasks unless it is deliberately calibrated under canonical rules (see [[../remember/references/TAXONOMY.md#p0-calibration-bar]]) and explicitly requested/justified.
-- **Verification**: Verify closed issues are successfully set to `state: closed`.
-- **Log Instance**: Create a datestamped task instance under template `epic-a0523a25` and append the cycle log details.
-- **Handoff**: Run verification after completing the cycle:
-  `Skill(skill="verify", args="Verify cycle <N> of /issue-sweep on epic-a0523a25.")`
+- **Task creation**: Omit `severity` on tasks created during the sweep — severity belongs on target milestones, not ordinary tasks. Created tasks default to `inbox`; `ready` is computed downstream, never hand-written.
+- **Priority**: Leave `priority` at its default on swept tasks. Never infer, estimate, or propagate a band — only the principal sets intent. To make a swept task more important, raise the `stated_weight` of its `contributes_to` edge, never the priority.
+- **Verification**: Confirm closed issues actually reached `state: closed`.
+- **Handoff**: After the cycle, `Skill(skill="verify", args="Verify cycle <N> of the issue sweep.")`
 - **Halt**: Exit after completing exactly one cycle.

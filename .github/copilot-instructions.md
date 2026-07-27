@@ -15,7 +15,7 @@ uv sync --dev
 uv run pytest
 
 # Run specific test file
-uv run pytest tests/hooks/test_router.py -v
+uv run pytest tests/test_hooks.py -v
 
 # Lint and format (MUST pass before committing)
 uv run ruff check --fix . && uv run ruff format .  # Python
@@ -29,24 +29,22 @@ uv run basedpyright
 
 ```
 academicOps/
-├── .agents/           # Agent instructions, rules, skills (READ-ONLY reference)
+├── .agents/           # Rules for agents working ON this repo (READ-ONLY reference)
 │   ├── rules/        # AXIOMS.md (inviolable principles)
-│   └── skills/       # Domain skills
+│   └── skills/       # Meta skills for this repo's own dev workflow
 ├── .github/
 │   ├── agents/       # Agent prompts (pr-reviewer, enforcer, mechanic, qa)
-│   └── workflows/    # GitHub Actions (17 workflows)
-├── aops/        # Framework core
-│   ├── hooks/        # Session lifecycle hooks
-│   ├── lib/          # Shared libraries (gates, hydration, tasks, etc.)
-│   ├── mcp_servers/  # MCP servers (tasks, memory)
-│   └── scripts/      # Utility scripts
-├── tests/            # All tests (unit, integration, e2e)
-│   ├── hooks/
-│   ├── integration/
-│   ├── lib/
-│   └── e2e/
-├── specs/            # Design specifications
-└── config/           # Configuration files
+│   └── workflows/    # GitHub Actions
+├── lib/               # Shared source, injected into plugins at build time
+│   ├── axioms/       # The axioms (single source of truth)
+│   ├── doctrine/      # Composable agent-instruction fragments
+│   ├── hooks/         # Shared hook runtime
+│   └── py/            # Shared Python helpers
+├── build/              # Build system (build.py, install.py, client adapters)
+├── plugins/            # Plugin sources: aops, pkb, ida, cope, ts, tools
+│   └── aops/polecat/  # Polecat container executor
+├── tests/              # Test suite, mirroring the source structure
+└── specs/              # Design specifications
 ```
 
 ## Coding Conventions
@@ -56,9 +54,9 @@ academicOps/
 - **Python 3.11+** required.
 - **Fail-fast**: No defaults, no fallbacks, no silent failures. Raise exceptions early.
 - **Type hints**: Use throughout. Pydantic for data models.
-- **Imports**: Use absolute imports from `aops/hooks/`.
+- **Imports**: Use absolute imports from `lib/hooks/`.
 - **Line length**: 100 characters (ruff configured).
-- **Tests**: Place in `tests/` at repo root, NOT inside `aops/`. Mirror the source structure.
+- **Tests**: Place in `tests/` at repo root, NOT inside `plugins/`. Mirror the source structure.
 
 ### Commit Messages
 
@@ -82,7 +80,7 @@ Closes: <task-id>
 ### What NOT to Do
 
 - Do NOT modify files under `.agents/rules/` — these are inviolable.
-- Do NOT add tests inside `aops/` — tests go in the root `tests/` directory.
+- Do NOT add tests inside `plugins/` — tests go in the root `tests/` directory.
 - Do NOT create backup or archive files — git is the backup system.
 - Do NOT disable pre-commit hooks or CI checks.
 - Do NOT modify `.github/workflows/` without explicit justification.

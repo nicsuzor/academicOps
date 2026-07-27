@@ -166,22 +166,19 @@ never held only in a session transcript or a PR body. The full unified worker
 return contract (evidence + output URL, one deliverable per claimed task)
 lives in [task-contract.md](task-contract.md) and is not restated here.
 
-## Cutover / grandfather policy
+## Grandfather policy
 
-This spec formalises a contract that was previously stated informally (a
-prose reminder in the exit-reflection hook and a mechanism bullet in
-[task-contract.md](task-contract.md)). Per the governing principle
+Per the governing principle
 ([enforcement.md](enforcement.md#governing-principle--agents-all-the-way-down),
 §0 "agents all the way down"), there is **no mechanical gate that judges
 handback _content_** — that would be a mechanical quality verdict, which the
 framework forbids. The obligation is carried two ways: (1) **agentically** —
-the exit-reflection reminder instructs every agent to hand back with checkable
-evidence or a stated failure reason (`aops/templates/ida-reminder.md`), and
+the `Stop` hook's reminder instructs every agent to hand back with checkable
+evidence or a stated failure reason (`plugins/aops/hooks/messages/answer-evidence.md`), and
 the boundary-check / QA-around reviewers judge whether the evidence actually
 holds (§Substance over form above); and (2) **structurally, presence-only** —
 `release_task`/`complete_task` make the required fields mandatory and advertise
-them as mandatory (non-empty checks; never content inspection). `epic_17aa5821`
-delivered (1); its mem field-mandatoriness follow-up delivers (2).
+them as mandatory (non-empty checks; never content inspection).
 
 **Tasks created before the presence-only field requirement ships are
 grandfathered.** Concretely: the mem gate, when it lands, evaluates a task's

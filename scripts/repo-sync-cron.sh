@@ -130,7 +130,7 @@ do_gha_sync() {
 do_transcript() {
     echo "==> Generating recent transcripts using new pipeline..."
     # Call the new transcripts runner. Do NOT pass --no-sync to ensure git commit/push runs.
-    PYTHONPATH="${AOPS}/aops/lib" uv run python -m transcripts.runner --recent || echo "Warning: transcript generation failed" >&2
+    PYTHONPATH="${AOPS}/lib/py" uv run python -m transcripts.runner --recent || echo "Warning: transcript generation failed" >&2
 }
 
 do_sync() {

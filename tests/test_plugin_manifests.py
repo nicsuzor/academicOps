@@ -17,7 +17,7 @@ def get_plugin_dirs():
 
     plugin_dirs = []
     for d in DIST_ROOT.iterdir():
-        if d.is_dir() and (d.name.endswith("-claude") or d.name.endswith("-antigravity")):
+        if d.is_dir() and (d.name.endswith("-claude") or d.name.endswith("-agy")):
             plugin_dirs.append(d)
     return sorted(plugin_dirs)
 
@@ -30,7 +30,7 @@ def test_plugin_validates_against_cli(plugin_dir):
     # Determine which CLI to use based on the plugin's target platform
     if plugin_dir.name.endswith("-claude"):
         cli_command = ["claude", "plugin", "validate", str(plugin_dir)]
-    elif plugin_dir.name.endswith("-antigravity"):
+    elif plugin_dir.name.endswith("-agy"):
         cli_command = ["agy", "plugin", "validate", str(plugin_dir)]
     else:
         pytest.skip(f"Unrecognized plugin platform for directory: {plugin_dir.name}")
@@ -88,7 +88,7 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     must resolve to a real file shipped inside that same plugin artifact.
 
     Structural-prevention regression test for the v0.5 core-plugin BLOCKER found
-    by marsha's QA review (epic_21042b5f): `aops/templates/hooks.template.json`
+    by marsha's QA review: `aops/templates/hooks.template.json`
     wired PreToolUse/Stop to `hooks/gate_dispatch.py`, a script that never
     shipped in the built core package (it moved to aops-jr in the jr/ida
     extraction, PR #2326, and core's own manifest was never repointed). Neither
@@ -99,7 +99,7 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     """
     if plugin_dir.name.endswith("-claude"):
         hooks_json_path = plugin_dir / "hooks" / "hooks.json"
-    elif plugin_dir.name.endswith("-antigravity"):
+    elif plugin_dir.name.endswith("-agy"):
         hooks_json_path = plugin_dir / "hooks.json"
     else:
         pytest.skip(f"Unrecognized plugin platform for directory: {plugin_dir.name}")

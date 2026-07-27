@@ -1,0 +1,8 @@
+{
+  "__base__": {
+    "name": "aops-cope",
+    "description": "Advisory in-session rule enforcement: PreToolUse pattern checks against the three-layer rule set (axioms, project rules, user rules)."
+  },
+  "claude": {},
+  "agy": {}
+}

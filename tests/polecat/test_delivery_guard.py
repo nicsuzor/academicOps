@@ -1,4 +1,4 @@
-"""Regression tests for polecat harness delivery guard (aops_651f7e5c).
+"""Regression tests for polecat harness delivery guard.
 
 Ensures a polecat run that ends with uncommitted changes or unpushed local commits
 exits FAILED and reverts any task status marked done/merge_ready in PKB back to in_progress.
@@ -12,13 +12,13 @@ from pathlib import Path
 from click.testing import CliRunner
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_POLECAT_DIR = str(_REPO_ROOT / "aops" / "polecat")
+_POLECAT_DIR = str(_REPO_ROOT / "plugins" / "aops" / "polecat")
 if _POLECAT_DIR not in sys.path:
     sys.path.insert(0, _POLECAT_DIR)
 
 from cli import (  # noqa: E402
     _get_git_head,
-    _revert_pkb_task_if_done,
+    _revert_task_if_terminal,
     _verify_workspace_delivery,
     main,
 )
@@ -27,11 +27,20 @@ from cli import (  # noqa: E402
 def _init_repo(path):
     path.mkdir(parents=True, exist_ok=True)
     subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], cwd=path, check=True, capture_output=True
+    )
     (path / "file.txt").write_text("initial\n")
     subprocess.run(["git", "add", "file.txt"], cwd=path, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "initial commit"], cwd=path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "initial commit"], cwd=path, check=True, capture_output=True
+    )
 
 
 def test_verify_workspace_delivery_clean_repo(tmp_path):
@@ -64,7 +73,9 @@ def test_verify_workspace_delivery_unpushed_commits(tmp_path):
     # Create local commit
     (repo / "file2.txt").write_text("new file\n")
     subprocess.run(["git", "add", "file2.txt"], cwd=repo, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "second commit"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "second commit"], cwd=repo, check=True, capture_output=True
+    )
 
     ok, err = _verify_workspace_delivery(repo, initial_head=initial_head)
     assert ok is False
@@ -80,7 +91,7 @@ def test_verify_workspace_delivery_non_git_dir(tmp_path):
     assert err is None
 
 
-def test_revert_pkb_task_if_done(monkeypatch):
+def test_revert_task_if_terminal(monkeypatch):
     calls = []
 
     def fake_call_tool(tool_name, args):
@@ -114,13 +125,16 @@ def test_revert_pkb_task_if_done(monkeypatch):
             name = params.get("name")
             args = params.get("arguments", {})
             res = fake_call_tool(name, args)
-            return FakeResponse(f'event: message\ndata: {json.dumps({"jsonrpc":"2.0","id":2,"result":res})}\n\n')
+            return FakeResponse(
+                f"event: message\ndata: {json.dumps({'jsonrpc': '2.0', 'id': 2, 'result': res})}\n\n"
+            )
         return FakeResponse("{}")
 
     import urllib.request
+
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
 
-    reverted = _revert_pkb_task_if_done("http://mock-pkb-url", "task-123")
+    reverted = _revert_task_if_terminal("http://mock-pkb-url", "task-123")
     assert reverted == "done"
     assert any("update_task" in c[0] and c[1].get("status") == "in_progress" for c in calls)
 
@@ -129,10 +143,13 @@ def test_run_fails_and_reverts_pkb_on_uncommitted_changes(tmp_path, monkeypatch)
     _repo = tmp_path / "repo"
     _init_repo(_repo)
 
+    monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
+    monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
+    monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
     monkeypatch.setattr("cli._image_available_locally", lambda image: True)
     monkeypatch.setattr("cli.load_config", lambda: {})
     monkeypatch.setattr("cli.load_local_overlay", lambda home: {})
-    monkeypatch.setattr("cli.setup_staging", lambda staging_dir, pkb_url: None)
+    monkeypatch.setattr("cli.setup_staging", lambda staging_dir, mcp_url, agent_home: None)
 
     real_run = subprocess.run
 
@@ -145,7 +162,10 @@ def test_run_fails_and_reverts_pkb_on_uncommitted_changes(tmp_path, monkeypatch)
     monkeypatch.setattr("cli.subprocess.run", fake_subprocess_run)
 
     reverted_tasks = []
-    monkeypatch.setattr("cli._revert_pkb_task_if_done", lambda url, task_id: reverted_tasks.append(task_id) or "done")
+    monkeypatch.setattr(
+        "cli._revert_task_if_terminal",
+        lambda url, task_id: reverted_tasks.append(task_id) or "done",
+    )
 
     runner = CliRunner()
     result = runner.invoke(main, ["run", "claude", "-d", str(_repo), "-t", "task-dirty"])

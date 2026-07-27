@@ -1,0 +1,21 @@
+# Fixture marketplace for tests/test_build.py — mirrors the shape of the real
+# build/marketplace.toml, pointed at build/testdata/plugins/ instead.
+
+name = "academicOps-fixtures"
+description = "Fixture marketplace for build/build.py tests."
+
+[owner]
+name = "Test Owner"
+email = "test@example.com"
+
+[[plugins]]
+directory = "alpha"
+name = "fixture-alpha"
+description = "Fixture plugin alpha — shared injection, includes, all manifest types, always-on axioms."
+category = "productivity"
+
+[[plugins]]
+directory = "beta"
+name = "fixture-beta"
+description = "Fixture plugin beta — minimal, no shared deps."
+category = "productivity"

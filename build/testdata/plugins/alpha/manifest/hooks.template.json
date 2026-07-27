@@ -1,0 +1,31 @@
+{
+  "__base__": {},
+  "claude": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\""
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "agy": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "\"${AGY_PLUGIN_ROOT}/hooks/hook.py\""
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

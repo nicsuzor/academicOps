@@ -57,8 +57,8 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             You are the Issue Sweep loop driver running in automation mode.
-            Read the unified survey skill for full instructions:
-              ${{ github.workspace }}/_aops/aops/skills/survey/SKILL.md
+            Read the unified triage skill for full instructions:
+              ${{ github.workspace }}/_aops/.agents/skills/triage/SKILL.md
 
             Execute in **sweep mode**.
 

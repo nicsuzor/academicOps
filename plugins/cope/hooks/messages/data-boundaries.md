@@ -1,0 +1,1 @@
+**data-boundaries**: this call touches a path that looks like a credential or secret (`.env`, `id_rsa`, `.netrc`, `.aws/credentials`, or similar). Confirm this content won't leave the session without authorisation for the specific surface it's headed to.

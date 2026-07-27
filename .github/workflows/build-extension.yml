@@ -12,7 +12,7 @@ on:
   #                                GitHub Release is cut `--prerelease`. Because
   #                                the version is a semver prerelease, semver-aware
   #                                consumers don't pick it as latest-stable (the
-  #                                stable-tag filter is scripts/version.py
+  #                                stable-tag filter is build/version.py
   #                                `_STABLE_TAG_RE`), so a client CHOOSES whether to
   #                                install a dev build — but see the marketplace
   #                                single-version caveat on the publish step below.
@@ -112,7 +112,6 @@ jobs:
       - name: Compute version
         id: version
         run: |
-          chmod +x scripts/version.py
           REF="${{ steps.ctx.outputs.ref }}"
           if [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
             # Tag-driven build — the tag IS the version, for BOTH stable (vX.Y.Z) and
@@ -128,7 +127,7 @@ jobs:
           else
             # Non-tag build (manual workflow_dispatch on a SHA): no tag to read, so
             # fall back to the computed dev version.
-            VERSION="$(uv run python scripts/version.py --get)"
+            VERSION="$(uv run python -m build.version --get)"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "::notice title=Version::$VERSION"
@@ -167,7 +166,7 @@ jobs:
           # $VERSION_FLAG must word-split into separate args
           # ("--set-version X.Y.Z"), so SC2086 quoting would break it.
           # shellcheck disable=SC2086
-          uv run python scripts/build.py $VERSION_FLAG
+          uv run python -m build.build $VERSION_FLAG
 
       - name: Publish distribution to dist
         # Runs for BOTH stable and prerelease builds. We DO ship dev builds to the

@@ -63,7 +63,7 @@ The body may contain exactly four kinds of content:
 3. **Output schema** — verdict states and required report shape; not methodology or worked examples.
 4. **Routing table** (orchestrators only) — a table, not prose, with no per-route rationale.
 
-Out of scope: skill matter (name the skill; never inline its procedure), documentation and reference material (an explicit exception to documentation-as-code — it belongs in specs/README/PKB), mechanics already enforced by the harness or hooks, paraphrases of `AXIOMS.md`/`CORE.md`, and authoring-time rationale or design history.
+Out of scope: skill matter (name the skill; never inline its procedure), documentation and reference material (an explicit exception to documentation-as-code — it belongs in specs/README/PKB), mechanics already enforced by the harness or hooks, paraphrases of the axioms, and authoring-time rationale or design history.
 
 The token-budget test for any passage: **if removed, would the agent behave differently on the median task?** No → cut or relocate. Passages that only matter on rare tasks belong in the relevant skill, not the always-loaded identity file.
 

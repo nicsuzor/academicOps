@@ -203,7 +203,7 @@ Practising what we preach:
 
 1. **Domain expertise injection.** Without domain knowledge, the reviewer produces generic methodology feedback. How do we inject field-specific knowledge? (Literature search? User-provided context? Retrieval from Zotero library?)
 2. **Reviewer model selection.** Same model reviewing its own species' output may share systematic blind spots. When does the thorough level warrant a different model?
-3. **Relationship to existing peer-review workflow.** Does this complement or compete with `aops-tools/skills/peer-review/SKILL.md`? The peer-review workflow handles editorial-style review; this spec handles conceptual/structural review. They may compose (peer-review as a light-level instantiation) or they may need explicit scoping to avoid overlap.
+3. **Relationship to existing peer-review workflow.** Does this complement or compete with `plugins/tools/skills/peer-review/SKILL.md`? The peer-review workflow handles editorial-style review; this spec handles conceptual/structural review. They may compose (peer-review as a light-level instantiation) or they may need explicit scoping to avoid overlap.
 
 ## Future Work
 
@@ -218,4 +218,4 @@ Practising what we preach:
 - [[non-interactive-c1dda99b]] -- agent lifecycle and Phase 1 decomposition protocol
 - [[polecat-swarms]] -- execution layer; consumes reviewed artifacts
 - [[research-decomposition]] -- downstream domain application (research project planning instantiates this workflow)
-- [[aops/skills/decompose/SKILL.md]] -- existing general decomposition workflow
+- [[plugins/pkb/skills/decompose/SKILL.md]] -- existing general decomposition workflow

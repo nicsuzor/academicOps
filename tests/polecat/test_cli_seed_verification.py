@@ -2,8 +2,7 @@
 
 Background: `polecat run agy -t <task_id>` has repeatedly reproduced as a
 silent no-op — a container that starts, exits cleanly, and never actually
-delivers the seeded `/pull <task_id>` prompt to agy (aops_5e7c6cc0,
-aops_c40125ba). Because `subprocess.run(cmd)`'s return code was previously
+delivers the seeded `/pull <task_id>` prompt to agy. Because `subprocess.run(cmd)`'s return code was previously
 discarded entirely, and there was no check that the run actually did
 anything, a live/idle/dropped-seed container was indistinguishable from a
 completed task at the `polecat run` process-exit level.
@@ -21,8 +20,9 @@ from pathlib import Path
 from click.testing import CliRunner
 
 repo_root = Path(__file__).resolve().parent.parent.parent
-if str(repo_root) not in sys.path:
-    sys.path.insert(0, str(repo_root))
+_plugins_dir = str(repo_root / "plugins")
+if _plugins_dir not in sys.path:
+    sys.path.insert(0, _plugins_dir)
 
 from aops.polecat import cli  # noqa: E402
 
@@ -95,9 +95,11 @@ def _base_mocks(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
     monkeypatch.setattr(cli, "load_config", lambda: {})
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
-    monkeypatch.setattr(cli, "setup_staging", lambda staging_dir, pkb_url: None)
+    monkeypatch.setattr(cli, "setup_staging", lambda staging_dir, mcp_url, agent_home: None)
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("AOPS", str(tmp_path / "repo"))
+    monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
+    monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 

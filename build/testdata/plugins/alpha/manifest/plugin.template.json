@@ -1,0 +1,8 @@
+{
+  "__base__": {
+    "name": "fixture-alpha",
+    "description": "Fixture plugin alpha."
+  },
+  "claude": {},
+  "agy": {}
+}

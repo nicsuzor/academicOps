@@ -5,11 +5,7 @@ type: spec
 status: accepted
 tier: core
 depends_on: []
-supersedes: [aops-junior-container-plan-section-3]
-related: [aops-18572bc0, task-ddb2fc23, epic-4234682b, aops-04cad256]
 tags: [spec, polecat, dispatch, containers, ssh, tmux]
-created: 2026-05-21
-revision: 1
 ---
 
 # Polecat dispatch from a containerised orchestrator — SSH-tmux
@@ -59,7 +55,7 @@ Per-dispatch:
 
 ## Non-goals
 
-- Not extending polecat itself with a "remote dispatch" mode. That's `task-ddb2fc23` territory; this spec uses unmodified `polecat run`.
+- Not extending polecat itself with a "remote dispatch" mode — this spec uses unmodified `polecat run`.
 - Not solving multi-host fan-out. One host per orchestrator-container relationship.
 - Not replacing existing crew or direct polecat invocation. This is an additional dispatch path for the in-container case only.
 
@@ -70,7 +66,7 @@ The dispatch is fit if:
 - A polecat dispatched this way completes after the parent container is killed (not paused — `docker kill`'d).
 - Worktree and session artefacts land at the canonical host paths (`$POLECAT_HOME/polecat/<task-id>`, `$AOPS_SESSIONS/...`), identical to a host-initiated dispatch.
 - The orchestrator can re-discover and re-attach to the tmux session by name after restart.
-- No code path in `aops-jr/polecat/cli.py` is modified.
+- No code path in `plugins/aops/polecat/cli.py` is modified.
 
 ## Open questions
 
@@ -80,6 +76,5 @@ The dispatch is fit if:
 
 ## Related kill-list
 
-- Supersedes §3 of `aops-junior-container-plan` (host-side dispatcher daemon vs DinD trade-off — now resolved in favour of host-side SSH dispatch).
-- `task-ddb2fc23` ("spawn workers on remote hosts") retains independent motivation for the laptop→WSL daemon case but no longer needs to cover from-container dispatch.
+- A separate "spawn workers on remote hosts" effort retains independent motivation for the laptop→WSL daemon case but no longer needs to cover from-container dispatch.
 - No code to remove — DinD path was never built. Only the design line is being closed.

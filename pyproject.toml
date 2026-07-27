@@ -31,7 +31,7 @@ notify = [
 anthropic = ["anthropic>=0.75.0"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["lib", "skills", "tests", "scripts"]
+packages = ["lib", "tests", "scripts", "plugins/aops"]
 
 [build-system]
 requires = ["hatchling"]
@@ -105,22 +105,17 @@ exclude = [
   "archived/",
   "tests/",
   "**/__pycache__",
-  "**/build",
+  "build/testdata",
   "**/dist",
   "**/venv",
-  "aops/*.md", # Exclude markdown docs
-  "aops/*.conf", # Exclude config files
-  "aops/uv.lock", # Exclude lock file
-  "aops/agents/", # Exclude non-code agent configs
-  "aops/commands/", # Exclude command specs
-  "aops/policies/", # Exclude policy docs
-  "aops/scripts/", # Exclude scripts
-  "aops/skills/", # Exclude skill definitions (YAML)
-  "aops-tools/skills/", # Exclude aops-tools skill definitions (scientific scripts)
+  "plugins/*/agents/", # Exclude non-code agent configs
+  "plugins/*/commands/", # Exclude command specs
+  "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
+  "plugins/pkb/workflows/", # Exclude process-template markdown
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["aops", "aops/lib", "aops/hooks"]
+extraPaths = ["plugins/aops", "plugins/cope/hooks", "lib/py", "lib/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:
@@ -166,9 +161,9 @@ reportImplicitOverride = false
 reportUnusedVariable = false
 reportUnusedImport = false
 [tool.pytest.ini_options]
-testpaths = ["tests", "aops/tests", "aops-jr/tests", "reflexes-cope/tests"]
+testpaths = ["tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "aops-jr", "aops-jr/hooks", "aops", "aops/hooks", "aops/lib", "reflexes-cope"]
+pythonpath = [".", "lib/py"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -187,4 +182,4 @@ markers = [
 ]
 
 [project.scripts]
-polecat = "aops.polecat.cli:main"
+polecat = "aops.polecat.cli:main" # resolves via [tool.hatch.build.targets.wheel] packages = [..., "plugins/aops"]

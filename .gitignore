@@ -26,6 +26,7 @@ __pycache__/
 .Python
 dist/
 build/
+!/build/
 develop-eggs/
 downloads/
 eggs/
@@ -283,6 +284,7 @@ Thumbs.db
 # Build outputs
 # ============================================================================
 build/
+!/build/
 out/
 target/
 
@@ -336,7 +338,7 @@ data/views/today-priorities-*.md
 reference-graph.json
 reference-graph.csv
 
-# Generated marketplace.json (produced by build.py from templates/marketplace.json)
+# Generated marketplace.json (produced by build/build.py from build/marketplace.toml)
 .claude-plugin/marketplace.json
 
 streamlit_log.txt

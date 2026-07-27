@@ -39,24 +39,31 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 
 ### 1. Structural prevention (the only mechanical layer)
 
-- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `aops/polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
-- **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`aops/polecat/defaults/polecat.yaml.example`](../../aops/polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
+- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, [`plugins/aops/polecat/cli.py`](../../plugins/aops/polecat/cli.py)), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
+- **`polecat.yaml`** (loaded from `$AOPS_POLECAT_CONFIG` or `$AOPS_SESSIONS/polecat.yaml`, overridable per-machine via `<polecat_home>/local.yaml`) is the operator config for session configuration: cache root, container image, project-path map. No built-in fallback: a missing required value (`polecat_home`, `docker.image`) is a hard fail, not a silent default.
 
 ### 2. The harness delivery channel (reminder, not gate)
 
-The core hook surface carries structural prevention (`SessionStart` credential isolation) in [`aops/hooks/router.py`](../../aops/hooks/router.py). Face discipline reminders live in the optional `aops-jr` plugin ([`aops-jr/hooks/router.py`](../../aops-jr/hooks/router.py) and [`aops-jr/hooks/gate_dispatch.py`](../../aops-jr/hooks/gate_dispatch.py)), wired to `SubagentStop` / `UserPromptSubmit` / `PostToolUse` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). The `Stop`-time handover reminder lives in `aops-jr`'s `exit_reflection_reminder` gate ([`aops-jr/hooks/gates/exit_reflection.py`](../../aops-jr/hooks/gates/exit_reflection.py)). Advisory CoPE policy evaluation lives in the optional `reflexes-cope` plugin ([`reflexes-cope/hooks/gates/reflexes_evaluator.py`](../../reflexes-cope/hooks/gates/reflexes_evaluator.py)), which evaluates 15 axiom rule files against hook events and returns overridable advisory warnings only (`warn` outcome, no autonomous deny/block disposition), failing open on any evaluator outage. It injects static templates as non-blocking context:
+Every plugin hook shares one runtime, `lib/hooks/`, injected into each plugin at
+build time (`ARCHITECTURE.md`, Hooks). The complete set:
 
-- **`hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
-- **`handover.md`** / **`honesty.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative).
-- **`verify.md`** — on PostToolUse (Agent tool execution): remind the agent to verify subagent outputs.
+- **`aops`**, `SessionStart` ([`plugins/aops/hooks/handlers.py`](../../plugins/aops/hooks/handlers.py), `session_start`) — credential isolation for container sessions, plus a report (never a value) of the OpenTelemetry configuration.
+- **`aops`**, `SubagentStop` (`require_evidence_from_subagent`) — reminds the parent agent to require evidence before accepting a subagent's result.
+- **`aops`**, `Stop` (`present_checkable_evidence`) — reminds a subagent to present its answer with checkable evidence.
+- **`pkb`**, `UserPromptSubmit` ([`plugins/pkb/hooks/handlers.py`](../../plugins/pkb/hooks/handlers.py)) — injects relevant PKB context, or instructs the agent to search for it.
+- **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`), runs the built-in syntactic detectors (`detectors.py`) for whichever axiom slugs are loaded, and injects a short, rule-naming advisory on the first match. Advisory only — a `warn`-outcome `Result` (additional context), never a permission decision.
+- **`ts`**, `SessionStart` ([`plugins/ts/hooks/tailscale-up.sh`](../../plugins/ts/hooks/tailscale-up.sh)) — `tailscale up` bring-up for remote/cloud sessions.
 
-Nothing in this layer produces a verdict. It cannot stop an agent from exiting, and it does not check whether the agent actually did what the reminder asked — that is the executing agent's own judgment call, backstopped by the review lenses below, not by the hook.
-
-**Target vs current, named explicitly:** the ratified plan (§1) envisions the harness eventually _dispatching_ the reflection/audit subagent directly on Stop, where the harness supports it, rather than only injecting reminder text. `router.py` does not do this yet — it injects text only. This is an open implementation gap against the ratified design, not a design ambiguity; flagging it here rather than asserting it as already built.
+Every agent-visible string a hook emits comes from a markdown file next to it
+(`hooks/messages/*.md`), editable without touching code. Nothing in this layer
+produces a verdict. None of it can stop an agent from exiting, and none of it
+checks whether the agent actually did what the reminder asked — that is the
+executing agent's own judgment call, backstopped by the review lenses below, not
+by the hook.
 
 ### 3. Claude Code's native auto-mode classifier
 
-A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`aops/polecat/defaults/claude-settings.json`](../../aops/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
+A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`plugins/aops/polecat/defaults/claude-settings.json`](../../plugins/aops/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
 
 ### 4. Task-graph boundary — the primary enforcement point
 
@@ -64,7 +71,7 @@ A model-based (not deterministic) tool-call classifier built into the harness, c
 
 ### 5. Task-boundary review — three pauli-specified lenses
 
-- **pauli** (pre-hoc) — the premise standard: the idea is sound, elegant, and strongly aligned with the project's strategic aims when evaluated in the full context. The `decompose` skill (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md)) always emits this as a standing, early-blocking task node **at decomposition time** — the rest of the epic depends on it clearing. The former standalone dispatch-time "premise gate" (a two-judge hard-refuse ceremony run at `/pull`/`/dispatch`) is retired; decomposition carries this judgment instead, and dispatch surfaces trust the planner's decomposition rather than re-judging it.
+- **pauli** (pre-hoc) — the premise standard: the idea is sound, elegant, and strongly aligned with the project's strategic aims when evaluated in the full context. The `decompose` skill (see [`plugins/pkb/skills/decompose/SKILL.md`](../../plugins/pkb/skills/decompose/SKILL.md)) always emits this as a standing, early-blocking task node **at decomposition time** — the rest of the epic depends on it clearing. The former standalone dispatch-time "premise gate" (a two-judge hard-refuse ceremony run at `/pull`/`/dispatch`) is retired; decomposition carries this judgment instead, and dispatch surfaces trust the planner's decomposition rather than re-judging it.
 - **rbg** — rules were followed: boundary review of the task contract and handback only (inputs/outputs), never the transcript. Always emitted as a standing task node blocking epic acceptance.
 - **marsha** (post-hoc) — the task does what it was supposed to and does it _well_: delivered artifact vs. the original aim and acceptance criteria, bar is excellent, not passing. Always emitted as a standing task node blocking epic acceptance.
 
@@ -82,7 +89,7 @@ The git PR pipeline (`.github/workflows/`: `rbg-review.yml`, `agent-qa.yml`, `ag
 
 Two flows, deliberately separated (witness vs. judge), so the volume and direction of framework change is governed by cross-incident pattern, not by the salience of the most recent failure:
 
-1. **File a bug** (`/learn`, [`aops/commands/learn.md`](../../aops/commands/learn.md)) — an agent that hits friction files the forensic facts (what happened, root-cause category, rule already in place if any, impact) immediately, unilaterally, with no fix proposed. One friction = one filing.
+1. **File a bug** (`/learn`) — an agent that hits friction files the forensic facts (what happened, root-cause category, rule already in place if any, impact) immediately, unilaterally, with no fix proposed. One friction = one filing.
 2. **Improve the framework** (`/issue-sweep` / the `triage` skill's sweep mode) — a detached pass over the accumulated issue queue, on a cadence the user sets, classifies each issue and only proposes a mechanism add/escalation where ≥3 recurrences (or explicit user direction) justify it. The user gates every disposition.
 
 A single incident that is a **bug** (broken skill routing, a wrong path, an incomplete instruction) gets fixed immediately from one report. A single incident that is an **escalation proposal** (a new gate, a new axiom, a heavier mechanism) gets logged and waits for the pattern.

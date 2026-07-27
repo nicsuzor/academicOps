@@ -36,7 +36,7 @@ jobs:
         run: |
           mkdir -p ~/.claude
           # Link the skills directory to ~/.claude/skills as expected by framework
-          ln -s $GITHUB_WORKSPACE/aops/skills ~/.claude/skills
+          ln -s $GITHUB_WORKSPACE/plugins/aops/skills ~/.claude/skills
           ls -l ~/.claude/skills
 
       - name: Run pytest

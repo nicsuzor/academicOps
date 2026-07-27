@@ -27,4 +27,4 @@ Triages GitHub issues by delegating to the `triage` skill in `sweep` mode. Triag
 ## Dispatch
 
 Delegate the sweep execution to Pauli (issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work inside Pauli's existing charter — see `specs/agents/pauli.md`):
-`Agent(subagent_type='pauli', prompt='Run triage skill in sweep mode with [user arguments/focus]')`
+`Agent(subagent_type='aops-pkb:pauli', prompt='Run triage skill in sweep mode with [user arguments/focus]')`

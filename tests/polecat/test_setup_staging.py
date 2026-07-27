@@ -3,7 +3,7 @@
 setup_staging() used to copy the host's ~/.gemini/settings.json (and
 ~/.gemini/antigravity-cli/settings.json) verbatim into every container,
 leaking live mcpServers API keys, internal-only URLs, and host hook
-command paths to every polecat worker (aops_624a462e). It must now
+command paths to every polecat worker. It must now
 regenerate a minimal, secret-free settings.json instead.
 """
 
@@ -14,8 +14,9 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
+if _PLUGINS_DIR not in sys.path:
+    sys.path.insert(0, _PLUGINS_DIR)
 
 from aops.polecat.cli import setup_staging  # noqa: E402
 
@@ -26,8 +27,8 @@ LEAKED_HOST_PROJECT_PATH = "/home/nic/src/some-other-private-project"
 
 
 @pytest.fixture
-def fake_gemini_home(tmp_path, monkeypatch):
-    """A fake host ~/.gemini containing exactly the shape that leaked live."""
+def fake_gemini_home(tmp_path):
+    """A fake $POLECAT_AGENT_HOME containing exactly the shape that leaked live."""
     home = tmp_path / "fake_home"
     gemini = home / ".gemini"
     gemini.mkdir(parents=True)
@@ -67,15 +68,14 @@ def fake_gemini_home(tmp_path, monkeypatch):
     (agy / "antigravity-oauth-token").write_text("fake-agy-oauth-token")
     (agy / "installation_id").write_text("fake-agy-installation-id")
 
-    monkeypatch.setattr(Path, "home", lambda: home)
-    return home
+    return gemini
 
 
 def test_gemini_settings_regenerated_without_secrets(fake_gemini_home, tmp_path):
     staging_dir = tmp_path / "staging"
     staging_dir.mkdir()
 
-    setup_staging(str(staging_dir), pkb_url=None)
+    setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
     staged_raw = (staging_dir / ".gemini" / "settings.json").read_text()
     assert LEAKED_API_KEY not in staged_raw
@@ -92,7 +92,7 @@ def test_antigravity_settings_regenerated_without_secrets(fake_gemini_home, tmp_
     staging_dir = tmp_path / "staging"
     staging_dir.mkdir()
 
-    setup_staging(str(staging_dir), pkb_url=None)
+    setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
     staged_raw = (staging_dir / ".gemini" / "antigravity-cli" / "settings.json").read_text()
     assert LEAKED_INTERNAL_URL not in staged_raw
@@ -109,7 +109,7 @@ def test_credential_files_still_replicated(fake_gemini_home, tmp_path):
     staging_dir = tmp_path / "staging"
     staging_dir.mkdir()
 
-    setup_staging(str(staging_dir), pkb_url=None)
+    setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
     gemini_dst = staging_dir / ".gemini"
     assert (gemini_dst / "oauth_creds.json").read_text() == '{"access_token": "fake-oauth-token"}'

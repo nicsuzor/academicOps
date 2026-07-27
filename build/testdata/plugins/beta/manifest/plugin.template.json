@@ -1,0 +1,8 @@
+{
+  "__base__": {
+    "name": "fixture-beta",
+    "description": "Fixture plugin beta — minimal, no shared deps."
+  },
+  "claude": {},
+  "agy": {}
+}
