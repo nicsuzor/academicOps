@@ -21,6 +21,7 @@ tools:
   - Edit
   - Bash
   - mcp__services__pkb__*
+  - mcp__plugin_aops-pkb_services__pkb__*
 ---
 
 # Pauli — Memory and Strategy
