@@ -15,7 +15,7 @@ flowchart TD
     R -->|fully set| D
 
     C2 --> D
-    D{"rules.load() —<br/>cached per process"} --> E1["Layer 1: axioms/*.md<br/>(the floor, always present)"]
+    D{"rules.load() —<br/>cached per process,<br/>trigger: always_on only"} --> E1["Layer 1: axioms/*.md<br/>(the floor, always present)"]
     D --> E2["Layer 2: $CWD/.agents/rules/*.md<br/>(project-local, optional)"]
     D --> E3["Layer 3: $ACA_DATA/.agents/rules/*.md<br/>(user-scoped, optional)"]
     E1 --> F[merged slug set, each with its rule body]
@@ -37,9 +37,11 @@ flowchart TD
     N --> O["ephemeralMessage injected<br/>(agy's only response shape)"]
 ```
 
-A missing or unreadable layer 2 or layer 3 directory degrades silently to whatever did load; layer 1 (the shipped `axioms/`) is always present. A later layer can only add a slug not already claimed — it can never override an axiom's entry, so a project or user rule file cannot weaken the floor by reusing its filename.
+A missing or unreadable layer 2 or layer 3 directory degrades to whatever did load; layer 1 (the shipped `axioms/`) is always present. A later layer can only add a slug not already claimed — it can never override an axiom's entry, so a project or user rule file cannot weaken the floor by reusing its filename.
 
-Layer 1 counts only the `axioms/*.md` files declaring `trigger: always_on`; the index and companion docs shipped in that directory are reference material, not rules — the same line `build/axioms.py` draws when it emits a client's native rule mechanism. Layers 2 and 3 take every `*.md` as written: a project or user owns its `.agents/rules/` directory, and a rule written there without frontmatter is still a rule.
+Every layer counts only the `*.md` files declaring `trigger: always_on` — the same line `build/axioms.py` draws when it emits a client's native rule mechanism. A rules directory holds reference material as well as policies: an index, a path table, a note-taking convention, a stub. Only a policy can be classified, so only a marked file is sent to the evaluator.
+
+Nothing is dropped quietly. A file skipped for want of the marker is named on stderr once per load, with the layer's directory — except in the shipped `axioms/`, whose non-rule files (`README.md`, `AXIOMS-REVIEW.md`) are a known set nobody in the session can act on. `$ACA_DATA` set to a path with no `.agents/rules/` directory gets a line too: setting the variable is a claim that the layer exists. `$ACA_DATA` unset, and a project with no `.agents/rules/` directory, are ordinary absences and say nothing.
 
 ## What this plugin provides
 
@@ -96,7 +98,7 @@ A `userConfig` value wins over the plain variable when both are set. Claude Code
 | `COPE_EVALUATOR_MODEL`                            | Model identifier sent with each request.                                                                                                                                              | none — required alongside the URL.                               |
 | `COPE_EVALUATOR_API_KEY`                          | Bearer token for the endpoint. Omit it for a local server that needs no auth; the `Authorization` header is then not sent at all.                                                     | none — optional, and its absence is not an error.                |
 | `COPE_EVALUATOR_TIMEOUT`                          | Seconds allowed for the whole evaluation of one tool call, across all rules. The longest a tool call can be held up. Unparseable or non-positive values fall back with a stderr line. | 5.0 seconds. Not an endpoint or a credential — a latency budget. |
-| `ACA_DATA`                                        | Path to the PKB repo; enables layer 3 (`$ACA_DATA/.agents/rules/*.md`).                                                                                                               | none — absence just means layer 3 doesn't load.                  |
+| `ACA_DATA`                                        | Path to the PKB repo; enables layer 3 (`$ACA_DATA/.agents/rules/*.md`). Set to a path with no such directory, cope says so on stderr.                                                 | none — absence just means layer 3 doesn't load.                  |
 
 `ACA_DATA` is environment-only: it is shared with the rest of the framework rather than owned by this plugin, so cope declares no `userConfig` option for it.
 

@@ -159,10 +159,14 @@ def test_rule_carries_its_body_with_frontmatter_stripped(plugin_root, tmp_path):
     assert "description:" not in body
 
 
-def test_rule_without_frontmatter_keeps_its_whole_text_as_the_body(plugin_root, tmp_path):
+def test_rule_body_survives_frontmatter_carrying_only_the_marker(plugin_root, tmp_path):
+    """Frontmatter with no description still strips cleanly — the body is the
+    policy, and it must not arrive with a stray `---` or the marker line."""
     cwd = tmp_path / "project"
     (cwd / ".agents" / "rules").mkdir(parents=True)
-    (cwd / ".agents" / "rules" / "house-style.md").write_text("Sentence case in headings.\n")
+    (cwd / ".agents" / "rules" / "house-style.md").write_text(
+        "---\ntrigger: always_on\n---\n\nSentence case in headings.\n"
+    )
     loaded = rules.load(plugin_root, cwd)
     assert loaded["house-style"].body == "Sentence case in headings."
 
@@ -222,7 +226,7 @@ def test_layer_cannot_override_an_axiom(plugin_root, tmp_path, monkeypatch):
     cwd = tmp_path / "project"
     (cwd / ".agents" / "rules").mkdir(parents=True)
     (cwd / ".agents" / "rules" / "bounded-execution.md").write_text(
-        "---\ntrigger: manual\ndescription: attempted override\n---\n\nWeaker body.\n"
+        "---\ntrigger: always_on\ndescription: attempted override\n---\n\nWeaker body.\n"
     )
     loaded = rules.load(plugin_root, cwd)
     assert loaded["bounded-execution"].layer == 1
@@ -256,17 +260,95 @@ def test_layer1_loads_only_always_on_from_the_real_axioms_dir(tmp_path, monkeypa
     assert "AXIOMS-REVIEW" not in loaded
 
 
-def test_layer2_does_not_require_always_on_frontmatter(plugin_root, tmp_path, monkeypatch):
-    """A project owns its .agents/rules/ directory; a rule written there
-    without frontmatter is still a rule, and dropping it would be a silent
-    weakening of the layer the project controls."""
+def test_layer2_requires_always_on_and_names_what_it_skipped(
+    plugin_root, tmp_path, monkeypatch, capsys
+):
+    """A project's .agents/rules/ holds reference material as well as policies
+    — a path table, a note-taking convention, an empty stub. Only a policy can
+    be classified, so only the marked file is sent to the evaluator. The rest
+    are named on stderr: the drop is the point, being quiet about it is not."""
     monkeypatch.delenv("ACA_DATA", raising=False)
     cwd = tmp_path / "project"
-    (cwd / ".agents" / "rules").mkdir(parents=True)
-    (cwd / ".agents" / "rules" / "house-style.md").write_text("Sentence case in headings.\n")
+    rules_dir = cwd / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    (rules_dir / "costly-ops-approval.md").write_text(
+        "---\ntrigger: always_on\ndescription: project rule\n---\n\nAsk first.\n"
+    )
+    (rules_dir / "where-things-live.md").write_text("| dir | holds |\n| --- | ----- |\n")
+    (rules_dir / "empty.md").write_text("")
+
     loaded = rules.load(plugin_root, cwd)
-    assert "house-style" in loaded
-    assert loaded["house-style"].layer == 2
+    assert set(loaded) == {"bounded-execution", "costly-ops-approval"}
+
+    err = capsys.readouterr().err
+    assert "where-things-live.md" in err
+    assert "empty.md" in err
+    assert "trigger: always_on" in err
+    assert str(rules_dir) in err
+    assert "costly-ops-approval.md" not in err  # the rule that loaded is not a complaint
+
+
+def test_layer3_requires_always_on_and_names_what_it_skipped(
+    plugin_root, tmp_path, monkeypatch, capsys
+):
+    """Same contract in the user's own layer, which is where the reference
+    documents actually accumulate."""
+    aca_data = tmp_path / "pkb"
+    rules_dir = aca_data / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    (rules_dir / "data-boundaries.md").write_text(
+        "---\ntrigger: always_on\ndescription: user rule\n---\n\nBody.\n"
+    )
+    (rules_dir / "note-conventions.md").write_text("---\ndescription: how I file notes\n---\n\nx\n")
+    monkeypatch.setenv("ACA_DATA", str(aca_data))
+
+    loaded = rules.load(plugin_root, tmp_path / "project")
+    assert set(loaded) == {"bounded-execution", "data-boundaries"}
+
+    err = capsys.readouterr().err
+    assert "note-conventions.md" in err
+    assert str(rules_dir) in err
+
+
+def test_layer1_skipped_index_docs_are_not_reported(plugin_root, tmp_path, monkeypatch, capsys):
+    """The shipped axioms/ directory's non-rule files are a known, curated set
+    nobody in the session can act on. Naming them on every tool call would be
+    noise, which is how a real report gets ignored."""
+    monkeypatch.delenv("ACA_DATA", raising=False)
+    (plugin_root / "axioms" / "README.md").write_text(
+        "---\ndescription: Index of the axioms.\n---\n\nNot a rule.\n"
+    )
+    rules.load(plugin_root, tmp_path / "project")
+    assert capsys.readouterr().err == ""
+
+
+def test_aca_data_set_but_rules_directory_missing_is_reported(
+    plugin_root, tmp_path, monkeypatch, capsys
+):
+    """Setting ACA_DATA is a claim that the layer exists. A path that names no
+    .agents/rules/ directory is a configuration mistake — the layer vanishing
+    without a word is how a whole rules layer gets lost."""
+    aca_data = tmp_path / "pkb"
+    aca_data.mkdir()  # exists, but carries no .agents/rules/
+    monkeypatch.setenv("ACA_DATA", str(aca_data))
+
+    loaded = rules.load(plugin_root, tmp_path / "project")
+    assert set(loaded) == {"bounded-execution"}  # still fails open to what did load
+
+    err = capsys.readouterr().err
+    assert str(aca_data / ".agents" / "rules") in err
+    assert "ACA_DATA" in err
+
+
+def test_absent_layers_that_are_not_mistakes_stay_silent(
+    plugin_root, tmp_path, monkeypatch, capsys
+):
+    """ACA_DATA unset is a layer the user never had, and most projects carry no
+    .agents/rules/ at all. Reporting either would put a line on every tool call
+    for a state that is nobody's error."""
+    monkeypatch.delenv("ACA_DATA", raising=False)
+    rules.load(plugin_root, tmp_path / "project")
+    assert capsys.readouterr().err == ""
 
 
 def test_unreadable_layer_directory_degrades_not_crashes(plugin_root, tmp_path):

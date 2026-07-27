@@ -14,6 +14,8 @@ this repository and are never packaged or shipped.
    the obligation, then the shortest body that makes it checkable from a diff.
 3. If it already has a section there, edit that section rather than adding a
    second one.
+4. Check that the file's frontmatter carries `trigger: always_on`. Without it the
+   file is reference material, and the in-session rule check never sends it.
 
 A rule earns its place only if a reviewer could name the breach from the diff and
 it does not already follow from an axiom. If it is a universal claim, it belongs
