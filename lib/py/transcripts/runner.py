@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -17,7 +18,7 @@ from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
 from transcripts.domain.ledger import generate_prompt_ledger
 from transcripts.domain.renderer import render_session_to_all_formats, render_to_full_markdown
-from transcripts.domain.secret_redaction import redact_secrets
+from transcripts.domain.secret_redaction import redact_obj, redact_secrets
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
 from transcripts.domain.time import get_event_timestamps
@@ -154,12 +155,17 @@ def process_single_session(
     # Write files. Redaction is applied here, at the single write chokepoint,
     # rather than inside each renderer: these four artifacts are the only
     # things that leave the machine, so scrubbing here means a new renderer
-    # cannot accidentally ship an unredacted format. See
+    # cannot accidentally ship an unredacted format. The two Markdown renders
+    # and the HTML are final text and get the text pass; the sidecar is still
+    # data at this point and gets the structural pass, then is serialised —
+    # redacting its serialised form corrupts it. See
     # transcripts/domain/secret_redaction.py for what is scrubbed and why.
     (dest_dir / f"{filename_base}.md").write_text(redact_secrets(md), encoding="utf-8")
     (dest_dir / f"{filename_base}.full.md").write_text(redact_secrets(full_md), encoding="utf-8")
     (dest_dir / f"{filename_base}.html").write_text(redact_secrets(html), encoding="utf-8")
-    (dest_dir / f"{filename_base}.json").write_text(redact_secrets(json_sidecar), encoding="utf-8")
+    (dest_dir / f"{filename_base}.json").write_text(
+        json.dumps(redact_obj(json_sidecar), indent=2), encoding="utf-8"
+    )
 
     logger.info(
         "Processed session %s -> %s (%d trunk events, %d subagents, %d total events)",

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
+from transcripts.domain.secret_redaction import redact_obj
 from transcripts.model import NormalizedEvent, NormalizedSession, SubagentTranscript
 
 # The summary .md is meant to stay comfortably readable (~25K tokens or
@@ -21,6 +23,19 @@ MAX_EVENT_INDEX_ROWS = 200
 # reader or tool can open — subagents past it are still named, counted, and
 # costed in every artifact, so nothing vanishes silently.
 MAX_SUBAGENT_FULL_MD_CHARS = 8_000_000
+
+
+def _dump_tool_args(args: Any, indent: int) -> str:
+    """Serialise a tool call's arguments for embedding in Markdown or HTML.
+
+    Redaction happens here, on the arguments themselves, because once they are
+    serialised a credential's quotes are escaped and the write-time text pass
+    matches the backslash instead of the value — ``export GH_TOKEN="ghp_..."``
+    reads as ``"export GH_TOKEN=\\"ghp_...\\""`` and the token survives. The
+    text pass at the write chokepoint still runs over the whole document; this
+    is the pass that can see the value.
+    """
+    return json.dumps(redact_obj(args), indent=indent)
 
 
 def _get_filename_base(slug: str, started_at: str, correlation: dict[str, str | None]) -> str:
@@ -237,7 +252,7 @@ def _render_events_markdown(events: list[NormalizedEvent]) -> list[str]:
             for tc in event.tool_calls:
                 lines.append(f"- Call `{tc.name}` with args:")
                 lines.append("  ```json")
-                lines.append(json.dumps(tc.args, indent=4))
+                lines.append(_dump_tool_args(tc.args, indent=4))
                 lines.append("  ```")
             lines.append("")
 
@@ -430,7 +445,7 @@ def render_to_html(
         if event.tool_calls:
             tc_html_parts = []
             for tc in event.tool_calls:
-                args_json = json.dumps(tc.args, indent=2)
+                args_json = _dump_tool_args(tc.args, indent=2)
                 tc_html_parts.append(
                     f"<li>Call <code>{tc.name}</code> with:<pre><code>{args_json}</code></pre></li>"
                 )
@@ -589,7 +604,7 @@ def render_to_html(
     return html
 
 
-def render_to_json(
+def build_json_sidecar(
     session: NormalizedSession,
     slug: str,
     started_at: str,
@@ -598,8 +613,14 @@ def render_to_json(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
-) -> str:
-    """Render metadata sidecar to a JSON string."""
+) -> dict[str, Any]:
+    """Build the metadata sidecar as data.
+
+    Returned unserialised so redaction runs over the values, where it cannot
+    damage the structure. Every key here is a literal: a credential can reach
+    this object only as a value, which is what makes a value-walking redaction
+    sufficient for this artifact.
+    """
     user_prompts = []
     for event in session.events:
         if event.source == "user" and event.type == "message" and event.content:
@@ -610,7 +631,7 @@ def render_to_json(
                 }
             )
 
-    data = {
+    data: dict[str, Any] = {
         "session_id": session.session_id,
         "slug": slug,
         "started_at": started_at,
@@ -652,7 +673,38 @@ def render_to_json(
         "date": started_at,
     }
 
-    return json.dumps(data, indent=2)
+    return data
+
+
+def render_to_json(
+    session: NormalizedSession,
+    slug: str,
+    started_at: str,
+    last_modified: str,
+    ended_at: str,
+    has_user_context: bool,
+    correlation: dict[str, str | None],
+    insights: str | None,
+) -> str:
+    """Serialise the metadata sidecar.
+
+    Callers that write the sidecar to disk take :func:`build_json_sidecar` and
+    redact the data before serialising; this is for callers that only want to
+    read the rendered shape.
+    """
+    return json.dumps(
+        build_json_sidecar(
+            session,
+            slug,
+            started_at,
+            last_modified,
+            ended_at,
+            has_user_context,
+            correlation,
+            insights,
+        ),
+        indent=2,
+    )
 
 
 def render_session_to_all_formats(
@@ -664,15 +716,21 @@ def render_session_to_all_formats(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
-) -> tuple[str, str, str]:
-    """Render a session into all three output formats: Markdown, HTML, JSON."""
+) -> tuple[str, str, dict[str, Any]]:
+    """Render a session into all three output formats.
+
+    Markdown and HTML come back as their final text. The JSON sidecar comes
+    back as data, because redaction has to run over its values before anything
+    serialises them — a regex over serialised JSON breaks the structure it is
+    scanning.
+    """
     md = render_to_markdown(
         session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
     )
     html = render_to_html(
         session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
     )
-    json_sidecar = render_to_json(
+    json_sidecar = build_json_sidecar(
         session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
     )
     return md, html, json_sidecar

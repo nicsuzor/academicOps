@@ -5,6 +5,14 @@ chokepoints. The headline acceptance criterion — feed content carrying an env
 dump, assert no token-shaped string survives into the written artifact — is
 exercised by the wiring tests at the bottom.
 
+The second criterion is that the artifact still parses. Redaction used to run
+as a regex over the *serialised* sidecar, where a match abutting an escaped
+quote ate the backslash and re-emitted a bare `"`, ending the JSON string and
+producing a file nothing could read. `TestStructuredCorpus` holds the floor
+under the fix: every credential shape, in every position it turns up in, has to
+come out both scrubbed and parseable — a value-walking redaction that quietly
+stopped seeing names or keys would show up there.
+
 The wiring tests target the current pipeline: `transcripts.runner`'s four
 session artifacts and `transcripts.domain.ledger`'s prompt ledger. An earlier
 version of this file tested `write_insights_file` and
@@ -18,6 +26,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from transcripts.domain.secret_redaction import REDACTED, redact_obj, redact_secrets
 
 # A realistic `export`/`env` dump like the one that leaked on 2026-06-01.
@@ -131,6 +140,123 @@ class TestRedactObj:
         assert "ok" in out["items"]
         assert "summary" in out and "nested" in out  # keys preserved
 
+    def test_opaque_value_under_a_sensitive_key(self):
+        """The case a value-only walk would drop.
+
+        Serialised, ``{"ZOTERO_API_KEY": "aB3x..."}`` is text the assignment
+        regex matches across the key/value boundary. A walk that only looks at
+        values never sees the name, so the name is carried down instead.
+        """
+        obj = {"env": {"ZOTERO_API_KEY": "aB3xY9zQ1wE7rT5uI8oP2sD4"}}
+        out = redact_obj(obj)
+        assert out["env"]["ZOTERO_API_KEY"] == REDACTED
+        assert "ZOTERO_API_KEY" in out["env"], "the name must stay visible"
+
+    def test_sensitive_key_spares_numeric_and_non_string_values(self):
+        """``tokens_used`` matches the sensitive-name pattern; it is a metric."""
+        out = redact_obj({"tokens_used": 12345, "total_tokens_used": "678", "cost_usd": 0.5})
+        assert out == {"tokens_used": 12345, "total_tokens_used": "678", "cost_usd": 0.5}
+
+    def test_secret_used_as_a_key_is_redacted(self):
+        """A credential can sit in a key. The text pass caught those; so must this."""
+        out = redact_obj({"ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789": "some value"})
+        assert "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" not in json.dumps(out)
+        assert REDACTED in out
+
+
+# --- The structured corpus -------------------------------------------------
+# One literal per credential shape the module claims to catch, crossed with the
+# positions a credential actually turns up in. The sidecar is redacted as data
+# and serialised afterwards, so each case must come out both scrubbed and
+# parseable — a regex over the serialised form fails one or the other.
+
+TOKEN_SHAPES = {
+    "gh-pat": "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    "gh-oauth": "gho_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    "gh-user-server": "ghu_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    "gh-server": "ghs_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    "gh-refresh": "ghr_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    "gh-fine-grained": "github_pat_11ABCDEFG0abcdefghijklmnopqrstuvwxyz",
+    "anthropic": "sk-ant-api03-abc123def456ghi789jkl012mno345",
+    "openai": "sk-abcdefghijklmnopqrstuvwxyz0123456789ABCDEF",
+    "tailscale": "tskey-auth-k1A2b3C4d5E6f7",
+    "aws-access-key-id": "AKIAIOSFODNN7EXAMPLE",
+    "slack": "xoxb-1234567890-ABCDEFGHIJKLMNOP",
+    "google": "AIzaSyD-1234567890abcdefghijklmnopqrstuvw",
+    "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4",
+}
+
+# Opaque values no shape can recognise; only a sensitive *name* gives them away.
+NAMED_SHAPES = {
+    "ZOTERO_API_KEY": "aB3xY9zQ1wE7rT5uI8oP2sD4",
+    "AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI1K7MDENGbPxRfiCYEXAMPLEKEY",
+    "MY_PASSWORD": "hunter2correcthorsebattery",
+    "SUDO_PASSWD": "opaquePasswdValue890123",
+    "TAILSCALE_AUTHKEY": "opaqueAuthkeyValue567890",
+    "CI_AUTH_TOKEN": "opaqueAuthTokenValue4567",
+    "DB_CREDENTIAL": "opaqueCredentialValue123",
+    "DEPLOY_PRIVATE_KEY": "MIIEpAIBAAKCAQEA0Zf9opaque",
+    "AZURE_ACCESS_KEY": "opaqueAccessKeyValue7890",
+    "OIDC_CLIENT_SECRET": "Kj3n2LmQpXvR8sT1uW4yZ7aB",
+    "GITLAB_OAUTH": "opaqueOauthValue4567890a",
+    "HTTP_BEARER": "OpaqueBearerValue9781234",
+}
+
+# position name -> builds a fragment holding one token-shaped secret
+TOKEN_POSITIONS = {
+    "inside-a-value": lambda s: {"insights": f"the runner printed {s} before failing"},
+    "whole-value": lambda s: {"note": s},
+    "adjacent-to-escapes": lambda s: {"text": f'API_TOKEN="{s}"'},
+    "env-dump-line": lambda s: {"text": f"$ env\nHOME=/Users/suzor\nGH_TOKEN={s}\nEDITOR=vim\n"},
+    "embedded-json": lambda s: {"text": f'tool args: {{"api_key": "{s}"}}'},
+    "nested-deep": lambda s: {"subagents": [{"notes": [{"deep": {"d": [f"left {s} here"]}}]}]},
+    "in-a-key": lambda s: {"keys": {s: "a value"}},
+    "list-item": lambda s: {"items": ["ok", s]},
+}
+
+# position name -> builds a fragment holding one name-identified secret
+NAMED_POSITIONS = {
+    "shell-assignment": lambda name, s: {"text": f"$ export {name}={s}\n"},
+    "shell-assignment-quoted": lambda name, s: {"text": f'{name}="{s}"\n'},
+    "yaml-inside-a-value": lambda name, s: {"text": f"config:\n  {name}: {s}\n"},
+    "json-inside-a-value": lambda name, s: {"text": f'{{"{name}": "{s}"}}'},
+    "spanning-the-boundary": lambda name, s: {name: s},
+    "spanning-a-nested-boundary": lambda name, s: {"cfg": {"env": {name: s}}},
+}
+
+
+class TestStructuredCorpus:
+    """Every shape, in every position, redacted *and* still parseable."""
+
+    @pytest.mark.parametrize("position", sorted(TOKEN_POSITIONS))
+    def test_token_shapes(self, position: str):
+        place = TOKEN_POSITIONS[position]
+        obj = {"cases": [place(secret) for secret in TOKEN_SHAPES.values()]}
+        blob = json.dumps(redact_obj(obj), indent=2)
+        json.loads(blob)  # structure survives redaction
+        for label, secret in TOKEN_SHAPES.items():
+            assert secret not in blob, f"{label} survived in position {position}"
+
+    @pytest.mark.parametrize("position", sorted(NAMED_POSITIONS))
+    def test_named_shapes(self, position: str):
+        place = NAMED_POSITIONS[position]
+        obj = {"cases": [place(name, secret) for name, secret in NAMED_SHAPES.items()]}
+        blob = json.dumps(redact_obj(obj), indent=2)
+        json.loads(blob)
+        for name, secret in NAMED_SHAPES.items():
+            assert secret not in blob, f"{name} survived in position {position}"
+
+    def test_benign_content_survives(self):
+        """Over-redaction is not free: the transcript has to stay worth reading."""
+        text = (
+            "$ env\nHOME=/Users/suzor\nEDITOR=vim\nPATH=/usr/bin:/bin\nMAX_TOKENS=4096\n"
+            "stats:\n  input_tokens: 12345\n  duration_minutes: 3.4\n"
+        )
+        out = redact_obj({"text": text})["text"]
+        for benign in ("HOME=/Users/suzor", "EDITOR=vim", "PATH=/usr/bin:/bin", "MAX_TOKENS=4096"):
+            assert benign in out, f"{benign!r} was destroyed by redaction"
+        assert "input_tokens: 12345" in out
+
 
 class TestWiringIntoArtifacts:
     """End-to-end: content carrying secrets is scrubbed at every write chokepoint.
@@ -159,7 +285,8 @@ class TestWiringIntoArtifacts:
         monkeypatch.setattr(
             runner,
             "render_session_to_all_formats",
-            lambda *a, **k: (poisoned, poisoned, poisoned),
+            # The sidecar reaches the chokepoint as data, not text.
+            lambda *a, **k: (poisoned, poisoned, {"user_prompts": [{"text": poisoned}]}),
         )
         monkeypatch.setattr(runner, "render_to_full_markdown", lambda *a, **k: poisoned)
         monkeypatch.setattr(Path, "write_text", _fake_write_text)
@@ -172,6 +299,26 @@ class TestWiringIntoArtifacts:
             for leaked in LEAKED_VALUES:
                 assert leaked not in content, f"{leaked!r} leaked into {name}"
             assert REDACTED in content, f"{name} was written without any redaction"
+
+    def test_sidecar_stays_parseable_through_redaction(self, tmp_path: Path):
+        """The corrupting case, end to end and on real bytes.
+
+        A prompt reading ``GH_TOKEN = os.environ.get("GH_TOKEN")`` used to have
+        its escaped quote eaten by the redaction regex, which then re-emitted a
+        bare ``"`` — terminating the JSON string and leaving a sidecar nothing
+        could parse, and no signal that it had happened.
+        """
+        from transcripts import runner
+
+        session = _stub_session(content='GH_TOKEN = os.environ.get("GH_TOKEN")')
+        runner.process_single_session(session, tmp_path, _NeverSkipCache(), force=True)
+
+        sidecars = list(tmp_path.glob("transcripts/**/*.json"))
+        assert len(sidecars) == 1, f"expected one sidecar, found {sidecars}"
+        raw = sidecars[0].read_text(encoding="utf-8")
+        data = json.loads(raw)  # the assertion that used to fail
+        assert data["user_prompts"][0]["text"].startswith("GH_TOKEN = ")
+        assert REDACTED in raw, "the case must still be redacted, not merely parseable"
 
     def test_prompt_ledger_scrubbed_on_write(self, tmp_path: Path):
         """The ledger embeds raw user prompt text — the 2026-06-01 leak vector."""
@@ -217,6 +364,58 @@ class TestWiringIntoArtifacts:
             assert leaked not in content, f"{leaked!r} leaked into the prompt ledger"
 
 
+class TestLedgerReportsUnreadableSidecars:
+    """A sidecar that will not parse is a session missing from the ledger.
+
+    It used to be swallowed by a bare ``except: continue``, so an affected
+    session vanished with no signal anywhere.
+    """
+
+    def _stage(self, tmp_path: Path) -> Path:
+        sidecar_dir = tmp_path / "transcripts" / "2026-07"
+        sidecar_dir.mkdir(parents=True)
+        (sidecar_dir / "20260701-10-aops-good.json").write_text(
+            json.dumps(
+                {
+                    "session_id": "deadbeefcafe",
+                    "project": "aops",
+                    "has_user_context": True,
+                    "started_at": "2026-07-01T10:00:00+00:00",
+                    "user_prompts": [
+                        {"text": "a real prompt", "timestamp": "2026-07-01T10:00:00+00:00"}
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        # The shape the redaction bug produced: a bare quote ends the string early.
+        (sidecar_dir / "20260701-11-aops-broken.json").write_text(
+            '{"user_prompts": [{"text": "GH_TOKEN = [REDACTED]"GH_TOKEN\\")"}]}',
+            encoding="utf-8",
+        )
+        return sidecar_dir
+
+    def test_failure_is_logged_named_and_returned(self, tmp_path: Path, caplog):
+        from transcripts.domain.ledger import generate_prompt_ledger
+
+        self._stage(tmp_path)
+        with caplog.at_level("ERROR"):
+            status = generate_prompt_ledger(tmp_path, "2026-06-01")
+
+        assert status == 1, "an incomplete ledger must not report success"
+        assert any("20260701-11-aops-broken.json" in r.getMessage() for r in caplog.records), (
+            "the unreadable sidecar was not logged"
+        )
+
+        content = (tmp_path / "state" / "prompt_ledger.md").read_text(encoding="utf-8")
+        assert "20260701-11-aops-broken.json" in content, (
+            "the ledger does not admit it is incomplete"
+        )
+        # The readable sessions still make it through: one bad file must not
+        # cost every other session its row.
+        assert "deadbeef" in content
+
+
 class _NeverSkipCache:
     """Minimal SkipCache stand-in: never skips, records nothing."""
 
@@ -230,7 +429,7 @@ class _NeverSkipCache:
         return None
 
 
-def _stub_session():
+def _stub_session(content: str = "hello"):
     """A NormalizedSession with one user event, enough to pass the empty check."""
     from transcripts.model import NormalizedEvent, NormalizedSession
 
@@ -243,7 +442,7 @@ def _stub_session():
                 timestamp="2026-07-01T10:00:00+00:00",
                 source="user",
                 type="message",
-                content="hello",
+                content=content,
             )
         ],
     )

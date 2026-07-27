@@ -13,8 +13,15 @@ assignments — rather than entropy-based, to avoid mangling ordinary prose. It
 is the producer-side facet of the structural secret-leakage epic
 (``aops-00c0fa10``); a pre-commit secret linter is the complementary backstop.
 
-Apply :func:`redact_secrets` to rendered text and :func:`redact_obj` to a
-JSON-serialisable object (redacts string *values*, never keys or structure).
+Apply :func:`redact_obj` to anything with structure — a JSON sidecar, a tool
+call's arguments — *before* it is serialised, and :func:`redact_secrets` only to
+text that is already its final form (Markdown, HTML, the prompt ledger).
+Running the regexes over serialised JSON is wrong twice over: a match that abuts
+an escaped quote eats the backslash and re-emits a bare ``"``, terminating the
+string and producing a file that will not parse; and a value whose quotes are
+escaped (``"KEY=\\"secret\\""``) puts the credential outside the match, so it
+survives. Redacting the parsed values cannot damage the structure, because the
+serialiser escapes whatever redaction leaves behind.
 """
 
 from __future__ import annotations
@@ -52,6 +59,10 @@ _SENSITIVE_NAME = (
     r"CREDENTIAL|PRIVATE[_-]?KEY|ACCESS[_-]?KEY|CLIENT[_-]?SECRET|OAUTH|BEARER)"
     r"[A-Za-z0-9_]*"
 )
+
+# The same identifier standing alone as a mapping key, so a structural walk can
+# recognise the name that the text pass would have read across the `":"`.
+_SENSITIVE_KEY = re.compile(_SENSITIVE_NAME, re.IGNORECASE)
 
 
 def _redact_shell_assign(m: re.Match[str]) -> str:
@@ -105,17 +116,41 @@ def redact_secrets(text: str) -> str:
     return text
 
 
-def redact_obj(obj: Any) -> Any:
-    """Recursively redact string *values* in a JSON-serialisable object.
+def _is_sensitive_key(key: Any) -> bool:
+    """True when a mapping key is itself a credential-shaped identifier."""
+    return isinstance(key, str) and _SENSITIVE_KEY.fullmatch(key) is not None
 
-    Walks dicts and lists, applying :func:`redact_secrets` to every string
-    value. Dict keys, numbers, booleans, and ``None`` pass through untouched so
-    the structure (and any consumer's schema) is preserved.
+
+def redact_obj(obj: Any, *, under_sensitive_key: bool = False) -> Any:
+    """Recursively redact a JSON-serialisable object, structure preserved.
+
+    Three things are scrubbed, and together they cover everything the text pass
+    catches when the same object is serialised first:
+
+    - Every string, through :func:`redact_secrets` — the assignments and token
+      shapes that live *inside* one value.
+    - Any string reached under a sensitively-named key (``{"ZOTERO_API_KEY":
+      "aB3x..."}``). Serialised, that is the text ``"ZOTERO_API_KEY": "aB3x..."``
+      and the assignment regex spans the key/value boundary; walking values one
+      at a time never sees the name, so the name has to be carried down. Numeric
+      strings are spared for the same reason ``input_tokens: 12345`` is.
+    - Keys, through :func:`redact_secrets`, so a credential used *as* a key is
+      not left standing by a walk that only looks at values.
+
+    Numbers, booleans, and ``None`` pass through untouched: no credential shape
+    is a bare scalar, and rewriting them would break every consumer's schema.
     """
     if isinstance(obj, str):
+        if under_sensitive_key and not _NUMERIC_VALUE.fullmatch(obj):
+            return REDACTED
         return redact_secrets(obj)
     if isinstance(obj, dict):
-        return {k: redact_obj(v) for k, v in obj.items()}
+        return {
+            (redact_secrets(k) if isinstance(k, str) else k): redact_obj(
+                v, under_sensitive_key=under_sensitive_key or _is_sensitive_key(k)
+            )
+            for k, v in obj.items()
+        }
     if isinstance(obj, list):
-        return [redact_obj(v) for v in obj]
+        return [redact_obj(v, under_sensitive_key=under_sensitive_key) for v in obj]
     return obj
