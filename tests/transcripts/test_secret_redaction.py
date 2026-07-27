@@ -164,9 +164,7 @@ class TestWiringIntoArtifacts:
         monkeypatch.setattr(runner, "render_to_full_markdown", lambda *a, **k: poisoned)
         monkeypatch.setattr(Path, "write_text", _fake_write_text)
 
-        runner.process_single_session(
-            _stub_session(), tmp_path, _NeverSkipCache(), force=True
-        )
+        runner.process_single_session(_stub_session(), tmp_path, _NeverSkipCache(), force=True)
 
         assert written, "no artifacts were written; the wiring test proved nothing"
         assert len(written) == 4, f"expected 4 artifacts, saw {sorted(written)}"

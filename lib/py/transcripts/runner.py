@@ -131,9 +131,7 @@ def process_single_session(
     (dest_dir / f"{filename_base}.md").write_text(redact_secrets(md), encoding="utf-8")
     (dest_dir / f"{filename_base}.full.md").write_text(redact_secrets(full_md), encoding="utf-8")
     (dest_dir / f"{filename_base}.html").write_text(redact_secrets(html), encoding="utf-8")
-    (dest_dir / f"{filename_base}.json").write_text(
-        redact_secrets(json_sidecar), encoding="utf-8"
-    )
+    (dest_dir / f"{filename_base}.json").write_text(redact_secrets(json_sidecar), encoding="utf-8")
 
     logger.info("Processed session %s -> %s", session_id, filename_base)
     return True
