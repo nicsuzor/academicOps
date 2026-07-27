@@ -23,7 +23,7 @@ import json
 import os
 import sys
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +52,7 @@ def _log_fire(client: str, event: str, ctx: HookContext) -> None:
     if not log_path:
         return
     record = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "client": client,
         "event": event,
         "session_id": ctx.session_id,
