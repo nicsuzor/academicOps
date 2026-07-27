@@ -7,15 +7,32 @@ declares. Claude Code applies always-on rules through `autoMode` in
 axioms.jsonl per plugin that ships `trigger: always_on` axioms (see
 build/clients/claude.py); this merges them in.
 
+Setting `autoMode.soft_deny` at all replaces Claude Code's own built-in
+soft-block list for that section wholesale, unless the array contains the
+literal string `"$defaults"` — the splice point at which the live built-ins
+are inserted. Writing axiom rules without it would silently trade away the
+harness's own protections (force push, `curl | bash`, production deploys,
+auto-mode bypass) for them, so every array this module writes carries the
+sentinel. Splicing beats snapshotting the output of `claude auto-mode
+defaults`: the built-ins stay live across Claude Code releases and there is
+no dependency on shelling out to the CLI.
+
 The merge is scoped, idempotent, and reversible:
 
 - it writes only into `autoMode.soft_deny`, and only entries it owns —
   tracked in a sidecar state file, never guessed from content — so it never
-  replaces a whole settings block it did not author
+  replaces a whole settings block it did not author. The other three
+  sections (`allow`, `hard_deny`, `environment`) are never written, so they
+  keep their built-ins untouched
+- the sentinel is never recorded as owned and never retracted; it is placed
+  once, first, and left wherever the user later moves it
 - re-running install first retracts its own previously-recorded entries,
   then adds the current set, so a renamed or removed axiom never lingers
 - uninstall removes exactly what the state file says was added, then
-  deletes the state file — idempotent if run twice
+  deletes the state file — idempotent if run twice. A soft_deny left holding
+  nothing but the sentinel is dropped with it: it resolves to the same rule
+  list as an absent array, and leaving it behind would make uninstall
+  non-reversible
 
 specs/ARCHITECTURE.md "Enforcement": autoMode is advisory, one of two
 overlapping mechanisms (the other is `cope`), never the real gate — this
@@ -36,6 +53,10 @@ from typing import Any
 
 DEFAULT_SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 DEFAULT_STATE_PATH = Path.home() / ".claude" / ".aops-automode-state.json"
+
+# The splice point at which Claude Code inserts its own built-in rules for a
+# section. An array written without it discards those built-ins entirely.
+DEFAULTS_SENTINEL = "$defaults"
 
 
 class InstallError(Exception):
@@ -90,8 +111,9 @@ def install_automode(
     state_path: Path | None = None,
 ) -> str:
     """Merge every dist/*-claude/axioms.jsonl into settings.json's
-    autoMode.soft_deny, scoped by the state file. Returns a human-readable
-    summary on success; raises InstallError on any real failure."""
+    autoMode.soft_deny, scoped by the state file, keeping Claude Code's own
+    built-in soft-block rules spliced in. Returns a human-readable summary on
+    success; raises InstallError on any real failure."""
     settings_path = settings_path or DEFAULT_SETTINGS_PATH
     state_path = state_path or DEFAULT_STATE_PATH
 
@@ -110,15 +132,29 @@ def install_automode(
     retained = [entry for entry in current if entry not in previously_owned]
     merged = retained + [entry for entry in desired if entry not in retained]
 
+    # Writing this array at all discards Claude Code's built-in soft-block
+    # rules unless the sentinel splices them back in. Only ever placed, never
+    # recorded as owned and never retracted — so a re-run finds it already in
+    # `retained` and adds no second copy, and a user is free to move it.
+    sentinel_added = DEFAULTS_SENTINEL not in merged
+    if sentinel_added:
+        merged.insert(0, DEFAULTS_SENTINEL)
+
     auto_mode["soft_deny"] = merged
     settings["autoMode"] = auto_mode
 
     _write_json(settings_path, settings)
     _write_json(state_path, {"soft_deny": desired})
 
+    note = f' and restored the "{DEFAULTS_SENTINEL}" sentinel' if sentinel_added else ""
     if not desired:
-        return f"found no axioms.jsonl under {dist_root} — nothing to merge (0 aops entries in {settings_path})"
-    return f"merged {len(desired)} aops axiom rule(s) into {settings_path} (autoMode.soft_deny)"
+        return (
+            f"found no axioms.jsonl under {dist_root} — nothing to merge "
+            f"(0 aops entries in {settings_path}{note})"
+        )
+    return (
+        f"merged {len(desired)} aops axiom rule(s) into {settings_path} (autoMode.soft_deny{note})"
+    )
 
 
 def uninstall_automode(
@@ -126,7 +162,9 @@ def uninstall_automode(
     state_path: Path | None = None,
 ) -> str:
     """Remove exactly the entries this installer previously added, then
-    delete the state file. Idempotent — a missing state file is a no-op."""
+    delete the state file. A soft_deny left holding only the `$defaults`
+    sentinel goes too — it resolves to the built-in list either way.
+    Idempotent — a missing state file is a no-op."""
     settings_path = settings_path or DEFAULT_SETTINGS_PATH
     state_path = state_path or DEFAULT_STATE_PATH
 
@@ -139,6 +177,12 @@ def uninstall_automode(
     settings = _load_json(settings_path, what="settings.json")
     auto_mode = dict(settings.get("autoMode", {}))
     remaining = [entry for entry in auto_mode.get("soft_deny", []) if entry not in owned]
+
+    # An array holding nothing but the sentinel resolves to exactly the
+    # built-in list, i.e. to an absent array — so dropping it cannot lose a
+    # rule, and keeping it would leave residue behind an "uninstall".
+    if remaining == [DEFAULTS_SENTINEL]:
+        remaining = []
 
     if remaining:
         auto_mode["soft_deny"] = remaining
