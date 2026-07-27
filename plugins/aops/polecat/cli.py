@@ -8,6 +8,7 @@ a missing required value is a loud failure, never a guess.
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -44,6 +45,114 @@ HEADLESS_FLAGS = {"-p", "--print"}
 # (plugins/cope/hooks/rules.py) reads `$ACA_DATA/.agents/rules/`, so mounting
 # a host directory at this path is what makes that layer reach the container.
 CONTAINER_ACA_DATA = "/data"
+
+# The marketplace name every aops-crew image installs its plugins under,
+# regardless of build source (Dockerfile: `MP_NAME=academicOps`, always —
+# see the Dockerfile comment on the plugin-install RUN block). The host-side
+# LOCAL marketplace `make build` writes (dist/.claude-plugin/marketplace.json)
+# is deliberately named "aops" instead (build/marketplace.py,
+# generate_local_marketplace docstring), so this cannot be read out of that
+# file — it is a fact about the image's filesystem, not a host value, so it
+# is a constant here exactly like CONTAINER_ACA_DATA above.
+CONTAINER_PLUGIN_MARKETPLACE = "academicOps"
+
+
+def sanitize_cache_version(version):
+    """Match Claude Code's plugin installer: it writes each plugin's cache
+    directory as `cache/<marketplace>/<plugin>/<version>`, rewriting any `+`
+    in the version to `-` first (confirmed live: source version
+    `0.5.0+gdff86d32` installs at `.../0.5.0-gdff86d32/`). A mount computed
+    from the raw, un-sanitized version names a path nothing in the image
+    will ever contain — Docker creates it as an empty directory rather than
+    erroring, so the container silently keeps serving its baked-in code.
+    Always sanitize before deriving a cache path from a version string."""
+    return version.replace("+", "-")
+
+
+def resolve_live_edit_mounts(workspace_dir):
+    """host `dist/<plugin>-claude` -> container plugin-cache mounts for
+    `--live-edit`.
+
+    Reads dist/.claude-plugin/marketplace.json — the exact manifest `make
+    build` produced and `make docker-build` COPYs into the image — rather
+    than recomputing a version from the workspace's current git state. That
+    avoids a second failure mode on top of the sanitization trap: a
+    live-edit session's entire point is to dirty the tree after the image
+    was built, and build/version.py's derivation depends on dirty-vs-clean
+    state, so re-deriving at run time can silently diverge from what the
+    image actually has on disk. The manifest is that image's own build
+    record and does not drift when the workspace is edited afterward.
+
+    Fails loudly if the dist tree, its manifest, or a declared plugin's
+    built directory is missing: a live-edit mount silently skipped is
+    exactly the false-green failure mode this flag exists to prevent.
+    """
+    dist_root = workspace_dir / "dist"
+    manifest_path = dist_root / ".claude-plugin" / "marketplace.json"
+    if not manifest_path.is_file():
+        fail(
+            f"--live-edit requires a local build: {manifest_path} does not "
+            "exist. Run `make build` in the workspace first."
+        )
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, ValueError) as e:
+        fail(f"--live-edit could not read {manifest_path}: {e}")
+
+    plugins = manifest.get("plugins") or []
+    if not plugins:
+        fail(f"--live-edit: no plugins declared in {manifest_path}.")
+
+    mounts = []
+    for entry in plugins:
+        name = entry.get("name")
+        version = entry.get("version")
+        if not name or not version:
+            fail(f"--live-edit: malformed plugin entry in {manifest_path}: {entry!r}")
+        host_src = dist_root / f"{name}-claude"
+        if not host_src.is_dir():
+            fail(
+                f"--live-edit: {manifest_path} declares plugin {name!r} but "
+                f"{host_src} does not exist. Run `make build` again."
+            )
+        container_dest = (
+            f"/home/worker/.claude/plugins/cache/{CONTAINER_PLUGIN_MARKETPLACE}/"
+            f"{name}/{sanitize_cache_version(version)}"
+        )
+        mounts.append((name, host_src, container_dest))
+    return mounts
+
+
+def verify_live_edit_destinations(image, mounts):
+    """Confirm every computed cache path already exists inside `image`,
+    with nothing mounted yet.
+
+    This is the loud-failure half of the live-edit feature: a bind mount
+    onto a path Docker has to auto-create (because the image never had it —
+    a stale image, or a version-sanitization mismatch) is a silent no-op.
+    The container starts clean, the mount "succeeds", and the agent runs
+    the image's baked-in code with no error anywhere. Checking the image's
+    own filesystem BEFORE any `-v` is attached — a plain `docker run` probe
+    with no mounts at all — is what makes that failure loud instead of
+    silent; checking after mounting would just observe the mount's own
+    target and always pass.
+    """
+    checks = " && ".join(f"test -d {shlex.quote(dest)}" for _, _, dest in mounts)
+    probe = subprocess.run(
+        ["docker", "run", "--rm", "--entrypoint", "sh", image, "-c", checks],
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0:
+        listing = "\n".join(f"  {name}: {dest}" for name, _, dest in mounts)
+        fail(
+            "--live-edit: one or more computed plugin-cache paths do not "
+            f"exist in image {image!r}. Mounting over a path the image "
+            "never had is a silent no-op the container cannot report, so "
+            "this is refused up front instead. Expected paths:\n"
+            f"{listing}\n"
+            f"docker probe stderr: {probe.stderr.strip()}"
+        )
 
 
 def fail(message):
@@ -619,8 +728,20 @@ def main():
     "-t",
     help="Task id to work. With no explicit prompt, seeds '/pull <task-id>'.",
 )
+@click.option(
+    "--live-edit",
+    is_flag=True,
+    default=False,
+    help=(
+        "Mount this workspace's locally built dist/ read-only over the "
+        "container's installed-plugin cache, so a plugin-source edit takes "
+        "effect without an image rebuild. Opt-in; off by default. Requires "
+        "`make build` to have run against this workspace, and refuses to "
+        "start if a computed cache path does not already exist in the image."
+    ),
+)
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
-def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
+def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, live_edit, extra_args):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
 
     Anything after AGENT_CMD that is not one of this command's own options is
@@ -667,6 +788,13 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             "default workspace."
         )
 
+    # `dist/` is gitignored (a build artifact, never committed), so it exists
+    # only in the canonical checkout `make build` was run against — a
+    # per-session isolated clone below never has it. Live-edit mounts must
+    # therefore resolve against this canonical path, captured before that
+    # clone can replace `workspace_dir`.
+    canonical_workspace_dir = workspace_dir
+
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
     sessions_base = os.environ.get("AOPS_SESSIONS")
     sessions_base = Path(sessions_base) if sessions_base else polecat_home / "sessions"
@@ -703,6 +831,14 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 "pulls from a registry — a stale registry image would silently "
                 "ship stale plugins. Build it locally, then retry."
             )
+
+        # Computed and verified before anything else starts: a live-edit
+        # session must never reach a running container on an unverified
+        # mount plan, or the silent-no-op failure mode is back.
+        live_edit_mounts = []
+        if live_edit:
+            live_edit_mounts = resolve_live_edit_mounts(canonical_workspace_dir)
+            verify_live_edit_destinations(image, live_edit_mounts)
 
         env = get_env_forwards(config)
         if mcp_url:
@@ -821,6 +957,14 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         # one was configured but unreadable, before any container started).
         if rules_dir:
             cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
+
+        # --live-edit: dist/<plugin>-claude over the installed-plugin cache,
+        # read-only. Every destination was already confirmed to pre-exist in
+        # this image by verify_live_edit_destinations() above, so a mount
+        # landing here is known to shadow real baked-in content rather than
+        # create an empty directory nothing reads.
+        for _name, host_src, container_dest in live_edit_mounts:
+            cmd.extend(["-v", f"{host_src}:{container_dest}:ro"])
 
         # The host docker socket is a container escape. Mount it only where the
         # container legitimately spawns siblings, and document why.

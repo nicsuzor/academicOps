@@ -209,8 +209,12 @@ POLECAT_IMAGE=ghcr.io/nicsuzor/aops-crew:latest \
 
 Drive that session with the same tmux pattern as above (spawn it inside
 `tmux new-session -d` if you need to send/capture rather than attach live).
-Edit → `make docker-build` → relaunch; there is no live-mount, so a source
-change needs a rebuild before it's visible in the container.
+By default there is no live-mount, so a source change needs
+`make docker-build` and a relaunch before it's visible in the container.
+`run`'s `--live-edit` flag mounts this checkout's locally built `dist/` over
+the container's installed-plugin cache instead, so an edit takes effect on
+the next relaunch with no rebuild — see [[polecat-live-edit-mount]] for the
+mechanism and its failure mode.
 
 **Plugin structural check** (no tmux needed): the image's own `ENTRYPOINT`
 (`entrypoint.sh`) refuses to run at all without a commit identity and a GitHub
