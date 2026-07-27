@@ -6,8 +6,7 @@
     "mcpServers": {
       "services": {
         "type": "http",
-        "url": "${user_config.pkb_mcp_url}",
-        "alwaysLoad": true
+        "url": "${user_config.pkb_mcp_url}"
       }
     }
   }
