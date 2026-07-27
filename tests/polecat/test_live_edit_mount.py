@@ -529,6 +529,42 @@ def test_a_live_session_says_so_before_the_container_starts(tmp_path, monkeypatc
     assert result.output.index("Live-edit ON:") < result.output.index("Running")
 
 
+def test_versions_that_genuinely_differ_are_named_per_plugin(tmp_path, monkeypatch):
+    """Stating the version once is right because `make build` normally gives
+    every plugin the same one. An image that genuinely installed plugins at
+    different versions is the case where collapsing them would be the lie in
+    the other direction, so there the line itemises them."""
+    repo = tmp_path / "repo"
+    repo.mkdir(parents=True, exist_ok=True)
+    _write_dist_build(repo, ["aops", "aops-pkb"])
+
+    mixed = json.dumps(
+        {
+            "plugins": [
+                {
+                    "name": "aops",
+                    "source": f"{cli.CONTAINER_PLUGIN_CACHE_ROOT}/aops/0.4.0-gold",
+                },
+                {
+                    "name": "aops-pkb",
+                    "source": f"{cli.CONTAINER_PLUGIN_CACHE_ROOT}/aops-pkb/0.5.0-silver",
+                },
+            ]
+        }
+    )
+    result, _ = _capture_all_docker_cmds(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(repo), "--live-edit"],
+        manifest=mixed,
+    )
+    assert result.exit_code == 0, result.output
+
+    line = [ln for ln in result.output.splitlines() if ln.startswith("Live-edit ON:")][0]
+    assert "aops=0.4.0-gold" in line
+    assert "aops-pkb=0.5.0-silver" in line
+
+
 def test_live_edit_refuses_to_start_when_destination_is_bogus(tmp_path, monkeypatch):
     """The loud-failure path: the preflight probe reports a plugin path does
     not exist in the image, so no container may start at all — neither
