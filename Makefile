@@ -20,7 +20,7 @@ help:
 	@echo "make uninstall-dev  - remove the local marketplace, restore the released one"
 	@echo "make install        - install the released plugins from the dist branch"
 	@echo "make test           - run the pytest suite"
-	@echo "make lint           - ruff check"
+	@echo "make lint           - ruff check + documented-reference check"
 	@echo "make format         - ruff format + dprint fmt"
 	@echo "make clean          - remove dist/"
 	@echo "make docker         - build the crew worker image"
@@ -84,6 +84,7 @@ test:
 
 lint:
 	@uv run ruff check .
+	@uv run python scripts/check_refs.py
 
 format:
 	@uv run ruff format .

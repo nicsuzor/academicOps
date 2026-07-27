@@ -1,4 +1,5 @@
-# Lint: ruff check + ruff format + dprint, with autofix on PRs.
+# Lint: ruff check + ruff format + dprint, with autofix on PRs, plus the
+# documented-reference check.
 # Mirrors `make lint` / `make format` and the dprint pre-commit hook.
 # Runs independently — does not gate Type Check or Pytest.
 
@@ -113,3 +114,11 @@ jobs:
         if: steps.dprint-initial.outcome == 'failure'
         timeout-minutes: 2
         run: uv run dprint check
+
+      # Every repository path a shipped document names must exist. No autofix
+      # step: repointing a dead reference, or deleting the claim that rested on
+      # it, is a judgement call — so this always runs and always blocks.
+      - name: Documented references resolve
+        if: always()
+        timeout-minutes: 2
+        run: uv run python scripts/check_refs.py
