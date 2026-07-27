@@ -10,6 +10,7 @@ message-loading contracts a plugin author relies on.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -276,6 +277,59 @@ def test_agy_drops_the_user_line_rather_than_misdirecting_it():
     out = clients.render("agy", "UserPromptSubmit", warn("long form", "short line"))
     assert out == {"injectSteps": [{"ephemeralMessage": "long form"}]}
     assert "short line" not in json.dumps(out)
+
+
+# --- the second reader, across the plugins that actually ship ----------------
+#
+# `HookContext.message` returns one string. A handler that loads a message
+# that way cannot deliver the user's line no matter what is in the sibling
+# file — the pair has to come through `messages.load_pair`. That failure is
+# silent in every direction: the file is present, the tests that read it pass,
+# the build ships it, and the line never reaches a terminal. So it is checked
+# against the source of every plugin that hooks, not left to each plugin's own
+# suite to notice.
+
+_PLUGINS_ROOT = _REPO_ROOT / "plugins"
+
+# `ctx.message("name")` — the single-text load, and the only way a shipped
+# `.user.md` can be silently unreachable.
+_SINGLE_TEXT_LOAD = re.compile(r"""ctx\.message\(\s*["']([\w.-]+)["']""")
+
+
+def _hooking_plugins() -> list[Path]:
+    return sorted(p for p in _PLUGINS_ROOT.glob("*/hooks") if (p / "handlers.py").is_file())
+
+
+def test_every_plugin_that_hooks_is_discovered():
+    """The guard below is a loop over plugins; an empty loop passes silently."""
+    assert _hooking_plugins(), f"no plugin under {_PLUGINS_ROOT} ships a hooks/handlers.py"
+
+
+def test_no_shipped_user_line_is_stranded_on_the_single_text_path():
+    stranded = []
+    for hooks in _hooking_plugins():
+        single_text = set(_SINGLE_TEXT_LOAD.findall((hooks / "handlers.py").read_text()))
+        for user_file in sorted((hooks / "messages").glob("*.user.md")):
+            name = user_file.name.removesuffix(".user.md")
+            if name in single_text:
+                stranded.append(f"{hooks.parent.name}: {user_file.name}")
+    assert stranded == [], (
+        "these user-facing lines ship but can never reach a terminal — their handler "
+        "loads the message with ctx.message(), which returns the agent's text only. "
+        f"Use messages.load_pair(ctx.hooks_dir, name) instead: {stranded}"
+    )
+
+
+def test_no_shipped_user_line_lacks_the_agent_message_it_belongs_to():
+    """`load_pair` raises on a missing agent message, so this ships as a hook
+    that hard-fails the moment it fires. Caught in the tree instead."""
+    orphans = [
+        f"{hooks.parent.name}: {user_file.name}"
+        for hooks in _hooking_plugins()
+        for user_file in sorted((hooks / "messages").glob("*.user.md"))
+        if not (hooks / "messages" / f"{user_file.name.removesuffix('.user.md')}.md").is_file()
+    ]
+    assert orphans == [], f"user-facing lines with no agent message beside them: {orphans}"
 
 
 # ---------------------------------------------------------------------------

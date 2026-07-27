@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 
 import evaluator
+import messages
 import rules
 from context import HookContext
 from result import Result, warn
@@ -70,6 +71,11 @@ def evaluate(ctx: HookContext) -> Result | None:
     which is not a failure of the session. Nothing matched is a no-op too. Only
     a rule the model actually flagged produces an advisory, and the advisory
     hands back the rule's own text so the agent can correct its own course.
+
+    The advisory has two readers, so it is loaded as a pair (lib/hooks/
+    messages.py). The agent gets the rule text; the person watching gets one
+    line naming what was flagged, because a check that only ever speaks to the
+    agent leaves the person whose session it is with no idea it fired.
     """
     config = evaluator.resolve()
     if config is None:
@@ -91,11 +97,21 @@ def evaluate(ctx: HookContext) -> Result | None:
 
     if not matches:
         return None
+    agent, user = messages.load_pair(ctx.hooks_dir, "verdict")
     return warn(
-        ctx.message("verdict")
-        .replace("{rules}", _matched(matches, loaded))
-        .replace("{call}", content)
+        agent.replace("{rules}", _matched(matches, loaded)).replace("{call}", content),
+        user.replace("{rules}", _flagged(matches)) if user else None,
     )
+
+
+def _flagged(matches: list[evaluator.Verdict]) -> str:
+    """Just the names, for the one line the person watching gets.
+
+    Every flagged rule is named, however many there are: a line that said
+    "a rule" would leave them unable to tell a rule they care about from one
+    they do not, which is the whole decision the line exists to support.
+    """
+    return ", ".join(f"`{verdict.slug}`" for verdict in matches)
 
 
 def _matched(matches: list[evaluator.Verdict], loaded: dict[str, rules.Rule]) -> str:

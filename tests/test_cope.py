@@ -842,6 +842,85 @@ def test_evaluate_says_nothing_when_there_is_no_tool_call(
 
 
 # ---------------------------------------------------------------------------
+# The second reader: the person watching the session
+# ---------------------------------------------------------------------------
+#
+# A flagged rule injects a full advisory into the agent's context. The other
+# party to the session is the person whose rules these are, and on Claude Code
+# they see exactly one thing: `systemMessage`, rendered from `Result.user_text`
+# (lib/hooks/clients.py). A verdict that fills in only the agent's half fires
+# invisibly — the rule check runs, the agent is corrected or not, and nobody
+# gets the chance to intervene. These pin that cope uses the pair.
+
+
+def _flag_workarounds(transport) -> None:
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.95,
+    }
+
+
+def test_a_flagged_rule_produces_a_line_for_the_person_watching(
+    hooks_dir_with_axioms, transport, monkeypatch
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    _flag_workarounds(transport)
+    result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
+    assert result is not None
+    assert result.user_text, "a flagged rule reached the agent and nobody else"
+    assert "halt-on-failure" in result.user_text
+    assert "{rules}" not in result.user_text
+
+
+def test_the_user_line_is_a_line_not_a_second_copy_of_the_advisory(
+    hooks_dir_with_axioms, transport, monkeypatch
+):
+    """The two readers need opposite things. The agent's copy carries the rule
+    text because that is the correction; the user's carries the rule's name
+    because that is the decision — whether this is one of theirs worth stopping
+    for. Dumping the advisory into the status line serves neither."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    _flag_workarounds(transport)
+    result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
+    assert result is not None
+    assert "\n" not in result.user_text
+    assert len(result.user_text) < len(result.inject_text)
+    body = (_LIB_AXIOMS / "halt-on-failure.md").read_text().split("\n---\n", 1)[1].strip()
+    first_line = next(line for line in body.splitlines() if len(line.strip()) > 40)
+    assert first_line not in result.user_text
+
+
+def test_the_user_line_names_every_rule_that_was_flagged(
+    hooks_dir_with_axioms, transport, monkeypatch
+):
+    """One call can match several rules at once. A line that named only the
+    first would be worse than no line: it tells the reader which rule fired,
+    and would be wrong about it."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 1, "confidence": 1.0}
+    result = handlers.evaluate(_bash_ctx(hooks, cwd))
+    assert result is not None
+    live = rules.load(hooks.parent, cwd)
+    assert len(live) > 1, "the fixture must load more than one rule for this to test anything"
+    missing = [slug for slug in live if slug not in result.user_text]
+    assert missing == []
+
+
+def test_the_verdict_ships_a_user_facing_sibling():
+    """The wording lives in messages/verdict.user.md, beside the agent's copy,
+    and carries the rule-name placeholder the handler fills in. A sibling that
+    lost the placeholder would ship a line that names nothing."""
+    source = (_COPE_HOOKS / "messages" / "verdict.user.md").read_text().strip()
+    assert source
+    assert "{rules}" in source
+    assert "{call}" not in source, "the call that was judged is the agent's copy, not a status line"
+    assert len(source.splitlines()) == 1
+
+
+# ---------------------------------------------------------------------------
 # inject_ruleset: the turn-level advisory, and the client scope that keeps it
 # off Claude
 # ---------------------------------------------------------------------------
@@ -1149,6 +1228,31 @@ def test_dispatch_end_to_end_injects_the_flagged_rule_advisory_only(
     assert _StubEvaluator.seen, "the shipped hook never reached the evaluator"
     assert all(row["auth"] == "Bearer test-key" for row in _StubEvaluator.seen)
     assert all("content_text" in row["payload"] for row in _StubEvaluator.seen)
+
+
+def test_dispatch_end_to_end_shows_the_user_that_a_rule_was_flagged(
+    built_cope_plugin, stub_evaluator, project_cwd
+):
+    """`hookSpecificOutput` reaches the agent; `systemMessage` is the only
+    field the person watching ever sees. Both must be on the wire, from the
+    real hook process — an advisory composed in-process proves nothing about
+    what dispatch renders."""
+    raw = {**_PRETOOLUSE, "cwd": str(project_cwd)}
+    result = _run_dispatch(
+        built_cope_plugin,
+        "claude",
+        "PreToolUse",
+        raw,
+        cwd=project_cwd,
+        env=_configured_env(stub_evaluator),
+    )
+    assert result.returncode == 0, f"stderr: {result.stderr!r}"
+
+    out = json.loads(result.stdout)
+    assert "systemMessage" in out, "the flagged rule reached the agent and nobody else"
+    assert "halt-on-failure" in out["systemMessage"]
+    assert "\n" not in out["systemMessage"]
+    assert len(out["systemMessage"]) < len(out["hookSpecificOutput"]["additionalContext"])
 
 
 def test_dispatch_end_to_end_is_silent_when_nothing_is_flagged(

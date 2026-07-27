@@ -476,6 +476,27 @@ def test_cope_shipped_hook_flags_the_axiom_it_ships_for(dist_root, stub_evaluato
     assert "--no-verify" in advisory
 
 
+def test_cope_shipped_hook_tells_the_person_watching_which_rule_was_flagged(
+    dist_root, stub_evaluator_env
+):
+    """The artifact, not the source: the built hook must put `systemMessage` on
+    stdout, because that is the only field of this response Claude Code shows
+    the person whose rules these are. Without it the check runs, corrects the
+    agent, and never surfaces — leaving them nothing to decide on."""
+    build_dir = dist_root / "aops-cope-claude"
+    _, command = _hook_commands("claude", build_dir)[0]
+    proc = _run_shipped_hook(
+        "claude", build_dir, command, _PAYLOADS["PreToolUse"], env_overrides=stub_evaluator_env
+    )
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+
+    out = json.loads(proc.stdout)
+    assert "systemMessage" in out, "the shipped hook flagged a rule and told only the agent"
+    assert "halt-on-failure" in out["systemMessage"]
+    assert "\n" not in out["systemMessage"]
+    assert (build_dir / "hooks" / "messages" / "verdict.user.md").is_file()
+
+
 def test_cope_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_root):
     """The shipped default. cope bakes in no endpoint, so an installation that
     has not configured one must cost the session nothing on every tool call:
