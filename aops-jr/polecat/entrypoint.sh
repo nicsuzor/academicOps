@@ -1,7 +1,13 @@
 #!/bin/bash
 
 # Configure git identity if not already set in environment.
-# These variables are forwarded by polecat/cli.py but can be defaulted here.
+# polecat/cli.py forwards GIT_AUTHOR_NAME/EMAIL from polecat.yaml's
+# `git_identity: {name, email}` for every dispatch mode (run and crew). The
+# literals below are a true last-resort fallback ONLY — they fire when
+# git_identity is missing/misconfigured (cli.py prints a warning in that
+# case), never as the standing default (aops_29ebef95: this used to be the
+# unconditional path for every polecat container because nothing upstream
+# ever forwarded the real identity).
 export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-aops-bot}"  # allow-fallback: git identity defaults
 export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-aops-bot@users.noreply.github.com}"  # allow-fallback: git identity defaults
 export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-$GIT_AUTHOR_NAME}"

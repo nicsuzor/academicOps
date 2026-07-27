@@ -42,9 +42,10 @@ def load_local_overlay(polecat_home):
     return {}
 
 
-def get_env_forwards():
+def get_env_forwards(config=None):
     """Build the dictionary of environment variables to forward into the container."""
     env = {}
+    config = config or {}
 
     # 1. Claude OAuth tokens (host source: AOPS_CC_OAUTH_TOKEN)
     if os.environ.get("AOPS_CC_OAUTH_TOKEN"):
@@ -62,6 +63,29 @@ def get_env_forwards():
         for k in ["GH_TOKEN", "GITHUB_TOKEN"]:
             if os.environ.get(k):
                 env[k] = os.environ[k]
+
+    # 2b. Git commit-author identity (host source: polecat.yaml `git_identity`)
+    #
+    # Every polecat-container commit must be attributable to the `botnicbot`
+    # identity, not entrypoint.sh's `aops-bot` fallback (aops_29ebef95:
+    # entrypoint.sh:5-6 unconditionally defaulted GIT_AUTHOR_NAME/EMAIL
+    # because nothing here ever forwarded them, so the "fallback" was in
+    # fact the standing behavior of every dispatch). GIT_COMMITTER_NAME/EMAIL
+    # are deliberately NOT set here — entrypoint.sh:7-8 already derives them
+    # from the author vars we forward, and that derivation is left alone
+    # per the fix ruling.
+    #
+    # The identity is real config VALUE data (not a secret name to resolve
+    # from the host env, unlike container_env_forward above), so it is read
+    # directly out of `git_identity: {name, email}` in polecat.yaml — never
+    # hardcoded here. If the key is missing/misconfigured, we forward
+    # nothing and entrypoint.sh's `aops-bot` default applies as the true
+    # last-resort fallback, exactly as designed.
+    git_identity = config.get("git_identity") or {}
+    if git_identity.get("name"):
+        env["GIT_AUTHOR_NAME"] = git_identity["name"]
+    if git_identity.get("email"):
+        env["GIT_AUTHOR_EMAIL"] = git_identity["email"]
 
     # 3. Gemini / Antigravity key and other standard forwards
     standard_keys = [
@@ -399,9 +423,22 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             sys.exit(1)
 
         # Build environment forwards
-        env = get_env_forwards()
+        env = get_env_forwards(config)
         if pkb_url:
             env["PKB_MCP_URL"] = pkb_url
+
+        # Surface (not silently swallow) a missing/misconfigured git_identity:
+        # entrypoint.sh's aops-bot default is only supposed to be a true
+        # last-resort fallback (aops_29ebef95), not a silently-accepted
+        # standing behavior.
+        if "GIT_AUTHOR_NAME" not in env or "GIT_AUTHOR_EMAIL" not in env:
+            click.echo(
+                "Warning: polecat.yaml has no `git_identity: {name, email}` "
+                "configured — the container will fall back to entrypoint.sh's "
+                "aops-bot default identity instead of the required bot "
+                "identity. Add `git_identity:` to polecat.yaml to fix.",
+                err=True,
+            )
 
         # Determine internal CLI tool & args
         docker_args = []

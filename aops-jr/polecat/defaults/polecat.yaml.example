@@ -127,6 +127,20 @@ crew_defaults: {}
 run_defaults: {}
 
 # ---------------------------------------------------------------------------
+# git_identity — REQUIRED for correct commit attribution. name/email are
+# literal config VALUES (unlike container_env_forward below, which lists
+# NAMES resolved from host env) — polecat/cli.py reads them directly and
+# forwards GIT_AUTHOR_NAME/GIT_AUTHOR_EMAIL into every container (`run` and
+# `crew`). entrypoint.sh derives GIT_COMMITTER_NAME/EMAIL from these two and
+# falls back to a hardcoded `aops-bot` identity only if this key is missing
+# or misconfigured, printing a warning to stderr when it does — that
+# fallback is a last resort, never the intended standing identity.
+# ---------------------------------------------------------------------------
+git_identity:
+  name: botnicbot
+  email: botnicbot@users.noreply.github.com
+
+# ---------------------------------------------------------------------------
 # Docker runtime config. The ssh / unix daemon endpoint is read by the
 # docker SDK from $DOCKER_HOST (load-bearing for the SDK; not duplicated
 # here).
