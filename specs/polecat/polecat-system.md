@@ -76,9 +76,14 @@ the container.
    `$ACA_DATA/.agents/rules/` (`/data/.agents/rules` — `ENV ACA_DATA=/data` in
    the `Dockerfile`), which is what makes cope/rbg's layer 3 reach a container;
    absent, the container simply has no layer 3, and a configured-but-unreadable
-   directory is a hard failure before any container starts. The image is never
-   pulled from a registry — it must already be built locally or CI-produced; a
-   missing image is a hard failure with an actionable message.
+   directory is a hard failure before any container starts. With `--live-edit`,
+   this workspace's locally built `dist/` is additionally mounted read-only over
+   the plugin directories the image itself reports it installed, so a
+   plugin-source edit takes effect with no image rebuild; the flag is opt-in,
+   refuses to start unless every one of those paths already exists in the image,
+   and announces what it mounted (see [[polecat-live-edit-mount]]). The image is
+   never pulled from a registry — it must already be built locally or
+   CI-produced; a missing image is a hard failure with an actionable message.
 7. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
    prompt, seeds `/pull <id>` as the prompt. An `agy` dispatch with no explicit

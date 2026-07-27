@@ -21,12 +21,13 @@ unchanged and the container serves whatever was baked in at image-build time
 ## Giving Effect
 
 - [[plugins/aops/polecat/cli.py]] — `probe_image_plugin_roots`,
-  `resolve_live_edit_mounts`, `verify_live_edit_destinations`, and the
-  `--live-edit` option on `run`
+  `_plugin_install_dir_error`, `resolve_live_edit_mounts`,
+  `verify_live_edit_destinations`, and the `--live-edit` option on `run`
 - [[tests/polecat/test_live_edit_mount.py]] — destinations taken from the
   image and never derived host-side, the `-v` mounts present when enabled and
-  absent when disabled, and the loud failure on a bogus destination or an
-  unreadable image
+  absent when disabled, the refusal on a bogus, malformed, or over-wide
+  destination and on an unreadable image, and the warning and confirmation
+  lines that keep a live session distinguishable from a baked one
 - [[Dockerfile]] — `MP_NAME=academicOps`, the fixed marketplace name every
   image installs its plugins under; the plugin-install `RUN` block that
   creates `/home/worker/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`
@@ -56,6 +57,25 @@ and the checkout still agree, which is to say only immediately after a
 rebuild. That is exactly the condition `--live-edit` exists to escape, so a
 host-derived destination defeats the feature in its normal case.
 
+The mirror-image danger is a destination that is real but too wide. Docker
+mounts happily over a directory that already exists, so the preflight in step 5
+cannot catch this one: a `source` of `/home/worker` would shadow the container's
+entire home read-only and still pass every existence check. The live route to it
+is not a corrupt-image hypothetical —
+[[plugins/aops/polecat/defaults/docker_gemini_fixups.py]]'s
+`fixup_marketplace_cache` falls back to `version_dir = ""` when a plugin's cache
+directory has no version subdirectory, which makes that plugin's `source` its
+_parent_ cache directory. Mounting there hides the very version directory
+`installed_plugins.json` points at, and hides it silently.
+
+Only one shape is therefore accepted as a Claude-side destination:
+`cache/<marketplace>/<plugin>/<version>` — exactly two segments below the
+image's plugin cache root, with the first naming the plugin that claims it. That
+is one plugin's own install directory and nothing wider. A `source` that is
+relative, outside the cache root, short a version segment, or another plugin's
+directory is refused at the point the manifest is read, before any of it can
+become a mount.
+
 ## Mechanism
 
 1. **Source of truth: the image, asked directly.**
@@ -82,11 +102,21 @@ host-derived destination defeats the feature in its normal case.
 
 2. **The image also fixes the plugin set.**
    `resolve_live_edit_mounts(workspace_dir, image_plugin_roots)` iterates the
-   plugins the image reported, not the ones the host built. A plugin the host
-   has and the image lacks has no destination to shadow and is not mounted; a
-   plugin the image installed but the host has not built is a hard failure,
-   because leaving it unmounted would leave it serving baked-in code inside a
-   session that believes it is live.
+   plugins the image reported, not the ones the host built. A plugin the image
+   installed but the host has not built is a hard failure, because leaving it
+   unmounted would leave it serving baked-in code inside a session that
+   believes it is live.
+
+   A plugin the host built but the image lacks is the opposite case — there is
+   no destination to shadow, so it cannot be mounted — and it is a **warning
+   naming the skipped plugins**, not a refusal. The run remains genuinely
+   useful for every other plugin, and the realistic cause is a developer adding
+   a new plugin against an older image, where refusing would block a working
+   loop. Skipping it silently would not be acceptable, though: that developer
+   gets exit 0, no output, and a container that ignores their edits — the same
+   false green the whole feature exists to prevent, produced by the feature
+   itself. The warning says which plugins were skipped and that the container
+   will run whatever the image was built with.
 
 3. **Both runtimes are mounted, whichever `AGENT_CMD` runs.**
    The Claude-side destination is the probed `source`. The agy-side
@@ -96,22 +126,37 @@ host-derived destination defeats the feature in its normal case.
    both means `--live-edit` means the same thing for `run claude`, `run agy`,
    and a `run shell` that invokes either.
 
-4. **Fail loudly, before any mount, if the source is missing.**
+4. **Fail loudly, before any mount, on a source that cannot be trusted.**
    `resolve_live_edit_mounts` refuses if the workspace has no `dist/` (no
    local build) or if any plugin the image installed lacks its built
-   `dist/<name>-claude` or `dist/<name>-agy` directory. `probe_image_plugin_roots`
-   refuses if the image has no readable manifest, if it is not JSON, if it
-   declares no plugins, or if a `source` is not an absolute path. Each is a
-   hard failure naming the missing path, not a skipped mount.
+   `dist/<name>-claude` or `dist/<name>-agy` directory.
+   `probe_image_plugin_roots` refuses if the image has no readable manifest,
+   if the manifest is not JSON, if it is not a JSON object, if it declares no
+   plugins, if any plugin entry is not itself an object (a bare list of names
+   and a plugin-keyed mapping are both valid JSON and neither carries a
+   `source`), if an entry has no name, or if its `source` is not that plugin's
+   own install directory in the shape given above. Each is a hard failure
+   naming the offending path or entry, not a skipped mount — and a refusal,
+   never a traceback: a crash and a refusal are equivalent only until someone
+   tries to act on the message.
 
 5. **Fail loudly, before any mount, if the destination is wrong.**
    `verify_live_edit_destinations(image, mounts)` runs a plain
-   `docker run --rm --entrypoint sh <image> -c 'test -d <dest1> && test -d
-   <dest2> && ...'` — no volumes attached — against every destination before
-   `run`'s real container ever starts. This is what makes a wrong path a hard
+   `docker run --rm --entrypoint sh <image> -c 'test -d <dest1> || echo
+   <dest1>; ...'` — no volumes attached — against every destination before
+   `run`'s real container ever starts, and refuses naming each destination the
+   image reported back as absent. This is what makes a wrong path a hard
    failure instead of Docker's silent directory-auto-create. Checking _after_
    mounting would only ever observe the mount's own target and could never
    detect this bug.
+
+   This stays a second container rather than folding into step 1's probe.
+   The destinations being checked _come from_ step 1's output, so a single
+   probe would have to replace `test -d <exact destination>` with a directory
+   listing post-processed on the host — a weaker predicate that diverges from
+   Docker's own view on symlinks and that hardcodes the cache tree's depth
+   host-side. The saved container start is worth less than testing the
+   predicate that actually governs the mount.
 
 6. **Mount read-only, once verified.**
    Only after every destination is confirmed to pre-exist does `run` add
@@ -119,6 +164,14 @@ host-derived destination defeats the feature in its normal case.
    the workspace/staging/session mounts `run` already builds (see
    [[polecat-system]] step 6). Read-only: a live-edit session edits the host
    checkout, never the container's filesystem.
+
+7. **Say what was mounted, before the container starts.**
+   `run` emits one line naming the `dist/` it mounted from and, per plugin, the
+   version directory the mount actually landed in. Without it a `--live-edit`
+   run's pre-container output is byte-identical to a baked one, so the terminal
+   gives a developer no way to tell which code is about to run — the confusion
+   this flag exists to end, left in place by the flag itself. The version
+   directory is the part that differs, so it is the part the line carries.
 
 ## Resolution against `--repo-dir` / `--project`
 
@@ -150,10 +203,25 @@ mounts at `/workspace`.
    the image installed.
 4. **A bogus destination is a hard failure, not a silent no-op** — Test: when
    the preflight probe reports a destination does not exist in the image,
-   `run` exits non-zero before the main container starts, and no container
-   from that invocation ever runs. Likewise when the image carries no
-   readable marketplace manifest.
-5. **A host edit is visible in an image nobody rebuilt** — Test: against an
+   `run` exits non-zero before the main container starts, naming that
+   destination, and no container from that invocation ever runs. Likewise when
+   the image carries no readable marketplace manifest.
+5. **A destination wider than one plugin is refused** — Test: a manifest whose
+   `source` is `/home/worker`, is the plugin's parent cache directory (no
+   version segment), or is another plugin's directory exits non-zero at
+   resolution time, even though all three directories exist in the image.
+6. **A malformed manifest refuses rather than crashes** — Test: `{"plugins":
+   ["aops"]}` and a plugin-keyed mapping both exit non-zero with a message
+   naming the manifest path, not with an `AttributeError`.
+7. **A plugin the image lacks is named, not swallowed** — Test: with a `dist/`
+   containing a plugin the image never installed, `run --live-edit` warns on
+   stderr naming that plugin and stating the container will run the image's own
+   code, and still mounts every plugin the image does install.
+8. **A live session is distinguishable from a baked one** — Test: `run
+   --live-edit` prints, before the container starts, a line naming the host
+   `dist/` and each plugin's mounted version directory; a run without the flag
+   prints no such line.
+9. **A host edit is visible in an image nobody rebuilt** — Test: against an
    image whose baked plugin version differs from the host's, edit a file
    under a plugin's shipped source on the host, rebuild `dist/` (`make
    build`, not `make docker-build`), start a container with `--live-edit`,

@@ -42,7 +42,15 @@ def _image_manifest(names, version=_IMAGE_VERSION):
     """The manifest an aops-crew image carries at
     CONTAINER_MARKETPLACE_MANIFEST: every plugin's `source` already rewritten
     to the absolute cache directory that image installed
-    (docker_gemini_fixups.py, fixup_marketplace_cache)."""
+    (docker_gemini_fixups.py, fixup_marketplace_cache).
+
+    `version` here is the on-disk directory name, and the entry's own `version`
+    field is deliberately not equal to it: Claude Code spells a semver build-
+    metadata `+meta` as `-meta` when it names the cache directory, so
+    `0.4.0+gold` installs at `.../0.4.0-gold`. Composing a destination from the
+    `version` field would therefore miss by one character even with the right
+    version in hand — which is the second reason the destination is read from
+    `source` and never assembled."""
     return json.dumps(
         {
             "name": cli.CONTAINER_PLUGIN_MARKETPLACE,
@@ -140,17 +148,66 @@ def test_a_manifest_declaring_no_plugins_fails_loudly(monkeypatch):
         cli.probe_image_plugin_roots("empty-image:latest")
 
 
-def test_a_relative_source_fails_loudly(monkeypatch):
-    """Only an absolute container path can be a mount destination. A relative
-    `./<plugin>/<version>` would resolve against Docker's own cwd and land
-    somewhere nothing reads."""
+def test_a_manifest_that_is_not_an_object_fails_loudly(monkeypatch):
+    """Valid JSON is not the same as a manifest. A top-level array parses
+    fine and then names no install paths at all."""
+    monkeypatch.setattr(
+        cli.subprocess, "run", _fake_probe(json.dumps([{"name": "aops", "source": "/x/y"}]))
+    )
+    with pytest.raises(SystemExit):
+        cli.probe_image_plugin_roots("array-image:latest")
+
+
+@pytest.mark.parametrize(
+    "plugins",
+    [
+        pytest.param(["aops"], id="list-of-strings"),
+        pytest.param({"aops": {"source": "/some/where"}}, id="dict-of-dicts"),
+    ],
+)
+def test_a_plugin_entry_that_is_not_an_object_fails_loudly(monkeypatch, plugins):
+    """Both of these are valid JSON and neither carries a `source`. Reading
+    them must produce the designed refusal, not a traceback: a crash and a
+    refusal are only equivalent until someone tries to act on the message."""
+    monkeypatch.setattr(cli.subprocess, "run", _fake_probe(json.dumps({"plugins": plugins})))
+    with pytest.raises(SystemExit):
+        cli.probe_image_plugin_roots("malformed-image:latest")
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param("./aops/0.4.0", id="relative"),
+        pytest.param("/home/worker", id="unrelated-absolute-path"),
+        pytest.param(
+            f"{cli.CONTAINER_PLUGIN_CACHE_ROOT}/aops",
+            id="parent-cache-dir-version-segment-missing",
+        ),
+        pytest.param(
+            f"{cli.CONTAINER_PLUGIN_CACHE_ROOT}/aops-pkb/{_IMAGE_VERSION}",
+            id="another-plugins-directory",
+        ),
+        pytest.param(cli.CONTAINER_PLUGIN_CACHE_ROOT, id="whole-plugin-cache"),
+    ],
+)
+def test_only_a_plugins_own_install_directory_may_be_a_destination(monkeypatch, source):
+    """A destination wider than one plugin's own `<plugin>/<version>` install
+    directory shadows something the container needs intact, and
+    `verify_live_edit_destinations` cannot catch it — those directories DO
+    exist, so `test -d` passes and the mount lands silently.
+
+    `parent-cache-dir-version-segment-missing` is the live route, not a
+    hypothetical: `docker_gemini_fixups.fixup_marketplace_cache` falls back to
+    `version_dir = ""` when a plugin's cache dir has no version subdirectory,
+    making `source` the parent cache dir — which would mount over and hide the
+    very version directory `installed_plugins.json` points at."""
     monkeypatch.setattr(
         cli.subprocess,
         "run",
-        _fake_probe(json.dumps({"plugins": [{"name": "aops", "source": "./aops/0.4.0"}]})),
+        _fake_probe(json.dumps({"plugins": [{"name": "aops", "source": source}]})),
     )
     with pytest.raises(SystemExit):
-        cli.probe_image_plugin_roots("relative-image:latest")
+        cli.probe_image_plugin_roots("overbroad-image:latest")
 
 
 # ---------------------------------------------------------------------------
@@ -188,13 +245,31 @@ def test_destinations_are_the_images_not_anything_derived_host_side(tmp_path, mo
     assert container_dest == image_roots["aops"]
 
 
-def test_the_plugin_set_comes_from_the_image_too(tmp_path):
+def test_the_plugin_set_comes_from_the_image_too(tmp_path, capsys):
     """A plugin the host has built but the image never installed has no
     destination to mount over, so it is not mounted at all — mounting it
-    somewhere invented is the silent no-op this feature refuses."""
+    somewhere invented is the silent no-op this feature refuses.
+
+    Skipping it silently is the same lie by omission, though: the developer
+    who just added a plugin against an older image gets exit 0 and no output
+    while their edits do nothing. It is a warning, not a refusal — the run is
+    still useful for every other plugin — but it names the plugins and says
+    what the container will actually run."""
     _write_dist_build(tmp_path, ["aops", "aops-pkb", "aops-tools"])
     mounts = cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
     assert {name for name, _, _ in mounts} == {"aops"}
+
+    warning = capsys.readouterr().err
+    assert "aops-pkb" in warning
+    assert "aops-tools" in warning
+    assert "NOT mounting" in warning
+
+
+def test_no_warning_when_the_host_built_exactly_what_the_image_installs(tmp_path, capsys):
+    """The warning has to stay rare enough to mean something."""
+    _write_dist_build(tmp_path, ["aops"])
+    cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
+    assert capsys.readouterr().err == ""
 
 
 def test_the_agy_destination_is_flat_and_unversioned(tmp_path):
@@ -239,26 +314,37 @@ def test_verify_passes_when_the_probe_succeeds(monkeypatch):
     cli.verify_live_edit_destinations("some-image:latest", [("aops", "/host/aops", "/dest/aops")])
 
 
-def test_verify_fails_loudly_when_the_destination_is_bogus(monkeypatch):
+def test_verify_fails_loudly_when_the_destination_is_bogus(monkeypatch, capsys):
     """This is the exact silent-no-op bug: a destination that does not exist
     in the image. verify_live_edit_destinations must refuse to proceed rather
-    than let docker auto-create the mount point."""
+    than let docker auto-create the mount point — and name the path it could
+    not find, so the refusal is actionable rather than merely loud."""
+    bogus = "/home/worker/.claude/plugins/cache/academicOps/aops/9.9.9-bogus"
+    good = f"{cli.CONTAINER_AGY_PLUGINS_ROOT}/aops"
     monkeypatch.setattr(
         cli.subprocess,
         "run",
-        lambda *a, **k: subprocess.CompletedProcess(a, 1, stdout="", stderr="no such directory"),
+        lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=f"{bogus}\n", stderr=""),
     )
     with pytest.raises(SystemExit):
         cli.verify_live_edit_destinations(
             "some-image:latest",
-            [
-                (
-                    "aops",
-                    "/host/aops",
-                    "/home/worker/.claude/plugins/cache/academicOps/aops/9.9.9-bogus",
-                )
-            ],
+            [("aops", "/host/aops-claude", bogus), ("aops", "/host/aops-agy", good)],
         )
+    err = capsys.readouterr().err
+    assert bogus in err
+    assert good not in err
+
+
+def test_verify_fails_loudly_when_the_probe_itself_cannot_run(monkeypatch):
+    """A probe that could not execute is not evidence the paths are fine."""
+    monkeypatch.setattr(
+        cli.subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 125, stdout="", stderr="no such image"),
+    )
+    with pytest.raises(SystemExit):
+        cli.verify_live_edit_destinations("gone-image:latest", [("aops", "/host/aops", "/dest")])
 
 
 # ---------------------------------------------------------------------------
@@ -277,10 +363,11 @@ def _base_mocks(monkeypatch, tmp_path):
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 
-def _docker_faker(captured, manifest, verify_returncode=0):
+def _docker_faker(captured, manifest, verify_missing=()):
     """A `subprocess.run` stand-in that answers both --live-edit probes the
     way a real image would, and records every docker argv. No real docker
-    call is ever made."""
+    call is ever made. `verify_missing` is the set of destinations the image
+    does not have; the real probe reports those on stdout."""
 
     def fake_run(cmd, *a, **kw):
         if cmd and cmd[0] == "docker":
@@ -289,17 +376,14 @@ def _docker_faker(captured, manifest, verify_returncode=0):
                 return subprocess.CompletedProcess(cmd, 0, stdout=manifest, stderr="")
             if "--entrypoint" in cmd and "sh" in cmd:
                 return subprocess.CompletedProcess(
-                    cmd,
-                    verify_returncode,
-                    stdout="",
-                    stderr="no such directory" if verify_returncode else "",
+                    cmd, 0, stdout="".join(f"{d}\n" for d in verify_missing), stderr=""
                 )
         return subprocess.CompletedProcess(cmd, 0)
 
     return fake_run
 
 
-def _capture_all_docker_cmds(monkeypatch, tmp_path, argv, manifest=None, verify_returncode=0):
+def _capture_all_docker_cmds(monkeypatch, tmp_path, argv, manifest=None, verify_missing=()):
     """Invoke `polecat run ...` and return (result, [every docker argv run]),
     including both --live-edit preflight probes if they happened."""
     _base_mocks(monkeypatch, tmp_path)
@@ -307,7 +391,7 @@ def _capture_all_docker_cmds(monkeypatch, tmp_path, argv, manifest=None, verify_
     monkeypatch.setattr(
         cli.subprocess,
         "run",
-        _docker_faker(captured, manifest or _image_manifest(["aops"]), verify_returncode),
+        _docker_faker(captured, manifest or _image_manifest(["aops"]), verify_missing),
     )
     monkeypatch.setattr(cli, "_seed_confirmed", lambda session_dir, task: True)
 
@@ -334,6 +418,8 @@ def test_live_edit_absent_by_default(tmp_path, monkeypatch):
     assert not any(cli.CONTAINER_AGY_PLUGINS_ROOT in arg for arg in main_cmd)
     # No preflight probe ran either — the whole mechanism is a no-op when off.
     assert len(captured) == 1
+    # Including its output: a baked run must not claim to be live.
+    assert "Live-edit" not in result.output
 
 
 def test_live_edit_mounts_over_the_images_stale_version_not_the_hosts(tmp_path, monkeypatch):
@@ -369,6 +455,33 @@ def test_live_edit_mounts_over_the_images_stale_version_not_the_hosts(tmp_path, 
     assert captured.index(probe_cmds[1]) < captured.index(main_cmd)
 
 
+def test_a_live_session_says_so_before_the_container_starts(tmp_path, monkeypatch):
+    """A developer must never be fooled about which code is running, and that
+    includes this feature's own output. With no confirmation line a
+    --live-edit run's pre-container output is byte-identical to a baked one,
+    so the terminal cannot distinguish them. The line names the version
+    directory the mount actually landed in — the fact that differs."""
+    repo = tmp_path / "repo"
+    repo.mkdir(parents=True, exist_ok=True)
+    _write_dist_build(repo, ["aops", "aops-pkb"])
+
+    result, _ = _capture_all_docker_cmds(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(repo), "--live-edit"],
+        manifest=_image_manifest(["aops", "aops-pkb"]),
+    )
+    assert result.exit_code == 0, result.output
+
+    announcement = [ln for ln in result.output.splitlines() if ln.startswith("Live-edit ON:")]
+    assert len(announcement) == 1
+    assert f"aops@{_IMAGE_VERSION}" in announcement[0]
+    assert f"aops-pkb@{_IMAGE_VERSION}" in announcement[0]
+    assert str(repo / "dist") in announcement[0]
+    # And it precedes the container it describes.
+    assert result.output.index("Live-edit ON:") < result.output.index("Running")
+
+
 def test_live_edit_refuses_to_start_when_destination_is_bogus(tmp_path, monkeypatch):
     """The loud-failure path: the preflight probe reports a plugin path does
     not exist in the image, so no container may start at all — neither
@@ -377,15 +490,17 @@ def test_live_edit_refuses_to_start_when_destination_is_bogus(tmp_path, monkeypa
     repo.mkdir(parents=True, exist_ok=True)
     _write_dist_build(repo, ["aops"])
 
+    bogus = f"/home/worker/.claude/plugins/cache/academicOps/aops/{_IMAGE_VERSION}"
     result, captured = _capture_all_docker_cmds(
         monkeypatch,
         tmp_path,
         ["run", "claude", "-d", str(repo), "--live-edit"],
-        verify_returncode=1,
+        verify_missing=[bogus],
     )
 
     assert result.exit_code != 0
     assert "live-edit" in result.output
+    assert bogus in result.output
     # Only the two preflight probes ran; the main container never started.
     assert len(captured) == 2
     assert all("--entrypoint" in c for c in captured)

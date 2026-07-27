@@ -17,6 +17,7 @@ import urllib.request
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import NoReturn
 
 import click
 import yaml
@@ -47,43 +48,65 @@ HEADLESS_FLAGS = {"-p", "--print"}
 CONTAINER_ACA_DATA = "/data"
 
 # The marketplace name every aops-crew image installs its plugins under,
-# regardless of build source (Dockerfile: `MP_NAME=academicOps`, always —
-# see the Dockerfile comment on the plugin-install RUN block). The host-side
-# LOCAL marketplace `make build` writes (dist/.claude-plugin/marketplace.json)
-# is deliberately named "aops" instead (build/marketplace.py,
-# generate_local_marketplace docstring), so this cannot be read out of that
-# file — it is a fact about the image's filesystem, not a host value, so it
-# is a constant here exactly like CONTAINER_ACA_DATA above.
+# regardless of build source (Dockerfile: `MP_NAME=academicOps`, always). It is
+# a fact about the image's filesystem, not a host value — the host's own
+# dist/.claude-plugin/marketplace.json is deliberately named something else —
+# so it is a constant here exactly like CONTAINER_ACA_DATA above. Reasoning:
+# specs/polecat/live-edit-mount.md.
 CONTAINER_PLUGIN_MARKETPLACE = "academicOps"
 
-# The image's own record of where it loads each plugin from. The Dockerfile
-# copies the marketplace manifest here and then rewrites every plugin's
-# `source` to the ABSOLUTE cache directory that image actually installed
+# Where the image installs plugin payloads: `<root>/<plugin>/<version>`, the
+# tree installed_plugins.json points at. Every live-edit destination on the
+# Claude side must have exactly that shape (`_plugin_install_dir_error`).
+CONTAINER_PLUGIN_CACHE_ROOT = f"/home/worker/.claude/plugins/cache/{CONTAINER_PLUGIN_MARKETPLACE}"
+
+# The image's own record of where it loads each plugin from, with every
+# `source` already rewritten to an absolute cache directory
 # (docker_gemini_fixups.py, fixup_marketplace_cache). Claude Code reads this
-# file; so does `--live-edit`, which is why the two can never disagree.
+# file; so does `--live-edit`, which is why the two cannot disagree.
 CONTAINER_MARKETPLACE_MANIFEST = (
     f"/home/worker/.claude/plugins/marketplaces/{CONTAINER_PLUGIN_MARKETPLACE}"
     "/.claude-plugin/marketplace.json"
 )
 
-# agy's plugin root. Unlike Claude Code's cache, agy installs each plugin at a
-# flat, unversioned path (Dockerfile: `cp -r "$MP_ROOT/$p-agy"
-# "/home/worker/.gemini/antigravity-cli/plugins/$p"`), so no version enters
-# the destination at all.
+# agy's plugin root: flat and unversioned (Dockerfile: `cp -r "$MP_ROOT/$p-agy"
+# "/home/worker/.gemini/antigravity-cli/plugins/$p"`), so no version enters the
+# destination at all.
 CONTAINER_AGY_PLUGINS_ROOT = "/home/worker/.gemini/antigravity-cli/plugins"
+
+
+def _plugin_install_dir_error(name, source):
+    """Why `source` may not be plugin `name`'s mount destination, or None.
+
+    Only one shape is safe: `CONTAINER_PLUGIN_CACHE_ROOT/<name>/<version>` —
+    that plugin's own install directory, exactly two segments deep, named for
+    the plugin claiming it. Anything wider shadows something the container
+    needs intact, and `verify_live_edit_destinations` cannot catch it because
+    those directories do exist. The live case is a manifest whose `source`
+    lost its version segment and so names the plugin's parent cache dir:
+    mounting there hides the very version directory the runtime loads.
+    """
+    if not isinstance(source, str) or not source.startswith("/"):
+        return "it is not an absolute path"
+    prefix = f"{CONTAINER_PLUGIN_CACHE_ROOT}/"
+    if not source.startswith(prefix):
+        return f"it is outside the image's plugin cache {CONTAINER_PLUGIN_CACHE_ROOT}"
+    segments = source[len(prefix) :].strip("/").split("/")
+    if len(segments) != 2 or not all(segments):
+        return "it is not a <plugin>/<version> install directory under that cache"
+    if segments[0] != name:
+        return f"it is plugin {segments[0]!r}'s directory, not {name!r}'s"
+    return None
 
 
 def probe_image_plugin_roots(image):
     """plugin name -> the absolute container directory `image` loads it from.
 
-    Read out of the image itself, with nothing mounted, because the version
-    string embedded in a Claude Code plugin-cache path
-    (`cache/<marketplace>/<plugin>/<version>`) is the version baked at IMAGE
-    BUILD time. Any host-side derivation of it — recomputed from git state,
-    or read out of the host's own `dist/` manifest — only matches while the
-    image and the checkout happen to agree, which is precisely the condition
-    `--live-edit` exists to escape. Asking the image what it installed makes
-    the mount correct against an image built at any point in the past.
+    Read out of the image itself, with nothing mounted: the version segment of
+    a plugin-cache path is baked at IMAGE BUILD time, so any host-side
+    derivation of it is correct only while the image and the checkout agree —
+    precisely the condition `--live-edit` exists to escape. See
+    specs/polecat/live-edit-mount.md.
     """
     probe = subprocess.run(
         ["docker", "run", "--rm", "--entrypoint", "cat", image, CONTAINER_MARKETPLACE_MANIFEST],
@@ -102,6 +125,12 @@ def probe_image_plugin_roots(image):
     except ValueError as e:
         fail(f"--live-edit: {CONTAINER_MARKETPLACE_MANIFEST} in image {image!r} is not JSON: {e}")
 
+    if not isinstance(manifest, dict):
+        fail(
+            f"--live-edit: {CONTAINER_MARKETPLACE_MANIFEST} in image {image!r} "
+            "is not a JSON object, so it names no plugin install paths."
+        )
+
     plugins = manifest.get("plugins") or []
     if not plugins:
         fail(
@@ -110,14 +139,26 @@ def probe_image_plugin_roots(image):
 
     roots = {}
     for entry in plugins:
-        name = entry.get("name")
-        source = entry.get("source")
-        if not name or not isinstance(source, str) or not source.startswith("/"):
+        if not isinstance(entry, dict):
             fail(
-                f"--live-edit: image {image!r} declares plugin entry {entry!r} "
-                "with no name or no absolute source path."
+                f"--live-edit: image {image!r} declares plugin entry {entry!r} in "
+                f"{CONTAINER_MARKETPLACE_MANIFEST}, which is not a plugin object "
+                "and so names no install path. Refusing rather than guessing one."
             )
-        roots[name] = source
+        name = entry.get("name")
+        if not name:
+            fail(f"--live-edit: image {image!r} declares plugin entry {entry!r} with no name.")
+        problem = _plugin_install_dir_error(name, entry.get("source"))
+        if problem:
+            fail(
+                f"--live-edit: image {image!r} declares plugin {name!r} with source "
+                f"{entry.get('source')!r}, which cannot be a mount destination: "
+                f"{problem}. A live-edit mount must land on that plugin's own "
+                "install directory and nothing wider — mounting over a parent "
+                "would hide the version directory the container actually loads, "
+                "with no error anywhere."
+            )
+        roots[name] = entry["source"]
     return roots
 
 
@@ -126,21 +167,35 @@ def resolve_live_edit_mounts(workspace_dir, image_plugin_roots):
 
     The plugin set and every Claude-side destination come from the image
     (`probe_image_plugin_roots`); the host supplies only the built sources.
-    agy's destination is the flat `CONTAINER_AGY_PLUGINS_ROOT/<plugin>` — no
-    version in it to get wrong. Both runtimes are mounted whichever AGENT_CMD
-    runs, so `--live-edit` means the same thing for `run claude`, `run agy`,
-    and a `run shell` that invokes either.
+    Both runtimes are mounted whichever AGENT_CMD runs, so `--live-edit` means
+    the same thing for `run claude`, `run agy`, and a `run shell` that invokes
+    either.
 
-    Fails loudly if a plugin the image installed has no built directory on
-    the host: a live-edit mount silently skipped leaves that plugin serving
-    baked-in code, which is the false-green failure this flag exists to
-    prevent.
+    A plugin the image installed but the host has not built is a hard failure.
+    A plugin the host built but the image never installed is warned about and
+    skipped: there is no destination to shadow, but a developer who is not told
+    would believe their edits to it were live.
     """
     dist_root = workspace_dir / "dist"
     if not dist_root.is_dir():
         fail(
             f"--live-edit requires a local build: {dist_root} does not exist. "
             "Run `make build` in the workspace first."
+        )
+
+    skipped = sorted(
+        built.name[: -len("-claude")]
+        for built in dist_root.glob("*-claude")
+        if built.is_dir() and built.name[: -len("-claude")] not in image_plugin_roots
+    )
+    if skipped:
+        click.echo(
+            "Warning: --live-edit is NOT mounting these locally built plugins, "
+            f"because the image does not install them: {', '.join(skipped)}. "
+            "There is no path in it to mount over, so the container will run "
+            "whatever that image was built with and your edits to them will not "
+            "be live in it. Run `make docker-build` to pick them up.",
+            err=True,
         )
 
     mounts = []
@@ -163,35 +218,45 @@ def verify_live_edit_destinations(image, mounts):
     """Confirm every computed destination already exists inside `image`,
     with nothing mounted yet.
 
-    This is the loud-failure half of the live-edit feature: a bind mount
-    onto a path Docker has to auto-create (because the image never had it —
-    a manifest that names a source the install never produced, an agy tree
-    the image lacks) is a silent no-op. The container starts clean, the
-    mount "succeeds", and the agent runs the image's baked-in code with no
-    error anywhere. Checking the image's own filesystem BEFORE any `-v` is
-    attached — a plain `docker run` probe with no mounts at all — is what
-    makes that failure loud instead of silent; checking after mounting would
-    just observe the mount's own target and always pass.
+    This is the loud-failure half of the live-edit feature. A bind mount onto
+    a path Docker has to auto-create is a silent no-op: the container starts
+    clean, the mount "succeeds", and the agent runs baked-in code with no
+    error anywhere. Probing the image's own filesystem BEFORE any `-v` is
+    attached is what makes that loud; probing after mounting would only ever
+    observe the mount's own target and always pass.
+
+    The probe reports each missing path rather than a bare exit code, so the
+    refusal names what is actually wrong with this image.
     """
-    checks = " && ".join(f"test -d {shlex.quote(dest)}" for _, _, dest in mounts)
+    checks = "; ".join(
+        f"test -d {shlex.quote(dest)} || echo {shlex.quote(dest)}" for _, _, dest in mounts
+    )
     probe = subprocess.run(
         ["docker", "run", "--rm", "--entrypoint", "sh", image, "-c", checks],
         capture_output=True,
         text=True,
     )
     if probe.returncode != 0:
-        listing = "\n".join(f"  {name}: {dest}" for name, _, dest in mounts)
         fail(
-            "--live-edit: one or more plugin-install paths do not "
-            f"exist in image {image!r}. Mounting over a path the image "
-            "never had is a silent no-op the container cannot report, so "
-            "this is refused up front instead. Expected paths:\n"
-            f"{listing}\n"
+            f"--live-edit: could not check plugin-install paths in image {image!r} "
+            f"(docker probe exited {probe.returncode}), so no mount plan can be "
+            "trusted.\n"
             f"docker probe stderr: {probe.stderr.strip()}"
         )
 
+    missing = [line.strip() for line in probe.stdout.splitlines() if line.strip()]
+    if missing:
+        by_dest = {dest: name for name, _, dest in mounts}
+        listing = "\n".join(f"  {by_dest.get(dest, '?')}: {dest}" for dest in missing)
+        fail(
+            f"--live-edit: image {image!r} does not have these plugin-install "
+            "paths, so mounting over them would silently create empty "
+            "directories nothing reads:\n"
+            f"{listing}"
+        )
 
-def fail(message):
+
+def fail(message) -> NoReturn:
     """Report and exit non-zero. Nothing proceeds on a missing requirement."""
     click.echo(f"Error: {message}", err=True)
     sys.exit(1)
@@ -825,11 +890,9 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, live_edit, ex
             "default workspace."
         )
 
-    # `dist/` is gitignored (a build artifact, never committed), so it exists
-    # only in the canonical checkout `make build` was run against — a
-    # per-session isolated clone below never has it. Live-edit mounts must
-    # therefore resolve against this canonical path, captured before that
-    # clone can replace `workspace_dir`.
+    # Live-edit mounts resolve against the checkout `make build` ran in, which
+    # is the only one with a `dist/` — never the per-session isolated clone
+    # below. Captured here, before that clone can replace `workspace_dir`.
     canonical_workspace_dir = workspace_dir
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
@@ -877,6 +940,20 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, live_edit, ex
             image_plugin_roots = probe_image_plugin_roots(image)
             live_edit_mounts = resolve_live_edit_mounts(canonical_workspace_dir, image_plugin_roots)
             verify_live_edit_destinations(image, live_edit_mounts)
+            # Without this, a --live-edit run's pre-container output is
+            # byte-identical to a baked one and the developer cannot tell which
+            # code is about to run. Naming the version directory each mount
+            # landed in is the part that distinguishes them.
+            landed = ", ".join(
+                f"{name}@{dest.rsplit('/', 1)[1]}"
+                for name, _, dest in live_edit_mounts
+                if dest.startswith(CONTAINER_PLUGIN_CACHE_ROOT)
+            )
+            click.echo(
+                f"Live-edit ON: {canonical_workspace_dir / 'dist'} mounted read-only "
+                f"over the claude and agy plugin paths image {image!r} reported, "
+                f"for: {landed}"
+            )
 
         env = get_env_forwards(config)
         if mcp_url:
@@ -997,11 +1074,9 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, live_edit, ex
             cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
 
         # --live-edit: dist/<plugin>-{claude,agy} over the plugin directories
-        # the image itself reported, read-only. Every destination was already
-        # confirmed to pre-exist in this image by
-        # verify_live_edit_destinations() above, so a mount landing here is
-        # known to shadow real baked-in content rather than create an empty
-        # directory nothing reads.
+        # the image itself reported, read-only. Empty unless the flag was
+        # given; every destination was already confirmed to pre-exist in this
+        # image above, so these shadow real baked-in content.
         for _name, host_src, container_dest in live_edit_mounts:
             cmd.extend(["-v", f"{host_src}:{container_dest}:ro"])
 
