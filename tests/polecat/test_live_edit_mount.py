@@ -2,17 +2,20 @@
 
 The mount lets a developer edit plugin source and see it take effect inside a
 container without an image rebuild, by bind-mounting this workspace's locally
-built `dist/<plugin>-claude` over the container's installed-plugin cache.
+built `dist/<plugin>-claude` and `dist/<plugin>-agy` over the directories the
+image actually installed those plugins into.
 
-The trap this exists to catch, confirmed live in a container: Claude Code's
-plugin installer writes each plugin's cache directory as
-`cache/<marketplace>/<plugin>/<version>`, rewriting any `+` in the version to
-`-` first — source version `0.5.0+gdff86d32` installs at
-`.../0.5.0-gdff86d32/`. A mount computed from the raw, un-sanitized version
-names a path Docker happily auto-creates as an empty directory rather than
-erroring, so the container silently keeps serving its baked-in code with no
-error anywhere — a false-green review verdict. `sanitize_cache_version` and
-`verify_live_edit_destinations` are what make that failure loud instead.
+The trap this exists to catch: a Claude Code plugin's install directory is
+`cache/<marketplace>/<plugin>/<version>`, where `<version>` is the version
+baked at IMAGE BUILD time. Deriving that version host-side — from git state or
+from the host's own `dist/` manifest — only lines up while the image and the
+checkout agree, which is exactly the condition `--live-edit` exists to escape.
+A destination the image never had is not an error: Docker auto-creates it as
+an empty directory and mounts over it, so the container silently keeps serving
+its baked-in code with no error anywhere — a false-green review verdict.
+`probe_image_plugin_roots` (ask the image where it loads plugins from) and
+`verify_live_edit_destinations` (refuse before any container starts) are what
+make that failure impossible and loud respectively.
 """
 
 import json
@@ -30,95 +33,195 @@ if _PLUGINS_DIR not in sys.path:
 
 from aops.polecat import cli  # noqa: E402
 
-# ---------------------------------------------------------------------------
-# sanitize_cache_version: the exact sanitization the installer performs
-# ---------------------------------------------------------------------------
+# A stale image's manifest: version `0.4.0-gold` baked in long ago, nothing
+# like whatever the host checkout would derive today.
+_IMAGE_VERSION = "0.4.0-gold"
 
 
-def test_plus_is_rewritten_to_hyphen():
-    assert cli.sanitize_cache_version("0.5.0+gdff86d32") == "0.5.0-gdff86d32"
-
-
-def test_the_confirmed_live_example_matches_exactly():
-    """Verified live in a container: this exact input/output pair is real,
-    not a hypothesis about how the installer behaves."""
-    assert cli.sanitize_cache_version("0.5.0+gdff86d32") == "0.5.0-gdff86d32"
-
-
-def test_a_version_with_no_plus_is_unchanged():
-    assert cli.sanitize_cache_version("0.5.0") == "0.5.0"
-
-
-def test_a_prerelease_dirty_version_is_also_sanitized():
-    assert (
-        cli.sanitize_cache_version("0.5.1-dev.0+gabc12345.dirty") == "0.5.1-dev.0-gabc12345.dirty"
+def _image_manifest(names, version=_IMAGE_VERSION):
+    """The manifest an aops-crew image carries at
+    CONTAINER_MARKETPLACE_MANIFEST: every plugin's `source` already rewritten
+    to the absolute cache directory that image installed
+    (docker_gemini_fixups.py, fixup_marketplace_cache)."""
+    return json.dumps(
+        {
+            "name": cli.CONTAINER_PLUGIN_MARKETPLACE,
+            "plugins": [
+                {
+                    "name": name,
+                    "version": version.replace("-g", "+g", 1),
+                    "source": (
+                        f"/home/worker/.claude/plugins/cache/"
+                        f"{cli.CONTAINER_PLUGIN_MARKETPLACE}/{name}/{version}"
+                    ),
+                }
+                for name in names
+            ],
+        }
     )
 
 
+def _write_dist_build(workspace, names):
+    """What `make build` leaves on the host: a per-plugin build for each
+    runtime. No manifest is needed — the plugin set comes from the image."""
+    for name in names:
+        for suffix in ("claude", "agy"):
+            built = workspace / "dist" / f"{name}-{suffix}"
+            built.mkdir(parents=True, exist_ok=True)
+            (built / "marker.txt").write_text(f"{name}-{suffix}")
+
+
+def _fake_probe(manifest_stdout, returncode=0, stderr=""):
+    def _run(cmd, *a, **kw):
+        return subprocess.CompletedProcess(cmd, returncode, stdout=manifest_stdout, stderr=stderr)
+
+    return _run
+
+
 # ---------------------------------------------------------------------------
-# resolve_live_edit_mounts: reading dist/.claude-plugin/marketplace.json
+# probe_image_plugin_roots: the image, not the host, says where plugins live
 # ---------------------------------------------------------------------------
 
 
-def _write_dist_manifest(workspace, plugins):
-    manifest_dir = workspace / "dist" / ".claude-plugin"
-    manifest_dir.mkdir(parents=True, exist_ok=True)
-    (manifest_dir / "marketplace.json").write_text(json.dumps({"name": "aops", "plugins": plugins}))
-    for entry in plugins:
-        built = workspace / "dist" / f"{entry['name']}-claude"
-        built.mkdir(parents=True, exist_ok=True)
-        (built / "marker.txt").write_text(entry["name"])
+def test_plugin_roots_come_from_the_image_manifest(monkeypatch):
+    monkeypatch.setattr(cli.subprocess, "run", _fake_probe(_image_manifest(["aops", "aops-pkb"])))
+    roots = cli.probe_image_plugin_roots("stale-image:latest")
+    assert roots == {
+        "aops": f"/home/worker/.claude/plugins/cache/academicOps/aops/{_IMAGE_VERSION}",
+        "aops-pkb": f"/home/worker/.claude/plugins/cache/academicOps/aops-pkb/{_IMAGE_VERSION}",
+    }
+
+
+def test_the_probe_reads_the_marketplaces_manifest_with_nothing_mounted(monkeypatch):
+    """A `docker run --rm` against the image alone: no volumes, so what it
+    reports is the image's own filesystem and cannot be an echo of a mount."""
+    seen = []
+
+    def _run(cmd, *a, **kw):
+        seen.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, stdout=_image_manifest(["aops"]), stderr="")
+
+    monkeypatch.setattr(cli.subprocess, "run", _run)
+    cli.probe_image_plugin_roots("stale-image:latest")
+
+    assert len(seen) == 1
+    assert seen[0] == [
+        "docker",
+        "run",
+        "--rm",
+        "--entrypoint",
+        "cat",
+        "stale-image:latest",
+        cli.CONTAINER_MARKETPLACE_MANIFEST,
+    ]
+    assert "-v" not in seen[0]
+
+
+def test_an_image_without_the_manifest_fails_loudly(monkeypatch):
+    """An image predating this layout has no marketplaces/ manifest. There is
+    then no way to know where it loads plugins from, so refuse rather than
+    guess a path Docker would silently auto-create."""
+    monkeypatch.setattr(
+        cli.subprocess, "run", _fake_probe("", returncode=1, stderr="No such file or directory")
+    )
+    with pytest.raises(SystemExit):
+        cli.probe_image_plugin_roots("ancient-image:latest")
+
+
+def test_a_non_json_manifest_fails_loudly(monkeypatch):
+    monkeypatch.setattr(cli.subprocess, "run", _fake_probe("not json at all"))
+    with pytest.raises(SystemExit):
+        cli.probe_image_plugin_roots("broken-image:latest")
+
+
+def test_a_manifest_declaring_no_plugins_fails_loudly(monkeypatch):
+    monkeypatch.setattr(cli.subprocess, "run", _fake_probe(json.dumps({"plugins": []})))
+    with pytest.raises(SystemExit):
+        cli.probe_image_plugin_roots("empty-image:latest")
+
+
+def test_a_relative_source_fails_loudly(monkeypatch):
+    """Only an absolute container path can be a mount destination. A relative
+    `./<plugin>/<version>` would resolve against Docker's own cwd and land
+    somewhere nothing reads."""
+    monkeypatch.setattr(
+        cli.subprocess,
+        "run",
+        _fake_probe(json.dumps({"plugins": [{"name": "aops", "source": "./aops/0.4.0"}]})),
+    )
+    with pytest.raises(SystemExit):
+        cli.probe_image_plugin_roots("relative-image:latest")
+
+
+# ---------------------------------------------------------------------------
+# resolve_live_edit_mounts: host builds -> the image's own destinations
+# ---------------------------------------------------------------------------
 
 
 def test_no_dist_build_fails_loudly(tmp_path):
     with pytest.raises(SystemExit):
-        cli.resolve_live_edit_mounts(tmp_path)
+        cli.resolve_live_edit_mounts(tmp_path, {"aops": "/some/dest"})
 
 
-def test_mounts_are_derived_from_the_manifest_not_current_git_state(tmp_path, monkeypatch):
-    """The whole point of live-edit is to dirty the tree after the image was
-    built. If the mount were recomputed from current git state it would
-    drift from what the image actually has on disk the moment that happens.
-    Proven here by making the derivation from live git state return
-    something else entirely and confirming resolve_live_edit_mounts ignores
-    it."""
-    _write_dist_manifest(tmp_path, [{"name": "aops", "version": "0.5.0+gdff86d32"}])
+def test_destinations_are_the_images_not_anything_derived_host_side(tmp_path, monkeypatch):
+    """The defect this fix closes. The host's own version — whatever `make
+    build` or git state would produce today — must not reach the destination:
+    the container's cache path embeds the version baked at image-build time,
+    and the two diverge the moment the image is not rebuilt. Proven by making
+    any subprocess call (git, docker, anything) an error and confirming the
+    destination still comes out as the image's stale path."""
 
     def _boom(*a, **k):
-        raise AssertionError("must not re-derive from git state")
+        raise AssertionError("must not shell out to re-derive a version host-side")
 
-    monkeypatch.setattr(subprocess, "run", _boom, raising=False)
-    # Only patch cli's own subprocess usage sparingly — resolve_live_edit_mounts
-    # must do no subprocess calls at all, so patching module-global subprocess
-    # is safe: any call would raise.
     monkeypatch.setattr(cli.subprocess, "run", _boom)
+    _write_dist_build(tmp_path, ["aops"])
 
-    mounts = cli.resolve_live_edit_mounts(tmp_path)
-    assert len(mounts) == 1
-    name, host_src, container_dest = mounts[0]
+    image_roots = {"aops": f"/home/worker/.claude/plugins/cache/academicOps/aops/{_IMAGE_VERSION}"}
+    mounts = cli.resolve_live_edit_mounts(tmp_path, image_roots)
+
+    claude_mounts = [m for m in mounts if "/.claude/" in m[2]]
+    assert len(claude_mounts) == 1
+    name, host_src, container_dest = claude_mounts[0]
     assert name == "aops"
-    assert container_dest.endswith("/0.5.0-gdff86d32")
+    assert host_src == tmp_path / "dist" / "aops-claude"
+    assert container_dest == image_roots["aops"]
 
 
-def test_missing_declared_plugin_directory_fails_loudly(tmp_path):
-    manifest_dir = tmp_path / "dist" / ".claude-plugin"
-    manifest_dir.mkdir(parents=True)
-    (manifest_dir / "marketplace.json").write_text(
-        json.dumps({"name": "aops", "plugins": [{"name": "aops", "version": "0.5.0+gabc"}]})
-    )
+def test_the_plugin_set_comes_from_the_image_too(tmp_path):
+    """A plugin the host has built but the image never installed has no
+    destination to mount over, so it is not mounted at all — mounting it
+    somewhere invented is the silent no-op this feature refuses."""
+    _write_dist_build(tmp_path, ["aops", "aops-pkb", "aops-tools"])
+    mounts = cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
+    assert {name for name, _, _ in mounts} == {"aops"}
+
+
+def test_the_agy_destination_is_flat_and_unversioned(tmp_path):
+    """agy installs each plugin at `plugins/<name>` with no version segment
+    (Dockerfile: `cp -r "$MP_ROOT/$p-agy" .../plugins/$p`), so there is no
+    version to resolve on that side at all."""
+    _write_dist_build(tmp_path, ["aops"])
+    mounts = cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
+    agy = [m for m in mounts if m[2].startswith(cli.CONTAINER_AGY_PLUGINS_ROOT)]
+    assert len(agy) == 1
+    _, host_src, container_dest = agy[0]
+    assert host_src == tmp_path / "dist" / "aops-agy"
+    assert container_dest == f"{cli.CONTAINER_AGY_PLUGINS_ROOT}/aops"
+
+
+def test_missing_host_claude_build_fails_loudly(tmp_path):
+    (tmp_path / "dist" / "aops-agy").mkdir(parents=True)
     # dist/aops-claude deliberately not created.
     with pytest.raises(SystemExit):
-        cli.resolve_live_edit_mounts(tmp_path)
+        cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
 
 
-def test_container_destination_uses_the_fixed_academicops_marketplace_name(tmp_path):
-    """The container always installs under `academicOps` (Dockerfile
-    MP_NAME), regardless of the local dist/ marketplace's own name (which is
-    deliberately `aops`, see build/marketplace.py). The destination must
-    never be built from the local manifest's own `name` field."""
-    _write_dist_manifest(tmp_path, [{"name": "aops", "version": "0.5.0+gdff86d32"}])
-    _, _, container_dest = cli.resolve_live_edit_mounts(tmp_path)[0]
-    assert container_dest == ("/home/worker/.claude/plugins/cache/academicOps/aops/0.5.0-gdff86d32")
+def test_missing_host_agy_build_fails_loudly(tmp_path):
+    (tmp_path / "dist" / "aops-claude").mkdir(parents=True)
+    # dist/aops-agy deliberately not created.
+    with pytest.raises(SystemExit):
+        cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
 
 
 # ---------------------------------------------------------------------------
@@ -137,9 +240,9 @@ def test_verify_passes_when_the_probe_succeeds(monkeypatch):
 
 
 def test_verify_fails_loudly_when_the_destination_is_bogus(monkeypatch):
-    """This is the exact silent-no-op bug: a computed destination that does
-    not exist in the image. verify_live_edit_destinations must refuse to
-    proceed rather than let docker auto-create the mount point."""
+    """This is the exact silent-no-op bug: a destination that does not exist
+    in the image. verify_live_edit_destinations must refuse to proceed rather
+    than let docker auto-create the mount point."""
     monkeypatch.setattr(
         cli.subprocess,
         "run",
@@ -174,24 +277,38 @@ def _base_mocks(monkeypatch, tmp_path):
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 
-def _capture_all_docker_cmds(monkeypatch, tmp_path, argv):
-    """Invoke `polecat run ...` and return (result, [every docker argv run]),
-    including the --live-edit preflight probe if one happened. Real docker
-    calls are never made."""
-    _base_mocks(monkeypatch, tmp_path)
-    captured = []
+def _docker_faker(captured, manifest, verify_returncode=0):
+    """A `subprocess.run` stand-in that answers both --live-edit probes the
+    way a real image would, and records every docker argv. No real docker
+    call is ever made."""
 
     def fake_run(cmd, *a, **kw):
         if cmd and cmd[0] == "docker":
             captured.append(list(cmd))
-            if "--entrypoint" in cmd:
-                # The --live-edit preflight probe: succeed unconditionally so
-                # tests control failure explicitly via monkeypatching
-                # verify_live_edit_destinations itself where needed.
-                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            if "--entrypoint" in cmd and "cat" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, stdout=manifest, stderr="")
+            if "--entrypoint" in cmd and "sh" in cmd:
+                return subprocess.CompletedProcess(
+                    cmd,
+                    verify_returncode,
+                    stdout="",
+                    stderr="no such directory" if verify_returncode else "",
+                )
         return subprocess.CompletedProcess(cmd, 0)
 
-    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    return fake_run
+
+
+def _capture_all_docker_cmds(monkeypatch, tmp_path, argv, manifest=None, verify_returncode=0):
+    """Invoke `polecat run ...` and return (result, [every docker argv run]),
+    including both --live-edit preflight probes if they happened."""
+    _base_mocks(monkeypatch, tmp_path)
+    captured = []
+    monkeypatch.setattr(
+        cli.subprocess,
+        "run",
+        _docker_faker(captured, manifest or _image_manifest(["aops"]), verify_returncode),
+    )
     monkeypatch.setattr(cli, "_seed_confirmed", lambda session_dir, task: True)
 
     result = CliRunner().invoke(cli.main, argv)
@@ -206,7 +323,7 @@ def _main_docker_run(captured, image="test-image:latest"):
 
 
 def test_live_edit_absent_by_default(tmp_path, monkeypatch):
-    """Opt-in only: no --live-edit flag means no cache-path -v mount and no
+    """Opt-in only: no --live-edit flag means no plugin-path -v mount and no
     preflight probe at all."""
     result, captured = _capture_all_docker_cmds(
         monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo")]
@@ -214,14 +331,19 @@ def test_live_edit_absent_by_default(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     main_cmd = _main_docker_run(captured)
     assert not any("/home/worker/.claude/plugins/cache/" in arg for arg in main_cmd)
+    assert not any(cli.CONTAINER_AGY_PLUGINS_ROOT in arg for arg in main_cmd)
     # No preflight probe ran either — the whole mechanism is a no-op when off.
     assert len(captured) == 1
 
 
-def test_live_edit_adds_the_expected_v_mount_when_enabled(tmp_path, monkeypatch):
+def test_live_edit_mounts_over_the_images_stale_version_not_the_hosts(tmp_path, monkeypatch):
+    """The end-to-end form of the fix: the image was built long ago at
+    `_IMAGE_VERSION` and the host has since moved on. The `-v` destination
+    must be the image's path, so the mount actually shadows what the
+    container reads."""
     repo = tmp_path / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    _write_dist_manifest(repo, [{"name": "aops", "version": "0.5.0+gdff86d32"}])
+    _write_dist_build(repo, ["aops"])
 
     result, captured = _capture_all_docker_cmds(
         monkeypatch, tmp_path, ["run", "claude", "-d", str(repo), "--live-edit"]
@@ -229,27 +351,52 @@ def test_live_edit_adds_the_expected_v_mount_when_enabled(tmp_path, monkeypatch)
     assert result.exit_code == 0, result.output
 
     main_cmd = _main_docker_run(captured)
-    expected_dest = "/home/worker/.claude/plugins/cache/academicOps/aops/0.5.0-gdff86d32"
+    expected_dest = f"/home/worker/.claude/plugins/cache/academicOps/aops/{_IMAGE_VERSION}"
     expected = f"{repo / 'dist' / 'aops-claude'}:{expected_dest}:ro"
     assert expected in main_cmd
     assert main_cmd[main_cmd.index(expected) - 1] == "-v"
 
-    # And the preflight probe actually ran, checking that same path, before
-    # the main container started.
+    expected_agy = f"{repo / 'dist' / 'aops-agy'}:{cli.CONTAINER_AGY_PLUGINS_ROOT}/aops:ro"
+    assert expected_agy in main_cmd
+    assert main_cmd[main_cmd.index(expected_agy) - 1] == "-v"
+
+    # Both preflight probes ran, against that same path, before the main
+    # container started.
     probe_cmds = [c for c in captured if "--entrypoint" in c]
-    assert len(probe_cmds) == 1
-    assert expected_dest in probe_cmds[0][-1]
-    assert captured.index(probe_cmds[0]) < captured.index(main_cmd)
+    assert len(probe_cmds) == 2
+    assert probe_cmds[0][-1] == cli.CONTAINER_MARKETPLACE_MANIFEST
+    assert expected_dest in probe_cmds[1][-1]
+    assert captured.index(probe_cmds[1]) < captured.index(main_cmd)
 
 
 def test_live_edit_refuses_to_start_when_destination_is_bogus(tmp_path, monkeypatch):
-    """The loud-failure path: the preflight probe reports the computed cache
-    path does not exist in the image, so no container may start at all —
-    neither the probe's own docker run nor the main run may be mistaken for
-    success."""
+    """The loud-failure path: the preflight probe reports a plugin path does
+    not exist in the image, so no container may start at all — neither
+    probe's own docker run nor the main run may be mistaken for success."""
     repo = tmp_path / "repo"
     repo.mkdir(parents=True, exist_ok=True)
-    _write_dist_manifest(repo, [{"name": "aops", "version": "0.5.0+gdff86d32"}])
+    _write_dist_build(repo, ["aops"])
+
+    result, captured = _capture_all_docker_cmds(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(repo), "--live-edit"],
+        verify_returncode=1,
+    )
+
+    assert result.exit_code != 0
+    assert "live-edit" in result.output
+    # Only the two preflight probes ran; the main container never started.
+    assert len(captured) == 2
+    assert all("--entrypoint" in c for c in captured)
+
+
+def test_live_edit_refuses_when_the_image_cannot_be_read(tmp_path, monkeypatch):
+    """No manifest in the image means no known destination. Refusing here is
+    what keeps a guessed path from becoming an auto-created empty mount."""
+    repo = tmp_path / "repo"
+    repo.mkdir(parents=True, exist_ok=True)
+    _write_dist_build(repo, ["aops"])
 
     _base_mocks(monkeypatch, tmp_path)
     captured = []
@@ -257,8 +404,8 @@ def test_live_edit_refuses_to_start_when_destination_is_bogus(tmp_path, monkeypa
     def fake_run(cmd, *a, **kw):
         if cmd and cmd[0] == "docker":
             captured.append(list(cmd))
-            if "--entrypoint" in cmd:
-                return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="no such directory")
+            if "--entrypoint" in cmd and "cat" in cmd:
+                return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="No such file")
         return subprocess.CompletedProcess(cmd, 0)
 
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
@@ -268,6 +415,5 @@ def test_live_edit_refuses_to_start_when_destination_is_bogus(tmp_path, monkeypa
 
     assert result.exit_code != 0
     assert "live-edit" in result.output
-    # Only the failed preflight probe ran; the main container never started.
     assert len(captured) == 1
-    assert "--entrypoint" in captured[0]
+    assert captured[0][-1] == cli.CONTAINER_MARKETPLACE_MANIFEST

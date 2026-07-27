@@ -212,9 +212,9 @@ Drive that session with the same tmux pattern as above (spawn it inside
 By default there is no live-mount, so a source change needs
 `make docker-build` and a relaunch before it's visible in the container.
 `run`'s `--live-edit` flag mounts this checkout's locally built `dist/` over
-the container's installed-plugin cache instead, so an edit takes effect on
-the next relaunch with no rebuild — see [[polecat-live-edit-mount]] for the
-mechanism and its failure mode.
+the plugin directories the image reports it installed, so an edit takes
+effect on the next relaunch with no rebuild, whenever that image was built —
+see [[polecat-live-edit-mount]] for the mechanism and its failure mode.
 
 **Plugin structural check** (no tmux needed): the image's own `ENTRYPOINT`
 (`entrypoint.sh`) refuses to run at all without a commit identity and a GitHub
