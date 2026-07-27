@@ -157,6 +157,49 @@ RUN umask 000 && curl -fsSL https://antigravity.google/cli/install.sh | bash \
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN umask 000 && uv tool install ruff
 
+# ── Layer ordering from here down ──────────────────────────────────────
+# Docker invalidates every layer AFTER the first cache miss, so the layers
+# below are ordered by how often their inputs change:
+#   1. toolchain installs that depend on nothing in the tree (rustup)
+#   2. the project venv, keyed on pyproject.toml + uv.lock (dep bumps only)
+#   3. the aops dist copy + plugin install, which changes on EVERY local
+#      build because `make docker-build` rebuilds dist/ first
+#   4. static config files and the entrypoint
+# Anything expensive that sits below (3) is re-run AND re-exported on every
+# single local rebuild even though none of its inputs moved.
+
+# Install Rust toolchain (nothing in this image's build needs cargo/rustc —
+# it's provided for agents that use it at runtime). It depends on nothing in
+# the tree, so it belongs above the dist copy: parked below it, this ~16s
+# install plus a fresh multi-hundred-MB toolchain export ran on every build.
+# It stays below the ARG-busted claude/agy installs so a RUST_CACHEBUST bump
+# invalidates as little as possible above it.
+# RUST_CACHEBUST is intentionally unused in the RUN command — it only
+# invalidates this layer so rebuilds can fetch the latest Rust toolchain.
+ARG RUST_CACHEBUST
+RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+
+# Pre-build Python project venv at a stable image path.
+# UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),
+# preventing shebang conflicts (venv scripts baked with /home/worker paths, not /workspace)
+# and eliminating per-container reinstalls on startup.
+# --group dev: includes pre-commit and dprint-py needed for git commit hooks in the container.
+# Keyed only on pyproject.toml + uv.lock, so it survives every build that
+# only touched dist/ — the reason it sits above the dist copy rather than
+# below it, where this ~20s sync re-ran and re-exported every time.
+ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
+COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
+RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
+
+# Pre-create every dir the --chmod'd config COPYs below land in, in one
+# layer. Without this BuildKit auto-creates the intermediate dirs and applies
+# the COPY's --chmod to them, producing 0644 (non-traversable) via umask:
+# 666 & ~022 = 644. Pre-existing dirs are left untouched by COPY. Batched
+# here because none of these depend on anything below.
+RUN umask 000 && mkdir -p /home/worker/.claude \
+    /home/worker/.config/ccstatusline \
+    /home/worker/.gemini/antigravity-cli/cache
+
 # ── Install aops framework from the source selected above ─────────────
 # Both CLIs install from the SAME /tmp/aops-dist tree (either the single
 # shallow clone or the local dist/ copy — see AOPS_DIST_SOURCE above) so they
@@ -211,9 +254,9 @@ COPY --chown=worker:worker plugins/aops/polecat/defaults/docker_gemini_fixups.py
 # a path deleted before this layer ends. The marketplace's durable registration
 # is known_marketplaces.json, repointed by fixup-marketplace-cache below.
 #
-# .claude is pre-created so BuildKit doesn't auto-create it while applying
-# --chmod, which would leave it 0644 and non-traversable.
-RUN umask 000 && mkdir -p /home/worker/.claude
+# .claude is pre-created (in the batched mkdir above) so BuildKit doesn't
+# auto-create it while applying --chmod, which would leave it 0644 and
+# non-traversable.
 COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
@@ -257,25 +300,14 @@ RUN umask 000 \
 # scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
 # `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
 
-# Pre-build Python project venv at a stable image path.
-# UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),
-# preventing shebang conflicts (venv scripts baked with /home/worker paths, not /workspace)
-# and eliminating per-container reinstalls on startup.
-# Layer cache: only invalidates when pyproject.toml or uv.lock changes — all expensive
-# installs above stay cached across dep bumps.
-# --extra dev: includes pre-commit and dprint-py needed for git commit hooks in the container.
-ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
-COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
-RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
-
 # Install the default ccstatusline config. Claude Code's own settings.json is
 # installed before the plugin install above, which then writes the generated
 # `enabledPlugins` into it.
 # These defaults are overridden at runtime if the host stages replacements.
-# Pre-create .config so Docker COPY doesn't auto-create it — BuildKit applies
-# --chmod to auto-created intermediate dirs, producing 0644 (non-traversable)
-# via umask: 666 & ~022 = 644. Pre-existing dirs are left untouched by COPY.
-RUN umask 000 && mkdir -p /home/worker/.config/ccstatusline
+# This and the seeds below stay BELOW the plugin install: `claude plugin
+# install` / `agy plugin install` write into ~/.claude, ~/.claude.json and
+# ~/.gemini, so these files have to land after it to win. Only their parent
+# dirs were hoisted (see the batched mkdir further up).
 COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
 # Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
 # via CLAUDE_CODE_OAUTH_TOKEN skip the interactive theme/login prompts. The
@@ -290,23 +322,9 @@ COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/claude-conf
 # wizard and gates it on ~/.gemini/antigravity-cli/cache/onboarding.json; the
 # autonomous worker (interactive `agy -i`) cannot complete the TUI and never
 # reaches a prompt (regression aops-d9cc656a, verified 2026-06-29). This is the
-# agy analog of the Claude `hasCompletedOnboarding` seed above. Pre-create the
-# cache dir so BuildKit doesn't auto-create it 0644 (non-traversable).
-RUN umask 000 && mkdir -p /home/worker/.gemini/antigravity-cli/cache
+# agy analog of the Claude `hasCompletedOnboarding` seed above. Its cache dir
+# is pre-created in the batched mkdir further up.
 COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
-
-# Install Rust toolchain (nothing in this image's build needs cargo/rustc —
-# it's provided for agents that use it at runtime). Deliberately placed this
-# late, after the aops framework clone/install and all the uv-sync venv
-# pre-bakes above: those are the expensive layers, and Docker's cache
-# invalidates every layer AFTER the first one that misses. RUST_CACHEBUST
-# only invalidates this layer and the (cheap) ones below it, so a forced
-# rustup refresh no longer forces a re-clone + re-install of the whole
-# framework and a re-sync of every plugin venv.
-# RUST_CACHEBUST is intentionally unused in the RUN command — it only
-# invalidates this layer so rebuilds can fetch the latest Rust toolchain.
-ARG RUST_CACHEBUST
-RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
 # Copy entrypoint script
 COPY --chown=worker:worker --chmod=777 plugins/aops/polecat/entrypoint.sh /home/worker/entrypoint.sh
