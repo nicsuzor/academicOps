@@ -20,14 +20,23 @@ from tests.paths import get_hook_script
 def _run(raw: dict, client: str = "claude", env: dict | None = None) -> subprocess.CompletedProcess:
     repo_root = Path(__file__).resolve().parent.parent.parent
     dispatch_path = repo_root / "aops-jr" / "hooks" / "gate_dispatch.py"
+    run_env = dict(env) if env is not None else dict(os.environ)
     if not dispatch_path.exists():
+        # aops-jr no longer ships its own gate_dispatch.py (canonicalized into
+        # aops/hooks/); its plugin-specific gates (require_subagent_model,
+        # exit_reflection_reminder) still live only in aops-jr/hooks/gates/, so
+        # PYTHONPATH must add that dir for the shared `gates` namespace package
+        # to merge them in alongside the canonical primitives.
         dispatch_path = repo_root / "aops" / "hooks" / "gate_dispatch.py"
+        jr_hooks = str(repo_root / "aops-jr" / "hooks")
+        existing = run_env.get("PYTHONPATH", "")
+        run_env["PYTHONPATH"] = jr_hooks if not existing else f"{jr_hooks}{os.pathsep}{existing}"
     result = subprocess.run(
         [sys.executable, str(dispatch_path), client],
         input=json.dumps(raw),
         capture_output=True,
         text=True,
-        env=env,
+        env=run_env,
         check=True,
     )
     return result

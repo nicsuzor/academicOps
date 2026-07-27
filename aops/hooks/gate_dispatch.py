@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Gate dispatcher: stdin JSON -> Event -> gates -> merge -> emit.
 
-One script, registered once per event in hooks/hooks.json. Reads the raw
-hook JSON from stdin, normalizes it to a small Event, runs every gate in
-the registry, merges their verdicts (deny > warn > allow), and prints the
-client's wire format for the result. No output = no-op.
+One script, registered once per event in each plugin's hooks/hooks.json.
+Reads the raw hook JSON from stdin, normalizes it to a small Event, runs
+every gate in the registry, merges their verdicts (deny > warn > allow),
+and prints the client's wire format for the result. No output = no-op.
+
+Canonical source for every plugin that ships gate/router infrastructure
+(aops-jr, reflexes-cope): scripts/build.py fans this file out, byte-identical,
+alongside gates/, into each plugin's built hooks/ directory.
 
 See specs/enforcement/hook-gate-system.md for the design.
 """
@@ -16,11 +20,8 @@ import sys
 from pathlib import Path
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-_JR_DIR = _HOOKS_DIR.parent
-for d in [str(_HOOKS_DIR), str(_JR_DIR)]:
-    if d in sys.path:
-        sys.path.remove(d)
-    sys.path.insert(0, d)
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
 
 if "gates" in sys.modules and not hasattr(sys.modules["gates"], "emit"):
     del sys.modules["gates"]
