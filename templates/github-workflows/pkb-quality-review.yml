@@ -53,6 +53,7 @@ jobs:
         # this repo's Settings > Variables is omitted, never defaulted.
         env:
           CLAUDE_CODE_ENABLE_TELEMETRY: ${{ vars.CLAUDE_CODE_ENABLE_TELEMETRY }}
+          CLAUDE_CODE_ENHANCED_TELEMETRY_BETA: ${{ vars.CLAUDE_CODE_ENHANCED_TELEMETRY_BETA }}
           OTEL_METRICS_EXPORTER: ${{ vars.OTEL_METRICS_EXPORTER }}
           OTEL_LOGS_EXPORTER: ${{ vars.OTEL_LOGS_EXPORTER }}
           OTEL_TRACES_EXPORTER: ${{ vars.OTEL_TRACES_EXPORTER }}
@@ -69,6 +70,7 @@ jobs:
         run: |
           jq -n \
             --arg CLAUDE_CODE_ENABLE_TELEMETRY "$CLAUDE_CODE_ENABLE_TELEMETRY" \
+            --arg CLAUDE_CODE_ENHANCED_TELEMETRY_BETA "$CLAUDE_CODE_ENHANCED_TELEMETRY_BETA" \
             --arg OTEL_METRICS_EXPORTER "$OTEL_METRICS_EXPORTER" \
             --arg OTEL_LOGS_EXPORTER "$OTEL_LOGS_EXPORTER" \
             --arg OTEL_TRACES_EXPORTER "$OTEL_TRACES_EXPORTER" \
