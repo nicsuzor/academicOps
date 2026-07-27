@@ -13,6 +13,7 @@ tools:
   - Agent
   - Skill
   - Bash
+  - ToolSearch
   - mcp__services__*
   - mcp__plugin_aops-pkb_services__*
   - mcp__services__pkb__*

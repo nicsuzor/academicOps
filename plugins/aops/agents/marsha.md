@@ -12,6 +12,7 @@ tools:
   - Bash
   - Skill
   - Agent
+  - ToolSearch
   - mcp__playwright__*
   - mcp__services__pkb__*
   - mcp__services__*
