@@ -76,6 +76,14 @@ template selection here. There is no separate research path — a literature
 review, a paper critique, and a code change are the same contract with different
 processes composed in.
 
+Every step of that process comes from a loaded template. The three layers —
+shipped library, the user's `$ACA_DATA/.agents/workflows/`, and the PKB's own
+templates behind `get_document("pkb-workflow-index")` — are one namespace of
+equal components, and a PKB template composes exactly like a shipped one. Load
+them at composition time, every time. Do not carry a process in your own text,
+assume the shipped library is the whole of it, or reach for a familiar template
+without reading the layers that may have replaced it.
+
 If the task already carries a hydrate bundle's `## Standards` section, that is
 your candidate list. Hydrate surfaced the obligations; you sequence them.
 

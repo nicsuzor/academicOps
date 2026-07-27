@@ -25,7 +25,7 @@ A tmux pane — even one spawned detached (`tmux new-session -d`) — presents a
 real TTY to the process running inside it. `polecat run` decides whether to
 pass Docker's `-it` flag by checking `sys.stdin.isatty()`
 (`plugins/aops/polecat/cli.py`, `run()`) unless a headless flag (`-p`,
-`--print`, `--non-interactive`) is present in the trailing args. So
+`--print`) is present in the trailing args. So
 `polecat run <agent> -p <project>` launched inside tmux gets full interactive
 Docker behavior (`-p` here is polecat's own `--project`, not the agent's
 headless prompt flag).

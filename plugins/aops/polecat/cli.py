@@ -24,9 +24,18 @@ import yaml
 # specs/ARCHITECTURE.md plus the rest. One definition, shared with the `docker*`
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
-    from .env_contract import FORWARDED_ENV
+    from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV
 except ImportError:  # run directly as plugins/aops/polecat/cli.py
-    from env_contract import FORWARDED_ENV
+    # Put the package's own parent on the path and import through the package,
+    # so the module resolves the same way under both entry points.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from polecat.env_contract import CONTAINER_SET_ENV, FORWARDED_ENV
+
+
+# A trailing flag that means the caller has already asked for headless, so
+# polecat must not add its own. Both agent CLIs spell it the same way, and
+# neither accepts anything else: `--non-interactive` has never existed.
+HEADLESS_FLAGS = {"-p", "--print"}
 
 
 def fail(message):
@@ -128,6 +137,12 @@ def get_env_forwards():
     env["SSH_AUTH_SOCK"] = ""
     env["GIT_SSH_COMMAND"] = "false"
     env["GIT_TERMINAL_PROMPT"] = "0"
+
+    # Set, not forwarded: the SessionStart credential hook writes here, and the
+    # path must resolve inside the container. A forwarded host path would name a
+    # directory the container cannot see, so the hook would no-op and every
+    # session would inherit the unscoped environment.
+    env.update(CONTAINER_SET_ENV)
 
     return env
 
@@ -459,7 +474,11 @@ def setup_staging(staging_dir, mcp_url, agent_home):
 
     settings = {}
     if mcp_url:
-        settings["pluginConfigs"] = {"aops@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
+        # `pkb_mcp_url` is declared by the aops-pkb plugin's userConfig, so the
+        # value must be staged under that plugin's key. Under any other key the
+        # option is silently ignored and the container's PKB MCP server starts
+        # with no URL.
+        settings["pluginConfigs"] = {"aops-pkb@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
     worker_model = os.environ.get("POLECAT_WORKER_MODEL")
     if worker_model:
         settings["model"] = worker_model
@@ -547,6 +566,17 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             "positional: claude, agy, shell, bash, or sleep."
         )
 
+    # Neither agent CLI has a --non-interactive flag; both exit on an unknown
+    # option. Forwarded verbatim it would fail deep inside the container, after
+    # a clone and an image pull, with an error naming neither polecat nor the
+    # flag's replacement.
+    if agent_cmd in ("claude", "agy") and "--non-interactive" in extra_args:
+        fail(
+            f"{agent_cmd} has no --non-interactive flag and exits immediately when "
+            "given one. Headless one-shot mode is --print (-p), which polecat adds "
+            "on its own when stdin is not a tty."
+        )
+
     config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
@@ -608,7 +638,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             env["PKB_MCP_URL"] = mcp_url
 
         docker_args = []
-        explicit_headless = bool({"-p", "--print", "--non-interactive"}.intersection(extra_args))
+        explicit_headless = bool(HEADLESS_FLAGS.intersection(extra_args))
         is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
@@ -624,7 +654,11 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             container_session_path = "/home/worker/.claude/projects/-workspace"
             inner_cmd = ["claude", "--permission-mode=auto", "--setting-sources=user,project"]
             if not is_interactive and not explicit_headless:
-                inner_cmd.append("--non-interactive")
+                # Headless one-shot mode is `--print`, and it is the only one
+                # claude has: without it claude opens its interactive UI against
+                # a pipe. The prompt is a positional, so it still arrives from
+                # extra_args below, or from stdin when there is none.
+                inner_cmd.append("--print")
         elif agent_cmd == "agy":
             container_session_path = "/home/worker/.gemini/tmp/workspace"
             inner_cmd = [

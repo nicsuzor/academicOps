@@ -1,1 +1,0 @@
-**evidence-immutable**: this Edit/Write targets a path that looks like a fixture, golden, or evidence file. Confirm it isn't a source serving as evidence for a claim — those must never be modified, reformatted, or substituted.

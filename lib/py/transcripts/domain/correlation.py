@@ -68,8 +68,9 @@ def infer_correlation(session: NormalizedSession) -> dict[str, str | None]:
     paths_to_check = [str(session.source_file)]
     for event in session.events:
         meta = event.meta or {}
-        if meta.get("cwd"):
-            paths_to_check.append(meta.get("cwd"))
+        cwd = meta.get("cwd")
+        if cwd:
+            paths_to_check.append(str(cwd))
 
     for p in paths_to_check:
         if "aops-tools" in p:

@@ -455,13 +455,13 @@ gh label create bug         --color "d73a4a" --description "Defect or regression
 gh label create enhancement --color "a2eeef" --description "Improvement to existing capability"  --force
 gh label create triage      --color "fbca04" --description "Needs initial triage"                --force
 
-# PR triage routing (consumed by aops/scripts/dump_pr_state.py)
+# PR triage routing
 gh label create "triage:escalate"       --color "b60205" --description "PR needs human attention (CI failed / stalled)" --force
 gh label create "triage:stale"          --color "cccccc" --description "Open >7d without merge or update"               --force
 gh label create "triage:auto-mergeable" --color "0e8a16" --description "Bot-authored, CI green, safe to auto-merge"     --force
 gh label create "triage:needs-judgment" --color "fbca04" --description "Human-authored, needs review judgment"          --force
 
-# Issue-sweep dispositions (consumed by aops/skills/triage, sweep mode)
+# Issue-sweep dispositions (consumed by the triage skill, sweep mode)
 gh label create "triaged-stale"   --color "ededed" --description "Sweep: closed as stale"            --force
 gh label create "triaged-duplicate" --color "ededed" --description "Sweep: merged into canonical"     --force
 gh label create "triaged-evidence-bump" --color "ededed" --description "Sweep: evidence added to canonical" --force

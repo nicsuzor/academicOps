@@ -86,12 +86,96 @@ def test_plugin_json_version_stamped(built):
 
 
 def test_hooks_json_rendered_per_client(built):
+    """One template, two files that agree about nothing.
+
+    Claude Code keys by event under a `hooks` wrapper and expands a plugin-root
+    variable. agy keys by hook NAME with the events one level down, and defines
+    no plugin-root variable at all — it runs the command from the directory
+    holding `hooks.json`, so the path is rewritten relative to the plugin root.
+    """
     claude_hooks = json.loads((built / "fixture-alpha-claude" / "hooks" / "hooks.json").read_text())
     agy_hooks = json.loads((built / "fixture-alpha-agy" / "hooks.json").read_text())
+
     claude_cmd = claude_hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
-    agy_cmd = agy_hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
     assert claude_cmd == '"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py"'
-    assert agy_cmd == "${AGY_PLUGIN_ROOT}/hooks/hook.py"  # quotes stripped — agy execs via argv
+
+    assert list(agy_hooks) == ["fixture-alpha"]
+    group = agy_hooks["fixture-alpha"]["PreToolUse"][0]
+    assert group["matcher"] == "*"  # no matcher in the template means every tool
+    assert group["hooks"][0]["command"] == "hooks/hook.py"
+
+
+def test_agy_rejects_an_event_it_cannot_fire(tmp_path):
+    """agy fires five hook events and no session-level event of any kind. A
+    template wiring one anyway would ship a key agy silently ignores — a hook
+    indistinguishable from a working one — so the build stops instead."""
+    from build.clients.agy import _to_agy_hooks
+    from build.context import BuildContext, Plugin
+
+    ctx = BuildContext(
+        plugin=Plugin(directory="ts", marketplace_name="aops-ts", source_dir=tmp_path),
+        client="agy",
+        version=VERSION,
+        manifests={},
+    )
+    config = {"hooks": {"SessionStart": [{"hooks": [{"command": "bash up.sh"}]}]}}
+    with pytest.raises(BuildError, match="SessionStart"):
+        _to_agy_hooks(config, ctx)
+
+
+def _agy_ctx(tmp_path, directory="pkb", name="aops-pkb"):
+    from build.context import BuildContext, Plugin
+
+    return BuildContext(
+        plugin=Plugin(directory=directory, marketplace_name=name, source_dir=tmp_path),
+        client="agy",
+        version=VERSION,
+        manifests={},
+    )
+
+
+def test_agy_rejects_an_mcp_server_it_would_launch_with_an_unexpanded_variable(tmp_path):
+    """The exact config that shipped: a plugin-root variable agy does not have,
+    in a file agy substitutes nothing in. It reaches the launcher as the
+    literal text `${AGY_PLUGIN_ROOT}/scripts/run-mcp.sh`, so the server never
+    starts and its tools never appear — with no error anyone sees."""
+    from build.clients.agy import _checked_mcp
+
+    servers = {
+        "services": {
+            "command": "bash",
+            "args": ["${AGY_PLUGIN_ROOT}/scripts/run-mcp.sh"],
+            "env": {"PKB_MCP_URL": "${PKB_MCP_URL}"},
+        }
+    }
+    with pytest.raises(BuildError, match=r"AGY_PLUGIN_ROOT"):
+        _checked_mcp(servers, _agy_ctx(tmp_path))
+
+
+def test_agy_rejects_an_mcp_server_that_is_neither_stdio_nor_remote(tmp_path):
+    """agy's own rule: a server must have either `command` or `serverUrl`, and
+    cannot have both."""
+    from build.clients.agy import _checked_mcp
+
+    with pytest.raises(BuildError, match="exactly one"):
+        _checked_mcp({"services": {"args": ["x"]}}, _agy_ctx(tmp_path))
+    with pytest.raises(BuildError, match="exactly one"):
+        _checked_mcp(
+            {"services": {"command": "bash", "serverUrl": "https://example.invalid/sse"}},
+            _agy_ctx(tmp_path),
+        )
+
+
+def test_agy_accepts_a_server_it_can_actually_launch(tmp_path):
+    """The guard must not be a blanket refusal — both transports agy documents
+    pass through untouched."""
+    from build.clients.agy import _checked_mcp
+
+    stdio = {"services": {"command": "pkb-mcp-server", "args": ["--stdio"]}}
+    assert _checked_mcp(stdio, _agy_ctx(tmp_path)) == {"mcpServers": stdio}
+
+    remote = {"services": {"serverUrl": "https://mcp.example.invalid/sse"}}
+    assert _checked_mcp(remote, _agy_ctx(tmp_path)) == {"mcpServers": remote}
 
 
 def test_mcp_json_rendered_per_client(built):

@@ -114,7 +114,7 @@ Four independent axes make up an agent's authority envelope. Each is closed by d
 
 **MCP servers.** `mcpServers` grants whole-server access — appropriate when an agent genuinely needs an entire server's surface (e.g. PKB for research agents). To narrow to specific MCP tools, either omit `mcpServers` and enumerate in `tools`, or include `mcpServers` and list unwanted tools in `disallowedTools`.
 
-**Bash scopes.** `Bash` in `tools` grants the ability to run shell commands — "which commands" is answered separately by `bashScopes`, using named families (`git:read`, `git:write`, `gh:read`, `gh:write`, `pytest`, `ruff`, `fs:read`, `fs:write`, `net:http`, `pkg:install`, `docker`, etc.) whose concrete command patterns live in `aops-core/policies/bash_scopes.toml`. Named families exist because the design-time question is "should a QA agent run tests?", not "should it run `pytest --tb=short -x`?". **`Bash` without any `bashScopes` is invalid and the lint rejects it.** The special value `unrestricted` grants any command; it must be declared explicitly, exists only for orchestrator-class agents, and always triggers a lint warning.
+**Bash scopes.** `Bash` in `tools` grants the ability to run shell commands — "which commands" is answered separately by `bashScopes`, using named families (`git:read`, `git:write`, `gh:read`, `gh:write`, `pytest`, `ruff`, `fs:read`, `fs:write`, `net:http`, `pkg:install`, `docker`, etc.). The concrete command patterns behind each family are defined by the bash-scope policy, not by this spec. Named families exist because the design-time question is "should a QA agent run tests?", not "should it run `pytest --tb=short -x`?". **`Bash` without any `bashScopes` is invalid and the lint rejects it.** The special value `unrestricted` grants any command; it must be declared explicitly, exists only for orchestrator-class agents, and always triggers a lint warning.
 
 **Filesystem paths.** `fileAccess` applies when the agent holds any of `Read`, `Write`, `Edit`, `NotebookEdit`, `Glob`, or `Grep`. It declares which repo-relative path globs the agent may read and write:
 
@@ -128,7 +128,7 @@ fileAccess:
     - "!specs/archived/**"   # deny override; beats the grant above
 ```
 
-A `!`-prefixed pattern is an explicit deny and beats any overlapping grant. Symlinks are denied outright — bash access could otherwise create one inside a granted directory pointing outside the worktree. **Any filesystem tool without `fileAccess` is invalid and the lint rejects it.** `fileAccess` narrows access _within_ the worktree only; it can never expand beyond it — paths outside the worktree are categorically denied by the polecat sandbox regardless of what `fileAccess` says. This spec declares the intent; hooks (`policy_enforcer.py`) and the polecat sandbox (`specs/polecat/polecat-system.md`) enforce it at the sharp edge.
+A `!`-prefixed pattern is an explicit deny and beats any overlapping grant. Symlinks are denied outright — bash access could otherwise create one inside a granted directory pointing outside the worktree. **Any filesystem tool without `fileAccess` is invalid and the lint rejects it.** `fileAccess` narrows access _within_ the worktree only; it can never expand beyond it — paths outside the worktree are categorically denied by the polecat sandbox regardless of what `fileAccess` says. This spec declares the intent; the enforcing hooks and the polecat sandbox (`specs/polecat/polecat-system.md`) enforce it at the sharp edge.
 
 ## Skill Delegation
 

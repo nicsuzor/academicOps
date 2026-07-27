@@ -1,4 +1,5 @@
 ---
+name: style
 description: Analyze writing samples and create a comprehensive personal writing style
   guide
 ---

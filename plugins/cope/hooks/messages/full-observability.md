@@ -1,1 +1,0 @@
-**full-observability**: this command pairs a mutating action (commit, push, `rm`, `mv`) with suppressed output (redirected to `/dev/null`). Material actions must leave a record a third party can audit — don't discard the trace.

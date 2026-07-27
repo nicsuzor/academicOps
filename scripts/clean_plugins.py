@@ -17,7 +17,8 @@ import json
 import shutil
 from pathlib import Path
 
-AOPS_PLUGIN_NAMES = {"aops-core", "aops", "aops-ts", "aops-tools"}
+# The marketplace names in build/marketplace.toml.
+AOPS_PLUGIN_NAMES = {"aops", "aops-pkb", "aops-ida", "aops-cope", "aops-ts", "aops-tools"}
 
 
 def clean_cli() -> None:

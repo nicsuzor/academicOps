@@ -8,7 +8,7 @@
             {
               "type": "command",
               "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/tailscale-up.sh\"",
-              "timeout": 30000
+              "timeout": 30
             }
           ]
         }
@@ -19,22 +19,7 @@
             {
               "type": "command",
               "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-sync.sh\"",
-              "timeout": 300000
-            }
-          ]
-        }
-      ]
-    }
-  },
-  "agy": {
-    "hooks": {
-      "SessionStart": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "bash \"${AGY_PLUGIN_ROOT}/hooks/tailscale-up.sh\"",
-              "timeout": 30000
+              "timeout": 300
             }
           ]
         }

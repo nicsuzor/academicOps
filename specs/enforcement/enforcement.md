@@ -48,10 +48,9 @@ Every plugin hook shares one runtime, `lib/hooks/`, injected into each plugin at
 build time (`ARCHITECTURE.md`, Hooks). The complete set:
 
 - **`aops`**, `SessionStart` ([`plugins/aops/hooks/handlers.py`](../../plugins/aops/hooks/handlers.py), `session_start`) — credential isolation for container sessions, plus a report (never a value) of the OpenTelemetry configuration.
-- **`aops`**, `SubagentStop` (`require_evidence_from_subagent`) — reminds the parent agent to require evidence before accepting a subagent's result.
-- **`aops`**, `Stop` (`present_checkable_evidence`) — reminds a subagent to present its answer with checkable evidence.
+- **`aops`**, `Stop` and `SubagentStop` (`present_checkable_evidence`) — reminds the agent that is stopping to present its answer with checkable evidence. Both events are served by the same handler and message; the output reaches the agent that is stopping, not its parent.
 - **`pkb`**, `UserPromptSubmit` ([`plugins/pkb/hooks/handlers.py`](../../plugins/pkb/hooks/handlers.py)) — injects relevant PKB context, or instructs the agent to search for it.
-- **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`), runs the built-in syntactic detectors (`detectors.py`) for whichever axiom slugs are loaded, and injects a short, rule-naming advisory on the first match. Advisory only — a `warn`-outcome `Result` (additional context), never a permission decision.
+- **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a small language model, over the Reflexes evaluator contract ([`evaluator.py`](../../plugins/cope/hooks/evaluator.py)), whether the tool call matches each live rule; injects the matched rules' own text so the agent can correct itself. The judgment is the model's, not a pattern match, so it sits inside "agents all the way down" alongside the auto-mode classifier below. Advisory only — a `warn`-outcome `Result` (additional context), never a permission decision. Configured entirely from the environment (`COPE_EVALUATOR_*`); with no evaluator configured it is a clean no-op, and any evaluator failure fails open.
 - **`ts`**, `SessionStart` ([`plugins/ts/hooks/tailscale-up.sh`](../../plugins/ts/hooks/tailscale-up.sh)) — `tailscale up` bring-up for remote/cloud sessions.
 
 Every agent-visible string a hook emits comes from a markdown file next to it

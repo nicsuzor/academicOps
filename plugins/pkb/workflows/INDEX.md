@@ -147,16 +147,10 @@ Composed into other templates; never routed to directly.
 
 ## Workflow templates
 
-Read from the PKB, not from here.
-
-| Template                | Door    | The risk it covers                                                      | Skip when                                                 |
-| ----------------------- | ------- | ----------------------------------------------------------------------- | --------------------------------------------------------- |
-| [[wf-verification]]     | two-way | Shifting goalposts, or "looks done" on routine work                     | Trivial changes                                           |
-| [[wf-qa]]               | two-way | User-facing work shipping with no independent evidence                  | Trivial, or the user waives it                            |
-| [[wf-outbound-review]]  | one-way | An external deliverable ships with a strategic, factual, or tonal error | Still an internal draft, or the audience is trusted       |
-| [[wf-handover]]         | two-way | A session ends with no PR, commit, or task update — traceability lost   | No files were modified                                    |
-| [[wf-constraint-check]] | two-way | A composed plan silently violates its own templates' rules              | No declared constraints, or a single atomic action        |
-| [[wf-human-approval]]   | one-way | An irreversible action executes on agent judgment alone                 | Two-way door, or a named standing authorisation covers it |
+Read from the PKB, not from here: the current set is enumerated by the
+`pkb-workflow-index` MoC (`get_document("pkb-workflow-index")`), with
+`list_documents(tag="wf-template")` as the reconciliation sweep. This file
+does not list them — a second copy of that table drifts.
 
 `wf-human-approval` is where [[framework-gate]], [[wf-outbound-review]],
 [[pr-review]], and [[decision-briefing]] all hand off at their one-way crossing.

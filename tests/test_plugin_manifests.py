@@ -11,14 +11,21 @@ DIST_ROOT = PROJECT_ROOT / "dist"
 
 
 def get_plugin_dirs():
-    """Returns a list of all built plugin directories in dist/."""
+    """Returns a list of all built plugin directories in dist/.
+
+    Raises rather than returning [] when dist/ is missing or empty: an empty
+    parametrize list reports the whole module as skipped-green, silently
+    voiding the manifest checks on an unbuilt checkout.
+    """
     if not DIST_ROOT.exists():
-        return []
+        raise RuntimeError(f"{DIST_ROOT} does not exist — run 'make build' before the test suite")
 
     plugin_dirs = []
     for d in DIST_ROOT.iterdir():
         if d.is_dir() and (d.name.endswith("-claude") or d.name.endswith("-agy")):
             plugin_dirs.append(d)
+    if not plugin_dirs:
+        raise RuntimeError(f"{DIST_ROOT} contains no built plugin directories — run 'make build'")
     return sorted(plugin_dirs)
 
 

@@ -45,12 +45,14 @@ what is known, not a reason to keep spending budget.
    on this class of work.
 6. `get_dependency_tree` — only where a task id exists; known blocking work.
 
-For **Standards**, read [`../../workflows/INDEX.md`](../../workflows/INDEX.md)
-and any project-local rules (`.agents/rules/*.md`, `AXIOMS.md` in the project
-root), and query the PKB for workflow templates —
-`list_documents(tag="wf-template")`, then `get_document` for any that look
-applicable. If a needed template exists in neither place, report that as a
-library gap.
+For **Standards**, cover all three template layers plus the local rules. Read
+[`../../workflows/INDEX.md`](../../workflows/INDEX.md) for the shipped library,
+`$ACA_DATA/.agents/workflows/` for the user's own, and
+`get_document("pkb-workflow-index")` for the PKB's — then `get_document` each
+template that looks applicable. Read the project-local rules too
+(`.agents/rules/*.md`, `AXIOMS.md` in the project root). Name the templates you
+found; do not judge which apply — that is the composer's call. If a needed
+template exists in none of the layers, report that as a library gap.
 
 ## Step 3 — emit the bundle
 

@@ -18,7 +18,8 @@ to need parsing is a template being misused.
 
 ## The three layers
 
-Resolved in this order; later layers win by **filename**.
+Resolved in this order; later layers win by **template name** — the filename on
+disk, the permalink in the PKB.
 
 1. **Shipped library** — [`../../workflows/`](../../workflows/). Process
    templates in `process/`, routed by [`../../workflows/INDEX.md`](../../workflows/INDEX.md).
@@ -27,12 +28,29 @@ Resolved in this order; later layers win by **filename**.
    extends the library. `$ACA_DATA` comes from the environment and has no
    default. If it is unset, or the directory does not exist, there simply is no
    user layer — that is not an error, and it is not something to work around.
-3. **Workflow templates in the PKB** — the `wf-*` gates. These are **not files**.
-   They live in the PKB as documents tagged `wf-template` and are discovered at
-   runtime: `list_documents(tag="wf-template")` to enumerate, `get_document(id)`
-   to read one. The library index names the ones it expects, but the PKB is the
-   authority — never compose a `wf-*` obligation from the index table alone, and
-   never assume a template exists because the index mentions it.
+3. **The PKB layer** — templates that live in the knowledge base rather than on
+   disk. Enter it at the pinned index: `get_document("pkb-workflow-index")`, a
+   `type: moc` document whose entries name each template by permalink and say in
+   one line what it covers. Read the ones your routing implicates with
+   `get_document(<permalink>)`. That permalink is the stable location; do not
+   search for the index, guess another name for it, or write a path to it.
+
+A template from any of the three layers is the same kind of thing: the same four
+frontmatter hints, one namespace resolved by name, later layers winning. The
+`wf-*` obligation templates are a naming convention inside that namespace, not a
+fixed or privileged set — treat one discovered in the PKB exactly as you treat a
+shipped `process/` file.
+
+**Never compose a template you have not read.** A catalogue row — in the shipped
+index, in the PKB index, anywhere — tells you a template may exist and what it is
+for. It is not the template. Read the document before composing its obligation
+in, and where a row resolves to nothing, that row is the finding.
+
+Reconcile the PKB layer once per composition: `list_documents(tag="wf-template")`
+against the index's entries. A template tagged but unlisted, or listed but
+unresolvable, is an index defect — **report it, do not repair it here and do not
+route around it.** If the index document itself does not exist, compose from the
+tag enumeration and report the missing index.
 
 If a template you need exists in none of the three, that is a library gap.
 **Name it. Do not freelance a process to fill it.**
@@ -94,3 +112,5 @@ came first.
 - Embed a workflow inside a skill. A skill may carry procedures — instructions
   meaningless outside that skill — but never orchestration.
 - Hardcode a path to `$ACA_DATA`, or fall back to a default when it is unset.
+- Carry a process in this skill's own text. Every template is loaded from a layer
+  at runtime; one written down here is one the user can never override.

@@ -1,0 +1,340 @@
+"""Reflexes evaluator client — the qualitative judgment behind cope's advisory.
+
+cope asks a small language model whether a tool call matches a rule. The
+question, the answer shape, and the error semantics are the Reflexes evaluator
+contract (SPEC.md §4; see plugins/cope/README.md for where to find it): given a
+``policy`` (the rule's own markdown, frontmatter stripped) and ``content`` (the
+tool call), return a ``label`` of 0 or 1, optionally with a ``confidence`` and a
+reason. One policy, one verdict — so a match names the rule it matched, which is
+the whole point of the advisory.
+
+Two wire protocols are supported, chosen by ``COPE_EVALUATOR_PROTOCOL``:
+
+``cope``
+    The CoPE label API: ``POST`` with ``{"content_text", "criteria_text",
+    "model"}``, answering ``{"label", "confidence", "explanation"}``. Spoken by
+    the hosted service and by a self-hosted CoPE server alike — the model is
+    open-weights, so "remote API" and "local inference" are the same protocol
+    pointed at different hosts.
+
+``openai``
+    Any OpenAI-compatible ``/v1/chat/completions`` server — Ollama, vLLM,
+    LocalAI, llama.cpp, or a hosted provider. The classifier instruction lives
+    in ``messages/classifier-prompt.md``; the model answers with the same
+    ``{"label", "confidence"}`` JSON object.
+
+No host, model name, or credential is compiled in. Absent configuration is not
+an error — it is cope's tool-call evaluation being switched off, and the caller
+gets ``None``.
+
+**Fail-open, always.** This runs in front of every tool call. A dead socket,
+a slow endpoint, a 500, a body that will not parse — none of them
+produce a verdict, and per SPEC §4.3 an evaluator error is not ``label=0``, so
+none of them produce an advisory either. They are reported on stderr and the
+tool call proceeds untouched. There are no retries: a retry in this position
+multiplies the stall the agent is waiting through.
+
+The whole check runs inside one deadline. Two things enforce it, because either
+alone leaks: the remaining budget is passed down as the socket timeout, so no
+request outlives it, and the pool is shut down without waiting, so a transport
+that ignores its timeout cannot hold up the response either.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, wait
+from dataclasses import dataclass
+from pathlib import Path
+
+import messages
+
+#: Wire protocols ``COPE_EVALUATOR_PROTOCOL`` accepts.
+PROTOCOLS = ("cope", "openai")
+
+#: Ceiling on the whole evaluation, in seconds, when ``COPE_EVALUATOR_TIMEOUT``
+#: is unset. Every rule is evaluated inside this one budget, so it is the
+#: longest a tool call can be held up — not a per-request allowance.
+DEFAULT_TIMEOUT_SECONDS = 5.0
+
+#: How many rules are evaluated at once. Rules are independent, so they go in
+#: parallel; the cap keeps a large rule set from opening a socket per rule.
+MAX_CONCURRENCY = 8
+
+#: Longest rendered tool input sent to the evaluator. A Write carries its whole
+#: file body, which is neither affordable nor necessary to judge the call.
+MAX_CONTENT_CHARS = 4000
+
+#: Everything a failed evaluation can raise on its way back: transport,
+#: protocol, and every shape a response can be wrong in. All of them are the
+#: same outcome — no verdict — and none of them may escape into dispatch.
+_EVALUATION_ERRORS = (
+    urllib.error.URLError,
+    OSError,
+    TimeoutError,
+    ValueError,  # includes json.JSONDecodeError
+    KeyError,
+    IndexError,
+    TypeError,
+    AttributeError,
+)
+
+
+@dataclass(frozen=True)
+class Config:
+    url: str
+    protocol: str
+    model: str
+    api_key: str | None
+    timeout: float
+
+
+@dataclass(frozen=True)
+class Verdict:
+    slug: str
+    label: int
+    confidence: float | None
+    reason: str | None
+
+
+#: Claude Code exports every declared ``userConfig`` option into a hook's
+#: environment as ``CLAUDE_PLUGIN_OPTION_<KEY>``, where ``<KEY>`` is the option
+#: key uppercased (Claude Code plugins reference, "User configuration"). cope's
+#: hook command is shell form, which rejects ``${user_config.*}`` substitution
+#: outright, so this is the only route a userConfig value can take to get here.
+#: The option keys in manifest/plugin.template.json are named so that
+#: uppercasing one yields exactly the plain variable below — one lookup rule
+#: covers both paths, and tests/test_cope.py pins the two names together.
+_PLUGIN_OPTION_PREFIX = "CLAUDE_PLUGIN_OPTION_"
+
+
+def _note(message: str) -> None:
+    print(f"cope: {message}", file=sys.stderr)
+
+
+def _setting(name: str) -> str:
+    """One configuration value: the plugin option first, then the plain variable.
+
+    Claude Code accepts a ``userConfig`` value only from user settings, managed
+    policy, or ``--settings`` — never from a project's own settings files, so a
+    cloned repository cannot supply one. That makes it the more trustworthy of
+    the two sources, and it wins. The plain environment variable is the fallback
+    that agy and container sessions rely on, neither of which has userConfig at
+    all.
+    """
+    for key in (_PLUGIN_OPTION_PREFIX + name, name):
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def resolve() -> Config | None:
+    """Read the evaluator configuration from the environment.
+
+    Returns ``None`` when cope has no evaluator to talk to. Two different
+    silences, deliberately distinguished:
+
+    - Nothing set at all — cope's tool-call evaluation is simply not switched
+      on for this session. Silent: an unconfigured session is a legitimate
+      state, and a line on every tool call would be noise, not information.
+    - Some of it set — a misconfiguration someone meant to work. One stderr
+      line names what is missing, then cope stays out of the way. Guessing the
+      missing value is exactly the default this plugin may not have.
+    """
+    url = _setting("COPE_EVALUATOR_URL")
+    protocol = _setting("COPE_EVALUATOR_PROTOCOL")
+    model = _setting("COPE_EVALUATOR_MODEL")
+    api_key = _setting("COPE_EVALUATOR_API_KEY") or None
+
+    if not (url or protocol or model):
+        return None
+
+    missing = [
+        name
+        for name, value in (
+            ("COPE_EVALUATOR_URL", url),
+            ("COPE_EVALUATOR_PROTOCOL", protocol),
+            ("COPE_EVALUATOR_MODEL", model),
+        )
+        if not value
+    ]
+    if missing:
+        _note(f"evaluator partially configured; {', '.join(missing)} unset — not evaluating")
+        return None
+
+    if protocol not in PROTOCOLS:
+        _note(
+            f"COPE_EVALUATOR_PROTOCOL={protocol!r} is not one of "
+            f"{', '.join(PROTOCOLS)} — not evaluating"
+        )
+        return None
+
+    return Config(url=url, protocol=protocol, model=model, api_key=api_key, timeout=_timeout())
+
+
+def _timeout() -> float:
+    raw = _setting("COPE_EVALUATOR_TIMEOUT")
+    if not raw:
+        return DEFAULT_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        _note(f"COPE_EVALUATOR_TIMEOUT={raw!r} is not a number; using {DEFAULT_TIMEOUT_SECONDS}s")
+        return DEFAULT_TIMEOUT_SECONDS
+    if value <= 0:
+        _note(f"COPE_EVALUATOR_TIMEOUT={raw!r} is not positive; using {DEFAULT_TIMEOUT_SECONDS}s")
+        return DEFAULT_TIMEOUT_SECONDS
+    return value
+
+
+def _post(config: Config, payload: dict, timeout: float) -> dict:
+    # The URL is operator configuration, never a value from the session or the
+    # tool call — nothing an agent does can redirect where this posts.
+    request = urllib.request.Request(
+        config.url,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+    )
+    request.add_header("Content-Type", "application/json")
+    if config.api_key:
+        request.add_header("Authorization", f"Bearer {config.api_key}")
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        body = response.read().decode("utf-8")
+    parsed = json.loads(body)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"evaluator returned {type(parsed).__name__}, not an object")
+    return parsed
+
+
+def _as_confidence(value: object) -> float | None:
+    """Narrow a decoded JSON value to a confidence, or reject it.
+
+    The Reflexes contract makes ``confidence`` optional and does not pin its
+    JSON type, so this is a genuine boundary: the value is whatever a remote
+    server chose to send. Narrowing before converting is the point — a blanket
+    conversion would turn ``{"confidence": {}}`` into a TypeError from inside
+    ``float()`` rather than a stated reason, and ``check()`` would report the
+    failure as an unhelpful ``TypeError(...)``.
+
+    ``bool`` is rejected explicitly because it is a subclass of ``int``: a
+    ``true`` confidence would otherwise silently become ``1.0``, the maximum
+    value, which is the worst possible thing to invent.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError(f"confidence must be a number, got {value!r}")
+    return float(value)
+
+
+def _label_call(
+    config: Config, policy: str, content: str, timeout: float
+) -> tuple[int, float | None, str | None]:
+    """The CoPE label API: one policy, one classification."""
+    data = _post(
+        config,
+        {"content_text": content, "criteria_text": policy, "model": config.model},
+        timeout,
+    )
+    return int(data["label"]), _as_confidence(data.get("confidence")), data.get("explanation")
+
+
+def _chat_call(
+    config: Config, policy: str, content: str, timeout: float, system_prompt: str
+) -> tuple[int, float | None, str | None]:
+    """An OpenAI-compatible chat completion, read back as the same verdict."""
+    data = _post(
+        config,
+        {
+            "model": config.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"POLICY:\n{policy}\n\nCONTENT:\n{content}"},
+            ],
+            "temperature": 0,
+            "max_tokens": 256,
+        },
+        timeout,
+    )
+    raw = data["choices"][0]["message"]["content"].strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"evaluator answered with {type(parsed).__name__}, not an object")
+    return int(parsed["label"]), _as_confidence(parsed.get("confidence")), None
+
+
+def check(
+    config: Config, policies: list[tuple[str, str]], content: str, hooks_dir: Path
+) -> tuple[list[Verdict], list[str]]:
+    """Evaluate ``content`` against every ``(slug, policy_text)`` in parallel.
+
+    Returns the matching verdicts (``label == 1``) and a list of human-readable
+    failures. A failure is never a match: an evaluator that could not answer
+    has said nothing, so the tool call proceeds.
+    """
+    if not policies:
+        return [], []
+
+    system_prompt = (
+        messages.load(hooks_dir, "classifier-prompt") if config.protocol == "openai" else ""
+    )
+    deadline = time.monotonic() + config.timeout
+
+    def run(slug: str, policy: str) -> Verdict:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(f"budget of {config.timeout}s spent before {slug} was evaluated")
+        if config.protocol == "cope":
+            label, confidence, reason = _label_call(config, policy, content, remaining)
+        else:
+            label, confidence, reason = _chat_call(
+                config, policy, content, remaining, system_prompt
+            )
+        return Verdict(slug=slug, label=label, confidence=confidence, reason=reason)
+
+    matches: list[Verdict] = []
+    failures: list[str] = []
+
+    pool = ThreadPoolExecutor(max_workers=MAX_CONCURRENCY)
+    try:
+        futures = {pool.submit(run, slug, policy): slug for slug, policy in policies}
+        _, pending = wait(futures, timeout=max(deadline - time.monotonic(), 0))
+        for future in pending:
+            future.cancel()
+            failures.append(f"{futures[future]}: no answer within the {config.timeout}s budget")
+        for future, slug in futures.items():
+            if future in pending:
+                continue
+            try:
+                verdict = future.result()
+            except _EVALUATION_ERRORS as exc:
+                failures.append(f"{slug}: {exc!r}")
+                continue
+            if verdict.label == 1:
+                matches.append(verdict)
+    finally:
+        # Never wait: the budget above is the promise, and a transport that
+        # ignores its own timeout must not be able to extend it.
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    matches.sort(key=lambda verdict: verdict.slug)
+    return matches, failures
+
+
+def render_content(tool: str, tool_input: object) -> str:
+    """The tool call, as the text the evaluator judges."""
+    if isinstance(tool_input, (dict, list)):
+        rendered = json.dumps(tool_input, sort_keys=True, ensure_ascii=False)
+    else:
+        rendered = "" if tool_input is None else str(tool_input)
+    if len(rendered) > MAX_CONTENT_CHARS:
+        rendered = rendered[:MAX_CONTENT_CHARS] + " …[truncated]"
+    return f"Tool: {tool}\nInput: {rendered}"

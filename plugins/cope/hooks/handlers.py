@@ -1,16 +1,18 @@
 """cope's advisories: one per surface, each scoped to the clients that have it.
 
 ``evaluate`` is the ``PreToolUse`` check. It loads the three-layer rule set
-(rules.py), runs the built-in syntactic detectors (detectors.py) for whichever
-axiom slugs are actually loaded, and injects a short, rule-naming advisory on
-the first match.
+(rules.py) and asks a Reflexes evaluator — a small language model, remote or
+locally hosted (evaluator.py) — whether the tool call matches each live rule.
+The judgment is the model's; cope only composes the question and reports what
+came back. Nothing about a rule's meaning is decided by matching text against
+a pattern.
 
 ``inject_ruleset`` is the ``UserPromptSubmit`` (agy ``PreInvocation``) advisory.
-That surface carries a prompt, not a tool call, so no detector can run there —
-there is no tool name and no tool input to match against. What it can do is
-state the rule set that is live for the turn. It is scoped to agy because
-Claude Code fires both events and is already covered by ``evaluate``, and
-because the pkb plugin owns Claude's ``UserPromptSubmit`` injection.
+That surface carries a prompt, not a tool call, so there is nothing for the
+evaluator to judge there. What it can do is state the rule set that is live for
+the turn. It is scoped to agy because Claude Code fires both events and is
+already covered by ``evaluate``, and because the pkb plugin owns Claude's
+``UserPromptSubmit`` injection.
 
 Both are advisory only — they return a ``Result`` (context injected for the
 agent to read), never a permission decision; see lib/hooks/result.py and
@@ -24,9 +26,10 @@ that process — there is no server to keep warm.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import detectors
+import evaluator
 import rules
 from context import HookContext
 from result import Result, warn
@@ -61,16 +64,58 @@ def _loaded_rules(ctx: HookContext) -> dict[str, rules.Rule]:
 
 
 def evaluate(ctx: HookContext) -> Result | None:
+    """Ask the evaluator whether this tool call matches any live rule.
+
+    No evaluator configured is a clean no-op — cope has nothing to ask with,
+    which is not a failure of the session. Nothing matched is a no-op too. Only
+    a rule the model actually flagged produces an advisory, and the advisory
+    hands back the rule's own text so the agent can correct its own course.
+    """
+    config = evaluator.resolve()
+    if config is None:
+        return None
     loaded = _loaded_rules(ctx)
-    for slug, detector in detectors.DETECTORS.items():
-        if slug not in loaded:
-            continue  # this axiom isn't in scope at any loaded layer
-        snippet = detector(ctx)
-        if snippet is None:
-            continue
-        advisory = ctx.message(slug)
-        return warn(f"{advisory}\n\nMatched in this call: `{snippet}`")
-    return None
+    if not loaded or not ctx.tool:
+        return None
+
+    content = evaluator.render_content(ctx.tool, ctx.raw.get("tool_input"))
+    policies = [(rule.slug, rule.body) for rule in sorted(loaded.values(), key=lambda r: r.slug)]
+    matches, failures = evaluator.check(config, policies, content, ctx.hooks_dir)
+
+    # stderr, never stdout: stdout is the hook's JSON response to the client.
+    for failure in failures:
+        print(
+            f"cope: evaluator failed for {failure}; proceeding without a verdict",
+            file=sys.stderr,
+        )
+
+    if not matches:
+        return None
+    return warn(
+        ctx.message("verdict")
+        .replace("{rules}", _matched(matches, loaded))
+        .replace("{call}", content)
+    )
+
+
+def _matched(matches: list[evaluator.Verdict], loaded: dict[str, rules.Rule]) -> str:
+    """One block per flagged rule: what it requires, and the rule text itself.
+
+    The rule text is the correction — a rule named without its content is a
+    scolding the agent cannot act on.
+    """
+    blocks = []
+    for verdict in matches:
+        rule = loaded[verdict.slug]
+        head = f"### {rule.slug} (layer {rule.layer})"
+        if rule.description:
+            head += f" — {rule.description}"
+        block = [head]
+        if verdict.reason:
+            block.append(f"The evaluator's reading: {verdict.reason}")
+        block.append(rule.body)
+        blocks.append("\n\n".join(block))
+    return "\n\n".join(blocks)
 
 
 def _digest(loaded: dict[str, rules.Rule]) -> str:
@@ -86,8 +131,8 @@ def _digest(loaded: dict[str, rules.Rule]) -> str:
 
 @only_on("agy")
 def inject_ruleset(ctx: HookContext) -> Result | None:
-    """State the live rule set for the turn, on the surface where no detector
-    can run. Nothing loaded is nothing to say."""
+    """State the live rule set for the turn, on the surface where the evaluator
+    has no tool call to judge. Nothing loaded is nothing to say."""
     loaded = _loaded_rules(ctx)
     if not loaded:
         return None

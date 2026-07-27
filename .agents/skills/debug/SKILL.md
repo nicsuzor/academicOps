@@ -25,6 +25,13 @@ with no agent. Swap `-p aops` for `-d <repo-path>` when the target project has n
 `paths` entry in `$POLECAT_HOME/local.yaml`. Always pass `-s "$TMUX_NAME"` so the
 tmux session name and the host log directory name match.
 
+**Never pass `-d` a linked git worktree.** Its `.git` is a file pointing at the
+main checkout's `.git/worktrees/<name>`, which is outside the mounted directory,
+so every git command in the container fails with `fatal: not a git repository`.
+`-d` skips clone-based isolation by design and mounts the path as-is, so nothing
+repairs this. Add a `paths` entry for the worktree in `$POLECAT_HOME/local.yaml`
+and run with `-p <project>` instead.
+
 **Reproduce the real invocation before simplifying.** Whether a prompt or `-t
 <task>` is present changes what the client renders before going idle; a
 simplified repro can look like a dead hang while pointing at the wrong layer.

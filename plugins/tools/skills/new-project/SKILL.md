@@ -1,5 +1,5 @@
 ---
-name: project
+name: new-project
 type: skill
 category: instruction
 description: >
@@ -11,7 +11,7 @@ triggers:
   - "create a repo"
   - "scaffold"
   - "initialize project"
-  - "/project"
+  - "/new-project"
 modifies_files: true
 needs_task: false
 mode: conversational

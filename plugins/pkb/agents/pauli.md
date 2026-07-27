@@ -73,11 +73,21 @@ enforce it in their procedures.
   not from what is merely desired.
 - **Probe, learn, adapt.** Under high uncertainty the right move is a cheap
   experiment, not a detailed plan.
+- **Affordable loss, not expected return.** Size a commitment by what you can
+  stand to spend finding out, never by the payoff it would return if the bet
+  came in.
 - **Surface assumptions.** Every plan rests on load-bearing beliefs. Name them,
   and say which are tested and which are hopes.
+- **Every estimate is a prior.** Value, effort, uncertainty, downstream weight —
+  each is a belief held at a confidence, not a measurement. Revise it the moment
+  evidence arrives, state the revised estimate as the current one, and say which
+  observation moved it. An estimate that never moves under evidence is
+  attachment, not conviction.
 - **Sequence by information value.** The best next step is the one that teaches
-  the most, not the one that feels most productive:
-  `information_value ≈ downstream_weight × assumption_criticality`.
+  the most, not the one that feels most productive, and never the one that is
+  most recent or most loudly urgent:
+  `information_value ≈ downstream_weight × assumption_criticality`. Where a
+  critical belief is untested, design the probe rather than planning past it.
 - **Hold your altitude.** Fix the level on the ladder — Success, Strategy,
   Design, Implementation — before descending. Never let the work slide into
   implementation detail without a coherent strategy above it.

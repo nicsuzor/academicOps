@@ -5,9 +5,14 @@ One definition, consumed by every surface that starts a container: `cli.py`
 turns it into `docker run -e KEY=VALUE`, and the `docker*` Makefile targets
 emit `-e KEY` flags from it via `--docker-args`.
 
-Every name here is forwarded, never set. `docker run -e KEY` (no value)
-propagates the host's value only when there is one, so a variable unset on the
-host stays unset in the container. Nothing in this file is a default.
+Names in `FORWARDED_ENV` and `CONTAINER_AUTH_ENV` are forwarded, never set.
+`docker run -e KEY` (no value) propagates the host's value only when there is
+one, so a variable unset on the host stays unset in the container. Nothing in
+this file is a default.
+
+`CONTAINER_SET_ENV` is the one exception, and holds container-internal paths
+rather than host values: a path only the container's own filesystem can
+resolve has no host value to forward.
 
 Telemetry names are the OpenTelemetry contract in specs/ARCHITECTURE.md.
 """
@@ -66,18 +71,32 @@ CONTAINER_AUTH_ENV = (
     "CLAUDE_CODE_OAUTH_TOKEN",
 )
 
+# Container-internal paths, given a value rather than forwarded.
+#
+# CLAUDE_ENV_FILE is where the SessionStart credential hook writes the scoped
+# environment; the hook does nothing at all when the name is unset. The file is
+# deliberately outside every bind mount, so the credentials it holds die with
+# the container instead of persisting on the host.
+CONTAINER_SET_ENV = {
+    "CLAUDE_ENV_FILE": "/tmp/aops-session.env",
+}
+
 
 def docker_env_args(names=None):
     """`-e NAME` flags for `docker run`, one pair per name.
 
     Valueless on purpose: docker reads each value from its own environment and
-    omits the variable entirely when the host has not set it.
+    omits the variable entirely when the host has not set it. Names in
+    `CONTAINER_SET_ENV` are the exception and carry their value.
     """
     if names is None:
-        names = FORWARDED_ENV + CONTAINER_AUTH_ENV
+        names = FORWARDED_ENV + CONTAINER_AUTH_ENV + tuple(CONTAINER_SET_ENV)
     args = []
     for name in names:
-        args.extend(["-e", name])
+        if name in CONTAINER_SET_ENV:
+            args.extend(["-e", f"{name}={CONTAINER_SET_ENV[name]}"])
+        else:
+            args.extend(["-e", name])
     return args
 
 
@@ -95,7 +114,11 @@ def main():
     )
     args = parser.parse_args()
 
-    names = TELEMETRY_ENV if args.telemetry_only else FORWARDED_ENV + CONTAINER_AUTH_ENV
+    names = (
+        TELEMETRY_ENV
+        if args.telemetry_only
+        else FORWARDED_ENV + CONTAINER_AUTH_ENV + tuple(CONTAINER_SET_ENV)
+    )
     if args.docker_args:
         print(" ".join(docker_env_args(names)))
     else:

@@ -127,16 +127,25 @@ hooks. Where rbg is asked, cope is always on.
 The complete set. Each hook's injected wording lives in a markdown file next to
 it, under `hooks/messages/`, and is editable without touching code.
 
-| Plugin | Event              | Effect                                                                       |
-| ------ | ------------------ | ---------------------------------------------------------------------------- |
-| `pkb`  | `UserPromptSubmit` | Inject relevant PKB context, or instruct the agent to search for it.         |
-| `aops` | `SessionStart`     | Credential isolation for container sessions. Report telemetry configuration. |
-| `aops` | `SubagentStop`     | Remind the parent agent to require evidence before accepting the result.     |
-| `aops` | `Stop`             | Remind a subagent to present its answer with checkable evidence.             |
-| `aops` | `PreToolUse`       | Refuse an interactive prompt in a headless session.                          |
-| `cope` | `PreToolUse`       | Rule enforcement.                                                            |
-| `ts`   | `SessionStart`     | Tailscale bring-up.                                                          |
-| `ts`   | `SessionEnd`       | Ship session transcripts to the configured host.                             |
+Events are named canonically. `agy` fires five events of its own, two of which
+carry a canonical event: `PreInvocation` is `UserPromptSubmit`, `PostInvocation`
+is `Stop`. It has no session-level event, so `SessionStart` and `SessionEnd`
+cannot fire there at all.
+
+| Plugin | Event              | Client   | Effect                                                                                                                                                                           |
+| ------ | ------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkb`  | `UserPromptSubmit` | both     | Inject relevant PKB context, or instruct the agent to search for it.                                                                                                             |
+| `aops` | `SessionStart`     | `claude` | Credential isolation for container sessions. Report telemetry configuration.                                                                                                     |
+| `aops` | `SubagentStop`     | `claude` | Remind the stopping subagent to present its answer with checkable evidence. The output reaches the agent that is stopping, not its parent.                                       |
+| `aops` | `Stop`             | both     | Remind the agent that is stopping to present its answer with checkable evidence. Same handler and message as `SubagentStop` — the events differ only in which agent is stopping. |
+| `aops` | `PreToolUse`       | `claude` | Refuse an interactive prompt in a headless session.                                                                                                                              |
+| `cope` | `PreToolUse`       | `claude` | Rule enforcement.                                                                                                                                                                |
+| `cope` | `UserPromptSubmit` | `agy`    | State the live rule set for the turn, on the surface where the evaluator has no tool call to judge.                                                                              |
+| `ts`   | `SessionStart`     | `claude` | Tailscale bring-up.                                                                                                                                                              |
+| `ts`   | `SessionEnd`       | `claude` | Ship session transcripts to the configured host.                                                                                                                                 |
+
+Seven of the nine fire on one client only. `ts` ships no agy `hooks.json` at all,
+so neither Tailscale bring-up nor transcript sync happens there.
 
 One hook refuses rather than advises: a headless session cannot answer an
 interactive prompt, so asking one hangs the session until it times out. That is
@@ -179,6 +188,12 @@ Stages, in order:
 4. **Adapt to client.** Client adapters in `build/clients/` apply the
    client-specific transformations.
 5. **Package.** Tar per client, plus the marketplace manifests.
+6. **Cowork channel.** `dist/cowork/` — a directory marketplace assembled from
+   the built claude dists: one directory per plugin, a
+   `<plugin>-v<version>.zip` upload archive per plugin, and
+   `.claude-plugin/marketplace.json` naming the marketplace
+   `academicOps-cowork`. Claude-only; skipped when `claude` is not in the
+   client list.
 
 ### Client adapters
 

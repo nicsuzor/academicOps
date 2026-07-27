@@ -21,10 +21,11 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Rule:
-    slug: str  # filename stem — the identifier detectors.py keys off
+    slug: str  # filename stem — the identifier a verdict names
     layer: int  # 1 axioms, 2 project-local, 3 user-scoped
     trigger: str
     description: str
+    body: str  # the rule text, frontmatter stripped — the policy sent to the evaluator
     path: Path
 
 
@@ -37,6 +38,7 @@ def _parse(path: Path, layer: int) -> Rule | None:
 
     trigger = ""
     description = ""
+    body = text
     if text.startswith("---"):
         end = text.find("\n---", 3)
         if end != -1:
@@ -50,8 +52,16 @@ def _parse(path: Path, layer: int) -> Rule | None:
                     trigger = value
                 elif key == "description":
                     description = value
+            body = text[end + len("\n---") :]
 
-    return Rule(slug=path.stem, layer=layer, trigger=trigger, description=description, path=path)
+    return Rule(
+        slug=path.stem,
+        layer=layer,
+        trigger=trigger,
+        description=description,
+        body=body.strip(),
+        path=path,
+    )
 
 
 def _load_dir(dir_path: Path, layer: int, *, always_on_only: bool) -> dict[str, Rule]:

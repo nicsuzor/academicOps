@@ -24,7 +24,7 @@ flowchart TD
     D -->|needed now| TEAM["in-session agent team"]
     D -->|substantial repo work| PC["polecat/cli.py run<br/>isolated clone → container → skills/pull"]
 
-    PC --> W["worker: skills/pull/SKILL.md<br/>claim · execute · verify · skills/handover"]
+    PC --> W["worker: skills/pull/SKILL.md<br/>claim · execute · verify · skills/dump"]
     W --> SIDE["evidence + output URL on the task<br/>delivery guard: no uncommitted, no unpushed"]
     SIDE --> D
     TEAM --> D
@@ -33,7 +33,7 @@ flowchart TD
 
     H1["SessionStart hook<br/>telemetry report + credential scoping"] -.-> PC
     H2["Stop hook<br/>answer-evidence.md"] -.-> W
-    H3["SubagentStop hook<br/>subagent-result.md"] -.-> J
+    H3["SubagentStop hook<br/>answer-evidence.md"] -.-> W
     H4["PreToolUse hook<br/>headless-interactive-prompt.md<br/>refuses a prompt no one can answer"] -.-> W
 ```
 
@@ -57,22 +57,22 @@ James never talks to the user; ida does. James never sits inside the dispatch �
 | `verify`           | `skills/verify/SKILL.md`           | Marsha's QA pass: forcing checks, halt triggers, verification report.                |
 | `dispatch`         | `skills/dispatch/SKILL.md`         | The only pathway to a polecat container. Claim, brief, route, verify by side-effect. |
 | `pull`             | `skills/pull/SKILL.md`             | The worker contract: claim a queued task, execute it, record the result.             |
-| `dump`             | `skills/handover/SKILL.md`         | Session exit — bail, full, partial, or pause.                                        |
+| `dump`             | `skills/dump/SKILL.md`             | Session exit — bail, full, partial, or pause.                                        |
 
 ### Hooks
 
-| Event          | Handler                                   | Message                                         | Effect                                                                                                    |
-| -------------- | ----------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `SessionStart` | `session_start`                           | `session-start.md`, `session-start-isolated.md` | Reports telemetry configuration; scopes credentials for a container session. Reports only — sets nothing. |
-| `PreToolUse`   | `refuse_interactive_prompt_when_headless` | `headless-interactive-prompt.md`                | Refuses an interactive prompt in a headless session. The only hook in the framework that blocks a call.   |
-| `SubagentStop` | `require_evidence_from_subagent`          | `subagent-result.md`                            | Reminds the parent agent to require evidence before accepting a result.                                   |
-| `Stop`         | `present_checkable_evidence`              | `answer-evidence.md`                            | Reminds an agent to present its answer with checkable evidence.                                           |
+| Event          | Handler                                   | Message                                         | Effect                                                                                                                                      |
+| -------------- | ----------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SessionStart` | `session_start`                           | `session-start.md`, `session-start-isolated.md` | Reports telemetry configuration; scopes credentials for a container session. Reports only — sets nothing.                                   |
+| `PreToolUse`   | `refuse_interactive_prompt_when_headless` | `headless-interactive-prompt.md`                | Refuses an interactive prompt in a headless session. The only hook in the framework that blocks a call.                                     |
+| `SubagentStop` | `present_checkable_evidence`              | `answer-evidence.md`                            | Reminds the stopping subagent to present its answer with checkable evidence. The output reaches the agent that is stopping, not its parent. |
+| `Stop`         | `present_checkable_evidence`              | `answer-evidence.md`                            | Reminds an agent to present its answer with checkable evidence.                                                                             |
 
-Three of the four are advisory: nothing blocks on a rule verdict. `PreToolUse` blocks, and only on a capability fact — a headless session has no human to answer `ask_question`, so the call cannot return and the session hangs until it times out. A session is headless when any of `NONINTERACTIVE`, `CI`, `AOPS_POLECAT_CONTAINER`, or `CLAUDE_CODE_NON_INTERACTIVE` is `1`. Every other tool passes untouched, and so do these tools in a session with someone in it. `lib/hooks/result.py` holds the rule for when a refusal is legitimate; a handler that has an opinion about compliance returns an advisory instead.
+Three of the four are advisory: nothing blocks on a rule verdict. `PreToolUse` blocks, and only on a capability fact — a headless session has no human to answer `AskUserQuestion`, so the call cannot return and the session hangs until it times out. A session is headless when any of `NONINTERACTIVE`, `CI`, `AOPS_POLECAT_CONTAINER`, or `CLAUDE_CODE_NON_INTERACTIVE` is `1`. Every other tool passes untouched, and so do these tools in a session with someone in it. `lib/hooks/result.py` holds the rule for when a refusal is legitimate; a handler that has an opinion about compliance returns an advisory instead.
 
 Wording lives in `hooks/messages/` and is editable without touching code.
 
-On agy, only `Stop` fires — it is the one event with a confirmed agy wire equivalent (`PostInvocation`). agy has no `PreToolUse` wire event, so the refusal is Claude-only until it gains one. See `lib/hooks/clients.py`.
+On agy, only `Stop` fires, as `PostInvocation`. agy has no session-level hook event of any kind, so `SessionStart` cannot fire there. It does have a `PreToolUse`, but its payload names the tool differently from Claude Code's, which `lib/hooks/context.py` is the only thing that reads — so the refusal stays Claude-only until that payload can be parsed, and wiring it sooner would ship a hook that fires and cannot see the tool it is judging. See `lib/hooks/clients.py`.
 
 ### Container runner
 

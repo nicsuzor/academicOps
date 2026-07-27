@@ -1,1 +1,0 @@
-**costly-ops-approval**: this command matches a high-blast-radius or destructive shape (force-push, hard reset, recursive delete, drop/truncate, mass find-delete). Confirm scope, volume, and cost were explicitly approved before running it.

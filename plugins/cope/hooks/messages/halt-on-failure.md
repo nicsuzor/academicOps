@@ -1,1 +1,0 @@
-**halt-on-failure**: this command bypasses a validation gate (`--no-verify`, `--no-gpg-sign`, a disabled hooks path). Routing around a failing check is prohibited — halt and fix the underlying failure instead of skipping it.

@@ -44,11 +44,10 @@ def fixup_local_marketplace_name(marketplace_root: str, marketplace_name: str) -
     the same machine (see build/marketplace.py for the full rationale). Inside a
     `make docker-build` (AOPS_DIST_SOURCE=local) image there is no such
     coexistence risk — the container only ever has one aops install — so we
-    rewrite the copied marketplace.json's name to `academicOps` here, making
-    the local-build image install under the SAME key
-    (`aops@academicOps`) that production/CI builds use. That's what keeps
-    `polecat/cli.py`'s staged `pluginConfigs` (hardcoded to `aops@academicOps`)
-    matching the installed plugin key regardless of build source.
+    rewrite the copied marketplace.json's name to the caller-supplied
+    `marketplace_name` here, making the local-build image install under the SAME
+    key that production/CI builds use. That's what keeps the staged
+    `pluginConfigs` matching the installed plugin key regardless of build source.
     """
     marketplace_path = pathlib.Path(marketplace_root) / ".claude-plugin" / "marketplace.json"
     data = json.loads(marketplace_path.read_text())
@@ -103,19 +102,18 @@ def fixup_marketplace_cache(marketplace_name: str) -> None:
     marketplace_path.write_text(json.dumps(marketplace, indent=2))
 
 
-COMMANDS = {
-    "fixup-mcp-config-paths": fixup_mcp_config_paths,
-    "fixup-local-marketplace-name": fixup_local_marketplace_name,
-    "fixup-marketplace-cache": fixup_marketplace_cache,
-}
+COMMANDS = (
+    "fixup-local-marketplace-name",
+    "fixup-marketplace-cache",
+    "fixup-mcp-config-paths",
+)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=sorted(COMMANDS))
+    parser.add_argument("command", choices=COMMANDS)
     parser.add_argument(
         "--marketplace-name",
-        default="academicOps",
         help="Marketplace name to fix up (fixup-marketplace-cache / fixup-local-marketplace-name)",
     )
     parser.add_argument(
@@ -125,13 +123,17 @@ def main() -> None:
     )
     args = parser.parse_args()
     if args.command == "fixup-marketplace-cache":
+        if not args.marketplace_name:
+            parser.error("fixup-marketplace-cache requires --marketplace-name")
         fixup_marketplace_cache(args.marketplace_name)
     elif args.command == "fixup-local-marketplace-name":
         if not args.marketplace_root:
             parser.error("fixup-local-marketplace-name requires --marketplace-root")
+        if not args.marketplace_name:
+            parser.error("fixup-local-marketplace-name requires --marketplace-name")
         fixup_local_marketplace_name(args.marketplace_root, args.marketplace_name)
     else:
-        COMMANDS[args.command]()
+        fixup_mcp_config_paths()
 
 
 if __name__ == "__main__":

@@ -1,1 +1,0 @@
-**bounded-execution**: this command's shape has no visible terminating bound (`tail -f`, `--follow`, `--watch`, `while true`, or similar run forever). Confirm it has an explicit stopping point, or add a timeout / iteration cap, before running it.

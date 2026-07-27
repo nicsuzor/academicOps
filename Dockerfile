@@ -107,6 +107,14 @@ RUN npx --yes playwright@1.59.1 install-deps chromium \
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Third-party imports the shipped plugin trees need from the system python3.
+# `python3 ${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` (the dispatch skill's documented
+# invocation) imports click and yaml, and the dist trees ship no pyproject.toml,
+# so there is no per-plugin venv to fall back on. The shipped hooks are
+# stdlib-only and need nothing here.
+RUN pip install --no-cache-dir click pyyaml \
+    && python3 -c "import click, yaml"
+
 # Install code quality tools globally (Claude/agy installed separately below).
 # @playwright/mcp: pre-baked so agents can call playwright tools without a
 # network download at session start.
@@ -182,7 +190,7 @@ COPY --chown=worker:worker plugins/aops/polecat/defaults/docker_gemini_fixups.py
 # `academicOps` release install on the same machine — but that coexistence
 # concern doesn't apply inside this ephemeral image, and
 # plugins/aops/polecat/cli.py's setup_staging() stages `pluginConfigs` under the
-# key `aops@academicOps`. A local build that installed as `aops@aops` would
+# key `aops-pkb@academicOps`. A local build that installed as `aops-pkb@aops` would
 # silently fail to receive that staged config (pkb_mcp_url never reaching the
 # plugin), so we rewrite the local marketplace.json's name to `academicOps`
 # before installing, making local builds install under the exact same key
@@ -240,36 +248,6 @@ RUN umask 000 \
 # No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
 # scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
 # `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
-
-# Pre-bake Python venvs for Claude plugins AND agy
-# (Antigravity CLI) plugins in one pass so the first hook call always
-# fast-paths to $HOOK_DIR/.venv/bin/python (router.sh fallback is `uv run`,
-# which resolves the lockfile live on every cold start).
-#
-# Cold-start matters most for PreToolUse, which has a 5000ms timeout in
-# hooks.json. An inline `uv` build on first call (fetch/resolve pydantic, etc.)
-# can exceed that window and produce `Tool call denied by jsonhook__hooks_*`
-# (agy) or a stalled tool call (Claude). Symmetric pre-bake here + the same
-# pre-bake at `make install-{claude,agy}` time eliminates the cold-start
-# failure for every client.
-#
-# Asymmetric pre-bake (one CLI frozen, the other JIT) is a footgun: a broken
-# uv.lock ships silently on the pre-baked side while the JIT side self-heals.
-# Symmetric pre-bake + smoke test catches lock drift at build time.
-#
-# UV_PROJECT_ENVIRONMENT is unset so each venv lives inside its own plugin/
-# extension dir, independent of the root project venv at /home/worker/.venv
-# (built below).
-RUN umask 000 && set -e && \
-    for d in /home/worker/.claude/plugins/cache/*/*/*/ \
-             /home/worker/.gemini/extensions/*/ \
-             /home/worker/.gemini/antigravity-cli/plugins/*/ ; do \
-        if [ -f "${d}pyproject.toml" ]; then \
-            (cd "$d" \
-                && env -u UV_PROJECT_ENVIRONMENT uv sync --frozen \
-                && ./.venv/bin/python -c "import psutil, pydantic, yaml") ; \
-        fi ; \
-    done
 
 # Pre-build Python project venv at a stable image path.
 # UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),

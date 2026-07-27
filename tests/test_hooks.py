@@ -127,12 +127,13 @@ def test_render_claude_refusal_is_a_deny_permission_decision():
     assert "additionalContext" not in out["hookSpecificOutput"]
 
 
-def test_render_agy_refusal_is_allow_tool_false_with_a_reason():
-    """agy's own blocking shape. Unreachable today — agy has no PreToolUse wire
-    event (see to_canonical below) — but the shape must be right the day it
-    gains one, and wrong-by-omission is how a silent no-op ships."""
+def test_render_agy_refusal_is_a_deny_decision_with_a_reason():
+    """agy's own blocking shape, as its `PreToolUse` contract defines it: a
+    `decision` of allow/deny/ask, with `reason` alongside. Unreachable today —
+    no agy tool event is mapped (see to_canonical below) — but the shape must
+    be right the day one is, and wrong-by-omission is how a silent no-op ships."""
     out = clients.render("agy", "PreToolUse", refuse("nobody is here to answer"))
-    assert out == {"allowTool": False, "denyReason": "nobody is here to answer"}
+    assert out == {"decision": "deny", "reason": "nobody is here to answer"}
     assert clients.to_canonical("agy", "PreToolUse") is None
 
 
@@ -142,10 +143,10 @@ def test_render_advisory_never_carries_a_blocking_field_on_either_client():
     for event in clients.CANONICAL_EVENTS:
         claude_out = json.dumps(clients.render("claude", event, warn("careful")))
         assert "permissionDecision" not in claude_out
-        assert "allowTool" not in claude_out
+        assert "decision" not in claude_out
     agy_out = json.dumps(clients.render("agy", "UserPromptSubmit", warn("careful")))
-    assert "allowTool" not in agy_out
-    assert "denyReason" not in agy_out
+    assert "decision" not in agy_out
+    assert "reason" not in agy_out
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +198,84 @@ def test_messages_load_empty_file_is_a_hard_error(tmp_path):
     (tmp_path / "messages" / "blank.md").write_text("   \n")
     with pytest.raises(messages.MessageNotFoundError):
         messages.load(tmp_path, "blank")
+
+
+# --- the second reader: <name>.user.md ---------------------------------------
+#
+# A message has two audiences with opposite needs — the agent, where length
+# buys precision, and the person watching, where it buys nothing. The short
+# version lives in a sibling file so that adding one cannot disturb the text
+# already going to the agent, and so this module needs no frontmatter parser
+# inside a hook subprocess that has only the standard library.
+
+
+def _message(tmp_path, name: str, agent: str, user: str | None = None) -> None:
+    (tmp_path / "messages").mkdir(exist_ok=True)
+    (tmp_path / "messages" / f"{name}.md").write_text(agent)
+    if user is not None:
+        (tmp_path / "messages" / f"{name}.user.md").write_text(user)
+
+
+def test_message_with_a_user_version_loads_both(tmp_path):
+    _message(tmp_path, "handover", "The long form, for the agent.", "  short line  \n")
+    assert messages.load_pair(tmp_path, "handover") == (
+        "The long form, for the agent.",
+        "short line",
+    )
+
+
+def test_message_without_a_user_version_is_not_an_error(tmp_path):
+    """The ordinary case. A hook with nothing worth putting in a status line
+    says nothing there, and still injects its agent-facing text."""
+    _message(tmp_path, "handover", "The long form, for the agent.")
+    agent, user = messages.load_pair(tmp_path, "handover")
+    assert agent == "The long form, for the agent."
+    assert user is None
+
+
+def test_empty_user_version_reads_as_absent(tmp_path):
+    """A blank line in the user's terminal is worse than silence, so an empty
+    sibling is `None` rather than `""` — unlike the agent's message, where
+    empty is a hard error because something was meant to be injected."""
+    _message(tmp_path, "handover", "The long form.", "   \n")
+    assert messages.load_pair(tmp_path, "handover")[1] is None
+
+
+def test_missing_agent_message_still_raises_even_with_a_user_version(tmp_path):
+    """The user's line is an addition, never a substitute: it cannot stand in
+    for the message the agent was supposed to receive."""
+    (tmp_path / "messages").mkdir()
+    (tmp_path / "messages" / "orphan.user.md").write_text("short line")
+    with pytest.raises(messages.MessageNotFoundError):
+        messages.load_pair(tmp_path, "orphan")
+
+
+def test_claude_carries_the_user_line_on_an_advisory_and_a_refusal():
+    """Claude Code has a channel for each reader, and both must be used. The
+    refusal case matters most: the agent is told no, and this line is the only
+    sign the user gets that a hook intervened."""
+    advisory = clients.render("claude", "Stop", warn("long form", "short line"))
+    assert advisory["hookSpecificOutput"]["additionalContext"] == "long form"
+    assert advisory["systemMessage"] == "short line"
+
+    refusal = clients.render("claude", "PreToolUse", refuse("long form", "short line"))
+    assert refusal["hookSpecificOutput"]["permissionDecisionReason"] == "long form"
+    assert refusal["systemMessage"] == "short line"
+
+
+def test_claude_omits_the_user_line_when_there_is_none():
+    assert "systemMessage" not in clients.render("claude", "Stop", warn("long form"))
+
+
+def test_agy_drops_the_user_line_rather_than_misdirecting_it():
+    """agy has no user-facing channel — its response steps (`ephemeralMessage`,
+    `userMessage`, `toolCall`) all speak to the agent, and `userMessage` would
+    put the framework's words in the person's mouth. So the line is dropped,
+    and this pins that it is dropped deliberately rather than leaking onto an
+    agent-facing surface."""
+    out = clients.render("agy", "UserPromptSubmit", warn("long form", "short line"))
+    assert out == {"injectSteps": [{"ephemeralMessage": "long form"}]}
+    assert "short line" not in json.dumps(out)
 
 
 # ---------------------------------------------------------------------------

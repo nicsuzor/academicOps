@@ -7,9 +7,10 @@ every Python hook could ship non-executable — invoked by bare path, mode
 `0644` — and the whole suite stayed green while nothing fired.
 
 These tests close that gap by treating the built tree as the unit under test:
-they read the `command` string out of the built `hooks.json`, substitute the
-real plugin root, and run it exactly as its client would — through a shell for
-Claude Code, through argv for agy, which execs without shell expansion.
+they read the `command` string out of the built `hooks.json` and run it exactly
+as its client would — through a shell, with Claude Code's plugin-root variable
+expanded for Claude Code, and with the working directory set to the plugin root
+for agy, which is what agy gives a hook instead of a plugin-root variable.
 
 The fixture builds the real `plugins/` into a temporary dist, so the assertions
 hold for whatever `make build` would produce right now, with no dependency on
@@ -20,11 +21,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
 import tarfile
+import threading
 import zipfile
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -47,12 +51,14 @@ import clients  # noqa: E402
 # Where each client reads its hook config from (build/clients/*.py).
 _HOOKS_JSON_PATH = {"claude": Path("hooks/hooks.json"), "agy": Path("hooks.json")}
 
-# The plugin-root variable each client expands in a hook command.
-_PLUGIN_ROOT_VAR = {"claude": "${CLAUDE_PLUGIN_ROOT}", "agy": "${AGY_PLUGIN_ROOT}"}
+# Claude Code expands this in a hook command; agy has no counterpart and
+# defines no variable of its own, so an agy command carries a path relative to
+# the plugin root and agy supplies that root as the working directory.
+_CLAUDE_PLUGIN_ROOT_VAR = "${CLAUDE_PLUGIN_ROOT}"
 
 # One representative payload per canonical event, shaped like the real thing.
 # PreToolUse carries the reproduction case: a `--no-verify` commit, which is
-# exactly what cope's halt-on-failure detector exists to catch.
+# exactly the shape cope's halt-on-failure policy exists to catch.
 _PAYLOADS: dict[str, dict] = {
     "SessionStart": {"hook_event_name": "SessionStart", "session_id": "test-session"},
     "UserPromptSubmit": {
@@ -119,15 +125,44 @@ def _hooks_config(client: str, build_dir: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
 
 
+def _hook_handlers(client: str, build_dir: Path) -> list[tuple[str, dict]]:
+    """(wire event, handler object) for every hook the built config registers.
+
+    The two clients disagree about the file's shape at every level, so this is
+    where that is absorbed. Claude Code keys by event under a `hooks` wrapper,
+    each event holding matcher groups. agy keys by hook NAME; the events sit
+    inside that name's spec, and only its two tool events group their handlers
+    under a matcher — the rest list handlers directly.
+    """
+    handlers: list[tuple[str, dict]] = []
+
+    def collect(wire_event: str, entries: list) -> None:
+        for entry in entries:
+            if isinstance(entry, dict) and "hooks" in entry:
+                handlers.extend((wire_event, hook) for hook in entry["hooks"])
+            else:
+                handlers.append((wire_event, entry))
+
+    config = _hooks_config(client, build_dir)
+    if client == "claude":
+        for wire_event, entries in config.get("hooks", {}).items():
+            collect(wire_event, entries)
+        return handlers
+    for spec in config.values():
+        for wire_event, entries in spec.items():
+            if wire_event == "enabled":
+                continue
+            collect(wire_event, entries)
+    return handlers
+
+
 def _hook_commands(client: str, build_dir: Path) -> list[tuple[str, str]]:
     """(wire event, command string) for every hook the built config registers."""
-    commands = []
-    for wire_event, entries in _hooks_config(client, build_dir).get("hooks", {}).items():
-        for entry in entries:
-            for hook in entry.get("hooks", []):
-                if "command" in hook:
-                    commands.append((wire_event, hook["command"]))
-    return commands
+    return [
+        (wire_event, handler["command"])
+        for wire_event, handler in _hook_handlers(client, build_dir)
+        if "command" in handler
+    ]
 
 
 # Every variable that makes aops's PreToolUse hook treat a session as headless.
@@ -145,16 +180,18 @@ def _run_shipped_hook(
 ) -> subprocess.CompletedProcess:
     """Run a hook command the way its client runs it.
 
-    Claude Code hands the command to a shell, so quoting is honoured. agy execs
-    an argv vector with no shell expansion, which is why the agy adapter strips
-    quotes — splitting here without a shell is what proves that stripping was
-    necessary and sufficient.
+    Both clients hand the command to a shell, so quoting is honoured in each.
+    What differs is how the command finds the plugin it belongs to: Claude Code
+    expands a plugin-root variable, and agy — which defines no such variable —
+    runs the command with the working directory set to the directory holding
+    `hooks.json`, which for a plugin is its root. Running it from anywhere else
+    here would pass a command that cannot resolve its own script in the field.
 
     ``env_overrides`` sets or, with a ``None`` value, unsets one variable for
     this run — the hooks under test read the environment, so a test that
     asserts on their behaviour has to control it rather than inherit it.
     """
-    resolved = command.replace(_PLUGIN_ROOT_VAR[client], str(build_dir))
+    resolved = command.replace(_CLAUDE_PLUGIN_ROOT_VAR, str(build_dir))
     env = dict(os.environ)
     env.pop("CLAUDE_CODE_REMOTE", None)  # keep the ts hooks on their no-op path
     for key, value in (env_overrides or {}).items():
@@ -162,16 +199,179 @@ def _run_shipped_hook(
             env.pop(key, None)
         else:
             env[key] = value
-    kwargs = dict(input=json.dumps(payload), capture_output=True, text=True, env=env, timeout=60)
-    if client == "claude":
-        return subprocess.run(resolved, shell=True, **kwargs)  # noqa: S602
-    return subprocess.run(shlex.split(resolved), **kwargs)
+    return subprocess.run(  # noqa: S602
+        resolved,
+        shell=True,
+        cwd=None if client == "claude" else build_dir,
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
 
 
 def _command_for(client: str, build_dir: Path, wire_event: str) -> str:
     matches = [cmd for wire, cmd in _hook_commands(client, build_dir) if wire == wire_event]
     assert len(matches) == 1, f"{build_dir.name}: {len(matches)} {wire_event} hooks, expected 1"
     return matches[0]
+
+
+# --- 0. schema: agy can parse what we ship it ---------------------------------
+#
+# Every agy hook the framework shipped was dead, and had always been dead, for
+# a reason no test could see: `hooks.json` carried Claude Code's shape, and agy
+# rejected the whole file — `invalid hook "hooks": command hook must specify
+# 'command'` — before a single handler loaded. Executing the command proves the
+# command works; it says nothing about whether the client ever gets that far.
+#
+# The schema asserted here is agy's own. The CLI binary embeds its "Lifecycle
+# Hooks (`hooks.json`)" reference: top-level keys are hook NAMES, each mapping
+# to a spec whose keys are events; `PreToolUse`/`PostToolUse` group handlers
+# under a `matcher`, and `PreInvocation`/`PostInvocation`/`Stop` list handlers
+# directly. A handler needs a `command`; `type` defaults to "command".
+
+_AGY_GROUPED_EVENTS = {"PreToolUse", "PostToolUse"}
+_AGY_FLAT_EVENTS = {"PreInvocation", "PostInvocation", "Stop"}
+
+
+def test_shipped_agy_hooks_json_matches_agys_schema(dist_root):
+    """Every agy `hooks.json` we ship, checked against the shape agy parses."""
+    checked = 0
+    for name, client, build_dir in _build_dirs(dist_root):
+        if client != "agy":
+            continue
+        config = _hooks_config(client, build_dir)
+        if not config:
+            continue
+
+        assert "hooks" not in config, (
+            f"{name}-agy: hooks.json has a top-level 'hooks' key. agy reads "
+            f"top-level keys as hook NAMES, so this ships a hook named 'hooks' "
+            f"and the whole file fails to load."
+        )
+        for hook_name, spec in config.items():
+            assert isinstance(spec, dict), f"{name}-agy: hook {hook_name!r} is not an object"
+            events = {key for key in spec if key != "enabled"}
+            assert events, f"{name}-agy: hook {hook_name!r} registers no event"
+            unknown = events - _AGY_GROUPED_EVENTS - _AGY_FLAT_EVENTS
+            assert not unknown, (
+                f"{name}-agy: {hook_name!r} wires events agy does not fire: {unknown}"
+            )
+
+            for event in events:
+                for entry in spec[event]:
+                    if event in _AGY_GROUPED_EVENTS:
+                        assert "matcher" in entry, f"{name}-agy: {event} group has no matcher"
+                        handlers = entry["hooks"]
+                    else:
+                        assert "hooks" not in entry, (
+                            f"{name}-agy: {event} takes handlers directly, but this entry "
+                            f"wraps them in a 'hooks' group — agy reads the group itself as "
+                            f"the handler and rejects it for having no 'command'"
+                        )
+                        handlers = [entry]
+                    for handler in handlers:
+                        assert handler.get("command"), (
+                            f"{name}-agy: {event} handler has no 'command': {handler}"
+                        )
+            checked += 1
+    assert checked > 0, "no agy hooks.json was checked"
+
+
+def test_shipped_agy_hook_commands_resolve_from_the_plugin_root(dist_root):
+    """agy defines no plugin-root variable — `${AGY_PLUGIN_ROOT}` expands to
+    nothing and the path never resolves. What it does give a hook is the
+    working directory: the directory holding `hooks.json`, which for a plugin
+    is its root. So every script an agy hook names must exist at that path,
+    relative to the build dir."""
+    checked = 0
+    for name, client, build_dir in _build_dirs(dist_root):
+        if client != "agy":
+            continue
+        for _, command in _hook_commands(client, build_dir):
+            assert "AGY_PLUGIN_ROOT" not in command, (
+                f"{name}-agy: `{command}` names a variable agy never sets"
+            )
+            scripts = [word for word in shlex.split(command) if word.endswith((".py", ".sh"))]
+            assert scripts, f"{name}-agy: `{command}` names no script"
+            for script in scripts:
+                assert (build_dir / script).is_file(), (
+                    f"{name}-agy: `{command}` resolves to {build_dir / script}, which "
+                    f"does not exist"
+                )
+                checked += 1
+    assert checked > 0, "no agy hook commands were checked"
+
+
+def test_no_shipped_config_asks_agy_to_expand_a_variable(dist_root):
+    """agy substitutes nothing in the files it reads.
+
+    `${AGY_PLUGIN_ROOT}` was the loud case — it is not a variable agy has, so
+    it expanded to nothing and every hook died. The quiet case is a `${VAR}`
+    that reaches a launched process verbatim: a script testing whether its
+    variable is set sees the literal text, finds it non-empty, and proceeds
+    into a failure that names something else entirely. Neither may ship, so
+    this sweeps every JSON config in every agy build rather than the two files
+    that happened to be wrong.
+    """
+    offenders = []
+    for name, client, build_dir in _build_dirs(dist_root):
+        if client != "agy":
+            continue
+        for config in sorted(build_dir.glob("*.json")):
+            for match in set(re.findall(r"\$\{[^}]*\}", config.read_text(encoding="utf-8"))):
+                offenders.append(f"{name}-agy/{config.name}: {match}")
+    assert offenders == [], f"agy expands none of these: {offenders}"
+
+
+def test_every_shipped_agy_mcp_server_is_stdio_or_remote_not_both(dist_root):
+    """agy's own rule, quoted from the CLI binary: a server "must have either
+    command or serverUrl", and "cannot have both". A config it rejects is a set
+    of tools that silently never appear."""
+    for name, client, build_dir in _build_dirs(dist_root):
+        if client != "agy":
+            continue
+        config = build_dir / "mcp_config.json"
+        if not config.is_file():
+            continue
+        servers = json.loads(config.read_text(encoding="utf-8"))["mcpServers"]
+        assert servers, f"{name}-agy ships an empty mcp_config.json; ship no file instead"
+        for server_name, server in servers.items():
+            assert ("command" in server) != ("serverUrl" in server), (
+                f"{name}-agy: MCP server {server_name!r} sets both or neither of "
+                f"'command' and 'serverUrl'"
+            )
+
+
+# A hook timeout is expressed in SECONDS by both clients — Claude Code's hook
+# `timeout`, and agy's, which its reference documents as "Execution timeout in
+# seconds. Defaults to 30". Ten minutes is longer than any hook this framework
+# ships has business taking, and is far below the smallest plausible
+# milliseconds value (1000 = 16 minutes), so it separates the two units
+# cleanly without pinning any particular hook's budget.
+_MAX_HOOK_TIMEOUT_SECONDS = 600
+
+
+def test_no_shipped_hook_timeout_is_a_milliseconds_value(dist_root):
+    """The regression: `"timeout": 30000` meaning 30 seconds.
+
+    Read as seconds — which is what both clients do — that is eight hours and
+    twenty minutes, and its sibling `300000` is three and a half days. A
+    timeout that long is not a timeout: the guarantee it exists to give, that a
+    wedged hook cannot hold the session open indefinitely, is gone, and nothing
+    observable changes until the day something hangs.
+    """
+    for name, client, build_dir in _build_dirs(dist_root):
+        for wire_event, handler in _hook_handlers(client, build_dir):
+            timeout = handler.get("timeout")
+            if timeout is None:
+                continue
+            assert timeout <= _MAX_HOOK_TIMEOUT_SECONDS, (
+                f"{name}-{client} {wire_event}: timeout={timeout}. Hook timeouts are "
+                f"SECONDS, so this is {timeout / 3600:.1f} hours — almost certainly a "
+                f"milliseconds value. Cap is {_MAX_HOOK_TIMEOUT_SECONDS}s."
+            )
 
 
 # --- 1. execution: every shipped hook command actually runs -------------------
@@ -219,20 +419,87 @@ def test_no_dispatch_hook_is_wired_to_an_unmappable_event(dist_root):
             )
 
 
-def test_cope_shipped_hook_flags_the_axiom_it_ships_for(dist_root):
+class _StubReflexesEvaluator(BaseHTTPRequestHandler):
+    """A loopback CoPE label endpoint, speaking the Reflexes evaluator contract:
+    one policy in (`criteria_text`), one `label` out. cope ships with no
+    endpoint, so exercising the built artifact's evaluation path at all means
+    standing one up."""
+
+    def do_POST(self):  # noqa: N802 - BaseHTTPRequestHandler's interface
+        length = int(self.headers.get("Content-Length", 0))
+        payload = json.loads(self.rfile.read(length))
+        label = 1 if "workaround" in payload.get("criteria_text", "").lower() else 0
+        body = json.dumps({"label": label, "confidence": 0.9}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):  # silence the default stderr access log
+        pass
+
+
+@pytest.fixture()
+def stub_evaluator_env():
+    """Environment overrides pointing cope's hook at the loopback evaluator."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _StubReflexesEvaluator)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield {
+        "COPE_EVALUATOR_URL": f"http://127.0.0.1:{server.server_address[1]}/v1/label",
+        "COPE_EVALUATOR_PROTOCOL": "cope",
+        "COPE_EVALUATOR_MODEL": "stub-model",
+        "COPE_EVALUATOR_API_KEY": None,
+        "COPE_EVALUATOR_TIMEOUT": "20",
+    }
+    server.shutdown()
+    server.server_close()
+
+
+def test_cope_shipped_hook_flags_the_axiom_it_ships_for(dist_root, stub_evaluator_env):
     """End-to-end through the artifact: the built cope hook, run as Claude Code
-    runs it, on a `--no-verify` commit, names halt-on-failure and echoes the
-    match. Exit 0 alone would also be satisfied by a hook that does nothing."""
+    runs it, on a `--no-verify` commit, against an evaluator that flags the
+    matching policy. It names halt-on-failure and echoes the call. Exit 0 alone
+    would also be satisfied by a hook that does nothing."""
     build_dir = dist_root / "aops-cope-claude"
     commands = _hook_commands("claude", build_dir)
     assert commands, "aops-cope-claude ships no hook command"
 
     _, command = commands[0]
-    proc = _run_shipped_hook("claude", build_dir, command, _PAYLOADS["PreToolUse"])
+    proc = _run_shipped_hook(
+        "claude", build_dir, command, _PAYLOADS["PreToolUse"], env_overrides=stub_evaluator_env
+    )
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
 
     advisory = json.loads(proc.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "halt-on-failure" in advisory
     assert "--no-verify" in advisory
+
+
+def test_cope_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_root):
+    """The shipped default. cope bakes in no endpoint, so an installation that
+    has not configured one must cost the session nothing on every tool call:
+    no advisory, no error, no stderr."""
+    build_dir = dist_root / "aops-cope-claude"
+    _, command = _hook_commands("claude", build_dir)[0]
+    proc = _run_shipped_hook(
+        "claude",
+        build_dir,
+        command,
+        _PAYLOADS["PreToolUse"],
+        env_overrides=dict.fromkeys(
+            (
+                "COPE_EVALUATOR_URL",
+                "COPE_EVALUATOR_PROTOCOL",
+                "COPE_EVALUATOR_MODEL",
+                "COPE_EVALUATOR_API_KEY",
+                "COPE_EVALUATOR_TIMEOUT",
+            )
+        ),
+    )
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+    assert proc.stdout.strip() == ""
+    assert proc.stderr.strip() == ""
 
 
 # --- 1b. the one blocking hook, and the boundary around it --------------------
@@ -243,7 +510,31 @@ def test_cope_shipped_hook_flags_the_axiom_it_ships_for(dist_root):
 # tests pin all four edges: it fires, it fires only on those tools, it fires
 # only when headless, and cope still cannot reach the mechanism.
 
-_INTERACTIVE_TOOLS = ("ask_question", "AskFollowupQuestion", "ask_followup_question", "Question")
+# The tool name a Claude Code session actually sends when it asks a person a
+# question. This test file's whole claim about the refusal rests on this one
+# string being the client's, not ours.
+#
+# The previous version of this constant was the production frozenset copied
+# out of handlers.py, wrong names and all, and parametrized over. It proved
+# the hook refuses four names Claude Code has never sent, never once exercised
+# the name it does send, and stayed green while the hook was inert in every
+# shipped session. A test that restates the implementation's own constant can
+# only agree with it. So this list is written from the client's vocabulary,
+# and nothing here imports from or mirrors handlers.py — if the two disagree,
+# that disagreement is the finding.
+_CLIENT_INTERACTIVE_TOOL = "AskUserQuestion"
+
+# Spellings other harnesses give the same capability. Kept because the hook
+# ships to more than one, but held separately: none of them is evidence about
+# Claude Code, and a green run over these alone means nothing.
+_OTHER_HARNESS_INTERACTIVE_TOOLS = (
+    "ask_question",
+    "AskFollowupQuestion",
+    "ask_followup_question",
+    "Question",
+)
+
+_INTERACTIVE_TOOLS = (_CLIENT_INTERACTIVE_TOOL, *_OTHER_HARNESS_INTERACTIVE_TOOLS)
 
 
 def _aops_pretooluse(dist_root: Path, tool: str, env_overrides: dict[str, str | None]):
@@ -292,9 +583,65 @@ def test_shipped_aops_hook_allows_an_interactive_prompt_when_someone_is_there(di
     assert proc.stdout.strip() == ""
 
 
-def test_shipped_cope_hook_can_never_emit_a_blocking_decision(dist_root):
+def test_shipped_aops_hook_refuses_the_tool_claude_code_actually_sends(dist_root):
+    """The parametrized cases above pass with the client's real tool name
+    missing, because four other names carry them. This one cannot: it names
+    `AskUserQuestion` and nothing else, so a regression that drops it fails
+    here specifically, instead of thinning a green parametrized sweep."""
+    proc = _aops_pretooluse(
+        dist_root,
+        _CLIENT_INTERACTIVE_TOOL,
+        {**dict.fromkeys(_HEADLESS_ENV, None), "NONINTERACTIVE": "1"},
+    )
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+
+    out = json.loads(proc.stdout)
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert _CLIENT_INTERACTIVE_TOOL in out["hookSpecificOutput"]["permissionDecisionReason"]
+    # A refusal the user cannot see is a session that mysteriously stalls.
+    assert _CLIENT_INTERACTIVE_TOOL in out["systemMessage"]
+
+
+# --- 1c. both stop events reach the agent that is stopping --------------------
+
+
+@pytest.mark.parametrize("event", ["Stop", "SubagentStop"])
+def test_shipped_aops_stop_hooks_address_the_agent_that_is_stopping(dist_root, event):
+    """A hook's output goes to the session it fired in, so `SubagentStop`
+    reaches the subagent that just stopped — never its parent, which is not in
+    that session. Both events therefore carry the same message: present your
+    own answer with evidence. The regression this guards is the old wording,
+    which told the reader to interrogate a result someone else had handed them,
+    and landed in front of the agent that produced it."""
+    build_dir = dist_root / "aops-claude"
+    proc = _run_shipped_hook(
+        "claude",
+        build_dir,
+        _command_for("claude", build_dir, event),
+        _PAYLOADS[event],
+    )
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+
+    out = json.loads(proc.stdout)
+    injected = out["hookSpecificOutput"]["additionalContext"]
+    assert "Before you stop" in injected
+    assert "A subagent just returned" not in injected
+    assert out["systemMessage"]
+
+
+def test_shipped_aops_ships_no_message_file_nothing_sends(dist_root):
+    """`subagent-result.md` addressed a parent that never receives this hook's
+    output. A message file with no sender is dead weight, and worse, it reads
+    as a live behaviour to anyone auditing the plugin."""
+    messages_dir = dist_root / "aops-claude" / "hooks" / "messages"
+    assert not (messages_dir / "subagent-result.md").exists()
+    handlers = (dist_root / "aops-claude" / "hooks" / "handlers.py").read_text(encoding="utf-8")
+    assert "subagent-result" not in handlers
+
+
+def test_shipped_cope_hook_can_never_emit_a_blocking_decision(dist_root, stub_evaluator_env):
     """cope is advisory, permanently. Run its shipped PreToolUse hook on the
-    payload most likely to provoke a block — a rule it actively detects — under
+    payload most likely to provoke a block — a call its evaluator flags — under
     a headless environment, and require the advisory shape and nothing else."""
     build_dir = dist_root / "aops-cope-claude"
     proc = _run_shipped_hook(
@@ -302,7 +649,11 @@ def test_shipped_cope_hook_can_never_emit_a_blocking_decision(dist_root):
         build_dir,
         _command_for("claude", build_dir, "PreToolUse"),
         _PAYLOADS["PreToolUse"],
-        env_overrides={**dict.fromkeys(_HEADLESS_ENV, None), "NONINTERACTIVE": "1"},
+        env_overrides={
+            **dict.fromkeys(_HEADLESS_ENV, None),
+            "NONINTERACTIVE": "1",
+            **stub_evaluator_env,
+        },
     )
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
     assert "permissionDecision" not in proc.stdout
@@ -311,16 +662,26 @@ def test_shipped_cope_hook_can_never_emit_a_blocking_decision(dist_root):
 
 
 def test_shipped_cope_never_reaches_the_refusal_primitive(dist_root):
-    """Structural, not behavioural: cope's own shipped modules must not so much
-    as name `refuse`. The runtime is shared, so the only thing keeping cope
-    advisory is that its handlers never call it — assert that directly, rather
-    than trusting one payload not to have found the path."""
+    """Structural, not behavioural: cope's own shipped modules must not be able
+    to reach the blocking outcome at all. The runtime is shared, so the only
+    thing keeping cope advisory is that its handlers never get there — assert
+    that directly, rather than trusting one payload not to have found the path.
+
+    Three tokens, not one. `refuse` is not a substring of `is_refusal`
+    ("refuse" vs "refusal"), so searching for `refuse` alone would sail past
+    `Result(text, is_refusal=True)`, which lib/hooks/clients.py renders as
+    `permissionDecision: deny` just as a refuse() call would; a positional
+    `Result(text, None, True)` evades both. Banning construction closes it, and
+    costs nothing — the return annotation `Result | None` has no `(`.
+    """
     cope_hooks = dist_root / "aops-cope-claude" / "hooks"
-    cope_own = {"handlers.py", "detectors.py", "rules.py"}
+    cope_own = {"handlers.py", "evaluator.py", "rules.py"}
     offenders = [
-        path.name
+        f"{path.name}: {token}"
         for path in sorted(cope_hooks.glob("*.py"))
-        if path.name in cope_own and "refuse" in path.read_text(encoding="utf-8")
+        if path.name in cope_own
+        for token in ("refuse", "is_refusal", "Result(")
+        if token in path.read_text(encoding="utf-8")
     ]
     assert offenders == []
 
@@ -459,9 +820,9 @@ def test_hook_bearing_plugins_all_present(dist_root):
 
 
 def test_cope_wires_preinvocation_on_agy(dist_root):
-    """agy has no PreToolUse equivalent, so cope's detectors can never run
-    there. It still ships a hook: PreInvocation carries the prompt, which is
-    enough to state the live rule set for the turn."""
+    """agy has no PreToolUse equivalent, so cope has no tool call to send its
+    evaluator there. It still ships a hook: PreInvocation carries the prompt,
+    which is enough to state the live rule set for the turn."""
     assert clients.to_canonical("agy", "PreToolUse") is None
     wired = {wire for wire, _ in _hook_commands("agy", dist_root / "aops-cope-agy")}
     assert wired == {"PreInvocation"}
@@ -502,11 +863,15 @@ def test_ts_ships_an_executable_session_end_hook(dist_root):
     )
 
 
-def test_ts_session_end_is_not_wired_for_agy(dist_root):
-    """agy has no confirmed SessionEnd wire event. Shipping one anyway would be
-    a hook that never fires, indistinguishable from a working one."""
-    wired = {wire for wire, _ in _hook_commands("agy", dist_root / "aops-ts-agy")}
-    assert wired == {"SessionStart"}
+def test_ts_ships_no_agy_hooks_at_all(dist_root):
+    """ts's two hooks are both session-level, and agy has no session-level hook
+    event: its `hooks.json` fires PreToolUse, PostToolUse, PreInvocation,
+    PostInvocation and Stop, and nothing else. So ts has no hooks on agy, which
+    is stated by shipping no `hooks.json` rather than an empty one — and
+    certainly not by wiring a `SessionStart` that never fires."""
+    assert not (dist_root / "aops-ts-agy" / "hooks.json").exists()
+    assert clients.to_canonical("agy", "SessionStart") is None
+    assert clients.to_canonical("agy", "SessionEnd") is None
 
 
 def test_ts_session_end_bakes_no_host_or_search_path(dist_root):
