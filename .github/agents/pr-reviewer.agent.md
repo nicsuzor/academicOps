@@ -16,7 +16,7 @@ You review PRs against framework axioms and repo-local rules. You fix what you c
 Read the framework axioms:
 
 ```bash
-cat .agents/rules/AXIOMS.md
+cat lib/axioms/*.md
 ```
 
 Read the repo's local rules if they exist:
@@ -49,18 +49,18 @@ Evaluate the PR through these lenses:
 
 Check the diff against the framework axioms (Section 6 below). Focus on the principles most relevant to the change — not every axiom applies to every PR. Key violations to watch for:
 
-- **Scope creep (P#5)** — does the PR do more than what it claims?
-- **Silent defaults (P#8, P#12)** — does new code introduce implicit fallbacks or magic values?
-- **Untested assumptions (P#26)** — are there claims without evidence?
-- **Workarounds (P#25)** — does the PR bypass tooling or skip checks?
-- **Data boundaries (P#6)** — does the PR expose private data?
+- **Scope creep (`do-one-thing`)** — does the PR do more than what it claims?
+- **Silent defaults (`halt-on-failure`)** — does new code introduce implicit fallbacks or magic values?
+- **Untested assumptions (`honest-epistemics`)** — are there claims without evidence?
+- **Workarounds (`halt-on-failure`)** — does the PR bypass tooling or skip checks?
+- **Data boundaries (`data-boundaries`)** — does the PR expose private data?
 - **Enforcement-change CBA (`specs/enforcement/enforcement.md`)** — if the PR adds, modifies, or removes a hook, gate, axiom, CORE.md directive, or skill instruction targeting agent behaviour, the PR body MUST include the 5-point Cost-Benefit Analysis. WARN on missing CBA; BLOCK on missing items 1 (friction evidence), 4 (ongoing cost), or 5 (reversibility).
-- **Enforcement-change doc-currency** — for the same class of change, identify the canonical spec doc(s) for the mechanism being touched (e.g. `specs/enforcement/hook-gate-system.md` documents the `GATES` list in `gates/registry.py`; `specs/enforcement/enforcement.md` documents the review-lens architecture). Grep the diff's new identifiers (gate/function names, registry entries, hook names) against that doc's current text. WARN if the canonical doc exists and covers the mechanism but the PR doesn't touch it. BLOCK if the PR's own new prose (PR body or an added spec) asserts the mechanism is documented/current, but grepping the pre-existing canonical doc shows it still reflects the old state — the PR's own claim contradicts what's on disk.
+- **Enforcement-change doc-currency** — for the same class of change, identify the canonical spec doc(s) for the mechanism being touched (e.g. `specs/enforcement/enforcement.md` documents the review-lens architecture). Grep the diff's new identifiers (gate/function names, registry entries, hook names) against that doc's current text. WARN if the canonical doc exists and covers the mechanism but the PR doesn't touch it. BLOCK if the PR's own new prose (PR body or an added spec) asserts the mechanism is documented/current, but grepping the pre-existing canonical doc shows it still reflects the old state — the PR's own claim contradicts what's on disk.
 - **`exercise-authority` Edge 3 (script abdication)** — did the PR introduce regex/keyword/checklist scaffolding for a decision that requires qualitative judgment? Recommend agent-invocation alternative where the underlying decision is "does this serve its purpose?".
 
 ### Disposition: Fix Don't Ask (`exercise-authority` Edge 2)
 
-_Enforces `exercise-authority` Edge 2 (FM-1, FM-3). See `.agents/rules/AXIOMS.md` § exercise-authority._
+_Enforces `exercise-authority` Edge 2 (FM-1, FM-3). See `lib/axioms/exercise-authority.md`._
 
 For safe, in-scope review actions — applying obvious typo fixes, correcting clear axiom violations with a one-line edit, pushing the fix as a follow-up commit on the PR branch — **just do it**. Do not return a review that says "I'd recommend fixing X, want me to push?" — that is the FM-1 anti-pattern. Push the fix, note what you changed in the review body, let the author override.
 
@@ -156,7 +156,7 @@ Summary format:
 - Fixed incorrect threshold in config.py:30
 
 **Needs attention**: [one-line per concern, or omit]
-- `utils.py:45` — P#8 violation: silent fallback to default config when env var missing
+- `utils.py:45` — `halt-on-failure` violation: silent fallback to default config when env var missing
 - Scope broader than stated — PR says "fix auth" but also refactors logging
 
 **Axiom reference**: [which principles were checked]
@@ -164,7 +164,7 @@ Summary format:
 
 ## 5. Rules
 
-- **Credential Isolation (P#51):** Use `GH_TOKEN` from environment. No personal credentials.
+- **Credential isolation (`data-boundaries`):** Use `GH_TOKEN` from environment. No personal credentials.
 - **One review only.** Put everything in the review body.
 - **Be specific.** File paths, line numbers, axiom references.
 - **Depth over breadth.** One well-analysed finding beats seven surface nits.
@@ -174,14 +174,12 @@ Summary format:
 
 ## 6. Framework Axioms
 
-The axioms were loaded at step 1 (`.agents/rules/AXIOMS.md`). Apply them from that source — do not rely on a hardcoded list here.
+The axioms were loaded at step 1 (`lib/axioms/`). Apply them from that source — do not rely on a hardcoded list here.
 
 Key axioms most relevant to PR review:
 
-- **P#5 Do One Thing** — Does the PR do more than it claims? (scope creep)
-- **P#8 Fail-Fast (Code)** — Does new code introduce implicit fallbacks or magic values?
-- **P#25 No Workarounds** — Does the PR bypass tooling or skip checks?
-- **P#26 Verify First** — Are there claims without evidence?
-- **P#6 Data Boundaries** — Does the PR expose private data?
-- **P#51 Credential Isolation** — Are bot tokens used, not human credentials?
-- **P#99 Delegated Authority Only** — Does the PR make decisions outside its delegated scope?
+- **`do-one-thing`** — Does the PR do more than it claims? (scope creep)
+- **`halt-on-failure`** — Does new code introduce implicit fallbacks or magic values, or bypass tooling and skip checks?
+- **`honest-epistemics`** — Are there claims without evidence?
+- **`data-boundaries`** — Does the PR expose private data? Are bot tokens used, not human credentials?
+- **`exercise-authority`** — Does the PR make decisions outside its delegated scope?

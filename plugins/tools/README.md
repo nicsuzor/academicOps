@@ -45,7 +45,7 @@ skill itself — there is no separate router script.
 | `dbt`           | SQL transformation layer — the dbt-specific HOW for `analyst`.                                      |
 | `streamlit`     | Dashboard presentation layer (display only) — the Streamlit-specific HOW for `analyst`.             |
 | `python-viz`    | matplotlib/seaborn/statsmodels — the Python-specific HOW for `analyst`.                             |
-| `pdf`           | Markdown to academically-typeset PDF, via `pdf/scripts/generate_pdf.py`.                            |
+| `pdf`           | Markdown to academically-typeset PDF, via `skills/pdf/scripts/generate_pdf.py`.                     |
 | `extract`       | Routes an input (document, email, review, feedback) to the matching extraction/conversion workflow. |
 | `diagram`       | Mermaid or Excalidraw diagrams, selected by a `style` parameter.                                    |
 | `peer-review`   | Peer review of research funding applications and academic submissions.                              |

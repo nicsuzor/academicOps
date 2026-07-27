@@ -59,7 +59,7 @@ authoritative record of whether a rule was followed.
 
 Write each rule as **prose stating principle + reasoning + cue + carve-outs**, never a rule-ID lookup or keyword pattern. Each rule states:
 
-1. **The principle** and, in one clause, **why it matters** — cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`AXIOMS.md`](../../.agents/AXIOMS.md).
+1. **The principle** and, in one clause, **why it matters** — cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`lib/axioms/`](../../lib/axioms/).
 2. **The cue** the classifier should look for in the action + user context — the observable signal, since it cannot see reasoning.
 3. **What counts as a violation**, and the **safer path** to name in the denial.
 4. **Explicit carve-outs** — when the same action is fine. The classifier handles disjunctions ("deny X when bypassing tests; allow X when validating") as prose.

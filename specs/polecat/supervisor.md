@@ -151,7 +151,7 @@ queued → in_progress → merge_ready → done (deliverable accepted)
 `done` means the deliverable was accepted — evidence + output URL recorded on the
 PKB task; a merged PR is the code-surface instance of this.
 
-See [[plugins/pkb/skills/graph-maintenance/references/taxonomy.md#status-values-and-transitions]]
+See [[plugins/pkb/skills/graph-maintenance/references/taxonomy.md#status]]
 for canonical status definitions. The supervisor uses the canonical set without
 extensions (`partial` is part of that canonical set).
 
@@ -159,7 +159,6 @@ extensions (`partial` is part of that canonical set).
 
 - [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- `plugins/aops/skills/supervisor/SKILL.md` — The operative skill (orient → act →
-  checkpoint loop, proof discipline, evaluation protocol)
 - `plugins/aops/skills/pull/SKILL.md` and `plugins/aops/skills/dispatch/SKILL.md`
-  — The Select+Gates spine shared by `/pull`, `/dispatch`, and `/supervisor`.
+  — The operative skills: claiming a unit, and delivering an epic's children to a
+  terminal state.

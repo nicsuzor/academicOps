@@ -7,13 +7,11 @@ description: General extraction/ingestion skill that routes to specific workflow
 
 # Extraction & Ingestion Skill
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for extracting structured information from documents and sources. See [[aops/skills/remember/references/TAXONOMY.md]] for the skill/workflow distinction.
-
 General-purpose extraction skill that intelligently routes to specialized workflows based on input type. Extracts structured information from various sources and stores it appropriately (public framework vs. private data).
 
 ## Framework Context
 
-Universal axioms apply (enforced by `rbg`). P#52 (Read-Then-Write Memory) is especially relevant.
+Universal axioms apply (enforced by `rbg`). `synthesize-not-accrete` is especially relevant.
 
 ## Search Before Creating
 
@@ -35,7 +33,6 @@ Provide a unified entry point for all extraction tasks:
 
 - Training data extraction from feedback documents
 - Archive information extraction (emails, correspondence)
-- Decision extraction from task queues
 - Knowledge extraction from documents
 - Review pair extraction for LLM training
 
@@ -52,7 +49,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 - Documents contain tracked changes, comments, or annotations
 - Goal is to build LLM training data
 
-**Route to**: `workflows/training-data.md`
+**Route to**: "Workflow: Training Data Extraction" below.
 
 **Storage**:
 
@@ -72,32 +69,20 @@ When invoked, analyze the input and route to the appropriate workflow:
 
 **Storage**: Use `Skill(skill="remember")` for PKB storage
 
-### 3. Decision Extraction
-
-**Signals**:
-
-- User mentions "decisions", "pending", "blocking"
-- Goal is to surface approval/choice items
-- Source is task queue
-
-**Route to**: Existing `aops/skills/decision-extract/SKILL.md`
-
-**Storage**: Daily note with decision formatting
-
-### 4. Document Knowledge Extraction
+### 3. Document Knowledge Extraction
 
 **Signals**:
 
 - Single document needs key information extracted
 - User mentions "extract", "parse", "ingest"
-- Not training data, not archive, not decisions
+- Not training data, not archive
 - Goal is structured information retrieval
 
-**Route to**: `workflows/document-knowledge.md` (to be created)
+**Route to**: Apply the extraction process below directly.
 
 **Storage**: Depends on content - PKB or framework docs
 
-### 5. Document to Markdown Conversion
+### 4. Document to Markdown Conversion
 
 **Signals**:
 
@@ -129,7 +114,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 #### Type C: Revision History
 
 - **Example**: Git history, Google Docs revision history, track changes
-- **Workflow**: `workflows/revision-history.md` (to be created)
+- **Workflow**: Pair each revision with the one before it, then apply the extraction process below
 - **Output**: Before/after pairs with change rationales
 
 ### Extraction Process
@@ -159,8 +144,8 @@ See `procedures/review-inline-comments.md` for detailed procedure.
 
 **Generalized patterns** → Framework (public repo):
 
-- `aops/skills/hydrator/workflows/peer-review.md` (update with principles)
-- `aops/skills/*/references/` (depersonalized examples)
+- `plugins/pkb/workflows/process/peer-review.md` (update with principles)
+- A skill's own `references/` directory (depersonalized examples)
 - No names, no specific unpublished content, no identifying details
 
 ### Quality Standards
@@ -189,14 +174,6 @@ Apply selective extraction logic.
 **Skip**: Newsletters, invitations, administrative routine, mass communications
 
 **Storage**: Use `Skill(skill="remember")` with proper tags and canonical identifiers.
-
-## Workflow: Decision Extraction
-
-Delegate to `aops/skills/decision-extract/SKILL.md`.
-
-**Key principle**: Extract tasks requiring approval/choice that are blocking other work.
-
-**Storage**: Daily note with formatted decision list for batch processing.
 
 ## Sensitive Data Handling
 
@@ -257,8 +234,6 @@ When adding examples to public framework docs:
 **Use specialized skill directly**:
 
 - `/remember` - When you know you want to add to knowledge base
-- `/decision-extract` - When specifically extracting decisions
-- `/review-training` - When processing matched review/source pairs (legacy)
 
 **Note on `/convert-to-md`**: This trigger is now an alias for `/extract`. Invoking `/convert-to-md` routes to the `workflows/docs-to-md.md` workflow.
 

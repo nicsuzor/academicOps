@@ -5,8 +5,6 @@ description: Author high-quality deep-research prompts (Gemini / ChatGPT Pro / P
 
 # Deep Research
 
-> **Taxonomy note**: This skill provides domain expertise (HOW) for the two halves of a deep-research loop: (1) authoring prompts that return usable output, and (2) capturing the resulting document into the PKB with citation fidelity and linked context. See [[aops/skills/remember/references/TAXONOMY.md]].
-
 ## When to invoke
 
 Two distinct entry points, often used in sequence (sometimes days apart):

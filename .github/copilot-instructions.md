@@ -68,14 +68,13 @@ Use descriptive messages. Include task ID if working on a tracked task:
 Closes: <task-id>
 ```
 
-### Key Principles (from AXIOMS.md)
+### Key Principles (from `lib/axioms/`)
 
-- **Do One Thing (P#5)**: Complete the assigned task, nothing more. No scope creep.
-- **Fail-Fast (P#8, P#9)**: No workarounds. If something fails, stop and report.
-- **No Workarounds (P#25)**: Never use `--no-verify`, `--force`, or skip flags.
-- **Trust Version Control (P#24)**: Never create backup files (`.bak`, `_old`).
-- **Write For The Long Term (P#28)**: No single-use scripts. Write proper tests.
-- **Verify First (P#26)**: Check actual state, never assume.
+- **`do-one-thing`**: Complete the assigned task, nothing more. No scope creep.
+- **`halt-on-failure`**: No workarounds. If something fails, stop and report. Never use `--no-verify`, `--force`, or skip flags.
+- **`single-source-of-truth`**: Never create backup files (`.bak`, `_old`). Git is the backup system.
+- **`honest-epistemics`**: Check actual state, never assume.
+- **No single-use scripts.** Write proper tests.
 
 ### What NOT to Do
 

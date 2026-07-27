@@ -28,8 +28,8 @@ type: spec
 
 _No implementation yet. This spec defines research-specific decomposition as a domain application of several upstream specs:_
 
-- [[specs/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
-- [[specs/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
+- [[specs/workflows/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
+- [[plugins/pkb/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
 - PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools (reused; the standalone `mcp-decomposition-tools.md` spec describing an 18-tool `tasks_server.py` was retired as stale during the 2026-07 simplification pass, since the current MCP surface doesn't match it)
 - [[plugins/pkb/skills/decompose/SKILL.md]] -- general decomposition workflow; this spec extends it with research primitives
 
@@ -98,7 +98,7 @@ These failure modes are well-documented in research methods pedagogy. They motiv
 
 ### Effectual Planning Agent
 
-The effectual planner (see `specs/agents/pauli.md`) provides the strategic framework: fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning. It receives fragments of information incrementally, organises them into a semantic web, and proposes high-value next steps based on information value across the network.
+The effectual planner (see `plugins/pkb/skills/planner/SKILL.md`) provides the strategic framework: fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning. It receives fragments of information incrementally, organises them into a semantic web, and proposes high-value next steps based on information value across the network.
 
 This spec does NOT replace the effectual planner. Instead, it provides three things the planner uses when the domain is research:
 
@@ -129,7 +129,7 @@ This spec composes with `decompose.md`; it does not replace it. Specifically:
 
 ### Conceptual Review Workflow
 
-When reviewing a research decomposition, the conceptual review workflow (see `specs/conceptual-review-workflow.md`) operates as follows:
+When reviewing a research decomposition, the conceptual review workflow (see `specs/workflows/conceptual-review-workflow.md`) operates as follows:
 
 - The reviewer selects from the **research-specific lenses** defined below, rather than the general lens registry.
 - The **prioritised critique protocol** applies unchanged: lead with the single most important concern, propose a resolution, then list up to 2 secondary concerns.
@@ -461,9 +461,8 @@ verify: "Verify: platform governance study objectives met"
 
 ## Related
 
-- [[specs/conceptual-review-workflow.md]] -- review layer; this spec is a domain application
-- [[specs/agents/pauli.md]] -- upstream strategic planning; this spec specialises it for research
+- [[specs/workflows/conceptual-review-workflow.md]] -- review layer; this spec is a domain application
+- [[plugins/pkb/agents/pauli.md]] -- upstream strategic planning; this spec specialises it for research
 - PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools; reused for structured output
-- [[specs/non-interactive-agent-workflow-spec.md]] -- lifecycle management for non-interactive agent execution
-- [[specs/polecat-swarms.md]] -- execution layer; consumes decomposed task graphs
+- [[specs/polecat/polecat-system.md]] -- execution layer; consumes decomposed task graphs
 - [[plugins/pkb/skills/decompose/SKILL.md]] -- general decomposition workflow; this spec extends it with research primitives

@@ -123,12 +123,8 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT 
   assertion.** If a handback asserts more than one substantive fact, itemize
   each on its own line, and pair each with its own evidence pointer — one
   `EVIDENCE` line does not silently cover several unrelated claims.
-- Every itemized claim carries the **Observed/Reported label** — the
-  canonical definition of that register lives in
-  [`head-role-charter.md`
-  §Fitness Criteria & Anti-Patterns](../interactive-experience/head-role-charter.md#fitness-criteria--anti-patterns)
-  and is not restated here (same SSoT discipline: one definition, every
-  other surface cross-references it). In short: **Observed** — the agent saw
+- Every itemized claim carries the **Observed/Reported label**, defined here
+  and cross-referenced everywhere else. **Observed** — the agent saw
   the primary evidence itself, this session, and cites it. **Reported** — a
   subagent, transcript, or document said it; attribute the source and state
   its verification status, or fall back to the literal tag `UNVERIFIED` if no

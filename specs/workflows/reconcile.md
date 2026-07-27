@@ -104,7 +104,7 @@ Closed and done records are read-only. The candidate set is roughly 282 open iss
 These are sequencing checkpoints, not implementation tickets. The implementing agent owns file layout and naming.
 
 - **M1 — Skill exists and is manually invocable.** The reconcile procedure is documented as a skill, PKB lint validates the new frontmatter fields, a handful of cases have been worked end-to-end by hand.
-- **M2 — Forward sweep adopted by `/daily`.** `/daily` invokes reconcile in forward-sweep context. Closure-loop fragments in `daily/SKILL.md` and `progress-sync.md` are removed. DRY audit clean.
+- **M2 — Forward sweep adopted by the daily pass.** The daily pass invokes reconcile in forward-sweep context, and carries no closure-loop logic of its own. DRY audit clean.
 - **M3 — Reverse direction adopted by `/dump full` and `/pull`.** Those skills invoke reconcile in reverse context on task completion. No new hooks added.
 - **M4 — Backfill run.** One agent session, scope as above. Done.
 

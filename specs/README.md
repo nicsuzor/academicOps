@@ -11,10 +11,6 @@
 
 - [agents/agent-authority.md](agents/agent-authority.md) — permissions schema, tool naming, skill/sub-agent delegation.
 
-## Interactive experience
-
-- [adhd/surface-contract.md](adhd/surface-contract.md) — attention-surface contract for the daily note / morning brief.
-
 ## Enforcement
 
 - [enforcement/enforcement.md](enforcement/enforcement.md) — governing principle and the seven enforcement mechanisms.

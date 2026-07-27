@@ -13,8 +13,6 @@ created: 2026-04-21
 
 **Operative state**: `plugins/<plugin>/agents/<name>.md` frontmatter is the SSoT for what tools and permissions each agent holds. This spec defines the schema — fields, canonical tool naming, the four permissions axes, and skill/sub-agent delegation rules; the per-agent files are the binding declarations against it.
 
-**Audit-artifact**: `specs/audit/AGENT-TOOLS.md` is a mechanical dump generated from per-agent frontmatter for at-a-glance comparison. It is not writeable — drift is reported by it, not declared in it.
-
 ## Giving Effect
 
 - [[rbg]] — Authority envelope this spec makes concrete
@@ -110,7 +108,7 @@ where `expand(mcpServers)` is every `mcp__<server>__*` tool surfaced by those se
 
 Four independent axes make up an agent's authority envelope. Each is closed by default; granting one axis does not open another.
 
-**Tools.** An agent may call tool `T` iff `T ∈ effective(agent)`. The harness enforces this; RBG (`specs/agents/rbg.md`) detects violations after the fact. Empty `tools` means no calls at all.
+**Tools.** An agent may call tool `T` iff `T ∈ effective(agent)`. The harness enforces this; RBG detects violations after the fact. Empty `tools` means no calls at all.
 
 **MCP servers.** `mcpServers` grants whole-server access — appropriate when an agent genuinely needs an entire server's surface (e.g. PKB for research agents). To narrow to specific MCP tools, either omit `mcpServers` and enumerate in `tools`, or include `mcpServers` and list unwanted tools in `disallowedTools`.
 
@@ -183,13 +181,9 @@ Some agents are thin wrappers over a canonical source persona rather than indepe
 
 `.github/agents/*.agent.md` are prompts delivered to GitHub-hosted runs. They have no local frontmatter surface for tool allowlists — tools are granted via `claude_args` in the calling workflow. For this spec they MUST declare at minimum `name` and `description`, and SHOULD declare `tools: <list<string>>` (advisory, mirroring the `claude_args` grant set for audit — when present, the audit confirms the two match).
 
-## Compliance Matrix
-
-Every agent file is audited against this spec. The generated audit snapshot lives at `specs/audit/AGENT-COMPLIANCE-MATRIX.md`, with columns for schema conformance, canonical naming, referential integrity, and whether `skills`/`subagents` are declared where needed.
-
 ## Relation to the Ultra-Vires Scope and Other Specs
 
-`specs/agents/rbg.md` defines RBG as the post-hoc reviewer that flags activity outside declared authority. This spec feeds it directly: the agent's frontmatter is RBG's ground truth. A call to any tool, server, bash family, or filesystem path outside the declared set is flagged as mechanical overreach. The permissions layer is declarative; RBG is observational — a declaration without observation drifts silently, and observation without a declaration has nothing to check drift against.
+RBG is the post-hoc reviewer that flags activity outside declared authority. This spec feeds it directly: the agent's frontmatter is RBG's ground truth. A call to any tool, server, bash family, or filesystem path outside the declared set is flagged as mechanical overreach. The permissions layer is declarative; RBG is observational — a declaration without observation drifts silently, and observation without a declaration has nothing to check drift against.
 
 The enforcement layers, from softest to hardest:
 
