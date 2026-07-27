@@ -61,12 +61,24 @@ the container.
    token, the bot GitHub token) and denies every other git credential path
    (`GIT_ASKPASS=true`, empty `SSH_AUTH_SOCK`, `GIT_SSH_COMMAND=false`,
    `GIT_TERMINAL_PROMPT=0`) — auth resolves from the forwarded token or not at all.
+   cope's evaluator (`COPE_EVALUATOR_URL/PROTOCOL/MODEL/API_KEY/TIMEOUT`) is
+   forwarded the same way, with a configured, intentional fallback: an unset host
+   variable falls back to the operator's polecat config file's own `cope:` block
+   (`resolve_cope_evaluator`) rather than depending only on what happened to be
+   exported in the invoking shell. Absent both, cope runs unconfigured in the
+   container — a legitimate no-op, not a fault.
 6. Runs `docker run --rm --pull=never` as the invoking host UID, with the
    workspace mounted at `/workspace`, the staging dir read-only, and the session
    log directory bind-mounted straight into the agent's own session-state path so
    logs and transcripts are visible on the host live, not just at container exit.
-   The image is never pulled from a registry — it must already be built locally
-   or CI-produced; a missing image is a hard failure with an actionable message.
+   When the operator's config names a `rules_dir` (or `$POLECAT_RULES_DIR` is
+   set), that host directory is mounted read-only at the container's own
+   `$ACA_DATA/.agents/rules/` (`/data/.agents/rules` — `ENV ACA_DATA=/data` in
+   the `Dockerfile`), which is what makes cope/rbg's layer 3 reach a container;
+   absent, the container simply has no layer 3, and a configured-but-unreadable
+   directory is a hard failure before any container starts. The image is never
+   pulled from a registry — it must already be built locally or CI-produced; a
+   missing image is a hard failure with an actionable message.
 7. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
    prompt, seeds `/pull <id>` as the prompt. An `agy` dispatch with no explicit

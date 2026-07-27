@@ -1,7 +1,7 @@
 # academicOps — build & install. Design: specs/ARCHITECTURE.md.
 
 .PHONY: help build install-dev uninstall-dev install clean test lint format \
-        docker docker-build docker-shell docker-push
+        docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test
 
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
@@ -26,6 +26,10 @@ help:
 	@echo "make docker         - build the crew worker image"
 	@echo "make docker-shell   - interactive shell in the crew image"
 	@echo "make docker-push    - push the crew image to ghcr.io"
+	@echo "make docker-test-otel - build the image, then prove native OTel export"
+	@echo "                        actually reaches a throwaway collector"
+	@echo "make docker-smoke-test - build the image, then run its structural"
+	@echo "                        smoke test (plugin list, agy plugins, ACA_DATA)"
 
 # --- Build ---
 
@@ -113,3 +117,19 @@ docker-shell: docker-build
 
 docker-push:
 	@docker push $(IMAGE)
+
+# Not part of `make docker` or `make test` — opt-in, on the image-build path.
+# Proves Claude Code's native OpenTelemetry export actually reaches a
+# collector once the image is built, rather than only asserting the env
+# contract's flags were constructed correctly (tests/test_telemetry_otel_e2e.py).
+docker-test-otel: docker-build
+	@uv run pytest -m otel_e2e tests/test_telemetry_otel_e2e.py -v
+
+# Not part of `make docker` or `make test` — opt-in, on the image-build path.
+# Boots the real image and re-runs the structural checks a human previously
+# ran by hand (plugin list under claude, agy's plugins/, ACA_DATA, the agy
+# session mount target); see tests/polecat/test_container_smoke.py and
+# specs/polecat/tmux-interactive-driving.md, "Plugin structural check". Not
+# proof any plugin's hooks or MCP servers are actually live — structural only.
+docker-smoke-test: docker-build
+	@POLECAT_E2E=1 POLECAT_IMAGE=$(notdir $(IMAGE)):latest uv run pytest tests/polecat/test_container_smoke.py -v

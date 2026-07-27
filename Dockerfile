@@ -120,8 +120,16 @@ RUN pip install --no-cache-dir click pyyaml \
 # network download at session start.
 RUN npm install -g markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
 
-# Create data and workspace directories, hand ownership to worker
-RUN mkdir -p /data /workspace && chown worker:worker /data /workspace
+# Create data and workspace directories. World-writable/traversable rather
+# than chown'd to worker: polecat crew containers run as the invoking host
+# UID (`docker run -u $(id -u):$(id -g)`, plugins/aops/polecat/cli.py), which
+# is worker's UID 1000 only by coincidence on a given host. A plain chown
+# leaves any other UID unable to write /data (e.g. cope/rbg's layer-3 rules
+# mount lands under here), silently and only on someone else's machine. Same
+# pattern as the /home/worker chmod below — world-writable inside one
+# container's own filesystem is not a container-isolation weakening; each
+# container's filesystem is still exclusive to that container.
+RUN mkdir -p /data /workspace && chmod 777 /data /workspace
 
 # ── Switch to non-root user for all remaining operations ───────────────
 

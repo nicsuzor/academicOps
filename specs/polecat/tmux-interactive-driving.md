@@ -174,10 +174,28 @@ Iterate on plugin source (`lib/`, `plugins/*/hooks`, `skills`, `commands`,
 `agents`) and test it inside a container built from this checkout's own
 source, without touching whatever image a released `polecat run` would pull.
 
+`-p aops` resolves via `<polecat_home>/local.yaml`'s `paths` map (see
+[[polecat-system]]), so `local.yaml` needs an `aops` entry pointing at this
+checkout first:
+
+```bash
+mkdir -p "$POLECAT_HOME"
+cat > "$POLECAT_HOME/local.yaml" <<EOF
+paths:
+  aops: $AOPS
+EOF
+```
+
+`entrypoint.sh` refuses to start without a commit identity and a GitHub
+token — a `dev-probe` session needs both set, same as any other `run`
+invocation; a real bot token is not required for a session that never pushes:
+
 ```bash
 make docker-build                    # assembles dist/ then builds the image
                                       # from AOPS_DIST_SOURCE=local, tagging
                                       # ghcr.io/nicsuzor/aops-crew:latest
+GIT_AUTHOR_NAME="Your Name" GIT_AUTHOR_EMAIL="you@example.com" \
+AOPS_BOT_GH_TOKEN=dev-probe-placeholder \
 POLECAT_IMAGE=ghcr.io/nicsuzor/aops-crew:latest \
   uv run --project $AOPS python $AOPS/plugins/aops/polecat/cli.py run claude -p aops -s dev-probe
 ```
@@ -187,10 +205,17 @@ Drive that session with the same tmux pattern as above (spawn it inside
 Edit → `make docker-build` → relaunch; there is no live-mount, so a source
 change needs a rebuild before it's visible in the container.
 
-**Plugin structural check** (no tmux needed): `docker run --rm
-ghcr.io/nicsuzor/aops-crew:latest claude plugin list` and `docker run --rm
-ghcr.io/nicsuzor/aops-crew:latest ls /home/worker/.gemini/antigravity-cli/plugins/`
-— expect every plugin declared in `build/marketplace.toml` from both. This structural check
+**Plugin structural check** (no tmux needed): the image's own `ENTRYPOINT`
+(`entrypoint.sh`) refuses to run at all without a commit identity and a GitHub
+token (same as the dev-loop session above), which a pure "what's installed"
+check needs neither of — bypass it with `--entrypoint sh -c` rather than
+supplying placeholder credentials a read-only check has no use for:
+`docker run --rm --entrypoint sh ghcr.io/nicsuzor/aops-crew:latest -c 'claude
+plugin list'` and `docker run --rm --entrypoint sh
+ghcr.io/nicsuzor/aops-crew:latest -c 'ls
+/home/worker/.gemini/antigravity-cli/plugins/'` — expect every plugin declared
+in `build/marketplace.toml` from both, each `claude plugin list` entry showing
+`Status: ✔ enabled`. This structural check
 alone is not sufficient evidence of a healthy session — a plugin reported as
 installed is not proof its MCP servers or hooks are actually active for the
 running session; corroborate with a functional check (a real tool call, a

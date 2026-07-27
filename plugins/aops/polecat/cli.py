@@ -37,6 +37,14 @@ except ImportError:  # run directly as plugins/aops/polecat/cli.py
 # neither accepts anything else: `--non-interactive` has never existed.
 HEADLESS_FLAGS = {"-p", "--print"}
 
+# The container's own $ACA_DATA (Dockerfile, `ENV ACA_DATA=/data`) — a path
+# only the image's own filesystem resolves, not a host value, so it is a
+# constant here rather than something forwarded or configured (env_contract.py,
+# CONTAINER_SET_ENV docstring, draws the same line). cope's layer 3
+# (plugins/cope/hooks/rules.py) reads `$ACA_DATA/.agents/rules/`, so mounting
+# a host directory at this path is what makes that layer reach the container.
+CONTAINER_ACA_DATA = "/data"
+
 
 def fail(message):
     """Report and exit non-zero. Nothing proceeds on a missing requirement."""
@@ -109,8 +117,65 @@ def resolve_image(config):
     return image
 
 
-def get_env_forwards():
+def resolve_rules_dir(config):
+    """Host directory of user-scoped cope/rbg rules to mount read-only into the
+    container's layer 3 (`$ACA_DATA/.agents/rules/`, see CONTAINER_ACA_DATA).
+
+    From $POLECAT_RULES_DIR, else config `rules_dir`. Wholly optional: absent
+    is a clean, silent no-op — the container simply has no layer 3, exactly
+    like a host session with $ACA_DATA unset (plugins/cope/hooks/rules.py).
+    Configured but unusable is never silent: a path that does not resolve to a
+    readable directory is a hard failure, because setting it is a claim the
+    layer exists.
+    """
+    raw = os.environ.get("POLECAT_RULES_DIR") or config.get("rules_dir")
+    if not raw:
+        return None
+    path = expand(raw)
+    if not path.is_dir():
+        fail(
+            f"rules_dir {raw!r} does not resolve to a readable directory ({path}). "
+            "Configuring a user-rules mount is a claim that it exists; a missing "
+            "or unreadable directory is a hard failure, not a silent skip."
+        )
+    return path
+
+
+def resolve_cope_evaluator(config):
+    """cope's evaluator env for the container, from the operator's polecat.yaml
+    `cope:` block — a configured, intentional path rather than requiring the
+    operator to have exported COPE_EVALUATOR_* in the invoking shell.
+
+    Each variable's host env value, if set, already wins in get_env_forwards()
+    via FORWARDED_ENV; this only fills in what the host environment left
+    unset. No default: an unconfigured session forwards nothing and cope's
+    in-container evaluation stays off, exactly as evaluator.resolve() already
+    treats a fully-absent configuration. A value that lands unusable (a bad
+    protocol, a partial set) is not this layer's concern to validate — it
+    reaches the same fail-loud-once-per-session degradation report that a
+    misconfigured ambient environment already gets (plugins/cope/hooks/
+    evaluator.py, resolve()); duplicating that check here would be a second
+    copy of rules this plugin does not own.
+    """
+    cope_cfg = config.get("cope") or {}
+    mapping = {
+        "COPE_EVALUATOR_URL": "evaluator_url",
+        "COPE_EVALUATOR_PROTOCOL": "evaluator_protocol",
+        "COPE_EVALUATOR_MODEL": "evaluator_model",
+        "COPE_EVALUATOR_API_KEY": "evaluator_api_key",
+        "COPE_EVALUATOR_TIMEOUT": "evaluator_timeout",
+    }
+    env = {}
+    for env_key, cfg_key in mapping.items():
+        value = cope_cfg.get(cfg_key)
+        if value not in (None, ""):
+            env[env_key] = str(value)
+    return env
+
+
+def get_env_forwards(config=None):
     """Build the environment forwarded into the container."""
+    config = config or {}
     env = {}
 
     oauth = os.environ.get("AOPS_CC_OAUTH_TOKEN") or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
@@ -130,6 +195,11 @@ def get_env_forwards():
     for key in FORWARDED_ENV:
         if os.environ.get(key):
             env[key] = os.environ[key]
+
+    # The plumbed config path for cope's evaluator: only fills in a name the
+    # host environment left unset above, so an ambient export still wins.
+    for key, value in resolve_cope_evaluator(config).items():
+        env.setdefault(key, value)
 
     # Deny every interactive and agent-backed git credential path inside the
     # container: auth resolves from the forwarded token or not at all.
@@ -580,6 +650,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
+    rules_dir = resolve_rules_dir(config)
 
     workspace_dir = None
     if repo_dir:
@@ -633,7 +704,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 "ship stale plugins. Build it locally, then retry."
             )
 
-        env = get_env_forwards()
+        env = get_env_forwards(config)
         if mcp_url:
             env["PKB_MCP_URL"] = mcp_url
 
@@ -744,6 +815,12 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             "--add-host",
             "host.docker.internal:host-gateway",
         ]
+
+        # Layer 3 of cope/rbg's rule set, read-only: absent when the operator
+        # configured no rules_dir (resolve_rules_dir already failed loudly if
+        # one was configured but unreadable, before any container started).
+        if rules_dir:
+            cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
 
         # The host docker socket is a container escape. Mount it only where the
         # container legitimately spawns siblings, and document why.
