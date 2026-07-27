@@ -22,6 +22,15 @@ This directory contains real, anonymized transcript fixtures used for testing th
   - Task and parent task titles redacted to `[REDACTED_TITLE]`, `[REDACTED_PARENT_TITLE]`, etc.
   - User names, paths, internal domain URLs, and machine names replaced with generic placeholders (`<user>`, `<machine>`, `services.mcp.local`).
 
+### `claude_subagent.jsonl` / `claude_subagent.meta.json`
+
+- **Provenance**: A real Claude Code subagent sidechain log and its `agent-<id>.meta.json` sidecar, taken from a session on the host machine. Preserves the exact schema Claude Code writes: `isSidechain`, `agentId`, `parentUuid` chain, `attributionAgent`, and per-message `usage`.
+- **Anonymization**:
+  - `sessionId` set to the same value `claude_session.jsonl` carries, because a sidechain log always reuses its parent's session id — that shared id is the whole reason a subagent log used to overwrite the trunk's transcript.
+  - Home paths replaced with `/home/<user>`, worktree branch and slug replaced with generic values.
+  - Message bodies replaced with short synthetic text; every structural field left intact.
+- **Use**: tests stage it under `<session-id>/subagents/agent-<agentId>.jsonl` next to `claude_session.jsonl` to reproduce a real multi-agent session layout on disk.
+
 ### `claude_session.snapshot.md` / `claude_session.snapshot.json`
 
 - **Provenance**: Golden rendered output committed by the Claude adapter's snapshot tests (`tests/transcripts/test_claude_adapter.py`), generated from `claude_session.jsonl` via `lib/py/transcripts/adapters/claude.py` (which wraps the live `claude-code-log` library).

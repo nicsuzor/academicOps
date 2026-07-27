@@ -10,8 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from transcripts.adapters.agy import load_agy_transcript
-from transcripts.adapters.claude import load_claude_transcript, normalize_claude_transcript
-from transcripts.domain.cache import SkipCache, is_session_empty
+from transcripts.adapters.claude import find_subagent_files, load_claude_session
+from transcripts.domain.cache import SkipCache, is_session_empty, source_fingerprint
 from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
@@ -29,13 +29,21 @@ logger = logging.getLogger("transcripts.runner")
 
 
 def find_session_files() -> list[Path]:
-    """Find all Claude Code and agy session log files."""
+    """Find all Claude Code and agy session log files.
+
+    Claude Code writes one trunk log per session directly under the project
+    directory, and everything below it — subagent sidechains, workflow
+    journals — belongs to that session rather than standing alone. Globbing
+    deeper would yield sidechain logs that carry the parent's `session_id`,
+    and therefore the parent's slug and output filename, so whichever was
+    written last would replace the real transcript.
+    """
     files: list[Path] = []
 
-    # 1. Claude session files: ~/.claude/projects/**/*.jsonl
+    # 1. Claude session files: ~/.claude/projects/<project>/<session-id>.jsonl
     claude_dir = Path.home() / ".claude" / "projects"
     if claude_dir.is_dir():
-        for p in claude_dir.glob("**/*.jsonl"):
+        for p in claude_dir.glob("*/*.jsonl"):
             if p.is_file() and not p.name.endswith("-hooks.jsonl"):
                 files.append(p)
 
@@ -56,16 +64,27 @@ def find_session_files() -> list[Path]:
     return sorted(unique_files, key=lambda x: x.stat().st_mtime, reverse=True)
 
 
+def _is_agy_path(path: Path) -> bool:
+    return path.name == "transcript.jsonl" or "brain" in path.parts
+
+
 def load_session(path: Path) -> NormalizedSession | None:
     """Load a session file using the correct adapter based on path structure."""
-    if path.name == "transcript.jsonl" or "brain" in path.parts:
+    if _is_agy_path(path):
         return load_agy_transcript(path)
-    else:
-        # Assume Claude Code transcript
-        claude_t = load_claude_transcript(path)
-        if not claude_t.entries and not claude_t.raw_entries:
-            return None
-        return normalize_claude_transcript(claude_t)
+    # Assume Claude Code transcript
+    return load_claude_session(path)
+
+
+def session_source_files(path: Path) -> list[Path]:
+    """Every file a session rooted at `path` is reconstructed from.
+
+    Resolved without parsing, so the skip-cache can decide whether a session
+    is worth loading at all.
+    """
+    if _is_agy_path(path):
+        return [path]
+    return [path, *find_subagent_files(path)]
 
 
 def process_single_session(
@@ -73,6 +92,7 @@ def process_single_session(
     output_dir: Path,
     skip_cache: SkipCache,
     force: bool = False,
+    fingerprint: str | None = None,
 ) -> bool:
     """Process a single NormalizedSession and write outputs."""
     session_id = session.session_id
@@ -81,16 +101,24 @@ def process_single_session(
         session_id = session.source_file.stem
         session.session_id = session_id
 
+    cache_key = str(session.source_file)
+    if fingerprint is None:
+        fingerprint = source_fingerprint(session.source_files)
+
     # Check cache
-    if not force and skip_cache.is_skipped(session_id):
+    if not force and skip_cache.is_skipped(cache_key, fingerprint):
         logger.debug("Skipping session %s via cache", session_id)
         return False
 
-    # Check if empty
+    # Check if empty. The fingerprint is recorded alongside, so the session is
+    # re-examined the moment anything is appended to it — a session caught
+    # seconds after it started must not be blacklisted for its whole life.
     if is_session_empty(session):
         logger.debug("Session %s is empty, marking in skip cache", session_id)
-        skip_cache.mark_empty(session_id)
+        skip_cache.mark_empty(cache_key, fingerprint)
         return False
+
+    skip_cache.forget(cache_key)
 
     # Extract domain attributes
     slug = get_stable_slug(session_id)
@@ -133,7 +161,14 @@ def process_single_session(
     (dest_dir / f"{filename_base}.html").write_text(redact_secrets(html), encoding="utf-8")
     (dest_dir / f"{filename_base}.json").write_text(redact_secrets(json_sidecar), encoding="utf-8")
 
-    logger.info("Processed session %s -> %s", session_id, filename_base)
+    logger.info(
+        "Processed session %s -> %s (%d trunk events, %d subagents, %d total events)",
+        session_id,
+        filename_base,
+        len(session.events),
+        len(session.subagents),
+        session.total_event_count,
+    )
     return True
 
 
@@ -155,18 +190,17 @@ def main() -> int:
     parser.add_argument("--since", type=str, help="Since YYYY-MM-DD for prompt ledger")
     args = parser.parse_args()
 
-    # Identify sessions directory
+    # Identify sessions directory. There is no default: the transcripts
+    # repository is site-specific, and guessing a path means silently writing
+    # session content somewhere the operator did not choose.
     sessions_env = os.environ.get("AOPS_SESSIONS")
     if not sessions_env:
-        # Fallback to default ~/src/sessions
-        default_sessions = Path.home() / "src" / "sessions"
-        if default_sessions.is_dir():
-            sessions_dir = default_sessions
-        else:
-            logger.error("AOPS_SESSIONS environment variable must be set")
-            return 1
-    else:
-        sessions_dir = Path(sessions_env)
+        logger.error(
+            "AOPS_SESSIONS is not set. Set it to the sessions repository this host "
+            "should publish transcripts to; there is no default."
+        )
+        return 1
+    sessions_dir = Path(sessions_env)
 
     if args.ledger:
         return generate_prompt_ledger(sessions_dir, args.since)
@@ -205,10 +239,27 @@ def main() -> int:
     processed_count = 0
     for path in session_files:
         try:
+            # Fingerprint before parsing: a session known to be empty and
+            # unchanged since costs a couple of stat() calls, not a parse.
+            fingerprint = source_fingerprint(session_source_files(path))
+            if not args.force and skip_cache.is_skipped(str(path), fingerprint):
+                logger.debug("Skipping unchanged empty session file %s via cache", path)
+                continue
+
             session = load_session(path)
             if not session:
+                # Parsed to nothing. Record it against the same fingerprint so
+                # the next run skips it until the file changes.
+                logger.debug("No session could be loaded from %s, marking in skip cache", path)
+                skip_cache.mark_empty(str(path), fingerprint)
                 continue
-            if process_single_session(session, sessions_dir, skip_cache, force=args.force):
+            if process_single_session(
+                session,
+                sessions_dir,
+                skip_cache,
+                force=args.force,
+                fingerprint=fingerprint,
+            ):
                 processed_count += 1
         except Exception:
             logger.exception("Failed to process session file %s", path)

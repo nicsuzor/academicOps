@@ -134,6 +134,10 @@ tmp*
 ## (privacy-scrubbed synthetic data, intentionally committed as test fixture)
 !/tests/scenarios/s1_cost_review/planted/session.jsonl
 
+## Except the anonymised transcript-pipeline fixtures
+## (see tests/transcripts/fixtures/README.md for provenance and scrubbing)
+!/tests/transcripts/fixtures/*.jsonl
+
 # secrets
 authorized_keys
 models.json

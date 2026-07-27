@@ -7,7 +7,7 @@ from pathlib import Path
 
 from transcripts.adapters.agy import load_agy_transcript
 from transcripts.adapters.claude import load_claude_transcript, normalize_claude_transcript
-from transcripts.domain.cache import SkipCache
+from transcripts.domain.cache import SkipCache, source_fingerprint
 from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
@@ -116,16 +116,19 @@ def test_skip_cache(tmp_path: Path) -> None:
     cache_file = tmp_path / "cache.json"
     cache = SkipCache(cache_file)
 
-    session_id = "test-session-123"
-    assert not cache.is_skipped(session_id)
+    source = tmp_path / "test-session-123.jsonl"
+    source.write_text("", encoding="utf-8")
+    key = str(source)
+    fingerprint = source_fingerprint([source])
+    assert not cache.is_skipped(key, fingerprint)
 
     # Mark empty
-    cache.mark_empty(session_id)
-    assert cache.is_skipped(session_id)
+    cache.mark_empty(key, fingerprint)
+    assert cache.is_skipped(key, fingerprint)
 
     # Reload and test persistence
     cache2 = SkipCache(cache_file)
-    assert cache2.is_skipped(session_id)
+    assert cache2.is_skipped(key, fingerprint)
 
 
 # --- Invariant 5: recent/ interactive-only view ------------------------------

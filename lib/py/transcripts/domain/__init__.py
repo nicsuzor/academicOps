@@ -13,7 +13,7 @@ This subpackage contains all academicOps domain logic, including:
 - prompt ledger generation
 """
 
-from transcripts.domain.cache import SkipCache, is_session_empty
+from transcripts.domain.cache import SkipCache, is_session_empty, source_fingerprint
 from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
@@ -30,6 +30,7 @@ __all__ = [
     "get_event_timestamps",
     "SkipCache",
     "is_session_empty",
+    "source_fingerprint",
     "select_recent_interactive",
     "infer_correlation",
     "infer_insights",

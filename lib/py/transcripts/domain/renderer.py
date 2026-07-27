@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from transcripts.model import NormalizedSession
+from transcripts.model import NormalizedEvent, NormalizedSession, SubagentTranscript
 
 # The summary .md is meant to stay comfortably readable (~25K tokens or
 # less) even for very large sessions — the full chronological detail
@@ -12,6 +12,15 @@ from transcripts.model import NormalizedSession
 # (one row per event) defeats that: a 2000-event session produced a
 # ~250K-char "summary". Cap the table and point overflow at the full file.
 MAX_EVENT_INDEX_ROWS = 200
+
+# Subagent conversations are where most of a multi-agent session's work now
+# happens, and they dwarf the trunk: the largest session on record renders a
+# 5.9M-char trunk and 11.5M chars of sidechains. Only `.full.md` claims to be
+# complete, so that is the one artifact that carries them event by event. The
+# budget below is a safety valve against a runaway session producing a file no
+# reader or tool can open — subagents past it are still named, counted, and
+# costed in every artifact, so nothing vanishes silently.
+MAX_SUBAGENT_FULL_MD_CHARS = 8_000_000
 
 
 def _get_filename_base(slug: str, started_at: str, correlation: dict[str, str | None]) -> str:
@@ -28,7 +37,7 @@ def _get_filename_base(slug: str, started_at: str, correlation: dict[str, str | 
     return f"{date_str}-{hour_str}-{project}-{slug}"
 
 
-def render_to_markdown(
+def _render_front_matter(
     session: NormalizedSession,
     slug: str,
     started_at: str,
@@ -36,10 +45,13 @@ def render_to_markdown(
     ended_at: str,
     has_user_context: bool,
     correlation: dict[str, str | None],
-    insights: str | None,
-) -> str:
-    """Render a summary/index of NormalizedSession to Markdown with YAML front-matter."""
-    yaml_lines = [
+) -> list[str]:
+    """YAML front-matter shared by both Markdown renders.
+
+    `tokens_used` / `cost_usd` stay trunk-only so their meaning does not shift
+    under existing consumers; the whole-session figures are additional keys.
+    """
+    return [
         "---",
         f"session_id: {session.session_id}",
         f"slug: {slug}",
@@ -52,9 +64,66 @@ def render_to_markdown(
         f"pr_number: {correlation.get('pr_number') or ''}",
         f"tokens_used: {session.tokens_used}",
         f"cost_usd: {session.cost_usd:.6f}",
+        f"subagent_count: {len(session.subagents)}",
+        f"total_event_count: {session.total_event_count}",
+        f"total_tokens_used: {session.total_tokens_used}",
+        f"total_cost_usd: {session.total_cost_usd:.6f}",
         "---",
         "",
     ]
+
+
+def _subagent_time_range(subagent: SubagentTranscript) -> tuple[str, str]:
+    """First and last event timestamp of a subagent's conversation."""
+    stamps = [event.timestamp for event in subagent.events if event.timestamp]
+    if not stamps:
+        return "", ""
+    return min(stamps), max(stamps)
+
+
+def _render_subagent_index(session: NormalizedSession, filename_base: str) -> list[str]:
+    """A one-row-per-subagent table naming every sidechain the session spawned."""
+    if not session.subagents:
+        return []
+
+    lines = [
+        "## 🧵 Subagents",
+        "",
+        f"{len(session.subagents)} subagent conversation(s) ran under this session. "
+        f"Their full transcripts are in the "
+        f"[Full Markdown Details](./{filename_base}.full.md).",
+        "",
+        "| # | Agent | Type | Events | Tokens | Started | Task |",
+        "|---|-------|------|--------|--------|---------|------|",
+    ]
+    for idx, subagent in enumerate(session.subagents, start=1):
+        started, _ = _subagent_time_range(subagent)
+        description = (subagent.description or "").strip().replace("\n", " ")
+        if len(description) > 80:
+            description = description[:77] + "..."
+        description = description.replace("|", "\\|")
+        lines.append(
+            f"| {idx} | `{subagent.label}` | {subagent.agent_type or ''} | "
+            f"{len(subagent.events)} | {subagent.tokens_used} | {started} | {description} |"
+        )
+    lines.append("")
+    return lines
+
+
+def render_to_markdown(
+    session: NormalizedSession,
+    slug: str,
+    started_at: str,
+    last_modified: str,
+    ended_at: str,
+    has_user_context: bool,
+    correlation: dict[str, str | None],
+    insights: str | None,
+) -> str:
+    """Render a summary/index of NormalizedSession to Markdown with YAML front-matter."""
+    yaml_lines = _render_front_matter(
+        session, slug, started_at, last_modified, ended_at, has_user_context, correlation
+    )
 
     filename_base = _get_filename_base(slug, started_at, correlation)
     content_lines = [
@@ -73,6 +142,8 @@ def render_to_markdown(
                 "",
             ]
         )
+
+    content_lines.extend(_render_subagent_index(session, filename_base))
 
     content_lines.extend(
         [
@@ -122,6 +193,114 @@ def render_to_markdown(
     return "\n".join(yaml_lines) + "\n".join(content_lines)
 
 
+def _render_events_markdown(events: list[NormalizedEvent]) -> list[str]:
+    """Render a conversation event by event, in order."""
+    lines: list[str] = []
+    for event in events:
+        emoji = "📋"
+        if event.source == "user":
+            emoji = "🤷 User"
+        elif event.source == "model":
+            emoji = "🤖 Assistant"
+        elif event.source == "tool":
+            emoji = "🛠️ Tool"
+        elif event.source == "system":
+            emoji = "📌 System"
+
+        ts_str = f" `({event.timestamp})`" if event.timestamp else ""
+        lines.append(f"#### {emoji}{ts_str}")
+        lines.append("")
+
+        if event.thinking:
+            lines.extend(
+                [
+                    "> [!NOTE]",
+                    "> **Thinking Process:**",
+                    *(f"> {line}" for line in event.thinking.splitlines()),
+                    "",
+                ]
+            )
+
+        content = event.content or ""
+        if not isinstance(content, str):
+            if isinstance(content, list):
+                content = "\n".join(str(item) for item in content)
+            else:
+                content = str(content)
+
+        if content:
+            lines.append(content)
+            lines.append("")
+
+        if event.tool_calls:
+            lines.append("**Tool Calls:**")
+            for tc in event.tool_calls:
+                lines.append(f"- Call `{tc.name}` with args:")
+                lines.append("  ```json")
+                lines.append(json.dumps(tc.args, indent=4))
+                lines.append("  ```")
+            lines.append("")
+
+        lines.append("---")
+        lines.append("")
+    return lines
+
+
+def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
+    """Render every subagent conversation in full, up to the size budget."""
+    if not session.subagents:
+        return []
+
+    lines = [
+        "## 🧵 Subagent Transcripts",
+        "",
+        f"{len(session.subagents)} subagent conversation(s) ran under this session, "
+        f"carrying {session.total_event_count - len(session.events)} events.",
+        "",
+    ]
+
+    budget = MAX_SUBAGENT_FULL_MD_CHARS
+    for idx, subagent in enumerate(session.subagents, start=1):
+        started, ended = _subagent_time_range(subagent)
+        header = [
+            f"### 🧵 Subagent {idx}: {subagent.label}",
+            "",
+            f"- agent_id: `{subagent.agent_id}`",
+            f"- agent_type: `{subagent.agent_type or 'unknown'}`",
+            f"- events: {len(subagent.events)}",
+            f"- tokens_used: {subagent.tokens_used}",
+            f"- cost_usd: {subagent.cost_usd:.6f}",
+            f"- window: {started or 'unknown'} → {ended or 'unknown'}",
+        ]
+        if subagent.parent_agent_id:
+            header.append(f"- spawned_by: `{subagent.parent_agent_id}`")
+        if subagent.description:
+            header.extend(["", f"> {subagent.description.strip()}"])
+        header.append("")
+
+        body = _render_events_markdown(subagent.events)
+        rendered = header + body
+        cost = sum(len(line) + 1 for line in rendered)
+        if cost > budget:
+            remaining = session.subagents[idx - 1 :]
+            omitted_events = sum(len(sub.events) for sub in remaining)
+            lines.extend(
+                [
+                    "> [!WARNING]",
+                    f"> Size budget of {MAX_SUBAGENT_FULL_MD_CHARS} characters reached. "
+                    f"{len(remaining)} subagent transcript(s) totalling {omitted_events} "
+                    f"events are listed in the summary view but not expanded here: "
+                    + ", ".join(f"`{sub.label}`" for sub in remaining),
+                    "",
+                ]
+            )
+            break
+        budget -= cost
+        lines.extend(rendered)
+
+    return lines
+
+
 def render_to_full_markdown(
     session: NormalizedSession,
     slug: str,
@@ -133,22 +312,9 @@ def render_to_full_markdown(
     insights: str | None,
 ) -> str:
     """Render a NormalizedSession to full chronological Markdown with YAML front-matter."""
-    yaml_lines = [
-        "---",
-        f"session_id: {session.session_id}",
-        f"slug: {slug}",
-        f"started_at: {started_at}",
-        f"last_modified: {last_modified}",
-        f"ended_at: {ended_at}",
-        f"has_user_context: {str(has_user_context).lower()}",
-        f"project: {correlation.get('project') or ''}",
-        f"task_id: {correlation.get('task_id') or ''}",
-        f"pr_number: {correlation.get('pr_number') or ''}",
-        f"tokens_used: {session.tokens_used}",
-        f"cost_usd: {session.cost_usd:.6f}",
-        "---",
-        "",
-    ]
+    yaml_lines = _render_front_matter(
+        session, slug, started_at, last_modified, ended_at, has_user_context, correlation
+    )
 
     filename_base = _get_filename_base(slug, started_at, correlation)
     content_lines = [
@@ -174,56 +340,51 @@ def render_to_full_markdown(
             "",
         ]
     )
-
-    for event in session.events:
-        emoji = "📋"
-        if event.source == "user":
-            emoji = "🤷 User"
-        elif event.source == "model":
-            emoji = "🤖 Assistant"
-        elif event.source == "tool":
-            emoji = "🛠️ Tool"
-        elif event.source == "system":
-            emoji = "📌 System"
-
-        ts_str = f" `({event.timestamp})`" if event.timestamp else ""
-        content_lines.append(f"### {emoji}{ts_str}")
-        content_lines.append("")
-
-        if event.thinking:
-            content_lines.extend(
-                [
-                    "> [!NOTE]",
-                    "> **Thinking Process:**",
-                    *(f"> {line}" for line in event.thinking.splitlines()),
-                    "",
-                ]
-            )
-
-        content = event.content or ""
-        if not isinstance(content, str):
-            if isinstance(content, list):
-                content = "\n".join(str(item) for item in content)
-            else:
-                content = str(content)
-
-        if content:
-            content_lines.append(content)
-            content_lines.append("")
-
-        if event.tool_calls:
-            content_lines.append("**Tool Calls:**")
-            for tc in event.tool_calls:
-                content_lines.append(f"- Call `{tc.name}` with args:")
-                content_lines.append("  ```json")
-                content_lines.append(json.dumps(tc.args, indent=4))
-                content_lines.append("  ```")
-            content_lines.append("")
-
-        content_lines.append("---")
-        content_lines.append("")
+    content_lines.extend(_render_events_markdown(session.events))
+    content_lines.extend(_render_subagent_transcripts(session))
 
     return "\n".join(yaml_lines) + "\n".join(content_lines)
+
+
+def _escape_html(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _render_subagent_html(session: NormalizedSession, filename_base: str) -> str:
+    """A card per subagent.
+
+    The standalone HTML stays a document a browser can actually open, so it
+    names and costs each sidechain and points at the `.full.md` for the
+    conversation itself.
+    """
+    if not session.subagents:
+        return ""
+
+    rows = []
+    for idx, subagent in enumerate(session.subagents, start=1):
+        started, ended = _subagent_time_range(subagent)
+        description = _escape_html((subagent.description or "").strip())
+        rows.append(
+            f"<tr><td>{idx}</td>"
+            f"<td><code>{_escape_html(subagent.label)}</code></td>"
+            f"<td>{_escape_html(subagent.agent_type or '')}</td>"
+            f"<td>{len(subagent.events)}</td>"
+            f"<td>{subagent.tokens_used}</td>"
+            f"<td>{_escape_html(started)} → {_escape_html(ended)}</td>"
+            f"<td>{description}</td></tr>"
+        )
+
+    return f"""
+        <h2>Subagents</h2>
+        <p>{len(session.subagents)} subagent conversation(s) ran under this session,
+        carrying {session.total_event_count - len(session.events)} events. Their full
+        transcripts are in <a href="./{filename_base}.full.md">{filename_base}.full.md</a>.</p>
+        <table class="subagents">
+            <thead><tr><th>#</th><th>Agent</th><th>Type</th><th>Events</th>
+            <th>Tokens</th><th>Window</th><th>Task</th></tr></thead>
+            <tbody>{"".join(rows)}</tbody>
+        </table>
+        """
 
 
 def render_to_html(
@@ -294,6 +455,10 @@ def render_to_html(
             <p>{insights.replace(chr(10), "<br>")}</p>
         </div>
         """
+
+    subagents_section = _render_subagent_html(
+        session, _get_filename_base(slug, started_at, correlation)
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -378,6 +543,19 @@ def render_to_html(
             float: right;
             font-size: 0.8rem;
         }}
+        table.subagents {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-bottom: 2rem;
+        }}
+        table.subagents th, table.subagents td {{
+            border: 1px solid #27272a;
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+            vertical-align: top;
+        }}
+        table.subagents th {{ color: #a1a1aa; }}
     </style>
 </head>
 <body>
@@ -391,12 +569,15 @@ def render_to_html(
             <div class="meta-item"><strong>User Context</strong>{str(has_user_context)}</div>
             <div class="meta-item"><strong>Project</strong>{correlation.get("project") or "N/A"}</div>
             <div class="meta-item"><strong>Task ID</strong>{correlation.get("task_id") or "N/A"}</div>
-            <div class="meta-item"><strong>Tokens Used</strong>{session.tokens_used}</div>
-            <div class="meta-item"><strong>Cost (USD)</strong>${session.cost_usd:.6f}</div>
+            <div class="meta-item"><strong>Tokens Used</strong>{session.total_tokens_used}</div>
+            <div class="meta-item"><strong>Cost (USD)</strong>${session.total_cost_usd:.6f}</div>
+            <div class="meta-item"><strong>Subagents</strong>{len(session.subagents)}</div>
         </div>
     </div>
 
     {insights_section}
+
+    {subagents_section}
 
     <h2>Timeline</h2>
     <div class="events">
@@ -440,9 +621,31 @@ def render_to_json(
         "task_id": correlation.get("task_id"),
         "pr_number": correlation.get("pr_number"),
         "insights": insights,
+        # `event_count` / `tokens_used` / `cost_usd` describe the trunk, as
+        # they always have. The `total_*` keys and `subagents` describe the
+        # whole session, delegated work included.
         "event_count": len(session.events),
         "tokens_used": session.tokens_used,
         "cost_usd": session.cost_usd,
+        "total_event_count": session.total_event_count,
+        "total_tokens_used": session.total_tokens_used,
+        "total_cost_usd": session.total_cost_usd,
+        "subagents": [
+            {
+                "agent_id": subagent.agent_id,
+                "agent_type": subagent.agent_type,
+                "name": subagent.name,
+                "description": subagent.description,
+                "parent_agent_id": subagent.parent_agent_id,
+                "parent_tool_use_id": subagent.parent_tool_use_id,
+                "event_count": len(subagent.events),
+                "tokens_used": subagent.tokens_used,
+                "cost_usd": subagent.cost_usd,
+                "started_at": _subagent_time_range(subagent)[0],
+                "ended_at": _subagent_time_range(subagent)[1],
+            }
+            for subagent in session.subagents
+        ],
         "user_prompts": user_prompts,
         # For compatibility with ledger checks:
         "surface": correlation.get("project") or "cli",

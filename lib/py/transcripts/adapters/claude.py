@@ -13,6 +13,11 @@ stdout (easy to miss, not machine-actionable). We independently scan the
 raw JSONL lines and preserve every unrecognized-type line as a `RawEntry`,
 logged via the standard `logging` module, so upstream schema drift shows
 up as visible degraded data rather than a silent loss.
+
+Subagents: a session's delegated work is written to separate sidechain logs
+that reuse the parent's `sessionId`. `load_claude_session` is the entry point
+that reconstructs a whole session — trunk plus sidechains — and it refuses a
+sidechain log handed to it directly.
 """
 
 from __future__ import annotations
@@ -32,9 +37,18 @@ from transcripts.model import (
     NormalizedRawEntry,
     NormalizedSession,
     NormalizedToolCall,
+    SubagentTranscript,
 )
 
 logger = logging.getLogger(__name__)
+
+# Claude Code writes each subagent's sidechain conversation to
+# `<project>/<session-id>/subagents/**/agent-<agentId>.jsonl`, with an
+# `agent-<agentId>.meta.json` sidecar describing what it was asked to do.
+# Every record in those files carries the *parent's* `sessionId`, so they are
+# branches of one session, never sessions of their own.
+SUBAGENT_DIR_NAME = "subagents"
+SUBAGENT_FILE_PREFIX = "agent-"
 
 # The top-level `type` values claude_code_log parses into typed Pydantic
 # models (see claude_code_log.converter.load_transcript). Anything else is
@@ -141,22 +155,53 @@ def render_claude_session(
     return renderer.generate_session(entries, session_id, title=title) or ""
 
 
-def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSession:
-    """Map a ClaudeTranscript into the common NormalizedSession model."""
-    # Session ID detection
-    session_id = "unknown"
-    for entry in transcript.entries:
-        if hasattr(entry, "sessionId") and entry.sessionId:
-            session_id = entry.sessionId
-            break
+def is_sidechain_file(jsonl_path: Path) -> bool:
+    """True when this *file* is a subagent's sidechain log rather than a trunk.
 
-    # Accumulate token usage and cost
+    Judged from the file's own records, never from a loaded entry list:
+    claude-code-log inlines a subagent's records into the trunk it can link
+    them to, so a trunk's entries routinely include sidechain ones. Only the
+    file on disk says what the file is.
+    """
+    if SUBAGENT_DIR_NAME in jsonl_path.parts:
+        return True
+    try:
+        with jsonl_path.open(encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(obj, dict):
+                    return bool(obj.get("isSidechain"))
+    except OSError:
+        logger.warning("could not read %s to classify it", jsonl_path, exc_info=True)
+    return False
+
+
+def find_subagent_files(jsonl_path: Path) -> list[Path]:
+    """Sidechain transcripts belonging to the Claude trunk transcript at `jsonl_path`."""
+    subagent_dir = jsonl_path.parent / jsonl_path.stem / SUBAGENT_DIR_NAME
+    if not subagent_dir.is_dir():
+        return []
+    return sorted(
+        p
+        for p in subagent_dir.glob("**/*.jsonl")
+        if p.is_file() and p.name.startswith(SUBAGENT_FILE_PREFIX)
+    )
+
+
+def _accumulate_usage(entries: list[TranscriptEntry]) -> tuple[int, float]:
+    """Total tokens and estimated USD cost across every entry carrying usage data."""
     total_input = 0
     total_cache_creation = 0
     total_cache_read = 0
     total_output = 0
 
-    for entry in transcript.entries:
+    for entry in entries:
         if (
             hasattr(entry, "message")
             and entry.message
@@ -177,8 +222,13 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
         + total_output * 15.0
     ) / 1_000_000
 
+    return tokens_used, cost_usd
+
+
+def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
+    """Map parsed Claude Code entries onto the common NormalizedEvent model."""
     events: list[NormalizedEvent] = []
-    for entry in transcript.entries:
+    for entry in entries:
         entry_type = entry.type
         if entry_type == "user":
             content_parts = []
@@ -255,6 +305,7 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
                             NormalizedToolCall(
                                 name=block.name,
                                 args=block.input if isinstance(block.input, dict) else {},
+                                call_id=getattr(block, "id", None),
                             )
                         )
             content = "".join(content_parts)
@@ -335,6 +386,35 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
                 )
             )
 
+    return events
+
+
+def _is_sidechain_entry(entry: TranscriptEntry) -> bool:
+    """True for a record belonging to a subagent's conversation.
+
+    `isSidechain` alone: claude-code-log also copies a spawning tool_result's
+    `agentId` onto trunk entries, so `agentId` does not imply sidechain.
+    """
+    return bool(getattr(entry, "isSidechain", False))
+
+
+def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSession:
+    """Map a ClaudeTranscript into the common NormalizedSession model.
+
+    Only the main thread becomes `events`. claude-code-log inlines the records
+    of every subagent it can link back to its spawning tool call, and counting
+    those as trunk events overstates both the conversation and its cost;
+    `load_claude_session` is what turns them into `subagents`.
+    """
+    session_id = "unknown"
+    for entry in transcript.entries:
+        if getattr(entry, "sessionId", None):
+            session_id = entry.sessionId
+            break
+
+    trunk_entries = [entry for entry in transcript.entries if not _is_sidechain_entry(entry)]
+    tokens_used, cost_usd = _accumulate_usage(trunk_entries)
+
     raw_events = [
         NormalizedRawEntry(line_no=raw.line_no, type=raw.type, raw=raw.raw)
         for raw in transcript.raw_entries
@@ -343,8 +423,154 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
     return NormalizedSession(
         session_id=session_id,
         source_file=transcript.source,
-        events=events,
+        events=_entries_to_events(trunk_entries),
         raw_events=raw_events,
         tokens_used=tokens_used,
         cost_usd=cost_usd,
     )
+
+
+def _read_subagent_meta(jsonl_path: Path) -> dict[str, Any]:
+    """Read the `agent-<id>.meta.json` sidecar Claude Code writes next to a sidechain log."""
+    meta_path = jsonl_path.with_suffix(".meta.json")
+    if not meta_path.is_file():
+        return {}
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("could not read subagent metadata %s", meta_path, exc_info=True)
+        return {}
+    return meta if isinstance(meta, dict) else {}
+
+
+def _agent_id_from_path(jsonl_path: Path) -> str:
+    """The subagent's id, which Claude Code encodes in the log's filename."""
+    return jsonl_path.stem.removeprefix(SUBAGENT_FILE_PREFIX)
+
+
+def _describe_from_parent(
+    parent_events: list[NormalizedEvent], tool_use_id: str | None
+) -> str | None:
+    """Recover a subagent's brief from the parent's spawning tool call.
+
+    The parent's `Task`/`Agent` tool_use block carries the description that
+    commissioned the subagent; the sidecar's `toolUseId` points back at it.
+    """
+    if not tool_use_id:
+        return None
+    for event in parent_events:
+        for call in event.tool_calls or ():
+            if call.call_id == tool_use_id:
+                args = call.args or {}
+                description = args.get("description") or args.get("prompt")
+                return str(description) if description else None
+    return None
+
+
+def _build_subagent(
+    agent_id: str,
+    source_file: Path,
+    entries: list[TranscriptEntry],
+    parent_events: list[NormalizedEvent],
+) -> SubagentTranscript:
+    meta = _read_subagent_meta(source_file)
+    tokens_used, cost_usd = _accumulate_usage(entries)
+    tool_use_id = meta.get("toolUseId")
+    return SubagentTranscript(
+        agent_id=agent_id,
+        source_file=source_file,
+        events=_entries_to_events(entries),
+        agent_type=meta.get("agentType"),
+        name=meta.get("name"),
+        description=meta.get("description") or _describe_from_parent(parent_events, tool_use_id),
+        parent_tool_use_id=tool_use_id,
+        parent_agent_id=meta.get("parentAgentId"),
+        tokens_used=tokens_used,
+        cost_usd=cost_usd,
+    )
+
+
+def load_subagent_transcripts(
+    jsonl_path: Path,
+    parent_events: list[NormalizedEvent],
+    inlined: list[TranscriptEntry] | None = None,
+) -> list[SubagentTranscript]:
+    """Every sidechain conversation belonging to the trunk log at `jsonl_path`.
+
+    Two paths reach the same place. Subagents claude-code-log could link to
+    their spawning tool call arrive already inlined in the trunk's entries and
+    are regrouped by `agentId` from `inlined`; subagents it could not link —
+    in-process teammates carry no `toolUseId`, and a nested spawn's id lives in
+    another subagent's log rather than the trunk's — are read from their files.
+    Each agent is built once, whichever path found it.
+
+    Ordered by first event time so the parent's record reads chronologically.
+    """
+    subagents: list[SubagentTranscript] = []
+    seen: set[str] = set()
+    subagent_files = {_agent_id_from_path(path): path for path in find_subagent_files(jsonl_path)}
+
+    grouped: dict[str, list[TranscriptEntry]] = {}
+    for entry in inlined or ():
+        agent_id = getattr(entry, "agentId", None)
+        if agent_id:
+            grouped.setdefault(str(agent_id), []).append(entry)
+
+    for agent_id, entries in grouped.items():
+        source_file = subagent_files.get(agent_id, jsonl_path)
+        subagents.append(_build_subagent(agent_id, source_file, entries, parent_events))
+        seen.add(agent_id)
+
+    for agent_id, path in subagent_files.items():
+        if agent_id in seen:
+            continue
+        transcript = load_claude_transcript(path)
+        if not transcript.entries:
+            continue
+        # A subagent may itself have spawned others, whose records
+        # claude-code-log inlines here in turn. Keep this agent's own records.
+        own = [
+            entry
+            for entry in transcript.entries
+            if str(getattr(entry, "agentId", "") or agent_id) == agent_id
+        ]
+        subagents.append(_build_subagent(agent_id, path, own, parent_events))
+        seen.add(agent_id)
+
+    subagents.sort(key=lambda sub: sub.events[0].timestamp if sub.events else "")
+    return subagents
+
+
+def load_claude_session(jsonl_path: Path) -> NormalizedSession | None:
+    """Load a Claude Code trunk transcript together with its subagent sidechains.
+
+    Returns None for an unreadable file, and for a sidechain log handed in
+    directly: those carry the parent's `session_id`, so processing one as a
+    session in its own right overwrites the parent's record.
+    """
+    if is_sidechain_file(jsonl_path):
+        logger.error(
+            "%s is a subagent sidechain carrying its parent's session id; "
+            "process the parent transcript instead",
+            jsonl_path,
+        )
+        return None
+
+    transcript = load_claude_transcript(jsonl_path)
+    if not transcript.entries and not transcript.raw_entries:
+        return None
+
+    session = normalize_claude_transcript(transcript)
+    session.subagents = load_subagent_transcripts(
+        jsonl_path,
+        session.events,
+        [entry for entry in transcript.entries if _is_sidechain_entry(entry)],
+    )
+    if session.subagents:
+        logger.info(
+            "session %s: attached %d subagent transcript(s), %d extra events",
+            session.session_id,
+            len(session.subagents),
+            session.total_event_count - len(session.events),
+        )
+    return session

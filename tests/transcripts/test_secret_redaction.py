@@ -220,13 +220,13 @@ class TestWiringIntoArtifacts:
 class _NeverSkipCache:
     """Minimal SkipCache stand-in: never skips, records nothing."""
 
-    def is_skipped(self, session_id: str) -> bool:
+    def is_skipped(self, key: str, fingerprint: str) -> bool:
         return False
 
-    def mark_empty(self, session_id: str) -> None:
+    def mark_empty(self, key: str, fingerprint: str) -> None:
         return None
 
-    def mark_processed(self, session_id: str) -> None:
+    def forget(self, key: str) -> None:
         return None
 
 

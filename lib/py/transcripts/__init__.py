@@ -9,6 +9,7 @@ from transcripts.model import (
     NormalizedRawEntry,
     NormalizedSession,
     NormalizedToolCall,
+    SubagentTranscript,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "NormalizedRawEntry",
     "NormalizedSession",
     "NormalizedToolCall",
+    "SubagentTranscript",
 ]
