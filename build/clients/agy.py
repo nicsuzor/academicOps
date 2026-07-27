@@ -107,47 +107,31 @@ def _to_agy_hooks(hooks_config: dict, ctx: BuildContext) -> dict:
 def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
     """agy's `mcp_config.json`, refused if agy could not act on it.
 
-    agy itself substitutes nothing in this file — no `cwd`, no plugin-root
-    variable, and no template expansion of any kind. A `${...}` placeholder is
+    Nothing here rewrites, because for MCP there is nothing to rewrite to. A
+    hook command gets a working directory — agy documents it as the directory
+    holding `hooks.json` — so a plugin-relative path resolves. An MCP server is
+    spawned by the language server instead, and agy's "MCP Servers
+    (`mcp_config.json`)" reference gives its stdio transport exactly three
+    fields: `command`, `args`, `env`. No `cwd`, no plugin-root variable, and no
+    substitution of any kind anywhere in the file. A `${...}` placeholder is
     therefore delivered to the server process verbatim, as a literal dollar
-    sign and brace — worse than an empty value, because a launcher checking
-    whether its variable is set finds a non-empty string and proceeds.
+    sign and brace — which is worse than an empty value, because a launcher
+    checking whether its variable is set finds a non-empty string and proceeds.
 
-    `${extensionPath}` and `${CLAUDE_PLUGIN_ROOT}` are the one exception:
-    `agy plugin install` copies this plugin to its own on-disk directory
-    inside `~/.gemini/antigravity-cli/plugins/`, and the aops-crew image's
-    `docker_gemini_fixups.py fixup-mcp-config-paths` (run from the Dockerfile,
-    after install) rewrites either token, wherever it appears in any installed
-    plugin's `mcp_config.json`, to that plugin's actual install directory —
-    the resolution mechanism a plugin-relative `command`/`args` path needs,
-    just done post-install instead of at template-render time. Outside that
-    image (a bare host `agy plugin install`) nothing performs this rewrite, so
-    a plugin relying on it only works inside an aops-crew container; that is
-    a real gap, not one this function can close. `${AGY_PLUGIN_ROOT}` is NOT
-    one of the two tokens the fixup knows: it appears nowhere in the agy CLI
-    binary and nothing ever rewrites it, so it still refuses.
-
-    Every other placeholder still refuses rather than guesses. The remaining
-    alternatives were both worse: a bare relative path, which rests on a
-    working directory agy never promised, and a baked-in absolute one, which
-    bakes an install path into a shipped artifact and is barred outright
-    (specs/ARCHITECTURE.md, binding constraints).
+    So this refuses rather than guesses. The two alternatives were both worse:
+    a relative path, which rests on a working directory agy never promised, and
+    an absolute one, which bakes an install path into a shipped artifact and is
+    barred outright (specs/ARCHITECTURE.md, binding constraints).
     """
-    allowed = {"${extensionPath}", "${CLAUDE_PLUGIN_ROOT}"}
     for name, server in sorted(servers.items()):
-        leftover = [
-            token for token in _PLACEHOLDER_RE.findall(json.dumps(server)) if token not in allowed
-        ]
+        leftover = _PLACEHOLDER_RE.search(json.dumps(server))
         if leftover:
             raise BuildError(
                 f"{ctx.plugin.directory}: manifest/mcp.template.json leaves "
-                f"{leftover[0]} unexpanded in MCP server {name!r} (client=agy). "
+                f"{leftover.group(0)} unexpanded in MCP server {name!r} (client=agy). "
                 f"agy substitutes nothing in mcp_config.json, so this ships to the "
                 f"server process as that literal text. Supply the value another way "
-                f"or drop the agy section — a config agy cannot act on must not ship. "
-                f"(${{extensionPath}} and ${{CLAUDE_PLUGIN_ROOT}} are the only tokens "
-                f"the aops-crew image's post-install fixup resolves; this one is not "
-                f"among them.)"
+                f"or drop the agy section — a config agy cannot act on must not ship."
             )
         # agy's own rule, enforced by the CLI: "MCP server %q must have either
         # command or serverUrl" / "cannot have both".
