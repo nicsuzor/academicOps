@@ -96,6 +96,17 @@ def _subagent_time_range(subagent: SubagentTranscript) -> tuple[str, str]:
     return min(stamps), max(stamps)
 
 
+def _depth_label(subagent: SubagentTranscript) -> str:
+    """`spawn_depth` rendered for a reader, with its own honesty caveat.
+
+    Not reliably parent+1 for a team-mode (named/mailbox) spawn — a fork or
+    named agent can report a depth that does not match `parent_agent_id`'s
+    actual chain. Shown as a hint, never treated as authoritative structure.
+    """
+    depth = "?" if subagent.spawn_depth is None else str(subagent.spawn_depth)
+    return f"{depth} (fork)" if subagent.is_fork else depth
+
+
 def _render_subagent_index(session: NormalizedSession, filename_base: str) -> list[str]:
     """A one-row-per-subagent table naming every sidechain the session spawned."""
     if not session.subagents:
@@ -108,8 +119,8 @@ def _render_subagent_index(session: NormalizedSession, filename_base: str) -> li
         f"Their full transcripts are in the "
         f"[Full Markdown Details](./{filename_base}.full.md).",
         "",
-        "| # | Agent | Type | Events | Tokens | Started | Task |",
-        "|---|-------|------|--------|--------|---------|------|",
+        "| # | Agent | Type | Depth | Events | Tokens | Started | Task |",
+        "|---|-------|------|-------|--------|--------|---------|------|",
     ]
     for idx, subagent in enumerate(session.subagents, start=1):
         started, _ = _subagent_time_range(subagent)
@@ -119,7 +130,8 @@ def _render_subagent_index(session: NormalizedSession, filename_base: str) -> li
         description = description.replace("|", "\\|")
         lines.append(
             f"| {idx} | `{subagent.label}` | {subagent.agent_type or ''} | "
-            f"{len(subagent.events)} | {subagent.tokens_used} | {started} | {description} |"
+            f"{_depth_label(subagent)} | {len(subagent.events)} | {subagent.tokens_used} | "
+            f"{started} | {description} |"
         )
     lines.append("")
     return lines
@@ -208,8 +220,35 @@ def render_to_markdown(
     return "\n".join(yaml_lines) + "\n".join(content_lines)
 
 
-def _render_events_markdown(events: list[NormalizedEvent]) -> list[str]:
-    """Render a conversation event by event, in order."""
+def _build_subagent_lookup(
+    session: NormalizedSession,
+) -> dict[str, tuple[int, SubagentTranscript]]:
+    """Map a spawning `tool_use_id` to `(index, subagent)`, 1-indexed to match
+    the `### 🧵 Subagent N` headers `_render_subagent_transcripts` writes.
+
+    Lets `_render_events_markdown` mark, at the exact tool-call site, where a
+    subagent was spawned and where its result returned — the interleaving a
+    cold reader needs and a flat "all subagents after the trunk" layout does
+    not give them.
+    """
+    return {
+        subagent.parent_tool_use_id: (idx, subagent)
+        for idx, subagent in enumerate(session.subagents, start=1)
+        if subagent.parent_tool_use_id
+    }
+
+
+def _render_events_markdown(
+    events: list[NormalizedEvent],
+    subagent_lookup: dict[str, tuple[int, SubagentTranscript]] | None = None,
+) -> list[str]:
+    """Render a conversation event by event, in order.
+
+    `subagent_lookup`, when given, adds an inline "spawned here" note at the
+    tool call that launched a subagent and a "returned here" note at the
+    tool_output event carrying its result — see `_build_subagent_lookup`.
+    """
+    lookup = subagent_lookup or {}
     lines: list[str] = []
     for event in events:
         emoji = "📋"
@@ -235,6 +274,16 @@ def _render_events_markdown(events: list[NormalizedEvent]) -> list[str]:
                     "",
                 ]
             )
+        elif event.thinking_opaque:
+            lines.extend(
+                [
+                    "> [!NOTE]",
+                    "> **Thinking Process:** not recoverable — Claude Code returned this "
+                    "block empty (signature only). This model turn did reason before "
+                    "acting; the reasoning text itself cannot be shown.",
+                    "",
+                ]
+            )
 
         content = event.content or ""
         if not isinstance(content, str):
@@ -254,6 +303,17 @@ def _render_events_markdown(events: list[NormalizedEvent]) -> list[str]:
                 lines.append("  ```json")
                 lines.append(_dump_tool_args(tc.args, indent=4))
                 lines.append("  ```")
+                spawned = lookup.get(tc.call_id or "")
+                if spawned:
+                    idx, subagent = spawned
+                    lines.append(f"  → **spawned Subagent {idx}: `{subagent.label}`** (see below)")
+            lines.append("")
+
+        tool_use_id = event.meta.get("tool_use_id") if event.type == "tool_output" else None
+        returned = lookup.get(tool_use_id or "")
+        if returned:
+            idx, subagent = returned
+            lines.append(f"↩ **Subagent {idx}: `{subagent.label}` returned here.**")
             lines.append("")
 
         lines.append("---")
@@ -262,7 +322,13 @@ def _render_events_markdown(events: list[NormalizedEvent]) -> list[str]:
 
 
 def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
-    """Render every subagent conversation in full, up to the size budget."""
+    """Render every subagent conversation in full, up to the size budget.
+
+    Heading depth follows `spawn_depth` (capped so a bad value cannot produce
+    an invalid Markdown heading) — a rendering hint, not authoritative tree
+    structure; see `_depth_label`. `parent_agent_id`, printed alongside it, is
+    the field that stays correct for a team-mode spawn.
+    """
     if not session.subagents:
         return []
 
@@ -274,14 +340,18 @@ def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
         "",
     ]
 
+    lookup = _build_subagent_lookup(session)
     budget = MAX_SUBAGENT_FULL_MD_CHARS
     for idx, subagent in enumerate(session.subagents, start=1):
         started, ended = _subagent_time_range(subagent)
+        heading_level = min(max((subagent.spawn_depth or 1) + 2, 3), 6)
+        fork_tag = " (fork)" if subagent.is_fork else ""
         header = [
-            f"### 🧵 Subagent {idx}: {subagent.label}",
+            f"{'#' * heading_level} 🧵 Subagent {idx}: {subagent.label}{fork_tag}",
             "",
             f"- agent_id: `{subagent.agent_id}`",
             f"- agent_type: `{subagent.agent_type or 'unknown'}`",
+            f"- spawn_depth: {_depth_label(subagent)}",
             f"- events: {len(subagent.events)}",
             f"- tokens_used: {subagent.tokens_used}",
             f"- cost_usd: {subagent.cost_usd:.6f}",
@@ -293,7 +363,7 @@ def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
             header.extend(["", f"> {subagent.description.strip()}"])
         header.append("")
 
-        body = _render_events_markdown(subagent.events)
+        body = _render_events_markdown(subagent.events, lookup)
         rendered = header + body
         cost = sum(len(line) + 1 for line in rendered)
         if cost > budget:
@@ -355,7 +425,7 @@ def render_to_full_markdown(
             "",
         ]
     )
-    content_lines.extend(_render_events_markdown(session.events))
+    content_lines.extend(_render_events_markdown(session.events, _build_subagent_lookup(session)))
     content_lines.extend(_render_subagent_transcripts(session))
 
     return "\n".join(yaml_lines) + "\n".join(content_lines)
@@ -423,6 +493,11 @@ def render_to_html(
         if event.thinking:
             thinking_html = (
                 f'<div class="thinking"><strong>Thinking:</strong><br>{event.thinking}</div>'
+            )
+        elif event.thinking_opaque:
+            thinking_html = (
+                '<div class="thinking"><strong>Thinking:</strong> not recoverable — '
+                "Claude Code returned this block empty (signature only).</div>"
             )
 
         content = event.content or ""

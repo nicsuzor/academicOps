@@ -30,6 +30,12 @@ class NormalizedEvent:
     type: str  # "message", "tool_output", "checkpoint", "system", "unknown"
     content: str
     thinking: str | None = None
+    # True when this event carried an extended-thinking block whose content
+    # came back empty — Claude Code ships the block's `signature` field but
+    # not recoverable text. Distinct from `thinking is None` (no thinking
+    # block at all): this event *did* think, but that reasoning cannot be
+    # shown. See specs/transcript-pipeline.md, On-disk trace convention.
+    thinking_opaque: bool = False
     tool_calls: list[NormalizedToolCall] | None = None
     meta: dict[str, Any] = field(default_factory=dict)
 
@@ -62,6 +68,13 @@ class SubagentTranscript:
     parent_agent_id: str | None = None
     tokens_used: int = 0
     cost_usd: float = 0.0
+    # From the `agent-<id>.meta.json` sidecar. `spawn_depth` is NOT reliably
+    # parent+1 for team-mode spawns (a mailbox/named spawn) — `parent_agent_id`
+    # is the field that stays correct there; treat spawn_depth as a rendering
+    # hint, not ground truth for tree structure. `is_fork` marks a `fork`-type
+    # spawn (inherits the parent's context) rather than a fresh subagent.
+    spawn_depth: int | None = None
+    is_fork: bool = False
 
     @property
     def label(self) -> str:

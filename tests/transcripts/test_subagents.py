@@ -154,6 +154,9 @@ def test_subagent_is_attached_to_the_parent_session(project_dir: Path) -> None:
     assert subagent.description == "Retro: agent unaware of md transcripts"
     assert subagent.parent_tool_use_id == "toolu_01Me46HjJa47GxqUEh193Rfs"
     assert subagent.events, "subagent conversation was attached but empty"
+    # claude_subagent.meta.json carries spawnDepth: 1 and no isFork key.
+    assert subagent.spawn_depth == 1
+    assert subagent.is_fork is False
 
 
 def test_trunk_events_are_not_replaced_by_subagent_events(project_dir: Path) -> None:
@@ -387,3 +390,138 @@ def test_description_falls_back_to_the_parents_spawning_tool_call() -> None:
     assert _describe_from_parent(parent_events, "toolu_parent_1") == "Audit the renderer"
     assert _describe_from_parent(parent_events, "toolu_missing") is None
     assert _describe_from_parent(parent_events, None) is None
+
+
+# --- Depth, forks, and spawn/return interleaving -------------------------------
+#
+# Real sessions carry genuine spawn_depth > 1 nesting (confirmed live, this
+# framework's own orchestrator sessions routinely spawn depth-2+ subagents),
+# and the raw meta sidecar has always carried spawnDepth/isFork — the pipeline
+# just never read them. These tests pin that it now does, and that a cold
+# reader gets an explicit spawn/return marker at the tool-call site instead of
+# having to cross-reference IDs between two separate sections.
+
+
+def test_subagent_index_shows_depth_and_fork_tag() -> None:
+    session = NormalizedSession(
+        session_id="s1",
+        source_file=Path("s1.jsonl"),
+        subagents=[
+            SubagentTranscript(
+                agent_id="deep",
+                source_file=Path("agent-deep.jsonl"),
+                spawn_depth=2,
+                is_fork=True,
+            ),
+            SubagentTranscript(
+                agent_id="shallow",
+                source_file=Path("agent-shallow.jsonl"),
+                spawn_depth=None,
+            ),
+        ],
+    )
+    md = render_to_markdown(session, "s1", "2026-07-05T06:45:18Z", "", "", True, CORRELATION, None)
+
+    assert "| Depth |" in md
+    assert "2 (fork)" in md
+    # A subagent with no spawnDepth in its meta sidecar renders as unknown,
+    # not as a silently-wrong 0 or 1.
+    assert "| `shallow` |" in md
+    shallow_row = next(line for line in md.splitlines() if "`shallow`" in line)
+    assert shallow_row.split("|")[4].strip() == "?"
+
+
+def test_full_markdown_heading_level_follows_spawn_depth() -> None:
+    session = NormalizedSession(
+        session_id="s2",
+        source_file=Path("s2.jsonl"),
+        subagents=[
+            SubagentTranscript(agent_id="a", source_file=Path("agent-a.jsonl"), spawn_depth=1),
+            SubagentTranscript(agent_id="b", source_file=Path("agent-b.jsonl"), spawn_depth=3),
+        ],
+    )
+    full_md = render_to_full_markdown(session, "s2", "", "", "", True, CORRELATION, None)
+
+    assert "### 🧵 Subagent 1: a" in full_md
+    assert "##### 🧵 Subagent 2: b" in full_md
+
+
+def test_reasoning_not_recoverable_is_marked_not_silently_omitted() -> None:
+    session = NormalizedSession(
+        session_id="s3",
+        source_file=Path("s3.jsonl"),
+        events=[
+            NormalizedEvent(
+                event_id="e1",
+                timestamp="2026-07-05T06:45:00Z",
+                source="model",
+                type="message",
+                content="answer",
+                thinking=None,
+                thinking_opaque=True,
+            )
+        ],
+    )
+    full_md = render_to_full_markdown(session, "s3", "", "", "", True, CORRELATION, None)
+
+    assert "not recoverable" in full_md
+    assert "signature only" in full_md
+
+
+def test_trunk_marks_where_a_subagent_was_spawned_and_where_it_returned() -> None:
+    """The interleaving fix: a cold reader following the trunk hits an explicit
+    pointer at the spawning tool call, and another at the matching tool_output,
+    instead of having to jump to a separate section and correlate IDs by hand."""
+    subagent = SubagentTranscript(
+        agent_id="child1",
+        source_file=Path("agent-child1.jsonl"),
+        agent_type="rbg",
+        parent_tool_use_id="toolu_spawn_1",
+        events=[
+            NormalizedEvent(
+                event_id="c1",
+                timestamp="2026-07-05T06:46:00Z",
+                source="model",
+                type="message",
+                content="child did the work",
+            )
+        ],
+    )
+    session = NormalizedSession(
+        session_id="s4",
+        source_file=Path("s4.jsonl"),
+        subagents=[subagent],
+        events=[
+            NormalizedEvent(
+                event_id="p1",
+                timestamp="2026-07-05T06:45:00Z",
+                source="model",
+                type="message",
+                content="delegating",
+                tool_calls=[
+                    NormalizedToolCall(
+                        name="Agent", args={"description": "audit"}, call_id="toolu_spawn_1"
+                    )
+                ],
+            ),
+            NormalizedEvent(
+                event_id="p2",
+                timestamp="2026-07-05T06:47:00Z",
+                source="tool",
+                type="tool_output",
+                content="child's result",
+                meta={"tool_use_id": "toolu_spawn_1"},
+            ),
+        ],
+    )
+    full_md = render_to_full_markdown(session, "s4", "", "", "", True, CORRELATION, None)
+
+    spawn_marker = "spawned Subagent 1: `rbg`"
+    return_marker = "Subagent 1: `rbg` returned here"
+    assert spawn_marker in full_md
+    assert return_marker in full_md
+    # The pointer must appear between the spawning call and the trunk's next
+    # event, not merely somewhere in the document.
+    assert (
+        full_md.index(spawn_marker) < full_md.index("child's result") < full_md.index(return_marker)
+    )

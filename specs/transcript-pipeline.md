@@ -52,7 +52,112 @@ Layer B consumes typed `NormalizedSession` objects exclusively and enforces the 
 
 ---
 
-## 3. Output Formats
+## 3. On-Disk Trace Convention
+
+This is the raw layout Layer A ingests — Claude Code's own on-disk format,
+undocumented upstream, reverse-engineered and verified live against a running
+session (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, confirmed set — see
+precondition below) rather than inferred from source. `find_subagent_files`
+and the adapters in `lib/py/transcripts/adapters/` are the code that reads
+this layout.
+
+### Layout
+
+```
+~/.claude/projects/<project-slug>/
+    <session-uuid>.jsonl                          # trunk
+    <session-uuid>/
+        subagents/
+            agent-<agent-id>.jsonl                 # one subagent's conversation
+            agent-<agent-id>.meta.json              # its sidecar
+        tool-results/
+            <token>.txt                             # large tool output, spilled
+```
+
+Every subagent of a session — regardless of true nesting depth — lands in the
+_same_ flat `subagents/` directory next to the trunk. Nesting is expressed in
+the metadata, never in directory structure: there is no `subagents/subagents/`
+for a grandchild.
+
+**Precondition.** The `subagents/` layout requires
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in the harness's own environment.
+Without it, subagent conversations are not written to durable per-agent files
+at all.
+
+### The meta sidecar
+
+`agent-<id>.meta.json` is a flat JSON object. Fields observed live:
+`agentType`, `description`, `toolUseId`, `parentAgentId`, `spawnDepth`,
+`model`, `isFork`. None are guaranteed present — a sidecar with only
+`agentType` and `toolUseId` is normal for a minimal spawn.
+
+- **`isFork`** (`bool`) — true when the agent was spawned as a fork (inherits
+  the parent's full conversation context) rather than a fresh subagent.
+- **`spawnDepth`** (`int`) — a rendering hint, not authoritative tree
+  structure. **Not reliably parent+1 for a team-mode spawn** — a named/mailbox
+  agent (reached via the `name` parameter on the `Agent` tool, or
+  `SendMessage`/`TeamCreate`) can report a `spawnDepth` that does not follow
+  from its own parent's depth. `parentAgentId` is the field that stays correct
+  in that case; a consumer that needs real tree structure walks
+  `parentAgentId`, not `spawnDepth`.
+
+### Linkage
+
+A child's `meta.toolUseId` matches the `id` of the `Agent` (or `Task`)
+`tool_use` block in the **parent's** transcript that spawned it. The parent's
+corresponding `tool_result` block carries an `agentId` matching the child's
+filename (`agent-<agent-id>.jsonl`). Together these let a reader — or the
+renderer — place a subagent's entire conversation at the exact point in the
+parent's flow where it was spawned, and mark where its result returned.
+
+### Ordering
+
+Order events within one file by the `uuid`/`parentUuid` chain, not by
+timestamp: timestamps are **not monotonic** — ~5% of entries have been
+observed out of order in a real session. A jsonl written by normal
+sequential append (the common case) happens to already be in chain order, so
+trusting append order works today; a file assembled by merging or
+concatenating separately-written logs would not be, and needs the explicit
+chain walk to render correctly.
+
+### Large tool outputs
+
+A tool result too large to keep inline is spilled to
+`<session-uuid>/tool-results/<token>.txt`, with an inline pointer left in the
+jsonl in its place. The durable content lives in the spilled file, not the
+pointer.
+
+### What is not recoverable
+
+Extended-thinking content is never recoverable from the trunk or a sidechain
+log. A `thinking`-type content block always carries an opaque `signature`
+field, but its `thinking` text comes back empty — the model turn reasoned,
+and that reasoning cannot be shown, which is a materially different fact from
+"this turn did not think." A reader (or a renderer) that treats an empty
+`thinking` field the same as an absent one is asserting something false.
+
+### Transient vs. durable copies
+
+An `Agent` tool's `tool_result` block also references a path under
+`/tmp/.../tasks/<task-id>.output` — this is transient, tied to the live
+process, and gone once it is cleaned up. The durable copy of that
+conversation is the `subagents/agent-<id>.jsonl` file described above; a
+consumer that needs the record after the fact reads that, never the `/tmp`
+path.
+
+### Corroborating evidence: the polecat hook-fire log
+
+Inside a polecat container only (gated on `AOPS_HOOK_LOG_PATH` being set;
+absent, `lib/hooks/dispatch.py`'s `_log_fire` returns immediately and writes
+nothing), every hook fire is appended as one JSON line with exactly five
+fields: `ts`, `client`, `event`, `session_id`, `tool`. It carries no
+subagent-tree information of its own — it is not a substitute for the
+`subagents/` layout above — but every line's `session_id` aligns with the
+on-disk trace, so it can corroborate that a given tool call actually fired at
+the time the transcript claims, from a source the transcript pipeline never
+touches.
+
+## 4. Output Formats
 
 Every processed session produces three outputs in the sessions repository under the `transcripts/YYYY-MM/` directory:
 
@@ -68,7 +173,7 @@ A session's subagent conversations dwarf its main thread — the largest session
 
 ---
 
-## 4. Maintenance & Testing Strategy
+## 5. Maintenance & Testing Strategy
 
 - **Committed Fixture Corpus:** Real, anonymized session transcripts representing common Claude and agy sessions are committed under `tests/transcripts/fixtures/`, including a subagent sidechain log and its metadata sidecar so tests can stage a real multi-agent session layout on disk.
 - **Contract & Snapshot Tests:** Run against the committed fixtures to assert that both adapters map events correctly and that rendered output matches stable snapshots. Upstream changes in the unpinned `claude-code-log` library trigger diffable CI failures rather than silent production regressions.

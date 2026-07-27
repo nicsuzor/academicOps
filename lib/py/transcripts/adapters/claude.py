@@ -294,12 +294,22 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
             content_parts = []
             thinking_parts = []
             tool_calls = []
+            thinking_opaque = False
             if entry.message and entry.message.content:
                 for block in entry.message.content:
                     if block.type == "text" and hasattr(block, "text") and block.text:
                         content_parts.append(block.text)
-                    elif block.type == "thinking" and hasattr(block, "thinking") and block.thinking:
-                        thinking_parts.append(block.thinking)
+                    elif block.type == "thinking":
+                        # A thinking block always carries a `signature`; its
+                        # `thinking` text is only sometimes recoverable. An
+                        # empty/missing one is not "no thinking happened" —
+                        # it is "this model turn thought, but that reasoning
+                        # is opaque." Surface the distinction rather than
+                        # silently rendering as if there were no block at all.
+                        if getattr(block, "thinking", None):
+                            thinking_parts.append(block.thinking)
+                        else:
+                            thinking_opaque = True
                     elif block.type == "tool_use":
                         tool_calls.append(
                             NormalizedToolCall(
@@ -318,6 +328,7 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
                     type="message",
                     content=content,
                     thinking=thinking,
+                    thinking_opaque=thinking_opaque and not thinking,
                     tool_calls=tool_calls if tool_calls else None,
                     meta={"cwd": entry.cwd},
                 )
@@ -479,6 +490,7 @@ def _build_subagent(
     meta = _read_subagent_meta(source_file)
     tokens_used, cost_usd = _accumulate_usage(entries)
     tool_use_id = meta.get("toolUseId")
+    spawn_depth = meta.get("spawnDepth")
     return SubagentTranscript(
         agent_id=agent_id,
         source_file=source_file,
@@ -490,6 +502,8 @@ def _build_subagent(
         parent_agent_id=meta.get("parentAgentId"),
         tokens_used=tokens_used,
         cost_usd=cost_usd,
+        spawn_depth=spawn_depth if isinstance(spawn_depth, int) else None,
+        is_fork=bool(meta.get("isFork", False)),
     )
 
 
