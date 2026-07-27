@@ -34,18 +34,24 @@ Choose a surface and a cadence per task. Cadence is a routing detail; the review
 - **Agent team** — parallel work you supervise to a single reconciled result.
 - **Polecat container** — substantial autonomous repo work landing a durable artifact. Higher latency; wrong for anything needed now.
 
-**Polecat launch.** The plugin ships the CLI at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. Launch it detached under `tmux` so the session survives your turn:
+**Polecat launch.** The plugin ships the CLI at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. A container emits no completion signal of its own, and a detached session's report reaches nobody. Dispatch every container inside a plain background subagent — the courier — which runs the CLI in the foreground, waits for the container to exit, and returns the harvested result as its own final message. That final message is what the harness delivers back to you.
 
 ```bash
-tmux new-session -d -s "pc-<task-id>" \
-  "python3 \"${CLAUDE_PLUGIN_ROOT}/polecat/cli.py\" run agy -p <project> -t <task-id>"
+python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy -p <project> -t <task-id>
 ```
+
+The courier's brief must require it to:
+
+- run that command in the foreground — never detached, never under `tmux`, and never spawning subagents of its own;
+- take the exit code directly rather than through a pipe, because `cmd | tail` reports the pipe's status and will report success over a container that aborted;
+- read the return contract off the task and quote it, rather than summarising its own shell output;
+- carry the entire result in its final message, because nothing it says earlier reaches you.
+
+Spawn couriers plainly. A named or teammate-mode spawn returns an idle signal and strands the report where no one reads it.
 
 - `-t <task-id>` seeds `/pull <task-id>` as the container's initial prompt and runs headless, so the worker executes the task and exits. Never add an interactive prompt flag to an autonomous dispatch — that leaves a live container idling at a ready prompt forever, which looks like progress and finishes nothing.
 - `-p <project>` is that task's own target repo. Check the task, not the epic — they differ.
-- Every path, image, and endpoint polecat needs comes from the environment. If one is missing it fails loudly; supply nothing yourself.
-
-Confirm the session came up and is executing before you treat it as dispatched.
+- Every path, image, endpoint, and the committing git identity comes from the environment. If one is missing polecat fails loudly; supply nothing yourself.
 
 ## 4. Verify by side-effect
 
@@ -55,7 +61,9 @@ Quality assurance inside the unit is the worker's business, and independent revi
 
 ## 5. Watch for exits, do not poll
 
-Wait on worker exit through a background-task notification or a monitor on the launch session — never a sleep loop. When one exits: verify its side-effect, re-read the graph for whatever that unblocked, dispatch that. Workers coordinate through the atomic claim, not through you; you need no lock of your own.
+The courier's completion notification is the signal. Wait on it — never a sleep loop, and never a poll against the container. When one lands: verify its side-effect, re-read the graph for whatever that unblocked, dispatch that. Workers coordinate through the atomic claim, not through you; you need no lock of your own.
+
+A courier that returns an acknowledgement instead of a result has failed its brief, whatever the container did. Send it back.
 
 ## 6. React to what comes back
 
