@@ -34,6 +34,9 @@ RUN_MCP = REPO_ROOT / "plugins" / "pkb" / "scripts" / "run-mcp.sh"
 BASH_BIN = shutil.which("bash") or "/bin/bash"
 
 PKB_CONTEXT_TEXT = (PKB_HOOKS / "messages" / "pkb-context.md").read_text().strip()
+# The second reader's copy: one line for the person watching the session,
+# shipped beside the agent's text (lib/hooks/messages.py).
+PKB_CONTEXT_USER_TEXT = (PKB_HOOKS / "messages" / "pkb-context.user.md").read_text().strip()
 
 _RUN_HANDLER = """
 import importlib.util, json, sys
@@ -138,12 +141,18 @@ def test_search_the_pkb_returns_an_advisory_never_a_refusal():
     assert res["inject_text"]
 
 
-def test_search_the_pkb_carries_no_user_text():
-    """`warn()` is called with the message only (plugins/pkb/hooks/handlers.py)
-    — nothing is shown in the person's terminal for this hook, only in the
-    agent's context."""
+def test_search_the_pkb_carries_the_user_line_as_well_as_the_agent_text():
+    """Both readers, every time. The handler loads the message as a pair
+    (`messages.load_pair`), so the person watching gets the one-line version
+    from `messages/pkb-context.user.md` alongside the agent's full text. This
+    hook fires on every prompt: a silent one would make the framework's most
+    frequent injection its least visible."""
+    assert PKB_CONTEXT_USER_TEXT, "pkb-context.user.md ships empty, which reads as absent"
     res = _run("search_the_pkb", {"hook_event_name": "UserPromptSubmit"})
-    assert res["user_text"] is None
+    assert res["user_text"] == PKB_CONTEXT_USER_TEXT
+    # Not the agent's text over again: the two readers need different lengths,
+    # which is the whole reason the pair exists.
+    assert res["user_text"] != res["inject_text"]
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +199,24 @@ def test_dispatch_claude_userpromptsubmit_uses_additional_context_never_a_permis
     assert "permissionDecision" not in out.get("hookSpecificOutput", {})
     assert "decision" not in out
     assert out["hookSpecificOutput"]["additionalContext"]
+
+
+def test_dispatch_claude_puts_the_user_line_on_system_message(tmp_path):
+    """The handler holding a user line proves nothing on its own — the line has
+    to survive rendering. Claude Code is the client with a channel for each
+    reader (lib/hooks/clients.py, `_render_claude`), and `systemMessage` is
+    where the person's copy lands."""
+    hooks_dir = _pkb_plugin(tmp_path)
+    result = _dispatch(
+        hooks_dir,
+        "claude",
+        "UserPromptSubmit",
+        {"hook_event_name": "UserPromptSubmit", "session_id": "s-user-line"},
+    )
+    assert result.returncode == 0
+    out = json.loads(result.stdout)
+    assert out["systemMessage"] == PKB_CONTEXT_USER_TEXT
+    assert out["hookSpecificOutput"]["additionalContext"] == PKB_CONTEXT_TEXT
 
 
 def test_dispatch_agy_preinvocation_alias_also_fires(tmp_path):

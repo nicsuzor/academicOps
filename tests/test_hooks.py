@@ -348,6 +348,130 @@ def test_no_shipped_user_line_lacks_the_agent_message_it_belongs_to():
     assert orphans == [], f"user-facing lines with no agent message beside them: {orphans}"
 
 
+# --- the other direction: every message owes the person a line ---------------
+#
+# The two guards above catch a user line that cannot be delivered. This one
+# catches the opposite and more common omission: a message written for the
+# agent and never given a second reader. Nothing about that failure is visible
+# — the hook fires, the agent acts on text the person never saw, and the
+# session looks to them as though nothing happened. So a new message cannot
+# ship user-blind by inattention; it can only ship that way by being added to
+# the exemption list below, with a reason, deliberately.
+
+
+# Every directory whose `messages/` reaches a session: the plugins that hook,
+# plus the shared runtime's own, which build stage 1 copies into all of them.
+def _message_dirs() -> list[Path]:
+    return [*_hooking_plugins(), _LIB_HOOKS]
+
+
+# Message names that ship with no `.user.md`, and why. An entry is a claim
+# about the emitter, not a licence: the exemption test below re-checks each
+# claim against the source, so an exemption that stops being true fails here
+# rather than quietly covering a message that now has a reader to serve.
+_NO_USER_COUNTERPART: dict[str, str] = {
+    # Injected only by cope's `inject_ruleset`, declared `@only_on("agy")`.
+    # agy has no user-facing channel at all — every response step it defines
+    # speaks to the agent, so `_render_agy` drops `user_text` rather than
+    # misdirect it (lib/hooks/clients.py). A line written here could not be
+    # delivered to anyone.
+    "cope: ruleset": "agy-only injection; agy has no user channel",
+    # Not injected into a session in either direction. This is the classifier
+    # instruction cope sends to the evaluator model over HTTP
+    # (plugins/cope/hooks/evaluator.py), so its reader is that model — there is
+    # no person watching a request, and no agent receiving it.
+    "cope: classifier-prompt": "evaluator request payload, never injected into a session",
+}
+
+
+def _shipped_messages() -> list[tuple[str, Path, str]]:
+    """``("<owner>: <name>", hooks dir, name)`` for every message that ships."""
+    return [
+        (f"{hooks.parent.name}: {agent_file.stem}", hooks, agent_file.stem)
+        for hooks in _message_dirs()
+        for agent_file in sorted((hooks / "messages").glob("*.md"))
+        if not agent_file.name.endswith(".user.md")
+    ]
+
+
+def test_every_shipped_message_is_discovered():
+    """The guard below is a loop over message files; an empty loop passes."""
+    found = _shipped_messages()
+    assert len(found) >= len(_message_dirs()), f"only {len(found)} messages found across the tree"
+
+
+def test_every_shipped_message_carries_a_line_for_the_person_watching():
+    blind = [
+        label
+        for label, hooks, name in _shipped_messages()
+        if label not in _NO_USER_COUNTERPART and messages.load_user(hooks, name) is None
+    ]
+    assert blind == [], (
+        "these messages reach a session with nothing for the person whose session it "
+        "is — they see no sign the hook fired. Write the one-line version beside the "
+        "agent's text as <name>.user.md, or, if this message genuinely has no reader "
+        f"to write one for, add it to _NO_USER_COUNTERPART with the reason: {blind}"
+    )
+
+
+_READ_HANDLER_SCOPES = """
+import importlib.util, json, sys
+lib_hooks, plugin_hooks = sys.argv[1:3]
+sys.path.insert(0, plugin_hooks)
+sys.path.insert(0, lib_hooks)
+spec = importlib.util.spec_from_file_location("handlers", plugin_hooks + "/handlers.py")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+scopes = {}
+for handlers in module.HANDLERS.values():
+    for handler in handlers:
+        scope = getattr(handler, "only_on_clients", None)
+        scopes[handler.__name__] = sorted(scope) if scope is not None else None
+print(json.dumps(scopes))
+"""
+
+
+def _handler_client_scopes(hooks: Path) -> dict:
+    """Each registered handler's declared client scope, read from the real
+    module. A subprocess, so the plugin's own imports (cope's `evaluator`,
+    `rules`) never land on this process's `sys.path`."""
+    proc = subprocess.run(
+        [sys.executable, "-c", _READ_HANDLER_SCOPES, str(_LIB_HOOKS), str(hooks)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return json.loads(proc.stdout)
+
+
+def test_the_no_user_channel_exemptions_are_still_true():
+    """Both exemptions rest on a fact about the emitter, and both facts are
+    checked here rather than trusted from the comment beside them."""
+    cope_hooks = _PLUGINS_ROOT / "cope" / "hooks"
+
+    # `ruleset`: the decorator is what makes it undeliverable, so read the
+    # attribute `@only_on` sets on the real handler. Drop the decorator and
+    # this message reaches Claude Code, where a line for the person exists.
+    assert _handler_client_scopes(cope_hooks)["inject_ruleset"] == ["agy"]
+    assert clients.render("agy", "UserPromptSubmit", warn("agent text", "user line")) == {
+        "injectSteps": [{"ephemeralMessage": "agent text"}]
+    }
+
+    # `classifier-prompt`: no handler names it, because nothing injects it.
+    # The moment one does, it is a session message like any other.
+    assert "classifier-prompt" not in (cope_hooks / "handlers.py").read_text()
+    assert "classifier-prompt" in (cope_hooks / "evaluator.py").read_text()
+
+
+def test_no_exemption_outlives_the_message_it_names():
+    """An exemption for a message that no longer ships is dead weight that
+    would silently cover a future message of the same name."""
+    shipped = {label for label, _, _ in _shipped_messages()}
+    stale = sorted(set(_NO_USER_COUNTERPART) - shipped)
+    assert stale == [], f"_NO_USER_COUNTERPART names messages that do not ship: {stale}"
+
+
 # ---------------------------------------------------------------------------
 # telemetry.py: reports only, never sets/defaults
 # ---------------------------------------------------------------------------
