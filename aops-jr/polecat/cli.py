@@ -427,18 +427,32 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         if pkb_url:
             env["PKB_MCP_URL"] = pkb_url
 
-        # Surface (not silently swallow) a missing/misconfigured git_identity:
+        # Halt (not silently swallow) a missing/misconfigured git_identity.
         # entrypoint.sh's aops-bot default is only supposed to be a true
-        # last-resort fallback (aops_29ebef95), not a silently-accepted
-        # standing behavior.
+        # last-resort fallback (aops_29ebef95) — the standing bug this task
+        # fixes was exactly this: nothing upstream forwarded the real
+        # identity, so the "fallback" was the unconditional behavior of
+        # every dispatch. A stderr warning that still launches the
+        # container reproduces the same silent-fallback pattern with extra
+        # logging attached. The halt-on-failure axiom requires refusing to
+        # launch when a required credential/config is missing or
+        # misconfigured, not warning and continuing under the wrong
+        # identity — so this must be a hard stop: non-zero exit, no
+        # container launch, no fall-through.
         if "GIT_AUTHOR_NAME" not in env or "GIT_AUTHOR_EMAIL" not in env:
             click.echo(
-                "Warning: polecat.yaml has no `git_identity: {name, email}` "
-                "configured — the container will fall back to entrypoint.sh's "
-                "aops-bot default identity instead of the required bot "
-                "identity. Add `git_identity:` to polecat.yaml to fix.",
+                "Error: polecat.yaml has no valid `git_identity: {name, "
+                "email}` configured. Every polecat container dispatch "
+                "(`run` and `crew`) must forward a real git commit-author "
+                "identity — refusing to launch rather than silently "
+                "falling back to entrypoint.sh's `aops-bot` default "
+                "(aops_29ebef95: that fallback used to be the unconditional "
+                "standing behavior precisely because nothing halted here). "
+                "Add `git_identity: {name: ..., email: ...}` to "
+                "polecat.yaml to fix.",
                 err=True,
             )
+            sys.exit(1)
 
         # Determine internal CLI tool & args
         docker_args = []

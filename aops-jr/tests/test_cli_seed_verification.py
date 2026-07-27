@@ -89,9 +89,23 @@ def test_seed_confirmed_checks_agy_cli_log_as_secondary_fallback(tmp_path):
 def _base_mocks(monkeypatch, tmp_path):
     """Patch out everything docker/filesystem-heavy so `run()` is exercised
     as a pure control-flow unit. Each test installs its own `subprocess.run`
-    and `_seed_confirmed` fakes afterwards."""
+    and `_seed_confirmed` fakes afterwards.
+
+    `load_config` returns a valid `git_identity` here — this file tests the
+    agy seed-verification path, unrelated to git identity, so it must not be
+    blocked by the missing-`git_identity` halt added for aops_29ebef95 (see
+    test_git_identity_forwarding.py for that halt's own regression tests)."""
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
-    monkeypatch.setattr(cli, "load_config", lambda: {})
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {
+                "name": "botnicbot",
+                "email": "botnicbot@users.noreply.github.com",
+            }
+        },
+    )
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
     monkeypatch.setattr(cli, "setup_staging", lambda staging_dir, pkb_url: None)
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
