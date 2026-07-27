@@ -364,10 +364,25 @@ def test_telemetry_report_configured_and_enabled(monkeypatch):
     for var in telemetry.CONTRACT:
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("CLAUDE_CODE_ENABLE_TELEMETRY", "1")
-    monkeypatch.setenv("OTEL_TRACES_EXPORTER", "otlp")
+    monkeypatch.setenv("CLAUDE_CODE_ENHANCED_TELEMETRY_BETA", "1")
     report = telemetry.report()
     assert "enabled" in report
-    assert "2/" in report
+    assert "2/2" in report
+
+
+def test_telemetry_report_counts_enablement_vars_not_the_full_contract(monkeypatch):
+    """A SessionStart hook subprocess never sees the 13 OTEL_* export-config
+    vars (confirmed empirically — see telemetry.py, EXPORT_VARS). Setting only
+    those must not move the report's numerator or denominator: doing so would
+    resurrect the "N/15" over-report this split exists to fix."""
+    for var in telemetry.CONTRACT:
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_ENABLE_TELEMETRY", "1")
+    for var in telemetry.EXPORT_VARS:
+        monkeypatch.setenv(var, "otlp")
+    report = telemetry.report()
+    assert "1/2" in report
+    assert "15" not in report
 
 
 def test_telemetry_report_never_mutates_environment(monkeypatch):

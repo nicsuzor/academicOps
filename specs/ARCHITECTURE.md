@@ -172,13 +172,25 @@ The framework defines the env contract and forwards it — into polecat containe
 into Docker, into scheduled runs. It sets no values. `aops`'s `SessionStart` hook
 reports whether telemetry is configured and stays silent about what it should be.
 
-Contract: `CLAUDE_CODE_ENABLE_TELEMETRY`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA`,
-`OTEL_METRICS_EXPORTER`, `OTEL_LOGS_EXPORTER`, `OTEL_TRACES_EXPORTER`,
-`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`,
-`OTEL_RESOURCE_ATTRIBUTES`, `OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_RAW_API_BODIES`,
-`OTEL_LOG_TOOL_DETAILS`, `OTEL_LOG_ASSISTANT_RESPONSES`,
-`OTEL_METRIC_EXPORT_INTERVAL`, `OTEL_LOGS_EXPORT_INTERVAL`,
-`OTEL_TRACES_EXPORT_INTERVAL`.
+Contract (`lib/hooks/telemetry.py` `CONTRACT`): `CLAUDE_CODE_ENABLE_TELEMETRY`,
+`CLAUDE_CODE_ENHANCED_TELEMETRY_BETA`, `OTEL_METRICS_EXPORTER`,
+`OTEL_LOGS_EXPORTER`, `OTEL_TRACES_EXPORTER`, `OTEL_EXPORTER_OTLP_ENDPOINT`,
+`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_RESOURCE_ATTRIBUTES`,
+`OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_RAW_API_BODIES`, `OTEL_LOG_TOOL_DETAILS`,
+`OTEL_LOG_ASSISTANT_RESPONSES`, `OTEL_METRIC_EXPORT_INTERVAL`,
+`OTEL_LOGS_EXPORT_INTERVAL`, `OTEL_TRACES_EXPORT_INTERVAL`.
+
+A `SessionStart` hook subprocess cannot observe all 15: confirmed empirically,
+setting every `OTEL_*` var at session-launch time still leaves a live hook
+reading none of them, while the same session's tool calls see them fine (a
+separate, settings-managed environment, not the hook's). Only the two
+`CLAUDE_CODE_*` feature flags reliably reach a hook subprocess. The
+`SessionStart` report therefore counts against those two
+(`telemetry.ENABLEMENT_VARS`), not the full 15 — counting the unreachable
+`OTEL_*` half would report a gap that correct configuration could never
+close. The full 15-var contract still governs what
+`plugins/aops/polecat/env_contract.py` forwards into containers and CI, where
+no such hook-subprocess restriction applies.
 
 ## Build
 
