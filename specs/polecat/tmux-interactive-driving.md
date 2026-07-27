@@ -118,13 +118,12 @@ unset. This directory is designed to contain:
 - **The agent's own raw session transcript** — for `claude`/`shell`/`sleep`,
   this path _is_ Claude Code's own `-<slugified-cwd>` session-state
   directory for `cwd=/workspace` (`/home/worker/.claude/projects/-workspace`),
-  so its native `<session-uuid>.jsonl` lands here directly. For `agy`, the
-  mount target is `/home/worker/.gemini/tmp/workspace` on the assumption
-  Antigravity CLI writes its live session state there — treat that as the
-  design intent, not a guarantee; confirm the file actually exists for your
-  build before relying on it, and if it doesn't, that's a defect to report
-  against polecat's transcript-capture path, not a reason to abandon the
-  pattern.
+  so its native `<session-uuid>.jsonl` lands here directly. For `agy`, it is
+  `agy-brain/<uuid>/.system_generated/logs/transcript.jsonl`: `run()` mounts
+  `$SESSDIR/agy-brain` to `/home/worker/.gemini/antigravity-cli/brain`, and
+  `_seed_confirmed()` (`plugins/aops/polecat/cli.py`) reads the transcript
+  back from exactly that host path as its primary evidence a seeded task was
+  actually seen.
 
 Read the raw transcript directly (`jq`, `grep`, `less`) — there is currently
 no transcript-to-markdown conversion tool in this repo.
