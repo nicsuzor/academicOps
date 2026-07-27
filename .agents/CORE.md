@@ -43,7 +43,7 @@ make build          # assemble dist/ for every plugin, both clients
 make install-dev    # build, then install dist/ as the local 'aops' marketplace
 make uninstall-dev  # restore the released marketplace
 make test           # uv run pytest tests/
-make lint           # ruff check
+make lint           # ruff check + documented-reference check + basedpyright
 make format         # ruff format + dprint fmt
 ```
 

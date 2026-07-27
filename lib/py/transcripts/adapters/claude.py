@@ -406,10 +406,13 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
     those as trunk events overstates both the conversation and its cost;
     `load_claude_session` is what turns them into `subagents`.
     """
+    # Every entry model carries `sessionId`, but a summary record types it as
+    # None, so bind it before testing to keep the narrowing.
     session_id = "unknown"
     for entry in transcript.entries:
-        if getattr(entry, "sessionId", None):
-            session_id = entry.sessionId
+        entry_session_id = entry.sessionId
+        if entry_session_id:
+            session_id = entry_session_id
             break
 
     trunk_entries = [entry for entry in transcript.entries if not _is_sidechain_entry(entry)]

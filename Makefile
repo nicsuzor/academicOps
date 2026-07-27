@@ -20,7 +20,7 @@ help:
 	@echo "make uninstall-dev  - remove the local marketplace, restore the released one"
 	@echo "make install        - install the released plugins from the dist branch"
 	@echo "make test           - run the pytest suite"
-	@echo "make lint           - ruff check + documented-reference check"
+	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
 	@echo "make clean          - remove dist/"
 	@echo "make docker         - build the crew worker image"
@@ -82,9 +82,13 @@ clean:
 test:
 	@uv run pytest tests/
 
+# Mirrors the Lint and Type Check workflows. basedpyright is invoked exactly as
+# .github/workflows/typecheck.yml invokes it, and is the only local entry point
+# for it — without this line type errors only surface in CI.
 lint:
 	@uv run ruff check .
 	@uv run python scripts/check_refs.py
+	@uv run basedpyright
 
 format:
 	@uv run ruff format .
