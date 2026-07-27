@@ -5,7 +5,9 @@
 # Install: copy this file to $ACA_DATA/.github/workflows/pkb-quality-review.yml
 #
 # CUSTOMIZE: Set these repository variables in your brain repo's Settings → Variables:
-#   AOPS_REPO — your academicOps fork/install (e.g., "yourname/academicOps")
+#   AOPS_REPO         — your academicOps fork/install (e.g., "yourname/academicOps")
+#   OTEL_* (optional) — the OpenTelemetry contract in specs/ARCHITECTURE.md,
+#                        Observability. Unset vars are omitted, not defaulted.
 
 name: PKB Quality Review
 
@@ -44,10 +46,50 @@ jobs:
           path: _aops
           token: ${{ secrets.AOPS_DIST_PAT }}
 
+      - name: Configure OpenTelemetry env
+        # Forwards the OTel env contract (specs/ARCHITECTURE.md, Observability)
+        # into the Claude Code session below via claude-code-action's
+        # settings.env mechanism. Forwards only: a contract var absent from
+        # this repo's Settings > Variables is omitted, never defaulted.
+        env:
+          CLAUDE_CODE_ENABLE_TELEMETRY: ${{ vars.CLAUDE_CODE_ENABLE_TELEMETRY }}
+          OTEL_METRICS_EXPORTER: ${{ vars.OTEL_METRICS_EXPORTER }}
+          OTEL_LOGS_EXPORTER: ${{ vars.OTEL_LOGS_EXPORTER }}
+          OTEL_TRACES_EXPORTER: ${{ vars.OTEL_TRACES_EXPORTER }}
+          OTEL_EXPORTER_OTLP_ENDPOINT: ${{ vars.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          OTEL_EXPORTER_OTLP_PROTOCOL: ${{ vars.OTEL_EXPORTER_OTLP_PROTOCOL }}
+          OTEL_RESOURCE_ATTRIBUTES: ${{ vars.OTEL_RESOURCE_ATTRIBUTES }}
+          OTEL_LOG_USER_PROMPTS: ${{ vars.OTEL_LOG_USER_PROMPTS }}
+          OTEL_LOG_RAW_API_BODIES: ${{ vars.OTEL_LOG_RAW_API_BODIES }}
+          OTEL_LOG_TOOL_DETAILS: ${{ vars.OTEL_LOG_TOOL_DETAILS }}
+          OTEL_LOG_ASSISTANT_RESPONSES: ${{ vars.OTEL_LOG_ASSISTANT_RESPONSES }}
+          OTEL_METRIC_EXPORT_INTERVAL: ${{ vars.OTEL_METRIC_EXPORT_INTERVAL }}
+          OTEL_LOGS_EXPORT_INTERVAL: ${{ vars.OTEL_LOGS_EXPORT_INTERVAL }}
+          OTEL_TRACES_EXPORT_INTERVAL: ${{ vars.OTEL_TRACES_EXPORT_INTERVAL }}
+        run: |
+          jq -n \
+            --arg CLAUDE_CODE_ENABLE_TELEMETRY "$CLAUDE_CODE_ENABLE_TELEMETRY" \
+            --arg OTEL_METRICS_EXPORTER "$OTEL_METRICS_EXPORTER" \
+            --arg OTEL_LOGS_EXPORTER "$OTEL_LOGS_EXPORTER" \
+            --arg OTEL_TRACES_EXPORTER "$OTEL_TRACES_EXPORTER" \
+            --arg OTEL_EXPORTER_OTLP_ENDPOINT "$OTEL_EXPORTER_OTLP_ENDPOINT" \
+            --arg OTEL_EXPORTER_OTLP_PROTOCOL "$OTEL_EXPORTER_OTLP_PROTOCOL" \
+            --arg OTEL_RESOURCE_ATTRIBUTES "$OTEL_RESOURCE_ATTRIBUTES" \
+            --arg OTEL_LOG_USER_PROMPTS "$OTEL_LOG_USER_PROMPTS" \
+            --arg OTEL_LOG_RAW_API_BODIES "$OTEL_LOG_RAW_API_BODIES" \
+            --arg OTEL_LOG_TOOL_DETAILS "$OTEL_LOG_TOOL_DETAILS" \
+            --arg OTEL_LOG_ASSISTANT_RESPONSES "$OTEL_LOG_ASSISTANT_RESPONSES" \
+            --arg OTEL_METRIC_EXPORT_INTERVAL "$OTEL_METRIC_EXPORT_INTERVAL" \
+            --arg OTEL_LOGS_EXPORT_INTERVAL "$OTEL_LOGS_EXPORT_INTERVAL" \
+            --arg OTEL_TRACES_EXPORT_INTERVAL "$OTEL_TRACES_EXPORT_INTERVAL" \
+            '{env: ($ARGS.named | with_entries(select(.value != "")))}' \
+            > "${RUNNER_TEMP}/otel-settings.json"
+
       - name: Run quality review agent
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          settings: ${{ runner.temp }}/otel-settings.json
           prompt: |
             You are the PKB Quality Review agent. Your job is to assess the quality
             of knowledge notes in this personal knowledge base QUALITATIVELY — by
