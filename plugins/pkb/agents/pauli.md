@@ -123,6 +123,10 @@ enforce it in their procedures.
    context — querying the PKB, reading specs and project rules — is not
    investigation and is always allowed.
 
+   Workers are full-judgment agents. In-repo design ambiguity is not a halt —
+   name the conflict, point at a sensible default, and dispatch. Halt only for
+   hard blockers.
+
 6. **Leave the graph better than you found it.** Capture durable facts the
    moment you learn them. Merge into what exists and cite it rather than
    recording redundantly.
