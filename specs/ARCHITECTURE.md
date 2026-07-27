@@ -156,6 +156,12 @@ Anything else a session needs is a workflow, not a hook.
 All hooks share one runtime in `lib/hooks/`, injected into each plugin at build
 time. A hook that cannot load its message file fails loudly.
 
+The runtime reports its own degradation on the response, not only on stderr,
+which nothing renders to the person in the session: a handler that raised, a
+rule file that could not be read, an evaluator that did not answer. Once per
+session per kind of fault, never as a permission decision, and never for the
+absence of a mechanism nobody configured.
+
 ## Observability
 
 Claude Code's native OpenTelemetry export is the tracing mechanism. It is

@@ -10,10 +10,12 @@ message-loading contracts a plugin author relies on.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -27,9 +29,23 @@ if str(_LIB_HOOKS) not in sys.path:
 
 import clients  # noqa: E402
 import credentials  # noqa: E402
+import degraded  # noqa: E402
 import messages  # noqa: E402
 import telemetry  # noqa: E402
-from result import merge, refuse, warn  # noqa: E402
+from result import Result, merge, refuse, warn  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _isolate_degradation_state(monkeypatch, tmp_path):
+    """degraded.py holds two pieces of state a test must not inherit: the
+    faults recorded so far (module scope, because one hook invocation is one
+    process) and the once-per-session markers it writes under the OS temp
+    directory, which outlive the run that made them."""
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    degraded.reset()
+    yield
+    degraded.reset()
+
 
 # ---------------------------------------------------------------------------
 # clients.py: event-name normalization
@@ -359,8 +375,6 @@ def test_telemetry_report_never_mutates_environment(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     telemetry.report()
     telemetry.configured_vars()
-    import os
-
     for var in telemetry.CONTRACT:
         assert var not in os.environ
 
@@ -421,24 +435,27 @@ def test_isolate_without_bot_token_skips_git_shim(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def injected_plugin(tmp_path):
-    """A synthetic plugin hooks/ dir: lib/hooks/*.py copied in (as the build
-    does), plus this fixture's caller adds handlers.py / messages/ on top.
+    """A synthetic plugin hooks/ dir: lib/hooks/ copied in (as the build does —
+    the runtime modules AND the messages the runtime itself loads), plus this
+    fixture's caller adds handlers.py / its own messages on top.
     """
     hooks_dir = tmp_path / "hooks"
     hooks_dir.mkdir()
     for py_file in _LIB_HOOKS.glob("*.py"):
         shutil.copy2(py_file, hooks_dir / py_file.name)
+    shutil.copytree(_LIB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
     return hooks_dir
 
 
 def _run_dispatch(
-    hooks_dir: Path, client: str, event: str, raw: dict
+    hooks_dir: Path, client: str, event: str, raw: dict, env: dict | None = None
 ) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(hooks_dir / "dispatch.py"), client, event],
         input=json.dumps(raw),
         capture_output=True,
         text=True,
+        env=env,
     )
 
 
@@ -626,7 +643,7 @@ def test_dispatch_missing_message_file_is_isolated_not_fatal(injected_plugin):
 
 
 def test_dispatch_ctx_message_loads_real_file(injected_plugin):
-    (injected_plugin / "messages").mkdir()
+    (injected_plugin / "messages").mkdir(exist_ok=True)
     (injected_plugin / "messages" / "honesty.md").write_text("Be honest and useful.")
     _write_handlers(
         injected_plugin,
@@ -655,3 +672,274 @@ def test_dispatch_bad_stdin_json_does_not_crash(injected_plugin):
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# degraded.py: the framework's own failures, given a reader
+# ---------------------------------------------------------------------------
+#
+# Every one of these failures used to go to stderr and stop there. Nothing
+# renders a hook's stderr to the person running the session — the client shows
+# them `systemMessage` and nothing else — so a check that stopped working
+# stopped working invisibly. These tests are about the wire, because the wire
+# is the only place a human can read.
+
+
+def test_report_writes_the_log_line_it_always_wrote(capsys):
+    """stderr is not being replaced. It is the log, it is right for the log,
+    and it is the only record that survives the once-per-session gate."""
+    degraded.report("a-kind", "cope: something broke", "OSError(2)")
+    assert capsys.readouterr().err == "cope: something broke: OSError(2)\n"
+
+
+def test_report_with_no_detail_logs_the_message_alone(capsys):
+    degraded.report("a-kind", "cope: something broke")
+    assert capsys.readouterr().err == "cope: something broke\n"
+
+
+def test_the_two_readers_get_different_things(tmp_path):
+    """The person watching needs to know a mechanism they rely on has stopped.
+    The agent needs enough to say what and to work around it. One is a
+    sentence; the other is the sentence plus the reason."""
+    shutil.copytree(_LIB_HOOKS / "messages", tmp_path / "messages")
+    degraded.report("a-kind", "cope: the rule evaluator did not answer", "OSError('refused')")
+
+    result = degraded.attach(None, tmp_path, "session-a")
+
+    assert result is not None
+    assert result.is_refusal is False
+    assert "OSError('refused')" in result.inject_text
+    assert result.user_text is not None
+    assert "the rule evaluator did not answer" in result.user_text
+    assert "OSError('refused')" not in result.user_text
+    assert "\n" not in result.user_text
+
+
+def test_attach_says_nothing_when_nothing_degraded(tmp_path):
+    assert degraded.attach(None, tmp_path, "session-a") is None
+    assert degraded.attach(warn("careful"), tmp_path, "session-a") == warn("careful")
+
+
+def test_attach_never_turns_an_advisory_into_a_refusal(tmp_path):
+    shutil.copytree(_LIB_HOOKS / "messages", tmp_path / "messages")
+    degraded.report("a-kind", "cope: something broke")
+    result = degraded.attach(warn("careful", "heads up"), tmp_path, "session-a")
+    assert result is not None
+    assert result.is_refusal is False
+    assert "careful" in result.inject_text
+    assert result.user_text is not None
+    assert result.user_text.startswith("heads up")
+
+
+def test_attach_leaves_a_refusals_reason_exactly_as_it_was(tmp_path):
+    """The denial reason is the whole contract of a refusal — the agent is
+    being told no, and told why. A framework fault is not part of that reason,
+    so it goes on the user's line instead."""
+    shutil.copytree(_LIB_HOOKS / "messages", tmp_path / "messages")
+    degraded.report("a-kind", "cope: something broke")
+    result = degraded.attach(refuse("nobody is here to answer", "blocked"), tmp_path, "session-a")
+    assert result == Result(
+        "nobody is here to answer",
+        "blocked cope: something broke — nothing was blocked. Reported once per session.",
+        is_refusal=True,
+    )
+
+
+def test_attach_survives_a_missing_message_file(tmp_path):
+    """A notice that broke the hook it was reporting on would be the worst
+    outcome available here."""
+    degraded.report("a-kind", "cope: something broke")
+    assert degraded.attach(warn("careful"), tmp_path, "session-a") == warn("careful")
+
+
+def test_the_degradation_message_pair_ships_with_the_runtime():
+    """lib/hooks/ is injected into every plugin that hooks, messages included —
+    the runtime loads this pair from the plugin's own hooks/messages/."""
+    agent, user = messages.load_pair(_LIB_HOOKS, "degraded")
+    assert "{faults}" in agent
+    assert user is not None
+    assert "{faults}" in user
+    assert "\n" not in user, "the user's line is one line in their terminal"
+
+
+# --- the same, through the real runtime, on the wire -------------------------
+
+# A handler that raises the way a real one does: a bug, a missing message file,
+# an evaluator client that threw. dispatch.py isolates it and exits 0.
+_RAISING_HANDLERS = (
+    "def _evaluate(ctx):\n"
+    "    raise RuntimeError('simulated evaluator failure')\n"
+    "\n"
+    "HANDLERS = {'PreToolUse': [_evaluate]}\n"
+)
+
+_TOOL_CALL = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "session_id": "session-a"}
+
+
+@pytest.fixture()
+def notice_env(tmp_path):
+    """The once-per-session gate is a marker file under the OS temp directory,
+    so a test asserting on a notice has to own that directory rather than
+    inherit markers from another run."""
+    marker_root = tmp_path / "os-tmp"
+    marker_root.mkdir()
+    return {**os.environ, "TMPDIR": str(marker_root)}
+
+
+def test_a_failed_handler_reaches_the_person_watching(injected_plugin, notice_env):
+    _write_handlers(injected_plugin, _RAISING_HANDLERS)
+    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
+
+    assert result.returncode == 0
+    out = json.loads(result.stdout)
+    assert "_evaluate" in out["systemMessage"]
+    assert "did not run" in out["systemMessage"]
+    assert "simulated evaluator failure" in out["hookSpecificOutput"]["additionalContext"]
+    # stderr keeps everything it had, in full
+    assert "_evaluate" in result.stderr
+    assert "simulated evaluator failure" in result.stderr
+
+
+def test_a_degradation_notice_is_never_a_gate(injected_plugin, notice_env):
+    """Fail-open is the whole point of isolating a handler in the first place.
+    Reporting the isolation must not undo it."""
+    _write_handlers(injected_plugin, _RAISING_HANDLERS)
+    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
+
+    out = json.loads(result.stdout)
+    assert result.returncode == 0
+    assert "decision" not in out
+    assert "permissionDecision" not in out["hookSpecificOutput"]
+
+
+def test_the_same_fault_is_announced_once_per_session(injected_plugin, notice_env):
+    """These fire on PreToolUse. A line per tool call is a line the user learns
+    to skip past, which is worse than no line at all."""
+    _write_handlers(injected_plugin, _RAISING_HANDLERS)
+    first = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
+    second = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
+
+    assert "systemMessage" in json.loads(first.stdout)
+    assert second.stdout.strip() == ""
+    assert "simulated evaluator failure" in second.stderr, "the log is never rate-limited"
+
+
+def test_the_next_session_is_told_too(injected_plugin, notice_env):
+    """The gate is per session, not per machine: a new session has a new person
+    watching it, and the mechanism is still broken."""
+    _write_handlers(injected_plugin, _RAISING_HANDLERS)
+    _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
+    later = _run_dispatch(
+        injected_plugin,
+        "claude",
+        "PreToolUse",
+        {**_TOOL_CALL, "session_id": "session-b"},
+        env=notice_env,
+    )
+    assert "_evaluate" in json.loads(later.stdout)["systemMessage"]
+
+
+def test_a_payload_with_no_session_id_stays_on_stderr(injected_plugin, notice_env):
+    """Nothing can bound a notice that cannot be keyed to a session, and an
+    unbounded line on every tool call is worse than the log by itself."""
+    _write_handlers(injected_plugin, _RAISING_HANDLERS)
+    raw = {key: value for key, value in _TOOL_CALL.items() if key != "session_id"}
+    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", raw, env=notice_env)
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+    assert "simulated evaluator failure" in result.stderr
+
+
+def test_a_notice_rides_beside_a_real_advisory_without_displacing_it(injected_plugin, notice_env):
+    _write_handlers(
+        injected_plugin,
+        "from result import warn\n"
+        "\n"
+        "def _evaluate(ctx):\n"
+        "    raise RuntimeError('simulated evaluator failure')\n"
+        "\n"
+        "def _advises(ctx):\n"
+        "    return warn('the advisory that must still emit', 'flagged something')\n"
+        "\n"
+        "HANDLERS = {'PreToolUse': [_evaluate, _advises]}\n",
+    )
+    out = json.loads(
+        _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env).stdout
+    )
+
+    injected = out["hookSpecificOutput"]["additionalContext"]
+    assert injected.startswith("the advisory that must still emit")
+    assert "simulated evaluator failure" in injected
+    assert out["systemMessage"].startswith("flagged something")
+    assert "_evaluate" in out["systemMessage"]
+    assert "\n" not in out["systemMessage"]
+
+
+def test_a_refusal_keeps_its_reason_and_still_reports_the_fault(injected_plugin, notice_env):
+    _write_handlers(
+        injected_plugin,
+        "from result import refuse\n"
+        "\n"
+        "def _evaluate(ctx):\n"
+        "    raise RuntimeError('simulated evaluator failure')\n"
+        "\n"
+        "def _block(ctx):\n"
+        "    return refuse('nobody can answer that here', 'blocked a prompt')\n"
+        "\n"
+        "HANDLERS = {'PreToolUse': [_evaluate, _block]}\n",
+    )
+    out = json.loads(
+        _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env).stdout
+    )
+
+    specific = out["hookSpecificOutput"]
+    assert specific["permissionDecision"] == "deny"
+    assert specific["permissionDecisionReason"] == "nobody can answer that here"
+    assert out["systemMessage"].startswith("blocked a prompt")
+    assert "_evaluate" in out["systemMessage"]
+
+
+def test_a_handlers_module_that_cannot_be_imported_is_reported_not_fatal(
+    injected_plugin, notice_env
+):
+    """Every check the plugin ships is gone, and the old behaviour was to exit
+    non-zero with the reason on a channel nobody reads."""
+    _write_handlers(injected_plugin, "import a_module_that_does_not_exist\n")
+    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
+
+    assert result.returncode == 0
+    out = json.loads(result.stdout)
+    assert "handlers could not be loaded" in out["systemMessage"]
+    assert "ModuleNotFoundError" in out["hookSpecificOutput"]["additionalContext"]
+
+
+def test_a_healthy_hook_says_nothing_about_degradation(injected_plugin, notice_env):
+    """The condition this must never become: a line on a session where nothing
+    is wrong."""
+    _write_handlers(
+        injected_plugin,
+        "from result import warn\n"
+        "\n"
+        "def _advises(ctx):\n"
+        "    return warn('careful', 'flagged something')\n"
+        "\n"
+        "HANDLERS = {'PreToolUse': [_advises]}\n",
+    )
+    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
+
+    assert result.stderr.strip() == ""
+    assert json.loads(result.stdout)["systemMessage"] == "flagged something"
+
+
+def test_a_failed_env_file_write_is_reported(tmp_path, monkeypatch):
+    """credentials.isolate is SessionStart's, so its failure means git pushes
+    fail later for a reason nothing connects back to this."""
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(tmp_path / "no-such-dir" / "env.sh"))
+    monkeypatch.delenv("AOPS_BOT_GH_TOKEN", raising=False)
+
+    persisted = credentials.isolate({"session_id": "session-a"})
+
+    assert persisted is not None  # fail-open: the session still starts
+    assert [fault.kind for fault in degraded._faults] == [degraded.CREDENTIALS]
+    assert "environment file could not be written" in degraded._faults[0].message

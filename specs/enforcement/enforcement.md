@@ -50,7 +50,7 @@ build time (`ARCHITECTURE.md`, Hooks). The complete set:
 - **`aops`**, `SessionStart` ([`plugins/aops/hooks/handlers.py`](../../plugins/aops/hooks/handlers.py), `session_start`) — credential isolation for container sessions, plus a report (never a value) of the OpenTelemetry configuration.
 - **`aops`**, `Stop` and `SubagentStop` (`present_checkable_evidence`) — reminds the agent that is stopping to present its answer with checkable evidence. Both events are served by the same handler and message; the output reaches the agent that is stopping, not its parent.
 - **`pkb`**, `UserPromptSubmit` ([`plugins/pkb/hooks/handlers.py`](../../plugins/pkb/hooks/handlers.py)) — injects relevant PKB context, or instructs the agent to search for it.
-- **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a small language model, over the Reflexes evaluator contract ([`evaluator.py`](../../plugins/cope/hooks/evaluator.py)), whether the tool call matches each live rule; injects the matched rules' own text so the agent can correct itself. A rule is live in any layer only if its frontmatter declares `trigger: always_on` — a rules directory also holds reference material, and reference material sent as a policy is a question the evaluator cannot answer. Anything skipped for want of the marker, and an `$ACA_DATA` that names no rules directory, are reported on stderr, so no layer thins out unnoticed. The judgment is the model's, not a pattern match, so it sits inside "agents all the way down" alongside the auto-mode classifier below. Advisory only — a `warn`-outcome `Result` (additional context), never a permission decision. Configured entirely from the environment (`COPE_EVALUATOR_*`); with no evaluator configured it is a clean no-op, and any evaluator failure fails open.
+- **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a small language model, over the Reflexes evaluator contract ([`evaluator.py`](../../plugins/cope/hooks/evaluator.py)), whether the tool call matches each live rule; injects the matched rules' own text so the agent can correct itself. A rule is live in any layer only if its frontmatter declares `trigger: always_on` — a rules directory also holds reference material, and reference material sent as a policy is a question the evaluator cannot answer. Anything skipped for want of the marker, and an `$ACA_DATA` that names no rules directory, are reported through the shared fault channel below, so no layer thins out unnoticed. The judgment is the model's, not a pattern match, so it sits inside "agents all the way down" alongside the auto-mode classifier below. Advisory only — a `warn`-outcome `Result` (additional context), never a permission decision. Configured entirely from the environment (`COPE_EVALUATOR_*`); with no evaluator configured it is a clean no-op, and any evaluator failure fails open.
 - **`ts`**, `SessionStart` ([`plugins/ts/hooks/tailscale-up.sh`](../../plugins/ts/hooks/tailscale-up.sh)) — `tailscale up` bring-up for remote/cloud sessions.
 
 Every agent-visible string a hook emits comes from a markdown file next to it
@@ -59,6 +59,25 @@ produces a verdict. None of it can stop an agent from exiting, and none of it
 checks whether the agent actually did what the reminder asked — that is the
 executing agent's own judgment call, backstopped by the review lenses below, not
 by the hook.
+
+**A delivery channel that has stopped delivering says so.** These are reminders
+people come to rely on, and every way they can fail — a handler that raised, an
+evaluator that did not answer, a rule file that could not be read, a session env
+file that could not be written — used to be reported on stderr alone, which the
+client captures into the transcript and renders to nobody. So the channel
+reports its own degradation on the same response it would have carried the
+reminder on ([`lib/hooks/degraded.py`](../../lib/hooks/degraded.py)): the
+precise reason as `additionalContext` for the agent, one sentence as
+`systemMessage` for the person, and the stderr line unchanged for the log.
+
+Two constraints shape it. It is **rate-limited to once per session per kind of
+fault**, because these hooks fire on every tool call and a line the user learns
+to skip past is worse than no line at all; the gate is a marker file per
+(session, fault kind) under the OS temp directory, since one hook invocation is
+one process. And it **distinguishes degradation from legitimate absence** —
+cope with no evaluator configured, `$ACA_DATA` unset, a project with no local
+rules directory are all valid states and stay silent. A fault report is never a
+gate: it can only add an advisory, and the tool call proceeds either way.
 
 ### 3. Claude Code's native auto-mode classifier
 

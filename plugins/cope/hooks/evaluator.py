@@ -30,9 +30,14 @@ gets ``None``.
 **Fail-open, always.** This runs in front of every tool call. A dead socket,
 a slow endpoint, a 500, a body that will not parse — none of them
 produce a verdict, and per SPEC §4.3 an evaluator error is not ``label=0``, so
-none of them produce an advisory either. They are reported on stderr and the
-tool call proceeds untouched. There are no retries: a retry in this position
-multiplies the stall the agent is waiting through.
+none of them produce an advisory either. They are reported and the tool call
+proceeds untouched. There are no retries: a retry in this position multiplies
+the stall the agent is waiting through.
+
+Reporting means both readers, not just the log: an evaluator that has stopped
+answering is rule checking that has stopped happening, which the person in the
+session needs told once (lib/hooks/degraded.py). A session with nothing
+configured is not that, and stays silent — see ``resolve``.
 
 The whole check runs inside one deadline. Two things enforce it, because either
 alone leaks: the remaining budget is passed down as the socket timeout, so no
@@ -44,7 +49,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import time
 import urllib.error
 import urllib.request
@@ -52,10 +56,19 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 
+import degraded
 import messages
 
 #: Wire protocols ``COPE_EVALUATOR_PROTOCOL`` accepts.
 PROTOCOLS = ("cope", "openai")
+
+#: Someone configured an evaluator and it did not come out usable — a missing
+#: variable, a protocol that is not one of ours, an unreadable timeout.
+DEGRADED_CONFIG = "cope-config"
+
+#: A configured evaluator could not answer, so the rules it was asked about
+#: went unchecked.
+DEGRADED_EVALUATOR = "cope-evaluator"
 
 #: Ceiling on the whole evaluation, in seconds, when ``COPE_EVALUATOR_TIMEOUT``
 #: is unset. Every rule is evaluated inside this one budget, so it is the
@@ -114,7 +127,12 @@ _PLUGIN_OPTION_PREFIX = "CLAUDE_PLUGIN_OPTION_"
 
 
 def _note(message: str) -> None:
-    print(f"cope: {message}", file=sys.stderr)
+    """One configuration mistake, to the log and to the person who made it.
+
+    Every caller is a value someone set and meant to work. Nothing set at all
+    never reaches here — that is ``resolve`` returning ``None`` in silence.
+    """
+    degraded.report(DEGRADED_CONFIG, f"cope: {message}")
 
 
 def _setting(name: str) -> str:
@@ -143,9 +161,13 @@ def resolve() -> Config | None:
     - Nothing set at all — cope's tool-call evaluation is simply not switched
       on for this session. Silent: an unconfigured session is a legitimate
       state, and a line on every tool call would be noise, not information.
-    - Some of it set — a misconfiguration someone meant to work. One stderr
-      line names what is missing, then cope stays out of the way. Guessing the
-      missing value is exactly the default this plugin may not have.
+    - Some of it set — a misconfiguration someone meant to work. It is reported
+      once, naming what is missing, then cope stays out of the way. Guessing
+      the missing value is exactly the default this plugin may not have.
+
+    This is the line everything else in the plugin follows for what is worth
+    reporting: absence nobody asked for is silent, intent that did not land is
+    not.
     """
     url = _setting("COPE_EVALUATOR_URL")
     protocol = _setting("COPE_EVALUATOR_PROTOCOL")

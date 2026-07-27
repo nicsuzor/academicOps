@@ -11,7 +11,7 @@ flowchart TD
 
     C --> R{"evaluator.py: resolve()<br/>CLAUDE_PLUGIN_OPTION_* (userConfig),<br/>else plain COPE_EVALUATOR_*"}
     R -->|nothing set| R1[clean no-op — no network, no output]
-    R -->|partly set| R2[one stderr line naming<br/>the missing variable, then no-op]
+    R -->|partly set| R2[degradation notice naming<br/>the missing variable, then no-op]
     R -->|fully set| D
 
     C2 --> D
@@ -28,20 +28,29 @@ flowchart TD
     H -->|openai| H2["POST /v1/chat/completions with<br/>messages/classifier-prompt.md<br/>→ label, confidence"]
     H1 --> I{label}
     H2 --> I
-    I -->|error, timeout,<br/>unparseable| J["fail open: stderr line,<br/>no advisory"]
+    I -->|error, timeout,<br/>unparseable| J["fail open: degradation<br/>notice, no advisory"]
     I -->|all 0| K[no advisory — clean no-op]
     I -->|any 1| L["hooks/messages/verdict.md<br/>+ each matched rule's full text<br/>+ the tool call that was judged"]
     L --> M["additionalContext injected<br/>(never permissionDecision)"]
 
     F --> N["hooks/messages/ruleset.md<br/>+ one line per live rule, layer-marked"]
     N --> O["ephemeralMessage injected<br/>(agy's only response shape)"]
+
+    R2 --> P
+    J --> P
+    E2 -.->|unreadable file<br/>or unmarked rule| P
+    E3 -.->|unreadable file,<br/>or set but absent| P
+    P["lib/hooks/degraded.py:<br/>stderr, plus the response —<br/>once per session per fault"]
+    P --> Q["systemMessage (the person)<br/>+ additionalContext (the agent)"]
 ```
 
 A missing or unreadable layer 2 or layer 3 directory degrades to whatever did load; layer 1 (the shipped `axioms/`) is always present. A later layer can only add a slug not already claimed — it can never override an axiom's entry, so a project or user rule file cannot weaken the floor by reusing its filename.
 
 Every layer counts only the `*.md` files declaring `trigger: always_on` — the same line `build/axioms.py` draws when it emits a client's native rule mechanism. A rules directory holds reference material as well as policies: an index, a path table, a note-taking convention, a stub. Only a policy can be classified, so only a marked file is sent to the evaluator.
 
-Nothing is dropped quietly. A file skipped for want of the marker is named on stderr once per load, with the layer's directory — except in the shipped `axioms/`, whose non-rule files (`README.md`, `AXIOMS-REVIEW.md`) are a known set nobody in the session can act on. `$ACA_DATA` set to a path with no `.agents/rules/` directory gets a line too: setting the variable is a claim that the layer exists. `$ACA_DATA` unset, and a project with no `.agents/rules/` directory, are ordinary absences and say nothing.
+Nothing is dropped quietly. A file skipped for want of the marker is named, with the layer's directory — except in the shipped `axioms/`, whose non-rule files (`README.md`, `AXIOMS-REVIEW.md`) are a known set nobody in the session can act on. `$ACA_DATA` set to a path with no `.agents/rules/` directory is named too: setting the variable is a claim that the layer exists. `$ACA_DATA` unset, and a project with no `.agents/rules/` directory, are ordinary absences and say nothing.
+
+"Named" means named to the person running the session, not only to a log. Every degradation here goes through `lib/hooks/degraded.py`: the reason still goes to stderr, and it additionally rides out on the hook's response — the full reason as `additionalContext` for the agent, one sentence as `systemMessage` for the person, who is the only one who can go and fix the file. Because this hook fires on every tool call, each distinct fault is announced **once per session**: a dead evaluator says so once, not once per rule per call. Repeats stay in the log. A fault report is never a gate — it can only ever add an advisory, and the tool call proceeds either way.
 
 ## What this plugin provides
 
@@ -53,6 +62,7 @@ Nothing is dropped quietly. A file skipped for want of the marker is named on st
 | Ruleset handler      | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                 |
 | Evaluator client     | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.      |
 | Rule loader          | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.     |
+| Fault reporting      | `hooks/degraded.py` (shared, injected) | Puts cope's own failures on the response as well as on stderr, once per session.      |
 | Advisory wording     | `hooks/messages/*.md`                  | `verdict.md`, `ruleset.md`, and the evaluator's `classifier-prompt.md`. No code edit. |
 
 ## How the judgment is made
@@ -68,9 +78,9 @@ Two protocols are supported, so the same mechanism serves a hosted API and a loc
 
 **Nothing about this plugin is a verdict.** A match is one model's reading of one rule against one tool call, injected for the agent to weigh. Real enforcement is a separate merge-stage check; nothing in-session blocks on a rule verdict (`specs/ARCHITECTURE.md`, Enforcement).
 
-**Unconfigured, cope evaluates nothing.** No endpoint ships with this plugin, so an installation that has not set one gets a clean no-op on every tool call — no network call, no output, no error. Configure some of the variables but not all and you get one stderr line naming what is missing, then the same no-op: a half-configured evaluator is a mistake worth reporting, and guessing the missing value is the default this plugin may not have.
+**Unconfigured, cope evaluates nothing.** No endpoint ships with this plugin, so an installation that has not set one gets a clean no-op on every tool call — no network call, no output, no error. This is a legitimate state and is never reported as a fault. Configure some of the variables but not all and you get one degradation notice naming what is missing, then the same no-op: a half-configured evaluator is somebody's intent that did not land, and guessing the missing value is the default this plugin may not have.
 
-**It fails open, always.** A dead socket, a slow endpoint, an error status, a body that will not parse — none of them produce an advisory, and none of them delay or block the tool call beyond the deadline. The reason goes to stderr and the call proceeds. There are no retries: a retry in front of every tool call multiplies the stall the agent is waiting through.
+**It fails open, always.** A dead socket, a slow endpoint, an error status, a body that will not parse — none of them produce an advisory, and none of them delay or block the tool call beyond the deadline. The reason is reported and the call proceeds. There are no retries: a retry in front of every tool call multiplies the stall the agent is waiting through.
 
 **What leaves the machine.** When an evaluator is configured, every tool call's name and input are sent to it, once per live rule — including file paths, command strings, and file contents, truncated to the first 4000 characters of rendered input. Point `COPE_EVALUATOR_URL` at a locally hosted model if that is not acceptable for the work in front of you.
 
@@ -91,14 +101,14 @@ Each evaluator setting can be supplied two ways, and they are the same setting:
 
 A `userConfig` value wins over the plain variable when both are set. Claude Code accepts `pluginConfigs` only from user settings, managed policy, or `--settings`, and deliberately ignores a project's own settings files so that a cloned repository cannot supply one — which makes it the more trustworthy of the two. An option the user left blank falls through to the plain variable rather than blanking it.
 
-| Variable (`userConfig` key is the lowercase form) | Purpose                                                                                                                                                                               | Default                                                          |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `COPE_EVALUATOR_URL`                              | Full URL of the evaluator endpoint — a hosted CoPE label API, a self-hosted CoPE server, or a local OpenAI-compatible server.                                                         | none — with it unset, cope evaluates nothing.                    |
-| `COPE_EVALUATOR_PROTOCOL`                         | Which wire protocol that URL speaks: `cope` or `openai`. Any other value is refused rather than guessed.                                                                              | none — required alongside the URL.                               |
-| `COPE_EVALUATOR_MODEL`                            | Model identifier sent with each request.                                                                                                                                              | none — required alongside the URL.                               |
-| `COPE_EVALUATOR_API_KEY`                          | Bearer token for the endpoint. Omit it for a local server that needs no auth; the `Authorization` header is then not sent at all.                                                     | none — optional, and its absence is not an error.                |
-| `COPE_EVALUATOR_TIMEOUT`                          | Seconds allowed for the whole evaluation of one tool call, across all rules. The longest a tool call can be held up. Unparseable or non-positive values fall back with a stderr line. | 5.0 seconds. Not an endpoint or a credential — a latency budget. |
-| `ACA_DATA`                                        | Path to the PKB repo; enables layer 3 (`$ACA_DATA/.agents/rules/*.md`). Set to a path with no such directory, cope says so on stderr.                                                 | none — absence just means layer 3 doesn't load.                  |
+| Variable (`userConfig` key is the lowercase form) | Purpose                                                                                                                                                                                      | Default                                                          |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `COPE_EVALUATOR_URL`                              | Full URL of the evaluator endpoint — a hosted CoPE label API, a self-hosted CoPE server, or a local OpenAI-compatible server.                                                                | none — with it unset, cope evaluates nothing.                    |
+| `COPE_EVALUATOR_PROTOCOL`                         | Which wire protocol that URL speaks: `cope` or `openai`. Any other value is refused rather than guessed.                                                                                     | none — required alongside the URL.                               |
+| `COPE_EVALUATOR_MODEL`                            | Model identifier sent with each request.                                                                                                                                                     | none — required alongside the URL.                               |
+| `COPE_EVALUATOR_API_KEY`                          | Bearer token for the endpoint. Omit it for a local server that needs no auth; the `Authorization` header is then not sent at all.                                                            | none — optional, and its absence is not an error.                |
+| `COPE_EVALUATOR_TIMEOUT`                          | Seconds allowed for the whole evaluation of one tool call, across all rules. The longest a tool call can be held up. Unparseable or non-positive values fall back with a degradation notice. | 5.0 seconds. Not an endpoint or a credential — a latency budget. |
+| `ACA_DATA`                                        | Path to the PKB repo; enables layer 3 (`$ACA_DATA/.agents/rules/*.md`). Set to a path with no such directory, cope says so.                                                                  | none — absence just means layer 3 doesn't load.                  |
 
 `ACA_DATA` is environment-only: it is shared with the rest of the framework rather than owned by this plugin, so cope declares no `userConfig` option for it.
 
@@ -106,6 +116,6 @@ The API key option is declared `sensitive`, so Claude Code masks it on entry and
 
 ## Depends on
 
-- `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`), injected into `hooks/` at build time.
+- `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`, `degraded.py`, and `messages/degraded*.md`), injected into `hooks/` at build time.
 - `lib/axioms/` — injected into `axioms/` at build time; layer 1 of the rule set.
 - An evaluator endpoint, external and operator-supplied: a Reflexes-compatible CoPE label API or an OpenAI-compatible chat-completions server. Nothing is bundled, and the hook runtime uses only the Python standard library — no `reflexes` package, no `httpx`, nothing to install.

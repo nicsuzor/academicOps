@@ -26,9 +26,9 @@ that process — there is no server to keep warm.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
+import degraded
 import evaluator
 import messages
 import rules
@@ -76,6 +76,11 @@ def evaluate(ctx: HookContext) -> Result | None:
     messages.py). The agent gets the rule text; the person watching gets one
     line naming what was flagged, because a check that only ever speaks to the
     agent leaves the person whose session it is with no idea it fired.
+
+    An evaluator that could not answer reaches both of them for the same
+    reason, once per session (lib/hooks/degraded.py). The call still proceeds:
+    a rule that went unjudged is not a rule that passed, and it is not grounds
+    to hold anything up.
     """
     config = evaluator.resolve()
     if config is None:
@@ -88,11 +93,12 @@ def evaluate(ctx: HookContext) -> Result | None:
     policies = [(rule.slug, rule.body) for rule in sorted(loaded.values(), key=lambda r: r.slug)]
     matches, failures = evaluator.check(config, policies, content, ctx.hooks_dir)
 
-    # stderr, never stdout: stdout is the hook's JSON response to the client.
-    for failure in failures:
-        print(
-            f"cope: evaluator failed for {failure}; proceeding without a verdict",
-            file=sys.stderr,
+    if failures:
+        degraded.report(
+            evaluator.DEGRADED_EVALUATOR,
+            f"cope: the rule evaluator did not answer for {len(failures)} of "
+            f"{len(policies)} rules, so those rules are not being checked",
+            "; ".join(failures),
         )
 
     if not matches:

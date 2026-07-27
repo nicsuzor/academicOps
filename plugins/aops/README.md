@@ -104,7 +104,7 @@ The plugin declares no `userConfig` fields.
 
 ## Depends on
 
-- `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`, `credentials.py`, `telemetry.py`), injected into `hooks/` at build time.
+- `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`, `credentials.py`, `telemetry.py`, `degraded.py`), injected into `hooks/` at build time.
 - `lib/axioms/` — injected into `axioms/` at build time; rbg's first rule source and the source of `axioms.jsonl`.
 - `lib/doctrine/` — inlined into the agent files at build time via `@include`.
 - `plugins/pkb` at runtime, for `pauli` (the third review lens, and the only writer to the knowledge base) and the task graph james dispatches against.

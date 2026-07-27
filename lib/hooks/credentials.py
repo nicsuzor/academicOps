@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import os
 import shlex
-import sys
 from typing import Any
+
+import degraded
 
 _BASIC_VARS = (
     "AOPS_SESSIONS",
@@ -75,6 +76,11 @@ def isolate(raw: dict[str, Any]) -> dict[str, str] | None:
             for key, value in persist.items():
                 f.write(f"export {key}={shlex.quote(value)}\n")
     except OSError as exc:
-        print(f"credentials.isolate: failed to write {env_file}: {exc!r}", file=sys.stderr)
+        degraded.report(
+            degraded.CREDENTIALS,
+            "aops hooks: the session environment file could not be written, so git "
+            f"credentials and session variables are not set up ({env_file})",
+            f"{exc!r}",
+        )
 
     return persist

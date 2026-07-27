@@ -6,6 +6,10 @@ on stdin, normalizes client + event, runs the plugin's registered handlers
 for that event, merges their results, and prints the client's wire-format
 response on stdout. No output = no-op. See specs/ARCHITECTURE.md, Hooks.
 
+A handler that fails is isolated rather than fatal, and its failure joins the
+response on the way out (lib/hooks/degraded.py) so the person in the session
+learns that a check they rely on has stopped running.
+
 This file is shared runtime, copied byte-identical into every plugin that
 hooks (build stage 1, ``[shared]`` in the plugin's ``manifest/plugin.toml``).
 A plugin supplies its own ``hooks/handlers.py`` next to this file; a plugin
@@ -26,6 +30,7 @@ if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
 import clients  # noqa: E402
+import degraded  # noqa: E402
 from context import HookContext, normalize  # noqa: E402
 from result import Result, merge  # noqa: E402
 
@@ -44,10 +49,22 @@ def _load_handlers(event: str) -> list[Handler]:
         return []
     spec = importlib.util.spec_from_file_location("handlers", handlers_path)
     if spec is None or spec.loader is None:
-        print(f"dispatch: could not load {handlers_path}", file=sys.stderr)
+        degraded.report(
+            degraded.HANDLER,
+            "aops hooks: this plugin's handlers could not be loaded, so none of its checks ran",
+            f"no import spec for {handlers_path}",
+        )
         return []
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:  # noqa: BLE001 - a broken module must not end the session
+        degraded.report(
+            degraded.HANDLER,
+            "aops hooks: this plugin's handlers could not be loaded, so none of its checks ran",
+            f"{handlers_path} raised {exc!r} on import",
+        )
+        return []
     registry: dict[str, list[Handler]] = getattr(module, "HANDLERS", {})
     return list(registry.get(event, []))
 
@@ -77,19 +94,24 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
     """Run one handler, isolated from every other handler's outcome.
 
     Fail policy: a handler that raises (a missing message file, a bug) is
-    fail-safe — its own result is skipped and the exception is reported to
-    stderr, but every other handler for this event still runs and still
-    merges normally. A legitimate advisory from another handler must never
-    be discarded just because an unrelated handler blew up, and this process
-    must never crash on one handler's failure.
+    fail-safe — its own result is skipped and the failure is reported, but
+    every other handler for this event still runs and still merges normally. A
+    legitimate advisory from another handler must never be discarded just
+    because an unrelated handler blew up, and this process must never crash on
+    one handler's failure.
+
+    Reported through ``degraded`` rather than straight to stderr: the check
+    silently not running is precisely what the person in the session needs to
+    know, and stderr reaches nobody (lib/hooks/degraded.py).
     """
     try:
         return handler(ctx)
     except Exception as exc:  # noqa: BLE001 - isolate this handler, not the process
-        print(
-            f"dispatch: handler {getattr(handler, '__name__', handler)!r} "
-            f"raised {exc!r}; skipping its result (other handlers still run)",
-            file=sys.stderr,
+        name = getattr(handler, "__name__", handler)
+        degraded.report(
+            degraded.HANDLER,
+            f"aops hooks: the {name!r} check failed and did not run",
+            f"raised {exc!r}; every other handler for this event still ran",
         )
         return None
 
@@ -115,7 +137,9 @@ def main(argv: list[str]) -> int:
     ctx = normalize(client, event, raw, _HOOKS_DIR)
     handlers = _for_client(_load_handlers(event), client)
     results = [_run_handler(h, ctx) for h in handlers]
-    result = merge(results)
+    # Whatever the handlers had to say, plus anything the framework broke on
+    # its way to saying it — the second is invisible to the user otherwise.
+    result = degraded.attach(merge(results), ctx.hooks_dir, ctx.session_id)
 
     output = clients.render(client, event, result)
     if output:

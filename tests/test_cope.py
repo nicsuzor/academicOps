@@ -23,6 +23,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -39,6 +40,7 @@ for _dir in (_LIB_HOOKS, _COPE_HOOKS):
     if str(_dir) not in sys.path:
         sys.path.insert(0, str(_dir))
 
+import degraded  # noqa: E402  (lib/hooks/degraded.py)
 import evaluator  # noqa: E402  (plugins/cope/hooks/evaluator.py)
 import handlers  # noqa: E402  (plugins/cope/hooks/handlers.py)
 import rules  # noqa: E402  (plugins/cope/hooks/rules.py)
@@ -72,6 +74,19 @@ def _isolate_cope_environment(monkeypatch):
     both routes."""
     for name in _COPE_ENV_ALL:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_degradation_state(monkeypatch, tmp_path):
+    """cope's stderr reports are also recorded for the user-facing channel
+    (lib/hooks/degraded.py), at module scope and behind a once-per-session
+    marker file under the OS temp directory. Neither may cross a test — nor
+    reach the hook subprocesses below, which read the environment for it."""
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    degraded.reset()
+    yield
+    degraded.reset()
 
 
 @pytest.fixture(autouse=True)
@@ -1159,6 +1174,9 @@ def built_cope_plugin(tmp_path):
     for py_file in _COPE_HOOKS.glob("*.py"):
         shutil.copy2(py_file, hooks / py_file.name)
     shutil.copytree(_COPE_HOOKS / "messages", hooks / "messages")
+    # The shared runtime ships wording of its own, merged into the same
+    # messages/ directory at build time (build/shared.py).
+    shutil.copytree(_LIB_HOOKS / "messages", hooks / "messages", dirs_exist_ok=True)
     shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
     return hooks
 
@@ -1289,24 +1307,116 @@ def test_dispatch_end_to_end_unconfigured_is_a_silent_no_op(built_cope_plugin, p
 
 def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin, project_cwd):
     """A configured endpoint that is not listening must not take the session
-    down with it: exit 0, no advisory, and the reason on stderr."""
+    down with it: exit 0, no verdict, no permission decision — and the person
+    whose rules stopped being checked is told, once, that they stopped."""
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
-    raw = {**_PRETOOLUSE, "cwd": str(project_cwd)}
+    raw = {**_PRETOOLUSE, "session_id": "unreachable-evaluator", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
-    assert result.stdout.strip() == ""
     assert "cope:" in result.stderr
+
+    out = json.loads(result.stdout)
+    assert "rule evaluator did not answer" in out["systemMessage"]
+    assert "decision" not in out
+    assert "permissionDecision" not in out["hookSpecificOutput"]
 
 
 def test_dispatch_end_to_end_partial_configuration_says_so_and_stands_down(
     built_cope_plugin, project_cwd
 ):
     env = _dispatch_env(COPE_EVALUATOR_URL=_DEAD_URL)
-    raw = {**_PRETOOLUSE, "cwd": str(project_cwd)}
+    raw = {**_PRETOOLUSE, "session_id": "partial-configuration", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     assert result.returncode == 0
-    assert result.stdout.strip() == ""
     assert "COPE_EVALUATOR_MODEL" in result.stderr
+    assert "COPE_EVALUATOR_MODEL" in json.loads(result.stdout)["systemMessage"]
+
+
+def test_dispatch_end_to_end_tells_the_user_a_rule_file_could_not_be_read(
+    built_cope_plugin, stub_evaluator, project_cwd
+):
+    """The degradation the plugin's own README used to claim was visible. A
+    rule that cannot be read is a rule that is not being enforced, and the only
+    person who can fix the file is the one the response has to reach."""
+    rules_dir = project_cwd / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    (rules_dir / "unreadable.md").mkdir()  # a rule file that is not a file
+
+    raw = {**_PRETOOLUSE, "session_id": "unreadable-rule", "cwd": str(project_cwd)}
+    result = _run_dispatch(
+        built_cope_plugin,
+        "claude",
+        "PreToolUse",
+        raw,
+        cwd=project_cwd,
+        env=_configured_env(stub_evaluator),
+    )
+    assert result.returncode == 0, f"stderr: {result.stderr!r}"
+
+    out = json.loads(result.stdout)
+    assert "unreadable.md" in out["systemMessage"]
+    assert "not being checked" in out["systemMessage"]
+    assert "IsADirectoryError" in out["hookSpecificOutput"]["additionalContext"]
+    assert "decision" not in out
+    assert "permissionDecision" not in out["hookSpecificOutput"]
+    # the flagged rule is still delivered — a fault report displaces nothing
+    assert "halt-on-failure" in out["hookSpecificOutput"]["additionalContext"]
+
+
+def test_dispatch_end_to_end_tells_the_user_a_rule_file_is_never_evaluated(
+    built_cope_plugin, stub_evaluator, project_cwd
+):
+    """A project rule with no `trigger: always_on` marker is read by agents and
+    never sent to the evaluator. Its author has no way to tell from inside the
+    session, which is how a rule quietly stops being enforced."""
+    rules_dir = project_cwd / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    (rules_dir / "costly-ops-approval.md").write_text("---\ndescription: no marker\n---\n\nAsk.\n")
+
+    raw = {**_PRETOOLUSE, "session_id": "unmarked-rule", "cwd": str(project_cwd)}
+    result = _run_dispatch(
+        built_cope_plugin,
+        "claude",
+        "PreToolUse",
+        raw,
+        cwd=project_cwd,
+        env=_configured_env(stub_evaluator),
+    )
+    assert result.returncode == 0, f"stderr: {result.stderr!r}"
+
+    system_message = json.loads(result.stdout)["systemMessage"]
+    assert "costly-ops-approval.md" in system_message
+    assert "trigger: always_on" in system_message
+
+
+def test_dispatch_end_to_end_says_the_same_thing_once_not_once_per_tool_call(
+    built_cope_plugin, project_cwd
+):
+    """cope's hook fires on every tool call. A notice repeated per call is one
+    the user stops reading, so the second call is silent while the log is
+    not."""
+    env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
+    raw = {**_PRETOOLUSE, "session_id": "repeat-suppressed", "cwd": str(project_cwd)}
+    first = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
+    second = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
+
+    assert "systemMessage" in json.loads(first.stdout)
+    assert second.stdout.strip() == ""
+    assert "cope:" in second.stderr
+
+
+def test_dispatch_end_to_end_an_unconfigured_session_is_never_called_degraded(
+    built_cope_plugin, project_cwd
+):
+    """The line evaluator.resolve() draws, held on the wire: nothing
+    configured is a legitimate state, not a fault, and gets no line anywhere."""
+    raw = {**_PRETOOLUSE, "session_id": "unconfigured", "cwd": str(project_cwd)}
+    result = _run_dispatch(
+        built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=_dispatch_env()
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+    assert result.stderr.strip() == ""
 
 
 def test_dispatch_agy_preinvocation_injects_the_live_ruleset(built_cope_plugin, project_cwd):

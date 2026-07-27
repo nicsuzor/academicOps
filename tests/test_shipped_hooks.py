@@ -441,8 +441,17 @@ class _StubReflexesEvaluator(BaseHTTPRequestHandler):
 
 
 @pytest.fixture()
-def stub_evaluator_env():
-    """Environment overrides pointing cope's hook at the loopback evaluator."""
+def stub_evaluator_env(tmp_path):
+    """Environment overrides pointing cope's hook at the loopback evaluator.
+
+    `ACA_DATA` is cleared and the OS temp directory redirected because the hook
+    reports its own degradation on the same response (lib/hooks/degraded.py),
+    once per session, behind a marker file: an ambient `ACA_DATA` naming no
+    rules directory is a real fault, and a marker left in the real temp
+    directory would decide whether the next run saw it.
+    """
+    marker_root = tmp_path / "os-tmp"
+    marker_root.mkdir()
     server = ThreadingHTTPServer(("127.0.0.1", 0), _StubReflexesEvaluator)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     yield {
@@ -451,6 +460,8 @@ def stub_evaluator_env():
         "COPE_EVALUATOR_MODEL": "stub-model",
         "COPE_EVALUATOR_API_KEY": None,
         "COPE_EVALUATOR_TIMEOUT": "20",
+        "ACA_DATA": None,
+        "TMPDIR": str(marker_root),
     }
     server.shutdown()
     server.server_close()
@@ -495,6 +506,46 @@ def test_cope_shipped_hook_tells_the_person_watching_which_rule_was_flagged(
     assert "halt-on-failure" in out["systemMessage"]
     assert "\n" not in out["systemMessage"]
     assert (build_dir / "hooks" / "messages" / "verdict.user.md").is_file()
+
+
+def test_cope_shipped_hook_tells_the_person_watching_when_it_is_degraded(
+    dist_root, stub_evaluator_env, tmp_path
+):
+    """The framework's own failure, on the wire, out of the built artifact.
+
+    A rule file that cannot be read is a rule that is not being enforced. That
+    has always been reported — on stderr, which the client captures into the
+    transcript and shows nobody. `systemMessage` is the only field of this
+    response a person ever sees, so a fault that never reaches it is a fault
+    the person whose rules these are cannot know about or fix.
+    """
+    project = tmp_path / "project"
+    (project / ".agents" / "rules").mkdir(parents=True)
+    (project / ".agents" / "rules" / "unreadable.md").mkdir()  # a rule file that is not a file
+
+    build_dir = dist_root / "aops-cope-claude"
+    _, command = _hook_commands("claude", build_dir)[0]
+    proc = _run_shipped_hook(
+        "claude",
+        build_dir,
+        command,
+        {**_PAYLOADS["PreToolUse"], "session_id": "degraded-session", "cwd": str(project)},
+        env_overrides=stub_evaluator_env,
+    )
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+
+    out = json.loads(proc.stdout)
+    assert "unreadable.md" in out["systemMessage"], (
+        "the shipped hook degraded and told only its own stderr"
+    )
+    assert "not being checked" in out["systemMessage"]
+    # the log keeps the precise reason, and so does the agent
+    assert "unreadable.md" in proc.stderr
+    assert "IsADirectoryError" in out["hookSpecificOutput"]["additionalContext"]
+    # and reporting it is not a gate: cope may never block a tool call
+    assert "decision" not in out
+    assert "permissionDecision" not in out["hookSpecificOutput"]
+    assert (build_dir / "hooks" / "messages" / "degraded.user.md").is_file()
 
 
 def test_cope_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_root):

@@ -12,16 +12,30 @@ load — cope must never block a session on its own failure.
 Every layer takes the same marker: only ``trigger: always_on`` files are live
 rules, the line build/axioms.py draws. Everything else in a rules directory is
 reference material — a path table, a naming convention, a stub — and reference
-material sent as a policy is a question the evaluator cannot answer. What is
-skipped is named on stderr, so no layer thins out unnoticed.
+material sent as a policy is a question the evaluator cannot answer.
+
+A layer that thins out says so to the person whose rules they are, not only to
+the log: every report here goes through lib/hooks/degraded.py, which puts the
+first occurrence of each kind on the hook's response as well as on stderr. A
+rules directory nobody wrote and an ``$ACA_DATA`` nobody set are ordinary
+absences and stay silent — see ``_layers``.
 """
 
 from __future__ import annotations
 
 import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+import degraded
+
+#: A rule file or a whole layer could not be read — rules the session was
+#: relying on are not being checked.
+DEGRADED_RULES = "cope-rules"
+
+#: Rule files are present but carry no ``trigger: always_on`` marker, so they
+#: reach agents as reading material and the evaluator never sees them.
+DEGRADED_UNMARKED = "cope-rules-unmarked"
 
 
 @dataclass(frozen=True)
@@ -38,7 +52,11 @@ def _parse(path: Path, layer: int) -> Rule | None:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        print(f"cope: could not read rule file {path}: {exc!r}; skipping it", file=sys.stderr)
+        degraded.report(
+            DEGRADED_RULES,
+            f"cope: the rule file {path} could not be read, so that rule is not being checked",
+            f"{exc!r}",
+        )
         return None
 
     trigger = ""
@@ -83,17 +101,19 @@ def _load_dir(layer: _Layer) -> dict[str, Rule]:
     try:
         if not layer.path.is_dir():
             if layer.absent_note:
-                print(
-                    f"cope: no rule directory at {layer.path} ({layer.absent_note}); "
-                    f"layer {layer.number} loaded nothing",
-                    file=sys.stderr,
+                degraded.report(
+                    DEGRADED_RULES,
+                    f"cope: there is no rule directory at {layer.path} ({layer.absent_note}), "
+                    f"so layer {layer.number} is not being checked",
                 )
             return rules
         paths = sorted(layer.path.glob("*.md"))
     except OSError as exc:
-        print(
-            f"cope: could not list rule directory {layer.path}: {exc!r}; skipping layer",
-            file=sys.stderr,
+        degraded.report(
+            DEGRADED_RULES,
+            f"cope: the rule directory {layer.path} could not be read, so layer "
+            f"{layer.number} is not being checked",
+            f"{exc!r}",
         )
         return rules
     for md_path in paths:
@@ -105,10 +125,10 @@ def _load_dir(layer: _Layer) -> dict[str, Rule]:
             continue
         rules[rule.slug] = rule
     if skipped and layer.report_skips:
-        print(
-            f"cope: {layer.path}: {', '.join(skipped)} — read by agents, not evaluated: "
-            "add `trigger: always_on` frontmatter to send a file to the evaluator",
-            file=sys.stderr,
+        degraded.report(
+            DEGRADED_UNMARKED,
+            f"cope: {', '.join(skipped)} in {layer.path} are read by agents but never "
+            "evaluated — add `trigger: always_on` frontmatter to send a file to the evaluator",
         )
     return rules
 
@@ -134,19 +154,19 @@ def _layers(plugin_root: Path, cwd: Path) -> list[_Layer]:
 
     Every layer requires ``trigger: always_on``; a rules directory holds
     reference documents as well as policies, and only a policy can be
-    classified. What differs per layer is what deserves a line on stderr.
+    classified. What differs per layer is what deserves reporting.
 
     Layer 1 is the plugin's own shipped ``axioms/``, whose non-rule files are a
     known, curated set (``README.md``, ``AXIOMS-REVIEW.md``) that nobody in the
     session can act on — naming them every tool call would be noise. Layers 2
     and 3 belong to the project and the user, who can act: a file skipped there
-    is named once per load, because a rule that quietly stops being evaluated
-    is worse than one that was never written.
+    is named, because a rule that quietly stops being evaluated is worse than
+    one that was never written.
 
     An absent layer-2 directory is the ordinary case — most projects carry no
     local rules — so it says nothing. An absent layer-3 directory is a wrong
     ``$ACA_DATA`` or a path that moved, since setting the variable is a claim
-    that the layer exists; that gets a line. ``$ACA_DATA`` unset is not a
+    that the layer exists; that is reported. ``$ACA_DATA`` unset is not a
     mistake and stays silent.
     """
     layers = [
