@@ -314,13 +314,25 @@ def test_no_shipped_config_asks_agy_to_expand_a_variable(dist_root):
     into a failure that names something else entirely. Neither may ship, so
     this sweeps every JSON config in every agy build rather than the two files
     that happened to be wrong.
+
+    `${extensionPath}` and `${CLAUDE_PLUGIN_ROOT}` are the one exception,
+    mirroring the allowlist in `build/clients/agy._checked_mcp`: the
+    aops-crew image's `docker_gemini_fixups.py fixup-mcp-config-paths` rewrites
+    either token to the plugin's real install directory after `agy plugin
+    install` has copied it there, so a config agy reads inside that container
+    never sees the literal placeholder. Outside that image the config still
+    ships broken — a bare-host `agy plugin install` gets an unresolved
+    reference, same as before — which is why the allowlist stays this narrow
+    rather than growing to cover any other variable.
     """
+    allowed = {"${extensionPath}", "${CLAUDE_PLUGIN_ROOT}"}
     offenders = []
     for name, client, build_dir in _build_dirs(dist_root):
         if client != "agy":
             continue
         for config in sorted(build_dir.glob("*.json")):
-            for match in set(re.findall(r"\$\{[^}]*\}", config.read_text(encoding="utf-8"))):
+            matches = set(re.findall(r"\$\{[^}]*\}", config.read_text(encoding="utf-8")))
+            for match in matches - allowed:
                 offenders.append(f"{name}-agy/{config.name}: {match}")
     assert offenders == [], f"agy expands none of these: {offenders}"
 
