@@ -1,9 +1,14 @@
-"""Credential isolation for container sessions.
+"""Session credential configuration.
 
-SessionStart writes a scoped env file (``CLAUDE_ENV_FILE``) so a polecat
-container inherits only what it needs, plus a git-credential shim that
-resolves push auth from ``AOPS_BOT_GH_TOKEN`` without ever putting the token
-on disk outside that shim.
+SessionStart appends to the env file the client names in ``CLAUDE_ENV_FILE``
+(Claude Code creates one per session and sets the variable itself), adding a
+git-credential shim that resolves push auth from ``AOPS_BOT_GH_TOKEN``.
+
+This does not isolate anything. Every value written here is read from the
+process environment and stays there: the file adds a second copy for tools the
+client launches from it, it does not confine the first. Any agent-facing text
+about this must say so — see
+``plugins/aops/hooks/messages/session-start-isolated.md``.
 """
 
 from __future__ import annotations

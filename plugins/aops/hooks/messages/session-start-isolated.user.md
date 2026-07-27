@@ -1,1 +1,1 @@
-aops: credentials for this session are scoped to a session-local environment file.
+aops: this session's environment carries git and `gh` credentials.

@@ -73,10 +73,11 @@ CONTAINER_AUTH_ENV = (
 
 # Container-internal paths, given a value rather than forwarded.
 #
-# CLAUDE_ENV_FILE is where the SessionStart credential hook writes the scoped
-# environment; the hook does nothing at all when the name is unset. The file is
-# deliberately outside every bind mount, so the credentials it holds die with
-# the container instead of persisting on the host.
+# CLAUDE_ENV_FILE is where the SessionStart credential hook appends git/gh auth
+# config; the hook does nothing at all when the name is unset. Claude Code
+# creates its own per-session file and overrides this value, so this path is
+# the one used by clients that supply none. It sits outside every bind mount,
+# so what it holds dies with the container instead of persisting on the host.
 CONTAINER_SET_ENV = {
     "CLAUDE_ENV_FILE": "/tmp/aops-session.env",
 }
