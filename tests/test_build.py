@@ -152,6 +152,32 @@ def test_agy_rejects_an_mcp_server_it_would_launch_with_an_unexpanded_variable(t
         _checked_mcp(servers, _agy_ctx(tmp_path))
 
 
+def test_agy_allows_the_two_placeholders_its_post_install_fixup_resolves(tmp_path):
+    """`${extensionPath}` and `${CLAUDE_PLUGIN_ROOT}` are the one exception: the
+    aops-crew image's `docker_gemini_fixups.py fixup-mcp-config-paths` rewrites
+    either token, in any installed plugin's `mcp_config.json`, to that plugin's
+    real on-disk install directory — after `agy plugin install` has copied it
+    there. This is the mechanism a plugin-relative command path needs, applied
+    post-install instead of at template-render time, and it is available to
+    every plugin the same way, not just this one."""
+    from build.clients.agy import _checked_mcp
+
+    servers = {
+        "services": {
+            "command": "bash",
+            "args": ["${extensionPath}/scripts/run-mcp.sh"],
+        }
+    }
+    assert _checked_mcp(servers, _agy_ctx(tmp_path)) == {"mcpServers": servers}
+
+    servers_claude_root = {
+        "services": {"command": "bash", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]}
+    }
+    assert _checked_mcp(servers_claude_root, _agy_ctx(tmp_path)) == {
+        "mcpServers": servers_claude_root
+    }
+
+
 def test_agy_rejects_an_mcp_server_that_is_neither_stdio_nor_remote(tmp_path):
     """agy's own rule: a server must have either `command` or `serverUrl`, and
     cannot have both."""
