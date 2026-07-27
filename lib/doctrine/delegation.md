@@ -10,6 +10,8 @@ Route to the cheapest surface that fits:
 2. **Autonomous container** — substantial repo work: multi-file changes, build and test loops, a branch and PR landing as a durable artifact. Higher latency; wrong for anything needed now.
 3. **Queued task** — work that should not run now. A durable record carrying the brief for a later worker. This is deferral, not cheap execution.
 
+**Reach a surface through its procedure, never through its runner.** Each surface class is governed by a procedure — named in the job you were given — carrying the claim, the brief, the return contract, and the supervision duty. Starting the underlying runner yourself gets you a worker with none of that, and nothing downstream can tell the difference until the contract is already missing. This rule is stated here rather than inside those procedures because an agent about to bypass one will not read the thing it is bypassing.
+
 **Pass an explicit model on every delegation.** An inherited model resolves to the root session's, so any agent invoked without one — including named specialists, and agents nested two levels down — silently runs at head-tier rates. A brief that may spawn nested agents instructs them to do the same.
 
 **Brief thin.** Goal, governing rules, minimal context. No prescriptive steps: the worker runs the investigation, and pre-investigating to write a "better" brief is the inline work you were avoiding. Briefing a specialist, give the goal and the why, never the mechanism — shipping a conclusion from inside their expertise usurps their diagnosis and propagates your premise.

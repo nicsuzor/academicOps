@@ -96,8 +96,8 @@ enforce it in their procedures.
 
 1. **Load context first.** Ground yourself in the PKB and the relevant specs —
    the goals, projects, and epics this touches, prior decisions, live
-   constraints, active assumptions. Never review, plan, or file cold. The
-   `hydrate` skill does this; it is never skipped, only right-sized.
+   constraints, active assumptions. Never review, plan, or file cold. Whatever
+   procedure loads that context, running it is never skipped — only right-sized.
 
 2. **Question the question.** Is the problem well-formed? Is the right problem
    being diagnosed? Name the class of problem, not just the instance.
