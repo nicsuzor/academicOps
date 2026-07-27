@@ -8,6 +8,7 @@ a missing required value is a loud failure, never a guess.
 
 import json
 import os
+import posixpath
 import shlex
 import shutil
 import subprocess
@@ -85,9 +86,14 @@ def _plugin_install_dir_error(name, source):
     those directories do exist. The live case is a manifest whose `source`
     lost its version segment and so names the plugin's parent cache dir:
     mounting there hides the very version directory the runtime loads.
+
+    The manifest is untrusted input, so the path is normalised before it is
+    split: `.` and `..` segments would otherwise be counted as ordinary
+    segments and could satisfy the shape while naming a different directory.
     """
     if not isinstance(source, str) or not source.startswith("/"):
         return "it is not an absolute path"
+    source = posixpath.normpath(source)
     prefix = f"{CONTAINER_PLUGIN_CACHE_ROOT}/"
     if not source.startswith(prefix):
         return f"it is outside the image's plugin cache {CONTAINER_PLUGIN_CACHE_ROOT}"
@@ -172,9 +178,9 @@ def resolve_live_edit_mounts(workspace_dir, image_plugin_roots):
     either.
 
     A plugin the image installed but the host has not built is a hard failure.
-    A plugin the host built but the image never installed is warned about and
-    skipped: there is no destination to shadow, but a developer who is not told
-    would believe their edits to it were live.
+    A plugin the host built for either runtime but the image never installed is
+    warned about and skipped: there is no destination to shadow, but a developer
+    who is not told would believe their edits to it were live.
     """
     dist_root = workspace_dir / "dist"
     if not dist_root.is_dir():
@@ -183,18 +189,26 @@ def resolve_live_edit_mounts(workspace_dir, image_plugin_roots):
             "Run `make build` in the workspace first."
         )
 
-    skipped = sorted(
-        built.name[: -len("-claude")]
-        for built in dist_root.glob("*-claude")
-        if built.is_dir() and built.name[: -len("-claude")] not in image_plugin_roots
-    )
+    # Either runtime's build is evidence the developer built that plugin, so
+    # both are scanned: an agy-only build with no `-claude` sibling is still a
+    # plugin whose edits will not be live, and reporting only the Claude side
+    # would leave that developer with the silent skip this warning exists for.
+    built_names = set()
+    for suffix in ("claude", "agy"):
+        for built in dist_root.glob(f"*-{suffix}"):
+            stem = built.name.removesuffix(f"-{suffix}")
+            if built.is_dir() and stem:
+                built_names.add(stem)
+
+    skipped = sorted(built_names - set(image_plugin_roots))
     if skipped:
         click.echo(
             "Warning: --live-edit is NOT mounting these locally built plugins, "
             f"because the image does not install them: {', '.join(skipped)}. "
-            "There is no path in it to mount over, so the container will run "
-            "whatever that image was built with and your edits to them will not "
-            "be live in it. Run `make docker-build` to pick them up.",
+            "The image has no directory to mount them over, so they are not "
+            "installed in that container at all — there is no older copy of "
+            "them running either — and no edit to them can take effect there. "
+            "Run `make docker-build` to build an image that installs them.",
             err=True,
         )
 
@@ -246,8 +260,13 @@ def verify_live_edit_destinations(image, mounts):
 
     missing = [line.strip() for line in probe.stdout.splitlines() if line.strip()]
     if missing:
+        # A line the probe reported that no mount claims cannot be labelled
+        # with a plugin name, so it is printed bare rather than under a
+        # placeholder that would read as one.
         by_dest = {dest: name for name, _, dest in mounts}
-        listing = "\n".join(f"  {by_dest.get(dest, '?')}: {dest}" for dest in missing)
+        listing = "\n".join(
+            f"  {by_dest[dest]}: {dest}" if dest in by_dest else f"  {dest}" for dest in missing
+        )
         fail(
             f"--live-edit: image {image!r} does not have these plugin-install "
             "paths, so mounting over them would silently create empty "
@@ -942,17 +961,35 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, live_edit, ex
             verify_live_edit_destinations(image, live_edit_mounts)
             # Without this, a --live-edit run's pre-container output is
             # byte-identical to a baked one and the developer cannot tell which
-            # code is about to run. Naming the version directory each mount
-            # landed in is the part that distinguishes them.
-            landed = ", ".join(
-                f"{name}@{dest.rsplit('/', 1)[1]}"
+            # code is about to run. The two facts that answer that are which
+            # host directory the code comes from and what it displaced — so the
+            # dist/ path leads, and the version directory is stated once as the
+            # IMAGE's, never as `plugin@version`, which would read as the
+            # version in play when it is precisely the code just shadowed.
+            # `make build` versions every plugin together, so one version
+            # normally covers all of them: repeating it per plugin would bury
+            # the dist/ path in identical strings.
+            baked = {
+                name: dest.rsplit("/", 1)[1]
                 for name, _, dest in live_edit_mounts
-                if dest.startswith(CONTAINER_PLUGIN_CACHE_ROOT)
+                if dest.startswith(f"{CONTAINER_PLUGIN_CACHE_ROOT}/")
+            }
+            versions = sorted(set(baked.values()))
+            shadowed = (
+                f"version directory {versions[0]}"
+                if len(versions) == 1
+                else "version directories "
+                + ", ".join(f"{n}={v}" for n, v in sorted(baked.items()))
             )
+            # Every plugin is mounted on both sides, so the plugin list covers
+            # both; only the version is Claude-side, and it says so.
+            covered = ", ".join(sorted({name for name, _, _ in live_edit_mounts}))
             click.echo(
-                f"Live-edit ON: {canonical_workspace_dir / 'dist'} mounted read-only "
-                f"over the claude and agy plugin paths image {image!r} reported, "
-                f"for: {landed}"
+                f"Live-edit ON: {canonical_workspace_dir / 'dist'} is mounted read-only "
+                f"over both the claude and agy plugin directories image {image!r} "
+                f"installed, so the container runs that source for: {covered}. The "
+                f"mounts shadow the image's own copies, baked in at claude-side "
+                f"{shadowed}."
             )
 
         env = get_env_forwards(config)

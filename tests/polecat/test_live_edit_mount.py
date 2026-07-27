@@ -45,12 +45,14 @@ def _image_manifest(names, version=_IMAGE_VERSION):
     (docker_gemini_fixups.py, fixup_marketplace_cache).
 
     `version` here is the on-disk directory name, and the entry's own `version`
-    field is deliberately not equal to it: Claude Code spells a semver build-
-    metadata `+meta` as `-meta` when it names the cache directory, so
-    `0.4.0+gold` installs at `.../0.4.0-gold`. Composing a destination from the
-    `version` field would therefore miss by one character even with the right
-    version in hand — which is the second reason the destination is read from
-    `source` and never assembled."""
+    field is deliberately not equal to it. The two are not required to agree,
+    and on the aops-crew image checked against they did not: every entry read
+    `0.5.1-dev.0+gf41e1916.dirty` while its `source` directory was
+    `.../0.5.1-dev.0-gf41e1916.dirty`, semver build metadata spelled `+` in the
+    field and `-` in the path. Whatever produces that difference, composing a
+    destination from the `version` field would have missed the real directory
+    by a character even with the right version in hand — the second reason the
+    destination is read from `source` and never assembled."""
     return json.dumps(
         {
             "name": cli.CONTAINER_PLUGIN_MARKETPLACE,
@@ -210,6 +212,16 @@ def test_only_a_plugins_own_install_directory_may_be_a_destination(monkeypatch, 
         cli.probe_image_plugin_roots("overbroad-image:latest")
 
 
+def test_a_traversal_segment_cannot_pass_itself_off_as_the_plugin_name():
+    """The shape check runs on a normalised path. Unnormalised, `..` counts as
+    an ordinary segment, so a plugin named `..` claiming
+    `<cache>/../<version>` satisfies "<plugin>/<version>, first segment equals
+    the plugin's name" while naming a directory outside the cache entirely.
+    Nothing in the real producer emits that, but the premise of this whole
+    check is that the manifest is untrusted."""
+    assert cli._plugin_install_dir_error("..", f"{cli.CONTAINER_PLUGIN_CACHE_ROOT}/../0.5.1")
+
+
 # ---------------------------------------------------------------------------
 # resolve_live_edit_mounts: host builds -> the image's own destinations
 # ---------------------------------------------------------------------------
@@ -254,7 +266,7 @@ def test_the_plugin_set_comes_from_the_image_too(tmp_path, capsys):
     who just added a plugin against an older image gets exit 0 and no output
     while their edits do nothing. It is a warning, not a refusal — the run is
     still useful for every other plugin — but it names the plugins and says
-    what the container will actually run."""
+    they are not installed in that container at all."""
     _write_dist_build(tmp_path, ["aops", "aops-pkb", "aops-tools"])
     mounts = cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
     assert {name for name, _, _ in mounts} == {"aops"}
@@ -262,6 +274,22 @@ def test_the_plugin_set_comes_from_the_image_too(tmp_path, capsys):
     warning = capsys.readouterr().err
     assert "aops-pkb" in warning
     assert "aops-tools" in warning
+    assert "NOT mounting" in warning
+
+
+def test_a_plugin_built_only_for_agy_is_named_too(tmp_path, capsys):
+    """The skip scan covers both runtimes' build directories, not just
+    `-claude`. A plugin built for agy alone is still one the image never
+    installed, so a developer editing it gets exit 0 and a container that
+    ignores them — the same silent skip this warning exists to prevent, just
+    in a narrower slice."""
+    _write_dist_build(tmp_path, ["aops"])
+    (tmp_path / "dist" / "aops-agyonly-agy").mkdir(parents=True)
+
+    cli.resolve_live_edit_mounts(tmp_path, {"aops": "/dest/aops"})
+
+    warning = capsys.readouterr().err
+    assert "aops-agyonly" in warning
     assert "NOT mounting" in warning
 
 
@@ -459,8 +487,16 @@ def test_a_live_session_says_so_before_the_container_starts(tmp_path, monkeypatc
     """A developer must never be fooled about which code is running, and that
     includes this feature's own output. With no confirmation line a
     --live-edit run's pre-container output is byte-identical to a baked one,
-    so the terminal cannot distinguish them. The line names the version
-    directory the mount actually landed in — the fact that differs."""
+    so the terminal cannot distinguish them.
+
+    The line must answer, in one read, which code is running and where it came
+    from: the host `dist/` now being served, the plugins it covers, and the
+    image's own version directory it displaced. That version is the IMAGE's —
+    the commit it was baked at, which is exactly the code just shadowed — so it
+    is never spelled `<plugin>@<version>`, the universal idiom for the version
+    in play, and it is stated once rather than per plugin: `make build` versions
+    every plugin together, so per-plugin repeats are one identical string
+    burying the `dist/` path that actually answers the question."""
     repo = tmp_path / "repo"
     repo.mkdir(parents=True, exist_ok=True)
     _write_dist_build(repo, ["aops", "aops-pkb"])
@@ -475,9 +511,20 @@ def test_a_live_session_says_so_before_the_container_starts(tmp_path, monkeypatc
 
     announcement = [ln for ln in result.output.splitlines() if ln.startswith("Live-edit ON:")]
     assert len(announcement) == 1
-    assert f"aops@{_IMAGE_VERSION}" in announcement[0]
-    assert f"aops-pkb@{_IMAGE_VERSION}" in announcement[0]
-    assert str(repo / "dist") in announcement[0]
+    line = announcement[0]
+
+    # Which code is running, and for which plugins.
+    assert str(repo / "dist") in line
+    assert "aops, aops-pkb" in line
+    # Both runtimes are mounted, so the line may claim both.
+    assert "claude" in line and "agy" in line
+
+    # What it displaced: named once, and never as the version in play.
+    assert line.count(_IMAGE_VERSION) == 1
+    assert f"aops@{_IMAGE_VERSION}" not in line
+    assert f"aops-pkb@{_IMAGE_VERSION}" not in line
+    assert "test-image:latest" in line
+
     # And it precedes the container it describes.
     assert result.output.index("Live-edit ON:") < result.output.index("Running")
 

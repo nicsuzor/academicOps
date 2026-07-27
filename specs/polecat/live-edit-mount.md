@@ -115,8 +115,16 @@ become a mount.
    loop. Skipping it silently would not be acceptable, though: that developer
    gets exit 0, no output, and a container that ignores their edits — the same
    false green the whole feature exists to prevent, produced by the feature
-   itself. The warning says which plugins were skipped and that the container
-   will run whatever the image was built with.
+   itself. The warning names the skipped plugins and says that the image never
+   installed them, so they are not in the container at all — absent, not stale.
+   A developer told instead that the container "runs what the image was built
+   with" would go hunting for out-of-date behaviour from a plugin that has no
+   copy there to be out of date.
+
+   A build for _either_ runtime counts as built: `dist/<name>-agy` with no
+   `-claude` sibling is still a plugin whose edits will not be live, and
+   scanning only the Claude side would reproduce the silent skip inside the
+   warning meant to end it.
 
 3. **Both runtimes are mounted, whichever `AGENT_CMD` runs.**
    The Claude-side destination is the probed `source`. The agy-side
@@ -153,10 +161,12 @@ become a mount.
    This stays a second container rather than folding into step 1's probe.
    The destinations being checked _come from_ step 1's output, so a single
    probe would have to replace `test -d <exact destination>` with a directory
-   listing post-processed on the host — a weaker predicate that diverges from
-   Docker's own view on symlinks and that hardcodes the cache tree's depth
-   host-side. The saved container start is worth less than testing the
-   predicate that actually governs the mount.
+   listing post-processed on the host — a weaker predicate, and a second
+   host-side implementation of the destination rule, against a hardcoded cache
+   tree depth, free to drift from `_plugin_install_dir_error` with nothing to
+   catch it. `test -d` instead asks the container the same question about the
+   same path the mount will use. The saved container start is worth less than
+   testing the predicate that actually governs the mount.
 
 6. **Mount read-only, once verified.**
    Only after every destination is confirmed to pre-exist does `run` add
@@ -166,12 +176,26 @@ become a mount.
    checkout, never the container's filesystem.
 
 7. **Say what was mounted, before the container starts.**
-   `run` emits one line naming the `dist/` it mounted from and, per plugin, the
-   version directory the mount actually landed in. Without it a `--live-edit`
-   run's pre-container output is byte-identical to a baked one, so the terminal
-   gives a developer no way to tell which code is about to run — the confusion
-   this flag exists to end, left in place by the flag itself. The version
-   directory is the part that differs, so it is the part the line carries.
+   Without this a `--live-edit` run's pre-container output is byte-identical to
+   a baked one, so the terminal gives a developer no way to tell which code is
+   about to run — the confusion this flag exists to end, left in place by the
+   flag itself.
+
+   `run` emits one line carrying the host `dist/` now being served, the plugins
+   it covers, and the image's own version directory it displaced. The version
+   is the image's — the commit that image was baked at, which is precisely the
+   code just shadowed — so it is never rendered `<plugin>@<version>`: that is
+   the universal idiom for the version in play, and a developer asking "why
+   isn't my edit showing" must not be handed a commit that is not theirs as the
+   answer. It is stated once, not per plugin: `make build` versions every
+   plugin together, so the normal case is one version repeated across the whole
+   set, which would bury the `dist/` path that actually answers the question.
+   Only when the image reports genuinely differing versions does the line
+   itemise them per plugin.
+
+   The plugin list covers both runtimes, because both are mounted for every
+   plugin. The version qualifier is marked Claude-side, since the agy
+   destination is flat and has no version to report.
 
 ## Resolution against `--repo-dir` / `--project`
 
@@ -215,12 +239,15 @@ mounts at `/workspace`.
    naming the manifest path, not with an `AttributeError`.
 7. **A plugin the image lacks is named, not swallowed** — Test: with a `dist/`
    containing a plugin the image never installed, `run --live-edit` warns on
-   stderr naming that plugin and stating the container will run the image's own
-   code, and still mounts every plugin the image does install.
+   stderr naming that plugin and stating it is not installed in the container
+   at all, and still mounts every plugin the image does install. A plugin built
+   only as `dist/<name>-agy`, with no `-claude` sibling, is named the same way.
 8. **A live session is distinguishable from a baked one** — Test: `run
    --live-edit` prints, before the container starts, a line naming the host
-   `dist/` and each plugin's mounted version directory; a run without the flag
-   prints no such line.
+   `dist/`, the plugins covered, and the image's displaced version directory —
+   attributed to the image and not spelled `<plugin>@<version>`, and carried
+   once rather than once per plugin when the versions are equal; a run without
+   the flag prints no such line.
 9. **A host edit is visible in an image nobody rebuilt** — Test: against an
    image whose baked plugin version differs from the host's, edit a file
    under a plugin's shipped source on the host, rebuild `dist/` (`make
