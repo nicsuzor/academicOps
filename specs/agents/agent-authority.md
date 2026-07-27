@@ -92,6 +92,28 @@ isolation: <bool | "worktree">  # Default isolation mode. Advisory.
 | `permissionMode`  | `"default"`                                                |
 | `maxTurns`        | Harness default                                            |
 
+### Known exception: `tools` omitted (harness materialization defect)
+
+The deny-by-default default above is currently inverted by a harness defect: a
+spawned custom agent whose frontmatter declares an explicit `tools` allowlist
+receives only the harness's own built-in tools — no `mcp__*` tool and no
+`ToolSearch` materializes, regardless of what the allowlist or `mcpServers`
+grants (upstream: anthropics/claude-code#25200, #13898). The only path
+confirmed to deliver the full tool pool, including MCP servers, is omitting
+`tools` entirely — the agent then inherits its parent's complete effective set
+instead of "no tool calls permitted."
+
+`plugins/pkb/agents/pauli.md`, `plugins/aops/agents/james.md`,
+`plugins/aops/agents/marsha.md`, and `plugins/aops/agents/rbg.md` omit `tools`
+for this reason: each needs `mcp__services__pkb__*` (or broader) to function
+at all, so an unenforced allowlist is preferable to a materialized set of six
+built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — it
+holds no MCP grant, so the defect does not affect it, and its restriction is
+deliberate. Consequence: RBG's ultra-vires review (L4 below) has no
+frontmatter ground truth for these four agents until the harness is fixed and
+`tools` is restored. Restore `tools` on all four the moment upstream ships a
+fix that lets an explicit allowlist materialize MCP tools again.
+
 ### Wildcards
 
 `skills` and `subagents` accept the single-element wildcard list `["*"]` meaning "any installed skill" / "any defined agent". The wildcard is an explicit, auditable declaration — the lint treats `["*"]` as a signal that the agent is intentionally open, not as a missing gate. Tools do not accept a wildcard: the `tools` list is always explicit.

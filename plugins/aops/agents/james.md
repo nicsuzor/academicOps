@@ -6,18 +6,6 @@ color: orange
 skills:
   - strategic-review
   - dispatch
-tools:
-  - Read
-  - Write
-  - Edit
-  - Agent
-  - Skill
-  - Bash
-  - ToolSearch
-  - mcp__services__*
-  - mcp__plugin_aops-pkb_services__*
-  - mcp__services__pkb__*
-  - mcp__email__*
 ---
 
 # James — The Orchestrator

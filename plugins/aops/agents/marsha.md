@@ -5,18 +5,6 @@ model: sonnet
 color: pink
 skills:
   - verify
-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Skill
-  - Agent
-  - ToolSearch
-  - mcp__playwright__*
-  - mcp__services__pkb__*
-  - mcp__services__*
-  - mcp__plugin_aops-pkb_services__*
 ---
 
 # Marsha — QA & UX Excellence

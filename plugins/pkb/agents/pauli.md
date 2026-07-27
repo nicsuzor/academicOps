@@ -13,16 +13,6 @@ skills:
   - workflow
   - remember
   - graph-maintenance
-tools:
-  - Skill
-  - Agent
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - ToolSearch
-  - mcp__services__pkb__*
-  - mcp__plugin_aops-pkb_services__pkb__*
 ---
 
 # Pauli — Memory and Strategy

@@ -132,3 +132,4 @@ The framework's prior in-session hook/gate engine — a dedicated `GateConfig` f
 - [evidence-contract.md](evidence-contract.md) — the single universal claim-evidence shape every boundary above reads.
 - [auto-mode-classifier.md](auto-mode-classifier.md) — design statement for Claude Code's native per-action classifier.
 - **PKB Workflow Templates** (`wf-*` nodes in the PKB) — the prose workflow template component library for assembled workflows.
+- [agent-authority.md](../agents/agent-authority.md) — the frontmatter schema and deny-by-default tool/skill/subagent permissions this spec's L3/L4 layers apply; documents a current harness defect that forces four core agents (pauli, james, marsha, rbg) to omit their `tools` allowlist rather than lose MCP access, and the resulting gap in RBG's ground truth for those four until upstream fixes it.
