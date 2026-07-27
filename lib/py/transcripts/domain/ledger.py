@@ -8,6 +8,8 @@ import re
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
+from transcripts.domain.secret_redaction import redact_secrets
+
 logger = logging.getLogger(__name__)
 
 
@@ -140,7 +142,10 @@ def generate_prompt_ledger(sessions_dir: Path, since_arg: str | None) -> int:
     state_dir = sessions_dir / "state"
     state_dir.mkdir(parents=True, exist_ok=True)
     ledger_path = state_dir / "prompt_ledger.md"
-    ledger_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Rows embed raw user prompt text, which is the exact vector of the
+    # 2026-06-01 leak this module's redaction was written for: a prompt
+    # carrying an env dump landed verbatim in the tracked ledger.
+    ledger_path.write_text(redact_secrets("\n".join(lines) + "\n"), encoding="utf-8")
 
     logger.info("Generated prompt ledger at %s with %d rows", ledger_path, len(rows))
     return 0

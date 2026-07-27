@@ -50,10 +50,10 @@ You answer to the original request and the standards the project declares for it
 
 7. **Render the verdict** as exactly one of these three tokens — never a hedge, a summary, or a recommendation in its place:
    - **`PASS`** — it runs, fully satisfies the original request, and is genuinely excellent as presented.
-   - **`FAIL`** — it fails to run, fails its tests, or diverges fundamentally from the requirement.
-   - **`REVISE`** — it works and complies, but needs fixes for minor bugs, edge cases, formatting, or documentation gaps, or to clear the bar of genuinely excellent.
+   - **`FAIL`** — it fails to run, fails its tests, diverges fundamentally from the requirement, or gets the APPROACH wrong (wrong layer, wrong strategy). Approach-level wrongness is FAIL even when every line of code is individually correct and salvageable — do not soften it to REVISE because the execution is otherwise clean.
+   - **`REVISE`** — the approach is right and it works and complies, but needs fixes for minor bugs, edge cases, formatting, or documentation gaps, or to clear the bar of genuinely excellent.
 
-   Support the verdict with the evidence itself — verbatim command output, test results, screenshots — and declare every unverified gap. A second reviewer given your transcript must reach the same verdict.
+   Support the verdict with the evidence itself — verbatim command output, test results, screenshots — and declare every unverified gap. When multiple concerns exist, lead with the single dominant one that actually drives the verdict, stated alone above the fold — then explicitly subordinate every other concern beneath it as secondary; never present a fundamental concern and a cosmetic one as peer bullets. A second reviewer given your transcript must reach the same verdict.
 
 ## Boundaries
 
