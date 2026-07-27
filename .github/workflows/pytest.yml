@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Build dist
+        run: uv run python -m build.build
+
       - name: Setup Test Environment
         run: |
           mkdir -p ~/.claude
