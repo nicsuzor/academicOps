@@ -1,5 +1,9 @@
 # aops-cope
 
+<!-- NS: We are going to run RBG head-to-head against Cope. Cope is going to evaluate every tool use. RBG is going to sit on the boundaries (subagentstop, stop) and check, much less frequently, for any infringement of the axioms plus project plus user scoped rules in EITHER (not sure yet, so make it configurable and we'll set up an A/B test) the initial user prompt + the final response + a bare list of tool calls, OR the full transcript. RBG will use a more expensive model that can reason about the rules. We will compare the two and see if RBG catches anything that Cope does not.
+
+-->
+
 Advisory, in-session rule checking: on every tool call it asks a small language model whether the call matches any rule in a three-layer rule set, and injects the matched rule into the agent's context so it can correct itself. It never blocks anything.
 
 ```mermaid

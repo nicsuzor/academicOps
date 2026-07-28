@@ -49,7 +49,7 @@ flowchart TD
     - can ida dispatch subagents, and if so, what sort of work can they do and how do they communicate back? How is that work assessed?
     - what's the contract between James and Ida, or between workers and Ida? Does Ida need to be satisfied that work carries attestations that it has been reviewed? If work is done async, how does this certification get back onto the task before it gets to Ida?
     - when does James run synchronous agents and are they run in containers? if not why not, that sounds dangerous?
-
+    - what do the hooks do? why aren't the stop hooks on the flow, and what does the agent do when it gets a stop hook?
 -->
 
 James never talks to the user; ida does. James never sits inside the dispatch → review → reconcile loop; workers return evidence and he ranks and narrates the outcome.
