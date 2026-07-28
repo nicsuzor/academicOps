@@ -1,3 +1,8 @@
+---
+description: The Dispatched record written before a worker starts; two claims, not one.
+trigger: always_on
+---
+
 ## The launch claim
 
 A dispatch whose loss would matter beyond its own session gets a claim written on

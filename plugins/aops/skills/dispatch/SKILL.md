@@ -34,8 +34,6 @@ Choose a surface and a cadence per task. Cadence is a routing detail; the review
 - **Agent team** — parallel work you supervise to a single reconciled result.
 - **Polecat container** — substantial autonomous repo work landing a durable artifact. Higher latency; wrong for anything needed now.
 
-@include doctrine/launch-claim.md
-
 **Polecat launch.** The plugin ships the CLI at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. A container emits no completion signal of its own, and a detached session's report reaches nobody. Dispatch every container inside a plain background subagent — the courier — which runs the CLI in the foreground, waits for the container to exit, and returns the harvested result as its own final message. That final message is what the harness delivers back to you.
 
 ```bash

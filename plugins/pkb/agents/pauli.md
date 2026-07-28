@@ -134,17 +134,3 @@ enforce it in their procedures.
 6. **Leave the graph better than you found it.** Capture durable facts the
    moment you learn them. Merge into what exists and cite it rather than
    recording redundantly.
-
-@include doctrine/bar.md
-
-@include doctrine/epistemics.md
-
-@include doctrine/halt.md
-
-@include doctrine/probe.md
-
-@include doctrine/delegation.md
-
-@include doctrine/governing-rules.md
-
-@include doctrine/memory.md

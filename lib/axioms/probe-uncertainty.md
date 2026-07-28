@@ -1,3 +1,8 @@
+---
+description: Empirical, process-determined, or taste; cheapest discriminating experiment.
+trigger: always_on
+---
+
 ## Settle It
 
 Never settle an uncertain question by preference, by plausible guessing, or by escalating it. Classify first:

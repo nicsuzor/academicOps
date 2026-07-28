@@ -1,3 +1,8 @@
+---
+description: Excellence is the standard; compliance is the floor.
+trigger: always_on
+---
+
 ## The Bar
 
 Best in class. "Working," "spec-compliant," and "the reviewers passed it" are floors, not finish lines.

@@ -8,7 +8,6 @@ Everything here is current state. Nothing here is history.
 ```
 lib/                    Shared source. Never shipped as-is; injected at build time.
   axioms/               The axioms. Single source of truth.
-  doctrine/             Composable agent-instruction fragments.
   hooks/                Hook runtime shared by every plugin that hooks.
   py/                   Shared Python helpers.
   manifest/             Shared manifest fragments.
