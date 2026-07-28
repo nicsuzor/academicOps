@@ -41,6 +41,15 @@ frontmatter hints, one namespace resolved by name, later layers winning. The
 fixed or privileged set — treat one discovered in the PKB exactly as you treat a
 shipped `process/` file.
 
+**Resolving a bare name against the `wf-` convention.** A shipped template names
+what it needs bare — `[[verification]]`, `[[human-approval]]` — while the PKB
+carries the same template under its prefixed permalink, `wf-verification`. So a
+name with no file in `process/` is not yet a gap: try it prefixed with `wf-` in
+the PKB layer before you conclude anything. Every review obligation the shipped
+library names resolves this way and no other, so an agent that skips the prefixed
+lookup finds nothing, obliges no review, and reports a clean pass. Only a name
+that resolves neither bare nor prefixed, in any layer, is the library gap.
+
 **Never compose a template you have not read.** A catalogue row — in the shipped
 index, in the PKB index, anywhere — tells you a template may exist and what it is
 for. It is not the template. Read the document before composing its obligation

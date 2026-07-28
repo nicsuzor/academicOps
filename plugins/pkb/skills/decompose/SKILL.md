@@ -110,9 +110,9 @@ would not load, a composition that never ran — the cause changes what you repo
 never whether you halt.
 
 **Human sign-off is the one node you emit uncomposed.** Where any subtask's door
-is one-way — send, publish, deploy, spend, merge to a protected branch, or a
-delete nothing can reconstruct — emit a sign-off node for it whether or not a
-template named one, and treat ambiguous reversibility as one-way. The
+is one-way — the `one-way-door` axiom's list is the one that governs, and you do
+not need a second here — emit a sign-off node for it whether or not a template
+named one, and treat ambiguous reversibility as one-way. The
 `one-way-door` axiom binds the agent that crosses; this node is what leaves the
 obligation in the graph, where a reviewer can see it was owed and whether it was
 met. An obligation with no node behind it is one that fails silently.
