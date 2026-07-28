@@ -31,6 +31,7 @@ import clients  # noqa: E402
 import credentials  # noqa: E402
 import degraded  # noqa: E402
 import messages  # noqa: E402
+import provenance  # noqa: E402
 import telemetry  # noqa: E402
 from result import Result, merge, refuse, warn  # noqa: E402
 
@@ -516,6 +517,169 @@ def test_telemetry_report_never_mutates_environment(monkeypatch):
     telemetry.configured_vars()
     for var in telemetry.CONTRACT:
         assert var not in os.environ
+
+
+# ---------------------------------------------------------------------------
+# provenance.py: which build is running, and what else is installed
+# ---------------------------------------------------------------------------
+#
+# Both facts are located by walking out from the hooks directory, because a
+# shipped artifact may bake no host or install path (specs/ARCHITECTURE.md,
+# Binding constraints) — the same rule `test_ts_session_end_bakes_no_host_or_
+# search_path` pins for the ts hook. Every case below therefore builds the
+# layout around a tmp_path and never names a real one.
+
+
+def _plugin_tree(root: Path, manifest: str | None, *, claude: bool = True) -> Path:
+    """A plugin root with a hooks/ dir, laid out the way a client packages it.
+
+    Claude puts the manifest at `.claude-plugin/plugin.json`, agy at
+    `plugin.json` (build/clients/claude.py, build/clients/agy.py). `None`
+    writes no manifest at all.
+    """
+    hooks_dir = root / "hooks"
+    hooks_dir.mkdir(parents=True)
+    if manifest is not None:
+        path = root / ".claude-plugin" / "plugin.json" if claude else root / "plugin.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(manifest, encoding="utf-8")
+    return hooks_dir
+
+
+def test_provenance_reports_the_name_and_version_the_build_stamped(tmp_path):
+    """build/build.py stamps `version` into the manifest at build time; this is
+    the only place a running hook can learn which build it is."""
+    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops", "version": "0.6.0"}')
+    assert provenance.plugin(hooks_dir) == "plugin: aops 0.6.0"
+
+
+def test_provenance_reads_the_agy_manifest_layout_too(tmp_path):
+    """One runtime ships to both clients, and agy puts the manifest at the
+    plugin root rather than under `.claude-plugin/`. Missing this reads as a
+    plugin with no version on every agy session."""
+    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops", "version": "0.6.0"}', claude=False)
+    assert provenance.plugin(hooks_dir) == "plugin: aops 0.6.0"
+
+
+def test_provenance_with_no_manifest_says_so_rather_than_inventing_one(tmp_path):
+    """A source checkout has no rendered manifest. The fact is unavailable, and
+    saying that is the report — there is no version to fall back to."""
+    hooks_dir = _plugin_tree(tmp_path, None)
+    assert provenance.plugin(hooks_dir) == "plugin: build manifest not readable"
+
+
+def test_provenance_with_an_unparseable_manifest_does_not_raise(tmp_path):
+    """A truncated or hand-edited manifest must not end the session. The whole
+    point of a SessionStart report is that it cannot cost the session anything."""
+    hooks_dir = _plugin_tree(tmp_path, "{not json at all")
+    assert provenance.plugin(hooks_dir) == "plugin: build manifest not readable"
+
+
+def test_provenance_with_a_manifest_carrying_no_version_says_which_fact_is_missing(tmp_path):
+    """Distinct from an unreadable file: the manifest was found and parsed, and
+    the version is what is absent. Collapsing the two hides a build bug."""
+    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops"}')
+    assert provenance.plugin(hooks_dir) == "plugin: build manifest carries no version"
+
+
+def _registry(plugin_root: Path, payload: str) -> None:
+    """The client's installed-plugin registry, above the plugin's install dir.
+
+    Real layout, confirmed against an installed tree:
+    `<config>/plugins/installed_plugins.json` sits three levels above
+    `<config>/plugins/cache/<marketplace>/<plugin>/<version>/`.
+    """
+    plugin_root.parent.mkdir(parents=True, exist_ok=True)
+    (plugin_root.parent / "installed_plugins.json").write_text(payload, encoding="utf-8")
+
+
+def test_provenance_lists_the_plugins_the_client_records_as_installed(tmp_path):
+    """The client's own installation state, not another plugin's files — the
+    same class of thing as the `CLAUDE_ENV_FILE` credentials.py appends to."""
+    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
+    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
+    _registry(
+        plugin_root.parent.parent,
+        json.dumps({"version": 2, "plugins": {"aops@academicOps": [], "aops-pkb@academicOps": []}}),
+    )
+    assert provenance.installed(hooks_dir) == "plugins installed: aops, aops-pkb"
+
+
+def test_provenance_reports_no_sibling_versions_only_names(tmp_path):
+    """A sibling plugin's version would have to come out of that plugin's own
+    manifest, which this plugin may not read (specs/ARCHITECTURE.md, Loose
+    coupling). The registry carries versions; the report must not echo them."""
+    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
+    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
+    _registry(
+        plugin_root.parent.parent,
+        json.dumps({"plugins": {"aops-pkb@academicOps": [{"version": "9.9.9-secret"}]}}),
+    )
+    assert "9.9.9-secret" not in provenance.installed(hooks_dir)
+
+
+def test_provenance_with_no_registry_reports_nothing_rather_than_guessing(tmp_path):
+    """agy keeps no such file, and neither does a source checkout. Inferring a
+    roster from directory layout instead would be confidently wrong there."""
+    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops", "version": "0.6.0"}')
+    assert (
+        provenance.installed(hooks_dir) == "plugins installed: no client registry beside this build"
+    )
+
+
+def test_provenance_with_an_unparseable_registry_does_not_raise(tmp_path):
+    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
+    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
+    _registry(plugin_root.parent.parent, "{truncated")
+    assert (
+        provenance.installed(hooks_dir) == "plugins installed: no client registry beside this build"
+    )
+
+
+def test_provenance_with_a_pathologically_nested_registry_does_not_raise(tmp_path):
+    """`json`'s decoder raises RecursionError on deep nesting, which is neither
+    OSError nor ValueError — the pair a narrow catch here would name. What that
+    costs is not one missing provenance line: `_run_handler` discards the whole
+    handler (lib/hooks/dispatch.py), and `session_start` reports provenance
+    *before* it isolates credentials, so one mangled registry file would take a
+    container session's git credential shim with it."""
+    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
+    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
+    _registry(plugin_root.parent.parent, "[" * 50_000 + "]" * 50_000)
+    assert (
+        provenance.installed(hooks_dir) == "plugins installed: no client registry beside this build"
+    )
+
+
+def test_provenance_with_a_registry_of_the_wrong_shape_says_so(tmp_path):
+    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
+    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
+    _registry(plugin_root.parent.parent, json.dumps({"version": 2, "plugins": []}))
+    assert (
+        provenance.installed(hooks_dir)
+        == "plugins installed: client registry not in the expected shape"
+    )
+
+
+def test_provenance_bakes_no_host_or_install_path():
+    """The constraint this module is built around. `Path.home()`, `$HOME`, and a
+    literal client cache path are all how a shipped artifact acquires a baked
+    search path — the regression already pinned for the ts hook."""
+    text = (_LIB_HOOKS / "provenance.py").read_text(encoding="utf-8")
+    for token in ("Path.home()", "expanduser", "$HOME", "${HOME}", ".claude/plugins"):
+        assert token not in text, f"provenance.py bakes {token!r} into a shipped artifact"
+
+
+def test_provenance_never_writes_anything(tmp_path):
+    """Reports only. A SessionStart hook that mutated the client's installation
+    state would be the one thing `Installation` reserves to the installer."""
+    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
+    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
+    _registry(plugin_root.parent.parent, json.dumps({"plugins": {"aops@academicOps": []}}))
+    before = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
+    provenance.plugin(hooks_dir)
+    provenance.installed(hooks_dir)
+    assert sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*")) == before
 
 
 # ---------------------------------------------------------------------------

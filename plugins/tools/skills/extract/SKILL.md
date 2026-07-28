@@ -65,7 +65,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 - Goal is to capture significant events/relationships
 - Source is historical documents
 
-**Route to**: Archive extraction logic (selective extraction, use `/remember` for storage)
+**Route to**: Archive extraction logic (selective extraction, use `Skill(skill="remember")` for storage)
 
 **Storage**: Use `Skill(skill="remember")` for PKB storage
 
@@ -233,7 +233,7 @@ When adding examples to public framework docs:
 
 **Use specialized skill directly**:
 
-- `/remember` - When you know you want to add to knowledge base
+- `Skill(skill="remember")` - When you know you want to add to knowledge base
 
 **Note on `/convert-to-md`**: This trigger is now an alias for `/extract`. Invoking `/convert-to-md` routes to the `workflows/docs-to-md.md` workflow.
 

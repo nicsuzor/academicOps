@@ -16,6 +16,7 @@ from collections.abc import Callable
 
 import credentials
 import messages
+import provenance
 import result
 import telemetry
 from context import HookContext
@@ -60,14 +61,24 @@ _HEADLESS_ENV = (
 
 
 def session_start(ctx: HookContext) -> result.Result | None:
-    """Report telemetry configuration; scope credentials for container sessions.
+    """Report this build, what else is installed, and telemetry configuration;
+    scope credentials for container sessions.
 
     Reports only. Never sets a telemetry value and never supplies an endpoint.
-    """
-    # <!-- NS: Make sure this reports plugin version and loaded plugins and whatever else we're going to need -- tracing urls etc. but have a separate hook for functionality that exists only in other packages, don't introduce cross-package messages -->
 
+    Three compact facts, one line each. This fires on every session, so it is
+    held to the injection-tier discipline the axioms impose: a version string
+    and a name list, not a report. A trace URL is not among them and cannot be
+    — see lib/hooks/telemetry.py, ``EXPORT_VARS``.
+    """
     agent, user = messages.load_pair(ctx.hooks_dir, "session-start")
-    parts = [agent.format(telemetry=telemetry.report())]
+    parts = [
+        agent.format(
+            telemetry=telemetry.report(),
+            plugin=provenance.plugin(ctx.hooks_dir),
+            installed=provenance.installed(ctx.hooks_dir),
+        )
+    ]
     lines = [user] if user else []
     if credentials.isolate(ctx.raw) is not None:
         isolated, isolated_user = messages.load_pair(ctx.hooks_dir, "session-start-isolated")

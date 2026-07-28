@@ -1,9 +1,5 @@
 # aops-cope
 
-<!-- NS: We are going to run RBG head-to-head against Cope. Cope is going to evaluate every tool use. RBG is going to sit on the boundaries (subagentstop, stop) and check, much less frequently, for any infringement of the axioms plus project plus user scoped rules in EITHER (not sure yet, so make it configurable and we'll set up an A/B test) the initial user prompt + the final response + a bare list of tool calls, OR the full transcript. RBG will use a more expensive model that can reason about the rules. We will compare the two and see if RBG catches anything that Cope does not.
-
--->
-
 Advisory, in-session rule checking: on every tool call it asks a small language model whether the call matches any rule in a three-layer rule set, and injects the matched rule into the agent's context so it can correct itself. It never blocks anything.
 
 ```mermaid
@@ -26,7 +22,7 @@ flowchart TD
     E2 --> F
     E3 --> F
 
-    F --> G["evaluator.check()<br/>one request per rule, in parallel,<br/>inside one deadline"]
+    F -->|Claude Code path only| G["evaluator.check()<br/>one request per rule, in parallel,<br/>inside one deadline"]
     G --> H{"protocol"}
     H -->|cope| H1["POST content_text + criteria_text + model<br/>→ label, confidence, explanation"]
     H -->|openai| H2["POST /v1/chat/completions with<br/>messages/classifier-prompt.md<br/>→ label, confidence"]
@@ -34,11 +30,13 @@ flowchart TD
     H2 --> I
     I -->|error, timeout,<br/>unparseable| J["fail open: degradation<br/>notice, no advisory"]
     I -->|all 0| K[no advisory — clean no-op]
-    I -->|any 1| L["hooks/messages/verdict.md<br/>+ each matched rule's full text<br/>+ the tool call that was judged"]
-    L --> M["additionalContext injected<br/>(never permissionDecision)"]
+    I -->|any 1| L["messages/verdict.md + each matched rule's<br/>full text + the tool call that was judged;<br/>messages/verdict.user.md + the matched slugs"]
+    L --> M["additionalContext (the agent):<br/>the rules' full text<br/>+ systemMessage (the person):<br/>the slugs that were flagged"]
+    L -.->|the route that exists and is<br/>deliberately not taken| Z
+    Z["permissionDecision: deny<br/>(lib/hooks/clients.py can render it;<br/>result.py reserves refusal for<br/>structural impossibility, never a verdict)"]
 
-    F --> N["hooks/messages/ruleset.md<br/>+ one line per live rule, layer-marked"]
-    N --> O["ephemeralMessage injected<br/>(agy's only response shape)"]
+    F -->|agy path only — no evaluator,<br/>no network, nothing judged| N["messages/ruleset.md<br/>+ one line per live rule: slug, layer,<br/>and its frontmatter description"]
+    N --> O["ephemeralMessage injected<br/>(the one agy inject-step that reaches the<br/>agent without wording it as the user)"]
 
     R2 --> P
     J --> P
@@ -48,36 +46,26 @@ flowchart TD
     P --> Q["systemMessage (the person)<br/>+ additionalContext (the agent)"]
 ```
 
-<!-- NS: review for completeness and accuracy. Some points I noticed:
-- why are AGY events treated differently from Claude Code events?
-- why is cope not wired up in agy?
-- For agy rules, why are we injecting rulesets dynamically and not in the docker container? How does this differ from the way we insert claude code 'auto-mode' rules into the user scoped settings? they should be the same.
-- how do long multi-line rules get translated to a ruleset.md? when?
-- are rules just shouted at agy clients? not actually checked through theevaluator?
-- is there a blocking route that might be turned on in future? show it dashed if so, explain which surfaces it can act on.
-- why do we use userConfig for one surface but env vars for another? seems cleaner just to use env vars and keep them DRY.
--->
-
-A missing or unreadable layer 2 or layer 3 directory degrades to whatever did load; layer 1 (the shipped `axioms/`) is always present. A later layer can only add a slug not already claimed — it can never override an axiom's entry, so a project or user rule file cannot weaken the floor by reusing its filename.
+A missing or unreadable layer 2 or layer 3 directory degrades to whatever did load. Layer 1 is the plugin's own `axioms/`, injected by the build, so its presence is a build guarantee rather than a runtime condition and its absence is the one thing the loader does not check for — an installation without it is a broken build, not a session to be warned about. An unreadable `axioms/` directory, or an unreadable file inside it, is still reported like any other. A later layer can only add a slug not already claimed — it can never override an axiom's entry, so a project or user rule file cannot weaken the floor by reusing its filename.
 
 Every layer counts only the `*.md` files declaring `trigger: always_on` — the same line `build/axioms.py` draws when it emits a client's native rule mechanism. A rules directory holds reference material as well as policies: an index, a path table, a note-taking convention, a stub. Only a policy can be classified, so only a marked file is sent to the evaluator.
 
-Nothing is dropped quietly. A file skipped for want of the marker is named, with the layer's directory — except in the shipped `axioms/`, whose non-rule files (`README.md`, `AXIOMS-REVIEW.md`) are a known set nobody in the session can act on. `$ACA_DATA` set to a path with no `.agents/rules/` directory is named too: setting the variable is a claim that the layer exists. `$ACA_DATA` unset, and a project with no `.agents/rules/` directory, are ordinary absences and say nothing.
+Nothing else is dropped quietly. A file skipped for want of the marker is named, with the layer's directory — except in the shipped `axioms/`, whose non-rule files (`README.md`, `AXIOMS-REVIEW.md`) are a known set nobody in the session can act on. `$ACA_DATA` set to a path with no `.agents/rules/` directory is named too: setting the variable is a claim that the layer exists. `$ACA_DATA` unset, and a project with no `.agents/rules/` directory, are ordinary absences and say nothing.
 
 "Named" means named to the person running the session, not only to a log. Every degradation here goes through `lib/hooks/degraded.py`: the reason still goes to stderr, and it additionally rides out on the hook's response — the full reason as `additionalContext` for the agent, one sentence as `systemMessage` for the person, who is the only one who can go and fix the file. Because this hook fires on every tool call, each distinct fault is announced **once per session**: a dead evaluator says so once, not once per rule per call. Repeats stay in the log. A fault report is never a gate — it can only ever add an advisory, and the tool call proceeds either way.
 
 ## What this plugin provides
 
-| Component            | File                                   | Purpose                                                                               |
-| -------------------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
-| `PreToolUse` hook    | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                  |
-| `PreInvocation` hook | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                               |
-| Evaluation handler   | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.         |
-| Ruleset handler      | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                 |
-| Evaluator client     | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.      |
-| Rule loader          | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.     |
-| Fault reporting      | `hooks/degraded.py` (shared, injected) | Puts cope's own failures on the response as well as on stderr, once per session.      |
-| Advisory wording     | `hooks/messages/*.md`                  | `verdict.md`, `ruleset.md`, and the evaluator's `classifier-prompt.md`. No code edit. |
+| Component            | File                                   | Purpose                                                                                           |
+| -------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `PreToolUse` hook    | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                              |
+| `PreInvocation` hook | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                                           |
+| Evaluation handler   | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.                     |
+| Ruleset handler      | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                             |
+| Evaluator client     | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.                  |
+| Rule loader          | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.                 |
+| Fault reporting      | `hooks/degraded.py` (shared, injected) | Puts cope's own failures on the response as well as on stderr, once per session.                  |
+| Advisory wording     | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, and `classifier-prompt.md`. Editable without code. |
 
 ## How the judgment is made
 
@@ -92,6 +80,8 @@ Two protocols are supported, so the same mechanism serves a hosted API and a loc
 
 **Nothing about this plugin is a verdict.** A match is one model's reading of one rule against one tool call, injected for the agent to weigh. Real enforcement is a separate merge-stage check; nothing in-session blocks on a rule verdict (`specs/ARCHITECTURE.md`, Enforcement).
 
+**A blocking route exists and is not taken.** The shared runtime can render one: `lib/hooks/result.py` has `refuse()`, a refusal beats any advisory in `merge`, and `lib/hooks/clients.py` renders it as `permissionDecision: deny` for Claude Code and as `decision: deny` for agy. What keeps cope out of it is doctrine, not capability. `result.py` reserves refusal for _structural impossibility_ — the session as configured physically cannot carry the call out, so letting it through produces a hang rather than an outcome — and states that refusal is never a rule verdict, however confident the handler is. The only surface a rule-driven refusal could ever act on is Claude Code's `PreToolUse`, which is the one event cope handles there and the one place a decision about a call is a decision the client honours. It could not be extended to `Stop` or `SubagentStop`: `_render_claude` branches on the result, not the event, so it would emit a permission field the client does not honour on those events. On agy it reaches nothing today — a refusal renders only for a tool event, and no agy tool event is mapped.
+
 **Unconfigured, cope evaluates nothing.** No endpoint ships with this plugin, so an installation that has not set one gets a clean no-op on every tool call — no network call, no output, no error. This is a legitimate state and is never reported as a fault. Configure some of the variables but not all and you get one degradation notice naming what is missing, then the same no-op: a half-configured evaluator is somebody's intent that did not land, and guessing the missing value is the default this plugin may not have.
 
 **It fails open, always.** A dead socket, a slow endpoint, an error status, a body that will not parse — none of them produce an advisory, and none of them delay or block the tool call beyond the deadline. The reason is reported and the call proceeds. There are no retries: a retry in front of every tool call multiplies the stall the agent is waiting through.
@@ -100,9 +90,25 @@ Two protocols are supported, so the same mechanism serves a hosted API and a loc
 
 ## The two surfaces
 
-`PreToolUse` carries a tool call, so that is where the evaluation runs. agy has no `PreToolUse` equivalent — its hook phases map to `UserPromptSubmit` and `Stop` (`lib/hooks/clients.py`) — so on agy there is nothing for the evaluator to judge. What agy's `PreInvocation` does carry is the turn itself, which is enough to state which rules are live: `inject_ruleset` injects a one-line-per-rule roster, each line marked with the layer it came from. Layers 2 and 3 are the load-bearing part, because agy's static `rules/` directory is built from layer 1 alone and cannot know about a project's or a user's own rules.
+`PreToolUse` carries a tool call, so that is where the evaluation runs. agy fires tool events of its own — `PreToolUse` and `PostToolUse` are two of the five events it has — but their payload is shaped differently from Claude Code's, and `lib/hooks/context.py` cannot read it, so the shared runtime leaves them unmapped and maps only the two invocation phases (`lib/hooks/clients.py`). That is deferred work, not a missing capability on agy's side. The asymmetry that is permanent is a different one: agy has no session-level event at all, so `SessionStart` and `SessionEnd` cannot fire there and no row can ever be written for them.
+
+The consequence for cope is exact. cope is wired on agy — the manifest wires `PreInvocation` under `agy`. What is not wired on agy is the _evaluator_: with no tool event mapped, `evaluate` never runs there, only `inject_ruleset` does. **On agy the rules are stated, never checked.** No request is made, so `COPE_EVALUATOR_URL` and its companions are inert on that client however they are configured, and nothing cope does on agy puts anything on the network.
+
+What agy's `PreInvocation` does carry is the turn itself, which is enough to state which rules are live: `inject_ruleset` injects a one-line-per-rule roster, each line marked with the layer it came from.
 
 The roster is scoped to agy. Claude Code fires both events, is already covered at `PreToolUse`, and has its `UserPromptSubmit` hook owned by `aops-pkb`, so a second injection there would be redundant. The scope is declared twice, both times explicitly: the manifest wires `PreInvocation` under `agy` only, and the handler carries `only_on_clients = {"agy"}` via the `only_on` decorator, which `lib/hooks/dispatch.py` honours by skipping out-of-scope handlers before running them.
+
+### Why the roster is injected rather than baked in
+
+For layer 1 it _is_ baked in, by the same mechanism on both clients, and the roster does not duplicate that. `trigger: always_on` is one line drawn once in `build/axioms.py`, and each client's native rule mechanism is filled from it: `build/clients/agy.py` copies every always-on axiom into the plugin's `rules/` directory at build time, and on Claude Code the build emits `axioms.jsonl` and the installer merges it into `autoMode` in `~/.claude/settings.json` (`specs/ARCHITECTURE.md`, Installation). Both are static, both are settled before the session starts, and both carry layer 1 and nothing else.
+
+Layers 2 and 3 are what neither can carry. A project's rules live in the checkout the session happens to open, and a user's live wherever `$ACA_DATA` points; neither is knowable when the plugin is built or installed, and both can change between one turn and the next. Claude Code covers that gap at `PreToolUse`, where `evaluate` reloads all three layers in every hook process — one per tool call, so a rule file edited mid-session is live on the next one. agy has no such surface, so the roster covers it. That is why the roster is load-bearing on agy and would be redundant on Claude Code, which is why it is not wired there.
+
+### What a roster line contains
+
+One line per live rule, and the line is the rule's frontmatter `description` — nothing else. No rule body reaches the roster, whatever its length: bodies are not truncated or summarised, they are simply not in it. The body has two other destinations, which is why the roster does not need it. It goes to the evaluator as the `policy`, whole; and on a match it goes into the advisory whole, because a rule named without its content is a scolding the agent cannot act on. The roster is composed at hook time from the rule files as they are on disk for that turn, sorted by layer then slug.
+
+The sharp edge is a rule file with `trigger: always_on` and no `description`: its line is a bare slug, a name with no content behind it. Every shipped axiom carries a description, so this can only bite a project- or user-authored rule — which is exactly the kind the roster exists to announce.
 
 ## Configuration
 
@@ -110,10 +116,14 @@ Every value arrives from the environment or from client `userConfig`. No endpoin
 
 Each evaluator setting can be supplied two ways, and they are the same setting:
 
-- **Claude Code `userConfig`** — declared in the plugin manifest, so Claude Code prompts for it when the plugin is enabled. Claude Code exports each option into the hook's environment as `CLAUDE_PLUGIN_OPTION_<KEY>`, the option key uppercased; cope's option keys are named so that uppercasing one yields exactly the variable in the table below. Substitution into the hook's `command` string is not an option and is not used: cope's hook is shell form, and Claude Code rejects `${user_config.*}` in shell-form commands outright rather than let a configured value reach a shell.
+- **Claude Code `userConfig`** — declared in the plugin manifest, so Claude Code prompts for it when the plugin is enabled. Claude Code exports each option into the hook's environment as `CLAUDE_PLUGIN_OPTION_<KEY>`, the option key uppercased (Claude Code hooks documentation, "Available String Substitutions and Environment Variables"); cope's option keys are named so that uppercasing one yields exactly the variable in the table below. Substitution into the hook's `command` string is not an option and is not used: cope's hook is shell form, and a shell-form plugin hook whose `command` references `${user_config.*}` fails with an error instead of running (same document, "Shell Form vs Exec Form").
 - **A plain environment variable** — the fallback, and the only route on agy and in containers, neither of which has `userConfig` at all.
 
-A `userConfig` value wins over the plain variable when both are set. Claude Code accepts `pluginConfigs` only from user settings, managed policy, or `--settings`, and deliberately ignores a project's own settings files so that a cloned repository cannot supply one — which makes it the more trustworthy of the two. An option the user left blank falls through to the plain variable rather than blanking it.
+`evaluator._setting` does one lookup over both, in that order, and the first non-empty value wins. An option the user left blank falls through to the plain variable rather than blanking it.
+
+**Why two routes and not just the environment.** For four of the five settings the environment alone would do, and does: `URL`, `PROTOCOL`, `MODEL`, and `TIMEOUT` are non-secret operator values, and they already travel by environment on every surface that has no `userConfig` — `plugins/aops/polecat/env_contract.py` forwards all five into containers by name, and `plugins/aops/polecat/cli.py` fills any the host left unset from the operator's `polecat.yaml` `cope:` block. The fifth is the reason the `userConfig` route exists at all. `COPE_EVALUATOR_API_KEY` is the one credential in the set, and `cope_evaluator_api_key` is the one option declared `"sensitive": true` in `manifest/plugin.template.json`. That declaration is the only way cope can tell the client it is handing over a secret rather than a setting, and it changes where the secret lands: a `sensitive` option is masked as it is typed and stored in secure storage instead of `settings.json` — the macOS Keychain, or `~/.claude/.credentials.json` on platforms where no supported keychain is available (Claude Code plugins reference, "User configuration"). An environment variable carries no such marking, and a secret exported into the process environment is readable by everything else in it. The other four options are declared so the whole set is configured in one place rather than one secret in a dialogue and four values in a shell profile.
+
+**Which route wins.** A `userConfig` value beats the plain variable when both are set, and `tests/test_cope.py` pins that ordering. The option is the more specific of the two: it is a value someone entered against this option, for this plugin, at the moment they enabled it. It is also the better attested. Claude Code ignores the `pluginConfigs` block — the settings key a `userConfig` answer is recorded under — when it appears in a project's `.claude/settings.json` or `.claude/settings.local.json`, a restriction documented as a security measure and specific to `pluginConfigs` rather than to settings in general (same document and section): both those files live in the workspace, so without it a cloned repository could supply values that flow into plugin hook commands, MCP server configs, LSP commands, and monitor commands. A `userConfig` value therefore cannot have come from the checkout the session opened. The plain variable is ambient — process environment that anything in the chain launching the client may have set, for any reason. The specific, attested setting wins over the ambient one.
 
 | Variable (`userConfig` key is the lowercase form) | Purpose                                                                                                                                                                                      | Default                                                          |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -126,7 +136,7 @@ A `userConfig` value wins over the plain variable when both are set. Claude Code
 
 `ACA_DATA` is environment-only: it is shared with the rest of the framework rather than owned by this plugin, so cope declares no `userConfig` option for it.
 
-The API key option is declared `sensitive`, so Claude Code masks it on entry and stores it in the macOS Keychain — or `~/.claude/.credentials.json` where no keychain is available — instead of `settings.json`. Supplying the key that way rather than as an ambient environment variable is the better of the two on Claude Code, and it is the reason the option exists.
+Every one of these is inert on agy except `ACA_DATA`, which still selects layer 3 for the roster. The evaluator settings are read only by `evaluate`, which agy never reaches.
 
 ## Running against a local model
 
