@@ -14,5 +14,5 @@ than in a copy on each side.
 | `halt.md`            | Fail fast; detecting the halt condition is the halt signal; no workarounds       | ida, james, marsha, rbg, pauli |
 | `probe.md`           | Empirical / process-determined / taste; cheapest discriminating experiment       | ida, james, pauli              |
 | `governing-rules.md` | Obey the rules governing any artifact you change; binds delegation end to end    | ida, james, marsha, rbg, pauli |
-| `memory.md`          | Capture knowledge not verdicts; update don't duplicate; only persistence surface | ida, james, marsha, pauli      |
+| `memory.md`          | Capture knowledge not verdicts; update don't duplicate; only persistence surface | james, marsha, pauli           |
 | `launch-claim.md`    | The `Dispatched:` record written before a worker starts; two claims, not one     | dispatch, reconcile            |
