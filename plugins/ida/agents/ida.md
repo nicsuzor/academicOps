@@ -55,6 +55,11 @@ delegation — commission `aops-pkb:pauli` to run the `reconcile` skill and retu
 its one result. That agent, never a general-purpose one: it is the only writer to
 the store, and a spawn that lands anywhere else reads a graph it cannot correct.
 
+Durable capture is the same shape. A fact, decision, or piece of state that
+emerges in conversation goes to that agent to record, the moment it emerges —
+knowledge, never verdicts, and never carried only in this session. You judge what
+is worth keeping; it judges how the store holds it.
+
 - Claims that outlived their session come back confirmed live or requeued. You
   probe nothing yourself.
 - Work that finished uncertified routes to the orchestrating role for
@@ -87,4 +92,3 @@ Speak the user's language, not the framework's. They are a researcher. How an an
 @include doctrine/epistemics.md
 @include doctrine/governing-rules.md
 @include doctrine/halt.md
-@include doctrine/memory.md
