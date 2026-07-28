@@ -7,7 +7,7 @@ academicOps is a streamlined suite of six plugins for Claude Code and Antigravit
 1. **Prompt Situation (`aops-pkb`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
 2. **Workflow Composition (`aops-pkb`):** Selects appropriate risk-matched review and QA assurance levels for the task.
 3. **Containerized Execution & Dispatch (`aops`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
-4. **Dual-Layer Rule Enforcement (`aops-cope` + `aops`):** Runs a turn-by-turn local model evaluator on tool calls, plus a session-stop gate requiring agents to verify RBG rule compliance (`axioms/` + project + local rules) before task completion.
+4. **Dual-Layer Rule Enforcement (`aops-cope` + `aops`):** Runs a turn-by-turn local model evaluator on tool calls, plus a non-blocking session-stop reminder nudging agents to verify RBG rule compliance (`axioms/` + project + local rules) before presenting their answer.
 
 ---
 
@@ -21,7 +21,7 @@ flowchart TD
     
     subgraph Enforcement["<b>4. Dual-Layer Rule Enforcement</b>"]
         E1["<b>Layer 1: Turn-by-Turn COPE</b><br/>(aops-cope / PreToolUse)<br/>Parallel local model checks tool calls"]
-        E2["<b>Layer 2: Session Stop RBG Check</b><br/>(aops / Stop & SubagentStop)<br/>Requires RBG rule check before completion"]
+        E2["<b>Layer 2: Session Stop Reminder</b><br/>(aops / Stop & SubagentStop)<br/>Non-blocking nudge to check RBG rules"]
     end
 
     P3 -.-> E1
@@ -48,8 +48,8 @@ Every hook across the plugins is deterministic, lightweight, and single-purpose.
 | `aops-pkb`  | `UserPromptSubmit`      | Both (Claude Code & AGY) | `PKB_MCP_URL`                                 | Strategic context search instructions & relevant PKB history.                                                                                         | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting.                   |
 | `aops-cope` | `PreToolUse`            | Claude Code              | `COPE_EVALUATOR_*` (Local Reflexes LLM model) | Parallel rule compliance advisory with matched rule text & reasoning.                                                                                 | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model. |
 | `aops-cope` | `UserPromptSubmit`      | AGY (`PreInvocation`)    | Live rule set files                           | Summary roster of active rules for the turn.                                                                                                          | Provides rule visibility on surfaces that lack tool-call interception.                                                          |
-| `aops`      | `SessionStart`          | Claude Code              | `POLECAT_*`, `OTEL_*`                         | 3-line session environment summary & credential isolation status.                                                                                     | Validates runtime isolation and telemetry bindings before execution begins.                                                     |
-| `aops`      | `Stop` / `SubagentStop` | Both                     | `stop_hook_active` check                      | Mandatory prompt requiring agent to invoke RBG rule checker (`axioms` + project + local rules) and present checkable evidence before task completion. | **Pillar 4 (Enforcement L2):** Prevents task handoff/release without explicit evidence and rule compliance verification.        |
+| `aops`      | `SessionStart`          | Claude Code              | `CLAUDE_CODE_ENABLE_TELEMETRY`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` | 3-line session environment summary & credential isolation status. Only these two enablement vars are observable here — `OTEL_*` export config lives in a separate environment this hook can't see. | Reports telemetry enablement and scopes session credentials before execution begins.                                            |
+| `aops`      | `Stop` / `SubagentStop` | Both                     | `stop_hook_active` check                      | Non-blocking reminder (`warn`) prompting the agent to invoke the RBG rule checker (`axioms` + project + local rules) and present checkable evidence before stopping. | **Pillar 4 (Enforcement L2):** Advisory nudge toward evidence and rule-compliance review at session stop — not an enforced gate. |
 | `aops`      | `PreToolUse`            | Claude Code              | `NONINTERACTIVE` or `CI=1`                    | Refusal message blocking interactive prompt tools in headless runs.                                                                                   | Prevents headless container sessions from hanging on unanswerable user prompts.                                                 |
 | `aops-ts`   | `SessionStart`          | Claude Code              | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`       | Launches background `tailscale up` for remote connectivity.                                                                                           | Enables remote session access over Tailnet.                                                                                     |
 | `aops-ts`   | `SessionEnd`            | Claude Code              | `TS_SESSION_SYNC_HOST`                        | Transmits session log bundle to remote sync host.                                                                                                     | Secures session history after termination.                                                                                      |
