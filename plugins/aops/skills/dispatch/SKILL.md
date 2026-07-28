@@ -34,6 +34,8 @@ Choose a surface and a cadence per task. Cadence is a routing detail; the review
 - **Agent team** — parallel work you supervise to a single reconciled result.
 - **Polecat container** — substantial autonomous repo work landing a durable artifact. Higher latency; wrong for anything needed now.
 
+**Claim at launch.** Before the worker starts, write the unit's claim onto the task: who it went to, under which session, on which surface, when. Any dispatch whose loss would matter beyond its own session gets one; a cheap read-only probe does not, since nothing is lost by running it again. The worker still claims the task itself when it starts — that handshake is what moves the status and proves the brief arrived. Your launch-time record is what makes a worker that died before ever claiming legible as an unanswered dispatch rather than as work nobody picked up.
+
 **Polecat launch.** The plugin ships the CLI at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. A container emits no completion signal of its own, and a detached session's report reaches nobody. Dispatch every container inside a plain background subagent — the courier — which runs the CLI in the foreground, waits for the container to exit, and returns the harvested result as its own final message. That final message is what the harness delivers back to you.
 
 ```bash
@@ -57,7 +59,9 @@ Spawn couriers plainly. A named or teammate-mode spawn returns an idle signal an
 
 A live session is not success. Exit zero on the launch wrapper is not success. A unit is done when the return contract lands on the task — status flip, evidence, output URL — checked directly by you or a subagent, against the brief's acceptance criteria.
 
-Quality assurance inside the unit is the worker's business, and independent review is the reviewer's; substitute your own certification for neither. Never relay a worker's own "confirmed" as fact.
+**Then certify it, and record the verdict.** A unit that has landed is not finished until its certification is on the task record. Commission that certification through the review machinery already wired into the graph — the review nodes decomposition emitted as blocking dependencies, run through the `strategic-review` and `verify` skills — and write back the verdict it returns. Executing those nodes _is_ certification at completion; standing a second review beside them gives you two paths and one of them unread.
+
+Quality assurance inside the unit is the worker's business, and the judgment is the reviewer's; substitute your own certification for neither. Never relay a worker's own "confirmed" as fact — commissioning the review and recording what it returns is the whole of your part in it.
 
 ## 5. Watch for exits, do not poll
 

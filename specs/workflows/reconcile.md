@@ -14,12 +14,12 @@ This is a behavioural spec. It describes what an agent does when reconciling Git
 
 ## Problem
 
-The closure loop between GitHub (issues, PRs) and the PKB task graph is partial and duplicated. `/daily`, `/sleep`, and `/supervisor` each contain ad-hoc closure logic, and matching is done by whole-word title match and branch name — shitty NLP (the `judgment-non-delegable` axiom / `exercise-authority` Edge 3).
+The closure loop between GitHub (issues, PRs) and the PKB task graph is partial, and where it runs it matches by whole-word title and branch name — shitty NLP (the `judgment-non-delegable` axiom).
 
 Four gap types:
 
 1. **GH issue close → PKB `gates_on` update.** When a GH issue closes via `Closes #N` in a commit, no PKB task referencing that issue gets touched.
-2. **Closed-not-merged PRs** are unconditionally excluded from `/daily` auto-close, but some are legitimately superseded and should close the task.
+2. **Closed-not-merged PRs** are unconditionally excluded from auto-close, but some are legitimately superseded and should close the task.
 3. **Manual `gh issue close`** with `state_reason: not_planned` or `duplicate` — no PKB-side reconciliation.
 4. **PKB task done → GH issue close/comment** absent beyond the GH-native `Closes #N` commit convention.
 
@@ -27,24 +27,27 @@ Four gap types:
 
 1. **One canonical owner.** The reconcile procedure lives in one skill. Other skills invoke it; they do not re-implement it.
 2. **No Shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces (frontmatter fields, the GH API's `closingIssuesReferences` structured field, frontmatter URLs). Anywhere prose is involved, an agent reads it.
-3. **State lives in PKB frontmatter** (the graph). Deltas between GH state and PKB state are surfaced through a short-lived (≤48h) event log — same staleness contract as `pr-state.json`. The log is a queue of unprocessed deltas, not state.
+3. **State lives in PKB frontmatter** (the graph). Deltas between GH state and PKB state are surfaced through a short-lived (≤48h) event log. The log is a queue of unprocessed deltas, not state.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.
-5. **`needs_user_call` has exactly one rendering consumer**: `/daily`'s "What Needs Attention → Needs your call" section. Writing the flag without that consumer is a `halt-on-failure` violation.
+5. **Nothing is flagged for a person without a surface that renders it.** The sweep's own synthesized result is that surface — it leads with what needs a person's decision. Writing a `needs_user_call` flag to the graph with no consumer that renders it is a `halt-on-failure` violation.
 6. **Reverse direction default**: comment-only on GH (cite PKB task ID + closing commit SHA). Auto-close the GH issue only for framework-owned repos and only when the task carries an explicit `closes_issues:` marker (not `gates_on:`).
 7. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write).
 8. **Implementing agent owns file layout, naming, invocation grammar, and verification approach.** This spec does not mandate a directory tree, file names, mode flags, or audit mechanism. Those are downstream decisions the agent makes when landing the work, defended by the constraints above.
 
 ## Invocation contexts
 
-The same reconcile procedure runs in three contexts. The context changes the input subset, not the procedure.
+The same reconcile procedure runs in four contexts. The context changes the input subset, not the procedure.
 
-| Context       | Triggering agent                           | Input subset                                                                         |
-| ------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
-| Forward sweep | `/daily`                                   | Recently-closed GH issues, recently-merged or closed-not-merged PRs since last sweep |
-| Reverse       | `/dump full` or `/pull` on task completion | The just-completed task and its `closes_issues:` markers                             |
-| On-demand     | User invocation (e.g., `/reconcile`)       | Full sweep across all active tasks and open issues                                   |
+| Context    | Owner                                                                        | Input subset                                                                |
+| ---------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: claims taken before it, issues and PRs closed during it |
+| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                   |
+| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across every non-terminal task and every open issue              |
+| Reverse    | The `dump` and `pull` skills, at task completion                             | The just-completed task and its `closes_issues:` markers                    |
 
-Agents in these contexts invoke the reconcile skill. They do not run scripts. They do not call into a library. The skill body is prose that the invoking agent reads and follows.
+The face holds no PKB tools, so its engagement sweep is a delegation: it spawns an agent that runs the skill and returns one synthesized result.
+
+Agents in the three forward contexts invoke the reconcile skill; the reverse handoff rides the release path that already writes the task. None of them runs a script or calls into a library. The skill body is prose that the invoking agent reads and follows.
 
 ## Frontmatter markers
 
@@ -58,17 +61,17 @@ Both fields are legal on the same task simultaneously (a task can both depend on
 
 ## Event log
 
-Path: `$AOPS_SESSIONS/state/gh-pkb-deltas.json`. Append-only. Events older than 48h pruned on write. Concurrency: file-locked, same primitive as `pr-state.json`. The 48h TTL matches `/daily`'s query window so a daily skill that skips a day still catches yesterday's events.
+Path: `$AOPS_SESSIONS/state/gh-pkb-deltas.json`. Append-only, file-locked. Events older than 48h pruned on write. The 48h TTL is deliberately wider than the expected sweep cadence, so a sweep that skips a day still catches the previous day's events.
 
-Each event records: timestamp, direction (forward / reverse), what triggered it, the GH or PKB object that triggered it, how it was matched, what action the agent took, the target object, and a free-text `notes` field used as the surface text when the event renders in `/daily`.
+Each event records: timestamp, direction (forward / reverse), what triggered it, the GH or PKB object that triggered it, how it was matched, what action the agent took, the target object, and a free-text `notes` field used as the surface text when the event renders in a sweep's result.
 
-The implementing agent picks the concrete shape (field names, JSON structure, whether to use a discriminator or separate event types). The constraint is that the file is short-lived, append-only, and that `/daily` can read it to render the "Needs your call" surface. Over-structuring this is the failure mode — most fields exist to give `/daily` enough context to render a one-line cue with a link; if a field is only ever read by an LLM as natural-language context, it should stay prose.
+The implementing agent picks the concrete shape (field names, JSON structure, whether to use a discriminator or separate event types). The constraint is that the file is short-lived, append-only, and that the next sweep can read it to render what needs a person's decision. Over-structuring this is the failure mode — most fields exist to give the sweep's result enough context to render a one-line cue with a link; if a field is only ever read by an LLM as natural-language context, it should stay prose.
 
 ## Three matching surfaces
 
 **(a) Guaranteed structured → mechanical.** Direct lookup, no agent call:
 
-- `pr_url` frontmatter → exact string match against `pr-state.json`.
+- `pr_url` frontmatter → exact string match against the pull request's own state, read from `gh`.
 - `closes_issues: [N]` / `gates_on: [N]` → `gh issue view N --json state`.
 - `closingIssuesReferences` field from the GH API (structured, not regex over commit text).
 - Task-ID pattern in a PR body string field — pattern-match against the PR body as a single field, not as parsed prose.
@@ -85,15 +88,15 @@ Routing: `confidence: low` always falls through to (c). `confidence: high` with 
 
 ## DRY discipline
 
-After this skill exists, the closure-loop logic in `/daily`, `/sleep`, `/supervisor`, and the hook tree must be removed (those skills invoke reconcile instead).
+No other skill carries closure-loop logic of its own. The consolidation cycle delegates its staleness-and-closure stage to reconcile rather than restating it, and any surface that grows a closure need invokes reconcile instead of re-implementing one.
 
 Verification is by audit — the agent landing each milestone reads the touched skills and confirms no duplicate logic remains. The audit is qualitative ("does any other skill still contain closure-loop logic?"), not a syntactic absence check. If the audit can be automated later, that is a separate design question; until then the auditing agent does it by reading.
 
 ## Legacy backfill
 
-A one-off agent session, run after the skill lands, before forward sweep is wired into `/daily`'s daily run.
+A one-off agent session, run after the skill lands, before the forward sweep runs on a cadence.
 
-The agent considers all open GH issues across framework repos and all PKB tasks in active statuses (`queued | in_progress | review | merge_ready`). For each, the agent reads the prose and classifies the relationship — does this task close that issue, is it gated on it, or is there no relationship? Uncertain cases get written to the event log with the ambiguous phrase quoted, surfacing in the next `/daily`.
+The agent considers all open GH issues across framework repos and all PKB tasks in active statuses (`queued | in_progress | review | merge_ready`). For each, the agent reads the prose and classifies the relationship — does this task close that issue, is it gated on it, or is there no relationship? Uncertain cases get written to the event log with the ambiguous phrase quoted, surfacing in the next sweep's result.
 
 The agent may pre-filter cheaply (e.g., skip items whose body contains no GitHub-reference shape at all) — that is candidate gating over a string field, not prose classification. The judgment call about relationship type is always agent-read, never regex.
 
@@ -103,12 +106,12 @@ Closed and done records are read-only. The candidate set is roughly 282 open iss
 
 These are sequencing checkpoints, not implementation tickets. The implementing agent owns file layout and naming.
 
-- **M1 — Skill exists and is manually invocable.** The reconcile procedure is documented as a skill, PKB lint validates the new frontmatter fields, a handful of cases have been worked end-to-end by hand.
-- **M2 — Forward sweep adopted by the daily pass.** The daily pass invokes reconcile in forward-sweep context, and carries no closure-loop logic of its own. DRY audit clean.
-- **M3 — Reverse direction adopted by `/dump full` and `/pull`.** Those skills invoke reconcile in reverse context on task completion. No new hooks added.
+- **M1 — Skill exists and is invocable.** The reconcile procedure is one skill, PKB lint validates the new frontmatter fields, a handful of cases have been worked end-to-end by hand.
+- **M2 — Forward sweeps adopted.** The engagement and batch contexts both reach the skill, and no other skill carries closure-loop logic of its own. DRY audit clean.
+- **M3 — Reverse direction adopted at release.** The `dump` and `pull` skills invoke reconcile in reverse context on task completion. No new hooks added.
 - **M4 — Backfill run.** One agent session, scope as above. Done.
 
 ## Open questions
 
-- Where does an `issue-state.json` (analogous to `pr-state.json`) get populated? Candidate: the same cron that refreshes `pr-state.json`. Resolved separately — not blocking this spec.
+- Is a cached issue-state snapshot worth keeping, so a sweep does not re-query `gh` for every tracked issue? Resolved separately — not blocking this spec.
 - Should `closes_issues` accept cross-repo references like `owner/repo#N`? Default no (single-repo numeric). Revisit if a use case emerges.

@@ -89,33 +89,25 @@ your candidate list. Hydrate surfaced the obligations; you sequence them.
 
 ## Step 3 — emit the review nodes
 
-**The default is three review tasks, real nodes in the DAG, wired as blocking
-`depends_on`** — not a prose-only "review step":
+Review is **real nodes in the DAG, wired as blocking `depends_on`** — never a
+prose-only "review step".
 
-- **pauli — premise.** The standard it affirms: _the idea is sound, elegant, and
-  strongly aligned with the project's aims read in full context_. Emit it early
-  and make the rest of the work depend on it clearing. There is no separate
-  premise gate to invoke; this node **is** the mechanism. The judgment it asks
-  for is one open-ended read — as a sharp principal seeing only this, is it worth
-  doing and is the shape right, or would you bounce it? Never a checklist, never
-  a form, never a frontmatter field. Where the work proposes a **new mechanism** —
-  a gate, a flag, a classifier, a schema, another dispatch path — the reviewer's
-  first move is to establish whether it already exists or was already decided, by
-  actually looking rather than judging from the task body's own claims. Adding a
-  second path beside an existing one, and re-opening a settled decision as though
-  it were novel, are both premise defects.
-- **rbg — rules.** Did the changes violate any rule? Boundary review of the
-  contract and the handback, never the transcript. Blocks acceptance.
-- **marsha — QA.** Are the changes excellent, and do they achieve the stated
-  purpose? Delivered artifact against the original aim. Blocks acceptance.
+Which reviews those are is not this skill's to state. **Load the review process
+from the same three layers Step 2 composed from** — the shipped library, the
+user's `$ACA_DATA/.agents/workflows/`, and the PKB's own templates behind
+`get_document("pkb-workflow-index")` — one namespace, later layers winning by
+template name. The composed process names the review it obliges, including any
+human sign-off at a one-way door; you turn each obligation into a node. A review
+set carried in from memory is one the user can never override, and a review the
+composed process obliges but no layer defines is a library gap: name it and stop.
 
-You may tailor the set, but any deviation is a recorded decision in the body —
+Any deviation from what the process obliged is a recorded decision in the body —
 what you specified and why — never a silent skip.
 
-**Altitude is your call.** Wide blast radius gets per-chunk instances of rbg and
-marsha, each blocking at its own juncture. Narrow blast radius gets workers
+**Altitude is your call.** Wide blast radius gets per-chunk instances of each
+lens, each blocking at its own juncture. Narrow blast radius gets workers
 self-assessing plus one consolidated pass at the final deliverable. The invariant
-is only that the specified set blocks acceptance, however you distribute it.
+is only that the composed set blocks acceptance, however you distribute it.
 
 **The review-task body points; it does not prescribe.** Each carries the subject
 and an instruction to invoke that lens's review skill and apply its standard as
@@ -124,20 +116,15 @@ bespoke review cycle — the standard lives in the review skill, and the node's
 whole job is to send the reviewer to it. Use this shape:
 
 ```markdown
-Review <epic or chunk id — one line on what it is> against the
-<pauli premise | rbg rules | marsha QA> lens by invoking that lens's review
-skill. Apply the skill's standard as written; add no criteria here.
+Review <epic or chunk id — one line on what it is> against the <lens the composed
+process named> lens by invoking that lens's review skill. Apply the skill's
+standard as written; add no criteria here.
 ```
 
 You plan only. You emit these nodes and wire their edges — you never dispatch
 them, run an agent, or tell the executor anything about review. Reviewer ≠
 executor is emergent from each review being independently dispatched later, not
 something you construct here.
-
-Separately, carry the one hard line: **human sign-off before anything
-externally visible ships** — send, publish, production, spend, delete, or merge
-to a protected branch. Carry it wherever a subtask's door is one-way, and treat
-ambiguous reversibility as one-way.
 
 ## Step 4 — persist and stop
 
@@ -154,7 +141,8 @@ Keep the prose small. Then stop.
 - Write delegation briefs. That is `brief`, at dispatch time.
 - Explode or detail a wave that is not next.
 - Invent process outside the library without flagging the gap.
-- Silently drop any of pauli, rbg, or marsha.
+- Carry a review process in this skill's own text, or drop one the composed
+  process obliged.
 - Dispatch or run the review nodes, or build a reviewer-identity gate.
 - Author mid-stream approval theatre — "draft it, then surface for review before
   proceeding". The composed process already places gates at the real junctures.

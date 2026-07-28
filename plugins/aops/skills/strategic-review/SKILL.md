@@ -79,6 +79,8 @@ On REVISE or REJECT for brief-sourced work, address the synthesis to the brief �
 - **`comment`** — post the synthesis to the artifact's natural review surface: a PR comment for a PR, an inline note or knowledge-base entry for a document. Scrub personal names and private paths.
 - **`fix`** — apply every FIX- and TRIVIAL-grade finding directly. Re-run the affected reviewer on any substantial fix and fold new findings into the table. REVISE and REJECT findings are reported, never silently reworked.
 
+**Whatever the flags say**, a reviewed artifact that has a task record gets the verdict written onto that record too. The evidence contract makes the task record the message bus every handback crosses; a verdict that lives only in this turn is one nothing downstream can read.
+
 Never exit silently: if a write-back fails, report it and print the full verdict.
 
 ## A negative verdict needs a held falsifier

@@ -116,7 +116,7 @@ review, not retired.
 
 ## 4 — Reconcile data quality
 
-Before any structural work, fix the data. Four activities, bounded.
+Before any structural work, fix the data. Three activities, bounded.
 
 ### Duplicates
 
@@ -149,14 +149,13 @@ answered by reading.
   keep the survivor with the most context.
 - Every cluster lands in exactly one bucket in the cycle summary, with counts.
 
-### Staleness
+### Staleness and closure
 
-Non-terminal tasks aged past about ninety days, up to twenty a cycle. Read the
-body, then look for completion evidence — sent mail, calendar entries, commits.
-Evidence found means complete the task with the evidence recorded. No evidence
-means **flag for human review**, never auto-cancel: age is not evidence of
-irrelevance. Where the evidence tools are not available in this environment, skip
-the verification and flag the candidates.
+Delegate to [`../../reconcile/SKILL.md`](../../reconcile/SKILL.md) in batch
+context: in-flight claims whose session has gone quiet, the pull requests closed
+since the last cycle, aged non-terminal tasks, and artifact rot. That skill owns
+the procedure and returns one result — fold it into this cycle's summary rather
+than restating it.
 
 ### Misclassification
 
@@ -166,75 +165,12 @@ are purely informational with no action in them. Clear non-tasks get archived
 with a reason or reclassified to a memory; anything ambiguous is flagged. Up to
 about thirty a cycle.
 
-### Close the loop
-
-For each closed PR since the last cursor, match it to a task by, in order: a
-`pr_url` already on the task; a task id in the PR body; the PR head branch
-matching the task's recorded branch; the PR title matching the task title
-whole-word, ignoring conventional-commit prefixes. A reverse match on distinctive
-title substrings is surfaced as _likely closed by_ and **never auto-completes**.
-
-- **Merged** → re-read the task's acceptance criteria against the merged artifact
-  before closing. Every criterion clearly met → complete it, recording the PR and
-  the date. Any criterion unmet or requiring judgment → leave it and surface the
-  criterion, quoted. Surface, do not block.
-- **Closed without merge** → route it (below). Never re-queue automatically.
-- **No match** → surface it. Never invent a task.
-
-PRs only; no commit-log scanning. The cursor advances only after writes succeed.
-
-Run a **cursor-independent backstop** over every task in `merge_ready` or
-`review`, oldest first. These are not the same parked state. A `merge_ready` task
-resolves against its PR — merged and not yet done goes through the same
-criteria check; closed-without-merge routes below; **no resolvable PR at all is
-anomalous** and gets surfaced, not closed. A `review` task is parked on a human
-decision and is **never auto-closed**: if it carries a PR, note the PR's live
-state in what you surface; if it has no PR, which is the common case, surface it
-as awaiting a decision so it cannot rot silently.
-
-Also surface: a body claiming release with no PR recorded; a worker no-op marker,
-which re-queues to `inbox` with an annotation; and three or more sweep reports on
-one task all reading closed-without-merge, which is strong evidence the approach
-keeps failing and belongs in the routing context.
-
-**Never force a close past open children.** When a merge is confirmed but the
-close is rejected because children are open, do not cascade. Open children may be
-legitimate post-merge follow-up, and cascade-closing destroys real pending work.
-Surface it as merge-confirmed, close-blocked, and let it resolve when the child
-does.
-
-If the state this stage depends on is absent — as distinct from the PKB being
-unreachable — say so explicitly in the summary. Do not report a stage as complete
-when it never had inputs.
-
-### Routing a PR closed without merge
-
-Gather the context first: PR title and body, the last several reviewer comments,
-the review state, labels, whether the branch was deleted, and whether the task
-already carries repeated closed-without-merge reports.
-
-Then **have an agent read it and classify**. This is a semantic judgment, not a
-string match — a "wontfix" label is a signal, not the verdict. Exactly one of:
-
-| Class                  | Signal                                                                                    | Action                                                                                                                                                             |
-| ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **wontfix**            | Clear "do not do this", not-planned, superseded, or the reviewer rejects the goal itself. | Cancel the task, or complete it if a sibling superseded it. Record the PR and the reason in the body. File no follow-up.                                           |
-| **bad-implementation** | Wrong approach, design rejected, repeated failure, "needs a rethink", or ambiguous.       | Cancel the original. File a sibling investigation task under the same parent, softly depending on the original, saying what went wrong and what must change first. |
-| **retry-as-is**        | Rare. Unrelated infrastructure failure, documented in the comments. Nothing was wrong.    | Re-queue to `inbox`, with the justification written into both the task body and the cycle log.                                                                     |
-
-Record the chosen route, the close reason, and any node created.
-
-## 5 — Sweep for staleness
+## 5 — Sweep for orphans
 
 Orphans and under-specified work, as **signals** rather than verdicts. Run
 `pkb_orphans()` for the actionable layer and the knowledge-layer call from stage
 1 for the other. Read the flagged nodes and decide whether they genuinely need
 attention. Surface candidates; do not auto-cancel on age.
-
-**Artifact rot check.** For `ready` and `queued` tasks aged past about a
-fortnight, verify that the files and symbols the task's criteria name still exist
-where they claim to. Where they have rotted, demote the task to `inbox` with an
-annotation saying so and re-decompose. Rot triggers demotion; age alone does not.
 
 ## 6 — Process refiles
 

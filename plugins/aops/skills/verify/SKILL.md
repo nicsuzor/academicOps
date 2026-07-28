@@ -85,3 +85,5 @@ For a web surface: navigate, wait for page-ready, capture at 1920×1080, and dri
 address the critique to the brief — name which element was unmet or ambiguous, so
 re-dispatch is a brief update rather than a new plan.]
 ```
+
+Where the verified artifact has a task record, write the verdict and its evidence onto that record as well as returning it. The evidence contract binds the handback to the task record; a report that only ever existed in this turn has not crossed a boundary.

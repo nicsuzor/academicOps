@@ -6,17 +6,25 @@ The interactive face: one agent, ida, who is the only agent in the framework tha
 
 Everything the user says arrives at ida. Ida either answers it, escalates one named decision, or delegates it to james — and everything that comes back is filtered before the user sees it. The filter is the point of this plugin.
 
+Engagement after an absence starts one step earlier. Before taking new work, ida commissions a reconcile sweep — delegated to a spawned agent, since she holds no knowledge-base tools of her own — and routes whatever finished uncertified to james for certification.
+
 ```mermaid
 flowchart TD
     U([user]) --> IDA["ida<br/>agents/ida.md"]
+    RET(["engagement after<br/>an absence"]) --> IDA
     IDA --> Q{"can ida settle<br/>this herself?"}
 
     Q -->|"yes — a status check,<br/>a read, a cheap probe"| ANS["answer inline"]
     Q -->|"blocking judgment call —<br/>scope, taste, tradeoff"| ESC["AskUserQuestion:<br/>one named decision,<br/>options pre-resolved"]
     Q -->|"no — substantive work"| J["james<br/>(aops plugin)"]
 
+    IDA -->|"before new work"| SWEEP["reconcile sweep,<br/>delegated to an agent<br/>(aops-pkb skill)"]
+    SWEEP --> UNC["completed but<br/>uncertified work"]
+    UNC --> J
+
     J --> W["review agents · agent teams ·<br/>polecat containers"]
     W --> EV["evidence bundles<br/>and verdicts"]
+    SWEEP --> EV
     EV --> F{"ida filters"}
 
     F -->|"operational detail,<br/>per-worker outcomes,<br/>intermediate states"| DROP["dropped"]
@@ -47,3 +55,4 @@ None. This plugin reads no environment variable and declares no `userConfig` fie
 
 - `lib/doctrine/` — `bar`, `launder`, `probe`, `delegation`, `epistemics`, `governing-rules`, `halt`, `memory`, inlined into `agents/ida.md` at build time.
 - The `aops` plugin at runtime, for **james**. Ida delegates all substantive work to him; without him she has nowhere to send it.
+- The `aops-pkb` plugin at runtime, for the **reconcile** skill her engagement sweep is delegated to run.

@@ -29,6 +29,8 @@ flowchart TD
         decompose -.-> workflow["skills/workflow<br/>compose the process"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
         pauli --> graph["skills/graph-maintenance<br/>wire · garden"]
+        pauli --> reconcile["skills/reconcile<br/>probe stale claims · fold in<br/>what landed unwatched"]
+        remember -.-> reconcile
     end
 
     workflow --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
@@ -37,6 +39,7 @@ flowchart TD
 
     remember --> mcp
     graph --> mcp
+    reconcile --> mcp
     situate --> mcp
     decompose --> mcp
     brief --> mcp
@@ -73,6 +76,7 @@ one carrying PKB mutation; other agents reach the graph by asking it.
 | `brief`             | Turn the subtask that is due into a brief a cold agent can execute and be judged on.                        |
 | `workflow`          | Compose the process this work runs under, from the shipped library, the user layer, and the PKB.            |
 | `remember`          | Capture knowledge as it emerges; consolidate episodic records into durable notes.                           |
+| `reconcile`         | Probe stale claims and requeue the dead ones; fold in work that finished while nobody was watching.         |
 | `graph-maintenance` | Wire weighted `contributes_to` edges; garden parentage, links, duplicates, and orphans.                     |
 
 ### Command
