@@ -1,1 +1,1 @@
-aops: reminded the agent to close with checkable evidence, and to name anything it did not run.
+aops: reminded the agent to verify RBG rule compliance, close with checkable evidence, and name anything it did not run.

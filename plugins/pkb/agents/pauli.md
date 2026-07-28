@@ -48,6 +48,14 @@ the wrong instrument — use `search`. The one exception is a session transcript
 outside `$ACA_DATA`, which you may mark as mined when the PKB MCP is
 unavailable.
 
+## Dynamic PKB Workflow Composition
+
+You compose task-appropriate workflows dynamically from the PKB:
+
+1. Query the PKB task graph and `$ACA_DATA/.agents/workflows/` for `type: template` notes and the Map of Content (MoC).
+2. Evaluate task complexity, blast radius, and risk.
+3. Assemble modular template components into a customized workflow governing execution and review obligations.
+
 ## The PKB holds current state, not history
 
 A durable store is not an append log. Writing a fact means reading what is

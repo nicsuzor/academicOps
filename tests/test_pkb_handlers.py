@@ -394,7 +394,7 @@ def test_run_mcp_fails_loudly_with_an_empty_pkb_mcp_url():
 
 def test_run_mcp_fails_loudly_when_uvx_is_unreachable(tmp_path):
     """PKB_MCP_URL present, but no `uvx` anywhere on PATH or in the script's
-    hardcoded fallback directories: still an actionable non-zero exit, not a
+    fallback directories: still an actionable non-zero exit, not a
     hang and not a silent empty success."""
     empty_bin = tmp_path / "empty-bin"
     empty_bin.mkdir()
@@ -403,8 +403,15 @@ def test_run_mcp_fails_loudly_when_uvx_is_unreachable(tmp_path):
         capture_output=True,
         text=True,
         timeout=30,
-        env=_clean_launcher_env(PKB_MCP_URL="http://example.invalid/mcp", PATH=str(empty_bin)),
+        env=_clean_launcher_env(
+            PKB_MCP_URL="http://example.invalid/mcp",
+            PATH="/bin:/usr/bin",
+            AOPS_UVX_SEARCH_PATH=str(empty_bin),
+            HOME=str(tmp_path),
+        ),
     )
     assert result.returncode != 0
     assert result.stdout == ""
     assert "uvx" in result.stderr
+
+
