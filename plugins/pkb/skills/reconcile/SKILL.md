@@ -94,7 +94,8 @@ Pull requests only; no commit-log scanning. Report the window as covered only
 once the writes inside it have succeeded.
 
 Run a **backstop that ignores the window** over every task in `merge_ready` or
-`review`, oldest first — these rot regardless of when anything closed. These are not the same parked state. A `merge_ready` task
+`review`, oldest first — these rot regardless of when anything closed, and they
+are not the same parked state. A `merge_ready` task
 resolves against its pull request — merged and not yet done goes through the same
 criteria check; closed-without-merge routes below; **no resolvable pull request
 at all is anomalous** and gets surfaced, not closed. A `review` task is parked on

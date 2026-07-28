@@ -37,7 +37,7 @@ flowchart TD
     BLOCK --> J
 ```
 
-Ida holds between steps rather than driving ahead: after each step control returns to the user, who owns the sequence. Academic integrity is enforced here and nowhere else in the path — research data is immutable, and nothing externally visible ships without the user's explicit sign-off.
+Ida holds between steps rather than driving ahead: after each step control returns to the user, who owns the sequence. Academic integrity is carried here — research data is immutable, and research, teaching, and publication outputs reach the user with full receipts before anything is marked done. The sign-off floor itself is not ida's alone: the `one-way-door` axiom binds every agent at an irreversible, outward-facing act, and ida's charter is the stricter domain layer over it.
 
 ## What it provides
 
