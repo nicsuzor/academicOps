@@ -44,6 +44,16 @@ flowchart TD
     P --> Q["systemMessage (the person)<br/>+ additionalContext (the agent)"]
 ```
 
+<!-- NS: review for completeness and accuracy. Some points I noticed:
+- why are AGY events treated differently from Claude Code events?
+- why is cope not wired up in agy?
+- For agy rules, why are we injecting rulesets dynamically and not in the docker container? How does this differ from the way we insert claude code 'auto-mode' rules into the user scoped settings? they should be the same.
+- how do long multi-line rules get translated to a ruleset.md? when?
+- are rules just shouted at agy clients? not actually checked through theevaluator?
+- is there a blocking route that might be turned on in future? show it dashed if so, explain which surfaces it can act on.
+- why do we use userConfig for one surface but env vars for another? seems cleaner just to use env vars and keep them DRY.
+-->
+
 A missing or unreadable layer 2 or layer 3 directory degrades to whatever did load; layer 1 (the shipped `axioms/`) is always present. A later layer can only add a slug not already claimed — it can never override an axiom's entry, so a project or user rule file cannot weaken the floor by reusing its filename.
 
 Every layer counts only the `*.md` files declaring `trigger: always_on` — the same line `build/axioms.py` draws when it emits a client's native rule mechanism. A rules directory holds reference material as well as policies: an index, a path table, a note-taking convention, a stub. Only a policy can be classified, so only a marked file is sent to the evaluator.

@@ -37,6 +37,21 @@ flowchart TD
     H4["PreToolUse hook<br/>headless-interactive-prompt.md<br/>refuses a prompt no one can answer"] -.-> W
 ```
 
+<!-- NS: review diagram and docs for currency and intent and completeness. A couple of things I noticed:
+    - draw a box around where the polecat container goes
+    - it looks like James' only skill is 'strategic-review', but I think James handles a bunch of dispatch, review, redispatch work?
+    - Show the full flow for decomposition and planning and explain who's responsible for each bit, including whether the user has to invoke it or it's sequenced in some way
+    - Make it clear where a given task boundary is, including what level of instructions it carries, how it is synthesised, whether it contains a log of changes or a synthesis, how it is used to report status when a task is released, when a task is required to be claimed before certain work is permitted, how a task might be released and hang around for a while until a different async process reconciles (e.g. merged PRs or certification from a QA review etc, not necessarily linearly scheduled)
+    - explain when exactly James, as dispatcher, reviews the output of a supposedly completed task by a worker -- and how it might get redispatched
+    - explain when agents are instructed to commit and push their changes (including to draft and ready PRs) and whether the GH PR Review process is the duplicative, different, or alternative to the strategic-review fan-out
+    - who runs polecat cli, and make an empty box for other potential runners of tasks, including the input/output contract (and whether the runner is expected to updatehe task itself in the PKB or whether it can return info any other way)
+    - under what circumstances, if any, is James permitted to run an in-session agent team instead of dispatching a polecat? I'm not sure he can, but I could be wrong. If he can, how does that fit into the QA review process and does it require binding and updating and releasing a task?
+    - can ida dispatch subagents, and if so, what sort of work can they do and how do they communicate back? How is that work assessed?
+    - what's the contract between James and Ida, or between workers and Ida? Does Ida need to be satisfied that work carries attestations that it has been reviewed? If work is done async, how does this certification get back onto the task before it gets to Ida?
+    - when does James run synchronous agents and are they run in containers? if not why not, that sounds dangerous?
+
+-->
+
 James never talks to the user; ida does. James never sits inside the dispatch → review → reconcile loop; workers return evidence and he ranks and narrates the outcome.
 
 ## What this plugin provides

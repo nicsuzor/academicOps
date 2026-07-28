@@ -53,15 +53,6 @@ skill itself — there is no separate router script.
 | `style`         | Builds a personal writing style guide from writing samples.                                         |
 | `new-project`   | Scaffolds a new research project repository end to end.                                             |
 
-## Configuration
-
-No value in this plugin has a default. Skills that touch personal data read
-it from `$ACA_DATA` (personal data directory, outside the repo). Skills that
-touch a sibling plugin's source (e.g. `new-project`'s bot-deployment
-workflow) read it from `$AOPS`/`$AOPS_SRC_DIR`. No path, host, or credential
-is written into any skill file — every such value comes from the environment
-at the point a skill is run.
-
 ## Depends on
 
 - `uv` for the Python-backed skills (`pdf`, `extract`'s `pdf2md.py`,
