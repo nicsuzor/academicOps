@@ -112,6 +112,11 @@ include = [
   "templates/**/*.md",
   "templates/**/*.md.template",
   ".github/agents/*.md",
+  "CONTRIBUTING.md",
+  "README.md",
+  "INSTALL.md",
+  "CLAUDE.md",
+  ".github/copilot-instructions.md",
 ]
 
 [[tool.refcheck.allow]]

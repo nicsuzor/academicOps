@@ -30,7 +30,7 @@ uv run basedpyright
 ```
 academicOps/
 ├── .agents/           # Rules for agents working ON this repo (READ-ONLY reference)
-│   ├── rules/        # AXIOMS.md (inviolable principles)
+│   ├── rules/        # RULES.md (project-specific rules; axioms live in lib/axioms/)
 │   └── skills/       # Meta skills for this repo's own dev workflow
 ├── .github/
 │   ├── agents/       # Agent prompts (pr-reviewer, enforcer, mechanic, qa)
@@ -86,9 +86,9 @@ Closes: <task-id>
 
 ## Pre-commit Hooks
 
-This project uses pre-commit hooks: dprint (markdown/json/toml), markdownlint,
-trailing-whitespace, end-of-file-fixer, check-yaml, check-json, ruff (lint + format),
-workflow-length-check. Run `uv run pre-commit run --all-files` to check before committing.
+This project uses pre-commit hooks: dprint (markdown/json/toml) only — see
+`.pre-commit-config.yaml`. Run `uv run pre-commit run --all-files` to check before committing.
+Ruff and basedpyright are enforced separately, by `make lint` / CI, not by pre-commit.
 
 ## PR Review Pipeline
 
