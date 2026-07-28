@@ -1,6 +1,6 @@
 """Unit tests for transcripts.domain.sync.git_sync_sessions.
 
-Regression coverage for aops_5c2f2a59: a stray nested-git directory (worker
+Regression coverage: a stray nested-git directory (worker
 scratch leaking into the sessions repo under logs/) must not abort the whole
 sync -- everything else should still get staged, committed, and pushed.
 """
@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-
-import pytest
 
 from transcripts.domain.sync import git_sync_sessions
 

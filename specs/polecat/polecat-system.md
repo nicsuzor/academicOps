@@ -1,6 +1,6 @@
 ---
 id: polecat-system
-title: "Polecat System: Ephemeral Agent Workspaces"
+title: "Polecat System: Ephemeral Agent Containers"
 type: spec
 status: ready
 tier: polecat
@@ -8,122 +8,142 @@ depends_on: []
 tags: [spec, polecat, architecture]
 ---
 
-# Polecat System: Ephemeral Agent Workspaces
+# Polecat System: Ephemeral Agent Containers
 
-> [!note] Implementation drift
-> `polecat/cli.py` currently implements only a `run` subcommand — bind-mount
-> workspace, forward env, spawn claude/agy/shell/sleep (see
-> `specs/polecat/tmux-interactive-driving.md` for driving it interactively,
-> and `.agents/skills/debug/SKILL.md` for the operational skill wrapping that
-> pattern). The claiming, PR-filing, worktree-isolation, and
-> `crew`/`nuke`/`swarm`/`list` surfaces this spec describes below are not
-> currently implemented. Whether and how this design is restored is an open
-> decision, tracked outside this document rather than resolved here.
->
-> As of 2026-07-18, `polecat/` and the coordinator-side `dispatch` skill moved
-> to the new `aops-jr` plugin (`aops-jr/polecat/cli.py`,
-> `aops-jr/skills/dispatch/SKILL.md`) — a standalone coordination-layer
-> package, separate from the `aops` task-execution package. See
-> `aops-jr/README.md` for scope and current placeholders.
-
-The polecat system gives every dispatched task its own isolated, disposable git
-workspace so many agents can work concurrently without touching each other or the
-user's development checkouts. It builds on top of the PKB task system: tasks are the
-queue; polecat is the workspace and execution surface.
+Polecat runs one agent CLI invocation inside an isolated Docker container, on an
+isolated git clone, so dispatched work never touches the caller's own checkout or
+host credentials. It is a single command — `polecat run` — not a task-claiming
+service: task lifecycle (claim, work, record, hand over) is the invoked agent's own
+job, driven by a seeded `/pull <task-id>` prompt and the `pull` skill running inside
+the container.
 
 ## Giving Effect
 
-- [[aops-jr/polecat/cli.py]] — CLI (`polecat run`, `polecat start`, `polecat finish`, …)
-- [[polecat/manager.py]] — workspace lifecycle (mirrors, clones, claiming, nuking)
-- [[polecat/finalize.py]] — `finish`: push, PR detection (for CI-gating), status transition
-- [[polecat/pkb_bridge.py]] — task reads/writes against the PKB MCP server
-- [[polecat/prompt_template.py]] — self-contained worker prompt built from the task
-- [[polecat/observability.py]] + lifecycle events in `cli.py` — metrics and per-task
-  transcript stubs
-- `aops-jr/skills/dispatch/SKILL.md` (coordinator side) and
-  `aops/skills/pull/SKILL.md` (worker side) — the skills which route work onto
-  this surface
+- [[plugins/aops/polecat/cli.py]] — the entire CLI: one Click command, `run`
+- [[plugins/aops/polecat/entrypoint.sh]] — container entrypoint: sets git identity,
+  installs a token-based credential helper, merges staged per-session config over
+  the image defaults, then execs the agent CLI
+- [[plugins/aops/polecat/defaults/]] — baked container defaults (`claude-settings.json`,
+  `claude-config.json`, `ccstatusline-settings.json`, `agy-onboarding.json`,
+  `docker_gemini_fixups.py`)
+- [[Dockerfile]] — the image `run` executes inside
+- [[plugins/aops/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
+  over — what a seeded `/pull <task-id>` prompt actually does once inside the
+  container
+- [[plugins/aops/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
+  pathway to a polecat container; a raw `polecat run` outside this skill bypasses
+  the dispatch contract
+- [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
+  `polecat run` container interactively via tmux (see
+  [[tmux-interactive-driving]])
+
+## What `run` does
+
+1. Resolves `POLECAT_HOME` (cache root) and the container image reference — both
+   required, from the environment or the operator's polecat config file; no
+   default.
+2. Resolves the workspace: `--repo-dir` mounts a host path exactly as given
+   (caller owns isolation); `--project` looks the project up in
+   `<polecat_home>/local.yaml`'s `paths` map.
+3. Unless `--repo-dir` was given, clones the resolved repo (`git clone --local
+   --no-checkout`) into `$POLECAT_HOME/worktrees/<session-id>`, checks out
+   `polecat/<session-id>` at the host repo's current `HEAD`, and repoints `origin`
+   at the host repo's own remote — so a push from inside the container reaches the
+   real remote and nothing the container does is visible in the host checkout
+   until pushed. This clone is deleted again when `run` exits, success or failure.
+4. Stages a per-session credential/settings directory (`pluginConfigs.pkb_mcp_url`,
+   an optional worker model override, and — when `POLECAT_AGENT_HOME` is set — a
+   secret-stripped copy of the agy/Gemini CLI's own auth files) and mounts it
+   read-only at `/tmp/staging`; `entrypoint.sh` merges it into `$HOME` inside the
+   container.
+5. Forwards a fixed environment allowlist (PKB MCP URL/token, git author/committer
+   identity, `CI`/`NONINTERACTIVE`, the OpenTelemetry contract, the Claude OAuth
+   token, the bot GitHub token) and denies every other git credential path
+   (`GIT_ASKPASS=true`, empty `SSH_AUTH_SOCK`, `GIT_SSH_COMMAND=false`,
+   `GIT_TERMINAL_PROMPT=0`) — auth resolves from the forwarded token or not at all.
+   cope's evaluator (`COPE_EVALUATOR_URL/PROTOCOL/MODEL/API_KEY/TIMEOUT`) is
+   forwarded the same way, with a configured, intentional fallback: an unset host
+   variable falls back to the operator's polecat config file's own `cope:` block
+   (`resolve_cope_evaluator`) rather than depending only on what happened to be
+   exported in the invoking shell. Absent both, cope runs unconfigured in the
+   container — a legitimate no-op, not a fault.
+6. Runs `docker run --rm --pull=never` as the invoking host UID, with the
+   workspace mounted at `/workspace`, the staging dir read-only, and the session
+   log directory bind-mounted straight into the agent's own session-state path so
+   logs and transcripts are visible on the host live, not just at container exit.
+   When the operator's config names a `rules_dir` (or `$POLECAT_RULES_DIR` is
+   set), that host directory is mounted read-only at the container's own
+   `$ACA_DATA/.agents/rules/` (`/data/.agents/rules` — `ENV ACA_DATA=/data` in
+   the `Dockerfile`), which is what makes cope/rbg's layer 3 reach a container;
+   absent, the container simply has no layer 3, and a configured-but-unreadable
+   directory is a hard failure before any container starts. The image is never
+   pulled from a registry — it must already be built locally or CI-produced; a
+   missing image is a hard failure with an actionable message.
+7. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
+   `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
+   prompt, seeds `/pull <id>` as the prompt. An `agy` dispatch with no explicit
+   interactive/prompt flag runs headless (`--print`) with an optional
+   `--print-timeout` so the container exits when the agent's loop completes,
+   rather than idling forever.
+8. On completion, verifies delivery before reporting success: for a seeded `agy`
+   dispatch, the agent's own transcript must reference the task id (retried once
+   if not, then a hard failure — a clean exit is not evidence the seed was ever
+   delivered); the workspace must have no uncommitted changes, and if `HEAD`
+   moved, the new commit must be present on the remote. A delivery-guard failure
+   on a task that the PKB now shows in a terminal status (`done`, `completed`,
+   `complete`, `merge_ready`) reverts it to `in_progress` rather than letting a
+   silent loss stand as a recorded success.
 
 ## Guarantees
 
-1. **Isolation.** Each task runs in its own full clone under
-   `$POLECAT_HOME/worktrees/<task-id>`, spawned from a bare mirror (or the registered
-   repo path if no mirror exists) with `origin` re-pointed at the real remote.
-   Nothing an agent does is visible in the user's dev checkout until merged.
-2. **Concurrency.** Workspace creation is lock-protected; branch-per-task naming
-   (`polecat/<task-id>` by default) prevents collisions across parallel workers.
-3. **Atomic claiming.** Claiming a `queued`/`ready` task sets it `in_progress` with
-   an assignee and verifies the claim stuck — two claimants cannot both win.
-4. **Verified merge.** The agent files its own GitHub PR from within its session
-   (`gh pr create`, per `polecat/prompt_template.py`); `finish` pushes the branch
-   and detects that PR to gate on its CI status. Merging happens through PR review
-   and CI, never by polecat writing to main. Failing CI checks or finish failures
-   kick the task back (`in_progress` / `review`) instead of merging.
-5. **Observability.** Every run updates the task record (status, assignee, PR URL)
-   and appends lifecycle events to `$POLECAT_HOME/transcripts/<task-id>.jsonl`, so a
-   supervisor can see where any run — including a crashed one — got to.
-6. **Cleanup.** `nuke` removes the workspace and branch; unpushed work is protected
-   unless explicitly forced.
+1. **Isolation.** Every `run` without `--repo-dir` works on its own throwaway
+   clone, torn down when the invocation ends; nothing an agent does is visible in
+   the host checkout until it pushes to the real remote.
+2. **Credential scoping.** The container never receives the host's SSH agent,
+   ambient git credential helpers, or the host's own `~/.claude`/`~/.gemini`
+   config — only the forwarded env allowlist and the staged, secret-stripped
+   settings.
+3. **No silent delivery loss.** `run` refuses to report success when the
+   workspace has uncommitted or unpushed work, or when a seeded dispatch's
+   transcript shows no trace of the task it was given.
+4. **No registry drift.** `run` never pulls the image; it fails loudly if the
+   named image isn't already present locally.
+5. **One plugin path.** Plugins load only from the image's own plugin cache. No
+   mount registers a marketplace, so plugin code reaches an agent only by being
+   built into the image.
+6. **Instruction state does not share that path.** Project skills, `CLAUDE.md`,
+   and cope's project rule layer reach the agent from the mounted workspace, and
+   `rules_dir` mounts a host rule directory — none of it through the image, and
+   the workspace clone tracks the host repo's `HEAD`. So a committed change to
+   host-side instruction files is live in the next `run` with no rebuild. A
+   certifying run therefore needs both a clean committed tree and a fresh
+   `make docker-build`, which builds `dist/` from the working tree rather than
+   from `HEAD`. Nothing enforces either; the obligation sits on the dispatcher,
+   in [`dispatch`](../../plugins/aops/skills/dispatch/SKILL.md) §3.
 
-## Layout
+## What `run` does not do
 
-```
-$POLECAT_HOME/                 # resolved via lib.paths (env var or polecat_home: config)
-├── .repos/<project>.git       # bare mirrors, synced from origin (never from local checkouts)
-├── worktrees/<task-id>/       # ephemeral per-task clones
-├── crew/<name>/               # persistent named workspaces for interactive crew sessions
-├── transcripts/<task-id>.jsonl # lifecycle events per run
-└── local.yaml                 # machine-local path overrides
-```
-
-The project registry lives in `$AOPS_SESSIONS/polecat.yaml` (projects, aliases, crew
-names, operational config), with per-machine paths overridable in
-`$POLECAT_HOME/local.yaml`.
-
-## Task Status Lifecycle
-
-Polecat uses the canonical PKB statuses (see
-[[aops/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]):
-
-```
-queued → in_progress → merge_ready → done   (PR merged)
-              │              ↘ review        (needs human judgment)
-              ↘ partial                      (honest partial stop: draft PR + follow-up task)
-```
-
-## CLI Surfaces
-
-- `polecat run` — full cycle: claim (or `-t <id>` / `--issue`) → clone workspace →
-  build self-contained prompt from the task → run the agent in a container →
-  auto-`finish` on success; on failure, leave the workspace intact with recovery
-  instructions.
-- `polecat start` / `polecat checkout <id>` / `polecat resume <id>` — claim or
-  re-enter a task workspace without running an agent.
-- `polecat finish` — push, set `merge_ready` (`--partial` for an honest partial
-  stop). The agent files/updates the PR itself in-session; `finish` only detects
-  it (for the CI-check gate) and, with `--promote`, marks an existing draft ready.
-- `polecat nuke <target>` — destroy a workspace and its branch.
-- `polecat crew` — persistent named interactive workspace (branch `crew/<name>`).
-- `polecat swarm` / `polecat watch` / `polecat summary` — run, monitor, and
-  summarise parallel workers.
-- `polecat init` / `polecat sync` — create and refresh bare mirrors and working
-  repos; mirrors are also safe-synced automatically before each workspace spawn.
-- `polecat list` / `list-crew` / `reset-stalled` / `ping-pkb` / `setup` — inventory
-  and maintenance.
+There is no `start`, `finish`, `crew`, `nuke`, `swarm`, `list`, `init`, or `sync`
+subcommand, no bare-mirror registry under a `.repos/` directory, no workspace that
+survives past a single invocation, and no claiming, PR-filing, or status-setting
+performed by the CLI itself. Those either don't exist or are the invoked agent's
+own job, driven by the `pull` skill against the PKB task graph from inside the
+container.
 
 ## User Expectations
 
-1. **Workspace isolation** — Test: changes in a polecat workspace are not visible in
-   the registered dev repo until merged via PR.
-2. **Concurrency** — Test: two `polecat start` invocations for different tasks
-   produce two distinct workspaces and branches.
-3. **Atomic claiming** — Test: two processes claiming the same task — one wins; the
-   other picks the next task or gets none.
-4. **Branch management** — Test: a new task workspace is on `polecat/<task-id>`
-   (unless the task or config specifies a shared branch).
-5. **Verified merge** — Test: a `merge_ready` task's work lands on main only through
-   its PR; finish failures set `review`, failing CI checks set `in_progress`.
-6. **Clean exit** — Test: after `polecat nuke <task-id>`,
-   `$POLECAT_HOME/worktrees/<task-id>` no longer exists.
-7. **Mirror freshness** — Test: workspace spawn safe-syncs the mirror from origin
-   first; a sync failure warns and proceeds rather than blocking offline work.
+1. **Workspace isolation** — Test: files changed inside a `run` invocation (no
+   `--repo-dir`) are not visible in the registered host checkout, before or after
+   the run.
+2. **Credential denial** — Test: inside the container, `ssh -T git@github.com` and
+   any git operation not using the forwarded token fail; only the forwarded token
+   authenticates.
+3. **Delivery guard** — Test: a `run` that leaves uncommitted changes, or commits
+   that never reach the remote, exits non-zero and (with `--task`) reverts a
+   terminal-status task back to `in_progress`.
+4. **No stale image** — Test: `run` against an image not present in the local
+   Docker cache fails with an explicit message, never a silent registry pull.
+5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.
+6. **One plugin path** — Test: a plugin edited on the host but not built into the
+   image has no effect inside a `run`. The converse does not hold and is not
+   claimed: host instruction files reach the agent through the workspace mount.

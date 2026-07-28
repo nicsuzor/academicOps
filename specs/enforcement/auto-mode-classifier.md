@@ -16,7 +16,7 @@ tags: [enforcement, automode, classifier, judgment, framework-architecture]
 > Code auto-mode classifier is _for_: the policy that decides which rules
 > belong in it and the cost model that shapes how those rules must be
 > written. The rules themselves are installed in
-> `aops-jr/polecat/defaults/claude-settings.json`; this spec tracks the mechanism's
+> `plugins/aops/polecat/defaults/claude-settings.json`; this spec tracks the mechanism's
 > design and cost model, not a per-rule copy.
 
 Claude Code's auto mode delegates tool-call approvals to a model-based
@@ -27,6 +27,16 @@ framework's prose rules (`environment` / `allow` / `soft_deny` /
 `hard_deny`). It returns **allow** or **deny** — there is no "ask" verdict.
 A denial comes back to the agent as a tool result with a reason, on the
 expectation the agent finds a safer path rather than routes around it.
+
+**Relationship to "advisory" (`ARCHITECTURE.md`, Enforcement).** A `deny`
+verdict does block that one tool-call attempt — that is an inherent property
+of how Claude Code's own auto mode works, not something this framework can
+soften. It is "advisory" in the sense that matters at the framework level:
+a denial produces no recorded, retrievable compliance verdict, is scoped to
+steering the current session's next action, and never gates a merge or a
+release — that gate is the separate merge-stage check `ARCHITECTURE.md`
+names as real enforcement. Neither `autoMode` nor `cope` is designed as the
+authoritative record of whether a rule was followed.
 
 ## Admission criteria — a rule belongs in the classifier iff _all_ hold
 
@@ -49,14 +59,14 @@ expectation the agent finds a safer path rather than routes around it.
 
 Write each rule as **prose stating principle + reasoning + cue + carve-outs**, never a rule-ID lookup or keyword pattern. Each rule states:
 
-1. **The principle** and, in one clause, **why it matters** — cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`AXIOMS.md`](../../.agents/AXIOMS.md).
+1. **The principle** and, in one clause, **why it matters** — cite the axiom slug it serves (e.g. `judgment-non-delegable`) from [`lib/axioms/`](../../lib/axioms/).
 2. **The cue** the classifier should look for in the action + user context — the observable signal, since it cannot see reasoning.
 3. **What counts as a violation**, and the **safer path** to name in the denial.
 4. **Explicit carve-outs** — when the same action is fine. The classifier handles disjunctions ("deny X when bypassing tests; allow X when validating") as prose.
 
 Default every new behavioural rule to `soft_deny` (context-overridable); escalate to `hard_deny` only on evidence that a `soft_deny` was bypassed with reproducible consequences.
 
-**Current state: the rule set is seeded and populated.** `autoMode` rules live in `aops-jr/polecat/defaults/claude-settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here — this spec tracks the mechanism, not each entry. New rules still follow the evidence loop above before landing.
+**Current state: the rule set is seeded and populated.** `autoMode` rules live in `plugins/aops/polecat/defaults/claude-settings.json` (`environment`/`allow`/`soft_deny`); no rule has yet been escalated to `hard_deny`. Individual rules are maintained in that file, not duplicated here — this spec tracks the mechanism, not each entry. New rules still follow the evidence loop above before landing.
 
 ## References
 

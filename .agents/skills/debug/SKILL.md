@@ -1,111 +1,88 @@
 ---
 name: debug
-description: This skill should be used when the user asks to "debug a polecat",
-  "run a polecat container interactively", "attach to a polecat session", "spin
-  up a debug polecat", "check what a polecat is doing", or "check polecat logs".
-  Spins up a `polecat run` container under tmux for live interaction and
-  explains where to find both the live user-facing view and the durable
-  host-side session logs.
+description: Use when asked to "debug a polecat", "run a polecat container interactively", "attach to a polecat session", or "check polecat logs". Spins up a `polecat run` container under tmux for live interaction, and says where the durable host-side session state lands.
 ---
 
-# /aops:debug — Interactive Polecat Debugging
+# Interactive polecat debugging
 
-Spin up a real `polecat run` container under `tmux`, interact with it live,
-and know where the two kinds of logs live. Full mechanics, gotchas, and the
-plugin dev-loop live in [[specs/polecat/tmux-interactive-driving.md]] — read
-that for anything not covered here; do not duplicate it.
+Spin up a real `polecat run` container under `tmux` and interact with it live.
+Mechanics and gotchas: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
+Do not duplicate that here.
 
-## Spin up a session
+## Spin up
 
 ```bash
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $AOPS/aops-jr python $AOPS/aops-jr/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
+  "uv run python plugins/aops/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
 ```
 
-Use the explicit `uv run` path shown above, not the bare `polecat`/`pc`
-alias — inside `sh -c` (what tmux spawns) an unresolved alias kills the
-whole tmux server, not just the pane. See
-[[specs/polecat/tmux-interactive-driving.md]] for why.
+Use the explicit path, not a shell alias — inside the `sh -c` tmux spawns, an
+unresolved alias kills the whole tmux server, not just the pane.
 
-Swap `agy` for `claude` to debug the Claude client instead, or `shell` for a
-plain shell in the container with no agent. Swap `-p aops` for
-`-d <repo-path>` when the target project has no entry in
-`~/.aops/local.yaml`. Passing `-s "$TMUX_NAME"` ties the tmux session name
-to the host log directory name — do this every time so the two are trivial
-to correlate afterward.
+Swap `agy` for `claude` to debug the Claude client, or `shell` for a plain shell
+with no agent. Swap `-p aops` for `-d <repo-path>` when the target project has no
+`paths` entry in `$POLECAT_HOME/local.yaml`. Always pass `-s "$TMUX_NAME"` so the
+tmux session name and the host log directory name match.
 
-**Match the real failure's exact invocation before simplifying.** A bare
-no-prompt launch (no `-t <task>`, no trailing prompt string) can exercise a
-genuinely different code path than a real `/pull <task>` dispatch — whether
-a prompt is present at all changes what agy renders before going idle, and a
-simplified repro can look like a dead hang while actually pointing at the
-wrong layer entirely. Reproduce with the same prompt/task/flags the real
-dispatch used first; only strip things down after the symptom reproduces
-as-is.
+**Never pass `-d` a linked git worktree.** Its `.git` is a file pointing at the
+main checkout's `.git/worktrees/<name>`, which is outside the mounted directory,
+so every git command in the container fails with `fatal: not a git repository`.
+`-d` skips clone-based isolation by design and mounts the path as-is, so nothing
+repairs this. Add a `paths` entry for the worktree in `$POLECAT_HOME/local.yaml`
+and run with `-p <project>` instead.
 
-**Check the client's actual flag surface before assuming its behavior.**
-One cheap command beats guessing:
+**Reproduce the real invocation before simplifying.** Whether a prompt or `-t
+<task>` is present changes what the client renders before going idle; a
+simplified repro can look like a dead hang while pointing at the wrong layer.
+
+**Check the client's flag surface before assuming its behaviour:**
 
 ```bash
-docker run --rm --entrypoint agy ghcr.io/nicsuzor/aops-crew --help
+docker run --rm --entrypoint agy "$POLECAT_IMAGE" --help
 ```
 
-(swap `--entrypoint claude` for the Claude client). agy in particular has no
-bare-positional-prompt convention — an initial prompt only lands via
-`-i`/`--prompt-interactive` (session continues) or `-p`/`--print` (headless,
-exits after one response); `aops-jr/polecat/cli.py`'s `run()` already handles this
-for you, but know it's there before you assume a silently-dropped prompt
-means the worker crashed.
+agy has no bare-positional-prompt convention — an initial prompt lands only via
+`-i`/`--prompt-interactive` or `-p`/`--print`. `cli.py`'s `run()` handles this,
+but know it is there before concluding a dropped prompt means a crash.
 
-## Interact with it
+## Interact
 
 ```bash
 tmux send-keys -t "$TMUX_NAME" -l "your prompt text here"
-tmux send-keys -t "$TMUX_NAME" Enter          # Enter is always a separate send-keys call
-tmux send-keys -t "$TMUX_NAME" Down Down Enter # raw keys for menu/UI navigation
+tmux send-keys -t "$TMUX_NAME" Enter           # Enter is always a separate call
+tmux send-keys -t "$TMUX_NAME" Down Down Enter # raw keys for menu navigation
 ```
 
-## View the live, user-facing state
+## Read the live state
 
 ```bash
-tmux capture-pane -t "$TMUX_NAME" -p -S -2000   # -S for scrollback, not just the viewport
+tmux capture-pane -t "$TMUX_NAME" -p -S -2000   # -S for scrollback
 ```
 
-This is exactly what a human attached to the session would see — prompts,
-responses, dialogs, TUI chrome. Use it to judge _behavior_. It vanishes with
-the tmux session; it is not a durable record.
+This is exactly what an attached human would see. Use it to judge behaviour. It
+dies with the tmux session; it is not a durable record.
 
-## View the official, durable logs
+## Read the durable state
 
-Everything the container writes to its own session-state path is
-live-bind-mounted to the host, so it survives independent of the tmux
-session:
+`run` prints `Workspace:` and `Session logs:` on start. The session directory is
+bind-mounted live into the container, so it survives the tmux session:
 
 ```
 $AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/<project>/
 ```
 
-`<session-id>` is whatever was passed to `-s` above. Inside that directory:
-
-- `polecat-session-hooks.jsonl` — the aops-core hook event log; the primary
-  signal for "did the framework actually fire," not just "did the UI render
-  something."
-- `polecat-session-exit_reflection.md` / `-hydration.md` / `-ida.md` — gate
-  check-files, present only if those gates fired.
-- The agent's own raw session transcript, written natively (Claude's
-  `<session-uuid>.jsonl`, or Gemini/Antigravity's session JSON) — read
-  directly with `jq`/`grep`/`less`. There is currently no
-  transcript-to-markdown conversion tool in this repo; ignore any doc that
-  references one.
+It holds the agent's own raw transcript, written natively by the client —
+Claude's `<session-uuid>.jsonl`, or agy's `agy-brain/`, `agy-logs/`, and
+`agy-cli.log`. Read them directly with `jq`/`grep`/`less`. There is no
+transcript-to-markdown converter in this repo; ignore any doc claiming one.
 
 ## Clean up
 
 ```bash
 tmux send-keys -t "$TMUX_NAME" -l "/exit"; tmux send-keys -t "$TMUX_NAME" Enter
-sleep 2   # let the client flush its own session file
+sleep 2   # let the client flush its session file
 tmux kill-session -t "$TMUX_NAME"
 ```
 
-No manual container cleanup is needed — `run`'s `docker run --rm`
-self-removes the container on exit.
+No container cleanup is needed — `run` uses `docker run --rm`.

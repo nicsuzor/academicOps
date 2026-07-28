@@ -1,2 +1,37 @@
-# See specs/pr-pipeline.md for the full process documentation.
-# nothing here yet.
+# PR pipeline: the required checks for every pull request into dev.
+#
+# Lint, Type Check, and Pytest are defined once each in their own workflow and
+# reused here via workflow_call, so a PR and a push to dev run identical steps.
+# The three run independently — none gates the others — so one failure still
+# reports the full picture.
+
+name: PR Pipeline
+
+on:
+  pull_request:
+    branches: [dev]
+
+concurrency:
+  group: pr-pipeline-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+    # Lint pushes autofix commits back to the PR branch.
+    permissions:
+      contents: write
+    secrets: inherit
+
+  type-check:
+    name: Type Check
+    uses: ./.github/workflows/typecheck.yml
+    permissions:
+      contents: read
+
+  pytest:
+    name: Pytest
+    uses: ./.github/workflows/pytest.yml
+    permissions:
+      contents: read

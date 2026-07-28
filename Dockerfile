@@ -10,18 +10,22 @@
 #   remote (default) — clone the published `dist` branch. Used by CI
 #     (build-extension.yml builds the image right after publishing that
 #     branch, so this is exactly the release just shipped).
-#   local — copy the dist/ this checkout already built (`make build-dev` /
-#     scripts/build.py). Used by `make build-docker` for local dev builds, so
+#   local — copy the dist/ this checkout already built (`make build` /
+#     build/build.py). Used by `make docker-build` for local dev builds, so
 #     the image reflects your current source tree instead of whatever the
 #     dist branch last published (which can lag current source — see #2208).
 ARG AOPS_DIST_SOURCE=remote
-ARG AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
-ARG AOPS_DIST_REF=dist
+ARG AOPS_REPO_URL
+ARG AOPS_DIST_REF
 
 FROM alpine/git:latest AS aops-dist-remote
 ARG AOPS_REPO_URL
 ARG AOPS_DIST_REF
-RUN git clone --depth 1 --branch ${AOPS_DIST_REF} ${AOPS_REPO_URL} /aops-dist
+# No default repository and no default branch: both name an installation, not
+# this code. A remote build states them or fails here.
+RUN [ -n "${AOPS_REPO_URL}" ] || { echo "FATAL: AOPS_DIST_SOURCE=remote requires --build-arg AOPS_REPO_URL. There is no default." >&2; exit 1; } \
+    && [ -n "${AOPS_DIST_REF}" ] || { echo "FATAL: AOPS_DIST_SOURCE=remote requires --build-arg AOPS_DIST_REF. There is no default." >&2; exit 1; } \
+    && git clone --depth 1 --branch "${AOPS_DIST_REF}" "${AOPS_REPO_URL}" /aops-dist
 
 FROM scratch AS aops-dist-local
 COPY dist /aops-dist/dist
@@ -42,7 +46,6 @@ RUN useradd -m -d /home/worker -s /bin/bash worker
 # to avoid polluting /home/worker with root-owned files. Switched after USER.
 ENV ACA_DATA=/data \
     AOPS=/app \
-    HOSTNAME=aops-crew \
     UV_INSTALL_DIR=/usr/local/bin \
     PYTHONUNBUFFERED=1 \
     NODE_VERSION=22
@@ -104,13 +107,29 @@ RUN npx --yes playwright@1.59.1 install-deps chromium \
 # Install uv system-wide (standard for aops framework per P#93)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Third-party imports the shipped plugin trees need from the system python3.
+# `python3 ${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` (the dispatch skill's documented
+# invocation) imports click and yaml, and the dist trees ship no pyproject.toml,
+# so there is no per-plugin venv to fall back on. The shipped hooks are
+# stdlib-only and need nothing here.
+RUN pip install --no-cache-dir click pyyaml \
+    && python3 -c "import click, yaml"
+
 # Install code quality tools globally (Claude/agy installed separately below).
 # @playwright/mcp: pre-baked so agents can call playwright tools without a
 # network download at session start.
 RUN npm install -g markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm cache clean --force
 
-# Create data and workspace directories, hand ownership to worker
-RUN mkdir -p /data /workspace && chown worker:worker /data /workspace
+# Create data and workspace directories. World-writable/traversable rather
+# than chown'd to worker: polecat crew containers run as the invoking host
+# UID (`docker run -u $(id -u):$(id -g)`, plugins/aops/polecat/cli.py), which
+# is worker's UID 1000 only by coincidence on a given host. A plain chown
+# leaves any other UID unable to write /data (e.g. cope/rbg's layer-3 rules
+# mount lands under here), silently and only on someone else's machine. Same
+# pattern as the /home/worker chmod below — world-writable inside one
+# container's own filesystem is not a container-isolation weakening; each
+# container's filesystem is still exclusive to that container.
+RUN mkdir -p /data /workspace && chmod 777 /data /workspace
 
 # ── Switch to non-root user for all remaining operations ───────────────
 
@@ -138,6 +157,49 @@ RUN umask 000 && curl -fsSL https://antigravity.google/cli/install.sh | bash \
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN umask 000 && uv tool install ruff
 
+# ── Layer ordering from here down ──────────────────────────────────────
+# Docker invalidates every layer AFTER the first cache miss, so the layers
+# below are ordered by how often their inputs change:
+#   1. toolchain installs that depend on nothing in the tree (rustup)
+#   2. the project venv, keyed on pyproject.toml + uv.lock (dep bumps only)
+#   3. the aops dist copy + plugin install, which changes on EVERY local
+#      build because `make docker-build` rebuilds dist/ first
+#   4. static config files and the entrypoint
+# Anything expensive that sits below (3) is re-run AND re-exported on every
+# single local rebuild even though none of its inputs moved.
+
+# Install Rust toolchain (nothing in this image's build needs cargo/rustc —
+# it's provided for agents that use it at runtime). It depends on nothing in
+# the tree, so it belongs above the dist copy: parked below it, this ~16s
+# install plus a fresh multi-hundred-MB toolchain export ran on every build.
+# It stays below the ARG-busted claude/agy installs so a RUST_CACHEBUST bump
+# invalidates as little as possible above it.
+# RUST_CACHEBUST is intentionally unused in the RUN command — it only
+# invalidates this layer so rebuilds can fetch the latest Rust toolchain.
+ARG RUST_CACHEBUST
+RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+
+# Pre-build Python project venv at a stable image path.
+# UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),
+# preventing shebang conflicts (venv scripts baked with /home/worker paths, not /workspace)
+# and eliminating per-container reinstalls on startup.
+# --group dev: includes pre-commit and dprint-py needed for git commit hooks in the container.
+# Keyed only on pyproject.toml + uv.lock, so it survives every build that
+# only touched dist/ — the reason it sits above the dist copy rather than
+# below it, where this ~20s sync re-ran and re-exported every time.
+ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
+COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
+RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
+
+# Pre-create every dir the --chmod'd config COPYs below land in, in one
+# layer. Without this BuildKit auto-creates the intermediate dirs and applies
+# the COPY's --chmod to them, producing 0644 (non-traversable) via umask:
+# 666 & ~022 = 644. Pre-existing dirs are left untouched by COPY. Batched
+# here because none of these depend on anything below.
+RUN umask 000 && mkdir -p /home/worker/.claude \
+    /home/worker/.config/ccstatusline \
+    /home/worker/.gemini/antigravity-cli/cache
+
 # ── Install aops framework from the source selected above ─────────────
 # Both CLIs install from the SAME /tmp/aops-dist tree (either the single
 # shallow clone or the local dist/ copy — see AOPS_DIST_SOURCE above) so they
@@ -146,33 +208,56 @@ RUN umask 000 && uv tool install ruff
 # (see #1384: different gate_config.py versions crashed Gemini hooks).
 
 # Fixup script for post-install Gemini/Antigravity config (see file for why).
-COPY --chown=worker:worker scripts/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
+COPY --chown=worker:worker plugins/aops/polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
 
 # Both CLIs internally set 444 on git objects — chmod after each install.
 #
-# Exactly two plugins ship, for two surfaces (claude, agy): aops + aops-tools.
+# WHICH plugins install is read from the marketplace manifest shipped in the
+# dist tree, which build/marketplace.py renders from build/marketplace.toml —
+# the single source of truth for the plugin set (specs/ARCHITECTURE.md's plugin
+# table). Nothing here names a plugin: adding one to marketplace.toml ships it
+# in this image with no Dockerfile edit, and an empty list is a build failure
+# rather than a quietly under-populated image. Every declared plugin installs,
+# including aops-ts — the container is precisely the remote session that plugin
+# exists for, and its hook is inert unless the environment supplies both
+# CLAUDE_CODE_REMOTE=true and TS_AUTHKEY.
+#
 # The Gemini CLI extension surface is deprecated and intentionally not
 # installed here (matches `make install`, which doesn't install it either).
 #
 # $AOPS_DIST_SOURCE picks the marketplace root (see aops-dist-local /
 # aops-dist-remote above for why these differ): local's /aops-dist/dist IS
-# the self-contained marketplace root build.py produces; the published `dist`
-# branch has `.claude-plugin/` AND every plugin dir (aops-claude,
-# aops-antigravity, ...) at its own root — see build-extension.yml's
+# the self-contained marketplace root build/build.py produces; the published
+# `dist` branch has `.claude-plugin/` AND every plugin dir (aops-claude,
+# aops-agy, ...) at its own root — see build-extension.yml's
 # "Publish distribution to dist" step. Both shapes put every plugin dir
 # directly under $MP_ROOT, so all COPY/install targets below are
-# $MP_ROOT-relative and need no further local/remote branching.
+# $MP_ROOT-relative and need no further local/remote branching. Each plugin's
+# per-client build dir is <name>-claude / <name>-agy.
 #
 # The marketplace NAME is always academicOps here, regardless of source.
-# build.py's generate_local_marketplace() names the dist/ marketplace `aops`
-# so a HOST `make install-dev` doesn't collide with a real `academicOps`
-# release install on the same machine — but that coexistence concern doesn't
-# apply inside this ephemeral image, and aops/polecat/cli.py's setup_staging()
-# stages `pluginConfigs` under the hardcoded key `aops@academicOps`. A local
-# build that installed as `aops@aops` would silently fail to receive that
-# staged config (pkb_mcp_url never reaching the plugin), so we rewrite the
-# local marketplace.json's name to `academicOps` before installing, making
-# local builds install under the exact same key production/CI builds use.
+# build/marketplace.py's generate_local_marketplace() names the dist/
+# marketplace `aops` so a HOST `make install-dev` doesn't collide with a real
+# `academicOps` release install on the same machine — but that coexistence
+# concern doesn't apply inside this ephemeral image, and
+# plugins/aops/polecat/cli.py's setup_staging() stages `pluginConfigs` under the
+# key `aops-pkb@academicOps`. A local build that installed as `aops-pkb@aops` would
+# silently fail to receive that staged config (pkb_mcp_url never reaching the
+# plugin), so we rewrite the local marketplace.json's name to `academicOps`
+# before installing, making local builds install under the exact same key
+# production/CI builds use.
+#
+# `enabledPlugins` in ~/.claude/settings.json is generated from the same list:
+# installing a plugin does not activate it, and a hand-maintained list here
+# would silently drift from what shipped. `extraKnownMarketplaces` is dropped
+# in the same pass — `marketplace add` records the build-time $MP_ROOT there,
+# a path deleted before this layer ends. The marketplace's durable registration
+# is known_marketplaces.json, repointed by fixup-marketplace-cache below.
+#
+# .claude is pre-created (in the batched mkdir above) so BuildKit doesn't
+# auto-create it while applying --chmod, which would leave it 0644 and
+# non-traversable.
+COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
     && MP_NAME=academicOps \
@@ -182,18 +267,28 @@ RUN umask 000 \
     else \
         MP_ROOT=/tmp/aops-dist; \
     fi \
+    && PLUGINS="$(jq -r '.plugins[].name' "$MP_ROOT/.claude-plugin/marketplace.json")" \
+    && { [ -n "$PLUGINS" ] || { echo "FATAL: no plugins declared in $MP_ROOT/.claude-plugin/marketplace.json" >&2; exit 1; }; } \
+    && echo "Installing plugins: $(echo $PLUGINS)" \
     && claude plugin marketplace add "$MP_ROOT" \
     && claude plugin marketplace update "$MP_NAME" \
-    && claude plugin install aops@"$MP_NAME" \
-    && claude plugin install aops-tools@"$MP_NAME" \
+    && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME" || exit 1; done \
+    && jq --arg mp "$MP_NAME" --arg plugins "$PLUGINS" \
+        '.enabledPlugins = ($plugins | split("\n") | map(select(length > 0)) | map({key: (. + "@" + $mp), value: true}) | from_entries) | del(.extraKnownMarketplaces)' \
+        /home/worker/.claude/settings.json > /tmp/settings.json \
+    && mv /tmp/settings.json /home/worker/.claude/settings.json \
     && chmod -R a+rwX /home/worker/.claude \
-    && mkdir -p /home/worker/.gemini \
-    && echo '{"/home/worker/.gemini/antigravity-cli/plugins/aops": "TRUST_FOLDER", "/home/worker/.gemini/antigravity-cli/plugins/aops-tools": "TRUST_FOLDER", "/home/worker/.config": "TRUST_FOLDER"}' > /home/worker/.gemini/trustedFolders.json \
     && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
-    && cp -r "$MP_ROOT"/aops-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops \
-    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops \
-    && cp -r "$MP_ROOT"/aops-tools-antigravity /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
-    && agy plugin install /home/worker/.gemini/antigravity-cli/plugins/aops-tools \
+    && jq -n --arg plugins "$PLUGINS" \
+        '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/antigravity-cli/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
+        > /home/worker/.gemini/trustedFolders.json \
+    && for p in $PLUGINS; do \
+        src="$MP_ROOT/$p-agy"; \
+        { [ -d "$src" ] || { echo "FATAL: $p is declared in the marketplace but has no agy build at $src" >&2; exit 1; }; } \
+        && cp -r "$src" "/home/worker/.gemini/antigravity-cli/plugins/$p" \
+        && agy plugin install "/home/worker/.gemini/antigravity-cli/plugins/$p" \
+        || exit 1; \
+    done \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
     && mkdir -p /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin \
@@ -201,81 +296,25 @@ RUN umask 000 \
     && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
 
-# NOTE: no pkb binary is installed — PKB ships as a REMOTE MCP server (aops's
-# scripts/run-mcp.sh resolves PKB_MCP_URL and runs `uvx fastmcp run "$PKB_MCP_URL"`).
-# The vestigial nicsuzor/mem binary download was removed with the plumbing in PR #1615.
+# No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
+# scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
+# `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
 
-# NOTE: Claude/Gemini hook .py sources cannot diverge (see #1384) — scripts/build.py
-# copies both from the single aops/hooks source dir into every platform's dist/
-# output, so a build-time diff here would only ever re-confirm what the build
-# pipeline already guarantees by construction. Removed as a redundant, image-build-
-# time-costly check; drift would show up as a build.py bug, not a runtime one.
-
-# Pre-bake Python venvs for Claude plugins AND agy
-# (Antigravity CLI) plugins in one pass so the first hook call always
-# fast-paths to $HOOK_DIR/.venv/bin/python (router.sh fallback is `uv run`,
-# which resolves the lockfile live on every cold start).
-#
-# Cold-start matters most for PreToolUse, which has a 5000ms timeout in
-# hooks.json. An inline `uv` build on first call (fetch/resolve pydantic, etc.)
-# can exceed that window and produce `Tool call denied by jsonhook__hooks_*`
-# (agy) or a stalled tool call (Claude). Symmetric pre-bake here + the same
-# pre-bake at `make install-{claude,agy}` time eliminates the cold-start
-# failure for every client.
-#
-# Asymmetric pre-bake (one CLI frozen, the other JIT) is a footgun: a broken
-# uv.lock ships silently on the pre-baked side while the JIT side self-heals.
-# Symmetric pre-bake + smoke test catches lock drift at build time.
-#
-# UV_PROJECT_ENVIRONMENT is unset so each venv lives inside its own plugin/
-# extension dir, independent of the root project venv at /home/worker/.venv
-# (built below).
-RUN umask 000 && set -e && \
-    for d in /home/worker/.claude/plugins/cache/*/*/*/ \
-             /home/worker/.gemini/extensions/*/ \
-             /home/worker/.gemini/antigravity-cli/plugins/*/ ; do \
-        if [ -f "${d}pyproject.toml" ]; then \
-            (cd "$d" \
-                && env -u UV_PROJECT_ENVIRONMENT uv sync --frozen \
-                && ./.venv/bin/python -c "import psutil, pydantic, yaml") ; \
-        fi ; \
-    done
-
-# NOTE: the build-time "agy PreToolUse-allow" regression assertion that used to
-# live here (guarding aops-aa4c85a6 — a stale baked router.sh emitting {} for a
-# PreToolUse ALLOW event) has been removed: aops/hooks/router.py no longer
-# implements PreToolUse or any tool-gating at all (it only injects
-# reminder/hydrate context on PostInvocation/PreInvocation for agy and
-# Stop/SubagentStop/UserPromptSubmit for claude — see the file). That whole
-# tool-allow/deny mechanism (aops-core/lib/automode.py, the gates workflow) was
-# removed in the same large refactor that broke scripts/install.py. If it's
-# rebuilt, a fresh build-time assertion belongs here again.
-
-# Pre-build Python project venv at a stable image path.
-# UV_PROJECT_ENVIRONMENT redirects uv away from the bind-mounted source dir (/workspace),
-# preventing shebang conflicts (venv scripts baked with /home/worker paths, not /workspace)
-# and eliminating per-container reinstalls on startup.
-# Layer cache: only invalidates when pyproject.toml or uv.lock changes — all expensive
-# installs above stay cached across dep bumps.
-# --extra dev: includes pre-commit and dprint-py needed for git commit hooks in the container.
-ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
-COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
-RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
-
-# Install default ccstatusline and Claude Code settings.
+# Install the default ccstatusline config. Claude Code's own settings.json is
+# installed before the plugin install above, which then writes the generated
+# `enabledPlugins` into it.
 # These defaults are overridden at runtime if the host stages replacements.
-# Pre-create .config so Docker COPY doesn't auto-create it — BuildKit applies
-# --chmod to auto-created intermediate dirs, producing 0644 (non-traversable)
-# via umask: 666 & ~022 = 644. Pre-existing dirs are left untouched by COPY.
-RUN umask 000 && mkdir -p /home/worker/.config/ccstatusline
-COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
-COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
+# This and the seeds below stay BELOW the plugin install: `claude plugin
+# install` / `agy plugin install` write into ~/.claude, ~/.claude.json and
+# ~/.gemini, so these files have to land after it to win. Only their parent
+# dirs were hoisted (see the batched mkdir further up).
+COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
 # Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
 # via CLAUDE_CODE_OAUTH_TOKEN skip the interactive theme/login prompts. The
-# env-only auth model (aops/polecat/cli.py:_require_claude_oauth_or_exit) stages no
+# env-only auth model (plugins/aops/polecat/cli.py's get_env_forwards()) stages no
 # files, so without this seed claude regenerates a minimal .claude.json that
 # triggers onboarding even when the token is set.
-COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/claude-config.json /home/worker/.claude.json
+COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/claude-config.json /home/worker/.claude.json
 
 # Seed agy's (Antigravity CLI) onboarding-complete marker so headless/crew
 # workers skip its interactive first-run wizard (theme picker → migration →
@@ -283,26 +322,12 @@ COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/claude-config.json 
 # wizard and gates it on ~/.gemini/antigravity-cli/cache/onboarding.json; the
 # autonomous worker (interactive `agy -i`) cannot complete the TUI and never
 # reaches a prompt (regression aops-d9cc656a, verified 2026-06-29). This is the
-# agy analog of the Claude `hasCompletedOnboarding` seed above. Pre-create the
-# cache dir so BuildKit doesn't auto-create it 0644 (non-traversable).
-RUN umask 000 && mkdir -p /home/worker/.gemini/antigravity-cli/cache
-COPY --chown=worker:worker --chmod=666 aops/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
-
-# Install Rust toolchain (nothing in this image's build needs cargo/rustc —
-# it's provided for agents that use it at runtime). Deliberately placed this
-# late, after the aops framework clone/install and all the uv-sync venv
-# pre-bakes above: those are the expensive layers, and Docker's cache
-# invalidates every layer AFTER the first one that misses. RUST_CACHEBUST
-# only invalidates this layer and the (cheap) ones below it, so a forced
-# rustup refresh no longer forces a re-clone + re-install of the whole
-# framework and a re-sync of every plugin venv.
-# RUST_CACHEBUST is intentionally unused in the RUN command — it only
-# invalidates this layer so rebuilds can fetch the latest Rust toolchain.
-ARG RUST_CACHEBUST
-RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+# agy analog of the Claude `hasCompletedOnboarding` seed above. Its cache dir
+# is pre-created in the batched mkdir further up.
+COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
 
 # Copy entrypoint script
-COPY --chown=worker:worker --chmod=777 scripts/entrypoint.sh /home/worker/entrypoint.sh
+COPY --chown=worker:worker --chmod=777 plugins/aops/polecat/entrypoint.sh /home/worker/entrypoint.sh
 
 # Make home dir itself traversable/writable for any UID — polecat crew runs
 # containers as the host UID (non-root), which may differ from worker UID 1000.

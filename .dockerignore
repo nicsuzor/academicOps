@@ -11,14 +11,11 @@
 !/README.md
 !/LICENSE
 !/Makefile
-!/setup.sh
-!/.claude-plugin/**
 
 # Allow source code
-!/aops-jr/**
+!/plugins/**
 !/scripts/**
 !/specs/**
-!/docs/**
 !/tests/**
 !/templates/**
 

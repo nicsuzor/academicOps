@@ -1,43 +1,49 @@
 # Install academicOps
 
-Quick pointers to get the framework running. This file is the entry point
-doc-taxonomy.md expects at the repo root — design detail (what each install
-path does and why) lives in [`specs/build-and-install.md`](specs/build-and-install.md)
-and isn't restated here.
-
 ## Requirements
 
-- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
-- GitHub CLI (`gh`) for artifact retrieval
-- Docker (optional — required only for polecat's sandboxed worker containers)
+- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), or Antigravity
+- Docker, only if you want polecat's containerised workers
 
-## Quick install
+## From the release channel
 
 ```bash
 claude plugin marketplace add nicsuzor/academicOps@dist
 claude plugin install aops@academicOps
+claude plugin install aops-ida@academicOps
+claude plugin install aops-pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
 
-Optional plugins (`aops-jr` for face discipline, `reflexes-cope` for advisory
-policy checks, `aops-tools` for domain skills) install the same way — see
-`specs/build-and-install.md` §2 for the full plugin list and what each one
-ships, and §5.6 for the plugin → surface matrix.
+`aops-cope`, `aops-tools`, and `aops-ts` install the same way. `--config` is
+valid only against the plugin that declares the key; `pkb_mcp_url` belongs to
+`aops-pkb` alone.
 
-## Polecat installation
+Nothing has a default. Set the environment variables each plugin needs before
+first use — the full list is in [`README.md`](README.md#configure), and each
+plugin's own `plugins/<dir>/README.md` documents its complete surface.
 
-Polecat is the containerized worker-dispatch CLI, shipped inside `aops` core
-(`aops/polecat/cli.py`) rather than as a separate plugin. Beyond the base
-install above, it needs Docker and a `polecat.yaml` project registry
-(`$AOPS_SESSIONS/polecat.yaml`) — see the environment variables table in
-[`README.md`](README.md#configuration). Dispatch invocation, build, and
-configuration detail live in
-[`specs/build-and-install.md`](specs/build-and-install.md); the canonical
-dispatch flow is documented in
-[`aops/skills/dispatch/SKILL.md`](aops/skills/dispatch/SKILL.md).
+## From source
 
-## Developer / local build
+```bash
+git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
+uv sync
+make install-dev
+```
 
-Building from source, the `make dev` / `make install` loop, and the full
-release pipeline are covered in
-[`specs/build-and-install.md`](specs/build-and-install.md). Contributing to
-the framework itself starts at [`CONTRIBUTING.md`](CONTRIBUTING.md).
+`make install-dev` builds `dist/`, registers it as a local marketplace named
+`aops`, installs every plugin from it into Claude Code (and Antigravity when
+`agy` is on `PATH`), merges the axioms into `~/.claude/settings.json`, and
+activates pre-commit.
+
+`make uninstall-dev` reverses it and restores the release channel.
+
+## Polecat
+
+Polecat is the containerised worker runner, shipped inside the `aops` plugin. It
+needs Docker, a `polecat.yaml` project registry, and the environment listed under
+[Polecat containers](README.md#polecat-containers-aops).
+
+## Design
+
+Build stages, client adapters, and what installation is permitted to touch:
+[`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md).

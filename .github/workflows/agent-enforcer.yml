@@ -1,7 +1,7 @@
 # Agent: Enforcer (RBG)
 # Personality: The Judge — axiom compliance reviewer.
 # Status check: enforcer-status (posted to PR head SHA via statuses API)
-# Prompt: aops/agents/rbg.md + .github/agents/enforcer.agent.md
+# Prompt: plugins/aops/agents/rbg.md + .github/agents/enforcer.agent.md
 #
 # This is a reusable workflow. academicOps installs its own trigger in:
 #   .github/workflows/triggers/enforcer.yml
@@ -176,17 +176,17 @@ jobs:
           # directory ("'aops/agents/rbg.md' is not a directory") and never
           # materialises the files, so the subsequent cat fails. (aops-2be8f5c7)
           cd .aops && git sparse-checkout set --no-cone \
-            /aops/agents/rbg.md \
+            /plugins/aops/agents/rbg.md \
             /.github/agents/shared-error-handling.md \
             /.github/agents/enforcer.agent.md \
             /scripts/ci/reap-agent-processes.sh \
             /scripts/ci/reconcile-enforcer-reviews.sh && cd ..
-          if [ ! -f .aops/aops/agents/rbg.md ] || [ ! -f .aops/.github/agents/enforcer.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
+          if [ ! -f .aops/plugins/aops/agents/rbg.md ] || [ ! -f .aops/.github/agents/enforcer.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
             echo "::error::Enforcer prompt files were not materialised by sparse-checkout" >&2
-            ls -la .aops/aops/agents/ .aops/.github/agents/ 2>&1 || true
+            ls -la .aops/plugins/aops/agents/ .aops/.github/agents/ 2>&1 || true
             exit 1
           fi
-          PROMPT=$(cat .aops/aops/agents/rbg.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/enforcer.agent.md)
+          PROMPT=$(cat .aops/plugins/aops/agents/rbg.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/enforcer.agent.md)
           # Append an explicit user-turn directive (aops-2a3b4c71). Without it
           # the prompt is just concatenated agent-def markdown and the model
           # intermittently treats it as a pasted artifact ("what would you like

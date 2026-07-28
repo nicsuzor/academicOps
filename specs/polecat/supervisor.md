@@ -7,7 +7,6 @@ status: ready
 tier: polecat
 depends_on: [polecat-system]
 tags: [spec, polecat, architecture, supervisor]
-created: 2026-03-11
 ---
 
 # Supervisor Architecture
@@ -152,15 +151,14 @@ queued → in_progress → merge_ready → done (deliverable accepted)
 `done` means the deliverable was accepted — evidence + output URL recorded on the
 PKB task; a merged PR is the code-surface instance of this.
 
-See [[aops/skills/remember/references/TAXONOMY.md#status-values-and-transitions]]
+See [[plugins/pkb/skills/graph-maintenance/references/taxonomy.md#status]]
 for canonical status definitions. The supervisor uses the canonical set without
 extensions (`partial` is part of that canonical set).
 
 ## Related
 
-- [[specs/polecat/polecat-system.md]] — Isolated task workspaces, atomic claiming, and
-  PR-based merge that the supervisor dispatches onto
-- `aops/skills/supervisor/SKILL.md` — The operative skill (orient → act →
-  checkpoint loop, proof discipline, evaluation protocol)
-- `aops/commands/pull.md` and `dispatch.md` — The Select+Gates spine shared by
-  `/pull`, `/dispatch`, and `/supervisor`.
+- [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
+  guarantees the supervisor dispatches onto
+- `plugins/aops/skills/pull/SKILL.md` and `plugins/aops/skills/dispatch/SKILL.md`
+  — The operative skills: claiming a unit, and delivering an epic's children to a
+  terminal state.

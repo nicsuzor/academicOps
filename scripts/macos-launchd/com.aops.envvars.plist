@@ -8,7 +8,8 @@
   This only exports the bot PAT + AOPS directory vars globally. It does NOT set
   any global SSH lockdown or git-config hijack -- that would re-break VS Code
   and other GUI apps (note-4d4a97c2). Session-scoped credential isolation for
-  Claude/bot sessions is applied per-session by aops/hooks/router.py.
+  Claude/bot sessions is applied per-session by the aops plugin's SessionStart
+  hook.
 
   Install:
 

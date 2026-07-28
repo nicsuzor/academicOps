@@ -39,36 +39,81 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 
 ### 1. Structural prevention (the only mechanical layer)
 
-- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `aops/polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
-- **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`aops/polecat/defaults/polecat.yaml.example`](../../aops/polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
+- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, [`plugins/aops/polecat/cli.py`](../../plugins/aops/polecat/cli.py)), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
+- **`polecat.yaml`** (loaded from `$AOPS_POLECAT_CONFIG` or `$AOPS_SESSIONS/polecat.yaml`, overridable per-machine via `<polecat_home>/local.yaml`) is the operator config for session configuration: cache root, container image, project-path map. No built-in fallback: a missing required value (`polecat_home`, `docker.image`) is a hard fail, not a silent default.
 
 ### 2. The harness delivery channel (reminder, not gate)
 
-The core hook surface carries structural prevention (`SessionStart` credential isolation) in [`aops/hooks/router.py`](../../aops/hooks/router.py). Face discipline reminders live in the optional `aops-jr` plugin ([`aops-jr/hooks/router.py`](../../aops-jr/hooks/router.py) and [`aops-jr/hooks/gate_dispatch.py`](../../aops-jr/hooks/gate_dispatch.py)), wired to `SubagentStop` / `UserPromptSubmit` / `PostToolUse` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). The `Stop`-time handover reminder lives in `aops-jr`'s `exit_reflection_reminder` gate ([`aops-jr/hooks/gates/exit_reflection.py`](../../aops-jr/hooks/gates/exit_reflection.py)). Advisory CoPE policy evaluation lives in the optional `reflexes-cope` plugin ([`reflexes-cope/hooks/gates/reflexes_evaluator.py`](../../reflexes-cope/hooks/gates/reflexes_evaluator.py)), which evaluates 15 axiom rule files against hook events and returns overridable advisory warnings only (`warn` outcome, no autonomous deny/block disposition), failing open on any evaluator outage. It injects static templates as non-blocking context:
+Every plugin hook shares one runtime, `lib/hooks/`, injected into each plugin at
+build time (`ARCHITECTURE.md`, Hooks). The complete set:
 
-- **`hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
-- **`handover.md`** / **`honesty.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative).
-- **`verify.md`** — on PostToolUse (Agent tool execution): remind the agent to verify subagent outputs.
+- **`aops`**, `SessionStart` ([`plugins/aops/hooks/handlers.py`](../../plugins/aops/hooks/handlers.py), `session_start`) — credential isolation for container sessions, plus a report (never a value) of the OpenTelemetry configuration.
+- **`aops`**, `Stop` and `SubagentStop` (`present_checkable_evidence`) — reminds the agent that is stopping to present its answer with checkable evidence. Both events are served by the same handler and message; the output reaches the agent that is stopping, not its parent.
+- **`pkb`**, `UserPromptSubmit` ([`plugins/pkb/hooks/handlers.py`](../../plugins/pkb/hooks/handlers.py)) — injects relevant PKB context, or instructs the agent to search for it.
+- **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a small language model, over the Reflexes evaluator contract ([`evaluator.py`](../../plugins/cope/hooks/evaluator.py)), whether the tool call matches each live rule; injects the matched rules' own text so the agent can correct itself. A rule is live in any layer only if its frontmatter declares `trigger: always_on` — a rules directory also holds reference material, and reference material sent as a policy is a question the evaluator cannot answer. Anything skipped for want of the marker, and an `$ACA_DATA` that names no rules directory, are reported through the shared fault channel below, so no layer thins out unnoticed. The judgment is the model's, not a pattern match, so it sits inside "agents all the way down" alongside the auto-mode classifier below. Advisory only — a `warn`-outcome `Result` (additional context), never a permission decision. Configured entirely from the environment (`COPE_EVALUATOR_*`); with no evaluator configured it is a clean no-op, and any evaluator failure fails open.
+- **`ts`**, `SessionStart` ([`plugins/ts/hooks/tailscale-up.sh`](../../plugins/ts/hooks/tailscale-up.sh)) — `tailscale up` bring-up for remote/cloud sessions.
 
-Nothing in this layer produces a verdict. It cannot stop an agent from exiting, and it does not check whether the agent actually did what the reminder asked — that is the executing agent's own judgment call, backstopped by the review lenses below, not by the hook.
+Every agent-visible string a hook emits comes from a markdown file next to it
+(`hooks/messages/*.md`), editable without touching code. Nothing in this layer
+produces a verdict. None of it can stop an agent from exiting, and none of it
+checks whether the agent actually did what the reminder asked — that is the
+executing agent's own judgment call, backstopped by the review lenses below, not
+by the hook.
 
-**Target vs current, named explicitly:** the ratified plan (§1) envisions the harness eventually _dispatching_ the reflection/audit subagent directly on Stop, where the harness supports it, rather than only injecting reminder text. `router.py` does not do this yet — it injects text only. This is an open implementation gap against the ratified design, not a design ambiguity; flagging it here rather than asserting it as already built.
+**A delivery channel that has stopped delivering says so.** These are reminders
+people come to rely on, and every way they can fail — a handler that raised, an
+evaluator that did not answer, a rule file that could not be read, a session env
+file that could not be written — used to be reported on stderr alone, which the
+client captures into the transcript and renders to nobody. So the channel
+reports its own degradation on the same response it would have carried the
+reminder on ([`lib/hooks/degraded.py`](../../lib/hooks/degraded.py)): the
+precise reason as `additionalContext` for the agent, one sentence as
+`systemMessage` for the person, and the stderr line unchanged for the log.
+
+Two constraints shape it. It is **rate-limited to once per session per kind of
+fault**, because these hooks fire on every tool call and a line the user learns
+to skip past is worse than no line at all; the gate is a marker file per
+(session, fault kind) under the OS temp directory, since one hook invocation is
+one process. And it **distinguishes degradation from legitimate absence** —
+cope with no evaluator configured, `$ACA_DATA` unset, a project with no local
+rules directory are all valid states and stay silent. A fault report is never a
+gate: it can only add an advisory, and the tool call proceeds either way.
 
 ### 3. Claude Code's native auto-mode classifier
 
-A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`aops/polecat/defaults/claude-settings.json`](../../aops/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
+A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`plugins/aops/polecat/defaults/claude-settings.json`](../../plugins/aops/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
 
 ### 4. Task-graph boundary — the primary enforcement point
 
 `claim_task` in, `release_task` out. A completion claim must carry independent-verification evidence or a stated failure reason — this is where the framework actually holds agents accountable, because it binds to the claim act rather than to session mechanics. Full contract: [task-contract.md](task-contract.md); the universal claim-evidence shape every boundary reads: [evidence-contract.md](evidence-contract.md).
 
+**The claim is written twice, deliberately.** The dispatch surface records one at launch; the worker claims the task from inside its own session, which is what moves the status. Two writes, because the launch record is the only thing that makes a worker which died before ever claiming legible as an unanswered dispatch rather than as work nobody picked up. Full invariant: [task-contract.md](task-contract.md).
+
+**A boundary that agents sometimes never cross back through needs a sweep behind it.** No session is obliged to return, so nothing re-examines a claim once it is made: claims outlive dead sessions, merges land unwatched, and completed work sits uncertified. The reconcile skill ([`plugins/pkb/skills/reconcile/SKILL.md`](../../plugins/pkb/skills/reconcile/SKILL.md)) is that sweep — it reads the graph against the evidence trail and writes back what is actually true. It runs on engagement after an absence (commissioned by ida as a delegation, since touching the knowledge base is not hers to do), inside the consolidation cycle, and on demand. Behavioural spec: [reconcile.md](../workflows/reconcile.md).
+
+A container emits no completion signal, so evidence reaches this boundary only because something carries it. The durable carrier is the task record the worker writes before exiting; the dispatch surface ([`plugins/aops/skills/dispatch/SKILL.md`](../../plugins/aops/skills/dispatch/SKILL.md)) supplies the second by running every container inside a plain background subagent — the courier — whose final message returns the worker's result as a harness notification. The courier is delivery, not supervision and not a gate: the worker's method stays entirely its own, and the claim-evidence contract above remains the thing that holds it accountable.
+
 ### 5. Task-boundary review — three pauli-specified lenses
 
-- **pauli** (pre-hoc) — the premise standard: the idea is sound, elegant, and strongly aligned with the project's strategic aims when evaluated in the full context. The `decompose` skill (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md)) always emits this as a standing, early-blocking task node **at decomposition time** — the rest of the epic depends on it clearing. The former standalone dispatch-time "premise gate" (a two-judge hard-refuse ceremony run at `/pull`/`/dispatch`) is retired; decomposition carries this judgment instead, and dispatch surfaces trust the planner's decomposition rather than re-judging it.
-- **rbg** — rules were followed: boundary review of the task contract and handback only (inputs/outputs), never the transcript. Always emitted as a standing task node blocking epic acceptance.
-- **marsha** (post-hoc) — the task does what it was supposed to and does it _well_: delivered artifact vs. the original aim and acceptance criteria, bar is excellent, not passing. Always emitted as a standing task node blocking epic acceptance.
+- **pauli** (pre-hoc) — the premise standard: the idea is sound, elegant, and strongly aligned with the project's strategic aims when evaluated in the full context. Where composed in, it is emitted early and blocking, so the rest of the epic depends on it clearing. The former standalone dispatch-time "premise gate" (a two-judge hard-refuse ceremony run at `/pull`/`/dispatch`) is retired; decomposition carries this judgment instead, and dispatch surfaces trust the planner's decomposition rather than re-judging it.
+- **rbg** — rules were followed: boundary review of the task contract and handback only (inputs/outputs), never the transcript.
+- **marsha** (post-hoc) — the task does what it was supposed to and does it _well_: delivered artifact vs. the original aim and acceptance criteria, bar is excellent, not passing.
 
-`decompose` plans only: it emits these three tasks and their `depends_on` wiring into the graph; it never dispatches or runs them itself. Review depth (per-chunk subtasks vs. one consolidated pass at the final PR) is the planner's call at decomposition time, based on the work's risk and blast radius. Full shape: [workflow.md](workflow.md).
+Each blocks epic acceptance where the composed process obliges it.
+
+**Which of these a given piece of work runs is composed, not hardcoded.** The `decompose` skill ([`plugins/pkb/skills/decompose/SKILL.md`](../../plugins/pkb/skills/decompose/SKILL.md)) loads the review process from the workflow-template namespace — shipped library, the user's own layer, and the PKB's `wf-*` templates, one namespace resolved later-wins-by-name — and turns each obligation it names into a real blocking node. The three lenses above are the standard those templates express; a fixed set carried in the skill's own text would be a process the user could never override.
+
+Composition can yield an **empty** set, and that is the dangerous branch: work would pass decomposition carrying no review obligation and read as correctly planned. So a composed process obliging no review at all is itself a library gap `decompose` names and halts on — the same pathway as an obligation no layer defines.
+
+**Human sign-off at a one-way door is not composed.** It is the [`one-way-door`](../../lib/axioms/one-way-door.md) axiom, binding the agent at the moment it crosses rather than the planner who drew the DAG. An obligation a template layer could drop, or name-shadow with a layer of its own, was never a floor; an axiom sits outside that namespace by construction.
+
+`decompose` plans only: it emits those nodes and their `depends_on` wiring into the graph; it never dispatches or runs them itself. Review depth (per-chunk subtasks vs. one consolidated pass at the final PR) is the planner's call at decomposition time, based on the work's risk and blast radius. Full shape: [workflow.md](workflow.md).
+
+**Certification at completion executes those nodes.** When a unit's return contract lands, the dispatch surface commissions the review the graph already carries — through the [`strategic-review`](../../plugins/aops/skills/strategic-review/SKILL.md) and [`verify`](../../plugins/aops/skills/verify/SKILL.md) skills — and records the verdict on the task record, which [evidence-contract.md](evidence-contract.md) makes the message bus every handback crosses. One path, never a second review standing beside the nodes decomposition already emitted; and no judgment of the dispatcher's own, since relaying a worker's "confirmed" is what the gate exists to prevent.
+
+**Certification therefore has a precondition: the certifying context must be able to spawn.** Commissioning a review means deploying reviewers, so a context holding no subagent surface cannot satisfy this gate at all — it must hand the unit to one that can, and refuse to self-certify in the meantime. A gate routed to a context that cannot execute it produces no verdict and no failure, which is the one outcome this boundary must not have. Contract: [`dispatch`](../../plugins/aops/skills/dispatch/SKILL.md) §4.
+
+The acceptance that follows certification belongs to the face, judged against user intent — the two-signature rule in [workflow.md](workflow.md).
 
 ### 6. Workflow components for assembly
 
@@ -82,7 +127,7 @@ The git PR pipeline (`.github/workflows/`: `rbg-review.yml`, `agent-qa.yml`, `ag
 
 Two flows, deliberately separated (witness vs. judge), so the volume and direction of framework change is governed by cross-incident pattern, not by the salience of the most recent failure:
 
-1. **File a bug** (`/learn`, [`aops/commands/learn.md`](../../aops/commands/learn.md)) — an agent that hits friction files the forensic facts (what happened, root-cause category, rule already in place if any, impact) immediately, unilaterally, with no fix proposed. One friction = one filing.
+1. **File a bug** (`/learn`) — an agent that hits friction files the forensic facts (what happened, root-cause category, rule already in place if any, impact) immediately, unilaterally, with no fix proposed. One friction = one filing.
 2. **Improve the framework** (`/issue-sweep` / the `triage` skill's sweep mode) — a detached pass over the accumulated issue queue, on a cadence the user sets, classifies each issue and only proposes a mechanism add/escalation where ≥3 recurrences (or explicit user direction) justify it. The user gates every disposition.
 
 A single incident that is a **bug** (broken skill routing, a wrong path, an incomplete instruction) gets fixed immediately from one report. A single incident that is an **escalation proposal** (a new gate, a new axiom, a heavier mechanism) gets logged and waits for the pattern.
@@ -107,3 +152,4 @@ The framework's prior in-session hook/gate engine — a dedicated `GateConfig` f
 - [evidence-contract.md](evidence-contract.md) — the single universal claim-evidence shape every boundary above reads.
 - [auto-mode-classifier.md](auto-mode-classifier.md) — design statement for Claude Code's native per-action classifier.
 - **PKB Workflow Templates** (`wf-*` nodes in the PKB) — the prose workflow template component library for assembled workflows.
+- [agent-authority.md](../agents/agent-authority.md) — the frontmatter schema and deny-by-default tool/skill/subagent permissions this spec's L3/L4 layers apply; documents a current harness defect that forces four core agents (pauli, james, marsha, rbg) to omit their `tools` allowlist rather than lose MCP access, and the resulting gap in RBG's ground truth for those four until upstream fixes it.

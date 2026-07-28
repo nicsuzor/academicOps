@@ -47,9 +47,9 @@ separate research path.
 1. **Contract** — the unit's premise, worth, and acceptance criteria are
    settled _at decomposition time_, before compute is spent executing it.
    This is pauli's pre-hoc lens (premise/worth/shape). The `decompose` skill
-   (see [`aops/skills/decompose/SKILL.md`](../../aops/skills/decompose/SKILL.md))
-   always emits it as a standing, early-blocking task node in the epic's DAG
-   — the rest of the epic's work depends on it clearing. The previously
+   (see [`plugins/pkb/skills/decompose/SKILL.md`](../../plugins/pkb/skills/decompose/SKILL.md))
+   emits it as a standing, early-blocking task node in the epic's DAG — the
+   rest of the epic's work depends on it clearing. The previously
    separate standalone premise-gate concept — a two-judge hard-refuse
    ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is retired;
    dispatch surfaces trust pauli's decomposition without re-judging
@@ -78,6 +78,27 @@ task-boundary contract — every load-bearing claim at each of these steps
 carries checkable evidence or a stated failure reason, and the reviewer
 checks the actual criterion was met, not merely that the right fields were
 filled in (see [Substance over form](evidence-contract.md#substance-over-form)).
+
+### Two signatures at the sign-off boundary
+
+`done` carries two signatures. Neither substitutes for the other, and they
+happen in this order.
+
+1. **Certification — the dispatcher's, at unit completion.** It commissions the
+   review machinery the graph already carries (the review nodes `decompose`
+   emitted, executed through the review skills), reads the verdict, and writes
+   that verdict onto the task record. What it certifies is mechanics, quality,
+   and compliance with the brief. The dispatcher never supplies that judgment
+   itself and never relays a worker's own claim of success in its place.
+2. **Acceptance — the face's, against the user's intent.** The brief carries the
+   ask; only the interactive face holds the ambition behind it. Work can be
+   correctly built, cleanly reviewed, and still not be what was wanted — that is
+   the failure this second signature exists to catch, and it is why acceptance
+   is judged against intent rather than against the brief.
+
+Certification without acceptance ships work nobody weighed against intent.
+Acceptance without certification asks the face to vouch for mechanics it never
+checked and cannot see.
 
 ### Review composition
 

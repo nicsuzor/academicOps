@@ -45,7 +45,7 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
    explaining what blocked you. Do not guess.
 
 6. **Don't ask permission for in-scope work** (`exercise-authority` Edge 2 — see
-   `.agents/rules/AXIOMS.md`). Decisions inside the issue's acceptance criteria
+   `lib/axioms/exercise-authority.md`). Decisions inside the issue's acceptance criteria
    are yours: library choice, naming, test layout, sensible refactor. Just
    do them. Workflow-required actions (commit, push, open the PR) are
    non-askable for a passing build on a feature branch — asking is the
@@ -53,19 +53,18 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 
 ## Key Conventions
 
-- **Tests live in `tests/`** at the repo root, NOT inside `aops/`.
+- **Tests live in `tests/`** at the repo root, NOT inside `plugins/`.
 - **Python 3.12**, managed by `uv`. Always use `uv run` for tools.
 - **Type hints** throughout. Pydantic for data models.
-- **No backup files.** Git is the backup system (P#24).
-- **No workarounds.** Never use `--no-verify` or `--force` (P#25).
+- **No backup files.** Git is the backup system (`single-source-of-truth`).
+- **No workarounds.** Never use `--no-verify` or `--force` (`halt-on-failure`).
 - **No perpetual commands (`bounded-execution`).** No `--watch`, `tail -f`, `gh run watch`, or unbounded polling loops. Every command must have a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before finishing — orphaned background processes keep the GHA runner alive past your work and cause "job timed out" failures.
 
 ## What NOT to Modify
 
-- `.agents/rules/` — inviolable framework axioms
+- `lib/axioms/` — inviolable framework axioms
+- `.agents/rules/` — project-local rules
 - `.github/workflows/` — CI pipeline (unless the issue specifically targets it)
-- `.agents/rules/AXIOMS.md` — framework principles
-- Any file listed in `.agents/rules/protected_paths.txt`
 
 ## PR Description
 

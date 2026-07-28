@@ -2,14 +2,11 @@
 # repo-sync-cron.sh - Periodic maintenance: transcripts, repo sync.
 #
 # Composable functions:
-#   do_cowork_ingest - Normalize and sync Cowork audit logs into sessions repo
-#   do_gha_sync      - Sync claude-session artifacts from configured GHA repos
-#   do_transcript    - Generate recent session transcripts using the new Layer B runner
-#   do_sync          - Sync all git repositories via polecat sync
-#   do_pr_state      - Dump raw PR state from tracked repos to $AOPS_SESSIONS/state/
+#   do_transcript    - Generate recent session transcripts via lib/py/transcripts
+#   do_sync          - Fetch and prune the aops repository
 #
 # Usage:
-#   ./scripts/repo-sync-cron.sh              # Full: cowork_ingest + gha_sync + transcript + sync + pr_state
+#   ./scripts/repo-sync-cron.sh              # Full: transcript + sync
 #   ./scripts/repo-sync-cron.sh --quick      # Quick run: all functions
 
 set -euo pipefail
@@ -107,30 +104,10 @@ TS="$(date '+%Y-%m-%d %H:%M:%S')"
 # Functions
 # ============================================================================
 
-do_cowork_ingest() {
-    echo "==> Ingesting Cowork audit logs..."
-    if [[ -f "${AOPS}/aops-core/scripts/ingest_cowork.py" ]]; then
-        uv run python "${AOPS}/aops-core/scripts/ingest_cowork.py" || echo "Warning: Cowork ingestion failed" >&2
-    fi
-}
-
-do_gha_sync() {
-    echo "==> Syncing GHA claude-session artifacts..."
-    if [[ -f "${AOPS}/aops-core/scripts/sync_gha_sessions.py" ]]; then
-        if command -v gh &>/dev/null && gh auth status &>/dev/null; then
-            local gha_repos="${AOPS_GHA_REPOS:-nicsuzor/academicOps}"
-            timeout 300 uv run python "${AOPS}/aops-core/scripts/sync_gha_sessions.py" \
-                --repos "$gha_repos" \
-                --limit 100 \
-                || echo "Warning: gha sync failed or timed out" >&2
-        fi
-    fi
-}
-
 do_transcript() {
     echo "==> Generating recent transcripts using new pipeline..."
     # Call the new transcripts runner. Do NOT pass --no-sync to ensure git commit/push runs.
-    PYTHONPATH="${AOPS}/aops/lib" uv run python -m transcripts.runner --recent || echo "Warning: transcript generation failed" >&2
+    PYTHONPATH="${AOPS}/lib/py" uv run python -m transcripts.runner --recent || echo "Warning: transcript generation failed" >&2
 }
 
 do_sync() {
@@ -140,13 +117,6 @@ do_sync() {
     # it always failed with "Error: No such command 'sync'." and was a no-op
     # dead fallback. Removed rather than repaired: there is nothing to call.
     git -C "${AOPS}" fetch --prune --quiet 2>&1 || echo "Warning: git fetch --prune failed"
-}
-
-do_pr_state() {
-    echo "==> Dumping PR state..."
-    if [[ -f "${AOPS}/aops-core/scripts/dump_pr_state.py" ]]; then
-        uv run python "${AOPS}/aops-core/scripts/dump_pr_state.py" || echo "Warning: PR state dump failed" >&2
-    fi
 }
 
 # ============================================================================
@@ -165,21 +135,15 @@ fi
 
 if [[ $# -eq 0 ]]; then
     echo "${TS} repo-sync-cron starting (full)"
-    do_cowork_ingest
-    do_gha_sync
     do_transcript
     do_sync
-    do_pr_state
 else
     echo "${TS} repo-sync-cron starting ($*)"
     for func in "$@"; do
         case "$func" in
-            cowork_ingest) do_cowork_ingest ;;
-            gha_sync)   do_gha_sync ;;
             transcript) do_transcript ;;
             sync)       do_sync ;;
-            pr_state)   do_pr_state ;;
-            --quick)    do_cowork_ingest; do_gha_sync; do_transcript; do_sync; do_pr_state ;;
+            --quick)    do_transcript; do_sync ;;
             *)          echo "Unknown function: $func" >&2; exit 1 ;;
         esac
     done

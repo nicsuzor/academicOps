@@ -54,6 +54,16 @@ work.
   never worked and is not to be built on. This is a design invariant the
   framework holds agents to by convention and review, not a code-level
   blocking check today.
+- **Claim at launch** — a dispatch whose loss would matter beyond its own
+  session has its claim written to the graph _before_ the worker starts: who it
+  went to, under which session and surface, and when. The worker's own
+  `claim_task` still happens from inside its session and is what moves the
+  status; the launch-time record exists so that a worker which died before ever
+  claiming is legible as an unanswered dispatch rather than as work nobody
+  picked up. **Cheap read-only probes are exempt** — nothing is lost by running
+  one again, so claiming for them buys graph noise instead of recoverability. A
+  launch-time claim with no worker claim behind it is precisely the stale-claim
+  signal a reconcile sweep probes and, finding nothing, requeues to `ready`.
 - **Evidence contract** — at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,
   or a stated failure reason. **This is the primary enforcement point** (H7).

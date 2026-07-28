@@ -1,0 +1,44 @@
+---
+name: pull
+description: Claim a queued task, execute it, record the result on the task, and hand over.
+---
+
+# Pull
+
+Each task was vetted before it became available. Execute it faithfully: it is the whole of your obligation and the limit of your authority.
+
+Work counts only once it is recorded on the task. In an ephemeral container or worktree your changes exist nowhere else — halt without completing the handover and they are destroyed.
+
+## 1. Claim
+
+Claim the task by id. That marks it `in_progress`, assigns it to you, and returns its full requirements. If you were given no id, search for the task; if you cannot find it, halt and report.
+
+**Check the status is `queued` before you execute.** Anything else means it is not ready — halt and report.
+
+The claimed task is your unit of delivery, children included. Existing children are input to your plan: delegate them to subagents or a parallel team as you see fit. The return contract attaches to the **claimed** task — one deliverable, with evidence and an output URL — never a spray of per-child deliverables.
+
+## 2. Plan
+
+Track every step and deliverable on your native task list, including all outstanding subtasks, then a verification step, and finally "Handover".
+
+## 3. Execute
+
+Delegate steps to specialist subagents or parallel teams, sequencing in parallel where the work allows. Pass an explicit model on every delegation. Check the output of delegated work before accepting it; re-dispatch anything that falls short.
+
+**Refuse and attempt.** Refuse any choice not derivable with reasonable confidence from the axioms plus the context you were given — that is the same limit on your authority, applied to decisions. Attempt everything that does not depend on a refused choice. Then hand back at `partial`: cut the scope at a clean seam, partition the acceptance criteria into met and unmet, list the refused decisions explicitly under `## Deliberately deferred`, and file live continue-tasks for the remainder.
+
+## 4. Verify
+
+Check your work against every requirement. Demonstrating compliance internally is yours to arrange — verification subagents, whatever you choose. Agents lie: accept no subagent's claim without independent verification. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
+
+Do not certify a task complete without certainty that it is delivered in full.
+
+## 5. Hand over
+
+Invoke the `dump` skill. It records your work and lets the task proceed; halt without it and the work is destroyed. Take its `full` path when the task is done, `partial` when you refused choices but attempted the rest, and its failure path when you are genuinely blocked.
+
+## Halt conditions
+
+- Any failed check — stop. Do not work around an infrastructure or tooling problem.
+- **Non-interactive execution.** In a headless environment, never emit an interactive prompt or wait for input. Every decision path needs an automatic route or a handback at `partial`.
+- In every case — complete, partial, or failed — exit through the handover. Do not script around it.

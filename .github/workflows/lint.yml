@@ -1,7 +1,7 @@
-# Lint: ruff check + ruff format with autofix on PRs.
+# Lint: ruff check + ruff format + dprint, with autofix on PRs, plus the
+# documented-reference check.
+# Mirrors `make lint` / `make format` and the dprint pre-commit hook.
 # Runs independently — does not gate Type Check or Pytest.
-#
-# See specs/pr-pipeline.md for the full process documentation.
 
 name: Lint
 
@@ -65,33 +65,26 @@ jobs:
         timeout-minutes: 2
         run: uv run ruff format --check
 
-      # Auto-heal Gemini-form MCP tool names that may have leaked into source
-      # via CI-side commits (which skip pre-commit). See scripts/normalize_mcp_names.py
-      # and issue #1128. Exit 1 means rewrites happened; downstream autofix-push
-      # step picks up the changes.
-      - name: Normalize MCP names (initial)
-        id: normalize-initial
+      # Markdown/JSON/TOML formatting — the same check the dprint pre-commit
+      # hook enforces locally, for commits that bypassed it (e.g. CI-side).
+      - name: dprint check (initial)
+        id: dprint-initial
         continue-on-error: true
-        timeout-minutes: 1
-        run: find aops-core .github/agents -name '*.md' -print0 | xargs -0 uv run python scripts/normalize_mcp_names.py
-
-      - name: Validate ruleset alignment (initial)
-        id: validate-initial
-        continue-on-error: true
-        timeout-minutes: 1
-        run: ./scripts/validate-ruleset-alignment.sh
+        timeout-minutes: 2
+        run: uv run dprint check
 
       # Autofix and push if any check found problems (PRs and workflow_dispatch)
       - name: Autofix lint and formatting
-        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.validate-initial.outcome == 'failure')
+        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.dprint-initial.outcome == 'failure')
         timeout-minutes: 3
         run: |
           uv run ruff check --fix || true
           uv run ruff format
+          uv run dprint fmt
 
       - name: Commit and push fixes
         id: commit
-        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.normalize-initial.outcome == 'failure' || steps.validate-initial.outcome == 'failure')
+        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.dprint-initial.outcome == 'failure')
         timeout-minutes: 2
         run: |
           git config user.name "github-actions[bot]"
@@ -101,7 +94,7 @@ jobs:
             echo "No formatting changes to commit"
             echo "committed=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m "style: autofix lint, formatting, and MCP name normalization"
+            git commit -m "style: autofix lint and formatting"
             git push
             echo "committed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -117,12 +110,15 @@ jobs:
         timeout-minutes: 2
         run: uv run ruff format --check
 
-      - name: Normalize MCP names (final)
-        if: steps.normalize-initial.outcome == 'failure'
-        timeout-minutes: 1
-        run: find aops-core .github/agents -name '*.md' -print0 | xargs -0 uv run python scripts/normalize_mcp_names.py
+      - name: dprint check (final)
+        if: steps.dprint-initial.outcome == 'failure'
+        timeout-minutes: 2
+        run: uv run dprint check
 
-      - name: Validate ruleset alignment (final)
-        if: steps.validate-initial.outcome == 'failure'
-        timeout-minutes: 1
-        run: ./scripts/validate-ruleset-alignment.sh
+      # Every repository path a shipped document names must exist. No autofix
+      # step: repointing a dead reference, or deleting the claim that rested on
+      # it, is a judgement call — so this always runs and always blocks.
+      - name: Documented references resolve
+        if: always()
+        timeout-minutes: 2
+        run: uv run python scripts/check_refs.py

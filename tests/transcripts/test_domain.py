@@ -7,7 +7,7 @@ from pathlib import Path
 
 from transcripts.adapters.agy import load_agy_transcript
 from transcripts.adapters.claude import load_claude_transcript, normalize_claude_transcript
-from transcripts.domain.cache import SkipCache
+from transcripts.domain.cache import SkipCache, source_fingerprint
 from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
@@ -116,16 +116,19 @@ def test_skip_cache(tmp_path: Path) -> None:
     cache_file = tmp_path / "cache.json"
     cache = SkipCache(cache_file)
 
-    session_id = "test-session-123"
-    assert not cache.is_skipped(session_id)
+    source = tmp_path / "test-session-123.jsonl"
+    source.write_text("", encoding="utf-8")
+    key = str(source)
+    fingerprint = source_fingerprint([source])
+    assert not cache.is_skipped(key, fingerprint)
 
     # Mark empty
-    cache.mark_empty(session_id)
-    assert cache.is_skipped(session_id)
+    cache.mark_empty(key, fingerprint)
+    assert cache.is_skipped(key, fingerprint)
 
     # Reload and test persistence
     cache2 = SkipCache(cache_file)
-    assert cache2.is_skipped(session_id)
+    assert cache2.is_skipped(key, fingerprint)
 
 
 # --- Invariant 5: recent/ interactive-only view ------------------------------
@@ -199,14 +202,16 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     corr_agy = infer_correlation(agy_session)
     insights_agy = infer_insights(agy_session)
 
-    md_agy, html_agy, json_agy = render_session_to_all_formats(
+    md_agy, html_agy, sidecar_agy = render_session_to_all_formats(
         agy_session, slug_agy, start_agy, mod_agy, end_agy, has_user_agy, corr_agy, insights_agy
     )
 
     assert md_agy.startswith("---")
     assert "slug: " in md_agy
     assert "</html>" in html_agy
-    data_agy = json.loads(json_agy)
+    # The sidecar comes back as data so redaction can run before serialisation;
+    # it still has to serialise to JSON a consumer can read.
+    data_agy = json.loads(json.dumps(sidecar_agy))
     assert data_agy["session_id"] == agy_session.session_id
 
     # Load Claude session (Layer A)
@@ -221,7 +226,7 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     corr_claude = infer_correlation(claude_session)
     insights_claude = infer_insights(claude_session)
 
-    md_claude, html_claude, json_claude = render_session_to_all_formats(
+    md_claude, html_claude, sidecar_claude = render_session_to_all_formats(
         claude_session,
         slug_claude,
         start_claude,
@@ -235,5 +240,5 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     assert md_claude.startswith("---")
     assert "slug: " in md_claude
     assert "</html>" in html_claude
-    data_claude = json.loads(json_claude)
+    data_claude = json.loads(json.dumps(sidecar_claude))
     assert data_claude["session_id"] == claude_session.session_id

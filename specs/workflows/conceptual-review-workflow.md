@@ -20,13 +20,9 @@ related:
 
 The conceptual review pattern is implemented through the following framework components:
 
-- **Asynchronous PR Review**: The [[.github/workflows/agent-assessor.yml|Assessor Agent]] performs strategic review on pull requests, evaluating alignment and assumptions.
-- **Axiom Compliance**: The [[.github/workflows/agent-auditor.yml|Auditor Agent]] performs mechanical rule-checking (Axioms/Heuristics).
-- **In-Session Criticality**: The [[.agents/skills/critic/SKILL.md|Critic Skill]] provides skeptical second-opinion review of plans and conclusions during interactive sessions.
-- **Orchestration**: [[specs/pr-pipeline.md|PR Pipeline]] manages the convergence loop via GitHub's native PR review system.
 - **Upstream/Downstream**:
-  - [[specs/agents/pauli.md]] -- upstream; strategic planning under uncertainty.
-  - [[specs/research-decomposition.md]] -- downstream; domain-specific application of the review pattern.
+  - [[plugins/pkb/agents/pauli.md]] -- upstream; strategic planning under uncertainty.
+  - [[specs/workflows/research-decomposition.md]] -- downstream; domain-specific application of the review pattern.
 
 # The User
 
@@ -48,15 +44,11 @@ A researcher or team member has written a proposal -- a grant application, proje
 
 **What to expect from the system:**
 
-1. **Automated Strategic Review**: Every pull request proposing changes to intellectual artifacts (specs, plans, designs) will automatically receive a strategic review from the **Assessor** agent.
-   - _Test_: A PR is opened; the `Agent: Review & Fix` workflow runs and posts a `gh pr review` with a summary of findings.
-2. **Depth Over Breadth**: The reviewer will focus on 1-3 high-impact concerns rather than a checklist of minor issues. It prioritises **strategic alignment** (fit with `docs/VISION.md`), **assumption hygiene** (surfacing untested foundations), and **self-consistency**.
+1. **Depth Over Breadth**: The reviewer will focus on 1-3 high-impact concerns rather than a checklist of minor issues. It prioritises **strategic alignment**, **assumption hygiene** (surfacing untested foundations), and **self-consistency**.
    - _Test_: The review body contains a "Needs attention" section with at most 3 prioritised items.
-3. **Mandatory Resolutions**: Every concern raised by the reviewer will include a specific proposed resolution.
+2. **Mandatory Resolutions**: Every concern raised by the reviewer will include a specific proposed resolution.
    - _Test_: Every item in the "Needs attention" section is followed by a "Propose resolution" or similar actionable instruction.
-4. **In-Session Criticality**: Major plans and conclusions developed during interactive sessions will be "stress-tested" by a second agent perspective (the **Critic**) before being finalized.
-   - _Test_: Using the `/planning` or `/meta` skills triggers a "Critic Review" block in the session output.
-5. **Convergence via Interaction**: Addressing concerns (via code changes) or providing a reasoned **User Override** (e.g., "accepting this risk because [reason]") will move the review toward approval.
+3. **Convergence via Interaction**: Addressing concerns (via code changes) or providing a reasoned **User Override** (e.g., "accepting this risk because [reason]") will move the review toward approval.
    - _Test_: After a user responds to a `REQUEST_CHANGES` review with a commit or comment, the next review pass recognizes the resolution or override.
 
 **How to interact with the review:**
@@ -194,7 +186,7 @@ Practising what we preach:
 
 ### Out of scope
 
-- Domain-specific applications (those are separate specs; see [[specs/research-decomposition.md]])
+- Domain-specific applications (those are separate specs; see [[specs/workflows/research-decomposition.md]])
 - New MCP tools or task schema changes
 - Multi-model review orchestration (desirable for thorough level, but not required for v1)
 - Automated execution
@@ -203,7 +195,7 @@ Practising what we preach:
 
 1. **Domain expertise injection.** Without domain knowledge, the reviewer produces generic methodology feedback. How do we inject field-specific knowledge? (Literature search? User-provided context? Retrieval from Zotero library?)
 2. **Reviewer model selection.** Same model reviewing its own species' output may share systematic blind spots. When does the thorough level warrant a different model?
-3. **Relationship to existing peer-review workflow.** Does this complement or compete with `aops-tools/skills/peer-review/SKILL.md`? The peer-review workflow handles editorial-style review; this spec handles conceptual/structural review. They may compose (peer-review as a light-level instantiation) or they may need explicit scoping to avoid overlap.
+3. **Relationship to existing peer-review workflow.** Does this complement or compete with `plugins/tools/skills/peer-review/SKILL.md`? The peer-review workflow handles editorial-style review; this spec handles conceptual/structural review. They may compose (peer-review as a light-level instantiation) or they may need explicit scoping to avoid overlap.
 
 ## Future Work
 
@@ -218,4 +210,4 @@ Practising what we preach:
 - [[non-interactive-c1dda99b]] -- agent lifecycle and Phase 1 decomposition protocol
 - [[polecat-swarms]] -- execution layer; consumes reviewed artifacts
 - [[research-decomposition]] -- downstream domain application (research project planning instantiates this workflow)
-- [[aops/skills/decompose/SKILL.md]] -- existing general decomposition workflow
+- [[plugins/pkb/skills/decompose/SKILL.md]] -- existing general decomposition workflow

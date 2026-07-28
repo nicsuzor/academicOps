@@ -1,10 +1,17 @@
-"""Regression tests for polecat/cli.py setup_staging()'s Gemini settings handling.
+"""Regression tests for polecat/cli.py setup_staging().
 
-setup_staging() used to copy the host's ~/.gemini/settings.json (and
-~/.gemini/antigravity-cli/settings.json) verbatim into every container,
-leaking live mcpServers API keys, internal-only URLs, and host hook
-command paths to every polecat worker (aops_624a462e). It must now
-regenerate a minimal, secret-free settings.json instead.
+Two defects are covered here.
+
+Gemini settings: setup_staging() used to copy the host's ~/.gemini/settings.json
+(and ~/.gemini/antigravity-cli/settings.json) verbatim into every container,
+leaking live mcpServers API keys, internal-only URLs, and host hook command
+paths to every polecat worker. It must now regenerate a minimal, secret-free
+settings.json instead.
+
+Plugin config: the PKB MCP URL used to be staged under `aops@academicOps`,
+but `pkb_mcp_url` is declared by the aops-pkb plugin. Claude Code drops an
+option staged under a plugin that does not declare it, so every containerised
+session came up with an unset PKB URL and no reachable knowledge base.
 """
 
 import json
@@ -14,10 +21,13 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
+if _PLUGINS_DIR not in sys.path:
+    sys.path.insert(0, _PLUGINS_DIR)
 
 from aops.polecat.cli import setup_staging  # noqa: E402
+
+MCP_URL = "https://pkb.example/mcp"
 
 LEAKED_API_KEY = "sk-live-totally-secret-context7-key"
 LEAKED_INTERNAL_URL = "https://internal-tailscale-only.example/mcp"
@@ -26,8 +36,8 @@ LEAKED_HOST_PROJECT_PATH = "/home/nic/src/some-other-private-project"
 
 
 @pytest.fixture
-def fake_gemini_home(tmp_path, monkeypatch):
-    """A fake host ~/.gemini containing exactly the shape that leaked live."""
+def fake_gemini_home(tmp_path):
+    """A fake $POLECAT_AGENT_HOME containing exactly the shape that leaked live."""
     home = tmp_path / "fake_home"
     gemini = home / ".gemini"
     gemini.mkdir(parents=True)
@@ -67,15 +77,14 @@ def fake_gemini_home(tmp_path, monkeypatch):
     (agy / "antigravity-oauth-token").write_text("fake-agy-oauth-token")
     (agy / "installation_id").write_text("fake-agy-installation-id")
 
-    monkeypatch.setattr(Path, "home", lambda: home)
-    return home
+    return gemini
 
 
 def test_gemini_settings_regenerated_without_secrets(fake_gemini_home, tmp_path):
     staging_dir = tmp_path / "staging"
     staging_dir.mkdir()
 
-    setup_staging(str(staging_dir), pkb_url=None)
+    setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
     staged_raw = (staging_dir / ".gemini" / "settings.json").read_text()
     assert LEAKED_API_KEY not in staged_raw
@@ -92,7 +101,7 @@ def test_antigravity_settings_regenerated_without_secrets(fake_gemini_home, tmp_
     staging_dir = tmp_path / "staging"
     staging_dir.mkdir()
 
-    setup_staging(str(staging_dir), pkb_url=None)
+    setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
     staged_raw = (staging_dir / ".gemini" / "antigravity-cli" / "settings.json").read_text()
     assert LEAKED_INTERNAL_URL not in staged_raw
@@ -103,13 +112,56 @@ def test_antigravity_settings_regenerated_without_secrets(fake_gemini_home, tmp_
     assert staged["trustedWorkspaces"] == ["/workspace"]
 
 
+def _plugin_declaring(option):
+    """The plugin whose manifest declares `option` under claude userConfig."""
+    declaring = [
+        json.loads(manifest.read_text())
+        for manifest in sorted(_REPO_ROOT.glob("plugins/*/manifest/plugin.template.json"))
+    ]
+    names = [
+        m["__base__"]["name"]
+        for m in declaring
+        if option in (m.get("claude", {}).get("userConfig") or {})
+    ]
+    assert len(names) == 1, f"expected exactly one plugin to declare {option}, got {names}"
+    return names[0]
+
+
+def test_pkb_url_staged_under_the_plugin_that_declares_it(tmp_path):
+    """The staged key must name the plugin whose userConfig declares
+    `pkb_mcp_url`. Under any other key Claude Code ignores the option and the
+    container has no PKB URL at all."""
+    staging_dir = tmp_path / "staging"
+    staging_dir.mkdir()
+
+    setup_staging(str(staging_dir), MCP_URL, None)
+
+    settings = json.loads((staging_dir / ".claude" / "settings.json").read_text())
+    expected_key = f"{_plugin_declaring('pkb_mcp_url')}@academicOps"
+
+    assert list(settings["pluginConfigs"]) == [expected_key]
+    assert settings["pluginConfigs"][expected_key]["options"]["pkb_mcp_url"] == MCP_URL
+
+
+def test_no_settings_file_staged_without_an_mcp_url(tmp_path, monkeypatch):
+    """Absent a URL there is nothing to configure — staging an empty
+    pluginConfigs block would assert a config the operator never gave."""
+    monkeypatch.delenv("POLECAT_WORKER_MODEL", raising=False)
+    staging_dir = tmp_path / "staging"
+    staging_dir.mkdir()
+
+    setup_staging(str(staging_dir), None, None)
+
+    assert not (staging_dir / ".claude" / "settings.json").exists()
+
+
 def test_credential_files_still_replicated(fake_gemini_home, tmp_path):
     """The fix only touches settings.json content — credential files must
     still be staged so agy/gemini auth keeps working in the container."""
     staging_dir = tmp_path / "staging"
     staging_dir.mkdir()
 
-    setup_staging(str(staging_dir), pkb_url=None)
+    setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
     gemini_dst = staging_dir / ".gemini"
     assert (gemini_dst / "oauth_creds.json").read_text() == '{"access_token": "fake-oauth-token"}'

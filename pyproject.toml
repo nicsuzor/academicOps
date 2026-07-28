@@ -31,7 +31,7 @@ notify = [
 anthropic = ["anthropic>=0.75.0"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["lib", "skills", "tests", "scripts"]
+packages = ["lib", "tests", "scripts", "plugins/aops"]
 
 [build-system]
 requires = ["hatchling"]
@@ -98,6 +98,124 @@ ignore = [
   "ISC002", # https://docs.astral.sh/ruff/rules/multi-line-implicit-string-concatenation/
 ]
 
+# ---- Reference check (scripts/check_refs.py, run by `make lint`) ----
+# Every repository path a shipped document names must exist. `include` is the
+# set of documents scanned; each `allow` entry names references that point
+# somewhere other than this tree. An allow entry that matches nothing is an
+# error, so the list cannot outlive what it excuses.
+[tool.refcheck]
+include = [
+  "specs/**/*.md",
+  "plugins/**/*.md",
+  "lib/**/*.md",
+  ".agents/**/*.md",
+  "templates/**/*.md",
+  "templates/**/*.md.template",
+  ".github/agents/*.md",
+]
+
+[[tool.refcheck.allow]]
+docs = "plugins/tools/skills/new-project/**"
+refs = [
+  ".agents/INDEX.md",
+  ".claude/settings.json",
+  ".claude/settings.local.json",
+  "scripts/refresh.sh",
+  "scripts/install-brain-workflows.sh",
+  "docs/METHODOLOGY.md",
+  "docs/ETHICS.md",
+  "dbt_project/dbt_project.yml",
+  "dbt_project/profiles.yml",
+  "dbt_project/models/schema.yml",
+  "manuscript/_quarto.yml",
+]
+reason = "Paths in the research project being scaffolded, not in this repository."
+
+[[tool.refcheck.allow]]
+docs = "plugins/tools/skills/analyst/**"
+refs = [
+  "data/README.md",
+  "data/raw/README.md",
+  "data/processed/README.md",
+  "data/projects/automod.md",
+  "data/projects/automod-demo.md",
+  "methods/method_name.md",
+  "methods/scoring.md",
+  "methods/scoring_algorithm.md",
+  "methods/diff_in_diff.md",
+  "methods/bigquery_extraction.md",
+  "analyses/calculate_scores.py",
+  "analyses/calculate_quality_scores.py",
+  "analyses/did_estimation.py",
+  "analyses/run_regression.py",
+  "codebooks/initial.md",
+  "codebooks/final.md",
+  "dbt/schema.yml",
+  "dbt/models/marts/fct_quality_scores.sql",
+  "streamlit/dashboard.py",
+  "tests/test_scoring.py",
+  "scripts/assumption_checks.py",
+]
+reason = "The research-project layout this skill prescribes — paths in the researcher's own repository."
+
+[[tool.refcheck.allow]]
+docs = "plugins/tools/skills/streamlit/*.md"
+refs = [".streamlit/config.toml", "utils/theme.py"]
+reason = "Paths in the Streamlit app being built, not in this repository."
+
+[[tool.refcheck.allow]]
+docs = "plugins/tools/skills/diagram/references/json-format.md"
+refs = ["packages/excalidraw/element/types.ts", "packages/excalidraw/types.ts"]
+reason = "Source locations in the upstream Excalidraw repository."
+
+[[tool.refcheck.allow]]
+docs = "plugins/tools/skills/peer-review/references/probes.md"
+refs = ["reviews/arc/templates/nic-review-style.md"]
+reason = "A path in the user's knowledge base, not in this repository."
+
+[[tool.refcheck.allow]]
+docs = "specs/ARCHITECTURE.md"
+refs = [
+  "manifest/plugin.toml",
+  "manifest/plugin.json",
+  "manifest/hooks.json",
+  "manifest/mcp.json",
+  "hooks/hooks.json",
+  ".claude-plugin/plugin.json",
+  ".claude-plugin/marketplace.json",
+]
+reason = "Plugin-relative sources and their built outputs — a shape every plugin has, not one location."
+
+[[tool.refcheck.allow]]
+docs = "specs/build-and-install.md"
+refs = ["hooks/hooks.json", ".claude-plugin/marketplace.json"]
+reason = "Built output under dist/, described by its shape rather than one location."
+
+[[tool.refcheck.allow]]
+docs = "plugins/cope/README.md"
+refs = ["hooks/dispatch.py", "hooks/degraded.py"]
+reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
+
+[[tool.refcheck.allow]]
+docs = "plugins/cope/README.md"
+refs = [".claude/settings.json", ".claude/settings.local.json"]
+reason = "Claude Code's project-settings files in whatever workspace a session opens, not in this repository."
+
+[[tool.refcheck.allow]]
+docs = "specs/polecat/tmux-interactive-driving.md"
+refs = ["antigravity-cli/settings.json"]
+reason = "Configuration inside the container image, not in this repository."
+
+[[tool.refcheck.allow]]
+docs = "templates/github-agent/README.md"
+refs = [".github/agents/worker.agent.md"]
+reason = "Where the template is installed in a consuming repository."
+
+[[tool.refcheck.allow]]
+docs = "specs/future/*.md"
+refs = ["scripts/polecat-dispatch-via-ssh.sh"]
+reason = "An artifact the proposal would create; specs/future/ describes work not yet done."
+
 [tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference
 exclude = [
@@ -105,22 +223,17 @@ exclude = [
   "archived/",
   "tests/",
   "**/__pycache__",
-  "**/build",
+  "build/testdata",
   "**/dist",
   "**/venv",
-  "aops/*.md", # Exclude markdown docs
-  "aops/*.conf", # Exclude config files
-  "aops/uv.lock", # Exclude lock file
-  "aops/agents/", # Exclude non-code agent configs
-  "aops/commands/", # Exclude command specs
-  "aops/policies/", # Exclude policy docs
-  "aops/scripts/", # Exclude scripts
-  "aops/skills/", # Exclude skill definitions (YAML)
-  "aops-tools/skills/", # Exclude aops-tools skill definitions (scientific scripts)
+  "plugins/*/agents/", # Exclude non-code agent configs
+  "plugins/*/commands/", # Exclude command specs
+  "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
+  "plugins/pkb/workflows/", # Exclude process-template markdown
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["aops", "aops/lib", "aops/hooks"]
+extraPaths = ["plugins/aops", "plugins/cope/hooks", "lib/py", "lib/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:
@@ -166,9 +279,9 @@ reportImplicitOverride = false
 reportUnusedVariable = false
 reportUnusedImport = false
 [tool.pytest.ini_options]
-testpaths = ["tests", "aops/tests", "aops-jr/tests", "reflexes-cope/tests"]
+testpaths = ["tests"]
 norecursedirs = ["archived", "tests/archived"]
-pythonpath = [".", "aops-jr", "aops-jr/hooks", "aops", "aops/hooks", "aops/lib", "reflexes-cope"]
+pythonpath = [".", "lib/py"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -176,7 +289,7 @@ log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-addopts = "-n 16 --dist loadgroup -m 'not slow and not integration and not demo' --import-mode=importlib"
+addopts = "-n 16 --dist loadgroup -m 'not slow and not integration and not demo and not otel_e2e' --import-mode=importlib"
 markers = [
   "slow: marks tests as slow (run with '-m slow')",
   "integration: marks tests as integration tests",
@@ -184,7 +297,8 @@ markers = [
   "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
   "e2e: end-to-end tests requiring live infra (POLECAT_E2E=1 to run)",
   "live: drives real headless clients to measure hook-format conformance (run with '-m live'; skip-if-client-unavailable)",
+  "otel_e2e: spins up a real OTel collector (docker) and a real Claude Code session against it (run with '-m otel_e2e'; skip-if-docker-or-credentials-unavailable)",
 ]
 
 [project.scripts]
-polecat = "aops.polecat.cli:main"
+polecat = "aops.polecat.cli:main" # resolves via [tool.hatch.build.targets.wheel] packages = [..., "plugins/aops"]

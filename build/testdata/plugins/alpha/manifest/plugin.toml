@@ -1,0 +1,7 @@
+[[shared]]
+from = "doctrine"
+to = "doctrine"
+
+[[shared]]
+from = "shared-hook/hook.py"
+to = "hooks/hook.py"

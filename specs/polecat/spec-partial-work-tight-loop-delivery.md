@@ -3,7 +3,6 @@ id: spec-partial-work-contract
 title: "Spec contract: Partial-work / decentralised tight-loop delivery doctrine"
 type: spec
 status: draft
-parent: aops-ee633abb
 permalink: spec-partial-work-tight-loop-delivery
 tags:
   - spec
@@ -18,12 +17,6 @@ tags:
 
 # Spec contract: Partial-work / decentralised tight-loop delivery doctrine
 
-**Graph anchor:** [[spec-partial-work]] (PKB node). **Epic:** [[aops-2e5105f5]]. **Stage-1 stories:** [[note-2b773bde]]. **Recon (file map):** [[note-0e871b87]]. **Reconciled specs:** [[note-36c15a69]] (the companion roadmap-tracker note, `spec-64352eac-planner-pre-dispatch-decomposition-gate.md`, was a planning artifact retired during the 2026-07 simplification pass -- see git history).
-
-**Revision log:** Stage 2 authored (pauli). Stage 3 independent review ([[aops-7f8b5920]]) returned REVISE. **Stage 4 (this file) closes the two FAILs + two seam-tightenings and resolves the §5 fork to NARROW** per Nic's working-default authorization (via junior). Honest about residual risk in §8. **2026-07-19:** aligned with Nic's ratified rulings ([[note_ad2ed3d2]]): `partial` made surface-agnostic (the draft PR is now the GitHub-surface projection, not the definition), refuse-and-attempt homed here as first-class (R2), §5 re-cut from epic-tiering to a composable rule pauli records when assembling the task's workflow (R1/R3/R4), and the inherited merge invariant restated as the human-approval one-way-door (R7).
-
-> **Substance note (honest, surfaced not buried):** the Stage-2 task recorded that this contract file existed at this path. It did not — only the PKB anchor node was written. Stage 4 authored the actual contract here. The anchor node's compressed headlines were the real Stage-2 deliverable; this file is their expansion plus the Stage-3 fixes. Trust Version Control: this is the single source of truth from here; no `_v2`.
-
 ---
 
 ## 1. Thesis
@@ -34,15 +27,15 @@ This is **not** a licence to ship broken work behind a "draft" label. The whole 
 
 ## 2. Reconciliation (what this EXTENDS / NARROWS — no invariant altered)
 
-- **EXTENDS [[note-36c15a69]]** (supervision architecture). Adds a fourth terminal shape, `partial`, to the autonomous trust gate. **Inherits every locked invariant unchanged.** Stated surface-agnostically (R3/R7), the invariant is: **a partial deliverable never enters the human-approval one-way-door queue.** The single `APPROVED`-on-SHA merge trigger (note-36c15a69 §"Decisions locked"), per-repo merge policy (the policy table), clean-build "green", and per-SHA reviewer attestation are how the currently-deferred GitHub executor happens to enforce that invariant — GH is one optional executor; the PKB review task + receipt is the system of record. `partial` never satisfies any of these — it is _by construction_ not approval-ready (§4).
-- **NARROWS feature-dev's "No partial success"** (`.agents/skills/aops/references/feature-dev-details.md` L34/L211/L278). That rule scopes to **a single claimed leaf**: _the claimed unit_ works completely or doesn't ship. It does **not** forbid cutting a large brief into a smaller whole leaf and shipping that. The in-place edit to feature-dev-details.md (Stage 5 chunk) must state this scoping explicitly — the rule is narrowed where it lives, not contradicted at a distance. **Refuse-and-attempt (§3, R2) goes beyond this NARROWed scoping:** a worker that refuses non-derivable decisions hands back at `partial` even though the claimed unit is not complete — legal because the refused decisions are surfaced through clauses 2b/3/4, not laundered as scope.
-- **The pre-dispatch decomposition gate** (the current decompose skill, `aops/skills/decompose/SKILL.md`) is **live, default, mandatory**. Its collision with "thin briefs, worker plans" was resolved to **NARROW** (a DECISION:Nic fork, decided reversibly) and has since been **re-cut in §5** per the 2026-07-19 rulings: eligibility is now a composable rule pauli records when assembling the task's workflow at decomposition, not a two-tier epic carve-out.
+- **EXTENDS the supervision architecture.** Adds a fourth terminal shape, `partial`, to the autonomous trust gate. **Inherits every locked invariant unchanged.** Stated surface-agnostically (R3/R7), the invariant is: **a partial deliverable never enters the human-approval one-way-door queue.** The single `APPROVED`-on-SHA merge trigger, per-repo merge policy (the policy table), clean-build "green", and per-SHA reviewer attestation are how the currently-deferred GitHub executor happens to enforce that invariant — GH is one optional executor; the PKB review task + receipt is the system of record. `partial` never satisfies any of these — it is _by construction_ not approval-ready (§4).
+- **NARROWS "Partial completion is not success"** (`lib/axioms/do-one-thing.md`). That rule scopes to **a single claimed leaf**: _the claimed unit_ works completely or doesn't ship. It does **not** forbid cutting a large brief into a smaller whole leaf and shipping that. The rule is narrowed where it lives, not contradicted at a distance. **Refuse-and-attempt (§3, R2) goes beyond this NARROWed scoping:** a worker that refuses non-derivable decisions hands back at `partial` even though the claimed unit is not complete — legal because the refused decisions are surfaced through clauses 2b/3/4, not laundered as scope.
+- **The pre-dispatch decomposition gate** (the current decompose skill, `plugins/pkb/skills/decompose/SKILL.md`) is **live, default, mandatory**. Its collision with "thin briefs, worker plans" was resolved to **NARROW** (a DECISION:Nic fork, decided reversibly): eligibility is now a composable rule pauli records when assembling the task's workflow at decomposition, not a two-tier epic carve-out.
 
 ## 3. Q1 — the discriminator (partial vs broken-ship)
 
 `partial` = a _whole smaller thing_, cut at a scope seam, that builds clean and is honestly disclosed. **broken-ship** = the _claimed_ thing with a defect inside the shipped surface, relabelled "draft."
 
-The stop gate is governed by clauses that are **instruction-led and honesty-audited, NOT regex/keyword-matched** (per No-Shitty-NLP P#49 and the ida tiering Nic settled in [[note-36c15a69]] — "instruction-led register, mechanical tiering explicitly NOT wanted"). The honesty floor (ida, always-on) audits the worker's self-certification.
+The stop gate is governed by clauses that are **instruction-led and honesty-audited, NOT regex/keyword-matched** (per `judgment-non-delegable` — instruction-led register, mechanical tiering explicitly not wanted). The honesty floor (ida, always-on) audits the worker's self-certification.
 
 **Clause 1 — scope seam, not defect seam.** The cut is at a component/feature boundary the worker can name, not through the middle of a behaviour. The shipped chunk is a thing a reader can review as complete-in-itself.
 
@@ -68,37 +61,35 @@ A chunk passing all of 1, 2, 2b, 3, 4 is `partial`. A chunk failing any is eithe
 
 ## 4. The `partial` terminal state
 
-`partial` is an existing, canonical terminal status **on the PKB task** (shipped in the status taxonomy and the mem server enum, #414 — see §6 Correction for the client-side remainder) — the surface-agnostic marker (§3 clause 4, R1) — distinct from `merge_ready` and from draft-abandonment:
+`partial` is an existing, canonical terminal status **on the PKB task** (shipped in the status taxonomy; §6 covers the server/client status-enum dependency the orphan-backstop query needs) — the surface-agnostic marker (§3 clause 4, R1) — distinct from `merge_ready` and from draft-abandonment:
 
-- **vs `merge_ready`:** the inherited invariant, stated surface-agnostically, is that **a partial deliverable never enters the human-approval one-way-door queue**. On the GitHub surface this is enforced structurally: a `partial` PR is opened with `gh pr create --draft`, and GitHub draft PRs **cannot** be merged and never produce an `APPROVED`-on-SHA auto-merge. That is how the currently-deferred GitHub executor happens to enforce the invariant (R3/R7 — GH is one optional executor; the PKB review task + receipt is the system of record); non-PR partials honour the same invariant by never being marked approval-ready on the task. `finalize.py` currently hard-codes `merge_ready` as the only terminal (recon [[note-0e871b87]] #5); Stage 5 adds `partial` as a sibling terminal.
+- **vs `merge_ready`:** the inherited invariant, stated surface-agnostically, is that **a partial deliverable never enters the human-approval one-way-door queue**. On the GitHub surface this is enforced structurally: a `partial` PR is opened with `gh pr create --draft`, and GitHub draft PRs **cannot** be merged and never produce an `APPROVED`-on-SHA auto-merge. That is how the currently-deferred GitHub executor happens to enforce the invariant (R3/R7 — GH is one optional executor; the PKB review task + receipt is the system of record); non-PR partials honour the same invariant by never being marked approval-ready on the task.
 - **vs abandonment:** clause 3 (no-orphan) + §6 backstop guarantee a live follow-up exists. A `partial` with no live child is itself a gate failure.
 
 `partial` is a legitimate place for an autonomous worker to **stop** (it satisfies the Stop hook's "done-pending-more-work" — the worker shipped a reviewable chunk and queued the remainder); it is **not** a place Nic's approval queue (the human one-way door) ever sees as ready.
 
-## 5. Eligibility — a composable workflow rule (re-cut 2026-07-19; supersedes the NARROW two-tier fork)
+## 5. Eligibility — a composable workflow rule
 
-This section is superseded by the unified worker contract and the 2026-07-19 rulings; thin-brief/`partial` eligibility and review depth are now composable rules recorded at decomposition. See [[note_ad2ed3d2]] and the updated workflow spec.
+Thin-brief/`partial` eligibility and review depth are composable rules pauli records when assembling the task's workflow at decomposition.
 
 ## 6. Q3 — net review load + the anti-sprawl backstop
 
-**Net load: RELIEVES, conditional on no-orphan.** A `partial` deliverable never enters the human-approval one-way-door queue (§4; on the GitHub surface, the draft PR's `APPROVED`-on-SHA exclusion enforces this), so it adds zero to the _approval-decision_ load that is the actual [[kb-524d60d7]] ceiling. Fix-or-bounce (reviewers **independent of the worker's session**, at the pauli-specified level — R3 — fix or send up) removes the advisory-notes load source. The falsifier is **draft sprawl**: `partial` tasks that never get continued, accumulating as orphans.
+**Net load: RELIEVES, conditional on no-orphan.** A `partial` deliverable never enters the human-approval one-way-door queue (§4; on the GitHub surface, the draft PR's `APPROVED`-on-SHA exclusion enforces this), so it adds zero to the _approval-decision_ load that is the actual approval-decision-load ceiling. Fix-or-bounce (reviewers **independent of the worker's session**, at the pauli-specified level — R3 — fix or send up) removes the advisory-notes load source. The falsifier is **draft sprawl**: `partial` tasks that never get continued, accumulating as orphans.
 
-**Backstop verification (FIX 2 — verified against ground truth, result stated):**
+**No loop-closer currently covers the `partial` orphan case.** No shipped skill runs a periodic stuck-work sweep of any kind today (a red-CI/stuck-PR loop-closer is not part of the current skill set). Even if one existed, a stuck-red-CI selector would not catch an orphaned `partial`: a `partial` PR is a **green** draft, so it never matches a stuck-_red_-CI check. The orphan-draft falsifier therefore has no mitigation yet beyond worker discipline.
 
-The Stage-3 review claimed the no-orphan guarantee rests on an **unbuilt** `/daily` loop-closer ([[note-36c15a69]] L180). **Verification result: the claim is half-stale.** The `/daily` loop-closer **IS built** — `aops/skills/daily/SKILL.md` L278–298 ("Red-CI / stuck-PR loop-closer", shipped under WS2). **BUT it does not cover the `partial` case.** It keys off `$AOPS_SESSIONS/state/pr-state.json` and selects only **stuck-_red_-CI** candidates (`statusCheckRollup conclusion == "FAILURE"`, `updatedAt > 24h`). A `partial` PR is a **green** draft — it never matches the stuck-red selector. So for the orphan-draft falsifier specifically, the mitigation is **genuinely unbuilt**: the right surface exists but is keyed on the wrong signal.
+**Specified backstop — the `partial`-orphan loop-closer.** A periodic pass, keyed off PKB task status (`list_tasks(status="partial")`), that mirrors a stuck-work loop-closer's shape but selects on `partial` status rather than CI outcome.
 
-**Specified backstop — the `partial`-orphan loop-closer.** Stage 5 adds a sibling pass to `/daily`, mirroring the _proven, deployed_ red-CI loop-closer pattern but keyed off PKB task status (`list_tasks(status="partial")`).
-
-> **Correction (assumption falsified by implementation).** The original draft of this section asserted `list_tasks(status="partial")` was _deployed infrastructure queryable today_. That was false. The live PKB MCP server (mem, Rust) rejected the `partial` status enum, and `list_tasks` silently matched **all** tasks rather than erroring — so the backstop query would have returned garbage, not orphan-drafts. The real mechanism has three load-bearing parts, each of which had to be built: (1) the **mem server status enum** must accept `partial` (mem PR #414 — `graph.rs` + `mcp_server.rs`, list-filter fixed, round-trip tested); (2) the **academicOps client** `pkb_bridge.py` `VALID_TASK_STATUSES` must include `partial` so the worker can persist it (continue task [[aops-8d3e43a1]], gated on #414 deploy — the server must accept before the client may emit); (3) **only then** does this §6 `list_tasks(status="partial")` backstop return a true orphan set. The gap was invisible to both this spec and the recon; it surfaced only when a worker tried to persist `partial` against the running server. Until #414 + [[aops-8d3e43a1]] are deployed, the backstop query is not yet trustworthy — clause 3 (worker no-orphan discipline) is the only live guard.
+This backstop query has a dependency chain that must be in place before it can run: (1) the **PKB server's status enum** must accept `partial` as a valid `list_tasks` filter value — a server that silently matches all tasks instead of erroring on an unrecognised status would return garbage, not an orphan set; (2) the **client-side task-status validation** (wherever a worker persists task status) must allow emitting `partial`, since the server cannot accept a status the client never sends; (3) only once both hold does `list_tasks(status="partial")` return a trustworthy orphan set. Until then, clause 3 (worker no-orphan discipline) is the only live guard.
 
 The pass:
 
 1. `list_tasks(status="partial")` → candidate orphan-drafts.
 2. For each, confirm a **live follow-up (continue) task** exists and is open (clause 3). If one exists and is open → healthy; skip.
 3. Where the `partial` task has **no open continue-task** (orphaned) OR — as a **polecat/GitHub-surface supplement** — its draft PR has been idle **> 7 days** with no commits → surface it in the daily note under "What Needs Attention / Stalled partials" with the output URL and the missing-continue-task flag. (The `list_tasks(status="partial")` PKB query is the **primary** backstop; the draft-PR-idle check only applies where the deliverable is a PR — non-PR partials exist under R1 and are covered by the PKB query alone.) Where the continue-task is simply missing, **file one** via `create_task` (tags `partial-continue`; same dedupe + **severity guard** as the red-CI loop-closer — routine, not SEV3/4).
-4. Same **artefact-freshness discipline** as the rest of `/daily`: if the PKB query or `pr-state.json` is stale, report `partial loop-closer: skipped — artefact stale` and take no action.
+4. Same **artefact-freshness discipline** as the rest of the daily pass: if the PKB query is stale, report `partial loop-closer: skipped — artefact stale` and take no action.
 
-Once the §6 Correction's dependency chain (mem #414 + [[aops-8d3e43a1]]) is deployed, this keys off a real `partial` query + the deployed `/daily` artefact pipeline (not the unbuilt GHA self-heal) and is a standalone pass, mirroring the proven red-CI loop-closer pattern. It does **not** hard-block on the unbuilt self-heal — but, per the Correction, it **does** depend on the server-enum fix, which the original draft wrongly treated as already present.
+Once the server/client status-enum dependency chain above is in place, this keys off a real `partial` query and is a standalone pass. It does not depend on any CI-self-heal mechanism — but it does depend on the server-enum fix, without which the query is not trustworthy.
 
 ## 7. Fitness Rubric
 
@@ -115,8 +106,8 @@ The rubric bites hardest on the discriminator (§3) and the load proof (§6). A 
 
 ## 8. Residual risk (honest, after the fixes)
 
-1. **Clause 2b is honesty-bound, not mechanically guaranteed.** By deliberate design (No-Shitty-NLP), the AC→state partition rests on worker self-certification + ida + reviewer audit. A worker that lies in _both_ its self-cert _and_ its `## Deliberately deferred` section, past a reviewer who doesn't re-derive the ACs, can still launder a defect. The mitigation is the always-on ida floor + the reviewer's AC re-read (the same `merge-close-ac-check` discipline `/daily` already runs), not a gate. **This is a residual, not a closure** — the dogfood (Stage 5) is the instrument that tests whether the honesty floor actually binds here.
-2. **The §6 `partial`-orphan loop-closer is specified, not yet built — and its query depends on a server-enum fix that the spec wrongly assumed was already deployed.** Draft-sprawl is bounded only by worker discipline (clause 3) until _all three_ of mem PR #414 (server accepts `partial`), [[aops-8d3e43a1]] (client `pkb_bridge.py` emits `partial`), and the §6 daily pass land. The original "deployed PKB infra" assumption was empirically falsified during implementation (see §6 Correction); this residual now names the real dependency chain. Net-honest, not net-mitigated, until those land.
+1. **Clause 2b is honesty-bound, not mechanically guaranteed.** By deliberate design (No-Shitty-NLP), the AC→state partition rests on worker self-certification + ida + reviewer audit. A worker that lies in _both_ its self-cert _and_ its `## Deliberately deferred` section, past a reviewer who doesn't re-derive the ACs, can still launder a defect. The mitigation is the always-on ida floor + the reviewer's own AC re-read, not a gate. **This is a residual, not a closure** — a dogfood pass is the instrument that tests whether the honesty floor actually binds here.
+2. **The §6 `partial`-orphan loop-closer is specified, not yet built.** Draft-sprawl is bounded only by worker discipline (clause 3) until _all three_ of the server status-enum fix, the client-side status-validation fix, and the §6 pass itself land. Net-honest, not net-mitigated, until those land.
 3. **§5's eligibility signal depends on the promotion log being honestly written** by the recording agent. The seam is narrower than worker-frontmatter (the recorder is pauli at decomposition, whose output sits under the standing independent-review tasks) but not zero — a careless recorder could mis-record eligibility. Auditability (the log is inspectable) is the mitigation, not prevention.
 4. **The 7-day idle threshold (§6 step 3) is a guess**, not tuned against field data. Stage-5 dogfood + first production cycles should calibrate it.
 

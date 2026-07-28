@@ -1,0 +1,8 @@
+{
+  "__base__": {
+    "name": "aops-ida",
+    "description": "ida — the interactive face."
+  },
+  "claude": {},
+  "agy": {}
+}

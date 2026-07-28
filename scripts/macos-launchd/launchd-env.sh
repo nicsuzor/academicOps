@@ -16,7 +16,8 @@
 # (GIT_CONFIG_*): doing so globally re-breaks VS Code and every other GUI app
 # that relies on the user's personal SSH identity (documented failure
 # note-4d4a97c2). Session-scoped credential isolation for Claude/bot sessions
-# is instead applied per-session by aops/hooks/router.py via CLAUDE_ENV_FILE.
+# is instead applied per-session by the aops plugin's SessionStart hook via
+# CLAUDE_ENV_FILE.
 
 # --- AOPS directories ---
 [ -n "$AOPS_SESSIONS" ] && launchctl setenv AOPS_SESSIONS "$AOPS_SESSIONS"

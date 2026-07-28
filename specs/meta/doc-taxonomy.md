@@ -10,7 +10,7 @@ Five kinds of document, partitioned by who reads them.
 
 ## Instructions — for agents executing
 
-Live in `aops/agents/<name>.md` (personas, loaded via the `Agent` tool), `aops/skills/<name>/SKILL.md` (skills, loaded via the `Skill` tool), and `.agents/CORE.md` + `rules/*.md` (always-on context loaded by the harness).
+Live in `plugins/<plugin>/agents/<name>.md` (personas, loaded via the `Agent` tool), `plugins/<plugin>/skills/<name>/SKILL.md` (skills, loaded via the `Skill` tool), and `.agents/CORE.md` + `rules/*.md` (always-on context loaded by the harness).
 
 **Generally contain**: who the agent is or what the skill does, what tools and permissions it has, what to do in common situations.
 
@@ -34,9 +34,7 @@ Live in `specs/<subsystem>/<name>.md` at the academicOps root.
 
 **A spec declares intended behavior — for any subsystem, including this repo's own tooling — and it may be aspirational.** A spec is a _specification_: what a subsystem is designed to do and why, not a live telemetry feed of what the code happens to do today. Drift between a spec and the code is an expected, ordinary state of the world (it means there's a bug or an unfinished migration to fix — it is not evidence the doc is miscategorized). That's the axis that actually separates a spec from a **state** doc: a state doc claims to be the current-truth SSoT ("this IS what the system does right now"); a spec claims to be the designed target ("this is what the subsystem is for and how it should behave"), and is allowed to be ahead of, or drift from, reality.
 
-Nothing about that test cares whether the subsystem is "the shipped system" or "this repo's own process." This repo's own build, packaging, install, and release tooling — the Makefile, `scripts/build.py`, `scripts/install.py`, the CI publish pipeline — is a designed subsystem exactly like a runtime gate or a hook client-translation layer, and its intended behavior belongs in a spec the same way: see [`specs/build-and-install.md`](../build-and-install.md).
-
-(This corrects an earlier version of this doc, which carved build/release tooling out of `specs/` entirely and pointed at a since-retired `aops-core/BUILD.md` as the correct home. That was wrong on the merits — BUILD.md's content was spec-shaped from the start, described design choices and behavior, not a checklist — and it had also gone stale relative to the actual code without anyone noticing, which is exactly the failure mode `specs/`'s supersession/status discipline exists to catch.)
+Nothing about that test cares whether the subsystem is "the shipped system" or "this repo's own process." This repo's own build, packaging, install, and release tooling — the Makefile, `build/build.py`, the CI publish pipeline — is a designed subsystem exactly like a runtime gate or a hook client-translation layer, and its intended behavior belongs in a spec the same way: see [`specs/build-and-install.md`](../build-and-install.md).
 
 What still stays OUT of `specs/` is pure **procedure for a human contributor** — a step list with no design intent to state, e.g. `git clone` + `uv sync`, which command to run before committing, PR-template mechanics. That lives in `CONTRIBUTING.md` at the repo root, which cross-references the relevant specs for _why_ rather than restating their content.
 
@@ -54,7 +52,7 @@ Read by both agents (at runtime, for lookups) and devs (at design time, when cha
 
 **Shouldn't contain**: proposals or "should we" (those are specs), dated log entries.
 
-**Pattern for runtime-subsystem state docs** (worked example: [`specs/enforcement/hook-gate-system.md`](../enforcement/hook-gate-system.md)). Each element of a runtime subsystem gets the same five-question shape: **what is it** (one-sentence definition + class of failure caught), **where does it live** (source path, plugin-cache location at runtime, which agent/skill loads it), **how is it configured** (config keys, env vars, cache invalidation cadence), **how do I verify it's firing** (commands, log paths, expected output), **how do I debug it when it isn't** (top failure modes + diagnostics). Adjacent docs that retain non-overlapping content get a header note framing their role and a cross-reference back to the canonical; docs whose content is wholly subsumed by the canonical become redirect stubs (frontmatter `status: superseded`, `supersedes_target: <path>`).
+**Pattern for runtime-subsystem state docs.** Each element of a runtime subsystem gets the same five-question shape: **what is it** (one-sentence definition + class of failure caught), **where does it live** (source path, plugin-cache location at runtime, which agent/skill loads it), **how is it configured** (config keys, env vars, cache invalidation cadence), **how do I verify it's firing** (commands, log paths, expected output), **how do I debug it when it isn't** (top failure modes + diagnostics). Adjacent docs that retain non-overlapping content get a header note framing their role and a cross-reference back to the canonical; docs whose content is wholly subsumed by the canonical become redirect stubs (frontmatter `status: superseded`, `supersedes_target: <path>`).
 
 ## Audit-artifact — generated by scripts, never hand-edited
 
@@ -66,11 +64,15 @@ Live in-repo at `specs/audit/AGENT-*.md`.
 
 ## Docs — for humans using the framework
 
-Top-level entry points: README.md, INSTALL.md, CHANGELOG.md.
+Top-level entry points: README.md, INSTALL.md, CHANGELOG.md. Per plugin: `plugins/<plugin>/README.md`.
 
 **Generally contain**: how to install, how to use, what's changed, where to find more.
 
 **Shouldn't contain**: internal jargon without a glossary, agent persona voice, SSoT claims.
+
+**Plugin README.** One audience: the person using the plugin. Its job is to show exactly how the plugin works, in this order: **what it is for** (one sentence), **how it works** (a mermaid flowchart of the real path from a trigger — a user prompt, a hook event, an agent invocation — through its agents, skills, and hooks to an outcome, showing the flow that exists rather than an idealised one), **what it provides** (agents, skills, commands, hooks — a table, one line each), **how it is configured** (every environment variable and `userConfig` field it reads, what each is for, and that there are no defaults), and **what it depends on**. Source-level citation and file-path naming are not required of it — the reader it serves is using the plugin, not extending it. The flowchart is derived from the source and verified against it; it simply does not cite it.
+
+**The split with `specs/`.** Design rationale, why a choice was made, and the seams and gaps go to `specs/`, which serves the developer extending the plugin. A README that argues for the plugin's design is a spec in the wrong place; so is a history, a roadmap, or a changelog.
 
 ---
 

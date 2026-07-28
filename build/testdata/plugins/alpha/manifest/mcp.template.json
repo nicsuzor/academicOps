@@ -1,0 +1,21 @@
+{
+  "__base__": {
+    "mcpServers": {}
+  },
+  "claude": {
+    "mcpServers": {
+      "alpha": {
+        "command": "bash",
+        "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run.sh"]
+      }
+    }
+  },
+  "agy": {
+    "mcpServers": {
+      "alpha": {
+        "command": "alpha-mcp-server",
+        "args": ["--stdio"]
+      }
+    }
+  }
+}

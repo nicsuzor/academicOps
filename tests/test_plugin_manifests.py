@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -11,14 +12,40 @@ DIST_ROOT = PROJECT_ROOT / "dist"
 
 
 def get_plugin_dirs():
-    """Returns a list of all built plugin directories in dist/."""
+    """Returns a list of all built plugin directories in dist/.
+
+    Never returns [] on an unbuilt tree: an empty parametrize list reports the
+    whole module as green, silently voiding the manifest checks. Instead:
+
+    - dist/ absent on a developer checkout: skip the module explicitly, with a
+      reason naming the command that would enable it. A collection *error* here
+      makes ``pytest tests/`` exit non-zero on any source-only tree, which
+      destroys the suite's exit code as a signal for every other test.
+      Nothing is lost: CI builds dist/ (``uv run python -m build.build``) before
+      invoking pytest — see .github/workflows/pytest.yml — and pr-pipeline.yml
+      runs that workflow on every PR, so these checks still gate every merge.
+    - dist/ absent under CI: still a hard error. The build step is supposed to
+      have run, so a missing dist/ there is a broken pipeline, not a source
+      checkout, and must not degrade to a silent skip.
+    - dist/ present but containing no plugin directories: always a hard error,
+      in CI or not. That is a broken build, not an unbuilt tree.
+    """
     if not DIST_ROOT.exists():
-        return []
+        if os.environ.get("CI"):
+            raise RuntimeError(
+                f"{DIST_ROOT} does not exist under CI — the build step must run before pytest"
+            )
+        pytest.skip(
+            f"{DIST_ROOT} does not exist — run 'make build' to enable the manifest checks",
+            allow_module_level=True,
+        )
 
     plugin_dirs = []
     for d in DIST_ROOT.iterdir():
-        if d.is_dir() and (d.name.endswith("-claude") or d.name.endswith("-antigravity")):
+        if d.is_dir() and (d.name.endswith("-claude") or d.name.endswith("-agy")):
             plugin_dirs.append(d)
+    if not plugin_dirs:
+        raise RuntimeError(f"{DIST_ROOT} contains no built plugin directories — run 'make build'")
     return sorted(plugin_dirs)
 
 
@@ -30,7 +57,7 @@ def test_plugin_validates_against_cli(plugin_dir):
     # Determine which CLI to use based on the plugin's target platform
     if plugin_dir.name.endswith("-claude"):
         cli_command = ["claude", "plugin", "validate", str(plugin_dir)]
-    elif plugin_dir.name.endswith("-antigravity"):
+    elif plugin_dir.name.endswith("-agy"):
         cli_command = ["agy", "plugin", "validate", str(plugin_dir)]
     else:
         pytest.skip(f"Unrecognized plugin platform for directory: {plugin_dir.name}")
@@ -88,7 +115,7 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     must resolve to a real file shipped inside that same plugin artifact.
 
     Structural-prevention regression test for the v0.5 core-plugin BLOCKER found
-    by marsha's QA review (epic_21042b5f): `aops/templates/hooks.template.json`
+    by marsha's QA review: `aops/templates/hooks.template.json`
     wired PreToolUse/Stop to `hooks/gate_dispatch.py`, a script that never
     shipped in the built core package (it moved to aops-jr in the jr/ida
     extraction, PR #2326, and core's own manifest was never repointed). Neither
@@ -99,7 +126,7 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     """
     if plugin_dir.name.endswith("-claude"):
         hooks_json_path = plugin_dir / "hooks" / "hooks.json"
-    elif plugin_dir.name.endswith("-antigravity"):
+    elif plugin_dir.name.endswith("-agy"):
         hooks_json_path = plugin_dir / "hooks.json"
     else:
         pytest.skip(f"Unrecognized plugin platform for directory: {plugin_dir.name}")

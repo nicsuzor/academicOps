@@ -1,0 +1,22 @@
+{
+  "__base__": {
+    "name": "aops-pkb",
+    "description": "pauli. Memory, effectual planning, workflow composition, PKB MCP client config.",
+    "author": {
+      "name": "Nicolas Suzor"
+    },
+    "license": "MIT",
+    "keywords": ["academicOps", "pkb", "pauli", "memory", "planning", "knowledge-graph"]
+  },
+  "claude": {
+    "mcpServers": "./.mcp.json",
+    "userConfig": {
+      "pkb_mcp_url": {
+        "type": "string",
+        "title": "PKB MCP server URL",
+        "description": "Streamable-HTTP endpoint of your PKB MCP server. Required — there is no default and no local fallback. Leave blank only if PKB_MCP_URL is already exported in the environment that launches the MCP server."
+      }
+    }
+  },
+  "agy": {}
+}

@@ -143,7 +143,7 @@ gh pr review "$PR_NUMBER" --request-changes --body "# QA Verification
 
 ## Rules
 
-- **Credential Isolation (P#51):** Use `GH_TOKEN` from your environment.
+- **Credential isolation (`data-boundaries`):** Use `GH_TOKEN` from your environment.
 - **Never modify code.** You verify, you don't fix.
 - **Runtime verification required.** Reading code alone is not enough — run the tests.
 - **Be specific.** Show evidence for every claim.
