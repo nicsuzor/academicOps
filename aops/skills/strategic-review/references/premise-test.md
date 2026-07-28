@@ -10,7 +10,7 @@ tags: [framework, enforcement, premise-gate, premise-test, agent-judgment, judgm
 
 # The Premise Test
 
-> **One line.** Before a reviewer reads a single line of the diff, they judge the **premise** from the task + diffstat alone and write the sharp principal's one-sentence snap reaction — _"was this a good idea, in this shape?"_ A bad premise fails the review **regardless of test coverage**. This is the review-time **backstop** for the source premise gate (`premise-gate.md`, sibling PR #1733): it catches bad premises that never crossed the `→ queued` source gate (direct hand-coded PRs, work that bypassed the queue) because every PR hits review no matter how it was created.
+> **One line.** Before a reviewer reads a single line of the diff, they judge the **premise** from the task + diffstat alone and write the sharp principal's one-sentence snap reaction — _"was this a good idea, in this shape?"_ A bad premise fails the review **regardless of test coverage**. This is the review-time **backstop** for the source premise gate (`premise-gate.md`): it catches bad premises that never crossed the `→ queued` source gate (direct hand-coded PRs, work that bypassed the queue) because every PR hits review no matter how it was created.
 
 This test is the review-surface counterpart of the source-level premise gate (`premise-gate.md`), enforcing the same axiom — **[[../../../../.agents/rules/AXIOMS.md#judgment-non-delegable]]** (`judgment-non-delegable`). Like the source gate, it is itself judgment, not a mechanism: a reviewer reads a sentence and decides. There is no regex, no field check, no classifier, no threshold, no checklist anywhere in it — a deterministic rig standing in for "is this premise sound?" would itself be the disease it guards against, so it is forbidden by construction.
 
@@ -66,7 +66,7 @@ The question is _"was this worth building at all, in this shape?"_ — **not** a
 
 A deterministic rig fails this test whether it makes the final call **or merely decides whether the judgment fires at all**. A regex / keyword / NLP / threshold / checklist used as the **trigger, pre-filter, router, or gate** in front of a judging agent is `judgment-non-delegable` exactly as much as one used as the verdict — because _selecting which inputs are load-bearing-enough to judge_ is itself a semantic judgment. The "but a smart model still makes the final call" framing is a **laundering move**, not a mitigant: if the rig decides which cases the model ever sees, the rig owns the recall, and the model only ever rules on the rig's leavings. A reviewer must ask of every two-stage "cheap filter → scoped LLM review" design: _is the filter's own decision (which assertions count as suspect) a comprehension call?_ If yes, the filter is forbidden — name it, do not pass it on the strength of the downstream LLM. Concretely: deciding whether a claim is **load-bearing-and-unverified** is a semantic judgment, so a keyword/NLP "assertion-tells × risk-surface" pre-filter standing in for it is the disease, not the cure — even when an LLM micro-review sits behind it.
 
-**Worked specimen (illustrative, NOT a checklist).** PR #1723 proposed a **978-line SHA-parsing freshness tool with magic thresholds** (`STALE ≥ 20 commits` / `≥ 30 days`) and brittle prose-fallback parsing — an entire deterministic machine built to answer a one-read staleness call a smart agent would simply _judge_. Green tests and clean code do not save it: the premise is wrong, so the verdict is `FAIL` / 🔴 REJECT. A reviewer's step-0 sentence — _"why 978 lines of machine for a question I'd answer by reading?"_ — bounces it before the diff is even read.
+**Worked specimen (illustrative, NOT a checklist).** One reviewed PR proposed a **978-line SHA-parsing freshness tool with magic thresholds** (`STALE ≥ 20 commits` / `≥ 30 days`) and brittle prose-fallback parsing — an entire deterministic machine built to answer a one-read staleness call a smart agent would simply _judge_. Green tests and clean code do not save it: the premise is wrong, so the verdict is `FAIL` / 🔴 REJECT. A reviewer's step-0 sentence — _"why 978 lines of machine for a question I'd answer by reading?"_ — bounces it before the diff is even read.
 
 ## 4. Honest scope — the backstop half of a pair
 
@@ -77,5 +77,5 @@ This review-time test and the source-level premise gate (`premise-gate.md`) are 
 - [[../../verify/SKILL.md]] — forced step-0 Premise Test before the QA diff read
 - [[../SKILL.md]] — forced step-0 Premise Test in the arch-fit lens
 - [[../../triage/SKILL.md]] — `/learn` retro §2a, bad-premise-approval recurrence scoring
-- `premise-gate.md` (sibling PR #1733) — the source-level counterpart at `→ queued`; upgrade to a wikilink once both land on `dev`
+- `premise-gate.md` — the source-level counterpart at `→ queued`
 - [[../../../../specs/enforcement/enforcement.md]] — the `judgment-non-delegable` / agents-all-the-way-down principle

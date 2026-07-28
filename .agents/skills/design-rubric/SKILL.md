@@ -21,8 +21,6 @@ version: 0.1.0
 permalink: skills-design-rubric
 ---
 
-<!-- NS: I have a feeling this skill can be removed or moved into the aops contributing guide...-->
-
 # /design-rubric — Design-Stage Fitness Rubric
 
 Create or red-team a qualitative Fitness Rubric for user-facing features to define what excellence looks like. The rubric lives directly on the spec or epic body under `## Fitness Rubric`.
@@ -96,9 +94,9 @@ Save directly to the spec or epic task body:
 | Rubric in the verify brief | Rubric in the spec; brief links to it             |
 | Skipping the stressed path | Focus on the depleted-user scenario               |
 
-```json
+```
 Task(
-  subagent_type="aops:pauli",
+  subagent_type="aops-pkb:pauli",
   prompt="Author a Fitness Rubric for <spec or epic>. Mode: <author | critique>. Land it on the spec body under `## Fitness Rubric`."
 )
 ```

@@ -1,10 +1,10 @@
 <academicOps handover reminder>
-≡ **Before you hand back to the user — be honest and land the plane:**
+≡ **Before you pause or conclude, land the plane:**
 
 ## LAND THE PLANE: run the `/dump full` skill
 
 - Finish the job you were asked to do: no more, no less. Restate exactly what you were asked. Did you deliver?
-- DO NOT ask for permission to do your job. Don't create homework for the user if it's your responsibility.
+- DO NOT ask for permission to do your job.
 - DO NOT create homework for the user: if you can check something for yourself, that's YOUR responsibility.
 - Update your task and save to the PKB each turn. It is YOUR RESPONSIBILITY to curate any new knowledge you have generated IMMEDIATELY.
 - Ensure you create any new tasks based on your work, and file any bugs or friction you encountered this session.

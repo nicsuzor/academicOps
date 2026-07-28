@@ -3,8 +3,7 @@
 Verify the aops plugins actually WORK — hooks, MCP, skills, subagent tool binding — on
 every surface they ship to. **Judgment is non-delegable**: you (the driving agent) read
 the evidence and issue verdicts; a script's exit code or a single string match never
-substitutes. Rewritten 2026-07-17 from the live all-surfaces recovery session (PKB
-`task_d53e8469`); the old two-track protocol's forensics mechanics live on in
+substitutes. The old two-track protocol's forensics mechanics live on in
 [[09-session-hook-forensics]] and [[11-self-test]].
 
 **Quiescence rule (applies everywhere):** never evaluate a loading screen. If the pane

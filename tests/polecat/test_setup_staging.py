@@ -14,11 +14,10 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_POLECAT_DIR = str(_REPO_ROOT / "aops-jr" / "polecat")
-if _POLECAT_DIR not in sys.path:
-    sys.path.insert(0, _POLECAT_DIR)
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-from cli import setup_staging  # noqa: E402
+from aops.polecat.cli import setup_staging  # noqa: E402
 
 LEAKED_API_KEY = "sk-live-totally-secret-context7-key"
 LEAKED_INTERNAL_URL = "https://internal-tailscale-only.example/mcp"

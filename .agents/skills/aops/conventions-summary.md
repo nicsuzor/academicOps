@@ -58,7 +58,7 @@ _The concept is **intent**. Today it is stored in the field still named `priorit
 `intent` is **Nic's personally curated ranking of what matters** — his signal, never an agent's estimate of importance.
 
 - **Agents never originate intent.** On create/update, leave `intent` at the uncurated default band (the established default; do not elevate). Landing a task uncurated is _not_ setting intent — it is the explicit absence of curation, which is correct.
-- **Only Nic sets intent above the default.** An agent may write a non-default `intent` **only** when Nic expressly directs that specific value in that request ("make this P1"). Transcribing Nic's stated intent is allowed; inferring, guessing, or estimating it is not — even when the task is obviously important to you. **"I want to do X today" is Nic expressly directing P1** — write it as `priority: 1`, never as a fabricated `due` date; there is no external deadline referent to justify `due` (confirmed bug, blind test 2026-07-07: [[mem-624664d1]]; see also [[../../remember/references/TAXONOMY.md#priority-labels-p0p4]]).
+- **Only Nic sets intent above the default.** An agent may write a non-default `intent` **only** when Nic expressly directs that specific value in that request ("make this P1"). Transcribing Nic's stated intent is allowed; inferring, guessing, or estimating it is not — even when the task is obviously important to you. **"I want to do X today" is Nic expressly directing P1** — write it as `priority: 1`, never as a fabricated `due` date; there is no external deadline referent to justify `due` ([[mem-624664d1]]; see also [[../../remember/references/TAXONOMY.md#priority-labels-p0p4]]).
 - **Never propagate intent.** Do not inherit a parent's intent onto children or copy it across related tasks. Each elevation is an individual act of Nic's curation.
 - **Importance ≠ intent.** _Your own_ assessment of urgency, severity, blocker-status, or value → `consequence`/`severity`/`due`/`status`, never `intent`. `intent` answers only: _has Nic personally put this on his list, and where._ This does not run in reverse: Nic's own stated urgency ("today", "this week") is never yours to re-encode as a `due` date he didn't give you — it is intent, so it goes to `priority`, per the rule above.
 - **When you think something deserves his attention,** surface it as status/escalation so _he_ sets intent — never set it for him as a shortcut.
@@ -113,7 +113,7 @@ Information surfaces when relevant. Missing context = framework bug.
 Before presenting any plan or conclusion, invoke the critic agent:
 
 ```
-Task(subagent_type="aops:pauli", model="opus", prompt="Review this for errors and hidden assumptions: [SUMMARY]")
+Task(subagent_type="aops-pkb:pauli", model="opus", prompt="Review this for errors and hidden assumptions: [SUMMARY]")
 ```
 
 ### Terminal Move after Dispatch

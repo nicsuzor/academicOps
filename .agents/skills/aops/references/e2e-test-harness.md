@@ -12,8 +12,7 @@ Guide to the framework's end-to-end testing infrastructure for validating agent 
 
 ## Current State
 
-- **227 total tests**: 170 unit, 31 fast integration, 26 slow E2E
-- **100% passing** as of 2025-11-22
+- Unit, fast-integration, and slow-E2E tiers all present and passing (`uv run pytest` for current counts)
 - Harness fully functional for behavioral validation
 
 ## What E2E Tests Can Do

@@ -34,11 +34,11 @@ Run after changes to `aops-jr/polecat/defaults/*-settings.json`, entrypoint, plu
 
 Walk layers in order; stop at first failure:
 
-**§0 Image freshness** — `docker images aops-crew --format '{{.CreatedAt}}'` vs last commit touching Dockerfile or bundled files. Stale → `make verify-docker` (**not** `make build-docker` — verification requires a clean build; `--no-cache` prevents stale cached layers from producing a false-green result; issue #1452).
+**§0 Image freshness** — `docker images aops-crew --format '{{.CreatedAt}}'` vs last commit touching Dockerfile or bundled files. Stale → `make verify-docker` (**not** `make build-docker` — verification requires a clean build; `--no-cache` prevents stale cached layers from producing a false-green result).
 
 **§0.5 Plugin pre-check** — Before any boot signal checks, run `claude plugin list` inside the container to verify exactly two plugins loaded (`aops`, `aops-tools` — see `aops-jr/polecat/defaults/claude-settings.json`'s `enabledPlugins`). For agy, there is no `list` subcommand; confirm the install structurally with `ls ~/.gemini/antigravity-cli/plugins/` (expect `aops/` and `aops-tools/` only). The Gemini CLI extension surface is deprecated and intentionally not installed (see Dockerfile) — do not check `gemini extensions list`. A marketplace cache-miss or install failure is silent at startup and only manifests later as hook failures or missing tools; this step catches it in seconds. If either check comes back empty or wrong, halt and diagnose before proceeding.
 
-**§1 Boot signals** — spin via tmux using the **same permission flags that `polecat run` uses** (auto-approval / `--dangerously-skip-permissions`, not plan mode), then `capture-pane -p -S -2000`. Look for router banner, no onboarding/trust prompts. Do NOT use footer text as a boot signal (#1197).
+**§1 Boot signals** — spin via tmux using the **same permission flags that `polecat run` uses** (auto-approval / `--dangerously-skip-permissions`, not plan mode), then `capture-pane -p -S -2000`. Look for router banner, no onboarding/trust prompts. Do NOT use footer text as a boot signal.
 
 > **Permission mode:** Crew smoke tests for autonomous-worker validation must match the production permission model — use the same flags as `polecat run` (bypass-permissions / auto-approval). **Do not start crew containers in plan mode for these tests**: plan mode does not reflect actual polecat dispatch behavior and will not catch permission-related failures. Plan mode is acceptable only when explicitly testing interactive crew workflows where human-in-the-loop approval is the intended behavior.
 
@@ -53,10 +53,10 @@ Walk layers in order; stop at first failure:
 **§6 Cleanup** — `/exit` → `tmux kill-session`. No manual `nuke` step:
 `polecat run`'s underlying `docker run --rm` self-removes the container on
 exit (the `nuke`/`list-crew` subcommands it used to require were deleted
-along with the old `polecat/cli.py`, 2026-07-14 — see [[specs/polecat/tmux-interactive-driving.md]]. As of 2026-07-18 the survivor lives at `aops-jr/polecat/cli.py`).
+along with the old `polecat/cli.py` — see [[specs/polecat/tmux-interactive-driving.md]]. The survivor lives at `aops-jr/polecat/cli.py`).
 Repeat for other client.
 
-On failure: file one issue per root cause, not per symptom. Append to existing PR/task when one exists. Refs: [[aops-7c45802b]], GH #1237.
+On failure: file one issue per root cause, not per symptom. Append to existing PR/task when one exists. Refs: [[aops-7c45802b]].
 
 ## 3. Hook output channel routing
 
@@ -70,13 +70,13 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 
 **Pre-flight: confirm hooks are executing** (per Step 0 — total hook failure reads as "no findings" here, the wrong answer). Confirm at least one hook event processed successfully before judging routing.
 
-**Verification approach:** (1) read `hooks.json` + gate implementation to identify active payloads; (2) verify intended channels match matrix; (3) trigger in real session or evaluate post-hoc from artifacts. Caution: warn verdict on Stop triggers legacy fallback (router.py:838, #1042) leaking `context_injection` to user — false positive; check verdict type.
+**Verification approach:** (1) read `hooks.json` + gate implementation to identify active payloads; (2) verify intended channels match matrix; (3) trigger in real session or evaluate post-hoc from artifacts. Caution: warn verdict on Stop triggers a legacy fallback in `router.py` leaking `context_injection` to user — false positive; check verdict type.
 
 **Channel vocabulary — derive, do not restate.** The disposition for a given (client, event) is not a fixed named category memorised here — it is computed from `channel_spec(client, event)` in [`aops/hooks/client_spec.py`](../../../../aops/hooks/client_spec.py) (the same table CLIENT-TRANSLATION.md's authoritative channel matrix renders). Look up the spec for the hook under test and read off its fields:
 
 - `user_message` — does ANY message reach the user on this channel?
 - agent receives context — `agent_context_without_block` (non-blocking delivery) OR `can_block` (block-to-inject; a block's `reason` is the agent's only channel, and on Claude/agy that `reason` is ALSO user-visible — there is no agent-only block channel).
-- `agent_full_user_summary` — the quiet-split disposition: agent gets the FULL body, user sees only a short summary of it (never the body). **Currently `False` for every (client, event) in the table.** The mechanism that would set it True — Claude's `asyncRewake` (Stop, exit 2) — was retired 2026-07-08 (GH #2181, fixed by PR #2189) after it was found to silently discard `decision:block` output from co-located block-mode gates sharing the same Stop entry. See `ChannelSpec.agent_full_user_summary`'s docstring and `tests/hooks/test_client_spec.py::TestChannelTable::test_claude_stop_asyncrewake_quiet_split_retired` / `test_no_client_event_has_the_retired_quiet_split`. Do not assume this disposition is exercised anywhere live; if a probe shows it True and the code disagrees, that is itself a finding (channel_spec has drifted from the client) — file it, don't force a pass.
+- `agent_full_user_summary` — the quiet-split disposition: agent gets the FULL body, user sees only a short summary of it (never the body). **Currently `False` for every (client, event) in the table.** The mechanism that would set it True — Claude's `asyncRewake` (Stop, exit 2) — was retired after it was found to silently discard `decision:block` output from co-located block-mode gates sharing the same Stop entry. See `ChannelSpec.agent_full_user_summary`'s docstring and `tests/hooks/test_client_spec.py::TestChannelTable::test_claude_stop_asyncrewake_quiet_split_retired` / `test_no_client_event_has_the_retired_quiet_split`. Do not assume this disposition is exercised anywhere live; if a probe shows it True and the code disagrees, that is itself a finding (channel_spec has drifted from the client) — file it, don't force a pass.
 
 **Pass / fail — computed from the fields above, not a restated table:**
 
@@ -90,4 +90,4 @@ Authoritative source for active hooks: `hooks.json`. Channel dispatch: `HookRout
 
 Any mismatch between the computed expectation and the observed pane/transcript is a **routing bug** — halt and file under [[epic-9fa15948]] with session id, transcript excerpt, agent's verbatim answer, and which `channel_spec()` cell it contradicts. Do not attempt to fix routing in this session.
 
-**No automated probe — use the manual tmux walkthrough.** `scripts/pty_hook_probe.py` (an automated PTY probe) was deleted in the 2026-07-12 aops-core cleanup and was not rebuilt; there is no automated replacement. Drive `claude`/`agy` directly per [[specs/polecat/tmux-interactive-driving.md]]'s tmux pattern, `capture-pane` at two points (right after the triggering action, and after a short settle) to distinguish transient toasts from steady-state UI, and cross-check the transcript JSONL (Step 0's stderr-on-every-attachment method) for the agent-side `context_injection`.
+**No automated probe — use the manual tmux walkthrough.** `scripts/pty_hook_probe.py` (an automated PTY probe) was deleted and was not rebuilt; there is no automated replacement. Drive `claude`/`agy` directly per [[specs/polecat/tmux-interactive-driving.md]]'s tmux pattern, `capture-pane` at two points (right after the triggering action, and after a short settle) to distinguish transient toasts from steady-state UI, and cross-check the transcript JSONL (Step 0's stderr-on-every-attachment method) for the agent-side `context_injection`.

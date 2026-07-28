@@ -1,0 +1,20 @@
+{
+  "__base__": {
+    "name": "reflexes-cope",
+    "version": "0.1.0",
+    "description": "reflexes-cope — optional academicOps plugin providing axiom-derived policy assembly and advisory evaluation",
+    "author": {
+      "name": "Nicolas Suzor"
+    },
+    "license": "MIT",
+    "keywords": [
+      "academicOps",
+      "reflexes",
+      "cope",
+      "policies",
+      "advisory"
+    ]
+  },
+  "claude": {},
+  "antigravity": {}
+}

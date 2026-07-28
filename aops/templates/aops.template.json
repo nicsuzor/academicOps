@@ -1,7 +1,7 @@
 {
   "__base__": {
     "name": "aops",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "description": "AcademicOps core framework \u2014 combining task/work-unit modules, strategic planning, task-lifecycle, dispatch, session lifecycle, and swappable technology-specific academic skills.",
     "author": {
       "name": "Nicolas Suzor"

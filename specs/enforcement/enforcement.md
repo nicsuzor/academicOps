@@ -39,15 +39,16 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 
 ### 1. Structural prevention (the only mechanical layer)
 
-- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `aops-jr/polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
-- **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`aops-jr/polecat/defaults/polecat.yaml.example`](../../aops-jr/polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
+- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, `aops/polecat/cli.py`), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
+- **`polecat.yaml`** is the single posture source for session configuration (gate mode keys, session-type defaults) — see [`aops/polecat/defaults/polecat.yaml.example`](../../aops/polecat/defaults/polecat.yaml.example). No overlay/defaults-naming, no built-in code fallback: a missing value is a hard fail, not a silent default.
 
 ### 2. The harness delivery channel (reminder, not gate)
 
-The reminder hook surface is one script: [`aops/hooks/router.py`](../../aops/hooks/router.py), wired via [`aops/templates/hooks.template.json`](../../aops/templates/hooks.template.json) to `SubagentStop` / `UserPromptSubmit` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). The `Stop`-time handover reminder moved into the gate engine's `exit_reflection_reminder` gate (task `aops_cace51f9`, 2026-07-23; see [hook-gate-system.md](hook-gate-system.md)) — `router.py` no longer registers on `Stop`. It injects two static templates, unconditionally, identically, on every surface — no per-client branching beyond the wire format, no mode key, no blocking:
+The core hook surface carries structural prevention (`SessionStart` credential isolation) in [`aops/hooks/router.py`](../../aops/hooks/router.py). Face discipline reminders live in the optional `aops-jr` plugin ([`aops-jr/hooks/router.py`](../../aops-jr/hooks/router.py) and [`aops-jr/hooks/gate_dispatch.py`](../../aops-jr/hooks/gate_dispatch.py)), wired to `SubagentStop` / `UserPromptSubmit` / `PostToolUse` (Claude Code) and `PreInvocation` / `PostInvocation` (Antigravity). The `Stop`-time handover reminder lives in `aops-jr`'s `exit_reflection_reminder` gate ([`aops-jr/hooks/gates/exit_reflection.py`](../../aops-jr/hooks/gates/exit_reflection.py)). Advisory CoPE policy evaluation lives in the optional `reflexes-cope` plugin ([`reflexes-cope/hooks/gates/reflexes_evaluator.py`](../../reflexes-cope/hooks/gates/reflexes_evaluator.py)), which evaluates 15 axiom rule files against hook events and returns overridable advisory warnings only (`warn` outcome, no autonomous deny/block disposition), failing open on any evaluator outage. It injects static templates as non-blocking context:
 
-- **`ida-hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
-- **`ida-reminder.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative) — this is the exit-reflection discipline from the ratified plan's §1, delivered as a reminder rather than as a blocking gate.
+- **`hydrate.md`** — on prompt submit: search the PKB before re-deriving procedure.
+- **`handover.md`** / **`honesty.md`** — on Stop/SubagentStop: an honesty and durable-capture reminder (finish the actual ask, don't create homework for the user, commit and push before the session ends, curate durable knowledge, and close with a structured Observed/Reported proof rather than a narrative).
+- **`verify.md`** — on PostToolUse (Agent tool execution): remind the agent to verify subagent outputs.
 
 Nothing in this layer produces a verdict. It cannot stop an agent from exiting, and it does not check whether the agent actually did what the reminder asked — that is the executing agent's own judgment call, backstopped by the review lenses below, not by the hook.
 
@@ -55,7 +56,7 @@ Nothing in this layer produces a verdict. It cannot stop an agent from exiting, 
 
 ### 3. Claude Code's native auto-mode classifier
 
-A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`aops-jr/polecat/defaults/claude-settings.json`](../../aops-jr/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
+A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`aops/polecat/defaults/claude-settings.json`](../../aops/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
 
 ### 4. Task-graph boundary — the primary enforcement point
 

@@ -82,3 +82,56 @@ def test_stop_is_not_handled_by_router():
         check=True,
     )
     assert result.stdout.strip() == ""
+
+
+def test_posttooluse_not_handled_by_core_router():
+    """PostToolUse (the "verify subagent output" reminder) is jr/ida's exclusive
+    concern per specs/packaging/v0.5-modular-topology.md's disposition table.
+    Core's router.py must not register or handle it — coverage for the live
+    branch lives in aops-jr/tests/test_router.py against aops-jr/hooks/router.py.
+    Regression test for the duplicate-injection defect found in epic_21042b5f
+    (commit ab9d9e4da copied this branch into both routers instead of moving it)."""
+    router_path = get_hook_script("router.py")
+    input_data = {
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Agent",
+        "tool_input": {"prompt": "do research"},
+    }
+    cmd = [sys.executable, str(router_path), "claude", "PostToolUse"]
+    result = subprocess.run(
+        cmd,
+        input=json.dumps(input_data),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
+def test_pretooluse_ask_question_denied_in_headless_mode():
+    """Interactive question tools in PreToolUse must be denied in headless/non-interactive mode."""
+    router_path = get_hook_script("router.py")
+    input_data = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "ask_question",
+        "tool_input": {"question": "Should I proceed?"},
+    }
+    env = os.environ.copy()
+    env["NONINTERACTIVE"] = "1"
+
+    cmd = [sys.executable, str(router_path), "claude", "PreToolUse"]
+    result = subprocess.run(
+        cmd,
+        input=json.dumps(input_data),
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
+    )
+    assert result.returncode == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert "forbidden in a headless / non-interactive context" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
+
+

@@ -137,52 +137,17 @@ Ensure your charts meet high standards and avoid common Mermaid pitfalls.
 
 ### Phase-Based Organization (Recommended for Complex Flows)
 
-For flows with many steps (10+ nodes), organize into **numbered phases** rather than one long chain.
-
-```mermaid
-flowchart TB
-    subgraph INIT["① INITIALIZATION"]
-        direction TB
-        S0([Start]) --> S1[Load Config]
-        S1 --> S2[Validate]
-    end
-
-    subgraph EXEC["② EXECUTION"]
-        direction TB
-        E1[Process] --> E2{Check}
-        E2 -->|OK| E3[Continue]
-        E2 -->|Fail| E1
-    end
-
-    subgraph END["③ CLEANUP"]
-        direction TB
-        C1[Save] --> C2([End])
-    end
-
-    INIT --> EXEC --> END
-
-    %% Side panels for auxiliary systems
-    subgraph AUX["⚡ AUXILIARY"]
-        A1[Helper 1]
-        A2[Helper 2]
-    end
-
-    E1 -.-> A1
-    C1 -.-> A2
-
-    style INIT fill:#ecfdf5,stroke:#059669,stroke-width:2px
-    style EXEC fill:#fefce8,stroke:#ca8a04,stroke-width:2px
-    style END fill:#f5f5f5,stroke:#737373,stroke-width:2px
-    style AUX fill:#fef2f2,stroke:#ef4444,stroke-width:1px,stroke-dasharray: 5 5
-```
+For flows with many steps (10+ nodes), organize into **numbered phases** rather than one long chain. Link phase subgraphs to each other (`INIT --> EXEC --> END`), never their internal nodes, and route auxiliary systems (hooks, agents, external services) into a separate dashed side panel with minimal, always-dashed cross-connections.
 
 **Key principles:**
 
 1. **Numbered phase labels** (① ② ③) - Creates visual hierarchy and reading order
-2. **Phase subgraphs link to each other** - `INIT --> EXEC --> END` keeps main flow clean
+2. **Phase subgraphs link to each other** - keeps the main flow clean
 3. **Auxiliary systems in dashed side panels** - Hooks, agents, external services
 4. **Minimal cross-connections** - Only essential interactions, always dashed
 5. **Color-coded phases** - Distinct hues per phase (green → yellow → gray for start → process → end)
+
+See [[references/templates-and-examples.md]] for a complete runnable multi-phase template.
 
 ### Mermaid Templates and Examples
 
@@ -318,57 +283,9 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[references/theme-colors.md]] for user's preferred color palette. See [[references/text-container-pattern.md]] for text-in-container binding.
 
-### Process: Creating a Professional Excalidraw Diagram
+### Finishing: Export with Quality
 
-#### Step 1: Analyze & Plan
-
-Before opening Excalidraw:
-
-1. What's the purpose? (explain concept, show flow, document architecture)
-2. Who's the audience? (technical experts, stakeholders, general public)
-3. What's the key message? (main takeaway)
-4. What level of detail? (high-level vs. comprehensive)
-
-#### Step 2: Content Structure
-
-In Excalidraw (ignore aesthetics):
-
-1. List all components/concepts
-2. Map all relationships
-3. Identify hierarchy levels
-4. Verify accuracy and completeness
-5. Get feedback if possible
-
-#### Step 3: Visual Design
-
-Now make it beautiful:
-
-1. **Establish visual hierarchy**
-   - Size elements by importance
-   - Choose color scheme (2-4 colors max)
-   - Set typography scale
-
-2. **Create spatial organization**
-   - Position for flow direction
-   - Group related elements
-   - Add generous whitespace
-   - Align everything obsessively
-
-3. **Apply consistent styling**
-   - Same colors for same meanings
-   - Same shapes for same types
-   - Same arrow styles for same relationships
-   - Same spacing patterns throughout
-
-4. **Refine and polish**
-   - Check alignment (select all → align)
-   - Verify contrast and readability
-   - Remove visual clutter
-   - Test at different zoom levels
-
-#### Step 4: Export with Quality
-
-**Export settings**:
+Apply the Two-Phase Design Process above (structure, then visual refinement), then export:
 
 - **Use WHITE background** (default, always preferred)
 - Enable background (unless transparency needed)

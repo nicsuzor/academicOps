@@ -8,8 +8,10 @@ This project contains the **academicOps** framework itself. You are currently wo
 
 Specifically for this project:
 
-- Specs: `specs/INDEX.md` (MOC) — read this first when scoping any change
+- Guide & Topology: [`.agents/GUIDE.md`](.agents/GUIDE.md) and [`specs/meta/repository-map.md`](specs/meta/repository-map.md) — read these first to understand repository architecture and rules
 - Rules: universal axioms in [`.agents/AXIOMS.md`](.agents/AXIOMS.md), project-specific rules in [`.agents/rules/RULES.md`](.agents/rules/RULES.md) plus any one-off files in `.agents/rules/*.md` — both bind as instructions, read them before acting
+
+@GUIDE.md
 
 ## Fail-Fast / Halt Rule
 
@@ -67,9 +69,10 @@ The framework uses named agents with distinct personalities and areas of experti
 - **Ruth (rbg, The Judge)**: Enforces universal axioms and workflow discipline.
 - **Pauli (The Logician)**: Provides strategic review, systems thinking, and acts as the Memory Custodian owning PKB-facing skills (`/remember`, `/planner`, `/dump` [bail/full/pause], `/daily`, `/sleep`).
 - **Marsha (The QA Reviewer)**: Independently verifies work against original user intent.
-- **Ida (Interactive Head)**: Default interactive co-working partner for research sessions — holds between steps, answers self-answerable questions, delegates for context hygiene.
+- **Ida (Interactive Research Head)**: Interactive coordination and dispatch of academic research work — methodology, analysis, writing, review. Holds between steps, answers self-answerable questions, delegates for context hygiene.
+- **Junior (Dispatcher & Orchestrator)**: Owns dispatch — background workers, the standing queue, cross-project coordination, framework operations. Permanently meta-level; routes all execution to cheaper surfaces.
 
-Ida is the framework's one shipped head persona — not one of two interchangeable "skins" (the old RULING P13 framing is superseded, `aops_5ea32596` / `note_296e5520` §3). Ida carries a superset: research-integrity rigor plus general dispatch-discipline/self-maintenance doctrine. Junior (`~/junior` SDK launcher, `~/brain/.agents/agents/junior.md`) is Nic's personal, machine-local, cross-project orchestrator — out of this repo's scope entirely, not a framework artifact this charter binds. See [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md#overview) for the full disambiguation.
+Ida and Junior are split by functionality, not personality: research-session co-working is Ida's; dispatch and background coordination are Junior's. Both launder everything for the user — synthesized narrative, never blow-by-blow relay. See [`specs/interactive-experience/head-role-charter.md`](specs/interactive-experience/head-role-charter.md#overview) for the full disambiguation.
 
 ## Tool Capabilities in Dispatched Sessions
 

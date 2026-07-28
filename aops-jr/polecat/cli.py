@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -150,6 +151,324 @@ def _seed_confirmed(session_dir, task_id):
         if task_id in content:
             return True
     return False
+
+
+def _get_git_head(repo_path):
+    """Return HEAD commit SHA if `repo_path` is inside a git repo, else None."""
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(repo_path), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode == 0 and res.stdout:
+            return res.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
+def _verify_workspace_delivery(workspace_dir, initial_head=None):
+    """Verify that the workspace git tree has no uncommitted changes and no unpushed commits.
+
+    Returns (ok: bool, error_message: str | None).
+    """
+    workspace_path = Path(workspace_dir)
+    is_git = subprocess.run(
+        ["git", "-C", str(workspace_path), "rev-parse", "--is-inside-work-tree"],
+        capture_output=True,
+        text=True,
+    )
+    if is_git.returncode != 0:
+        return True, None
+
+    status_res = subprocess.run(
+        ["git", "-C", str(workspace_path), "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+    )
+    uncommitted = (status_res.stdout or "").strip()
+    if uncommitted:
+        return False, f"uncommitted changes present in workspace:\n{uncommitted}"
+
+    current_head = _get_git_head(workspace_path)
+    if current_head and initial_head and current_head != initial_head:
+        ls_remote = subprocess.run(
+            ["git", "-C", str(workspace_path), "ls-remote", "origin"],
+            capture_output=True,
+            text=True,
+        )
+        if ls_remote.returncode == 0:
+            remote_out = ls_remote.stdout or ""
+            if current_head not in remote_out:
+                return False, (
+                    f"local commits created (HEAD={current_head[:8]}) "
+                    "but no pushed branch found on origin"
+                )
+        else:
+            contains_res = subprocess.run(
+                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", "HEAD"],
+                capture_output=True,
+                text=True,
+            )
+            if not (contains_res.stdout or "").strip():
+                return False, (
+                    f"local commits created (HEAD={current_head[:8]}) "
+                    "but not present on any remote branch"
+                )
+
+    return True, None
+
+
+def _revert_pkb_task_if_done(pkb_url, task_id):
+    """If the task in PKB was marked done/completed/merge_ready during the run,
+    revert its status back to in_progress to prevent silent delivery loss."""
+    if not pkb_url or not task_id:
+        return None
+
+    def _call_tool(tool_name, arguments):
+        init_req = urllib.request.Request(
+            pkb_url,
+            data=json.dumps({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "polecat-cli", "version": "1.0"},
+                },
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"},
+        )
+        sess_id = None
+        try:
+            resp = urllib.request.urlopen(init_req, timeout=5)
+            sess_id = resp.headers.get("Mcp-Session-Id")
+            noti_req = urllib.request.Request(
+                pkb_url,
+                data=json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Accept": "application/json", "Mcp-Session-Id": sess_id},
+            )
+            urllib.request.urlopen(noti_req, timeout=5)
+        except Exception:
+            pass
+
+        headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+        if sess_id:
+            headers["Mcp-Session-Id"] = sess_id
+
+        candidates = [tool_name]
+        if tool_name.startswith("pkb__"):
+            candidates.append(tool_name[5:])
+        else:
+            candidates.append(f"pkb__{tool_name}")
+
+        for candidate in candidates:
+            call_req = urllib.request.Request(
+                pkb_url,
+                data=json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": candidate, "arguments": arguments},
+                }).encode("utf-8"),
+                headers=headers,
+            )
+            try:
+                resp = urllib.request.urlopen(call_req, timeout=5)
+                body = resp.read().decode("utf-8")
+                for line in body.split("\n"):
+                    if line.startswith("data: "):
+                        data = json.loads(line[6:])
+                        if "result" in data:
+                            return data["result"]
+            except Exception:
+                continue
+        return None
+
+    try:
+        res = _call_tool("pkb__get_task", {"id": task_id})
+        if res and "content" in res and res["content"]:
+            text = res["content"][0].get("text", "")
+            task_info = json.loads(text)
+            status = task_info.get("status") or (task_info.get("frontmatter") or {}).get("status")
+            if status in ("done", "completed", "merge_ready", "complete"):
+                _call_tool("pkb__update_task", {"id": task_id, "status": "in_progress"})
+                return status
+    except Exception as e:
+        click.echo(f"Warning: Failed to check/revert PKB task status: {e}", err=True)
+
+    return None
+
+
+def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
+    """Create a per-session standalone git clone off `canonical_dir` and
+    return the path that should actually be mounted into the container,
+    instead of `canonical_dir` itself.
+
+    Root cause fixed here (aops_f74aafce, Nic ruling 2026-07-23: "It should
+    be a clone in a container!"): polecat used to bind-mount the shared
+    canonical checkout (e.g. `/home/nic/src/academicOps`) READ-WRITE
+    straight into every worker container as `/workspace`. Every worker then
+    ran its own `git checkout <task-branch>` inside that ONE shared tree —
+    with 6+ concurrent containers observed doing this at once, racing each
+    other AND every live interactive session reading the same directory
+    (confirmed via `git reflog` showing interleaved checkout/reset/amend
+    across 3+ branches in quick succession).
+
+    Revision (aops_aef75b26, 2026-07-24): the first fix for the above used
+    `git worktree add`, which creates a *linked* worktree whose `.git` is a
+    plain-text file pointing at an admin directory living inside the
+    canonical repo's OWN `.git/worktrees/<name>` — a path on the host that
+    is never mounted into the container. Every git operation run inside the
+    container (status/diff/commit/push) failed with `fatal: not a git
+    repository: <host-only-path>` because the container can't resolve that
+    gitdir pointer; the isolation fix was itself non-functional for any
+    git-dependent work. Fixed by making the isolated workspace a fully
+    standalone local clone (`git clone --local`) instead of a linked
+    worktree: the container-mounted directory then has its own complete
+    `.git` directory (not a pointer file into the host), so git is fully
+    self-contained inside the container. `--local` hardlinks objects from
+    the canonical repo's `.git/objects` (same filesystem, no network, no
+    full object copy) so this keeps nearly all of the disk/time cheapness of
+    a worktree while giving up the (broken-anyway, container-incompatible)
+    shared-admin-dir trick. `origin` is repointed to the canonical repo's
+    real upstream remote (not the canonical checkout's local path, which is
+    `git clone`'s default for a local source) so `git push` from inside the
+    container reaches the actual remote, not a dead-end clone-of-a-clone.
+
+    Returns `(workspace_path, cleanup_info)`. `cleanup_info` is `None` when
+    `canonical_dir` is not inside a git repository at all — nothing to
+    isolate, so `canonical_dir` is returned unchanged (with a warning);
+    otherwise it's a dict consumed by `cleanup_isolated_workspace` to tear
+    the clone back down.
+    """
+    canonical_dir = Path(canonical_dir).resolve()
+
+    toplevel = subprocess.run(
+        ["git", "-C", str(canonical_dir), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+    )
+    if toplevel.returncode != 0:
+        click.echo(
+            f"Warning: {canonical_dir} is not inside a git repository — "
+            "cannot create an isolated clone; mounting it directly "
+            "(no per-task isolation possible for a non-git workspace).",
+            err=True,
+        )
+        return canonical_dir, None
+
+    repo_root = Path(toplevel.stdout.strip()).resolve()
+    try:
+        rel = canonical_dir.relative_to(repo_root)
+    except ValueError:
+        rel = Path(".")
+
+    worktrees_dir = Path(polecat_home) / "worktrees"
+    worktrees_dir.mkdir(parents=True, exist_ok=True)
+    wt_path = worktrees_dir / session_id
+    branch_name = f"polecat/{session_id}"
+
+    # Resolve the exact commit currently checked out in the canonical repo
+    # (whatever branch/detached state it's in at dispatch time) so the
+    # isolated clone starts from the same point a `git worktree add ... HEAD`
+    # would have — before cloning, since `git clone` alone would instead
+    # check out the *source repo's* default branch, not necessarily its
+    # currently checked-out commit.
+    head_result = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    if head_result.returncode != 0:
+        click.echo(
+            f"Error: failed to resolve HEAD in {repo_root}:\n{head_result.stderr}",
+            err=True,
+        )
+        sys.exit(1)
+    head_sha = head_result.stdout.strip()
+
+    # Capture the canonical repo's real upstream so the clone can be
+    # repointed at it after cloning (git defaults a local clone's `origin`
+    # to the source path, which is useless for `git push` from a container).
+    # Not fatal if there's no `origin` configured (e.g. a bare test fixture).
+    origin_url = None
+    origin_result = subprocess.run(
+        ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+    )
+    if origin_result.returncode == 0:
+        origin_url = origin_result.stdout.strip()
+
+    clone_result = subprocess.run(
+        ["git", "clone", "--local", "--no-checkout", str(repo_root), str(wt_path)],
+        capture_output=True,
+        text=True,
+    )
+    if clone_result.returncode != 0:
+        click.echo(
+            f"Error: failed to create isolated clone for session "
+            f"{session_id!r} from {repo_root}:\n{clone_result.stderr}",
+            err=True,
+        )
+        sys.exit(1)
+
+    checkout_result = subprocess.run(
+        ["git", "-C", str(wt_path), "checkout", "-B", branch_name, head_sha],
+        capture_output=True,
+        text=True,
+    )
+    if checkout_result.returncode != 0:
+        click.echo(
+            f"Error: failed to check out {head_sha} as {branch_name!r} in "
+            f"isolated clone {wt_path}:\n{checkout_result.stderr}",
+            err=True,
+        )
+        shutil.rmtree(wt_path, ignore_errors=True)
+        sys.exit(1)
+
+    if origin_url:
+        subprocess.run(
+            ["git", "-C", str(wt_path), "remote", "set-url", "origin", origin_url],
+            capture_output=True,
+            text=True,
+        )
+
+    isolated_path = (wt_path / rel).resolve() if str(rel) != "." else wt_path.resolve()
+
+    # Defense in depth: the whole point of this function is that the
+    # returned path is never the canonical checkout. Structurally it can't
+    # be (worktrees_dir lives under polecat_home, a different directory
+    # tree entirely) but fail loudly rather than silently mounting the
+    # shared tree if that invariant is ever somehow violated.
+    if isolated_path == canonical_dir or isolated_path == repo_root:
+        click.echo(
+            f"Error: isolated workspace path {isolated_path} resolved to "
+            f"the canonical checkout {canonical_dir} — refusing to mount "
+            "the shared tree.",
+            err=True,
+        )
+        sys.exit(1)
+
+    return isolated_path, {"repo_root": repo_root, "branch": branch_name, "path": wt_path}
+
+
+def cleanup_isolated_workspace(cleanup_info):
+    """Best-effort teardown of the standalone clone created by
+    `resolve_isolated_workspace`.
+
+    Unlike the linked-worktree implementation this replaced, the isolated
+    workspace is a fully standalone `git clone` with its own `.git`
+    directory — there is no registration living in the canonical repo to
+    remove (no `git worktree remove` / `branch -D` needed there anymore),
+    so teardown is just deleting the clone's directory tree.
+    """
+    if not cleanup_info:
+        return
+    shutil.rmtree(cleanup_info["path"], ignore_errors=True)
 
 
 def _image_available_locally(image):
@@ -343,7 +662,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         if aops_root:
             workspace_dir = Path(os.path.expandvars(os.path.expanduser(aops_root))).resolve()
         else:
-            workspace_dir = Path(__file__).resolve().parent.parent.resolve()
+            workspace_dir = Path(__file__).resolve().parents[2].resolve()
 
     if not workspace_dir or not workspace_dir.exists():
         click.echo(
@@ -363,6 +682,23 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     session_date = datetime.now().strftime("%Y%m%d")
     session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")
     session_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3b. Isolate the workspace: never bind-mount a shared canonical checkout
+    # READ-WRITE into the container (aops_f74aafce). Skipped only when the
+    # caller passed --repo-dir explicitly — that flag's contract is "mount
+    # this exact path", e.g. a worktree the caller already isolated
+    # themselves (the `git worktree add` convention documented in
+    # aops-jr/agents/junior.md §6) — an explicit path is the caller's
+    # isolation to own, not polecat's to second-guess. Every other path
+    # (the --project lookup and the bare-aops fallback above) resolves
+    # straight to a shared canonical checkout and MUST be isolated.
+    worktree_cleanup = None
+    if repo_dir is None:
+        workspace_dir, worktree_cleanup = resolve_isolated_workspace(
+            workspace_dir, session_id, polecat_home
+        )
+
+    initial_head = _get_git_head(workspace_dir)
 
     # 4. Resolve PKB URL
     pkb_url = mcp_url or os.environ.get("PKB_MCP_URL")
@@ -417,10 +753,15 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         # sibling implementation that fix never touched.
         # Fix: never request -it without a real TTY on our side, and still honour
         # an explicit `-p` (headless prompt) flag as an unconditional override.
-        explicit_headless = "-p" in extra_args
+        explicit_headless = "-p" in extra_args or "--print" in extra_args or "--non-interactive" in extra_args
         is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
+        else:
+            env["NONINTERACTIVE"] = "1"
+            env["CI"] = "1"
+            env["CLAUDE_CODE_NON_INTERACTIVE"] = "1"
+            env["CLAUDE_NON_INTERACTIVE"] = "1"
 
         # Set container local state directories
         if agent_cmd == "claude":
@@ -430,6 +771,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 "--permission-mode=auto",
                 "--setting-sources=user,project",
             ]
+            if not is_interactive and not any(f in extra_args for f in ("-p", "--print", "--non-interactive")):
+                inner_cmd.append("--non-interactive")
         elif agent_cmd == "agy":
             container_session_path = "/home/worker/.gemini/tmp/workspace"
             inner_cmd = [
@@ -651,10 +994,34 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         if returncode != 0:
             sys.exit(returncode)
 
+        # Harness delivery guard: verify workspace git tree has no uncommitted changes or unpushed commits
+        delivery_ok, delivery_err = _verify_workspace_delivery(
+            workspace_dir, initial_head=initial_head
+        )
+        if not delivery_ok:
+            reverted_status = _revert_pkb_task_if_done(pkb_url, task)
+            task_handle = task or 'session'
+            click.echo(
+                f"Error: Harness delivery guard failed for task {task_handle!r}:\n"
+                f"{delivery_err}\n"
+                "Refusing to report success.",
+                err=True,
+            )
+            if reverted_status:
+                click.echo(
+                    f"⚠️  Reverted task {task!r} status in PKB from {reverted_status!r} "
+                    "back to 'in_progress' to prevent silent delivery loss.",
+                    err=True,
+                )
+            sys.exit(1)
+
     finally:
         # Clean up staging directory
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
+        # Tear down the isolated per-session worktree (no-op if isolation
+        # wasn't applicable, e.g. an explicit --repo-dir or a non-git path).
+        cleanup_isolated_workspace(worktree_cleanup)
 
 
 if __name__ == "__main__":
