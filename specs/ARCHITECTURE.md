@@ -31,20 +31,9 @@ A plugin source directory contains only files the client loads, plus its README:
 
 ## Plugin README
 
-Every plugin has a `README.md`, written for a person deciding whether to install
-it and for a developer extending it. It contains, in order:
-
-1. One sentence on what the plugin is for.
-2. A mermaid flowchart of how the plugin actually works — the real path from a
-   trigger (user prompt, hook event, agent invocation) through its agents,
-   skills, and hooks, to an outcome. It shows the flow that exists, not an
-   idealised one, and names real files.
-3. What it provides: agents, skills, commands, hooks — a table, one line each.
-4. Configuration: every environment variable and `userConfig` field it reads,
-   what each is for, and that there are no defaults.
-5. What it depends on.
-
-No history, no rationale, no roadmap, no changelog.
+Every plugin has a `README.md` at its source root. Its audience, its contents,
+and its split with `specs/` are governed by the docs entry in
+[meta/doc-taxonomy.md](meta/doc-taxonomy.md).
 
 ## Binding constraints
 
