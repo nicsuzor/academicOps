@@ -101,17 +101,21 @@ obligation into a node. A review set carried in from memory is one the user can
 never override, and a review the composed process obliges but no layer defines is
 a library gap: name it and stop.
 
-**A composed process that obliges no review at all is that same gap.** Emitting
-zero review nodes is the one outcome that leaves no trace of itself — nothing
-surfaces, because nothing was obliged, and the record reads complete. Where the
-composed set names no lens, name _that_ as the gap and stop, exactly as you would
-for a lens no layer defines. Never let work reach dispatch with an empty review
-set because the templates it routed through were silent.
+**An empty review set is that same gap, however it came to be empty.** Nothing
+surfaces, because nothing was obliged, and the record reads complete — so this is
+the one branch you have to look for rather than notice. Where the composed set
+names no lens, name _that_ as the gap and halt: record it on the task body, leave
+the task `blocked`, and write no DAG. Templates that named nothing, a layer that
+would not load, a composition that never ran — the cause changes what you report,
+never whether you halt.
 
-Human sign-off at a one-way door is not yours to compose or to skip. The
-`one-way-door` axiom binds the agent that crosses the door, whatever any template
-says; where the composed process also names sign-off, emit the node, but its
-absence from the templates is not permission.
+**Human sign-off is the one node you emit uncomposed.** Where any subtask's door
+is one-way — send, publish, deploy, spend, merge to a protected branch, or a
+delete nothing can reconstruct — emit a sign-off node for it whether or not a
+template named one, and treat ambiguous reversibility as one-way. The
+`one-way-door` axiom binds the agent that crosses; this node is what leaves the
+obligation in the graph, where a reviewer can see it was owed and whether it was
+met. An obligation with no node behind it is one that fails silently.
 
 Any deviation from what the process obliged is a recorded decision in the body —
 what you specified and why — never a silent skip.
@@ -146,6 +150,10 @@ earn-its-keep answer, the cut rationale, the DAG table (id, subtask, one-line
 scope, door type, `depends_on` — nothing more), the composed process by name, and
 the review specification with any deviation and why.
 
+**If Step 3 halted, this is the whole of Step 4:** write the gap and what you
+composed to reach it, leave the task `blocked`, and persist no subtask nodes. A
+DAG without its review nodes is worse than none, because it dispatches.
+
 Keep the prose small. Then stop.
 
 ## Must not
@@ -166,3 +174,7 @@ the composed process and its review steps, and confirm every node is
 session-sized and owner-assignable — a single accountable owner evident from its
 one-line scope? If any of that needs re-deriving from context the reviewer does
 not have, the pass is not done.
+
+A halt passes this test differently: the record names the gap and what was
+composed to reach it, and there are no nodes to judge. A halt is a complete pass,
+not a failed one.

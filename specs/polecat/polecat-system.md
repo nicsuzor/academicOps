@@ -108,14 +108,18 @@ the container.
    transcript shows no trace of the task it was given.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
-5. **One build path.** A container runs only the plugin code its image carries:
-   no mechanism projects host plugin source into a running container, so a code
-   change reaches an agent only by being built into the image. `make docker-build`
-   builds `dist/` from the working tree as it stands, not from `HEAD` — so a
-   certifying run must start from a clean committed tree, which is the operator's
-   obligation and not something the target checks. (This says nothing about the
-   repository under work: `--repo-dir` and `rules_dir` mount host directories by
-   design — see Guarantee 1.)
+5. **One plugin path.** Plugins load only from the image's own plugin cache. No
+   mount registers a marketplace, so plugin code reaches an agent only by being
+   built into the image.
+6. **Instruction state does not share that path.** Project skills, `CLAUDE.md`,
+   and cope's project rule layer reach the agent from the mounted workspace, and
+   `rules_dir` mounts a host rule directory — none of it through the image, and
+   the workspace clone tracks the host repo's `HEAD`. So a committed change to
+   host-side instruction files is live in the next `run` with no rebuild. A
+   certifying run therefore needs both a clean committed tree and a fresh
+   `make docker-build`, which builds `dist/` from the working tree rather than
+   from `HEAD`. Nothing enforces either; the obligation sits on the dispatcher,
+   in [`dispatch`](../../plugins/aops/skills/dispatch/SKILL.md) §3.
 
 ## What `run` does not do
 
@@ -140,3 +144,6 @@ container.
 4. **No stale image** — Test: `run` against an image not present in the local
    Docker cache fails with an explicit message, never a silent registry pull.
 5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.
+6. **One plugin path** — Test: a plugin edited on the host but not built into the
+   image has no effect inside a `run`. The converse does not hold and is not
+   claimed: host instruction files reach the agent through the workspace mount.

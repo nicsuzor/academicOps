@@ -14,37 +14,35 @@ criteria name files that were renamed away a fortnight ago. You establish what i
 
 This is the only place the reconcile procedure lives. Other skills invoke it;
 none of them re-implements it. What it governs is tasks and the pull requests
-they resolve against. Issue-tracker closure in the other direction — a task's
-completion resolving an issue — belongs to the release path, not here.
+they resolve against.
 
 ## Contexts
 
 One procedure. The context sets the input subset — never the steps.
 
-| Context        | Input subset                                                                              |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| **Engagement** | The absence window: claims taken before it, pull requests closed during it.               |
-| **Batch**      | The consolidation cycle's window, at that cycle's pacing.                                 |
-| **On demand**  | Everything: every non-terminal task, every pull request closed since the recorded cursor. |
+| Context        | Input subset                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------ |
+| **Engagement** | The absence window: claims taken before it, pull requests closed during it.                      |
+| **Batch**      | The consolidation cycle's window, at that cycle's pacing.                                        |
+| **On demand**  | Everything: every non-terminal task, and pull requests closed inside a window you set and state. |
 
-The reverse direction — a task completing, and what its completion resolves on
-the issue tracker — belongs to the session-exit skill that releases the task, not
-here.
+There is no reverse context. No skill in this tree yet carries the return leg, so
+if you meet a task whose completion should resolve an issue, surface it rather
+than acting on it.
 
 ## 1 — Read the graph, claims included
 
 `list_tasks` over **every non-terminal status** — the actionable set as
 [the taxonomy](../graph-maintenance/references/taxonomy.md) defines it, which is
-the source; never a copy of the list inlined here. Not only the statuses that look
-in flight: §3 resolves `merge_ready` and `review`, §5 reads `ready` and `queued`
-for rot and the parked statuses for age, and §2 and §4 write back to `ready` and
-`inbox`, which the next sweep has to be able to see. A sweep that loads a subset
-reports itself complete while silently skipping whole classes of work.
+the source; never a list inlined here. Later steps read and write across the whole
+of that set, so a sweep that loads only the statuses which look in flight reports
+itself complete while skipping whole classes of work.
 
 Then read the **claim** on each: who holds it, under which session, and when it
-was taken — the `Dispatched:` record a dispatch surface writes at launch, and the
-assignee and session on the task itself. A status by itself is not a claim. The
-assignee and the session are what make it one, and they are what you check.
+was taken. Two records carry this — the `Dispatched:` line a dispatch surface
+writes on the task body at launch, and the assignee and session the worker's own
+claim sets. A status by itself is not a claim. The assignee and the session are
+what make it one, and they are what you check.
 
 Filter the slice before you pull it. An unfiltered `list_tasks` on a mature graph
 spills to a temp file, and then you have lost the turn rather than gained the
@@ -74,14 +72,12 @@ because its worker went quiet is work you deleted.
 
 ## 3 — Fold in what finished while nobody was watching
 
-**The cursor** is the timestamp the last completed sweep recorded on its own
-result, and it is the only thing that bounds this step. Read it before you start;
-where a caller handed you a window instead, that window is the cursor for this
-run. Where neither exists — a first sweep, or a result you cannot find — say so
-in what you emit and bound the step yourself by the oldest claim you loaded,
-rather than treating an unbounded scan as a completed one.
+**Bound this step before you run it.** The window is whatever your caller gave
+you; absent one, choose a bound, and either way state it in your result so the
+next sweep knows where you stopped. An unbounded scan reported as a completed one
+is the failure here — say what you covered, not that you covered everything.
 
-For each pull request closed since the cursor, match it to a task by, in order: a
+For each pull request closed inside that window, match it to a task by, in order: a
 `pr_url` already on the task; a task id in the pull request body; the head branch
 matching the task's recorded branch; the title matching the task title
 whole-word, ignoring conventional-commit prefixes. A reverse match on distinctive
@@ -94,11 +90,11 @@ title substrings is surfaced as _likely closed by_ and **never auto-completes**.
 - **Closed without merge** → route it (§4). Never re-queue automatically.
 - **No match** → surface it. Never invent a task.
 
-Pull requests only; no commit-log scanning. The cursor advances only after the
-writes succeed.
+Pull requests only; no commit-log scanning. Report the window as covered only
+once the writes inside it have succeeded.
 
-Run a **cursor-independent backstop** over every task in `merge_ready` or
-`review`, oldest first. These are not the same parked state. A `merge_ready` task
+Run a **backstop that ignores the window** over every task in `merge_ready` or
+`review`, oldest first — these rot regardless of when anything closed. These are not the same parked state. A `merge_ready` task
 resolves against its pull request — merged and not yet done goes through the same
 criteria check; closed-without-merge routes below; **no resolvable pull request
 at all is anomalous** and gets surfaced, not closed. A `review` task is parked on
@@ -156,8 +152,10 @@ saying so, and re-decompose. Rot triggers demotion; age alone does not.
 ## 6 — Route the completed-but-uncertified
 
 A unit whose work landed but whose record carries no certification verdict is not
-done. After an absence it is the largest thing a sweep finds, and it is the one
-finding that cannot sit in a report: collect these and hand them onward to the
+done. These sit at `done` — terminal, and so outside the set step 1 loaded — so
+this step needs its own read: the units closed inside your window, checked for a
+verdict on the record. After an absence it is the largest thing a sweep finds,
+and it is the one finding that cannot sit in a report: collect these and hand them onward to the
 dispatcher, which commissions the review machinery and records its verdict on the
 task record.
 
@@ -174,9 +172,8 @@ has been handed your sweep instead of its outcome.
 Lead with what needs a person's decision, then what you changed, then what you
 found and deliberately left alone. Name ids for everything completed, requeued,
 demoted, routed, or surfaced — a bare count is not checkable. Close with the one
-thing the next sweep should pick up, and with the timestamp this sweep reached:
-that is the cursor the next one reads, and a sweep that does not record it makes
-the next one unbounded.
+thing the next sweep should pick up, and with the window you covered — a result
+that does not say where you stopped leaves the next sweep no way to start.
 
 ## Must not
 

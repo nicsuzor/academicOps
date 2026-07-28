@@ -46,7 +46,7 @@ The reconcile procedure runs in three contexts. The context changes the input su
 
 The face holds no PKB tools, so its engagement sweep is a delegation: it commissions an agent that runs the skill and returns one synthesized result.
 
-**The reverse direction is not a fourth context of this procedure.** A task completing, and what its completion resolves on the issue tracker, rides the release path that already writes the task — the session-exit skill, reading the just-completed task's `closes_issues:` markers. It is a different act on a different trigger, and reconcile does not run there.
+**The reverse direction is not a fourth context of this procedure.** A task completing, and what its completion resolves on the issue tracker, belongs on the release path that already writes the task — a different act on a different trigger, which reconcile does not run. It is not built: no skill in the tree reads `closes_issues:` today, and M3 below is where it lands.
 
 Agents in the three contexts invoke the reconcile skill. None of them runs a script or calls into a library. The skill body is prose that the invoking agent reads and follows.
 
@@ -54,7 +54,7 @@ Agents in the three contexts invoke the reconcile skill. None of them runs a scr
 
 Two task frontmatter fields, PKB-lint validated:
 
-**`closes_issues: [N, M]`** — this task's completion resolves the listed GH issues. On task completion, the agent in reverse-direction context adds a GH comment to each citing the closing commit SHA. For issues in framework-owned repos, the agent also closes the issue; otherwise comment-only. Validation: integer values; warn if a listed issue is already closed at write time.
+**`closes_issues: [N, M]`** — this task's completion resolves the listed GH issues. On task completion, the agent on the release path adds a GH comment to each citing the closing commit SHA. For issues in framework-owned repos, the agent also closes the issue; otherwise comment-only. Validation: integer values; warn if a listed issue is already closed at write time.
 
 **`gates_on: [N, M]`** — this task is blocked or monitored by the listed GH issues. When any listed issue closes (forward sweep detects this), the agent writes a `needs_user_call` event for the task. Detection never auto-completes the task; the user decides disposition.
 
@@ -97,7 +97,7 @@ Verification is by audit — the agent landing each milestone reads the touched 
 
 A one-off agent session, run after the skill lands, before the forward sweep runs on a cadence.
 
-The agent considers all open GH issues across framework repos and all PKB tasks in active statuses (`queued | in_progress | review | merge_ready`). For each, the agent reads the prose and classifies the relationship — does this task close that issue, is it gated on it, or is there no relationship? Uncertain cases get written to the event log with the ambiguous phrase quoted, surfacing in the next sweep's result.
+The agent considers all open GH issues across framework repos and all PKB tasks in the taxonomy's actionable set. For each, the agent reads the prose and classifies the relationship — does this task close that issue, is it gated on it, or is there no relationship? Uncertain cases get written to the event log with the ambiguous phrase quoted, surfacing in the next sweep's result.
 
 The agent may pre-filter cheaply (e.g., skip items whose body contains no GitHub-reference shape at all) — that is candidate gating over a string field, not prose classification. The judgment call about relationship type is always agent-read, never regex.
 

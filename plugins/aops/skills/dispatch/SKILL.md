@@ -55,11 +55,15 @@ Spawn couriers plainly. A named or teammate-mode spawn returns an idle signal an
 - `-p <project>` is that task's own target repo. Check the task, not the epic — they differ.
 - Every path, image, endpoint, and the committing git identity comes from the environment. If one is missing polecat fails loudly; supply nothing yourself.
 
+**Rebuild before a run whose result you intend to certify.** The image carries the plugin code the worker runs, and `make docker-build` builds it from the working tree as it stands — so a certifying run starts from a clean committed tree and a fresh build. Nothing checks this for you. Instruction state does not travel that path at all: project skills, `CLAUDE.md`, and the project rule layer reach the worker from the mounted workspace, so a committed change to those is already live.
+
 ## 4. Verify by side-effect
 
 A live session is not success. Exit zero on the launch wrapper is not success. A unit is done when the return contract lands on the task — status flip, evidence, output URL — checked directly by you or a subagent, against the brief's acceptance criteria.
 
 **Then certify it, and record the verdict.** A unit that has landed is not finished until its certification is on the task record. Commission that certification through the review machinery already wired into the graph — the review nodes decomposition emitted as blocking dependencies, run through the `strategic-review` and `verify` skills — and write back the verdict it returns. Executing those nodes _is_ certification at completion; standing a second review beside them gives you two paths and one of them unread.
+
+**You cannot certify from a context that cannot spawn.** Commissioning a review means deploying reviewers, so check that you hold the surface before you take this on. If you do not, hand the unit to a context that does and say so — never read the artifact yourself and call that the verdict. A gate that returns neither a verdict nor a failure is the one outcome this step must not produce.
 
 Quality assurance inside the unit is the worker's business, and the judgment is the reviewer's; substitute your own certification for neither. Never relay a worker's own "confirmed" as fact — commissioning the review and recording what it returns is the whole of your part in it.
 
