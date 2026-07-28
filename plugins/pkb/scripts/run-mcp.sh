@@ -17,14 +17,20 @@ export USER="${USER:-$(id -un)}"
 # Clients launch MCP servers with a minimal PATH that often omits the user's
 # tool directories. Probe before giving up on uvx.
 if ! command -v uvx &>/dev/null; then
-    for _dir in "$HOME/.local/bin" "$HOME/.cargo/bin" /usr/local/bin /opt/homebrew/bin /usr/bin; do
+    if [[ -n "${AOPS_UVX_SEARCH_PATH:-}" ]]; then
+        IFS=':' read -ra _search_dirs <<<"$AOPS_UVX_SEARCH_PATH"
+    else
+        _search_dirs=("$HOME/.local/bin" "$HOME/.cargo/bin" /usr/local/bin /opt/homebrew/bin /usr/bin)
+    fi
+    for _dir in "${_search_dirs[@]}"; do
         if [[ -x "$_dir/uvx" ]]; then
             export PATH="$_dir:$PATH"
             break
         fi
     done
-    unset _dir
+    unset _dir _search_dirs
 fi
+
 
 if [[ -z "${PKB_MCP_URL:-}" ]]; then
     echo "run-mcp.sh: PKB_MCP_URL is not set." >&2

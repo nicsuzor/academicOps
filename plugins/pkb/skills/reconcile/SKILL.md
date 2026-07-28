@@ -42,8 +42,6 @@ Then read the **claim** on each. A status by itself is not a claim; the assignee
 and the session are what make it one, and they are what you check. Two records
 carry that, and the contract for both is below.
 
-@include doctrine/launch-claim.md
-
 Filter the slice before you pull it. An unfiltered `list_tasks` on a mature graph
 spills to a temp file, and then you have lost the turn rather than gained the
 data. Narrow by status or project, take the default markdown format, and repeat

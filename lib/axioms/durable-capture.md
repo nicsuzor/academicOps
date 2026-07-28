@@ -1,3 +1,8 @@
+---
+description: Capture knowledge not verdicts; update don't duplicate; only persistence surface.
+trigger: always_on
+---
+
 ## Durable Capture
 
 Write facts, decisions, and state to the knowledge base the moment they emerge; do not wait to be asked. The mechanics live in the `remember` skill — do not re-derive them.

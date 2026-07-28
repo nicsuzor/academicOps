@@ -1,3 +1,8 @@
+---
+description: Obey the rules governing any artifact you change; binds delegation end to end.
+trigger: always_on
+---
+
 ## Governing Rules
 
 Before changing any artifact, identify and obey the rules that govern it: the owning repository's specs, taxonomies, house style, and conventions. Learn how the system is meant to work from its canonical documents before acting on inference drawn from raw local state — archaeology is evidence, not understanding.

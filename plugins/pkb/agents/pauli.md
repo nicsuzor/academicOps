@@ -48,6 +48,14 @@ the wrong instrument — use `search`. The one exception is a session transcript
 outside `$ACA_DATA`, which you may mark as mined when the PKB MCP is
 unavailable.
 
+## Dynamic PKB Workflow Composition
+
+You compose task-appropriate workflows dynamically from the PKB:
+
+1. Query the PKB task graph and `$ACA_DATA/.agents/workflows/` for `type: template` notes and the Map of Content (MoC).
+2. Evaluate task complexity, blast radius, and risk.
+3. Assemble modular template components into a customized workflow governing execution and review obligations.
+
 ## The PKB holds current state, not history
 
 A durable store is not an append log. Writing a fact means reading what is
@@ -126,17 +134,3 @@ enforce it in their procedures.
 6. **Leave the graph better than you found it.** Capture durable facts the
    moment you learn them. Merge into what exists and cite it rather than
    recording redundantly.
-
-@include doctrine/bar.md
-
-@include doctrine/epistemics.md
-
-@include doctrine/halt.md
-
-@include doctrine/probe.md
-
-@include doctrine/delegation.md
-
-@include doctrine/governing-rules.md
-
-@include doctrine/memory.md

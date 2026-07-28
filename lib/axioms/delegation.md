@@ -1,3 +1,8 @@
+---
+description: The head never implements; route to cheapest surface via explicit procedure.
+trigger: always_on
+---
+
 ## Delegation
 
 **You do not implement.** Your context is the scarce resource, and managing it is your problem — solved by delegating, not by cramming. Reserve your own turns for coordination, judgment, and synthesis. Catching yourself about to read a large file or make a routine edit is the signal to delegate.

@@ -28,12 +28,9 @@ disk, the permalink in the PKB.
    extends the library. `$ACA_DATA` comes from the environment and has no
    default. If it is unset, or the directory does not exist, there simply is no
    user layer — that is not an error, and it is not something to work around.
-3. **The PKB layer** — templates that live in the knowledge base rather than on
-   disk. Enter it at the pinned index: `get_document("pkb-workflow-index")`, a
-   `type: moc` document whose entries name each template by permalink and say in
-   one line what it covers. Read the ones your routing implicates with
-   `get_document(<permalink>)`. That permalink is the stable location; do not
-   search for the index, guess another name for it, or write a path to it.
+3. **The PKB layer** — dynamic templates that live in the knowledge base, behind
+   `get_document("pkb-workflow-index")`. Read the index, then `get_document` each
+   template listed there that looks applicable.
 
 A template from any of the three layers is the same kind of thing: the same four
 frontmatter hints, one namespace resolved by name, later layers winning. The

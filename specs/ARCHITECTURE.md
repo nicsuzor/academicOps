@@ -8,7 +8,6 @@ Everything here is current state. Nothing here is history.
 ```
 lib/                    Shared source. Never shipped as-is; injected at build time.
   axioms/               The axioms. Single source of truth.
-  doctrine/             Composable agent-instruction fragments.
   hooks/                Hook runtime shared by every plugin that hooks.
   py/                   Shared Python helpers.
   manifest/             Shared manifest fragments.
@@ -47,6 +46,15 @@ backwards-compatibility notes, no decision logs. Explanation belongs in `specs/`
 **Loose coupling.** A plugin may depend on `lib/`. A plugin never reads another
 plugin's files.
 
+## Core Pillars
+
+academicOps is structured around **4 core pillars**:
+
+1. **Prompt Situation (`aops-pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
+2. **Workflow Composition (`aops-pkb`):** Select task-appropriate assurance and review levels (`workflow`) matching risk and blast radius.
+3. **Containerized Execution & Dispatch (`aops`):** Dispatch tasks to isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
+4. **Dual-Layer Rule Enforcement (`aops-cope` + `aops`):** Turn-by-turn local model evaluation of tool calls (`aops-cope` / `PreToolUse`), plus mandatory RBG rule compliance check (`axioms/` + project + local rules) on session stop (`aops` / `Stop`, `SubagentStop`).
+
 ## Plugins
 
 Directory names are short; marketplace names carry the `aops` prefix.
@@ -56,7 +64,7 @@ Directory names are short; marketplace names carry the `aops` prefix.
 | `plugins/aops`  | `aops`           | james, marsha, rbg. Review, QA, verification, dispatch, polecat containers.     |
 | `plugins/pkb`   | `aops-pkb`       | pauli. Memory, effectual planning, workflow composition, PKB MCP client config. |
 | `plugins/ida`   | `aops-ida`       | ida. The interactive face.                                                      |
-| `plugins/cope`  | `aops-cope`      | Automatic in-session rule enforcement.                                          |
+| `plugins/cope`  | `aops-cope`      | Automatic in-session rule enforcement via turn-by-turn local model.             |
 | `plugins/ts`    | `aops-ts`        | Tailscale bring-up for remote sessions.                                         |
 | `plugins/tools` | `aops-tools`     | Domain research skills.                                                         |
 
@@ -84,16 +92,11 @@ Later sources add obligations. They never weaken an axiom.
 
 The PKB holds current state, synthesised. Not an append log. Writing to it means
 reading what is there, integrating the new fact, and leaving one correct
-document. Timestamped history entries, decision logs, deprecation notices, and
-changelogs are prohibited content.
+document.
 
 Workflow composition: the plugin ships a process-template library under
-`workflows/`. Templates in `$ACA_DATA/.agents/workflows/` override and extend it
-by filename. Pauli composes a workflow for the work in front of it by reading
-templates, never by parsing or solving them.
-
-MCP: the plugin ships client wiring only — transport config, the stdio launcher,
-and a `userConfig` field for the server URL. The server itself is external.
+`workflows/`. Pauli composes a workflow for the work in front of it by reading
+templates, matching the required QA assurance level to the task.
 
 ### ida
 
@@ -104,78 +107,37 @@ the user sees only what needs their judgment.
 
 ### cope
 
-Enforces the same three rule sources as rbg, automatically, in-session, via
-hooks. Where rbg is asked, cope is always on.
+Enforces the same three rule sources as rbg, automatically, in-session, via a
+parallel turn-by-turn `PreToolUse` hook running a lightweight local Reflexes LLM evaluator model.
 
 ## Hooks
 
-The complete set. Each hook's injected wording lives in a markdown file next to
-it, under `hooks/messages/`, and is editable without touching code.
+Master Hook Lifecycle Matrix. Every hook is deterministic, lightweight, and single-purpose:
 
-Events are named canonically. `agy` fires five events of its own, two of which
-carry a canonical event: `PreInvocation` is `UserPromptSubmit`, `PostInvocation`
-is `Stop`. It has no session-level event, so `SessionStart` and `SessionEnd`
-cannot fire there at all.
+| Plugin | Event                   | Target Client            | Required Context / Env                                                | Injected Payload / Action                                                                                                                                                                                                                   | WHY (Purpose & Rationale)                                                                                                        |
+| :----- | :---------------------- | :----------------------- | :-------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------- |
+| `pkb`  | `UserPromptSubmit`      | Both (Claude Code & AGY) | `PKB_MCP_URL`                                                         | Strategic context search instructions & relevant PKB history.                                                                                                                                                                               | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting.                    |
+| `cope` | `PreToolUse`            | Claude Code              | `COPE_EVALUATOR_*` (Local LLM model)                                  | Parallel rule compliance advisory with matched rule text & reasoning.                                                                                                                                                                       | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model.  |
+| `cope` | `UserPromptSubmit`      | AGY (`PreInvocation`)    | Live rule set files                                                   | Summary roster of active rules for the turn.                                                                                                                                                                                                | Provides rule visibility on surfaces that lack tool-call interception.                                                           |
+| `aops` | `SessionStart`          | Claude Code              | `CLAUDE_CODE_ENABLE_TELEMETRY`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` | 3-line session environment summary & credential isolation status. Only these two enablement vars are observable here — the `OTEL_*` export-config vars are set in a separate, settings-managed environment this hook subprocess cannot see. | Reports telemetry enablement and scopes session credentials before execution begins.                                             |
+| `aops` | `Stop` / `SubagentStop` | Both                     | `stop_hook_active` check                                              | Non-blocking reminder (`warn`) prompting the agent to invoke the RBG rule checker (`axioms` + project + local rules) and present checkable evidence before stopping.                                                                        | **Pillar 4 (Enforcement L2):** Advisory nudge toward evidence and rule-compliance review at session stop — not an enforced gate. |
+| `aops` | `PreToolUse`            | Claude Code              | `NONINTERACTIVE` or `CI=1`                                            | Refusal message blocking interactive prompt tools in headless runs.                                                                                                                                                                         | Prevents headless container sessions from hanging on unanswerable user prompts.                                                  |
+| `ts`   | `SessionStart`          | Claude Code              | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`                               | Launches background `tailscale up` for remote connectivity.                                                                                                                                                                                 | Enables remote session access over Tailnet.                                                                                      |
+| `ts`   | `SessionEnd`            | Claude Code              | `TS_SESSION_SYNC_HOST`                                                | Transmits session log bundle to remote sync host.                                                                                                                                                                                           | Secures session history after termination.                                                                                       |
 
-| Plugin | Event              | Client   | Effect                                                                                                                                                                           |
-| ------ | ------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pkb`  | `UserPromptSubmit` | both     | Inject relevant PKB context, or instruct the agent to search for it.                                                                                                             |
-| `aops` | `SessionStart`     | `claude` | Credential isolation for container sessions. Report telemetry configuration.                                                                                                     |
-| `aops` | `SubagentStop`     | `claude` | Remind the stopping subagent to present its answer with checkable evidence. The output reaches the agent that is stopping, not its parent.                                       |
-| `aops` | `Stop`             | both     | Remind the agent that is stopping to present its answer with checkable evidence. Same handler and message as `SubagentStop` — the events differ only in which agent is stopping. |
-| `aops` | `PreToolUse`       | `claude` | Refuse an interactive prompt in a headless session.                                                                                                                              |
-| `cope` | `PreToolUse`       | `claude` | Rule enforcement.                                                                                                                                                                |
-| `cope` | `UserPromptSubmit` | `agy`    | State the live rule set for the turn, on the surface where the evaluator has no tool call to judge.                                                                              |
-| `ts`   | `SessionStart`     | `claude` | Tailscale bring-up.                                                                                                                                                              |
-| `ts`   | `SessionEnd`       | `claude` | Ship session transcripts to the configured host.                                                                                                                                 |
+## Observability & OTEL Tracing
 
-Seven of the nine fire on one client only. `ts` ships no agy `hooks.json` at all,
-so neither Tailscale bring-up nor transcript sync happens there.
+Claude Code's native OpenTelemetry export is the primary tracing mechanism forwarded through a local Tailnet server to GCP:
 
-One hook refuses rather than advises: a headless session cannot answer an
-interactive prompt, so asking one hangs the session until it times out. That is
-a capability fact, not a rule verdict, and it is the only blocking hook.
+- **Local Collector Relay:** Session and Polecat container traces send OTLP spans to a local Tailnet OTLP collector endpoint (`OTEL_EXPORTER_OTLP_ENDPOINT`).
+- **GCP Export:** The collector relays traces directly to GCP Cloud Trace (`cloudtrace.googleapis.com`) and Cloud Logging.
+- **Contract Variables:**
+  - `CLAUDE_CODE_ENABLE_TELEMETRY=true`
+  - `OTEL_EXPORTER_OTLP_ENDPOINT=http://<tailnet-collector-ip>:4318`
+  - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
+  - `OTEL_RESOURCE_ATTRIBUTES=service.name=academicOps,service.version=0.6.0`
 
-Anything else a session needs is a workflow, not a hook.
-
-All hooks share one runtime in `lib/hooks/`, injected into each plugin at build
-time. A hook that cannot load its message file fails loudly.
-
-The runtime reports its own degradation on the response, not only on stderr,
-which nothing renders to the person in the session: a handler that raised, a
-rule file that could not be read, an evaluator that did not answer. Once per
-session per kind of fault, never as a permission decision, and never for the
-absence of a mechanism nobody configured.
-
-## Observability
-
-Claude Code's native OpenTelemetry export is the tracing mechanism. It is
-session-scoped, so enabling it once covers every plugin; no plugin emits its own
-spans.
-
-The framework defines the env contract and forwards it — into polecat containers,
-into Docker, into scheduled runs. It sets no values. `aops`'s `SessionStart` hook
-reports whether telemetry is configured and stays silent about what it should be.
-
-Contract (`lib/hooks/telemetry.py` `CONTRACT`): `CLAUDE_CODE_ENABLE_TELEMETRY`,
-`CLAUDE_CODE_ENHANCED_TELEMETRY_BETA`, `OTEL_METRICS_EXPORTER`,
-`OTEL_LOGS_EXPORTER`, `OTEL_TRACES_EXPORTER`, `OTEL_EXPORTER_OTLP_ENDPOINT`,
-`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_RESOURCE_ATTRIBUTES`,
-`OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_RAW_API_BODIES`, `OTEL_LOG_TOOL_DETAILS`,
-`OTEL_LOG_ASSISTANT_RESPONSES`, `OTEL_METRIC_EXPORT_INTERVAL`,
-`OTEL_LOGS_EXPORT_INTERVAL`, `OTEL_TRACES_EXPORT_INTERVAL`.
-
-A `SessionStart` hook subprocess cannot observe all 15: confirmed empirically,
-setting every `OTEL_*` var at session-launch time still leaves a live hook
-reading none of them, while the same session's tool calls see them fine (a
-separate, settings-managed environment, not the hook's). Only the two
-`CLAUDE_CODE_*` feature flags reliably reach a hook subprocess. The
-`SessionStart` report therefore counts against those two
-(`telemetry.ENABLEMENT_VARS`), not the full 15 — counting the unreachable
-`OTEL_*` half would report a gap that correct configuration could never
-close. The full 15-var contract still governs what
-`plugins/aops/polecat/env_contract.py` forwards into containers and CI, where
-no such hook-subprocess restriction applies.
+The framework forwards this contract into containers and scheduled runs.
 
 ## Build
 

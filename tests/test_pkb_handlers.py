@@ -394,16 +394,33 @@ def test_run_mcp_fails_loudly_with_an_empty_pkb_mcp_url():
 
 def test_run_mcp_fails_loudly_when_uvx_is_unreachable(tmp_path):
     """PKB_MCP_URL present, but no `uvx` anywhere on PATH or in the script's
-    hardcoded fallback directories: still an actionable non-zero exit, not a
-    hang and not a silent empty success."""
+    fallback directories: still an actionable non-zero exit, not a
+    hang and not a silent empty success.
+
+    PATH is pared down to a directory holding only `mkdir` — enough for the
+    script's own housekeeping — rather than a real system dir like `/usr/bin`,
+    which could itself contain `uvx` on some machines and make this pass or
+    fail by accident. USER and UV_CACHE_DIR are supplied directly so the
+    script never needs to shell out to `id`, which this minimal PATH doesn't
+    carry either."""
     empty_bin = tmp_path / "empty-bin"
     empty_bin.mkdir()
+    minimal_bin = tmp_path / "minimal-bin"
+    minimal_bin.mkdir()
+    (minimal_bin / "mkdir").symlink_to(shutil.which("mkdir"))
     result = subprocess.run(
         [BASH_BIN, str(RUN_MCP)],
         capture_output=True,
         text=True,
         timeout=30,
-        env=_clean_launcher_env(PKB_MCP_URL="http://example.invalid/mcp", PATH=str(empty_bin)),
+        env=_clean_launcher_env(
+            PKB_MCP_URL="http://example.invalid/mcp",
+            PATH=str(minimal_bin),
+            AOPS_UVX_SEARCH_PATH=str(empty_bin),
+            HOME=str(tmp_path),
+            USER="testuser",
+            UV_CACHE_DIR=str(tmp_path / "uv-cache"),
+        ),
     )
     assert result.returncode != 0
     assert result.stdout == ""

@@ -2,91 +2,88 @@
 
 You can delegate execution to AI without delegating judgment.
 
-academicOps is a set of six plugins for Claude Code and Antigravity that put a
-research workflow behind a structure: one agent talks to you, one agent
-dispatches work, three agents judge it, and nothing reaches you until it has been
-filtered against what you actually asked for. Judgment stays with the human and
-with agents whose only job is to exercise it.
+academicOps is a streamlined suite of six plugins for Claude Code and Antigravity built around **4 core pillars** and **session telemetry**:
 
-## How it works
+1. **Prompt Situation (`aops-pkb`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
+2. **Workflow Composition (`aops-pkb`):** Selects appropriate risk-matched review and QA assurance levels for the task.
+3. **Containerized Execution & Dispatch (`aops`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
+4. **Dual-Layer Rule Enforcement (`aops-cope` + `aops`):** Runs a turn-by-turn local model evaluator on tool calls, plus a non-blocking session-stop reminder nudging agents to verify RBG rule compliance (`axioms/` + project + local rules) before presenting their answer.
+
+---
+
+## How It Works
 
 ```mermaid
 flowchart TD
-    U([user])
-
-    subgraph ida["aops-ida"]
-        IDA["<b>ida</b><br/>the only agent that talks to the user"]
-        F{"filter the return:<br/>drop detail · block<br/>correct-but-wrong · synthesise"}
+    U([User Prompt]) --> P1["<b>1. Ground & Situate</b><br/>(aops-pkb / UserPromptSubmit)<br/>Grounds prompt in PKB history"]
+    P1 --> P2["<b>2. Compose Workflow</b><br/>(aops-pkb / workflow)<br/>Selects risk-matched QA assurance depth"]
+    P2 --> P3["<b>3. Dispatch & Containerize</b><br/>(aops / polecat)<br/>Runs isolated in Docker container,<br/>updates PKB, commits & pushes"]
+    
+    subgraph Enforcement["<b>4. Dual-Layer Rule Enforcement</b>"]
+        E1["<b>Layer 1: Turn-by-Turn COPE</b><br/>(aops-cope / PreToolUse)<br/>Parallel local model checks tool calls"]
+        E2["<b>Layer 2: Session Stop Reminder</b><br/>(aops / Stop & SubagentStop)<br/>Non-blocking nudge to check RBG rules"]
     end
 
-    subgraph aops["aops"]
-        J["<b>james</b><br/>commissions review, interrogates it,<br/>synthesises one verdict, dispatches work"]
-        SR["skill: strategic-review"]
-        RBG["<b>rbg</b><br/>rule compliance"]
-        MAR["<b>marsha</b><br/>is it outstanding?<br/>runs it"]
-        DISP["skill: dispatch"]
-        TEAM["in-session agent team"]
-        PC["polecat<br/>isolated clone → container → skill: pull"]
+    P3 -.-> E1
+    P3 --> E2
+    E2 --> F([Task Handover & Completion])
+
+    subgraph Tracing["<b>Telemetry & Tracing (c)</b>"]
+        OTEL["<b>OpenTelemetry Collector</b><br/>Session/Container Traces → Local Tailnet → GCP Cloud Trace"]
     end
 
-    subgraph pkb["aops-pkb"]
-        PAULI["<b>pauli</b><br/>strategy and architectural fit ·<br/>the only writer to the knowledge base"]
-        GRAPH[("task graph<br/>+ memory")]
-    end
-
-    subgraph tools["aops-tools"]
-        TL["domain research skills<br/>analyst · peer-review · pdf ·<br/>extract · diagram · deep-research"]
-    end
-
-    subgraph cope["aops-cope"]
-        COPE["PreToolUse<br/>rule advisory, every tool call"]
-    end
-
-    subgraph ts["aops-ts"]
-        TSH["SessionStart<br/>tailnet bring-up, remote sessions"]
-    end
-
-    U -->|"everything the user says"| IDA
-    IDA -->|"answers it, or escalates<br/>one named decision"| U
-    IDA -->|"anything substantive"| J
-
-    J --> SR
-    SR --> RBG & MAR & PAULI
-    RBG & MAR & PAULI -->|"verdicts + evidence"| J
-    J -->|"needs doing"| DISP
-    DISP --> TEAM & PC
-    TEAM & PC -->|"evidence on the task"| DISP
-    DISP --> J
-    J -->|"one verdict,<br/>never to the user"| F
-    F --> U
-    F -->|"off intent — replan"| J
-
-    PAULI <--> GRAPH
-    DISP -.->|"brief from the graph"| GRAPH
-    IDA -.-> TL
-    TEAM -.-> TL
-    COPE -.->|"advises every agent above"| aops
-    TSH -.->|"makes the PKB reachable"| pkb
+    P1 -.-> OTEL
+    P3 -.-> OTEL
+    Enforcement -.-> OTEL
 ```
 
-Ida holds between steps: after each one, control returns to you. James never
-talks to the user. Pauli is the only agent that writes to the knowledge base.
+---
 
-## The plugins
+## Master Hook Lifecycle Matrix
 
-Install what you need — they are separately installable and loosely coupled.
+Every hook across the plugins is deterministic, lightweight, and single-purpose. The table below details when each hook fires, which plugin owns it, what context it requires, what payload it injects, and **WHY** it exists:
+
+| Plugin      | Canonical Event         | Target Client            | Required Context / Env                                                | Injected Payload / Action                                                                                                                                                                          | WHY (Purpose & Rationale)                                                                                                        |
+| :---------- | :---------------------- | :----------------------- | :-------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+| `aops-pkb`  | `UserPromptSubmit`      | Both (Claude Code & AGY) | `PKB_MCP_URL`                                                         | Strategic context search instructions & relevant PKB history.                                                                                                                                      | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting.                    |
+| `aops-cope` | `PreToolUse`            | Claude Code              | `COPE_EVALUATOR_*` (Local Reflexes LLM model)                         | Parallel rule compliance advisory with matched rule text & reasoning.                                                                                                                              | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model.  |
+| `aops-cope` | `UserPromptSubmit`      | AGY (`PreInvocation`)    | Live rule set files                                                   | Summary roster of active rules for the turn.                                                                                                                                                       | Provides rule visibility on surfaces that lack tool-call interception.                                                           |
+| `aops`      | `SessionStart`          | Claude Code              | `CLAUDE_CODE_ENABLE_TELEMETRY`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` | 3-line session environment summary & credential isolation status. Only these two enablement vars are observable here — `OTEL_*` export config lives in a separate environment this hook can't see. | Reports telemetry enablement and scopes session credentials before execution begins.                                             |
+| `aops`      | `Stop` / `SubagentStop` | Both                     | `stop_hook_active` check                                              | Non-blocking reminder (`warn`) prompting the agent to invoke the RBG rule checker (`axioms` + project + local rules) and present checkable evidence before stopping.                               | **Pillar 4 (Enforcement L2):** Advisory nudge toward evidence and rule-compliance review at session stop — not an enforced gate. |
+| `aops`      | `PreToolUse`            | Claude Code              | `NONINTERACTIVE` or `CI=1`                                            | Refusal message blocking interactive prompt tools in headless runs.                                                                                                                                | Prevents headless container sessions from hanging on unanswerable user prompts.                                                  |
+| `aops-ts`   | `SessionStart`          | Claude Code              | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`                               | Launches background `tailscale up` for remote connectivity.                                                                                                                                        | Enables remote session access over Tailnet.                                                                                      |
+| `aops-ts`   | `SessionEnd`            | Claude Code              | `TS_SESSION_SYNC_HOST`                                                | Transmits session log bundle to remote sync host.                                                                                                                                                  | Secures session history after termination.                                                                                       |
+
+---
+
+## Telemetry & OTEL Tracing Architecture
+
+academicOps uses Claude Code's native OpenTelemetry export forwarded through a local Tailnet server to GCP:
+
+- **Local Collector Relay:** Session and Polecat container traces send OTLP spans to a local Tailnet OTLP collector endpoint (`OTEL_EXPORTER_OTLP_ENDPOINT`).
+- **GCP Export:** The collector relays traces directly to GCP Cloud Trace (`cloudtrace.googleapis.com`) and Cloud Logging.
+- **Contract Variables:**
+  - `CLAUDE_CODE_ENABLE_TELEMETRY=true`
+  - `OTEL_EXPORTER_OTLP_ENDPOINT=http://<tailnet-collector-ip>:4318`
+  - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
+  - `OTEL_RESOURCE_ATTRIBUTES=service.name=academicOps,service.version=0.6.0`
+
+---
+
+## The Plugins
+
+Install what you need — plugins are separately installable and loosely coupled:
 
 | Plugin       | Owns                                                                            |
 | ------------ | ------------------------------------------------------------------------------- |
 | `aops`       | james, marsha, rbg. Review, QA, verification, dispatch, polecat containers.     |
 | `aops-pkb`   | pauli. Memory, effectual planning, workflow composition, PKB MCP client config. |
 | `aops-ida`   | ida. The interactive face.                                                      |
-| `aops-cope`  | Automatic in-session rule enforcement, via a `PreToolUse` hook.                 |
-| `aops-tools` | Domain research skills.                                                         |
+| `aops-cope`  | Automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook.      |
+| `aops-tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.).     |
 | `aops-ts`    | Tailscale bring-up for remote sessions.                                         |
 
-Each has its own `README.md` under `plugins/<dir>/` with a flowchart of how that
-plugin actually works, and its complete configuration surface.
+---
 
 ## Install
 
@@ -97,76 +94,20 @@ claude plugin install aops-ida@academicOps
 claude plugin install aops-pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
 
-`aops-cope`, `aops-tools`, and `aops-ts` install the same way. `aops-ts` is
-opt-in and only acts in a remote session.
+`aops-cope`, `aops-tools`, and `aops-ts` install the same way.
 
-Requirements: Claude Code (or Antigravity), and Docker if you want polecat's
-containerised workers.
+Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
 
-## Configure
+---
 
-**There are no defaults.** No endpoint, URL, host, path, token, or credential is
-baked into anything shipped. Every value below comes from your environment or
-from client `userConfig`. A missing required value fails loudly; it is never
-guessed.
-
-Only `aops-pkb` declares a `userConfig` field: `pkb_mcp_url`, the
-streamable-HTTP endpoint of your PKB MCP server.
-
-### Knowledge base
-
-| Variable              | Required | Purpose                                                                               |
-| --------------------- | -------- | ------------------------------------------------------------------------------------- |
-| `PKB_MCP_URL`         | yes      | PKB MCP endpoint. Same value as `pkb_mcp_url`, for stdio launches and for containers. |
-| `PKB_MCP_TOOL_PREFIX` | no       | Tool-name prefix, forwarded into containers.                                          |
-| `ACA_DATA`            | no       | PKB root. Supplies `$ACA_DATA/.agents/rules/` and `$ACA_DATA/.agents/workflows/`.     |
-
-Unset `ACA_DATA` means the user rule and workflow layers are absent — not an
-error.
-
-### Polecat containers (`aops`)
-
-| Variable                                           | Required | Purpose                                                         |
-| -------------------------------------------------- | -------- | --------------------------------------------------------------- |
-| `POLECAT_HOME`                                     | yes\*    | Cache root for isolated clones, staging, and session logs.      |
-| `POLECAT_IMAGE`                                    | yes\*    | Container image reference.                                      |
-| `AOPS_BOT_GH_TOKEN`                                | yes      | Repository access inside the container.                         |
-| `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`              | yes      | Commit identity. No default identity exists.                    |
-| `AOPS_CC_OAUTH_TOKEN` or `CLAUDE_CODE_OAUTH_TOKEN` | yes      | Agent CLI authentication, forwarded into the container.         |
-| `AOPS_SESSIONS`                                    | no       | Session-log root, and the default location of `polecat.yaml`.   |
-| `AOPS_POLECAT_CONFIG`                              | no       | Explicit path to `polecat.yaml`.                                |
-| `POLECAT_STAGING_BASE`                             | no       | Where the per-session staging directory is created.             |
-| `POLECAT_AGENT_HOME`                               | no       | Host directory holding the agent CLI config. Unset stages none. |
-| `POLECAT_WORKER_MODEL`                             | no       | Model written into the container's staged settings.             |
-| `POLECAT_PRINT_TIMEOUT`                            | no       | Ceiling on a headless agy run.                                  |
-| `CLAUDE_ENV_FILE`                                  | no       | Scoped env file the `SessionStart` hook writes.                 |
-
-\* or the equivalent key in `polecat.yaml` (`polecat_home`, `docker.image`).
-
-### Remote sessions (`aops-ts`)
-
-| Variable             | Required | Purpose                                                                 |
-| -------------------- | -------- | ----------------------------------------------------------------------- |
-| `CLAUDE_CODE_REMOTE` | yes      | Must be exactly `true`, or the hook does nothing.                       |
-| `TS_AUTHKEY`         | yes      | Tailscale auth key.                                                     |
-| `HOSTNAME`           | no       | Names the device `claude-web-${HOSTNAME}`. Unset lets Tailscale choose. |
-
-### Telemetry
-
-Claude Code's native OpenTelemetry export is the tracing mechanism; it is
-session-scoped, so setting it once covers every plugin. The framework forwards
-the contract into containers and scheduled runs and sets none of it. The full
-variable list is in [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md#observability).
-
-## Build and test
+## Build and Test
 
 ```bash
 git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
 uv sync
 
-make build          # assemble dist/<plugin>-<client> for every plugin, both clients
+make build          # assemble dist/<plugin>-<client> for every plugin
 make install-dev    # build, then install dist/ as the local 'aops' marketplace
-make uninstall-dev  # restore the released marketplace
 make test           # uv run pytest tests/
 make lint           # ruff check
 make format         # ruff format + dprint fmt
@@ -176,7 +117,9 @@ make clean          # remove dist/
 
 `make help` lists every target.
 
-## Repository layout
+---
+
+## Repository Layout
 
 ```
 lib/        Shared source, injected into plugins at build time. Never shipped as-is.
@@ -187,6 +130,5 @@ tests/      Test suite.
 .agents/    Rules for agents working on this repository.
 ```
 
-[`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) is authoritative for the layout,
-the plugin boundaries, the build stages, and the constraints on all of them.
+[`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) is authoritative for the layout, plugin boundaries, build stages, and constraints.
 Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md).

@@ -42,16 +42,15 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 - **Container isolation** — polecat workers run inside Docker (`Dockerfile`, [`plugins/aops/polecat/cli.py`](../../plugins/aops/polecat/cli.py)), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
 - **`polecat.yaml`** (loaded from `$AOPS_POLECAT_CONFIG` or `$AOPS_SESSIONS/polecat.yaml`, overridable per-machine via `<polecat_home>/local.yaml`) is the operator config for session configuration: cache root, container image, project-path map. No built-in fallback: a missing required value (`polecat_home`, `docker.image`) is a hard fail, not a silent default.
 
-### 2. The harness delivery channel (reminder, not gate)
+### 2. Dual-layer rule enforcement channel
 
 Every plugin hook shares one runtime, `lib/hooks/`, injected into each plugin at
-build time (`ARCHITECTURE.md`, Hooks). The complete set:
+build time (`ARCHITECTURE.md`, Hooks). The framework enforces rules via two complementary layers:
 
-- **`aops`**, `SessionStart` ([`plugins/aops/hooks/handlers.py`](../../plugins/aops/hooks/handlers.py), `session_start`) — credential isolation for container sessions, plus a report (never a value) of the OpenTelemetry configuration.
-- **`aops`**, `Stop` and `SubagentStop` (`present_checkable_evidence`) — reminds the agent that is stopping to present its answer with checkable evidence. Both events are served by the same handler and message; the output reaches the agent that is stopping, not its parent.
-- **`pkb`**, `UserPromptSubmit` ([`plugins/pkb/hooks/handlers.py`](../../plugins/pkb/hooks/handlers.py)) — injects relevant PKB context, or instructs the agent to search for it.
-- **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a small language model, over the Reflexes evaluator contract ([`evaluator.py`](../../plugins/cope/hooks/evaluator.py)), whether the tool call matches each live rule; injects the matched rules' own text so the agent can correct itself. A rule is live in any layer only if its frontmatter declares `trigger: always_on` — a rules directory also holds reference material, and reference material sent as a policy is a question the evaluator cannot answer. Anything skipped for want of the marker, and an `$ACA_DATA` that names no rules directory, are reported through the shared fault channel below, so no layer thins out unnoticed. The judgment is the model's, not a pattern match, so it sits inside "agents all the way down" alongside the auto-mode classifier below. Advisory only — a `warn`-outcome `Result` (additional context), never a permission decision. Configured entirely from the environment (`COPE_EVALUATOR_*`); with no evaluator configured it is a clean no-op, and any evaluator failure fails open.
-- **`ts`**, `SessionStart` ([`plugins/ts/hooks/tailscale-up.sh`](../../plugins/ts/hooks/tailscale-up.sh)) — `tailscale up` bring-up for remote/cloud sessions.
+- **Layer 1 (Turn-by-Turn Local Model COPE):** **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a fast, lightweight local Reflexes LLM evaluator model ([`evaluator.py`](../../plugins/cope/hooks/evaluator.py)) whether each tool call complies with active rules. Runs asynchronously in parallel to advise the agent on every tool call.
+- **Layer 2 (Session Stop RBG Check):** **`aops`**, `Stop` and `SubagentStop` ([`plugins/aops/hooks/handlers.py`](../../plugins/aops/hooks/handlers.py), `present_checkable_evidence`) — requires the agent that is stopping to run an explicit RBG rule check (`axioms/` + project-local + user rules) and attach checkable evidence BEFORE completing and handing over the task.
+- **`pkb`**, `UserPromptSubmit` ([`plugins/pkb/hooks/handlers.py`](../../plugins/pkb/hooks/handlers.py)) — grounds every user prompt in PKB history before action.
+- **`ts`**, `SessionStart` ([`plugins/ts/hooks/tailscale-up.sh`](../../plugins/ts/hooks/tailscale-up.sh)) — Tailscale bring-up for remote sessions.
 
 Every agent-visible string a hook emits comes from a markdown file next to it
 (`hooks/messages/*.md`), editable without touching code. Nothing in this layer
