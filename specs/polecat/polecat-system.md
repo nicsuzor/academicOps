@@ -108,9 +108,14 @@ the container.
    transcript shows no trace of the task it was given.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
-5. **One build path.** A container runs only what its image carries. A certifying
-   run always rebuilds the image from the committed tree (`make docker-build`);
-   no mechanism projects host working-tree state into a container.
+5. **One build path.** A container runs only the plugin code its image carries:
+   no mechanism projects host plugin source into a running container, so a code
+   change reaches an agent only by being built into the image. `make docker-build`
+   builds `dist/` from the working tree as it stands, not from `HEAD` — so a
+   certifying run must start from a clean committed tree, which is the operator's
+   obligation and not something the target checks. (This says nothing about the
+   repository under work: `--repo-dir` and `rules_dir` mount host directories by
+   design — see Guarantee 1.)
 
 ## What `run` does not do
 

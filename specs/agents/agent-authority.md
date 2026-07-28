@@ -103,6 +103,15 @@ confirmed to deliver the full tool pool, including MCP servers, is omitting
 `tools` entirely — the agent then inherits its parent's complete effective set
 instead of "no tool calls permitted."
 
+**The same inversion holds for `subagents`.** No agent file in this tree declares
+the field, so by the grid above none of them may spawn — yet james deploys review
+agents and ida commissions its engagement sweep, both by instruction and both
+observed working. Spawn capability is inherited with the rest of the parent's
+effective set, not gated by this field. Treat the grid's `subagents` row as the
+intent the lint will enforce once declarations exist, not as a description of what
+the harness does today — and never write an instruction whose rationale is that a
+spawned agent cannot spawn, because it can.
+
 `plugins/pkb/agents/pauli.md`, `plugins/aops/agents/james.md`,
 `plugins/aops/agents/marsha.md`, and `plugins/aops/agents/rbg.md` omit `tools`
 for this reason: each needs `mcp__services__pkb__*` (or broader) to function

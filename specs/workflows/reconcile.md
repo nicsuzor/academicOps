@@ -36,18 +36,19 @@ Four gap types:
 
 ## Invocation contexts
 
-The same reconcile procedure runs in four contexts. The context changes the input subset, not the procedure.
+The reconcile procedure runs in three contexts. The context changes the input subset, not the procedure.
 
 | Context    | Owner                                                                        | Input subset                                                                |
 | ---------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: claims taken before it, issues and PRs closed during it |
 | Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                   |
 | On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across every non-terminal task and every open issue              |
-| Reverse    | The `dump` and `pull` skills, at task completion                             | The just-completed task and its `closes_issues:` markers                    |
 
-The face holds no PKB tools, so its engagement sweep is a delegation: it spawns an agent that runs the skill and returns one synthesized result.
+The face holds no PKB tools, so its engagement sweep is a delegation: it commissions an agent that runs the skill and returns one synthesized result.
 
-Agents in the three forward contexts invoke the reconcile skill; the reverse handoff rides the release path that already writes the task. None of them runs a script or calls into a library. The skill body is prose that the invoking agent reads and follows.
+**The reverse direction is not a fourth context of this procedure.** A task completing, and what its completion resolves on the issue tracker, rides the release path that already writes the task — the session-exit skill, reading the just-completed task's `closes_issues:` markers. It is a different act on a different trigger, and reconcile does not run there.
+
+Agents in the three contexts invoke the reconcile skill. None of them runs a script or calls into a library. The skill body is prose that the invoking agent reads and follows.
 
 ## Frontmatter markers
 
@@ -108,7 +109,7 @@ These are sequencing checkpoints, not implementation tickets. The implementing a
 
 - **M1 — Skill exists and is invocable.** The reconcile procedure is one skill, PKB lint validates the new frontmatter fields, a handful of cases have been worked end-to-end by hand.
 - **M2 — Forward sweeps adopted.** The engagement and batch contexts both reach the skill, and no other skill carries closure-loop logic of its own. DRY audit clean.
-- **M3 — Reverse direction adopted at release.** The `dump` and `pull` skills invoke reconcile in reverse context on task completion. No new hooks added.
+- **M3 — Reverse direction adopted at release.** The `dump` and `pull` skills carry the reverse handoff on the release path that already writes the task — reading `closes_issues:` and acting on it there, not by invoking reconcile. No new hooks added.
 - **M4 — Backfill run.** One agent session, scope as above. Done.
 
 ## Open questions

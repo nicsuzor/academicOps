@@ -96,10 +96,22 @@ Which reviews those are is not this skill's to state. **Load the review process
 from the same three layers Step 2 composed from** — the shipped library, the
 user's `$ACA_DATA/.agents/workflows/`, and the PKB's own templates behind
 `get_document("pkb-workflow-index")` — one namespace, later layers winning by
-template name. The composed process names the review it obliges, including any
-human sign-off at a one-way door; you turn each obligation into a node. A review
-set carried in from memory is one the user can never override, and a review the
-composed process obliges but no layer defines is a library gap: name it and stop.
+template name. The composed process names the review it obliges; you turn each
+obligation into a node. A review set carried in from memory is one the user can
+never override, and a review the composed process obliges but no layer defines is
+a library gap: name it and stop.
+
+**A composed process that obliges no review at all is that same gap.** Emitting
+zero review nodes is the one outcome that leaves no trace of itself — nothing
+surfaces, because nothing was obliged, and the record reads complete. Where the
+composed set names no lens, name _that_ as the gap and stop, exactly as you would
+for a lens no layer defines. Never let work reach dispatch with an empty review
+set because the templates it routed through were silent.
+
+Human sign-off at a one-way door is not yours to compose or to skip. The
+`one-way-door` axiom binds the agent that crosses the door, whatever any template
+says; where the composed process also names sign-off, emit the node, but its
+absence from the templates is not permission.
 
 Any deviation from what the process obliged is a recorded decision in the body —
 what you specified and why — never a silent skip.

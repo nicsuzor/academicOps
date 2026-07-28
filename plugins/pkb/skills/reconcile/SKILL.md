@@ -13,7 +13,9 @@ criteria name files that were renamed away a fortnight ago. You establish what i
 **actually** true, and you write that back.
 
 This is the only place the reconcile procedure lives. Other skills invoke it;
-none of them re-implements it.
+none of them re-implements it. What it governs is tasks and the pull requests
+they resolve against. Issue-tracker closure in the other direction — a task's
+completion resolving an issue — belongs to the release path, not here.
 
 ## Contexts
 
@@ -31,14 +33,23 @@ here.
 
 ## 1 — Read the graph, claims included
 
-`list_tasks` over the non-terminal statuses — `in_progress`, `queued`, `review`,
-`merge_ready` — and read the **claim** on each: who holds it, under which
-session, and when it was taken. A status by itself is not a claim. The assignee
-and the session are what make it one, and they are what you check.
+`list_tasks` over **every non-terminal status** — the actionable set as
+[the taxonomy](../graph-maintenance/references/taxonomy.md) defines it, which is
+the source; never a copy of the list inlined here. Not only the statuses that look
+in flight: §3 resolves `merge_ready` and `review`, §5 reads `ready` and `queued`
+for rot and the parked statuses for age, and §2 and §4 write back to `ready` and
+`inbox`, which the next sweep has to be able to see. A sweep that loads a subset
+reports itself complete while silently skipping whole classes of work.
+
+Then read the **claim** on each: who holds it, under which session, and when it
+was taken — the `Dispatched:` record a dispatch surface writes at launch, and the
+assignee and session on the task itself. A status by itself is not a claim. The
+assignee and the session are what make it one, and they are what you check.
 
 Filter the slice before you pull it. An unfiltered `list_tasks` on a mature graph
 spills to a temp file, and then you have lost the turn rather than gained the
-data. Narrow by status or project and take the default markdown format.
+data. Narrow by status or project, take the default markdown format, and repeat
+until the whole set is covered — many narrow calls, never one wide one.
 
 ## 2 — Probe every suspect claim, then confirm it or requeue it
 
@@ -62,6 +73,13 @@ requeue is reversible and legible; a close is neither, and a claim you closed
 because its worker went quiet is work you deleted.
 
 ## 3 — Fold in what finished while nobody was watching
+
+**The cursor** is the timestamp the last completed sweep recorded on its own
+result, and it is the only thing that bounds this step. Read it before you start;
+where a caller handed you a window instead, that window is the cursor for this
+run. Where neither exists — a first sweep, or a result you cannot find — say so
+in what you emit and bound the step yourself by the oldest claim you loaded,
+rather than treating an unbounded scan as a completed one.
 
 For each pull request closed since the cursor, match it to a task by, in order: a
 `pr_url` already on the task; a task id in the pull request body; the head branch
@@ -88,8 +106,9 @@ a human decision and is **never auto-closed**: if it carries a pull request, not
 that pull request's live state in what you surface; if it has none, which is the
 common case, surface it as awaiting a decision so it cannot rot silently.
 
-Also surface: a body claiming release with no pull request recorded; a worker
-no-op marker, which re-queues to `inbox` with an annotation; and three or more
+Also surface: a body claiming release with no pull request recorded; a worker that
+ran and recorded that it changed nothing, which re-queues to `inbox` with an
+annotation saying the run happened and produced no work; and three or more
 sweep reports on one task all reading closed-without-merge, which is strong
 evidence the approach keeps failing and belongs in the routing context.
 
@@ -155,7 +174,9 @@ has been handed your sweep instead of its outcome.
 Lead with what needs a person's decision, then what you changed, then what you
 found and deliberately left alone. Name ids for everything completed, requeued,
 demoted, routed, or surfaced — a bare count is not checkable. Close with the one
-thing the next sweep should pick up.
+thing the next sweep should pick up, and with the timestamp this sweep reached:
+that is the cursor the next one reads, and a sweep that does not record it makes
+the next one unbounded.
 
 ## Must not
 

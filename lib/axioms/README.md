@@ -20,6 +20,7 @@ description: Index of the axioms.
 | `evidence-immutable`     | Never modify or substitute a source serving as evidence; if it is unreachable, halt.                  | yes       |
 | `full-observability`     | Every material action leaves a persisted record a third party can audit and re-trace.                 | yes       |
 | `costly-ops-approval`    | Unbounded cost or blast radius needs explicit prior approval naming scope and volume.                 | yes       |
+| `one-way-door`           | An irreversible action whose effect leaves this environment needs a human signature before it.        | yes       |
 | `bounded-execution`      | Every command carries a terminating bound visible in the command itself; reap what you start.         | yes       |
 | `pull-over-push`         | Instruction context must earn its injection tier; demote anything that can be looked up.              | yes       |
 | `AXIOMS-REVIEW`          | Per-axiom review questions, loaded explicitly by the reviewing agent.                                 | no        |

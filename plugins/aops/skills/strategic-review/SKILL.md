@@ -8,7 +8,9 @@ agent: "aops:james"
 
 Review an artifact from several expert perspectives and return **one reconciled verdict**.
 
-James owns the reconciliation. **You, the invoking agent, own the orchestration** — you deploy the reviewers yourself, because a subagent cannot spawn subagents. James is called at the end, to reconcile only.
+James owns the reconciliation. **You, the invoking agent, own the orchestration** — you deploy the reviewers yourself, so that the agent writing the verdict is not also the agent who chose and briefed the reviewers it reads. James is called at the end, to reconcile only.
+
+This requires a subagent surface. If you hold none, you cannot run this skill: hand the artifact to a context that can spawn, and say so. Never substitute your own reading of it for the review — a verdict from one agent that reviewed itself is the thing this skill exists to prevent.
 
 ## Inputs
 
