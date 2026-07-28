@@ -76,20 +76,9 @@ the container.
    `$ACA_DATA/.agents/rules/` (`/data/.agents/rules` — `ENV ACA_DATA=/data` in
    the `Dockerfile`), which is what makes cope/rbg's layer 3 reach a container;
    absent, the container simply has no layer 3, and a configured-but-unreadable
-   directory is a hard failure before any container starts. With `--live-edit`,
-   the locally built `dist/` of the checkout `--repo-dir`/`--project` resolved
-   to — never the per-session isolated clone mounted at `/workspace`, which has
-   no `dist/` of its own — is additionally mounted read-only over the plugin
-   directories the image itself reports it installed, so a plugin-source edit
-   takes effect with no image rebuild. The flag is opt-in; it refuses to start
-   when that `dist/` or any plugin build in it is missing, when the image's
-   marketplace manifest cannot be read or names a destination that is not one
-   plugin's own install directory, or when any destination does not already
-   exist in the image; it warns, without refusing, about locally built plugins
-   the image never installed; and it announces what it mounted (see
-   [[polecat-live-edit-mount]]). The image is
-   never pulled from a registry — it must already be built locally or
-   CI-produced; a missing image is a hard failure with an actionable message.
+   directory is a hard failure before any container starts. The image is never
+   pulled from a registry — it must already be built locally or CI-produced; a
+   missing image is a hard failure with an actionable message.
 7. Builds the inner command from `AGENT_CMD` (`claude`, `agy`, `shell`/`bash`,
    `sleep`, or any other passthrough binary). With `--task <id>` and no explicit
    prompt, seeds `/pull <id>` as the prompt. An `agy` dispatch with no explicit
@@ -119,6 +108,9 @@ the container.
    transcript shows no trace of the task it was given.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
+5. **One build path.** A container runs only what its image carries. A certifying
+   run always rebuilds the image from the committed tree (`make docker-build`);
+   no mechanism projects host working-tree state into a container.
 
 ## What `run` does not do
 

@@ -202,11 +202,6 @@ refs = ["antigravity-cli/settings.json"]
 reason = "Configuration inside the container image, not in this repository."
 
 [[tool.refcheck.allow]]
-docs = "specs/polecat/live-edit-mount.md"
-refs = ["dist/.claude-plugin/marketplace.json"]
-reason = "Built output under dist/, gitignored and present only after `make build` runs, not committed to this repository."
-
-[[tool.refcheck.allow]]
 docs = "templates/github-agent/README.md"
 refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."
