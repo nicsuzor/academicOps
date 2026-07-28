@@ -52,7 +52,7 @@ Every row's input subset is pull requests only, matching the skill's current
 scope. Once the forward-issue leg (gap types #1 and #3 above) is built, each
 row's subset extends to the open issues in the same window.
 
-The face holds no PKB tools, so its engagement sweep is a delegation: it commissions an agent that runs the skill and returns one synthesized result.
+The face does not touch the knowledge base — a prohibition on what is hers to do, not a claim about what tools a session hands her — so its engagement sweep is a delegation: it commissions an agent that runs the skill and returns one synthesized result.
 
 **The reverse direction is not a fourth context of this procedure.** A task completing, and what its completion resolves on the issue tracker, belongs on the release path that already writes the task — a different act on a different trigger, which reconcile does not run. It is not built: no skill in the tree reads `closes_issues:` today, and M3 below is where it lands.
 

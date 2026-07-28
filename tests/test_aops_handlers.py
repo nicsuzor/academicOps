@@ -178,6 +178,74 @@ def test_askuserquestion_is_allowed_when_someone_is_there_to_answer():
 
 
 # ---------------------------------------------------------------------------
+# SessionStart: three compact facts, and never a crashed session
+# ---------------------------------------------------------------------------
+#
+# This handler runs before the session has produced anything, so a raise here
+# costs the whole session. These run it against the SOURCE tree, where neither
+# the rendered manifest nor the client registry exists — the worst case for a
+# reporter, and the one a developer hits every day.
+
+
+def _session_start(env_overrides: dict[str, str | None] | None = None):
+    return _run(
+        "session_start",
+        {"hook_event_name": "SessionStart", "session_id": "test-session"},
+        env_overrides={"CLAUDE_ENV_FILE": None, **(env_overrides or {})},
+    )
+
+
+def test_session_start_reports_all_three_facts():
+    """Telemetry was always reported; the build and the installed roster are
+    what the session had no way to see. All three land in one advisory."""
+    res = _session_start()
+    assert res is not None
+    injected = res["inject_text"]
+    assert "telemetry:" in injected
+    assert "plugin:" in injected
+    assert "plugins installed:" in injected
+
+
+def test_session_start_leaves_no_placeholder_unsubstituted():
+    """The failure mode of a `.format()`-driven message: a new placeholder in
+    the markdown that no handler fills reaches the agent as literal braces."""
+    res = _session_start()
+    assert res is not None
+    for placeholder in ("{telemetry}", "{plugin}", "{installed}"):
+        assert placeholder not in res["inject_text"]
+
+
+def test_session_start_does_not_raise_when_neither_fact_is_available():
+    """Run against the source tree: no rendered manifest, no client registry.
+    Both facts are unavailable and the handler still returns an advisory."""
+    res = _session_start()
+    assert res is not None
+    assert res["is_refusal"] is False
+    assert "not readable" in res["inject_text"]
+    assert "no client registry" in res["inject_text"]
+
+
+def test_session_start_still_supplies_no_endpoint():
+    """The disclaimer is the point of the message and must survive any addition
+    to it: this hook sets nothing and names no endpoint, and a trace URL is not
+    among the facts it can report (lib/hooks/telemetry.py, EXPORT_VARS)."""
+    res = _session_start()
+    assert res is not None
+    assert "no value is supplied by default" in res["inject_text"]
+    assert res["user_text"] and "no endpoint was supplied" in res["user_text"]
+
+
+def test_session_start_reports_facts_not_a_report():
+    """This fires on every session, so the injection-tier discipline applies:
+    one line per fact. The three fact lines head the message, ahead of the
+    standing disclaimer paragraph."""
+    res = _session_start()
+    assert res is not None
+    facts = res["inject_text"].split("\n\n")[0].splitlines()
+    assert len(facts) == 3
+
+
+# ---------------------------------------------------------------------------
 # Two readers per message: the agent's full text, the user's one line
 # ---------------------------------------------------------------------------
 

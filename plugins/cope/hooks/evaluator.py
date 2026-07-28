@@ -138,12 +138,15 @@ def _note(message: str) -> None:
 def _setting(name: str) -> str:
     """One configuration value: the plugin option first, then the plain variable.
 
-    Claude Code accepts a ``userConfig`` value only from user settings, managed
-    policy, or ``--settings`` — never from a project's own settings files, so a
-    cloned repository cannot supply one. That makes it the more trustworthy of
-    the two sources, and it wins. The plain environment variable is the fallback
-    that agy and container sessions rely on, neither of which has userConfig at
-    all.
+    Claude Code ignores the ``pluginConfigs`` block — the settings key a
+    ``userConfig`` answer is recorded under — when it appears in a project's
+    ``.claude/settings.json`` or ``.claude/settings.local.json``, a restriction
+    documented as a security measure and specific to ``pluginConfigs`` rather
+    than to settings generally (Claude Code plugins reference, "User
+    configuration"). Both those files live in the workspace, so a cloned
+    repository cannot supply one. That makes it the more trustworthy of the two
+    sources, and it wins. The plain environment variable is the fallback that
+    agy and container sessions rely on, neither of which has userConfig at all.
     """
     for key in (_PLUGIN_OPTION_PREFIX + name, name):
         value = os.environ.get(key, "").strip()

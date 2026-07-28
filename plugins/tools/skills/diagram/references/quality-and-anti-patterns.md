@@ -52,3 +52,5 @@ Before considering a flowchart complete:
 - Many individual `style` lines instead of `classDef`
 - Hardcoded colors without semantic meaning
 - IDs with spaces or special characters
+- Mermaid keywords as node IDs (`graph`, `end`, `class`, …) — a parse error that
+  kills the whole diagram; see the reserved-word list in `mermaid-techniques.md`

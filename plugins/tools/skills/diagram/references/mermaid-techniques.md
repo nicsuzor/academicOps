@@ -55,7 +55,7 @@ Summarize verbose labels to 3-5 words; let shape convey additional context.
 
 **4. Professional Styling with Stroke and Dashes**
 
-```mermaid
+```text
 classDef default stroke-width:2px
 classDef hook stroke-dasharray: 5 5
 linkStyle default stroke:#718096,stroke-width:1.5px
@@ -69,7 +69,7 @@ linkStyle default stroke:#718096,stroke-width:1.5px
 
 **CRITICAL**: Proper spacing is the #1 factor for readability. Default Mermaid spacing is cramped.
 
-```mermaid
+```text
 %%{init: {
   'theme': 'base',
   'themeVariables': {
@@ -117,6 +117,7 @@ linkStyle default stroke:#718096,stroke-width:1.5px
 Define once; apply everywhere:
 
 ```mermaid
+flowchart TD
 classDef hook fill:#ffebee,stroke:#c62828,color:#b71c1c
 classDef skill fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
 
@@ -127,6 +128,7 @@ B --> C{Decision}:::decision
 ## Decision Shapes for Gates
 
 ```mermaid
+flowchart TD
 C{Passed?} -->|Yes| D[Continue]
 C -->|No| E[Handle Error]
 ```
@@ -134,6 +136,7 @@ C -->|No| E[Handle Error]
 ## Edge Labels and Styles
 
 ```mermaid
+flowchart LR
 A -->|primary path| B
 A -.->|optional path| C
 A ==>|emphasized| D
@@ -156,6 +159,7 @@ flowchart LR
 ## Swimlanes via Subgraphs
 
 ```mermaid
+flowchart LR
 subgraph INIT["Initialization"]
     A[Load config]
     B[Validate]
@@ -173,6 +177,7 @@ style PROCESS fill:#e8f5e9,stroke:#a5d6a7
 ## Interactivity with click
 
 ```mermaid
+flowchart TD
 A[Component] --> B[Details]
 click A "https://docs.example.com/component" "View docs"
 ```
@@ -182,3 +187,15 @@ click A "https://docs.example.com/component" "View docs"
 - Use consistent naming: `PHASE_STEP`, `PHASE_DECISION`
 - Avoid spaces in IDs
 - Favor ASCII and underscores; hyphens can be tricky with some selectors
+
+**Reserved words**: a mermaid keyword in node-id position is a parse error. The
+whole diagram fails and renders as an error box — this is not a cosmetic issue
+confined to one node.
+
+- Unusable as an id anywhere: `graph`, `end`, `subgraph`, `class`, `classDef`,
+  `style`, `linkStyle`, `flowchart`, `interpolate`
+- Unusable in some positions: `click`, `call`, `href`. `click[Label] --> B`
+  parses; `A --> click` does not. Avoid all three.
+- Safe: `direction`, `default`, and bare `o` / `x`
+- Matching is case-sensitive — `GRAPH`, `Graph`, `END`, and `Style` all parse.
+  The ALL-CAPS `PHASE_STEP` convention above sidesteps the entire class.
