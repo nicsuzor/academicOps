@@ -38,11 +38,11 @@ the source; never a list inlined here. Later steps read and write across the who
 of that set, so a sweep that loads only the statuses which look in flight reports
 itself complete while skipping whole classes of work.
 
-Then read the **claim** on each: who holds it, under which session, and when it
-was taken. Two records carry this — the `Dispatched:` line a dispatch surface
-writes on the task body at launch, and the assignee and session the worker's own
-claim sets. A status by itself is not a claim. The assignee and the session are
-what make it one, and they are what you check.
+Then read the **claim** on each. A status by itself is not a claim; the assignee
+and the session are what make it one, and they are what you check. Two records
+carry that, and the contract for both is below.
+
+@include doctrine/launch-claim.md
 
 Filter the slice before you pull it. An unfiltered `list_tasks` on a mature graph
 spills to a temp file, and then you have lost the turn rather than gained the

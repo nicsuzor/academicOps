@@ -1,8 +1,9 @@
 # doctrine
 
-Composable agent-instruction fragments. An agent file pulls one in with
+Composable instruction fragments. An agent file or a skill body pulls one in with
 `@include doctrine/<name>.md`. Fragments use `##` headings so they slot in as
-sections of the including file.
+sections of the including file. A contract two plugins share lives here rather
+than in a copy on each side.
 
 | Fragment             | Covers                                                                           | Included by                    |
 | -------------------- | -------------------------------------------------------------------------------- | ------------------------------ |
@@ -14,3 +15,4 @@ sections of the including file.
 | `probe.md`           | Empirical / process-determined / taste; cheapest discriminating experiment       | ida, james, pauli              |
 | `governing-rules.md` | Obey the rules governing any artifact you change; binds delegation end to end    | ida, james, marsha, rbg, pauli |
 | `memory.md`          | Capture knowledge not verdicts; update don't duplicate; only persistence surface | ida, james, marsha, pauli      |
+| `launch-claim.md`    | The `Dispatched:` record written before a worker starts; two claims, not one     | dispatch, reconcile            |

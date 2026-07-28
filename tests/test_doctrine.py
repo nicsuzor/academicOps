@@ -1,9 +1,12 @@
 """Doctrine fragments must reach the built artifacts that declare them.
 
-`lib/doctrine/*.md` is shared agent instruction inlined at build time via
-`@include doctrine/<name>.md`. Nothing else checks that a declared fragment
-survives into `dist/`, that a fragment is used at all, or that the fragment
-table in `lib/doctrine/README.md` still describes the tree it documents.
+`lib/doctrine/*.md` is shared instruction inlined at build time via
+`@include doctrine/<name>.md`. Agent files and skill bodies both declare them —
+the build resolves includes across the whole staged tree, and a contract two
+plugins share belongs in `lib/` rather than in a copy on each side. Nothing else
+checks that a declared fragment survives into `dist/`, that a fragment is used at
+all, or that the fragment table in `lib/doctrine/README.md` still describes the
+tree it documents.
 """
 
 import re
@@ -32,13 +35,25 @@ def _fragments() -> list[str]:
     return sorted(p.name for p in DOCTRINE_DIR.glob("*.md") if p.name != "README.md")
 
 
+def _includers() -> list[Path]:
+    """Source files allowed to declare a doctrine fragment: agents and skills."""
+    return sorted(PLUGINS_ROOT.glob("*/agents/*.md")) + sorted(
+        PLUGINS_ROOT.glob("*/skills/*/SKILL.md")
+    )
+
+
+def _display_name(source_file: Path) -> str:
+    """The name the README table uses: the agent's stem, or the skill's directory."""
+    return source_file.parent.name if source_file.name == "SKILL.md" else source_file.stem
+
+
 def _references() -> list[tuple[str, Path, str]]:
-    """Every (plugin directory, agent source file, fragment filename) declared."""
+    """Every (plugin directory, including source file, fragment filename) declared."""
     found = []
-    for agent_file in sorted(PLUGINS_ROOT.glob("*/agents/*.md")):
-        plugin_dir = agent_file.relative_to(PLUGINS_ROOT).parts[0]
-        for fragment in INCLUDE_RE.findall(agent_file.read_text()):
-            found.append((plugin_dir, agent_file, fragment))
+    for source_file in _includers():
+        plugin_dir = source_file.relative_to(PLUGINS_ROOT).parts[0]
+        for fragment in INCLUDE_RE.findall(source_file.read_text()):
+            found.append((plugin_dir, source_file, fragment))
     return found
 
 
@@ -52,8 +67,8 @@ def test_doctrine_fragments_exist():
 
 def test_every_reference_resolves_to_a_real_fragment():
     dangling = [
-        f"  {agent.relative_to(PROJECT_ROOT)} -> doctrine/{fragment}"
-        for _, agent, fragment in REFERENCES
+        f"  {source.relative_to(PROJECT_ROOT)} -> doctrine/{fragment}"
+        for _, source, fragment in REFERENCES
         if not (DOCTRINE_DIR / fragment).is_file()
     ]
     assert not dangling, "@include names a fragment that does not exist:\n" + "\n".join(dangling)
@@ -64,27 +79,30 @@ def test_no_fragment_is_orphaned():
     referenced = {fragment for _, _, fragment in REFERENCES}
     orphaned = sorted(set(FRAGMENTS) - referenced)
     assert not orphaned, (
-        f"doctrine fragments referenced by no agent: {orphaned}. "
+        f"doctrine fragments referenced by no agent or skill: {orphaned}. "
         "Include them somewhere or delete them."
     )
 
 
 @pytest.mark.parametrize(
-    ("plugin_dir", "agent_file", "fragment"),
+    ("plugin_dir", "source_file", "fragment"),
     REFERENCES,
-    ids=[f"{p}:{a.stem}:{f}" for p, a, f in REFERENCES],
+    ids=[f"{p}:{_display_name(s)}:{f}" for p, s, f in REFERENCES],
 )
-def test_declared_fragment_ships_resolved_in_every_client_build(plugin_dir, agent_file, fragment):
-    """Each fragment's body must appear in the built agent file, for both clients."""
+def test_declared_fragment_ships_resolved_in_every_client_build(plugin_dir, source_file, fragment):
+    """Each fragment's body must appear in the built file that declared it, both clients."""
     if not DIST_ROOT.exists():
         pytest.skip(f"{DIST_ROOT} does not exist — run 'make build'")
 
     body = (DOCTRINE_DIR / fragment).read_text().strip()
     marketplace_name = _marketplace_names()[plugin_dir]
+    # The build preserves each plugin's internal layout, so the path a source
+    # file has under plugins/<dir>/ is the path it has under dist/<name><suffix>/.
+    relative = source_file.relative_to(PLUGINS_ROOT / plugin_dir)
 
     checked = 0
     for suffix in CLIENT_SUFFIXES:
-        built = DIST_ROOT / f"{marketplace_name}{suffix}" / "agents" / agent_file.name
+        built = DIST_ROOT / f"{marketplace_name}{suffix}" / relative
         if not built.is_file():
             continue
         checked += 1
@@ -100,7 +118,7 @@ def test_declared_fragment_ships_resolved_in_every_client_build(plugin_dir, agen
             f"First missing line: {missing[0]!r}"
         )
 
-    assert checked, f"no built artifact found for {marketplace_name} carrying {agent_file.name}"
+    assert checked, f"no built artifact found for {marketplace_name} carrying {relative}"
 
 
 def test_readme_table_matches_the_tree():
@@ -111,10 +129,11 @@ def test_readme_table_matches_the_tree():
         documented[fragment] = {name.strip() for name in included_by.split(",") if name.strip()}
 
     actual: dict[str, set[str]] = {fragment: set() for fragment in FRAGMENTS}
-    for _, agent_file, fragment in REFERENCES:
-        actual.setdefault(fragment, set()).add(agent_file.stem)
+    for _, source_file, fragment in REFERENCES:
+        actual.setdefault(fragment, set()).add(_display_name(source_file))
 
     assert documented == actual, (
         "lib/doctrine/README.md's fragment table disagrees with the @include lines "
-        f"in plugins/*/agents/.\nDocumented: {documented}\nActual:     {actual}"
+        f"in plugins/*/agents/ and plugins/*/skills/.\n"
+        f"Documented: {documented}\nActual:     {actual}"
     )
