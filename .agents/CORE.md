@@ -112,7 +112,7 @@ Claude Code sessions dispatched from Cowork/Dispatch (or started locally on this
 
 ## Development Procedures
 
-- **Pre-commit Hooks**: Run `./scripts/format.sh` before committing to avoid failures.
+- **Pre-commit Hooks**: Run `uv run pre-commit run --files <changed files>` before committing to avoid failures (or `uv run ruff format` / `uv run ruff check --fix` for Python, `dprint fmt` for md/json/toml).
 - **Testing**: Run tests using `uv run pytest tests/` or `uv run pytest aops/`.
 - **Building**: Use `uv run python scripts/build.py` to build the distribution.
 - **Installing**: Use `make install-dev` to build and install the local plugin into Claude Code. (`scripts/install.py` has been retired — it drifted out of sync with the current source layout.)
