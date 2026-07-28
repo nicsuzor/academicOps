@@ -413,5 +413,3 @@ def test_run_mcp_fails_loudly_when_uvx_is_unreachable(tmp_path):
     assert result.returncode != 0
     assert result.stdout == ""
     assert "uvx" in result.stderr
-
-
