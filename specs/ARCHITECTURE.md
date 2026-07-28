@@ -27,13 +27,9 @@ tests/                  Test suite.
 
 A plugin source directory contains only files the client loads, plus its README:
 `agents/`, `commands/`, `skills/`, `hooks/`, `axioms/`, `scripts/`, `manifest/`,
-`README.md`. Tests, specs, and development tooling live outside `plugins/`.
-
-## Plugin README
-
-Every plugin has a `README.md` at its source root. Its audience, its contents,
-and its split with `specs/` are governed by the docs entry in
-[meta/doc-taxonomy.md](meta/doc-taxonomy.md).
+`README.md`. Tests, specs, and development tooling live outside `plugins/`. The
+README's audience, its contents, and its split with `specs/` are governed by the
+docs entry in [meta/doc-taxonomy.md](meta/doc-taxonomy.md).
 
 ## Binding constraints
 

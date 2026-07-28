@@ -64,13 +64,13 @@ Live in-repo at `specs/audit/AGENT-*.md`.
 
 ## Docs — for humans using the framework
 
-Top-level entry points: README.md, INSTALL.md, CHANGELOG.md. Per-plugin entry points: `plugins/<plugin>/README.md`.
+Top-level entry points: README.md, INSTALL.md, CHANGELOG.md. Per plugin: `plugins/<plugin>/README.md`.
 
 **Generally contain**: how to install, how to use, what's changed, where to find more.
 
 **Shouldn't contain**: internal jargon without a glossary, agent persona voice, SSoT claims.
 
-**Plugin README.** One audience: the person using the plugin. Its job is to show exactly how the plugin works — what it is for in a sentence, a mermaid flowchart of the real path from a trigger through its agents, skills, and hooks to an outcome, a table of what it provides (agents, skills, commands, hooks, one line each), every environment variable and `userConfig` field it reads and what each is for, and what it depends on. It shows the flow that exists, not an idealised one. Source-level citation and file-path naming are not required of it — a reader deciding how to use the plugin never opens the source.
+**Plugin README.** One audience: the person using the plugin. Its job is to show exactly how the plugin works, in this order: **what it is for** (one sentence), **how it works** (a mermaid flowchart of the real path from a trigger — a user prompt, a hook event, an agent invocation — through its agents, skills, and hooks to an outcome, showing the flow that exists rather than an idealised one), **what it provides** (agents, skills, commands, hooks — a table, one line each), **how it is configured** (every environment variable and `userConfig` field it reads, what each is for, and that there are no defaults), and **what it depends on**. Source-level citation and file-path naming are not required of it — the reader it serves is using the plugin, not extending it. The flowchart is derived from the source and verified against it; it simply does not cite it.
 
 **The split with `specs/`.** Design rationale, why a choice was made, and the seams and gaps go to `specs/`, which serves the developer extending the plugin. A README that argues for the plugin's design is a spec in the wrong place; so is a history, a roadmap, or a changelog.
 
