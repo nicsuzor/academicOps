@@ -177,7 +177,9 @@ an emergency handover or an ad-hoc capture with no obvious home, use
 
 ## Actionable vs ready
 
-**Actionable** is everything not terminal (`done`, `cancelled`, `someday`) —
-the whole working set, and what dashboards count. **Ready** is the narrow
-subset: fully decomposed leaves with zero unmet dependencies. Claimed and parked
-work is actionable but not ready.
+**Actionable** is everything not terminal (`done`, `cancelled`, `someday`,
+`partial`) — the whole working set, and what dashboards count. `partial` closes
+out its own claimed scope the same way `done` does; the remaining work lives on
+separate follow-up tasks, which are actionable in their own right. **Ready** is
+the narrow subset: fully decomposed leaves with zero unmet dependencies. Claimed
+and parked work is actionable but not ready.

@@ -16,12 +16,16 @@ This is a behavioural spec. It describes what an agent does when reconciling Git
 
 The closure loop between GitHub (issues, PRs) and the PKB task graph is partial, and where it runs it matches by whole-word title and branch name — shitty NLP (the `judgment-non-delegable` axiom).
 
-Four gap types:
+Four gap types. Of these, only #2 is built into the `reconcile` skill today — the
+skill's own scope is "tasks and the pull requests they resolve against," and it
+carries no issue-matching logic. #1, #3, and #4 are specified below as the
+target shape of a forward-issue leg that does not exist yet; nothing in this
+spec should be read as claiming they currently run.
 
-1. **GH issue close → PKB `gates_on` update.** When a GH issue closes via `Closes #N` in a commit, no PKB task referencing that issue gets touched.
-2. **Closed-not-merged PRs** are unconditionally excluded from auto-close, but some are legitimately superseded and should close the task.
-3. **Manual `gh issue close`** with `state_reason: not_planned` or `duplicate` — no PKB-side reconciliation.
-4. **PKB task done → GH issue close/comment** absent beyond the GH-native `Closes #N` commit convention.
+1. **GH issue close → PKB `gates_on` update.** When a GH issue closes via `Closes #N` in a commit, no PKB task referencing that issue gets touched. **Not built.**
+2. **Closed-not-merged PRs** are unconditionally excluded from auto-close, but some are legitimately superseded and should close the task. **Built** — see the `reconcile` skill's pull-request routing step.
+3. **Manual `gh issue close`** with `state_reason: not_planned` or `duplicate` — no PKB-side reconciliation. **Not built.**
+4. **PKB task done → GH issue close/comment** absent beyond the GH-native `Closes #N` commit convention. **Not built** — this is the reverse direction; see below and M3.
 
 ## Design constraints (non-negotiable)
 
@@ -38,11 +42,15 @@ Four gap types:
 
 The reconcile procedure runs in three contexts. The context changes the input subset, not the procedure.
 
-| Context    | Owner                                                                        | Input subset                                                                |
-| ---------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: claims taken before it, issues and PRs closed during it |
-| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                   |
-| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across every non-terminal task and every open issue              |
+| Context    | Owner                                                                        | Input subset                                                               |
+| ---------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: claims taken before it, pull requests closed during it |
+| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                  |
+| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across every non-terminal task and its pull requests            |
+
+Every row's input subset is pull requests only, matching the skill's current
+scope. Once the forward-issue leg (gap types #1 and #3 above) is built, each
+row's subset extends to the open issues in the same window.
 
 The face holds no PKB tools, so its engagement sweep is a delegation: it commissions an agent that runs the skill and returns one synthesized result.
 
@@ -56,7 +64,7 @@ Two task frontmatter fields, PKB-lint validated:
 
 **`closes_issues: [N, M]`** — this task's completion resolves the listed GH issues. On task completion, the agent on the release path adds a GH comment to each citing the closing commit SHA. For issues in framework-owned repos, the agent also closes the issue; otherwise comment-only. Validation: integer values; warn if a listed issue is already closed at write time.
 
-**`gates_on: [N, M]`** — this task is blocked or monitored by the listed GH issues. When any listed issue closes (forward sweep detects this), the agent writes a `needs_user_call` event for the task. Detection never auto-completes the task; the user decides disposition.
+**`gates_on: [N, M]`** — this task is blocked or monitored by the listed GH issues. When any listed issue closes (forward sweep detects this), the agent writes a `needs_user_call` event for the task. Detection never auto-completes the task; the user decides disposition. **Not built** — the `reconcile` skill does not read this field or query issue state today; this is the target shape of the forward-issue leg (gap type #1).
 
 Both fields are legal on the same task simultaneously (a task can both depend on and resolve an issue). The same number appearing in both emits a lint warning — probable data-entry error, not a hard block.
 
@@ -72,20 +80,20 @@ The implementing agent picks the concrete shape (field names, JSON structure, wh
 
 **(a) Guaranteed structured → mechanical.** Direct lookup, no agent call:
 
-- `pr_url` frontmatter → exact string match against the pull request's own state, read from `gh`.
-- `closes_issues: [N]` / `gates_on: [N]` → `gh issue view N --json state`.
-- `closingIssuesReferences` field from the GH API (structured, not regex over commit text).
-- Task-ID pattern in a PR body string field — pattern-match against the PR body as a single field, not as parsed prose.
+- `pr_url` frontmatter → exact string match against the pull request's own state, read from `gh`. **Built.**
+- Task-ID pattern in a PR body string field — pattern-match against the PR body as a single field, not as parsed prose. **Built.**
+- `closes_issues: [N]` / `gates_on: [N]` → `gh issue view N --json state`. **Not built** — forward-issue leg.
+- `closingIssuesReferences` field from the GH API (structured, not regex over commit text). **Not built** — forward-issue leg.
 
 **(b) Semantic → agent reads the prose.** Where matching needs human-like judgment, the reconcile agent asks a sub-agent (one focused Claude call per question) a structured question and gets back a typed JSON answer with a confidence enum. The three questions the procedure currently asks:
 
-- Does this PR correspond to this task? (PR title, task title, task body excerpt → match bool, confidence, reason)
-- Is this closed-not-merged PR superseded? (PR body, timeline, linked issues → superseded_by, disposition)
-- Does this manually-closed issue correspond to a PKB task? (issue title, body, labels; top-5 PKB search candidates → task ID, confidence, reason)
+- Does this PR correspond to this task? (PR title, task title, task body excerpt → match bool, confidence, reason) **Built.**
+- Is this closed-not-merged PR superseded? (PR body, timeline, linked issues → superseded_by, disposition) **Built.**
+- Does this manually-closed issue correspond to a PKB task? (issue title, body, labels; top-5 PKB search candidates → task ID, confidence, reason) **Not built** — forward-issue leg (gap type #3).
 
 Routing: `confidence: low` always falls through to (c). `confidence: high` with a positive match auto-actions only for the `pr_merged` trigger; all other triggers fall through to (c) regardless of confidence. The user retains final judgment everywhere except the merged-PR happy path.
 
-**(c) Ambiguous → `needs_user_call`.** Written when the agent returns low confidence, when an issue closes with `state_reason: not_planned` or `duplicate`, when a closed-not-merged PR has no superseding PR identified, or when a `gates_on` event fires on a task with multiple blocking issues.
+**(c) Ambiguous → `needs_user_call`.** Written when the agent returns low confidence, or when a closed-not-merged PR has no superseding PR identified. Once the forward-issue leg is built, this also covers an issue closing with `state_reason: not_planned` or `duplicate`, and a `gates_on` event firing on a task with multiple blocking issues.
 
 ## DRY discipline
 
@@ -95,7 +103,10 @@ Verification is by audit — the agent landing each milestone reads the touched 
 
 ## Legacy backfill
 
-A one-off agent session, run after the skill lands, before the forward sweep runs on a cadence.
+Blocked on the forward-issue leg (gap types #1 and #3) landing first — this pass
+classifies task/issue relationships the current skill does not yet detect. A
+one-off agent session, run after that leg lands, before the forward sweep runs
+on a cadence.
 
 The agent considers all open GH issues across framework repos and all PKB tasks in the taxonomy's actionable set. For each, the agent reads the prose and classifies the relationship — does this task close that issue, is it gated on it, or is there no relationship? Uncertain cases get written to the event log with the ambiguous phrase quoted, surfacing in the next sweep's result.
 

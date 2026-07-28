@@ -5,6 +5,7 @@ model: sonnet
 color: pink
 skills:
   - verify
+subagents: []
 ---
 
 # Marsha — QA & UX Excellence

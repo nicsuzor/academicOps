@@ -1,6 +1,6 @@
 ---
 name: strategic-review
-description: Multi-agent review of any artifact — a document, plan, proposal, or pull request. The calling agent deploys rbg, pauli, and marsha in parallel; james reconciles their findings into one verdict. Pass `comment` and/or `fix` to write the result back to the review surface.
+description: Multi-agent review of any artifact — a document, plan, proposal, or pull request. James deploys rbg, pauli, and marsha in parallel, then reconciles their findings into one verdict. Pass `comment` and/or `fix` to write the result back to the review surface.
 agent: "aops:james"
 ---
 
@@ -8,9 +8,9 @@ agent: "aops:james"
 
 Review an artifact from several expert perspectives and return **one reconciled verdict**.
 
-James owns the reconciliation. **You, the invoking agent, own the orchestration** — you deploy the reviewers yourself, so that the agent writing the verdict is not also the agent who chose and briefed the reviewers it reads. James is called at the end, to reconcile only.
+James runs this skill end to end: assembles the standards, deploys the three reviewers, interrogates their output, and reconciles it into one verdict. Reviewer independence comes from the reviewers working blind to each other, and from james treating their output as input rather than truth — not from splitting who deploys them from who reconciles them. Never substitute your own reading of the artifact for the review — a verdict from an agent that reviewed itself is the thing this skill exists to prevent.
 
-This requires a subagent surface. If you hold none, you cannot run this skill: hand the artifact to a context that can spawn, and say so. Never substitute your own reading of it for the review — a verdict from one agent that reviewed itself is the thing this skill exists to prevent.
+This requires a subagent surface. If you hold none, you cannot run this skill: hand the artifact to a context that can spawn, and say so.
 
 ## Inputs
 
@@ -63,9 +63,9 @@ Reviewers select **three or four** lenses from this registry rather than sweepin
 | Ethics and governance       | Research, data     | Are ethical obligations addressed?                    |
 | Feasibility                 | Plans, proposals   | Can this be done with the resources available?        |
 
-## 4. Reconcile via james
+## 4. Reconcile
 
-Dispatch james with the artifact and all three reviewer outputs. **James reconciles only — he spawns no one.** He returns one verdict plus a synthesis table:
+With the artifact and all three reviewer outputs in hand, synthesise one verdict plus a synthesis table:
 
 | Agent | Issue | Feedback | Severity |
 

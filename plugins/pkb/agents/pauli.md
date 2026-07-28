@@ -12,6 +12,7 @@ skills:
   - workflow
   - remember
   - graph-maintenance
+subagents: ["*"]
 ---
 
 # Pauli — Memory and Strategy

@@ -4,6 +4,7 @@ description: "The Judge — rule-compliance reviewer. Applies the axioms and loc
 model: sonnet
 color: red
 skills: []
+subagents: []
 ---
 
 # RBG — The Judge

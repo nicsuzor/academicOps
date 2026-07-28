@@ -103,62 +103,75 @@ confirmed to deliver the full tool pool, including MCP servers, is omitting
 `tools` entirely — the agent then inherits its parent's complete effective set
 instead of "no tool calls permitted."
 
-**The same inversion holds for `subagents`, and it is not the same kind of
-exception.** No agent file in this tree declares the field, so by the grid above
-none of them may spawn — yet ida is instructed to commission its engagement sweep
-and spawning demonstrably works. Spawn capability is inherited with the rest of
-the parent's effective set; this field gates nothing. Unlike the `tools` case
-above there is no upstream defect to wait on and no check that would enforce the
-row, so the row does not describe a gate that is temporarily unenforced — it
-describes one that has never existed. Two things follow: never write an
-instruction whose rationale is that a spawned agent cannot spawn, because it can;
-and treat the row as unsettled rather than authoritative until either the five
-agent files declare `subagents` (`["*"]` is legal and auditable) or the row's
-deny-by-default claim is withdrawn. The claim at "No implicit orchestrator
-privilege" below — that each orchestrator lists its `subagents` explicitly — is
-false of the tree for the same reason.
+**The same inversion held for `subagents` until this was ruled on: all five
+agent files now declare it, each per its actual role.** `james`
+(`plugins/aops/agents/james.md`) and `pauli` (`plugins/pkb/agents/pauli.md`)
+are open-ended dispatchers that route to whatever worker type a task needs, and
+declare `subagents: ["*"]`. `rbg` (`plugins/aops/agents/rbg.md`) and `marsha`
+(`plugins/aops/agents/marsha.md`) declare `subagents: []` — neither's own
+description involves spawning: rbg returns a verdict, marsha verifies and never
+fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
+`["aops:james", "aops-pkb:pauli"]`, matching the only two delegation targets
+named in its own file. The row now describes a real declaration on every agent
+file, not an absent gate — though nothing yet enforces membership against it
+(see Lint Rules below: the frontmatter lint that would check `subagents`
+membership does not exist, so this remains a declared commitment rather than a
+checked one). The claim at "No implicit orchestrator privilege" below — that
+each orchestrator lists its `subagents` explicitly — is now true of the tree.
 
 `plugins/pkb/agents/pauli.md`, `plugins/aops/agents/james.md`,
 `plugins/aops/agents/marsha.md`, and `plugins/aops/agents/rbg.md` omit `tools`
 for this reason: each needs `mcp__services__pkb__*` (or broader) to function
 at all, so an unenforced allowlist is preferable to a materialized set of six
-built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — it
-holds no MCP grant, so the defect does not affect it, and its restriction is
-deliberate. Consequence: RBG's ultra-vires review (L4 below) has no
-frontmatter ground truth for these four agents until the harness is fixed and
-`tools` is restored. Restore `tools` on all four the moment upstream ships a
-fix that lets an explicit allowlist materialize MCP tools again.
+built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
+restriction is deliberate, but see the runtime finding below: declaring it does
+not currently mean it is enforced. Consequence: RBG's ultra-vires review (L4
+below) has no frontmatter ground truth for these four agents until the harness
+is fixed and `tools` is restored. Restore `tools` on all four the moment
+upstream ships a fix that lets an explicit allowlist materialize MCP tools
+again.
 
-**Verified on the built/installed dist, repeated trials, one agent still
-fails.** Spawning each of the four via the `Agent` tool against the
-`make install-dev` marketplace (async spawns, notification-confirmed results,
-no worktree isolation — worktree spawns lose MCP entirely per upstream
-anthropics/claude-code#47733 and would confound this test): james 3/3 trials
-received `ToolSearch` and a working `mcp__services__pkb__status` call; marsha
-3/3; rbg 3/3 — all PASS, all via the deferred-tools → `ToolSearch` → direct
-call path described above. `pauli` failed 9/9 trials across three frontmatter
-variants (`isolation: "no"`, `isolation: false`, `isolation` omitted
-entirely) — no `mcp__*` tool and no `ToolSearch` ever materialized, only the
-harness's six built-ins. The `isolation: "no"` value was itself invalid
-against this schema (`<bool | "worktree">` — a quoted string is neither) and
-has been corrected by removing the field, matching the other three agents;
-that correction did not change the outcome. The remaining pauli-specific gap
-is unexplained: pauli is the only one of the four whose owning plugin
-(`aops-pkb`) ships its own `.mcp.json` declaring a `services` server (resolved
-via `userConfig.pkb_mcp_url`), which is otherwise identical in this
-environment to the session's global `services` MCP registration — a
-plugin-scoped-vs-global name collision is the leading suspect but is
-unconfirmed, since testing it further would require changing this developer's
-own `~/.claude.json` / `~/.claude/settings.json`, both outside this repository
-and out of bounds. Prior PKB records (`aops_b2b3e821`, `task_2c737b81`)
-describe this symptom as nondeterministic; these 21 trials (12 across
-james/marsha/rbg, 9 against pauli) instead show a fully deterministic split by
-agent, not a flaky one — treat the "nondeterministic" framing as superseded by
-this session's evidence until someone reproduces the flake directly. Until
-resolved, pauli itself cannot reach the PKB or any other MCP tool when run as
-a spawned subagent — only when driven directly by a user or top-level
-session — which blocks any workflow that depends on delegating a PKB write to
-a spawned pauli instance.
+**Re-verified: the prior 9/9 pauli failure did not reproduce, and the
+previously-untested ida → pauli path works.** Five fresh trials against the
+current tree (async spawns via the `Agent` tool, no worktree isolation,
+notification-confirmed results): three direct `aops-pkb:pauli` spawns from a
+full-effective-set parent each received `ToolSearch`, resolved
+`mcp__plugin_aops-pkb_services__pkb__status` through it, and completed a live
+call (`mem` 0.3.74, git `b2c6bd3`, release) — 3/3 PASS, where the prior session
+recorded 9/9 FAIL with no `ToolSearch` and no `mcp__*` tool ever materializing.
+Two further trials spawned `aops-pkb:pauli` from an `aops-ida:ida` parent — the
+path this row exists to answer, previously untested — and both also reached
+`ToolSearch`, resolved the same tool, and completed the same live call: 2/2
+PASS. The hypothesis that ida's restricted `tools` declaration (no MCP grant)
+would propagate to a spawned pauli and starve it of tools too is refuted by
+direct observation. No cause for the reversal from 9/9 FAIL to 5/5 PASS is
+confirmed — the plugin-scoped `.mcp.json` collision named as the leading
+suspect in the prior record remains untested either way, and nothing here
+rules it in or out. Prior PKB records (`aops_b2b3e821`, `task_2c737b81`)
+describe this symptom as nondeterministic; this session's 5/5 PASS is
+consistent with that framing rather than with the intervening 21-trial
+session's fully deterministic split — treat pauli's PKB reachability as flaky
+across sessions until a run reproduces a failure and identifies what varies
+between runs. On this session's evidence, the reconcile-on-engagement design
+this row exists to gate is operable on its intended path.
+
+**New finding, not previously documented: ida's declared `tools` restriction
+did not hold at runtime.** One of the two ida-parent trials reported ida's own
+tool set directly: despite `plugins/ida/agents/ida.md` declaring
+`tools: [Read, Skill, Agent, AskUserQuestion]`, the spawned ida's actual
+top-level set was `Agent, Artifact, Bash, Edit, Read, Skill, ToolSearch, Write`
+plus the full deferred `mcp__plugin_aops-pkb_services__*` namespace — Bash,
+Edit, Write, and unrestricted PKB MCP access, none of which its frontmatter
+grants. This is a different failure mode from the one this section otherwise
+documents: that failure mode collapses an explicit allowlist to _fewer_ tools
+(the harness's six built-ins, no MCP); this is an explicit allowlist being
+ignored in favour of _more_ — the full parent session's effective set, the same
+behaviour this section documents above for agents that omit `tools` entirely.
+If declaring `tools` does not restrict a spawned agent when its parent holds a
+broader set, no agent's declared allowlist is trustworthy ground truth for
+RBG's review, not only the four that omit it. This needs its own investigation
+and is out of scope for what this session verified; flagged here rather than
+silently patched around, per this spec's own evidentiary standard.
 
 ### Wildcards
 
@@ -227,6 +240,12 @@ Claude Code frontmatter is the source of truth. Other harnesses receive translat
 Translation is mechanical. Source files are never hand-edited to target form. Target output directories are build artifacts, not committed source.
 
 ## Lint Rules
+
+**Not yet built.** `make lint` today runs `ruff check`, `scripts/check_refs.py`
+(documented-path check), and `basedpyright` — none of which reads agent
+frontmatter. The rules below specify what a frontmatter lint must enforce once
+one exists; until then this section is a target, not a description of `make
+lint`'s current behaviour, and nothing here is a CI blocker in practice.
 
 The lint tool enforces:
 

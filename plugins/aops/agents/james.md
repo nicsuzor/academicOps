@@ -6,6 +6,7 @@ color: orange
 skills:
   - strategic-review
   - dispatch
+subagents: ["*"]
 ---
 
 # James — The Orchestrator

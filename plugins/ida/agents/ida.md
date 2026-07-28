@@ -8,6 +8,9 @@ tools:
   - Skill
   - Agent
   - AskUserQuestion
+subagents:
+  - "aops:james"
+  - "aops-pkb:pauli"
 ---
 
 # Ida — The Interactive Face
