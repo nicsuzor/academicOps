@@ -28,7 +28,7 @@ flowchart TD
         decompose --> brief["skills/brief<br/>delegation brief"]
         decompose -.-> workflow["skills/workflow<br/>compose the process"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
-        pauli --> graph["skills/graph-maintenance<br/>wire · garden"]
+        pauli --> graphx["skills/graph-maintenance<br/>wire · garden"]
         pauli --> reconcile["skills/reconcile<br/>probe stale claims · fold in<br/>what landed unwatched"]
         remember -.-> reconcile
     end
@@ -38,7 +38,7 @@ flowchart TD
     workflow --> wf[["PKB documents tagged wf-template"]]
 
     remember --> mcp
-    graph --> mcp
+    graphx --> mcp
     reconcile --> mcp
     situate --> mcp
     decompose --> mcp
@@ -48,6 +48,17 @@ flowchart TD
 
     brief --> dispatch([dispatch by task id])
 ```
+
+<!-- NS: this graph is broken -- I had to rename 'graph' reserved keyword. make sure our skills set out which words are reserved. Also:
+- we don't need so much detail in the 'prompt reminder injection' box, that's one step
+- make it clear that hydration is voluntary for the agent. explain what skills the agent is asked to execute for each userpromptsubmit hook
+- if hydration happens below within pauli's domain, what exactly are agents asked to look up, and how (since they don't have pkb tools)?
+- how do tasks move through the pipeline, from planner, hydrate, situate, decompose, etc?
+- who is doing the dispatching? how do they get the task? where is pauli in the other graph that shows James' role?
+- who does the remembering? how does /remember get invoked? how do memories get synthesised?
+- who composes a workflow, and at what stage? why is it outside of pauli's box? how are workflows composed? what is the output of composing a workflow?
+
+-->
 
 The hook fires on every prompt and never calls the PKB itself — it tells the
 agent to search, and names the searches worth running. Establishing an MCP

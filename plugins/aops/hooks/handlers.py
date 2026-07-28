@@ -64,6 +64,8 @@ def session_start(ctx: HookContext) -> result.Result | None:
 
     Reports only. Never sets a telemetry value and never supplies an endpoint.
     """
+    # <!-- NS: Make sure this reports plugin version and loaded plugins and whatever else we're going to need -- tracing urls etc. but have a separate hook for functionality that exists only in other packages, don't introduce cross-package messages -->
+
     agent, user = messages.load_pair(ctx.hooks_dir, "session-start")
     parts = [agent.format(telemetry=telemetry.report())]
     lines = [user] if user else []

@@ -37,6 +37,14 @@ flowchart TD
     BLOCK --> J
 ```
 
+<!-- NS: this needs to be reconciled with the other graphs from other plugins.
+- the contract between Ida and James has to be made explicit. Ida must be prohibited from doing substantive work if she is to keep the user's context clean. Ida should strictly synthesise output from James. Presumably if Ida needs to even check on the progress of async work, it should be James who goes looking, so Ida never even touches the PKB?
+- What standards does Ida use to determine whether the input from James is good enough?
+- why is Ida doing a reconcile sweep and not Pauli?
+- what is 'certification'? where are the diffferent places it can be done?
+
+-->
+
 Ida holds between steps rather than driving ahead: after each step control returns to the user, who owns the sequence. Academic integrity is carried here — research data is immutable, and research, teaching, and publication outputs reach the user with full receipts before anything is marked done. The sign-off floor itself is not ida's alone: the `one-way-door` axiom binds every agent at an irreversible, outward-facing act, and ida's charter is the stricter domain layer over it.
 
 ## What it provides
