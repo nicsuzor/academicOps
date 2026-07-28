@@ -114,6 +114,29 @@ A `userConfig` value wins over the plain variable when both are set. Claude Code
 
 The API key option is declared `sensitive`, so Claude Code masks it on entry and stores it in the macOS Keychain — or `~/.claude/.credentials.json` where no keychain is available — instead of `settings.json`. Supplying the key that way rather than as an ambient environment variable is the better of the two on Claude Code, and it is the reason the option exists.
 
+## Running against a local model
+
+The classifier is open-weights ([`zentropi-ai/cope-b-a4b`](https://huggingface.co/zentropi-ai/cope-b-a4b)), so the `cope` protocol can point at loopback instead of a hosted service. Two processes:
+
+```bash
+llama-server --model <path>/cope-b-a4b.gguf --alias cope-b-a4b --port 8090
+python3 scripts/cope_eval_shim.py --port 8099 --upstream http://127.0.0.1:8090
+```
+
+`llama-server` holds the model. `scripts/cope_eval_shim.py`, in the academicOps repository, translates the CoPE label API onto it — the model answers a formatted prompt with a single `0` or `1` token, not with JSON. It is standard library only: no venv, no install. `curl http://127.0.0.1:8099/v1/health` reports the shim's own status and whether llama-server is answering.
+
+Then point cope at the shim:
+
+| Variable                  | Value                                                                                                                                                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `COPE_EVALUATOR_URL`      | `http://127.0.0.1:8099/v1/label`                                                                                                                                            |
+| `COPE_EVALUATOR_PROTOCOL` | `cope`                                                                                                                                                                      |
+| `COPE_EVALUATOR_MODEL`    | The name llama-server serves: its `--alias`, or the model's file path when no alias is set. `GET /v1/models` on port 8090 reports it; the shim passes it through unchanged. |
+| `COPE_EVALUATOR_API_KEY`  | Leave unset. The shim needs no credential, ignores any `Authorization` header it is sent, and forwards none.                                                                |
+| `COPE_EVALUATOR_TIMEOUT`  | The budget for the whole tool call, across every live rule. Start at the 5-second default and raise it if rules go unevaluated; keep `--upstream-timeout` at or above it.   |
+
+An upstream that is unreachable, slow, or answering with anything other than `0` or `1` gets a 5xx from the shim and never a label — which cope fails open on, as it does on any other evaluator failure.
+
 ## Depends on
 
 - `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`, `degraded.py`, and `messages/degraded*.md`), injected into `hooks/` at build time.
