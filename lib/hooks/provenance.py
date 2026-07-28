@@ -37,11 +37,18 @@ _REGISTRY_NAME = "installed_plugins.json"
 
 def _load_json(path: Path) -> dict[str, Any] | None:
     """``path`` parsed as a JSON object, or ``None`` — absent, unreadable, not
-    JSON, or JSON that is not an object. A caller gets one answer for "no usable
-    data here" instead of four exceptions."""
+    JSON, JSON that is not an object, or anything else that stops it becoming
+    one. A caller gets one answer for "no usable data here" instead of an open
+    set of exceptions."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    # Not (OSError, ValueError): a deeply nested file raises RecursionError, a
+    # huge one MemoryError, and neither is either. The caller drops its whole
+    # handler on a raise — including the credential shim session_start sets up
+    # after this report — so an unreadable file resolves to "no usable data
+    # here" rather than costing unrelated work. KeyboardInterrupt and
+    # SystemExit are BaseException and still get through.
+    except Exception:  # noqa: BLE001 - a report may not cost the caller its handler
         return None
     return data if isinstance(data, dict) else None
 

@@ -636,6 +636,21 @@ def test_provenance_with_an_unparseable_registry_does_not_raise(tmp_path):
     )
 
 
+def test_provenance_with_a_pathologically_nested_registry_does_not_raise(tmp_path):
+    """`json`'s decoder raises RecursionError on deep nesting, which is neither
+    OSError nor ValueError — the pair a narrow catch here would name. What that
+    costs is not one missing provenance line: `_run_handler` discards the whole
+    handler (lib/hooks/dispatch.py), and `session_start` reports provenance
+    *before* it isolates credentials, so one mangled registry file would take a
+    container session's git credential shim with it."""
+    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
+    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
+    _registry(plugin_root.parent.parent, "[" * 50_000 + "]" * 50_000)
+    assert (
+        provenance.installed(hooks_dir) == "plugins installed: no client registry beside this build"
+    )
+
+
 def test_provenance_with_a_registry_of_the_wrong_shape_says_so(tmp_path):
     plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
     hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
