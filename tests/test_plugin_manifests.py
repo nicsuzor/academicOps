@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -13,12 +14,31 @@ DIST_ROOT = PROJECT_ROOT / "dist"
 def get_plugin_dirs():
     """Returns a list of all built plugin directories in dist/.
 
-    Raises rather than returning [] when dist/ is missing or empty: an empty
-    parametrize list reports the whole module as skipped-green, silently
-    voiding the manifest checks on an unbuilt checkout.
+    Never returns [] on an unbuilt tree: an empty parametrize list reports the
+    whole module as green, silently voiding the manifest checks. Instead:
+
+    - dist/ absent on a developer checkout: skip the module explicitly, with a
+      reason naming the command that would enable it. A collection *error* here
+      makes ``pytest tests/`` exit non-zero on any source-only tree, which
+      destroys the suite's exit code as a signal for every other test.
+      Nothing is lost: CI builds dist/ (``uv run python -m build.build``) before
+      invoking pytest — see .github/workflows/pytest.yml — and pr-pipeline.yml
+      runs that workflow on every PR, so these checks still gate every merge.
+    - dist/ absent under CI: still a hard error. The build step is supposed to
+      have run, so a missing dist/ there is a broken pipeline, not a source
+      checkout, and must not degrade to a silent skip.
+    - dist/ present but containing no plugin directories: always a hard error,
+      in CI or not. That is a broken build, not an unbuilt tree.
     """
     if not DIST_ROOT.exists():
-        raise RuntimeError(f"{DIST_ROOT} does not exist — run 'make build' before the test suite")
+        if os.environ.get("CI"):
+            raise RuntimeError(
+                f"{DIST_ROOT} does not exist under CI — the build step must run before pytest"
+            )
+        pytest.skip(
+            f"{DIST_ROOT} does not exist — run 'make build' to enable the manifest checks",
+            allow_module_level=True,
+        )
 
     plugin_dirs = []
     for d in DIST_ROOT.iterdir():
