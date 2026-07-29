@@ -7,7 +7,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SessionStart"
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SessionStart"
             }
           ]
         }
@@ -17,7 +17,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
             }
           ]
         }
@@ -27,7 +27,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStop"
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStop"
             }
           ]
         }
@@ -37,7 +37,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Stop"
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Stop"
             }
           ]
         }
@@ -51,7 +51,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
+              "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
             }
           ]
         }

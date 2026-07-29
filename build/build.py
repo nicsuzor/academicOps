@@ -82,7 +82,7 @@ def _resolve_includes_in_tree(stage_dir: Path, lib_dir: Path) -> None:
             md_file.write_text(resolved, encoding="utf-8")
 
 
-def _stage_plugin(plugin: Plugin, lib_dir: Path, stage_dir: Path) -> None:
+def _stage_plugin(plugin: Plugin, lib_dir: Path, stage_dir: Path, version: str) -> None:
     """Stages 1-2: a client-agnostic copy with shared content injected and
     includes resolved — built once, then reused for every client."""
     if stage_dir.exists():
@@ -94,10 +94,21 @@ def _stage_plugin(plugin: Plugin, lib_dir: Path, stage_dir: Path) -> None:
     _resolve_includes_in_tree(stage_dir, lib_dir)
 
     repo_root = plugin.source_dir.parent.parent
-    if (repo_root / "pyproject.toml").exists():
-        shutil.copy2(repo_root / "pyproject.toml", stage_dir / "pyproject.toml")
-    if (repo_root / "uv.lock").exists():
-        shutil.copy2(repo_root / "uv.lock", stage_dir / "uv.lock")
+    plugin_pyproject = plugin.source_dir / "pyproject.toml"
+    plugin_uvlock = plugin.source_dir / "uv.lock"
+
+    if plugin_pyproject.exists():
+        shutil.copy2(plugin_pyproject, stage_dir / "pyproject.toml")
+        if plugin_uvlock.exists():
+            shutil.copy2(plugin_uvlock, stage_dir / "uv.lock")
+    else:
+        template_path = repo_root / "templates" / "plugin" / "pyproject.template.toml"
+        if template_path.exists():
+            content = template_path.read_text(encoding="utf-8")
+            content = content.replace("${PLUGIN_NAME}", plugin.marketplace_name)
+            content = content.replace("${VERSION}", version)
+            content = content.replace("${PLUGIN_DESCRIPTION}", plugin.description)
+            (stage_dir / "pyproject.toml").write_text(content, encoding="utf-8")
 
 
 def _render_manifests(
@@ -199,7 +210,7 @@ def build_all(
     try:
         for plugin in discover_plugins(project_root, decl, plugins):
             stage_dir = stage_root / plugin.directory
-            _stage_plugin(plugin, lib_dir, stage_dir)
+            _stage_plugin(plugin, lib_dir, stage_dir, resolved_version)
             for client in clients:
                 build_dir = _build_plugin_client(
                     plugin, client, stage_dir, dist_root, resolved_version, decl["owner"]
