@@ -38,13 +38,19 @@ build:
 
 # --- Install ---
 
-# The pkb plugin ships a pkb_mcp_url userConfig field for the PKB MCP server
-# URL (specs/ARCHITECTURE.md "No defaults" — the URL is never baked in, only
-# forwarded from the environment). --config is only valid against the plugin
-# that declares the key, so it's scoped to aops-pkb specifically.
+# Claude Code plugins can define `userConfig` fields for things like MCP server
+# URLs (e.g. `pkb_mcp_url`). If the environment has a matching upper-case
+# variable (e.g. `PKB_MCP_URL`), we forward it automatically.
 define claude_install
 	config=""; \
-	if [ "$(1)" = "aops-pkb" ] && [ -n "$$PKB_MCP_URL" ]; then config="--config pkb_mcp_url=$$PKB_MCP_URL"; fi; \
+	if [ -f "$(DIST)/$(1)-claude/.claude-plugin/plugin.json" ]; then \
+		keys=$$(uv run python -c "import json, pathlib; d=json.loads(pathlib.Path('$(DIST)/$(1)-claude/.claude-plugin/plugin.json').read_text()); print(' '.join(d.get('userConfig', {}).keys()))" 2>/dev/null); \
+		for k in $$keys; do \
+			env_k=$$(echo $$k | tr '[:lower:]' '[:upper:]'); \
+			val=$$(eval echo \$$$$env_k); \
+			if [ -n "$$val" ]; then config="$$config --config $$k=$$val"; fi; \
+		done; \
+	fi; \
 	command claude plugin install $(1)@$(2) $$config && echo "✓ $(1)@$(2) installed" \
 		|| { echo "x $(1)@$(2) install failed" >&2; exit 1; }
 endef

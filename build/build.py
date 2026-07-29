@@ -24,7 +24,7 @@ from build.clients import claude as claude_client
 from build.context import BuildContext, Plugin
 from build.errors import BuildError
 from build.includes import resolve_includes
-from build.manifest import render_template, template_stem
+from build.manifest import merge_one_level, render_template, template_stem
 from build.marketplace import (
     generate_cowork_dist,
     generate_local_marketplace,
@@ -65,6 +65,8 @@ def discover_plugins(
             Plugin(
                 directory=directory,
                 marketplace_name=declared[directory]["name"],
+                description=declared[directory]["description"],
+                category=declared[directory]["category"],
                 source_dir=source_dir,
             )
         )
@@ -92,19 +94,33 @@ def _stage_plugin(plugin: Plugin, lib_dir: Path, stage_dir: Path) -> None:
     _resolve_includes_in_tree(stage_dir, lib_dir)
 
 
-def _render_manifests(plugin: Plugin, client: str, version: str) -> dict[str, dict[str, Any]]:
+def _render_manifests(
+    plugin: Plugin, client: str, version: str, owner: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
     """Stage 3."""
     manifest_dir = plugin.source_dir / "manifest"
     manifests: dict[str, dict[str, Any]] = {}
-    if not manifest_dir.exists():
-        return manifests
 
-    for template_path in sorted(manifest_dir.glob("*.template.json")):
-        stem = template_stem(template_path)
-        data = render_template(template_path, client)
-        if stem == "plugin":
-            data["version"] = version
-        manifests[stem] = data
+    if manifest_dir.exists():
+        for template_path in sorted(manifest_dir.glob("*.template.json")):
+            stem = template_stem(template_path)
+            data = render_template(template_path, client)
+            manifests[stem] = data
+
+    base_plugin = {
+        "name": plugin.marketplace_name,
+        "description": plugin.description,
+        "author": {"name": owner.get("name", "")},
+        "license": "MIT",
+    }
+
+    plugin_data = base_plugin
+    if "plugin" in manifests:
+        plugin_data = merge_one_level(base_plugin, manifests["plugin"])
+
+    plugin_data["version"] = version
+    manifests["plugin"] = plugin_data
+
     return manifests
 
 
@@ -124,7 +140,12 @@ def _package(build_dir: Path, client: str, dist_root: Path) -> Path:
 
 
 def _build_plugin_client(
-    plugin: Plugin, client: str, stage_dir: Path, dist_root: Path, version: str
+    plugin: Plugin,
+    client: str,
+    stage_dir: Path,
+    dist_root: Path,
+    version: str,
+    owner: dict[str, Any],
 ) -> Path:
     adapter = CLIENT_ADAPTERS.get(client)
     if adapter is None:
@@ -135,7 +156,7 @@ def _build_plugin_client(
         shutil.rmtree(build_dir)
     shutil.copytree(stage_dir, build_dir, ignore=ignore())
 
-    manifests = _render_manifests(plugin, client, version)  # stage 3
+    manifests = _render_manifests(plugin, client, version, owner)  # stage 3
     ctx = BuildContext(plugin=plugin, client=client, version=version, manifests=manifests)
     adapter(build_dir, ctx)  # stage 4
 
@@ -175,7 +196,7 @@ def build_all(
             _stage_plugin(plugin, lib_dir, stage_dir)
             for client in clients:
                 build_dir = _build_plugin_client(
-                    plugin, client, stage_dir, dist_root, resolved_version
+                    plugin, client, stage_dir, dist_root, resolved_version, decl["owner"]
                 )
                 built.setdefault(plugin.marketplace_name, []).append(build_dir)
     finally:

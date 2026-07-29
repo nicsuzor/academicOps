@@ -113,7 +113,13 @@ def test_agy_rejects_an_event_it_cannot_fire(tmp_path):
     from build.context import BuildContext, Plugin
 
     ctx = BuildContext(
-        plugin=Plugin(directory="ts", marketplace_name="aops-ts", source_dir=tmp_path),
+        plugin=Plugin(
+            directory="ts",
+            marketplace_name="aops-ts",
+            description="desc",
+            category="productivity",
+            source_dir=tmp_path,
+        ),
         client="agy",
         version=VERSION,
         manifests={},
@@ -127,7 +133,13 @@ def _agy_ctx(tmp_path, directory="pkb", name="aops-pkb"):
     from build.context import BuildContext, Plugin
 
     return BuildContext(
-        plugin=Plugin(directory=directory, marketplace_name=name, source_dir=tmp_path),
+        plugin=Plugin(
+            directory=directory,
+            marketplace_name=name,
+            description="desc",
+            category="productivity",
+            source_dir=tmp_path,
+        ),
         client="agy",
         version=VERSION,
         manifests={},
@@ -369,26 +381,3 @@ def test_plugin_missing_source_dir_is_hard_error():
     )
     with pytest.raises(BuildError, match="plugin source missing"):
         discover_plugins(TESTDATA, decl, ["ghost"])
-
-
-def test_plugin_without_plugin_manifest_is_hard_error(tmp_path):
-    project_root = tmp_path / "project"
-    (project_root / "lib").mkdir(parents=True)
-    (project_root / "plugins" / "nomanifest" / "manifest").mkdir(parents=True)
-
-    marketplace_toml = project_root / "build" / "marketplace.toml"
-    marketplace_toml.parent.mkdir(parents=True)
-    marketplace_toml.write_text(
-        'name = "x"\ndescription = "x"\n\n[owner]\nname = "x"\n\n'
-        '[[plugins]]\ndirectory = "nomanifest"\nname = "nomanifest"\n'
-        'description = "x"\ncategory = "productivity"\n'
-    )
-
-    with pytest.raises(BuildError, match="plugin.template.json is required"):
-        build_all(
-            project_root,
-            tmp_path / "dist",
-            marketplace_path=marketplace_toml,
-            clients=("claude",),
-            version=VERSION,
-        )

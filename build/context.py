@@ -15,6 +15,8 @@ class Plugin:
 
     directory: str  # plugins/<directory> — source dir name
     marketplace_name: str  # ships as dist/<marketplace_name>-<client>
+    description: str
+    category: str
     source_dir: Path  # plugins/<directory>
 
 

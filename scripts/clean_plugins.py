@@ -17,8 +17,13 @@ import json
 import shutil
 from pathlib import Path
 
-# The marketplace names in build/marketplace.toml.
-AOPS_PLUGIN_NAMES = {"aops", "aops-pkb", "aops-ida", "aops-cope", "aops-ts", "aops-tools"}
+
+def get_aops_plugin_names() -> set[str]:
+    import tomllib
+
+    toml_path = Path(__file__).resolve().parent.parent / "build" / "marketplace.toml"
+    data = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    return {p["name"] for p in data["plugins"]}
 
 
 def clean_cli() -> None:
@@ -63,8 +68,9 @@ def clean_gui() -> None:
     for manifest in base.rglob("rpm/manifest.json"):
         data = json.load(open(manifest))
         keep, drop = [], []
+        aops_plugin_names = get_aops_plugin_names()
         for p in data.get("plugins", []):
-            (drop if p.get("name") in AOPS_PLUGIN_NAMES else keep).append(p)
+            (drop if p.get("name") in aops_plugin_names else keep).append(p)
         if not drop:
             continue
         for p in drop:
