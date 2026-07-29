@@ -93,6 +93,12 @@ def _stage_plugin(plugin: Plugin, lib_dir: Path, stage_dir: Path) -> None:
     inject_shared(plugin.source_dir / "manifest" / "plugin.toml", lib_dir, stage_dir)
     _resolve_includes_in_tree(stage_dir, lib_dir)
 
+    repo_root = plugin.source_dir.parent.parent
+    if (repo_root / "pyproject.toml").exists():
+        shutil.copy2(repo_root / "pyproject.toml", stage_dir / "pyproject.toml")
+    if (repo_root / "uv.lock").exists():
+        shutil.copy2(repo_root / "uv.lock", stage_dir / "uv.lock")
+
 
 def _render_manifests(
     plugin: Plugin, client: str, version: str, owner: dict[str, Any]
