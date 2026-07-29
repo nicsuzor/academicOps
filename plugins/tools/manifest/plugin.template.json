@@ -1,6 +1,6 @@
 {
   "__base__": {
-    "name": "aops-tools",
+    "name": "tools",
     "description": "AcademicOps analysis and specialized data processing skills",
     "author": {
       "name": "Nicolas Suzor"

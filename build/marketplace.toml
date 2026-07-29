@@ -8,39 +8,39 @@ description = "academicOps - Research workflow automation framework"
 [owner]
 name = "Nicolas Suzor"
 email = "nic@suzor.net"
-
-[[plugins]]
-directory = "aops"
-name = "aops"
-description = "Core academicOps framework — james, marsha, rbg. Review, QA, verification, dispatch, polecat containers."
-category = "productivity"
+#
+# [[plugins]]
+# directory = "aops"
+# name = "aops"
+# description = "Core academicOps framework — james, marsha, rbg. Review, QA, verification, dispatch, polecat containers."
+# category = "productivity"
 
 [[plugins]]
 directory = "pkb"
-name = "aops-pkb"
+name = "pkb"
 description = "pauli. Memory, effectual planning, workflow composition, PKB MCP client config."
 category = "productivity"
 
 [[plugins]]
 directory = "ida"
-name = "aops-ida"
+name = "ida"
 description = "ida — the interactive face."
 category = "productivity"
 
-[[plugins]]
-directory = "cope"
-name = "aops-cope"
-description = "Automatic in-session rule enforcement."
-category = "productivity"
-
+# [[plugins]]
+# directory = "cope"
+# name = "cope"
+# description = "Automatic in-session rule enforcement."
+# category = "productivity"
+#
 [[plugins]]
 directory = "ts"
-name = "aops-ts"
+name = "ts"
 description = "Tailscale bring-up for remote sessions."
 category = "productivity"
 
 [[plugins]]
 directory = "tools"
-name = "aops-tools"
+name = "tools"
 description = "Domain research skills."
 category = "productivity"
