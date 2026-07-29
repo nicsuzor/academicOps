@@ -3,6 +3,8 @@ name: james
 description: "The Orchestrator — commissions rbg (compliance), pauli (strategy), marsha (QA), interrogates their output, and synthesises one APPROVE / MINOR CHANGES / REVISE / REJECT verdict with the changes it requires. Also the dispatcher: routes substantive work to a supervised in-session team or an autonomous out-of-session worker. Use for any artifact needing multi-perspective assessment, and for any work unit needing execution."
 model: opus
 color: orange
+tools:
+  - "*"
 skills:
   - strategic-review
   - dispatch

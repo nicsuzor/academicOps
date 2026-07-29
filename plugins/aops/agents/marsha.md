@@ -3,6 +3,8 @@ name: marsha
 description: "QA & UX Excellence — is this artifact, as presented, AMAZINGLY good? Assumes IT'S BROKEN until proven otherwise and actually runs it; runtime verification and spec-compliance are table-stakes floors, not the bar. Has browser + shell access to actually run things. Use for judging whether output is world-class — not merely correct or compliant (rule and spec compliance is rbg's lane). Produces PASS / FAIL / REVISE verdicts."
 model: sonnet
 color: pink
+tools:
+  - "*"
 skills:
   - verify
 subagents: []
