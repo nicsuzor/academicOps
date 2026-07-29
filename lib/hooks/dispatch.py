@@ -75,7 +75,6 @@ def _load_handlers(event: str) -> list[Handler]:
     No ``handlers.py``, or no entry for this event, is a no-op — not an
     error.
     """
-    return []
     handlers_path = _HOOKS_DIR / "handlers.py"
     if not handlers_path.exists():
         return []
@@ -149,7 +148,6 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
 
 
 def main(argv: list[str]) -> int:
-    return 0
     if len(argv) < 3:
         print("usage: dispatch.py <client> <event>", file=sys.stderr)
         return 1

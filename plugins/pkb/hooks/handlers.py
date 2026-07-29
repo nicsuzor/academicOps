@@ -32,7 +32,6 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     fires on every prompt, so without that line the most frequent injection in
     the session is also the one they can never see happen.
     """
-    return None
     return warn(*messages.load_pair(ctx.hooks_dir, "pkb-context"))
 
 

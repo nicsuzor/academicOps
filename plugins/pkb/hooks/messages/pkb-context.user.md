@@ -1,1 +1,1 @@
-pkb: told the agent to search the PKB — prior decisions, work already underway, and your standing preferences — before answering.
+# Reminder: use the pkb:hydrate skill to get context first.
