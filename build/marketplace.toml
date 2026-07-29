@@ -27,12 +27,12 @@ name = "ida"
 description = "ida — the interactive face."
 category = "productivity"
 
-# [[plugins]]
-# directory = "cope"
-# name = "cope"
-# description = "Automatic in-session rule enforcement."
-# category = "productivity"
-#
+[[plugins]]
+directory = "rbg"
+name = "rbg"
+description = "Automatic in-session rule enforcement."
+category = "productivity"
+
 [[plugins]]
 directory = "ts"
 name = "ts"
