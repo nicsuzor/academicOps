@@ -65,14 +65,6 @@ His frontmatter grants two skills and they are co-equal. `strategic-review` judg
 
 He commissions the third skill rather than invoking it. `verify` is bound to marsha, whose broken-until-proven disposition is the reason it exists, and it is absent from james's own allowlist. `pull` and `dump` are the worker's contract and appear nowhere in his instructions.
 
-### An "agent team" here is parallel subagents, never teammate mode
-
-`lib/axioms/delegation.md` provides the binding framework for james. It names three surfaces — in-session subagent, autonomous container, queued task — and it permits fanning out: _"Fan out in parallel where the work parallelises, and batch independent calls into one message."_ That is what a team is here: several plain subagents, briefed one each, supervised by james, reconciled by him into one deliverable.
-
-What it is not is teammate mode. Anything reached through `SendMessage`, `TeamCreate`, or a channel keyed to an idle signal rather than a returned message is outside the modelled set: nothing carries the report back, the harness may hand the child the spawner's tool roster instead of its declared one, and the worker's actual output strands in its own transcript. Tool-bearing and report-bearing work never goes through it. Couriers are spawned plainly for exactly this reason.
-
-What the in-session route buys is latency, and that is all it buys. There is **no container isolation** — the subagents run in james's own session, against the working tree as it stands, with whatever credentials that session holds. And there is **no delivery guard**: `polecat/cli.py` refuses to report success while the workspace carries uncommitted changes or unpushed commits, and reopens a task the worker closed without delivering, but that check runs on the host after the container exits and exists nowhere else. In-session work is delivered because james supervised it, not because anything verified it was.
-
 The review shape does not change with the surface. Cadence is a routing detail; the claim, the return contract, and the certification step below are identical whichever surface ran the work.
 
 ### The task is the contract
