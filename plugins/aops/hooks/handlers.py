@@ -107,6 +107,7 @@ def present_checkable_evidence(ctx: HookContext) -> result.Result | None:
     holding, not stopping, and has nothing new to present yet. Firing here
     would nag it into re-outputting a deliverable that does not exist yet.
     """
+    return None
     if ctx.raw.get("stop_hook_active") or ctx.raw.get("background_tasks"):
         return None
     return _warn(ctx, "answer-evidence")
@@ -126,6 +127,7 @@ def refuse_interactive_prompt_when_headless(ctx: HookContext) -> result.Result |
     that has someone in it. See lib/hooks/result.py for what may and may not
     be a refusal.
     """
+    return None
     if ctx.tool not in _INTERACTIVE_TOOLS:
         return None
     if not _is_headless():

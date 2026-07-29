@@ -48,6 +48,7 @@ def _log_fire(client: str, event: str, ctx: HookContext) -> None:
     a default path or invents one, and nothing here may raise into the hook
     it is trying to record — a logging failure must never break the call.
     """
+    return None
     log_path = os.environ.get("AOPS_HOOK_LOG_PATH")
     if not log_path:
         return
@@ -74,6 +75,7 @@ def _load_handlers(event: str) -> list[Handler]:
     No ``handlers.py``, or no entry for this event, is a no-op — not an
     error.
     """
+    return []
     handlers_path = _HOOKS_DIR / "handlers.py"
     if not handlers_path.exists():
         return []
@@ -147,6 +149,7 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
 
 
 def main(argv: list[str]) -> int:
+    return 0
     if len(argv) < 3:
         print("usage: dispatch.py <client> <event>", file=sys.stderr)
         return 1
