@@ -189,5 +189,5 @@ plugin reads or writes it as a filesystem path.
 - A PKB MCP server, reachable at the configured endpoint. The server is external
   to this plugin; the plugin ships client wiring only.
 - `lib/hooks/`, injected into `hooks/` at build time.
-- `lib/doctrine/`, inlined into `agents/pauli.md` at build time.
+- `lib/axioms/`, applied as global rule context for pauli.
 - `uv`, for the stdio launcher only.

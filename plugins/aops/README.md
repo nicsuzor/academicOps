@@ -6,26 +6,26 @@ Review, QA, and dispatch: three reviewing agents, the machinery that reconciles 
 
 ```mermaid
 flowchart TD
-    USER([user]) --> IDA["ida — plugins/ida<br/>the only agent that talks to the user"]
-    IDA -->|"anything substantive"| JAMES
+    USER([user]) --> IDA["ida-flat — plugins/ida<br/>the only agent that talks to the user"]
+    IDA -->|"anything substantive"| DISP
     IDA -->|"engagement after an absence"| PAULI["pauli — plugins/pkb<br/>skills/reconcile sweep"]
-    PAULI -->|"landed but uncertified"| JAMES
+    PAULI -->|"landed but uncertified"| DISP
 
-    JAMES(("james<br/>agents/james.md<br/>two skills, both entry points"))
-    JAMES --> SR["skills/strategic-review<br/>premise test, then fan out"]
-    JAMES --> DISP["skills/dispatch<br/>claim epic · read the graph ·<br/>brief afresh · route by task id"]
+    DISP(("ida-flat (dispatch)<br/>agents/ida-flat.md"))
+    DISP --> SR["skills/strategic-review<br/>premise test, then fan out"]
+    DISP --> DISPATCH_SKILL["skills/dispatch<br/>claim epic · read the graph ·<br/>brief afresh · route by task id"]
 
     SR --> RBG["rbg — agents/rbg.md<br/>axioms/ + $CWD/.agents/rules/<br/>+ $ACA_DATA/.agents/rules/"]
-    SR --> MARSHA["marsha — agents/marsha.md<br/>holds skills/verify; james commissions it"]
+    SR --> MARSHA["marsha — agents/marsha.md<br/>holds skills/verify"]
     SR --> PAULI2["pauli — plugins/pkb<br/>premise, architectural fit"]
     RBG --> INTERROGATE
     MARSHA --> INTERROGATE
-    PAULI2 --> INTERROGATE["james interrogates<br/>reject scope drift · send back<br/>evidence-free reports · iterate"]
+    PAULI2 --> INTERROGATE["ida-flat interrogates<br/>reject scope drift · send back<br/>evidence-free reports · iterate"]
     INTERROGATE --> VERDICT{"one verdict<br/>APPROVE · MINOR CHANGES<br/>· REVISE · REJECT"}
 
-    DISP -->|"needed now"| TEAM["plain subagents james supervises —<br/>one, or several in parallel,<br/>reconciled by him into one result.<br/>No container. No delivery guard."]
-    DISP -->|"substantial autonomous repo work"| COURIER["courier: a plain background subagent<br/>runs the CLI in the foreground and<br/>returns the harvested result"]
-    DISP -.->|"any surface the task<br/>contract permits"| OTHER["( another runner )<br/>in: one task id<br/>out: evidence + one output URL,<br/>written to the task record"]
+    DISPATCH_SKILL -->|"needed now"| TEAM["plain subagents supervised by ida-flat —<br/>one, or several in parallel,<br/>reconciled into one result.<br/>No container. No delivery guard."]
+    DISPATCH_SKILL -->|"substantial autonomous repo work"| COURIER["courier: a plain background subagent<br/>runs the CLI in the foreground and<br/>returns the harvested result"]
+    DISPATCH_SKILL -.->|"any surface the task<br/>contract permits"| OTHER["( another runner )<br/>in: one task id<br/>out: evidence + one output URL,<br/>written to the task record"]
 
     COURIER --> CLI["polecat/cli.py run"]
 
@@ -46,7 +46,7 @@ flowchart TD
     REWORK --> DISP
     CERT -->|"PASS"| ALLDONE{"every unit terminal?"}
     ALLDONE -->|"no"| DISP
-    ALLDONE -->|"yes"| BACK["handback to ida:<br/>verdict + evidence + output URL"]
+    ALLDONE -->|"yes"| BACK["handback to user:<br/>verdict + evidence + output URL"]
     VERDICT -->|"REVISE / REJECT"| REWORK
     VERDICT -->|"APPROVE / MINOR CHANGES"| BACK
     BACK --> IDA
@@ -67,7 +67,7 @@ He commissions the third skill rather than invoking it. `verify` is bound to mar
 
 ### An "agent team" here is parallel subagents, never teammate mode
 
-`lib/doctrine/delegation.md` is inlined into james at build time, so it is his instruction text. It names three surfaces — in-session subagent, autonomous container, queued task — and it permits fanning out: _"Fan out in parallel where the work parallelises, and batch independent calls into one message."_ That is what a team is here: several plain subagents, briefed one each, supervised by james, reconciled by him into one deliverable.
+`lib/axioms/delegation.md` provides the binding framework for james. It names three surfaces — in-session subagent, autonomous container, queued task — and it permits fanning out: _"Fan out in parallel where the work parallelises, and batch independent calls into one message."_ That is what a team is here: several plain subagents, briefed one each, supervised by james, reconciled by him into one deliverable.
 
 What it is not is teammate mode. Anything reached through `SendMessage`, `TeamCreate`, or a channel keyed to an idle signal rather than a returned message is outside the modelled set: nothing carries the report back, the harness may hand the child the spawner's tool roster instead of its declared one, and the worker's actual output strands in its own transcript. Tool-bearing and report-bearing work never goes through it. Couriers are spawned plainly for exactly this reason.
 
@@ -211,6 +211,6 @@ The plugin declares no `userConfig` fields.
 
 - `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`, `credentials.py`, `telemetry.py`, `provenance.py`, `degraded.py`), injected into `hooks/` at build time.
 - `lib/axioms/` — injected into `axioms/` at build time; rbg's first rule source and the source of `axioms.jsonl`.
-- `lib/doctrine/` — inlined into the agent files at build time via `@include`. `delegation.md` is what makes the surface rules above james's own instructions.
-- `plugins/pkb` at runtime, for `pauli` (the third review lens, the only writer to the knowledge base, and the agent that runs the reconcile sweep) and the task graph james dispatches against.
+- `lib/axioms/` — applied as global rule context. `delegation.md` is what makes the surface rules binding above ida-flat's own instructions.
+- `plugins/pkb` at runtime, for `pauli` (the third review lens, the only writer to the knowledge base, and the agent that runs the reconcile sweep) and the task graph ida-flat dispatches against.
 - Docker on the host that runs `polecat`.

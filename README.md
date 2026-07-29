@@ -76,9 +76,9 @@ Install what you need — plugins are separately installable and loosely coupled
 
 | Plugin       | Owns                                                                            |
 | ------------ | ------------------------------------------------------------------------------- |
-| `aops`       | james, marsha, rbg. Review, QA, verification, dispatch, polecat containers.     |
+| `aops`       | marsha, rbg. Review, QA, verification, dispatch skills, polecat containers.     |
 | `aops-pkb`   | pauli. Memory, effectual planning, workflow composition, PKB MCP client config. |
-| `aops-ida`   | ida. The interactive face.                                                      |
+| `aops-ida`   | ida / ida-flat. The interactive face and unified orchestrator.                  |
 | `aops-cope`  | Automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook.      |
 | `aops-tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.).     |
 | `aops-ts`    | Tailscale bring-up for remote sessions.                                         |
