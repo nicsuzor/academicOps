@@ -26,6 +26,7 @@ CANONICAL_EVENTS: tuple[str, ...] = (
     "SessionEnd",
     "UserPromptSubmit",
     "PreToolUse",
+    "PostToolUse",
     "Stop",
     "SubagentStop",
 )
@@ -38,10 +39,27 @@ CANONICAL_EVENTS: tuple[str, ...] = (
 # PostInvocation and Stop (the "Supported Event Types" table in the reference
 # document the agy CLI embeds in its own binary). It has no session-level
 # event of any kind, so SessionStart and SessionEnd cannot fire there and no
-# row can be written for them. The two rows below are the invocation phases,
-# which are the two agy events whose payload lib/hooks/context.py can read;
-# agy's tool events carry a differently shaped payload and stay unmapped
-# until it can. A canonical event with no agy entry never fires on agy.
+# row can be written for them. A canonical event with no agy entry never
+# fires on agy.
+#
+# The two rows below are the invocation phases. They are mapped because they
+# are the only agy events that can both be read and answered: their payload is
+# a shape lib/hooks/context.py parses, and their documented response carries
+# `injectSteps`, which is how anything this framework says reaches an agent.
+#
+# The tool events stay unmapped, for two different reasons, and only the first
+# is about parsing:
+#
+#   PreToolUse  — readable in principle (`toolCall: {name, args}`, camelCase
+#                 protojson) but context.py does not yet parse that shape, so
+#                 ctx.tool would be empty. Tracked as aops_83c630b2.
+#   PostToolUse — its documented response is `{}`. The contract has no field
+#                 for injected content at all, so there is nothing an advisory
+#                 could be rendered into. agy parses hook output as protojson
+#                 and rejects on the first unknown field, so wiring one here
+#                 would surface as a hook error rather than a quiet no-op.
+#                 No amount of payload parsing changes this; it needs a
+#                 different event, which is a design decision, not a fix.
 _TO_CANONICAL: dict[str, dict[str, str]] = {
     "claude": {name: name for name in CANONICAL_EVENTS},
     "agy": {

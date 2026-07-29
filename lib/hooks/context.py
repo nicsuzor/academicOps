@@ -18,7 +18,7 @@ import messages
 class HookContext:
     client: str  # "claude" | "agy"
     event: str  # canonical event name, e.g. "PreToolUse", "Stop"
-    tool: str = ""  # tool_name, e.g. "Bash" (PreToolUse only)
+    tool: str = ""  # tool_name, e.g. "Bash" (tool events only)
     command: str = ""  # tool_input.command, for Bash-shaped tools
     session_id: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
