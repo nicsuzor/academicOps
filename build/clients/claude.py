@@ -30,7 +30,8 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
         _write_json(build_dir / "hooks" / "hooks.json", manifests["hooks"])
 
     if "mcp" in manifests:
-        _write_json(build_dir / ".mcp.json", manifests["mcp"])
+        mcp_str = json.dumps(manifests["mcp"]).replace("${PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}")
+        _write_json(build_dir / ".mcp.json", json.loads(mcp_str))
 
     always_on = load_always_on_axioms(build_dir / "axioms")
     if always_on:

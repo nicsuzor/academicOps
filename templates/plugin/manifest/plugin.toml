@@ -1,0 +1,5 @@
+[build]
+# Include any shared python library modules here if they belong to this plugin
+# includes = [
+#    "lib/my_module"
+# ]
