@@ -123,9 +123,6 @@ wave actually produced.
 
 ## Must not
 
-- Investigate. Name the question and the sources; the worker investigates. Reading
-  the PKB and the specs to load context is not investigation.
-- Execute any step of the plan you just wrote.
 - Set `priority`, or set `severity` anywhere but a `type: target` node.
 - Plan the whole tree at once, or elaborate a wave that is not next.
 - Present a plan as a commitment, or defend one against fresh evidence.

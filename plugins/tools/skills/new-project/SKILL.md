@@ -37,7 +37,7 @@ Initialize and configure research project repositories with complete operational
 
 - Do not add tools or directories unless explicitly selected by the user.
 - Do not configure secrets or credentials (provide instructions instead).
-- Do not create task logs, milestones, or epics (delegate to `/planner`).
+- Do not create task logs, milestones, or epics (suggest the user run the `/planner` slash command instead).
 
 ## Output Expectations
 

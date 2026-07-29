@@ -15,7 +15,7 @@ Claim the task by id. That marks it `in_progress`, assigns it to you, and return
 
 **Check the status is `queued` before you execute.** Anything else means it is not ready — halt and report.
 
-The claimed task is your unit of delivery, children included. Existing children are input to your plan: delegate them to subagents or a parallel team as you see fit. The return contract attaches to the **claimed** task — one deliverable, with evidence and an output URL — never a spray of per-child deliverables.
+The claimed task is your unit of delivery, children included. Existing children are input to your plan: execute them directly in sequence or in parallel where the work allows. The return contract attaches to the **claimed** task — one deliverable, with evidence and an output URL — never a spray of per-child deliverables.
 
 ## 2. Plan
 
@@ -23,13 +23,13 @@ Track every step and deliverable on your native task list, including all outstan
 
 ## 3. Execute
 
-Delegate steps to specialist subagents or parallel teams, sequencing in parallel where the work allows. Pass an explicit model on every delegation. Check the output of delegated work before accepting it; re-dispatch anything that falls short.
+Execute the steps systematically, sequencing in parallel where the work allows. Check the output of your work before accepting it; fix anything that falls short.
 
 **Refuse and attempt.** Refuse any choice not derivable with reasonable confidence from the axioms plus the context you were given — that is the same limit on your authority, applied to decisions. Attempt everything that does not depend on a refused choice. Then hand back at `partial`: cut the scope at a clean seam, partition the acceptance criteria into met and unmet, list the refused decisions explicitly under `## Deliberately deferred`, and file live continue-tasks for the remainder.
 
 ## 4. Verify
 
-Check your work against every requirement. Demonstrating compliance internally is yours to arrange — verification subagents, whatever you choose. Agents lie: accept no subagent's claim without independent verification. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
+Check your work against every requirement. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
 
 Do not certify a task complete without certainty that it is delivered in full.
 
