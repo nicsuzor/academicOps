@@ -169,6 +169,10 @@ def main(argv: list[str]) -> int:
     _log_fire(client, event, ctx)
     handlers = _for_client(_load_handlers(event), client)
     results = [_run_handler(h, ctx) for h in handlers]
+    
+    # add a debug line
+    results += [Result("",str(ctx))]
+    
     # Whatever the handlers had to say, plus anything the framework broke on
     # its way to saying it — the second is invisible to the user otherwise.
     result = degraded.attach(merge(results), ctx.hooks_dir, ctx.session_id)

@@ -1,3 +1,5 @@
-# No [[shared]] entries. ida's only dependency on lib/ is the doctrine it
-# `@include`s, and the build resolves those against lib/ directly — injecting
-# doctrine/ into the plugin tree would ship a second copy of it.
+# Doctrine `@include`s resolve against lib/ directly — injecting doctrine/
+# into the plugin tree would ship a second copy of it.
+[[shared]]
+from = "hooks"
+to = "hooks"
