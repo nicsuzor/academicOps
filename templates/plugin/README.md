@@ -35,7 +35,7 @@ This template includes basic examples for common plugin components:
 - **`skills/example/SKILL.md`**: An example skill that the agent can read and execute.
 - **`commands/example.md`**: An example slash command (`/example`).
 - **`axioms/example.md`**: An example axiom (project rule) that the agent must always follow while this plugin is active.
-- **`hooks/example.py`**: An example Python script for an agent lifecycle hook, paired with `manifest/hooks.template.json`.
+- **`hooks/handlers.py`**: Example handlers loaded by the standard `dispatch.py` hook router, paired with `manifest/hooks.template.json`.
 - **`manifest/`**: Example manifest files (`mcp.template.json`, `plugin.template.json`, `plugin.toml`) to demonstrate custom configurations.
 
 Feel free to delete any of these stubs that your new plugin does not need!
