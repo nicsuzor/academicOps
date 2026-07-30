@@ -238,7 +238,7 @@ exclude = [
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["plugins/aops", "plugins/cope/hooks", "lib/py", "lib/hooks"]
+extraPaths = ["plugins/rbg/hooks", "lib/py", "lib/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:

@@ -19,9 +19,7 @@ messages.py). No handler here builds either from a Python literal.
 
 from __future__ import annotations
 
-from dispatch import load_message_pair
-from dispatch import HookContext
-from dispatch import Result, warn
+from dispatch import HookContext, Result, load_message_pair, warn
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
