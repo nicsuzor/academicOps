@@ -12,7 +12,7 @@ email = "nic@suzor.net"
 # [[plugins]]
 # directory = "aops"
 # name = "aops"
-# description = "Core academicOps framework — james, marsha, rbg. Review, QA, verification, dispatch, polecat containers."
+# description = "marsha. Review, QA, verification."
 # category = "productivity"
 
 [[plugins]]

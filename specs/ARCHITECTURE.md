@@ -58,7 +58,7 @@ academicOps is structured around **4 core pillars**:
 
 1. **Prompt Situation (`aops-pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
 2. **Workflow Composition (`aops-pkb`):** Select task-appropriate assurance and review levels (`workflow`) matching risk and blast radius.
-3. **Containerized Execution & Dispatch (`aops`):** Dispatch tasks to isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
+3. **Containerized Execution & Dispatch (`ida`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `ida`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), plus a stop gate that blocks once per stop-chain and directs the agent to run the RBG rule compliance check (`axioms/` + project + local rules) before stopping (`Stop` / `SubagentStop`).
 
 ## Plugins

@@ -627,7 +627,8 @@ def _build_docker_argv(
     config,
     docker_args,
 ):
-    """The full `docker run` argv."""
+    """The full `docker run` argv. Also pre-creates the bind-mount targets
+    under `session_dir` — see below for why that cannot wait until launch."""
     # Pre-create the bind-mount targets as the invoking user. Docker
     # auto-creates a missing bind source as root, which the container's non-root
     # user cannot write, silently losing logs and conversation state.

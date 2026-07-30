@@ -38,8 +38,18 @@ headless prompt flag).
 #    path, not the bare `polecat`/`pc` alias — see Gotchas.
 CHECKOUT="$(git rev-parse --show-toplevel)"   # never $AOPS — see Gotchas
 export TMUX_NAME="polecat-debug-$RANDOM"
-tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
+
+# Write the launch to a script and hand tmux the path, not an inline command.
+# Env assignments, a `uv run` invocation and a quoted prompt do not survive one
+# round of shell quoting inside `tmux new-session` — see Gotchas.
+cat > /tmp/"$TMUX_NAME".sh <<EOF
+#!/bin/zsh
+exec uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py \\
+  run agy -p aops -s $TMUX_NAME \\
+  'what directory are you in? answer in one sentence, then stop.'
+EOF
+chmod +x /tmp/"$TMUX_NAME".sh
+tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 /tmp/"$TMUX_NAME".sh
 # -s ties the host log dir's session-id to the tmux session name — see
 # "Log & artifact locations" below. A bare no-prompt launch exercises a
 # different code path than a real /pull <task> dispatch — reproduce with a
@@ -238,8 +248,10 @@ POLECAT_IMAGE=ghcr.io/nicsuzor/aops-crew:latest \
   uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py run claude -p aops -s dev-probe
 ```
 
-Drive that session with the same tmux pattern as above (spawn it inside
-`tmux new-session -d` if you need to send/capture rather than attach live).
+Drive that session with the same tmux pattern as above. To send and capture
+rather than attach live, put the block above into a script and hand tmux the
+path — those env assignments will not survive quoting inside an inline
+`tmux new-session` argument.
 Edit → `make docker-build` → relaunch; there is no live-mount, so a source
 change needs a rebuild before it's visible in the container.
 

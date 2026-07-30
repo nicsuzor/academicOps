@@ -94,4 +94,5 @@ No endpoint, host, registry, account or credential is written into anything this
 
 - `lib/axioms/` — `bar`, `launder`, `probe`, `delegation`, `epistemics`, `governing-rules`, `halt`, `memory`. These are applied globally as rule context rather than inlined via `@include`.
 - The `aops-pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions, and who performs every write to the task graph that `dispatch` decides on.
+- The `aops` plugin at runtime, for **marsha**, whom `strategic-review` always runs and whose `verify` skill `dispatch` commissions rather than invokes. That plugin is currently not built, so this dependency is declared but unmet.
 - Docker, and an image built from this repository, for the polecat containers `dispatch` launches.

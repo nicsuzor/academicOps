@@ -107,7 +107,13 @@ the container.
    settings.
 3. **No silent delivery loss.** `run` refuses to report success when the
    workspace has uncommitted or unpushed work, or when a seeded dispatch's
-   transcript shows no trace of the task it was given.
+   transcript shows no trace of the task it was given. Detection is only half
+   of it: a worker that already wrote `done` leaves that status behind, and
+   `run` cannot repair it without holding a client for another plugin's tool
+   namespace. The repair is the dispatcher's — it reopens the task through
+   pauli on a non-zero exit for a `done` or `partial` unit. Nothing enforces
+   that half; the obligation sits on the dispatcher, in
+   [`dispatch`](../../plugins/ida/skills/dispatch/SKILL.md) §6.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
 5. **One plugin path.** Plugins load only from the image's own plugin cache. No
@@ -142,8 +148,7 @@ container.
    authenticates.
 3. **Delivery guard** — Test: a `run` that leaves uncommitted changes, or commits
    that never reach the remote, exits non-zero and (with `--task`) names the task
-   in the failure; the dispatcher then reopens that task, so no terminal status
-   survives a caught delivery loss.
+   in the failure.
 4. **No stale image** — Test: `run` against an image not present in the local
    Docker cache fails with an explicit message, never a silent registry pull.
 5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.
