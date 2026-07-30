@@ -38,10 +38,17 @@ _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 # `pkb-agy` today and has nothing to do with this hook, so these cases are
 # marked rather than silently dropped: when the builder is fixed they pass, and
 # the marker is the record that ida's floor does not currently bind on agy.
+#
+# `strict=True` so that fix cannot land quietly. Non-strict, these would XPASS
+# the day the builder is corrected and nothing would say so — leaving the
+# marker, and this comment, asserting a gap that had closed. Strict turns that
+# into a failing test that names the file to edit, which is the only signal
+# anyone gets: the fix will come from the agy builder task, not from here.
 _AGY_PLUGIN_ROOT_UNSET = pytest.mark.xfail(
     reason="shipped agy hook commands carry an unexpandable ${AGY_PLUGIN_ROOT}; "
-    "uv exits 2 before the hook runs (affects every agy hook, not just this one)",
-    strict=False,
+    "uv exits 2 before the hook runs (affects every agy hook, not just this one). "
+    "Fixed by aops_339c0646 — when that lands, drop this marker.",
+    strict=True,
 )
 
 _CLIENTS = [
@@ -55,6 +62,7 @@ _REQUIRED_CLAUSES = (
     "Attach uncertainty to the claim",  # state the confidence level
     "Name what you did not do",  # gaps named, not smoothed
     "changed, unverified",  # completion claims need observed behaviour
+    "Give the next best explanation",  # the reader can weigh the inference
 )
 
 
