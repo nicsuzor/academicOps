@@ -161,7 +161,10 @@ Stages, in order:
 2. **Resolve includes.** Replace each `@include <path>` line in a markdown file
    with the content of that file from `lib/`. Recursive.
 3. **Render manifests.** Merge `manifest/*.template.json` `__base__` with the
-   client's section, and write to the client's expected path.
+   client's section, and write to the client's expected path. A template
+   declaring a `manifestVersion` holds those sections under `clients`, keeping
+   the top level for plugin identity; one that does not holds them at the top
+   level. Both shapes render identically.
 4. **Adapt to client.** Client adapters in `build/clients/` apply the
    client-specific transformations.
 5. **Package.** Tar per client, plus the marketplace manifests.

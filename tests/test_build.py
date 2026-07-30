@@ -17,7 +17,7 @@ import pytest
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
 from build.includes import resolve_includes
-from build.manifest import merge_one_level
+from build.manifest import merge_one_level, render_template
 from build.marketplace import load_marketplace_toml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -73,6 +73,60 @@ def test_include_cycle_is_hard_error(tmp_path):
 
 
 # --- stage 3: manifest rendering --------------------------------------------
+
+
+def _template(tmp_path: Path, payload: dict) -> Path:
+    path = tmp_path / "hooks.template.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def test_versioned_template_renders_the_client_section(tmp_path):
+    """The versioned shape nests client sections under `clients`, keeping the
+    top level for plugin identity. Reading the client key at the top level
+    instead finds nothing and renders every event away — the plugin builds
+    clean and ships with no hooks.json at all."""
+    path = _template(
+        tmp_path,
+        {
+            "manifestVersion": "1.0",
+            "name": "aops-debug",
+            "version": "0.1.0",
+            "clients": {
+                "claude": {"hooks": {"SessionStart": [], "Stop": []}},
+                "agy": {"hooks": {"PreToolUse": []}},
+            },
+        },
+    )
+    assert sorted(render_template(path, "claude")["hooks"]) == ["SessionStart", "Stop"]
+    assert sorted(render_template(path, "agy")["hooks"]) == ["PreToolUse"]
+
+
+def test_both_template_shapes_merge_base_the_same_way(tmp_path):
+    """`__base__` merging is the shapes' only shared contract, so migrating a
+    template between them must not change what it renders."""
+    sections = {"__base__": {"hooks": {"Stop": []}}, "claude": {"hooks": {"SessionStart": []}}}
+    expected = {"hooks": {"Stop": [], "SessionStart": []}}
+
+    flat = _template(tmp_path, sections)
+    assert render_template(flat, "claude") == expected
+
+    versioned = _template(tmp_path, {"manifestVersion": "1.0", "clients": sections})
+    assert render_template(versioned, "claude") == expected
+
+
+def test_versioned_template_without_clients_is_a_hard_error(tmp_path):
+    """Rendering it empty would be indistinguishable from a plugin that
+    genuinely has no hooks on any client."""
+    path = _template(tmp_path, {"manifestVersion": "1.0", "name": "aops-debug"})
+    with pytest.raises(BuildError, match="clients"):
+        render_template(path, "claude")
+
+
+def test_unknown_manifest_version_is_a_hard_error(tmp_path):
+    path = _template(tmp_path, {"manifestVersion": "2.0", "clients": {"claude": {}}})
+    with pytest.raises(BuildError, match="manifestVersion"):
+        render_template(path, "claude")
 
 
 def test_plugin_json_version_stamped(built):
