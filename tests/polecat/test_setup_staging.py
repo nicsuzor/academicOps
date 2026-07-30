@@ -119,9 +119,9 @@ def _plugin_declaring(option):
         for manifest in sorted(_REPO_ROOT.glob("plugins/*/manifest/plugin.template.json"))
     ]
     names = [
-        m["__base__"]["name"]
+        m["clients"]["__base__"]["name"]
         for m in declaring
-        if option in (m.get("claude", {}).get("userConfig") or {})
+        if option in (m["clients"].get("claude", {}).get("userConfig") or {})
     ]
     assert len(names) == 1, f"expected exactly one plugin to declare {option}, got {names}"
     return names[0]

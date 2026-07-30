@@ -497,7 +497,7 @@ def test_the_manifest_declares_exactly_the_options_the_code_reads():
     manifest = json.loads(
         (_REPO_ROOT / "plugins" / "cope" / "manifest" / "plugin.template.json").read_text()
     )
-    declared = manifest["claude"]["userConfig"]
+    declared = manifest["clients"]["claude"]["userConfig"]
     assert {key.upper() for key in declared} == set(_COPE_ENV)
     assert declared["cope_evaluator_api_key"]["sensitive"] is True, (
         "the API key must be marked sensitive so it goes to secure storage "
