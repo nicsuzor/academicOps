@@ -71,11 +71,16 @@ What crosses between them is the evidence contract, defined once in `specs/enfor
 
 ## What it provides
 
-| Kind  | Name  | Purpose                                                                               |
-| ----- | ----- | ------------------------------------------------------------------------------------- |
-| Agent | `ida` | The interactive face. Coordinates research work, delegates to james, filters returns. |
+| Kind  | Name               | Purpose                                                                                   |
+| ----- | ------------------ | ----------------------------------------------------------------------------------------- |
+| Agent | `ida`              | The interactive face. Coordinates research work, delegates to james, filters returns.     |
+| Agent | `james`            | The orchestrator. Commissions review, synthesises one verdict, dispatches work.           |
+| Skill | `dispatch`         | Routes a decomposed unit to its worker surface and holds the epic until every unit lands. |
+| Skill | `strategic-review` | Deploys the review lenses in parallel and reconciles their findings into one verdict.     |
+| Hook  | `handlers.py`      | The honesty floor on `Stop`, and the rule against hearsay on `PostToolUse`.               |
+| CLI   | polecat            | The container launcher `dispatch` invokes at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.      |
 
-No skills, no commands, no hooks. The skills the other plugins ship reach her only as work she delegates to james or to pauli.
+The polecat CLI is injected from `lib/polecat/` at build time rather than held here, so the plugin that dispatches containers ships it without owning it. No commands. The skills the other plugins ship reach ida only as work she delegates to james or to pauli.
 
 ## Configuration
 
