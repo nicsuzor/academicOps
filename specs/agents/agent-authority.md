@@ -122,11 +122,12 @@ membership does not exist, so this remains a declared commitment rather than a
 checked one). The claim at "No implicit orchestrator privilege" below — that
 each orchestrator lists its `subagents` explicitly — is now true of the tree.
 
-`plugins/pkb/agents/pauli.md`, `plugins/james/agents/james.md`,
-`plugins.disabled/aops/agents/marsha.md`, and `plugins/rbg/agents/rbg.md` omit `tools`
-for this reason: each needs `mcp__services__pkb__*` (or broader) to function
-at all, so an unenforced allowlist is preferable to a materialized set of six
-built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
+`plugins/james/agents/james.md` omits `tools` for this reason;
+`plugins/pkb/agents/pauli.md`, `plugins.disabled/aops/agents/marsha.md`, and
+`plugins/rbg/agents/rbg.md` declare the wildcard `tools: ["*"]` rather than an
+explicit allowlist, to the same end. Each of the four needs
+`mcp__services__pkb__*` (or broader) to function at all, so an unenforced
+grant is preferable to a materialized set of six built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
 restriction is deliberate, but see the runtime finding below: declaring it does
 not currently mean it is enforced. Consequence: RBG's ultra-vires review (L4
 below) has no frontmatter ground truth for these four agents until the harness
