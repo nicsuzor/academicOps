@@ -46,7 +46,7 @@ flowchart TD
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    brief --> dispatch(["aops:james — skills/dispatch<br/>refresh the brief, dispatch by task id"])
+    brief --> dispatch(["aops-ida:james — skills/dispatch<br/>refresh the brief, dispatch by task id"])
 ```
 
 ### The hook asks; nothing checks

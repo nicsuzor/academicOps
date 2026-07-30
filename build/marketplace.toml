@@ -34,12 +34,6 @@ description = "Automatic in-session rule enforcement."
 category = "productivity"
 
 [[plugins]]
-directory = "james"
-name = "james"
-description = "james. Synthesis and dispatch."
-category = "productivity"
-
-[[plugins]]
 directory = "ts"
 name = "ts"
 description = "Tailscale bring-up for remote sessions."

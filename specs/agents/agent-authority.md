@@ -107,14 +107,14 @@ instead of "no tool calls permitted."
 agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
-(`plugins/james/agents/james.md`) declares the explicit list
+(`plugins/ida/agents/james.md`) declares the explicit list
 `["aops-cope:rbg", "aops-pkb:pauli", "aops:marsha", "general-purpose"]` — the
 three reviewers his own description names, plus the plain worker surface his
 dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) and `marsha`
 (`plugins.disabled/aops/agents/marsha.md`) declare `subagents: []` — neither's
 own description involves spawning: rbg returns a verdict, marsha verifies and
 never fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
-`["aops:james", "aops-pkb:pauli"]`, matching the only two delegation targets
+`["aops-ida:james", "aops-pkb:pauli"]`, matching the only two delegation targets
 named in its own file. The row now describes a real declaration on every agent
 file, not an absent gate — though nothing yet enforces membership against it
 (see Lint Rules below: the frontmatter lint that would check `subagents`
@@ -122,7 +122,7 @@ membership does not exist, so this remains a declared commitment rather than a
 checked one). The claim at "No implicit orchestrator privilege" below — that
 each orchestrator lists its `subagents` explicitly — is now true of the tree.
 
-`plugins/james/agents/james.md` omits `tools` for this reason;
+`plugins/ida/agents/james.md` omits `tools` for this reason;
 `plugins/pkb/agents/pauli.md`, `plugins.disabled/aops/agents/marsha.md`, and
 `plugins/rbg/agents/rbg.md` declare the wildcard `tools: ["*"]` rather than an
 explicit allowlist, to the same end. Each of the four needs

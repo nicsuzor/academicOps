@@ -1,7 +1,7 @@
 ---
 name: strategic-review
 description: Multi-agent review of any artifact — a document, plan, proposal, or pull request. James deploys rbg, pauli, and marsha in parallel, then reconciles their findings into one verdict. Pass `comment` and/or `fix` to write the result back to the review surface.
-agent: "aops:james"
+agent: "aops-ida:james"
 ---
 
 # Strategic Review

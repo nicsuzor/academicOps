@@ -13,9 +13,8 @@ lib/                    Shared source. Never shipped as-is; injected at build ti
   manifest/             Shared manifest fragments.
 build/                  Build system.
 plugins/                Plugin sources. Only what a client needs.
-  james/                james — synthesis and dispatch.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.
-  ida/                  ida — the interactive face.
+  ida/                  ida — the interactive face; james — synthesis and dispatch.
   rbg/                  rbg — rule enforcement hooks and the stop-side rule gate.
   ts/                   Tailscale bring-up.
   tools/                Domain research skills.
@@ -65,21 +64,12 @@ marketplace name and is the single source of truth for the built plugin set.
 | Directory               | Marketplace name | Owns                                                                                |
 | ----------------------- | ---------------- | ----------------------------------------------------------------------------------- |
 | `plugins/pkb`           | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.     |
-| `plugins/ida`           | `ida`            | ida. The interactive face.                                                          |
+| `plugins/ida`           | `ida`            | ida, the interactive face; james, synthesis and dispatch.                           |
 | `plugins/rbg`           | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate. |
-| `plugins/james`         | `james`          | james. Synthesis and dispatch.                                                      |
 | `plugins/ts`            | `ts`             | Tailscale bring-up for remote sessions.                                             |
 | `plugins/tools`         | `tools`          | Domain research skills.                                                             |
 | `plugins/aops-debug`    | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                          |
 | `plugins.disabled/aops` | not built        | marsha. Review, QA, verification, dispatch, polecat containers.                     |
-
-### james
-
-**james** synthesises and dispatches. He commissions review agents, interrogates
-their output, resolves conflicting verdicts into one judgment, and delegates
-substantive work — either to a supervised in-session agent team or to an
-asynchronous polecat container. Ida delegates to james; james never talks to the
-user.
 
 ### aops (disabled)
 
@@ -107,6 +97,12 @@ The interactive face, and the only agent that talks to the user. Academic
 integrity is non-negotiable. Ida holds between steps, answers what it can
 answer, delegates everything substantive to james, and filters what comes back so
 the user sees only what needs their judgment.
+
+The plugin also ships **james**, who synthesises and dispatches. He commissions
+review agents, interrogates their output, resolves conflicting verdicts into one
+judgment, and delegates substantive work — either to a supervised in-session
+agent team or to an asynchronous polecat container. Ida delegates to james;
+james never talks to the user.
 
 ### rbg
 

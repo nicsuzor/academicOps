@@ -1,7 +1,7 @@
 ---
 name: dispatch
 description: Dispatch and supervise the distributed execution of a task with children — routing each unit to the right worker surface (polecat container, in-session subagent, or agent team) and holding the epic until every unit reaches a terminal state.
-agent: "aops:james"
+agent: "aops-ida:james"
 ---
 
 # Dispatch
