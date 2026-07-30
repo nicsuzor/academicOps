@@ -12,8 +12,10 @@
 !/LICENSE
 !/Makefile
 
-# Allow source code. lib/ carries polecat's entrypoint and baked container
-# defaults, which the image COPYs directly from the build context.
+# Allow source code. lib/ is here for polecat's entrypoint and baked container
+# defaults, which the image COPYs straight from the build context; the rest of
+# lib/ rides along because it is small and reaches the image anyway, inside the
+# built dist/ trees.
 !/lib/**
 !/plugins/**
 !/scripts/**

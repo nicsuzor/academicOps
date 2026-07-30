@@ -23,6 +23,7 @@ from build.marketplace import load_marketplace_toml
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
 MARKETPLACE = TESTDATA / "marketplace.toml"
+REAL_MARKETPLACE = PROJECT_ROOT / "build" / "marketplace.toml"
 VERSION = "0.0.0-test"
 
 
@@ -31,6 +32,40 @@ def built(tmp_path_factory) -> Path:
     dist_root = tmp_path_factory.mktemp("build-dist")
     build_all(TESTDATA, dist_root, marketplace_path=MARKETPLACE, version=VERSION)
     return dist_root
+
+
+@pytest.fixture(scope="module")
+def built_ida(tmp_path_factory) -> Path:
+    """The real ida plugin, not a fixture — see test_polecat_cli_ships_with_ida."""
+    dist_root = tmp_path_factory.mktemp("build-dist-ida")
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["ida"],
+        version=VERSION,
+    )
+    return dist_root
+
+
+def test_polecat_cli_ships_with_ida(built_ida):
+    """`skills/dispatch` invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`, and that
+    path is true only because `manifest/plugin.toml` injects it from `lib/`.
+
+    Drop those `[[shared]]` stanzas — which the queued ida/james package split
+    has to move — and nothing fails at build time. Dispatch fails at runtime,
+    inside a container, with file-not-found. This is the check that turns that
+    into a build-time failure instead.
+    """
+    for client in ("claude", "agy"):
+        polecat = built_ida / f"ida-{client}" / "polecat"
+        assert (polecat / "cli.py").is_file(), f"ida-{client} ships no polecat/cli.py"
+        assert (polecat / "env_contract.py").is_file(), (
+            f"ida-{client} ships cli.py without the env_contract it imports"
+        )
+        # Image-build inputs, not plugin content — they must NOT be shipped.
+        assert not (polecat / "defaults").exists()
+        assert not (polecat / "entrypoint.sh").exists()
 
 
 # --- stage 1/2: shared injection + include resolution -----------------------

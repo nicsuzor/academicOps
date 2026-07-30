@@ -6,7 +6,8 @@ Everything here is current state. Nothing here is history.
 ## Repository layout
 
 ```
-lib/                    Shared source. Never shipped as-is; injected at build time.
+lib/                    Shared source, never shipped as-is. Most of it is injected
+                        into plugin build trees; the rest feeds the image build.
   axioms/               The axioms. Single source of truth.
   hooks/                Hook runtime shared by every plugin that hooks.
   py/                   Shared Python helpers.
@@ -73,7 +74,7 @@ marketplace name and is the single source of truth for the built plugin set.
 | `plugins/ts`            | `ts`             | Tailscale bring-up for remote sessions.                                             |
 | `plugins/tools`         | `tools`          | Domain research skills.                                                             |
 | `plugins/aops-debug`    | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                          |
-| `plugins.disabled/aops` | not built        | marsha. Review, QA, verification, dispatch, polecat containers.                     |
+| `plugins.disabled/aops` | not built        | marsha. Review, QA, verification.                                                   |
 
 ### aops (disabled)
 

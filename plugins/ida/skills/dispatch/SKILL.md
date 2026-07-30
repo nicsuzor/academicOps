@@ -75,4 +75,6 @@ A courier that returns an acknowledgement instead of a result has failed its bri
 
 ## 6. React to what comes back
 
-A FAIL or a re-dispatch call is not a separate phase — it is information the next graph pass reads like any other. Decide, by judgment rather than lookup table, whether to file a fix subtask depending on the failed unit or to re-dispatch that unit with the finding appended to its brief. Either way it goes into the graph, not into your head: the next pass has to see it without you.
+**Reopen before anything else.** A worker can write `done` to the graph and deliver nothing — `polecat run` exits non-zero and names the task when it catches that, and the status it left behind is still `done` to everything that reads the graph afterwards. On any non-zero container exit for a unit whose task is in a terminal status, have pauli set that task back to `in_progress` before you decide what to do next. Reopening is repair, not judgment: filing a fix subtask does not undo the parent's status, and a re-dispatch against a task still marked `done` is dispatched into a lie. You cannot write to the graph yourself, so this is commissioned, never done directly.
+
+Then decide. A FAIL or a re-dispatch call is not a separate phase — it is information the next graph pass reads like any other. Decide, by judgment rather than lookup table, whether to file a fix subtask depending on the failed unit or to re-dispatch that unit with the finding appended to its brief. Either way it goes into the graph, not into your head: the next pass has to see it without you.

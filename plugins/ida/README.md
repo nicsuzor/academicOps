@@ -16,7 +16,7 @@ flowchart TD
 
     Q -->|"yes — a status check,<br/>a read, a cheap probe"| ANS["answer inline"]
     Q -->|"blocking judgment call —<br/>scope, taste, tradeoff"| ESC["AskUserQuestion:<br/>one named decision,<br/>options pre-resolved"]
-    Q -->|"no — substantive work"| J["james<br/>(aops plugin)"]
+    Q -->|"no — substantive work"| J["james<br/>agents/james.md"]
 
     IDA -->|"before new work"| PAULI["pauli — aops-pkb<br/>runs skills/reconcile.<br/>Named, never a general-purpose spawn:<br/>the only writer to the store"]
     PAULI --> UNC["landed but uncertified"]
@@ -65,9 +65,9 @@ Two signatures land on `done`, in this order, and neither substitutes for the ot
 
 **Acceptance is ida's**, against the user's intent. Certification without acceptance ships work nobody weighed against what was wanted; acceptance without certification asks her to vouch for mechanics she never saw.
 
-Ida routes but never certifies. The reconcile sweep detects uncertified work but never certifies it either. There is no status and no frontmatter field for certification: it is prose on the task record, and the four surfaces that write it are named in the aops plugin's own README.
+Ida routes but never certifies. The reconcile sweep detects uncertified work but never certifies it either. There is no status and no frontmatter field for certification: it is prose on the task record.
 
-What crosses between them is the evidence contract, defined once in `specs/enforcement/evidence-contract.md` and set out with its structured form in `plugins/aops/README.md`, which owns james. Whichever form a handback takes, two rules bind it: checkable evidence or a stated failure reason, and every claim labelled Observed or Reported. It is written to the PKB task record, which is the only message bus; a result held in a transcript or a pull-request body has not been delivered.
+What crosses between them is the evidence contract, defined once in `specs/enforcement/evidence-contract.md`. Whichever form a handback takes, two rules bind it: checkable evidence or a stated failure reason, and every claim labelled Observed or Reported. It is written to the PKB task record, which is the only message bus; a result held in a transcript or a pull-request body has not been delivered.
 
 ## What it provides
 
@@ -80,7 +80,7 @@ What crosses between them is the evidence contract, defined once in `specs/enfor
 | Hook  | `handlers.py`      | The honesty floor on `Stop`, and the rule against hearsay on `PostToolUse`.               |
 | CLI   | polecat            | The container launcher `dispatch` invokes at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.      |
 
-The polecat CLI is injected from `lib/polecat/` at build time rather than held here, so the plugin that dispatches containers ships it without owning it. No commands. The skills the other plugins ship reach ida only as work she delegates to james or to pauli.
+No commands. The skills the other plugins ship reach ida only as work she delegates to james or to pauli.
 
 ## Configuration
 
@@ -93,5 +93,5 @@ No endpoint, host, registry, account or credential is written into anything this
 ## Depends on
 
 - `lib/axioms/` — `bar`, `launder`, `probe`, `delegation`, `epistemics`, `governing-rules`, `halt`, `memory`. These are applied globally as rule context rather than inlined via `@include`.
-- The `aops` plugin at runtime, for **james**. Ida delegates all substantive work to him; without him she has nowhere to send it.
-- The `aops-pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions.
+- The `aops-pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions, and who performs every write to the task graph that `dispatch` decides on.
+- Docker, and an image built from this repository, for the polecat containers `dispatch` launches.

@@ -23,12 +23,22 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _LIB_HOOKS = str(_REPO_ROOT / "lib" / "hooks")
 if _LIB_HOOKS not in sys.path:
     sys.path.insert(0, _LIB_HOOKS)
 
-import credentials  # noqa: E402
+# `credentials` was one of eight modules the hook-layer rewrite deleted from
+# lib/hooks/. Only the env-file test below needs it. Importing it at module
+# scope took the whole file down with it, so every other assertion here — the
+# ones pinning the agent-facing message against the mechanism — silently never
+# ran. Import it defensively so the rest execute and the gap is one named skip.
+try:
+    import credentials
+except ModuleNotFoundError:  # pragma: no cover - depends on the hook layer's state
+    credentials = None
 
 from lib.polecat import cli  # noqa: E402
 
@@ -59,6 +69,11 @@ def test_tokens_reach_the_container_as_plain_environment(monkeypatch):
     assert env["GITHUB_TOKEN"] == "mock-bot-token"
 
 
+@pytest.mark.skipif(
+    credentials is None,
+    reason="lib/hooks/credentials.py was removed by the hook-layer rewrite; "
+    "the SessionStart credential hook has no module to test against here",
+)
 def test_env_file_is_built_from_the_process_environment(tmp_path, monkeypatch):
     """The file is a copy of the environment, not a replacement for it, so it
     can never be the only place a credential lives."""

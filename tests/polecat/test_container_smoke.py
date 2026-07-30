@@ -170,7 +170,7 @@ def test_agy_plugins_directory_matches_the_marketplace(real_image):
 
 def test_aca_data_matches_what_polecat_mounts_layer_3_rules_into(real_image):
     """`$ACA_DATA` inside the image must be exactly the path
-    `plugins/aops/polecat/cli.py`'s `CONTAINER_ACA_DATA` mounts a configured
+    `lib/polecat/cli.py`'s `CONTAINER_ACA_DATA` mounts a configured
     `rules_dir` onto — a drift between the two would silently break cope's
     layer 3 in every container even though both sides looked correct alone."""
     result = _run_in_container(real_image, 'echo "$ACA_DATA"')

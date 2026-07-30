@@ -90,9 +90,11 @@ the container.
    if not, then a hard failure — a clean exit is not evidence the seed was ever
    delivered); the workspace must have no uncommitted changes, and if `HEAD`
    moved, the new commit must be present on the remote. A delivery-guard failure
-   exits non-zero naming the task, and stops there. Polecat does not write to
-   the knowledge base: reopening a task the worker closed without delivering is
-   the dispatcher's act against its own graph, not a launcher's.
+   exits non-zero naming the task. Polecat detects; it does not repair. Writing
+   to the knowledge base belongs to its sole writer, so the task is reopened by
+   the dispatcher through pauli ([[plugins/ida/skills/dispatch/SKILL.md]] §6) —
+   the guarantee is that a caught delivery loss never leaves a terminal status
+   standing, and it takes both halves to hold.
 
 ## Guarantees
 
@@ -140,7 +142,8 @@ container.
    authenticates.
 3. **Delivery guard** — Test: a `run` that leaves uncommitted changes, or commits
    that never reach the remote, exits non-zero and (with `--task`) names the task
-   in the failure.
+   in the failure; the dispatcher then reopens that task, so no terminal status
+   survives a caught delivery loss.
 4. **No stale image** — Test: `run` against an image not present in the local
    Docker cache fails with an explicit message, never a silent registry pull.
 5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.

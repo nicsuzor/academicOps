@@ -36,9 +36,10 @@ headless prompt flag).
 # 1. Spawn a detached session with an explicit, correlatable name. Give it a
 #    large geometry so the UI renders properly. Use the explicit `uv run`
 #    path, not the bare `polecat`/`pc` alias — see Gotchas.
+CHECKOUT="$(git rev-parse --show-toplevel)"   # never $AOPS — see Gotchas
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $AOPS python $AOPS/lib/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
+  "uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
 # -s ties the host log dir's session-id to the tmux session name — see
 # "Log & artifact locations" below. A bare no-prompt launch exercises a
 # different code path than a real /pull <task> dispatch — reproduce with a
@@ -152,6 +153,15 @@ container teardown to grab it.
   explicit path, never the bare command, when spawning inside tmux:
   `uv run --project <checkout> python <checkout>/lib/polecat/cli.py run ...`
   (the `pc` alias has the identical failure mode for the identical reason).
+- **Hand tmux a script, not a long inline command.** The pane's command runs
+  under `/bin/sh -c`, and everything a real launch needs — several environment
+  assignments, a `uv run` invocation, a quoted prompt — has to survive one round
+  of shell quoting inside the `tmux new-session` argument. A backslash
+  continuation or a nested quote that does not survive it produces a command
+  that fails instantly, which closes the pane, which kills the tmux server when
+  it was the only session: the `no server running` symptom again, from a third
+  cause. Writing the launch to a small executable script and passing its path
+  removes the quoting layer entirely.
 - **`$AOPS` is not a safe stand-in for the checkout under test.** It is not
   guaranteed to be set, and where it is set it commonly names the main clone —
   so a command written against it launches that tree's `cli.py` from a
@@ -198,10 +208,11 @@ source, without touching whatever image a released `polecat run` would pull.
 checkout first:
 
 ```bash
+CHECKOUT="$(git rev-parse --show-toplevel)"   # never $AOPS — see Gotchas
 mkdir -p "$POLECAT_HOME"
 cat > "$POLECAT_HOME/local.yaml" <<EOF
 paths:
-  aops: $AOPS
+  aops: $CHECKOUT
 EOF
 ```
 
@@ -224,7 +235,7 @@ make docker-build                    # assembles dist/ then builds the image
 GIT_AUTHOR_NAME="Your Name" GIT_AUTHOR_EMAIL="you@example.com" \
 AOPS_BOT_GH_TOKEN=dev-probe-placeholder \
 POLECAT_IMAGE=ghcr.io/nicsuzor/aops-crew:latest \
-  uv run --project $AOPS python $AOPS/lib/polecat/cli.py run claude -p aops -s dev-probe
+  uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py run claude -p aops -s dev-probe
 ```
 
 Drive that session with the same tmux pattern as above (spawn it inside

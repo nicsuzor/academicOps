@@ -15,15 +15,22 @@ Resolve the checkout under test first, and spell it out in every command. Never
 `$AOPS`, never an alias, never a relative path — the spec's Gotchas say what
 each of those breaks and why the symptom misleads.
 
-Put the launch in a small script and give tmux the script — a long inline
-command with its own quoting and env assignments is the most common way this
-step dies before the container starts.
+Write the launch into a small script and hand tmux the script path, not an
+inline command — the spec's "The pattern" shows the invocation; a version of it
+carrying env assignments and nested quoting through `sh -c` is where this step
+dies before the container starts.
 
 ```bash
 CHECKOUT="$(git rev-parse --show-toplevel)"   # the tree whose change you are testing
 export TMUX_NAME="polecat-debug-$RANDOM"
-tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py run claude -d <repo-path> -s $TMUX_NAME"
+cat > /tmp/launch-$TMUX_NAME.sh <<EOF
+#!/bin/bash
+export POLECAT_HOME=... POLECAT_IMAGE=... GIT_AUTHOR_NAME=... GIT_AUTHOR_EMAIL=... AOPS_BOT_GH_TOKEN=...
+exec uv run --project "$CHECKOUT" python "$CHECKOUT/lib/polecat/cli.py" \\
+  run claude -d <repo-path> -s "$TMUX_NAME"
+EOF
+chmod +x /tmp/launch-$TMUX_NAME.sh
+tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 "/tmp/launch-$TMUX_NAME.sh"
 ```
 
 Swap `claude` for `agy` to debug the Antigravity client, or `shell` for a plain
@@ -32,12 +39,10 @@ project has a `paths` entry in `$POLECAT_HOME/local.yaml`. Always pass
 `-s "$TMUX_NAME"` so the tmux session name and the host log directory name
 match.
 
-The launch needs `POLECAT_HOME`, `POLECAT_IMAGE`, `GIT_AUTHOR_NAME`,
-`GIT_AUTHOR_EMAIL` and `AOPS_BOT_GH_TOKEN` in its environment — `entrypoint.sh`
-refuses to start without a commit identity and a token, and polecat has no
-default home or image. A probe session that never pushes can pass a placeholder
-token. Keep the workspace under `$HOME`; see the spec's Gotchas for why a mount
-source outside the VM's shared paths fails silently as an empty directory.
+Set every variable the script exports; the spec's "Dev-loop" section says what
+each is for and which are required. Keep the workspace under `$HOME` — the
+spec's Gotchas say why a mount source outside the VM's shared paths fails
+silently rather than loudly.
 
 **Never pass `-d` a linked git worktree.** Its `.git` is a file pointing at the
 main checkout's `.git/worktrees/<name>`, which is outside the mounted directory,
