@@ -175,19 +175,23 @@ def _merge(results: list[Result | None]) -> Result | None:
 
 
 def _render_claude(result: Result, event: str) -> dict:
-    if result.is_block:
-        if event not in BLOCKABLE_EVENTS:
-            print(
-                f"aops hooks: a block disposition was returned on {event!r}, which does not "
-                "honour one; degrading it to an advisory",
-                file=sys.stderr,
-            )
-        else:
-            output: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
-            if result.user_text:
-                output["systemMessage"] = result.user_text
-            return output
+    if result.is_block and event in BLOCKABLE_EVENTS:
+        blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
+        if result.user_text:
+            blocked["systemMessage"] = result.user_text
+        return blocked
 
+    if result.is_block:
+        # Degraded rather than dropped: the text is still worth delivering, but
+        # the disposition is not, and a handler must not read silence here as
+        # enforcement that happened.
+        print(
+            f"aops hooks: a block disposition was returned on {event!r}, which does not "
+            "honour one; degrading it to an advisory",
+            file=sys.stderr,
+        )
+
+    output: dict[str, Any]
     if result.is_refusal:
         specific = {
             "hookEventName": event,

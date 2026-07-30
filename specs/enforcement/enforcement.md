@@ -72,26 +72,27 @@ check then finds.
 **Hook injection budget scales inversely with firing frequency.** `PreToolUse`,
 `PostToolUse`, and `UserPromptSubmit` fire on every tool call or turn, so what
 they inject stays to a line or two — a message the agent learns to skip past is
-worse than no message. `Stop` and `SubagentStop` fire once per chain, so the text
-there can afford to be a full instruction.
+worse than no message. `Stop` and `SubagentStop` fire at a turn boundary and are
+guarded to once per stop-chain, so the text there can afford to be a full
+instruction.
 
-**A delivery channel that has stopped delivering does not currently say so.**
-These are reminders people come to rely on, and every way they can fail — a
-handler that raised, an evaluator that did not answer, a rule file that could not
-be read — is reported on stderr alone, which the client captures into the
-transcript and renders to nobody. There is no rate limiting and no route onto the
-hook's own response; the structured degradation reporting that once occupied that
-role has been removed and not replaced. So a hook that has silently stopped
-working is legible in the log and nowhere else, including to the person who is
-the only one able to fix it. This is a known gap in the channel, not a property
-of it.
+**Degradation reaches the agent, and reaches the person only sometimes.** A
+handler that raises is caught in `_run_handler`, printed to stderr, and returned
+as an advisory, so its reason lands in the agent's context on the same response
+the hook would have carried — and a raising handler on a stop therefore fails
+open, its block degrading to text. Everything a handler reports for itself, by
+contrast, goes to stderr and no further: an evaluator that did not answer, a rule
+file that could not be read. Those the client captures into the transcript and
+renders to nobody, with no rate limiting and no route onto the response. So a
+check that has quietly stopped checking is legible to the log, sometimes to the
+agent, and not to the person who is the only one able to fix it. That asymmetry
+is a known gap in the channel, not a property of it.
 
-What does still hold is that **degradation is distinguished from legitimate
-absence** by the handlers themselves: `rbg` with no evaluator configured,
-`$ACA_DATA` unset, and a project with no local rules directory are all valid
-states, and each is a clean no-op rather than a fault. And a fault is never a
-gate — reporting one cannot change any hook's disposition, and the tool call
-proceeds either way.
+**Degradation is distinguished from legitimate absence** by the handlers
+themselves: `rbg` with no evaluator configured, `$ACA_DATA` unset, and a project
+with no local rules directory are all valid states, and each is a clean no-op
+rather than a fault. And a fault is never a gate — reporting one cannot promote
+any hook's disposition, and the tool call proceeds either way.
 
 ### 3. Claude Code's native auto-mode classifier
 
