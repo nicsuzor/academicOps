@@ -197,12 +197,12 @@ refs = ["hooks/hooks.json", ".claude-plugin/marketplace.json"]
 reason = "Built output under dist/, described by its shape rather than one location."
 
 [[tool.refcheck.allow]]
-docs = "plugins/cope/README.md"
-refs = ["hooks/dispatch.py", "hooks/degraded.py"]
+docs = "plugins/rbg/README.md"
+refs = ["hooks/dispatch.py"]
 reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
 
 [[tool.refcheck.allow]]
-docs = "plugins/cope/README.md"
+docs = "plugins/rbg/README.md"
 refs = [".claude/settings.json", ".claude/settings.local.json"]
 reason = "Claude Code's project-settings files in whatever workspace a session opens, not in this repository."
 

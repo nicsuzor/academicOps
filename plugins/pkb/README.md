@@ -28,7 +28,7 @@ flowchart TD
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
 
         learn -. knowledge scope .-> remember
-        learn -. project scope .-> addrule(["aops-cope — skills/add-rule<br/>write the project rule"])
+        learn -. project scope .-> addrule(["rbg — skills/add-rule<br/>write the project rule"])
         learn -. task scope .-> pull
     end
 

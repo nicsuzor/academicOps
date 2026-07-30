@@ -47,37 +47,51 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 Every plugin hook shares one runtime, `lib/hooks/`, injected into each plugin at
 build time (`ARCHITECTURE.md`, Hooks). The framework enforces rules via two complementary layers:
 
-- **Layer 1 (Turn-by-Turn Local Model COPE):** **`cope`**, `PreToolUse` ([`plugins/cope/hooks/handlers.py`](../../plugins/cope/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a fast, lightweight local Reflexes LLM evaluator model ([`evaluator.py`](../../plugins/cope/hooks/evaluator.py)) whether each tool call complies with active rules. Runs asynchronously in parallel to advise the agent on every tool call.
-- **Layer 2 (Session Stop RBG Check):** **`aops`**, `Stop` and `SubagentStop` ([`plugins/aops/hooks/handlers.py`](../../plugins/aops/hooks/handlers.py), `present_checkable_evidence`) — requires the agent that is stopping to run an explicit RBG rule check (`axioms/` + project-local + user rules) and attach checkable evidence BEFORE completing and handing over the task.
+- **Layer 1 (Turn-by-Turn Local Model COPE):** **`rbg`**, `PreToolUse` ([`plugins/rbg/hooks/handlers.py`](../../plugins/rbg/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a fast, lightweight local Reflexes LLM evaluator model ([`evaluator.py`](../../plugins/rbg/hooks/evaluator.py)) whether each tool call complies with active rules. Runs in parallel across rules inside one deadline to advise the agent on every tool call. **Advisory and overridable, permanently**: it returns injected context, never a disposition, and no confidence score promotes it to one. On agy the same plugin states the live rule roster at `PreInvocation` (`inject_ruleset`) instead, because agy maps no tool event for the evaluator to judge.
+- **Layer 2 (Session Stop RBG Check):** **`rbg`**, `Stop` and `SubagentStop` ([`plugins/rbg/hooks/handlers.py`](../../plugins/rbg/hooks/handlers.py), `rule_check`) — returns `decision: "block"` once per stop-chain, directing the agent that is stopping to run an explicit RBG rule check (`axioms/` + project-local + user rules) and present checkable evidence before handing over. What it withholds is the stop, not a tool call: the turn continues, and the agent uses it to run the check. The block is legal because the question is whether the check happened at all — a fact about the session — rather than a model's reading of a rule, which is why Layer 1 may never carry one.
+
+  The hook obliges the check and never performs it. Nothing hook-side reads the transcript or grades what the agent did with the turn it was given; a mechanical verdict on the substance of an agent's work is the thing the governing principle above forbids.
+
+  **The gate is unscoped, in two ways that matter for cost.** These are turn boundaries, not session boundaries: `Stop` fires each time the session's own agent finishes a response, so an interactive session meets the gate once per turn. And the payload carries no per-agent identity, so a face's `Stop` and a worker's `SubagentStop` reach the same handler with the same text — the gate cannot currently be aimed at workers alone. On a face turn it therefore composes with `ida`'s `honesty_floor`, which fires on the same event: two hooks, one advisory and one block, each once per chain.
+
+  **Once per chain, guarded structurally.** A block gives the session another turn, which stops again and re-fires the hook; the client marks that re-entry with `stop_hook_active`. [`lib/hooks/dispatch.py`](../../lib/hooks/dispatch.py) drops every handler on a marked `Stop`/`SubagentStop` before any of them load, so the obligation is stated once, the continuation stop is silent, and the session ends. It lives in the shared runtime rather than in a handler so no future stop hook has to remember it.
+
+  **Blocking is Claude-only, structurally.** `dispatch.py` honours `block` only on the events in `BLOCKABLE_EVENTS`; returned anywhere else it degrades to an advisory and reports the misuse on stderr, because no other Claude event has a `decision` field to honour and a handler must not mistake a no-op for enforcement. agy has no blockable mapped event at all, so `rule_check` reaches it as an `injectSteps` advisory.
 - **Honesty floor (face-scoped):** **`ida`**, `Stop` ([`plugins/ida/hooks/handlers.py`](../../plugins/ida/hooks/handlers.py), `honesty_floor`) — requires every load-bearing claim in the answer to carry its evidence (observed vs reported) and its stated confidence, and forbids writing an inference as an observation. Advisory, once per stop-chain (`stop_hook_active`), silent while background work runs. Counterpart to `rule_against_hearsay` on `PostToolUse` in the same file: that governs what ida may accept from a worker, this governs what ida may then assert to the user. Scoped to the face by its event — `Stop` fires only on the session's own turn boundary, and `SubagentStop` is deliberately not wired — because the hook payload carries no per-agent discriminator.
 - **`pkb`**, `UserPromptSubmit` ([`plugins/pkb/hooks/handlers.py`](../../plugins/pkb/hooks/handlers.py)) — grounds every user prompt in PKB history before action.
 - **`ts`**, `SessionStart` ([`plugins/ts/hooks/tailscale-up.sh`](../../plugins/ts/hooks/tailscale-up.sh)) — Tailscale bring-up for remote sessions.
 
 Every agent-visible string a hook emits comes from a markdown file next to it
-(`hooks/messages/*.md`), editable without touching code. Nothing in this layer
-produces a verdict. None of it can stop an agent from exiting, and none of it
-checks whether the agent actually did what the reminder asked — that is the
-executing agent's own judgment call, backstopped by the review lenses below, not
-by the hook.
+(`hooks/messages/*.md`), editable without touching code. **No hook in this layer
+produces a verdict**, and none of them checks whether the agent actually did what
+was asked — that is the executing agent's own judgment call, backstopped by the
+review lenses below, not by the hook. One of them can withhold a stop, which is
+the Layer 2 gate above: it obliges a check to be run, and is silent on what the
+check then finds.
 
-**A delivery channel that has stopped delivering says so.** These are reminders
-people come to rely on, and every way they can fail — a handler that raised, an
-evaluator that did not answer, a rule file that could not be read, a session env
-file that could not be written — used to be reported on stderr alone, which the
-client captures into the transcript and renders to nobody. So the channel
-reports its own degradation on the same response it would have carried the
-reminder on ([`lib/hooks/degraded.py`](../../lib/hooks/degraded.py)): the
-precise reason as `additionalContext` for the agent, one sentence as
-`systemMessage` for the person, and the stderr line unchanged for the log.
+**Hook injection budget scales inversely with firing frequency.** `PreToolUse`,
+`PostToolUse`, and `UserPromptSubmit` fire on every tool call or turn, so what
+they inject stays to a line or two — a message the agent learns to skip past is
+worse than no message. `Stop` and `SubagentStop` fire once per chain, so the text
+there can afford to be a full instruction.
 
-Two constraints shape it. It is **rate-limited to once per session per kind of
-fault**, because these hooks fire on every tool call and a line the user learns
-to skip past is worse than no line at all; the gate is a marker file per
-(session, fault kind) under the OS temp directory, since one hook invocation is
-one process. And it **distinguishes degradation from legitimate absence** —
-cope with no evaluator configured, `$ACA_DATA` unset, a project with no local
-rules directory are all valid states and stay silent. A fault report is never a
-gate: it can only add an advisory, and the tool call proceeds either way.
+**A delivery channel that has stopped delivering does not currently say so.**
+These are reminders people come to rely on, and every way they can fail — a
+handler that raised, an evaluator that did not answer, a rule file that could not
+be read — is reported on stderr alone, which the client captures into the
+transcript and renders to nobody. There is no rate limiting and no route onto the
+hook's own response; the structured degradation reporting that once occupied that
+role has been removed and not replaced. So a hook that has silently stopped
+working is legible in the log and nowhere else, including to the person who is
+the only one able to fix it. This is a known gap in the channel, not a property
+of it.
+
+What does still hold is that **degradation is distinguished from legitimate
+absence** by the handlers themselves: `rbg` with no evaluator configured,
+`$ACA_DATA` unset, and a project with no local rules directory are all valid
+states, and each is a clean no-op rather than a fault. And a fault is never a
+gate — reporting one cannot change any hook's disposition, and the tool call
+proceeds either way.
 
 ### 3. Claude Code's native auto-mode classifier
 

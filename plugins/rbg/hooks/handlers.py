@@ -1,11 +1,11 @@
-"""cope's advisories: one per surface, each scoped to the clients that have it.
+"""rbg's rule checks: one per surface, each scoped to the clients that have it.
 
-``evaluate`` is the ``PreToolUse`` check. It loads the three-layer rule set
-(rules.py) and asks a Reflexes evaluator — a small language model, remote or
-locally hosted (evaluator.py) — whether the tool call matches each live rule.
-The judgment is the model's; cope only composes the question and reports what
-came back. Nothing about a rule's meaning is decided by matching text against
-a pattern.
+``evaluate`` is the ``PreToolUse`` check — layer 1, turn by turn. It loads the
+three-layer rule set (rules.py) and asks a Reflexes evaluator — a small language
+model, remote or locally hosted (evaluator.py) — whether the tool call matches
+each live rule. The judgment is the model's; rbg only composes the question and
+reports what came back. Nothing about a rule's meaning is decided by matching
+text against a pattern.
 
 ``inject_ruleset`` is the ``UserPromptSubmit`` (agy ``PreInvocation``) advisory.
 That surface carries a prompt, not a tool call, so there is nothing for the
@@ -14,10 +14,16 @@ the turn. It is scoped to agy because Claude Code fires both events and is
 already covered by ``evaluate``, and because the pkb plugin owns Claude's
 ``UserPromptSubmit`` injection.
 
-Both are advisory only — they return a ``Result`` (context injected for the
-agent to read), never a permission decision; see lib/hooks/result.py and
-specs/ARCHITECTURE.md, Enforcement. Real enforcement is a separate merge-stage
-check.
+Both of those are advisory only, permanently. They return an advisory ``Result``
+— context injected for the agent to read — and never a disposition. A rule
+verdict from a small model is not something to enforce with.
+
+``rule_check`` is layer 2, at the session's stop. It is the one handler here
+that carries a disposition, and what it withholds is the stop, not a tool call:
+the agent gets another turn in which to run the check and show its evidence.
+The disposition is legal because the thing being judged is whether the check has
+happened at all, which is a fact about the session rather than a reading of a
+rule.
 
 One hook invocation is one process (dispatch.py runs, does its job, exits), so
 the rule set is loaded once per call and cached at module scope for the life of
@@ -31,7 +37,7 @@ from pathlib import Path
 
 import evaluator
 import rules
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import HookContext, Result, block, load_message_pair, warn
 
 _rules_cache: dict[str, rules.Rule] | None = None
 
@@ -65,20 +71,19 @@ def _loaded_rules(ctx: HookContext) -> dict[str, rules.Rule]:
 def evaluate(ctx: HookContext) -> Result | None:
     """Ask the evaluator whether this tool call matches any live rule.
 
-    No evaluator configured is a clean no-op — cope has nothing to ask with,
+    No evaluator configured is a clean no-op — rbg has nothing to ask with,
     which is not a failure of the session. Nothing matched is a no-op too. Only
     a rule the model actually flagged produces an advisory, and the advisory
     hands back the rule's own text so the agent can correct its own course.
 
-    The advisory has two readers, so it is loaded as a pair (lib/hooks/
-    messages.py). The agent gets the rule text; the person watching gets one
-    line naming what was flagged, because a check that only ever speaks to the
-    agent leaves the person whose session it is with no idea it fired.
+    The advisory has two readers, so it is loaded as a pair
+    (``load_message_pair``). The agent gets the rule text; the person watching
+    gets one line naming what was flagged, because a check that only ever speaks
+    to the agent leaves the person whose session it is with no idea it fired.
 
-    An evaluator that could not answer reaches both of them for the same
-    reason, once per session (lib/hooks/degraded.py). The call still proceeds:
-    a rule that went unjudged is not a rule that passed, and it is not grounds
-    to hold anything up.
+    An evaluator that could not answer is printed to stderr and nowhere else.
+    The call still proceeds: a rule that went unjudged is not a rule that
+    passed, and it is not grounds to hold anything up.
     """
     config = evaluator.resolve()
     if config is None:
@@ -94,7 +99,7 @@ def evaluate(ctx: HookContext) -> Result | None:
     if failures:
         print(
             "DEGRADED: ",
-            f"cope: the rule evaluator did not answer for {len(failures)} of "
+            f"rbg: the rule evaluator did not answer for {len(failures)} of "
             f"{len(policies)} rules, so those rules are not being checked",
             "; ".join(failures),
             file=sys.stderr,
@@ -160,7 +165,29 @@ def inject_ruleset(ctx: HookContext) -> Result | None:
     return warn(load_message_pair(ctx.hooks_dir, "ruleset")[0].replace("{rules}", _digest(loaded)))
 
 
+def rule_check(ctx: HookContext) -> Result | None:
+    """Withhold the stop until the session's rule compliance has been checked
+    and its evidence presented.
+
+    Blocking, and the only handler here that is. Layer 1 advises on one tool
+    call at a time and cannot see the shape of the finished work; this is the
+    one moment the whole session is available to judge, and it is the last one —
+    after the stop lands there is nothing left to correct.
+
+    Once per stop-chain, and the guard is dispatch.py's: it drops every handler
+    on a stop the client has marked ``stop_hook_active``, which is the re-entry
+    this handler's own injection causes. So the check is asked for once, the
+    continuation stop is silent, and the session ends.
+
+    No transcript is read here. What the hook does is oblige the check; running
+    it, and judging what it finds, stays with the agent.
+    """
+    return block(load_message_pair(ctx.hooks_dir, "rule-check")[0])
+
+
 HANDLERS = {
     "PreToolUse": [evaluate],
     "UserPromptSubmit": [inject_ruleset],
+    "Stop": [rule_check],
+    "SubagentStop": [rule_check],
 }

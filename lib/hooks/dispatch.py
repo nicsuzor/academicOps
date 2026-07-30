@@ -32,9 +32,25 @@ class HookContext:
 
 @dataclass(frozen=True)
 class Result:
+    """One of three dispositions, in descending order of force.
+
+    ``is_refusal`` denies a tool call outright and is reserved for structural
+    impossibility — the session as configured cannot carry the call out, so
+    letting it through produces a hang rather than an outcome. It is never a
+    rule verdict.
+
+    ``is_block`` refuses to let a *stop* land: the turn continues so the agent
+    can do the thing the hook asked for. It is legal only on the events in
+    ``BLOCKABLE_EVENTS``, because no other event has a stop to withhold.
+
+    Neither set is an advisory: text the agent reads and weighs, which is what
+    every rule-driven handler is limited to.
+    """
+
     inject_text: str
     user_text: str | None = None
     is_refusal: bool = False
+    is_block: bool = False
 
 
 def warn(message: str, user_text: str | None = None) -> Result:
@@ -43,6 +59,10 @@ def warn(message: str, user_text: str | None = None) -> Result:
 
 def refuse(reason: str, user_text: str | None = None) -> Result:
     return Result(reason, user_text, is_refusal=True)
+
+
+def block(reason: str, user_text: str | None = None) -> Result:
+    return Result(reason, user_text, is_block=True)
 
 
 def load_message_pair(hooks_dir: Path, name: str) -> tuple[str, str | None]:
@@ -64,6 +84,14 @@ CANONICAL_EVENTS = (
     "Stop",
     "SubagentStop",
 )
+
+STOP_EVENTS = ("Stop", "SubagentStop")
+
+# The events a block disposition is honoured on. Claude Code reads
+# ``decision: "block"`` on a stop and gives the session another turn; on every
+# other event the field is not part of the response contract, so emitting it
+# there is a no-op the handler would mistake for enforcement.
+BLOCKABLE_EVENTS = STOP_EVENTS
 
 TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
@@ -135,14 +163,31 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
 
 
 def _merge(results: list[Result | None]) -> Result | None:
+    """Strongest disposition wins, then first-registered."""
     present = [r for r in results if r is not None]
     for r in present:
         if r.is_refusal:
+            return r
+    for r in present:
+        if r.is_block:
             return r
     return present[0] if present else None
 
 
 def _render_claude(result: Result, event: str) -> dict:
+    if result.is_block:
+        if event not in BLOCKABLE_EVENTS:
+            print(
+                f"aops hooks: a block disposition was returned on {event!r}, which does not "
+                "honour one; degrading it to an advisory",
+                file=sys.stderr,
+            )
+        else:
+            output: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
+            if result.user_text:
+                output["systemMessage"] = result.user_text
+            return output
+
     if result.is_refusal:
         specific = {
             "hookEventName": event,
@@ -152,13 +197,19 @@ def _render_claude(result: Result, event: str) -> dict:
     else:
         specific = {"hookEventName": event, "additionalContext": result.inject_text}
 
-    output: dict[str, Any] = {"hookSpecificOutput": specific}
+    output = {"hookSpecificOutput": specific}
     if result.user_text:
         output["systemMessage"] = result.user_text
     return output
 
 
 def _render_agy(result: Result) -> dict:
+    """agy has no blockable event, so a block reaches it as advice or not at all.
+
+    Its ``PostInvocation`` response contract is a bare object with no disposition
+    field to carry one, and the invocation has already ended by the time the
+    event fires. The text still has somewhere to go, so it goes there.
+    """
     if result.is_refusal:
         return {"decision": "deny", "reason": result.inject_text}
     return {"injectSteps": [{"ephemeralMessage": result.inject_text}]}
@@ -211,6 +262,15 @@ def main(argv: list[str]) -> int:
 
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
+
+    # A stop handler that injects gives the session another turn, which stops
+    # again and re-fires the same hook. The client marks that re-entry with
+    # ``stop_hook_active``; running handlers against it is the loop that never
+    # lets a session end. Guarded here rather than in each handler, so every
+    # current and future stop hook gets once-per-chain semantics with no state
+    # of its own and no obligation to remember the check.
+    if event in STOP_EVENTS and raw.get("stop_hook_active"):
+        return 0
 
     handlers = _load_handlers(event, hooks_dir)
 

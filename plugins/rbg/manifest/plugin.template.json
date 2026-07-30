@@ -1,9 +1,9 @@
 {
   "manifestVersion": "1.0",
-  "name": "aops-cope",
+  "name": "rbg",
   "clients": {
     "__base__": {
-      "name": "aops-cope",
+      "name": "rbg",
       "description": "Advisory in-session rule enforcement: a small language model judges each tool call against the three-layer rule set (axioms, project rules, user rules) over the Reflexes evaluator contract."
     },
     "claude": {

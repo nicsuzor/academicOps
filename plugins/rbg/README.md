@@ -1,13 +1,18 @@
-# aops-cope
+# rbg
 
-Advisory, in-session rule checking: on every tool call it asks a small language model whether the call matches any rule in a three-layer rule set, and injects the matched rule into the agent's context so it can correct itself. It never blocks anything.
+In-session rule checking on two layers. Turn by turn, on every tool call, it asks a small language model whether the call matches any rule in a three-layer rule set and injects the matched rule into the agent's context so it can correct itself — advisory, and never a block. At the session's stop it withholds the stop once, so the agent runs an explicit rule check over the whole session's work and presents evidence for it before handing back.
 
 ```mermaid
 flowchart TD
     A[Claude Code fires PreToolUse] --> B["hooks/dispatch.py claude PreToolUse"]
     A2[agy fires PreInvocation] --> B2["hooks/dispatch.py agy PreInvocation"]
+    A3[Claude Code fires Stop<br/>or SubagentStop] --> B3["hooks/dispatch.py claude Stop"]
     B --> C["handlers.py: evaluate"]
     B2 --> C2["handlers.py: inject_ruleset<br/>only_on('agy')"]
+    B3 --> S{"dispatch.py:<br/>stop_hook_active?"}
+    S -->|"true — this is the<br/>stop our own block caused"| S1[silent, no output —<br/>the session ends]
+    S -->|false| S2["handlers.py: rule_check<br/>→ messages/rule-check.md"]
+    S2 --> S3["decision: block<br/>(the turn continues so the<br/>check can actually run)"]
 
     C --> R{"evaluator.py: resolve()<br/>CLAUDE_PLUGIN_OPTION_* (userConfig),<br/>else plain COPE_EVALUATOR_*"}
     R -->|nothing set| R1[clean no-op — no network, no output]
@@ -33,7 +38,7 @@ flowchart TD
     I -->|any 1| L["messages/verdict.md + each matched rule's<br/>full text + the tool call that was judged;<br/>messages/verdict.user.md + the matched slugs"]
     L --> M["additionalContext (the agent):<br/>the rules' full text<br/>+ systemMessage (the person):<br/>the slugs that were flagged"]
     L -.->|the route that exists and is<br/>deliberately not taken| Z
-    Z["permissionDecision: deny<br/>(lib/hooks/clients.py can render it;<br/>result.py reserves refusal for<br/>structural impossibility, never a verdict)"]
+    Z["permissionDecision: deny<br/>(dispatch.py can render it; refusal is<br/>reserved for structural impossibility,<br/>never a rule verdict)"]
 
     F -->|agy path only — no evaluator,<br/>no network, nothing judged| N["messages/ruleset.md<br/>+ one line per live rule: slug, layer,<br/>and its frontmatter description"]
     N --> O["ephemeralMessage injected<br/>(the one agy inject-step that reaches the<br/>agent without wording it as the user)"]
@@ -42,8 +47,7 @@ flowchart TD
     J --> P
     E2 -.->|unreadable file<br/>or unmarked rule| P
     E3 -.->|unreadable file,<br/>or set but absent| P
-    P["lib/hooks/degraded.py:<br/>stderr, plus the response —<br/>once per session per fault"]
-    P --> Q["systemMessage (the person)<br/>+ additionalContext (the agent)"]
+    P["stderr only —<br/>the client captures it<br/>into the transcript"]
 ```
 
 A missing or unreadable layer 2 or layer 3 directory degrades to whatever did load. Layer 1 is the plugin's own `axioms/`, injected by the build, so its presence is a build guarantee rather than a runtime condition and its absence is the one thing the loader does not check for — an installation without it is a broken build, not a session to be warned about. An unreadable `axioms/` directory, or an unreadable file inside it, is still reported like any other. A later layer can only add a slug not already claimed — it can never override an axiom's entry, so a project or user rule file cannot weaken the floor by reusing its filename.
@@ -52,21 +56,22 @@ Every layer counts only the `*.md` files declaring `trigger: always_on` — the 
 
 Nothing else is dropped quietly. A file skipped for want of the marker is named, with the layer's directory — except in the shipped `axioms/`, whose non-rule files (`README.md`, `AXIOMS-REVIEW.md`) are a known set nobody in the session can act on. `$ACA_DATA` set to a path with no `.agents/rules/` directory is named too: setting the variable is a claim that the layer exists. `$ACA_DATA` unset, and a project with no `.agents/rules/` directory, are ordinary absences and say nothing.
 
-"Named" means named to the person running the session, not only to a log. Every degradation here goes through `lib/hooks/degraded.py`: the reason still goes to stderr, and it additionally rides out on the hook's response — the full reason as `additionalContext` for the agent, one sentence as `systemMessage` for the person, who is the only one who can go and fix the file. Because this hook fires on every tool call, each distinct fault is announced **once per session**: a dead evaluator says so once, not once per rule per call. Repeats stay in the log. A fault report is never a gate — it can only ever add an advisory, and the tool call proceeds either way.
+Every degradation here is printed to stderr, which the client captures into the transcript. It is not rate-limited and it does not reach the hook's response, so a fault this plugin hits is legible in the log and nowhere else — including to the person who is the only one who could go and fix the file. A fault report is never a gate: the tool call proceeds either way.
 
 ## What this plugin provides
 
-| Component            | File                                   | Purpose                                                                                           |
-| -------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `PreToolUse` hook    | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                              |
-| `PreInvocation` hook | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                                           |
-| Evaluation handler   | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.                     |
-| Ruleset handler      | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                             |
-| Evaluator client     | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.                  |
-| Rule loader          | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.                 |
-| Fault reporting      | `hooks/degraded.py` (shared, injected) | Puts cope's own failures on the response as well as on stderr, once per session.                  |
-| Advisory wording     | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, and `classifier-prompt.md`. Editable without code. |
-| `add-rule` skill     | `skills/add-rule/SKILL.md`             | Writes a project-local rule into `$CWD/.agents/rules/RULES.md` — layer 2 of the rule set below.   |
+| Component                    | File                                   | Purpose                                                                                                            |
+| ---------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `PreToolUse` hook            | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                                               |
+| `PreInvocation` hook         | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                                                            |
+| `Stop` / `SubagentStop` hook | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes at a turn boundary; agy reaches it as `PostInvocation`.                           |
+| Evaluation handler           | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.                                      |
+| Ruleset handler              | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                                              |
+| Stop handler                 | `hooks/handlers.py` — `rule_check`     | Blocks the stop once per chain and directs the agent to run the rule check and show its evidence.                  |
+| Evaluator client             | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.                                   |
+| Rule loader                  | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.                                  |
+| Hook wording                 | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, `rule-check.md`, and `classifier-prompt.md`. Editable without code. |
+| `add-rule` skill             | `skills/add-rule/SKILL.md`             | Writes a project-local rule into `$CWD/.agents/rules/RULES.md` — layer 2 of the rule set below.                    |
 
 ## How the judgment is made
 
@@ -79,21 +84,37 @@ Two protocols are supported, so the same mechanism serves a hosted API and a loc
 - `cope` — the CoPE label API: `POST` with `{"content_text", "criteria_text", "model"}`, answering `{"label", "confidence", "explanation"}`. Spoken by the hosted Zentropi service and by a self-hosted CoPE server alike; the model is open-weights, so remote and local are the same protocol pointed at different hosts.
 - `openai` — any OpenAI-compatible `/v1/chat/completions` server: Ollama, vLLM, LocalAI, llama.cpp, or a hosted provider. The classifier instruction is `hooks/messages/classifier-prompt.md`.
 
-**Nothing about this plugin is a verdict.** A match is one model's reading of one rule against one tool call, injected for the agent to weigh. Real enforcement is a separate merge-stage check; nothing in-session blocks on a rule verdict (`specs/ARCHITECTURE.md`, Enforcement).
+**No evaluator match is ever a verdict.** A match is one model's reading of one rule against one tool call, injected for the agent to weigh. Nothing on this layer blocks, and no confidence score will make it (`specs/enforcement/enforcement.md`, Dual-layer rule enforcement channel).
 
-**A blocking route exists and is not taken.** The shared runtime can render one: `lib/hooks/result.py` has `refuse()`, a refusal beats any advisory in `merge`, and `lib/hooks/clients.py` renders it as `permissionDecision: deny` for Claude Code and as `decision: deny` for agy. What keeps cope out of it is doctrine, not capability. `result.py` reserves refusal for _structural impossibility_ — the session as configured physically cannot carry the call out, so letting it through produces a hang rather than an outcome — and states that refusal is never a rule verdict, however confident the handler is. The only surface a rule-driven refusal could ever act on is Claude Code's `PreToolUse`, which is the one event cope handles there and the one place a decision about a call is a decision the client honours. It could not be extended to `Stop` or `SubagentStop`: `_render_claude` branches on the result, not the event, so it would emit a permission field the client does not honour on those events. On agy it reaches nothing today — a refusal renders only for a tool event, and no agy tool event is mapped.
+**The blocking route exists on this layer and is deliberately not taken.** The shared runtime can render one: `lib/hooks/dispatch.py` has `refuse()`, a refusal beats every other disposition in `_merge`, and `_render_claude` renders it as `permissionDecision: deny` for Claude Code while `_render_agy` renders `decision: deny`. What keeps `evaluate` out of it is doctrine, not capability. Refusal is reserved for _structural impossibility_ — the session as configured cannot carry the call out, so letting it through produces a hang rather than an outcome — and it is never a rule verdict, however confident the handler is. The one surface a rule-driven refusal could act on is Claude Code's `PreToolUse`; that it is also the surface this layer runs on is precisely why the line is written down. On agy it reaches nothing at all: a refusal renders only for a tool event, and no agy tool event is mapped.
 
-**Unconfigured, cope evaluates nothing.** No endpoint ships with this plugin, so an installation that has not set one gets a clean no-op on every tool call — no network call, no output, no error. This is a legitimate state and is never reported as a fault. Configure some of the variables but not all and you get one degradation notice naming what is missing, then the same no-op: a half-configured evaluator is somebody's intent that did not land, and guessing the missing value is the default this plugin may not have.
+The stop gate is a different disposition on a different question, which is what makes it legal. `rule_check` returns `block`, not `refuse`, and what it withholds is the stop rather than a tool call — the turn continues, and the agent uses it to run the check. `dispatch.py` honours `block` only on `Stop` and `SubagentStop` (`BLOCKABLE_EVENTS`); returned on any other event it degrades to an advisory and says so on stderr, because Claude Code's response contract has no `decision` field to honour there and a handler must not mistake a no-op for enforcement. Nor is the gate judging a rule: it judges whether the check has happened, which is a fact about the session rather than a reading of a rule against an action.
+
+**Unconfigured, the evaluator judges nothing.** No endpoint ships with this plugin, so an installation that has not set one gets a clean no-op on every tool call — no network call, no output, no error. This is a legitimate state and is never reported as a fault. Configure some of the variables but not all and you get one degradation notice naming what is missing, then the same no-op: a half-configured evaluator is somebody's intent that did not land, and guessing the missing value is the default this plugin may not have.
 
 **It fails open, always.** A dead socket, a slow endpoint, an error status, a body that will not parse — none of them produce an advisory, and none of them delay or block the tool call beyond the deadline. The reason is reported and the call proceeds. There are no retries: a retry in front of every tool call multiplies the stall the agent is waiting through.
 
 **What leaves the machine.** When an evaluator is configured, every tool call's name and input are sent to it, once per live rule — including file paths, command strings, and file contents, truncated to the first 4000 characters of rendered input. Point `COPE_EVALUATOR_URL` at a locally hosted model if that is not acceptable for the work in front of you.
 
-## The two surfaces
+## The stop gate
 
-`PreToolUse` carries a tool call, so that is where the evaluation runs. agy fires tool events of its own — `PreToolUse` and `PostToolUse` are two of the five events it has — but their payload is shaped differently from Claude Code's, and `lib/hooks/context.py` cannot read it, so the shared runtime leaves them unmapped and maps only the two invocation phases (`lib/hooks/clients.py`). That is deferred work, not a missing capability on agy's side. The asymmetry that is permanent is a different one: agy has no session-level event at all, so `SessionStart` and `SessionEnd` cannot fire there and no row can ever be written for them.
+`Stop` and `SubagentStop` fire at a **turn** boundary — the moment an agent has finished and is about to hand back. It is the last moment the work of that turn can still be corrected, and unlike `PreToolUse` it is a point where the whole turn is available to judge rather than one call at a time. `rule_check` uses it to withhold the handback: Claude Code reads `{"decision": "block", "reason": ...}` as "not yet", gives the agent another turn, and puts the reason in front of it. The reason is `messages/rule-check.md` — run the rule check over all three layers, and present evidence somebody else can check rather than a claim of compliance.
 
-The consequence for cope is exact. cope is wired on agy — the manifest wires `PreInvocation` under `agy`. What is not wired on agy is the _evaluator_: with no tool event mapped, `evaluate` never runs there, only `inject_ruleset` does. **On agy the rules are stated, never checked.** No request is made, so `COPE_EVALUATOR_URL` and its companions are inert on that client however they are configured, and nothing cope does on agy puts anything on the network.
+A turn boundary is not a session boundary. `Stop` fires every time the session's own agent finishes a response, so an interactive session reaches this gate once per turn, not once at the end.
+
+**Once per chain, and the guard is structural.** A block gives the session another turn, which stops again and re-fires this hook; the client marks that re-entry with `stop_hook_active`. `dispatch.py` drops every handler on a marked stop before any of them load, so the check is asked for once, the continuation stop is silent, and the session ends. Guarded in the shared runtime rather than in this handler, so it is not something a future stop hook has to remember.
+
+**The hook obliges the check; it does not perform it.** No transcript is read here, and nothing in this plugin inspects what the agent did with the turn it was given. A hook that graded the answer would be a mechanical verdict on the substance of an agent's work, which is the thing this framework does not do. What it can do — and all it does — is make the stop conditional on the check being asked for.
+
+**It fires on every stop, without discriminating whose.** The payload carries no per-agent identity, so a face's `Stop` and a worker's `SubagentStop` reach the same handler with the same message. Nothing here scopes the gate to workers, and nothing can until the payload carries something to scope on.
+
+## The three surfaces
+
+`PreToolUse` carries a tool call, so that is where the evaluation runs. agy fires tool events of its own — `PreToolUse` and `PostToolUse` are two of the five events it has — but their payload is shaped differently from Claude Code's, so the shared runtime leaves them unmapped and maps only the two invocation phases (`TO_CANONICAL` in `lib/hooks/dispatch.py`). That is deferred work, not a missing capability on agy's side. The asymmetry that is permanent is a different one: agy has no session-level event at all, so `SessionStart` and `SessionEnd` cannot fire there and no row can ever be written for them.
+
+The consequence for this plugin is exact. It is wired on agy — the manifest wires `PreInvocation` and `PostInvocation` under `agy`. What is not wired on agy is the _evaluator_: with no tool event mapped, `evaluate` never runs there. **On agy the rules are stated, never checked.** No request is made, so `COPE_EVALUATOR_URL` and its companions are inert on that client however they are configured, and nothing this plugin does on agy puts anything on the network.
+
+**And on agy the stop gate cannot block.** `PostInvocation` maps to canonical `Stop`, so `rule_check` does run there — but `_render_agy` has no disposition to render it with, and the invocation has already ended by the time the event fires. The text reaches the agent as an `injectSteps` advisory instead. Blocking is Claude-only, structurally, not by configuration.
 
 What agy's `PreInvocation` does carry is the turn itself, which is enough to state which rules are live: `inject_ruleset` injects a one-line-per-rule roster, each line marked with the layer it came from.
 
@@ -117,7 +138,7 @@ Every value arrives from the environment or from client `userConfig`. No endpoin
 
 Each evaluator setting can be supplied two ways, and they are the same setting:
 
-- **Claude Code `userConfig`** — declared in the plugin manifest, so Claude Code prompts for it when the plugin is enabled. Claude Code exports each option into the hook's environment as `CLAUDE_PLUGIN_OPTION_<KEY>`, the option key uppercased (Claude Code hooks documentation, "Available String Substitutions and Environment Variables"); cope's option keys are named so that uppercasing one yields exactly the variable in the table below. Substitution into the hook's `command` string is not an option and is not used: cope's hook is shell form, and a shell-form plugin hook whose `command` references `${user_config.*}` fails with an error instead of running (same document, "Shell Form vs Exec Form").
+- **Claude Code `userConfig`** — declared in the plugin manifest, so Claude Code prompts for it when the plugin is enabled. Claude Code exports each option into the hook's environment as `CLAUDE_PLUGIN_OPTION_<KEY>`, the option key uppercased (Claude Code hooks documentation, "Available String Substitutions and Environment Variables"); this plugin's option keys are named so that uppercasing one yields exactly the variable in the table below. Substitution into the hook's `command` string is not an option and is not used: the hook is shell form, and a shell-form plugin hook whose `command` references `${user_config.*}` fails with an error instead of running (same document, "Shell Form vs Exec Form").
 - **A plain environment variable** — the fallback, and the only route on agy and in containers, neither of which has `userConfig` at all.
 
 `evaluator._setting` does one lookup over both, in that order, and the first non-empty value wins. An option the user left blank falls through to the plain variable rather than blanking it.
@@ -133,9 +154,9 @@ Each evaluator setting can be supplied two ways, and they are the same setting:
 | `COPE_EVALUATOR_MODEL`                            | Model identifier sent with each request.                                                                                                                                                     | none — required alongside the URL.                               |
 | `COPE_EVALUATOR_API_KEY`                          | Bearer token for the endpoint. Omit it for a local server that needs no auth; the `Authorization` header is then not sent at all.                                                            | none — optional, and its absence is not an error.                |
 | `COPE_EVALUATOR_TIMEOUT`                          | Seconds allowed for the whole evaluation of one tool call, across all rules. The longest a tool call can be held up. Unparseable or non-positive values fall back with a degradation notice. | 5.0 seconds. Not an endpoint or a credential — a latency budget. |
-| `ACA_DATA`                                        | Path to the PKB repo; enables layer 3 (`$ACA_DATA/.agents/rules/*.md`). Set to a path with no such directory, cope says so.                                                                  | none — absence just means layer 3 doesn't load.                  |
+| `ACA_DATA`                                        | Path to the PKB repo; enables layer 3 (`$ACA_DATA/.agents/rules/*.md`). Set to a path with no such directory, the loader says so.                                                            | none — absence just means layer 3 doesn't load.                  |
 
-`ACA_DATA` is environment-only: it is shared with the rest of the framework rather than owned by this plugin, so cope declares no `userConfig` option for it.
+`ACA_DATA` is environment-only: it is shared with the rest of the framework rather than owned by this plugin, so no `userConfig` option is declared for it.
 
 Every one of these is inert on agy except `ACA_DATA`, which still selects layer 3 for the roster. The evaluator settings are read only by `evaluate`, which agy never reaches.
 
@@ -169,7 +190,7 @@ python3 scripts/cope_eval_shim.py --port 8099 --upstream http://127.0.0.1:8090
 
 Set `--threads` and `--threads-batch` to suit the host. `--swa-full` is not optional: without it the model's sliding-window attention disables prefix caching, and every rule reprocesses its policy on every tool call. `curl http://127.0.0.1:8099/v1/health` reports the shim's own status and whether llama-server is answering.
 
-Then point cope at the shim:
+Then point the evaluator at the shim:
 
 | Variable                  | Value                                                                                                                                                                     |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -179,10 +200,10 @@ Then point cope at the shim:
 | `COPE_EVALUATOR_API_KEY`  | Leave unset. The shim needs no credential, ignores any `Authorization` header it is sent, and forwards none.                                                              |
 | `COPE_EVALUATOR_TIMEOUT`  | `15`. The first sweep after a cold server start can still exceed it; those rules go unevaluated and the tool call proceeds, which is what `--warmup` is there to prevent. |
 
-An upstream that is unreachable, slow, or answering with anything other than `0` or `1` gets a 5xx from the shim and never a label — which cope fails open on, as it does on any other evaluator failure.
+An upstream that is unreachable, slow, or answering with anything other than `0` or `1` gets a 5xx from the shim and never a label — which `evaluate` fails open on, as it does on any other evaluator failure.
 
 ## Depends on
 
-- `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`, `degraded.py`, and `messages/degraded*.md`), injected into `hooks/` at build time.
+- `lib/hooks/` — shared hook runtime (`dispatch.py`), injected into `hooks/` at build time. It carries the payload normaliser, the handler registry loader, the three `Result` dispositions and their per-client rendering, the `stop_hook_active` self-loop guard, and `load_message_pair`.
 - `lib/axioms/` — injected into `axioms/` at build time; layer 1 of the rule set.
 - An evaluator endpoint, external and operator-supplied: a Reflexes-compatible CoPE label API or an OpenAI-compatible chat-completions server. Nothing is bundled, and the hook runtime uses only the Python standard library — no `reflexes` package, no `httpx`, nothing to install.

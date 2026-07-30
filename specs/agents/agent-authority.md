@@ -108,7 +108,7 @@ agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
 (`plugins/ida/agents/james.md`) declares the explicit list
-`["aops-cope:rbg", "aops-pkb:pauli", "aops:marsha", "general-purpose"]` — the
+`["rbg:rbg", "aops-pkb:pauli", "aops:marsha", "general-purpose"]` — the
 three reviewers his own description names, plus the plain worker surface his
 dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) and `marsha`
 (`plugins.disabled/aops/agents/marsha.md`) declare `subagents: []` — neither's
