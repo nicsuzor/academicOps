@@ -93,6 +93,18 @@ STOP_EVENTS = ("Stop", "SubagentStop")
 # there is a no-op the handler would mistake for enforcement.
 BLOCKABLE_EVENTS = STOP_EVENTS
 
+
+def is_continuation(event: str, raw: dict[str, Any]) -> bool:
+    """Is this stop the one our own injection caused, rather than a real one?
+
+    A hook that injects on a stop gives the session another turn, which stops
+    again and re-fires the hook; the client marks that re-entry with
+    ``stop_hook_active``. Answering yes here is what gives a stop hook
+    once-per-chain semantics with no state of its own.
+    """
+    return event in STOP_EVENTS and bool(raw.get("stop_hook_active"))
+
+
 TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
     "agy": {
@@ -267,13 +279,10 @@ def main(argv: list[str]) -> int:
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
 
-    # A stop handler that injects gives the session another turn, which stops
-    # again and re-fires the same hook. The client marks that re-entry with
-    # ``stop_hook_active``; running handlers against it is the loop that never
-    # lets a session end. Guarded here rather than in each handler, so every
-    # current and future stop hook gets once-per-chain semantics with no state
-    # of its own and no obligation to remember the check.
-    if event in STOP_EVENTS and raw.get("stop_hook_active"):
+    # Guarded here rather than in each handler, so every current and future
+    # stop hook gets once-per-chain semantics without having to remember the
+    # check, and no handler can ship without it.
+    if is_continuation(event, raw):
         return 0
 
     handlers = _load_handlers(event, hooks_dir)
