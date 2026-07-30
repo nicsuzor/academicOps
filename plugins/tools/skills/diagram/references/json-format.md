@@ -55,6 +55,7 @@ Each element in the `elements` array includes these properties:
   "width": 200,
   "height": 100,
   "angle": 0,
+  "index": "a0", // REQUIRED - fractional z-order key, see "Z-Order (`index`)" below
   "version": 1,
   "versionNonce": 987654321,
   "isDeleted": false
@@ -81,6 +82,7 @@ Each element in the `elements` array includes these properties:
 {
   "groupIds": [],
   "frameId": null,
+  "index": "a0",
   "roundness": { "type": 3 },
   "seed": 123456,
   "boundElements": null,
@@ -110,6 +112,7 @@ Each element in the `elements` array includes these properties:
   "opacity": 100,
   "groupIds": [],
   "frameId": null,
+  "index": "a0",
   "roundness": { "type": 3 },
   "seed": 123456,
   "version": 1,
@@ -130,12 +133,38 @@ Editor configuration:
 {
   "appState": {
     "gridSize": 20,
-    "viewBackgroundColor": "#ffffff"
+    "viewBackgroundColor": "#ffffff",
+    "lockedMultiSelections": {}
   }
 }
 ```
 
+Always include `appState.lockedMultiSelections` (as `{}` if nothing is locked) — current excalidraw.com writes it even on an empty scene.
+
 Additional properties may include zoom level, selected elements, UI state, etc.
+
+## Z-Order (`index`)
+
+Every element carries a required `index` string — a **fractional index** (the same family of algorithm Figma and Linear use) that determines stacking order. Elements render in ascending lexicographic order of `index`; you never renumber existing elements to insert one in the middle, you generate a new key that sorts between its neighbors.
+
+**Character set**: `0-9`, then `A-Z`, then `a-z` (ASCII order — this is why you'll see keys like `b0Y`, `b0Z`, `b0a`, `b0b` climbing in that sequence). Keys of the same length sort exactly like you'd read them; a shorter key sorts before a longer key that starts with it (e.g. `"a0"` < `"a00"`).
+
+**For newly generated files, don't try to replicate excalidraw.com's internal jittered-fractional-indexing implementation byte-for-bit** — you only need output that is _valid_ per this scheme (so the web app has no reason to regenerate it). A simple monotonically increasing generator is sufficient:
+
+```python
+_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+def generate_indices(n: int) -> list[str]:
+    """Valid, strictly-increasing fixed-width fractional-index keys for n elements in z-order."""
+    base = len(_ALPHABET)
+    if n > base * base:
+        raise ValueError(f"generate_indices supports up to {base * base} elements")
+    return [f"a{_ALPHABET[i // base]}{_ALPHABET[i % base]}" for i in range(n)]
+```
+
+(Fixed 3-character width keeps every key the same length, so lexicographic order is numeric order with no prefix-collision edge cases — up to 62×62 = 3,844 elements, far beyond any hand-authored diagram.)
+
+Assign `index` values in the same order elements should stack (later `index` = drawn on top). **Do not** use a sequential ad hoc scheme like `"c00"`, `"c01"`, `"d02"`... — it is not valid per excalidraw.com's fractional-indexing scheme and will be silently regenerated on next open/save, resorting the whole element array with it.
 
 ## Files Object
 
@@ -219,14 +248,14 @@ When copying elements, use slightly different schema:
   "height": 50, // Non-zero for curved arrows
   "points": [[0, 0], [100, 30], [200, 50]], // Multiple points for curves - REQUIRED for organic feel
   "startBinding": { // REQUIRED - anchors arrow to source box
+    "mode": "orbit",
     "elementId": "source-element-id",
-    "focus": 0,
-    "gap": 10
+    "fixedPoint": [0.5, 1]
   },
   "endBinding": { // REQUIRED - anchors arrow to target box
+    "mode": "orbit",
     "elementId": "target-element-id",
-    "focus": 0,
-    "gap": 10
+    "fixedPoint": [0.5, 0]
   },
   "startArrowhead": null,
   "endArrowhead": "arrow"
@@ -241,31 +270,39 @@ When copying elements, use slightly different schema:
 - **Route around boxes** - arrows should never pass through unrelated elements
 - **roughness: 2** for consistent hand-drawn aesthetic
 
-**Arrow binding details**:
+**Arrow binding details** (current excalidraw.com format):
 
 ```json
 {
   "startBinding": {
+    "mode": "orbit", // Required literal value — the only mode excalidraw.com currently emits
     "elementId": "source-box-id", // Required: ID of element arrow starts from
-    "focus": 0, // -1 to 1: Position along edge (-1=left/top, 0=center, 1=right/bottom)
-    "gap": 10 // Pixels between arrow and element edge
+    "fixedPoint": [0.5, 1] // [x, y] normalized 0..1 anchor on the bound element's bounding box
   },
   "endBinding": {
+    "mode": "orbit",
     "elementId": "target-box-id", // Required: ID of element arrow points to
-    "focus": 0.2, // Offset from center for visual clarity
-    "gap": 10
+    "fixedPoint": [0.5, 0]
   }
 }
 ```
 
-**Arrow positioning strategy**:
+`fixedPoint` is the only anchor property — a single normalized coordinate on the bound element's own bounding box: `[0, 0]` = top-left corner, `[1, 1]` = bottom-right corner. Do not add `focus` or `gap` keys; they are not part of this binding shape.
 
-- `focus: 0` → Arrow connects to center of edge (most common)
-- `focus: -0.5` → Arrow connects to left/top quarter of edge
-- `focus: 0.5` → Arrow connects to right/bottom quarter of edge
-- **Vary focus values** to prevent arrows overlapping when multiple arrows connect to same box
-- `gap: 8-12px` provides visual separation between arrow and box border
-- When position not specified for start/end, Excalidraw computes based on arrow's x/y coordinates
+**`fixedPoint` anchor convention** (edge midpoints — use these for the vast majority of arrows):
+
+| Anchor             | `fixedPoint` |
+| ------------------ | ------------ |
+| Top-center         | `[0.5, 0]`   |
+| Bottom-center      | `[0.5, 1]`   |
+| Left-center        | `[0, 0.5]`   |
+| Right-center       | `[1, 0.5]`   |
+| Dead center (rare) | `[0.5, 0.5]` |
+
+- **Vary the offset along the edge** (e.g. `[0.3, 0]` or `[0.7, 0]`) to prevent multiple arrows overlapping where they land on the same box.
+- Pick the edge (`x`=0/0.5/1, `y`=0/0.5/1) based on the arrow's actual approach direction: an arrow arriving from below binds to the target's top edge (`[0.5, 0]`), one arriving from the side binds to the left/right edge, etc.
+- Don't try to reproduce excalidraw.com's own floating-point precision (it emits values like `0.5001` from its internal geometry solver) — clean `0`, `0.5`, `1` values are valid and load identically; the app will not rewrite a file just because your anchors are exact rather than jittered.
+- When position isn't specified for start/end, Excalidraw computes one from the arrow's x/y coordinates, but always set it explicitly for reproducible, diff-quiet output.
 
 ### Text
 
@@ -466,6 +503,7 @@ Many properties are required but not well-documented:
 - `seed`: Random number for roughness algorithm
 - `roundness`: Complex object, type depends on shape
 - `boundElements`: Array of connected element references
+- `index`: Fractional z-order key — see "Z-Order (`index`)" above; an invalid or missing scheme triggers a full-file rewrite on next open/save in excalidraw.com
 
 ### Validation Challenges
 
