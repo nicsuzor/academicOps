@@ -13,12 +13,14 @@ lib/                    Shared source. Never shipped as-is; injected at build ti
   manifest/             Shared manifest fragments.
 build/                  Build system.
 plugins/                Plugin sources. Only what a client needs.
-  aops/                 james, marsha, rbg, review + dispatch skills, polecat.
+  james/                james — synthesis and dispatch.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.
   ida/                  ida — the interactive face.
-  cope/                 Automatic rule enforcement hooks.
+  rbg/                  rbg — rule enforcement hooks and the stop-side rule gate.
   ts/                   Tailscale bring-up.
   tools/                Domain research skills.
+  aops-debug/           Debug plugin that dumps raw hook payloads.
+plugins.disabled/       Retired plugin sources, excluded from the build.
 specs/                  Design intent.
 tests/                  Test suite.
 .agents/                Rules for agents working ON this repository.
@@ -60,15 +62,16 @@ academicOps is structured around **4 core pillars**:
 Directory names are short. `build/marketplace.toml` maps directory →
 marketplace name and is the single source of truth for the built plugin set.
 
-| Directory               | Marketplace name   | Owns                                                                                |
-| ----------------------- | ------------------ | ----------------------------------------------------------------------------------- |
-| `plugins/pkb`           | `pkb`              | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.     |
-| `plugins/ida`           | `ida`              | ida. The interactive face.                                                          |
-| `plugins/rbg`           | `rbg`              | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate. |
-| `plugins/james`         | not yet registered | james. Synthesis and dispatch.                                                      |
-| `plugins/ts`            | `ts`               | Tailscale bring-up for remote sessions.                                             |
-| `plugins/tools`         | `tools`            | Domain research skills.                                                             |
-| `plugins.disabled/aops` | not built          | marsha. Review, QA, verification, dispatch, polecat containers.                     |
+| Directory               | Marketplace name | Owns                                                                                |
+| ----------------------- | ---------------- | ----------------------------------------------------------------------------------- |
+| `plugins/pkb`           | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.     |
+| `plugins/ida`           | `ida`            | ida. The interactive face.                                                          |
+| `plugins/rbg`           | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate. |
+| `plugins/james`         | `james`          | james. Synthesis and dispatch.                                                      |
+| `plugins/ts`            | `ts`             | Tailscale bring-up for remote sessions.                                             |
+| `plugins/tools`         | `tools`          | Domain research skills.                                                             |
+| `plugins/aops-debug`    | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                          |
+| `plugins.disabled/aops` | not built        | marsha. Review, QA, verification, dispatch, polecat containers.                     |
 
 ### james
 

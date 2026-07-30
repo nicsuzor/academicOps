@@ -1,0 +1,8 @@
+{
+  "__base__": {
+    "name": "aops",
+    "description": "james. Synthesis and dispatch."
+  },
+  "claude": {},
+  "agy": {}
+}

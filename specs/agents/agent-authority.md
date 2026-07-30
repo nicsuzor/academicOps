@@ -104,13 +104,16 @@ confirmed to deliver the full tool pool, including MCP servers, is omitting
 instead of "no tool calls permitted."
 
 **The same inversion held for `subagents` until this was ruled on: all five
-agent files now declare it, each per its actual role.** `james`
-(`plugins/aops/agents/james.md`) and `pauli` (`plugins/pkb/agents/pauli.md`)
-are open-ended dispatchers that route to whatever worker type a task needs, and
-declare `subagents: ["*"]`. `rbg` (`plugins/aops/agents/rbg.md`) and `marsha`
-(`plugins/aops/agents/marsha.md`) declare `subagents: []` — neither's own
-description involves spawning: rbg returns a verdict, marsha verifies and never
-fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
+agent files now declare it, each per its actual role.** `pauli`
+(`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
+whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
+(`plugins/james/agents/james.md`) declares the explicit list
+`["aops-cope:rbg", "aops-pkb:pauli", "aops:marsha", "general-purpose"]` — the
+three reviewers his own description names, plus the plain worker surface his
+dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) and `marsha`
+(`plugins.disabled/aops/agents/marsha.md`) declare `subagents: []` — neither's
+own description involves spawning: rbg returns a verdict, marsha verifies and
+never fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
 `["aops:james", "aops-pkb:pauli"]`, matching the only two delegation targets
 named in its own file. The row now describes a real declaration on every agent
 file, not an absent gate — though nothing yet enforces membership against it
@@ -119,8 +122,8 @@ membership does not exist, so this remains a declared commitment rather than a
 checked one). The claim at "No implicit orchestrator privilege" below — that
 each orchestrator lists its `subagents` explicitly — is now true of the tree.
 
-`plugins/pkb/agents/pauli.md`, `plugins/aops/agents/james.md`,
-`plugins/aops/agents/marsha.md`, and `plugins/aops/agents/rbg.md` omit `tools`
+`plugins/pkb/agents/pauli.md`, `plugins/james/agents/james.md`,
+`plugins.disabled/aops/agents/marsha.md`, and `plugins/rbg/agents/rbg.md` omit `tools`
 for this reason: each needs `mcp__services__pkb__*` (or broader) to function
 at all, so an unenforced allowlist is preferable to a materialized set of six
 built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
