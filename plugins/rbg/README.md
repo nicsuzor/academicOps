@@ -66,6 +66,7 @@ Nothing else is dropped quietly. A file skipped for want of the marker is named,
 | Rule loader          | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.                 |
 | Fault reporting      | `hooks/degraded.py` (shared, injected) | Puts cope's own failures on the response as well as on stderr, once per session.                  |
 | Advisory wording     | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, and `classifier-prompt.md`. Editable without code. |
+| `add-rule` skill     | `skills/add-rule/SKILL.md`             | Writes a project-local rule into `$CWD/.agents/rules/RULES.md` — layer 2 of the rule set below.   |
 
 ## How the judgment is made
 

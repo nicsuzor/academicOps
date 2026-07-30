@@ -67,17 +67,8 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
-- Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g., `/craft` defects: compliance framing, missing artifact chain, etc.).
-- **Immediate Fixes Policy — retro fixes the reviewed session, never the framework's future behavior**:
-  - **In scope, fix immediately**: the concrete mistake or leftover bad state _this session_ produced — a wrong file it wrote, a task it left mis-filed, a broken reference or typo it introduced or tripped over, an actual code bug in a hook/gate/skill/tool. Fix these directly in the source files, without seeking permission.
-  - **Out of scope, always**: adding, editing, or strengthening any rule, axiom, persona instruction, gate, hook, or agent-definition text so that _future_ sessions behave differently — even one line, even when you're confident it's correct and well-scoped. That is a framework change, not a fix to the reviewed session (see §2b). One incident is never sufficient warrant for it, no matter how salient; it belongs to a separate, deliberate pass informed by recurrence across multiple filed issues, not to this one. File the gap in the RCA issue and stop there.
-  - **First-Class Invocation: `/learn that last task should have been xyz`**: When Nic invokes this style with a description of what _should_ have happened, treat it as a directive to perform a **dual action**:
-    1. **Fix the immediate problem now**: correct the reviewed session's own mistake or leftover state, per the in-scope/out-of-scope split above — never the instructions that govern future sessions.
-    2. **File the RCA issue in the background**: Run the standard retro analysis to file a forensic GitHub issue, including the "should have been xyz" framing as directive context.
-       Never pick one and drop the other; you must perform both actions. Never substitute a framework change for either.
-  - **Complex Fixes**: If an in-scope fix is too complex, large, or requires unavailable permissions/runtime setups, file a follow-up task instead of attempting a partial fix that degrades system reliability.
-  - **The "Fix AND File" Invariant**: An immediate fix NEVER replaces the GitHub issue. You must STILL file the issue carrying the root-cause analysis. Do both: **Fix AND File**. The systemic lesson must survive even if the local symptom is already patched.
-- **Issue Report Rigor**: Limit the contents of the _GitHub issue report_ to forensic facts (what failed, how the framework contributed, concrete impact). Do not write/propose speculative solutions in the issue description or body (keep them out of the report to keep the data clean). This formatting rule for the issue body must NOT be misread as a prohibition on fixing the reviewed session's own mistakes — nor, in the other direction, as license to fix the framework's future behavior; see the scope split above.
+- Read the entire transcript.
+- The forensic read, the in-scope/out-of-scope split between fixing the reviewed session and changing the framework, and the "fix and route" invariant are the shared doctrine in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md). Apply it as written. In retro, "route the lesson" means the destination chosen in §4, and the record it names is the filed GitHub issue.
 
 ### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
 
@@ -91,9 +82,7 @@ This makes the reviewer's miss visible and attributed: a slipped-through bad pre
 
 ### 2b. Framework/behavioral changes are never a retro fix
 
-A fix that changes what an agent is directed to do — an instruction, persona edit, axiom, rule, hook, gate, or chokepoint — is a framework change, not a fix to the reviewed session. Retro does not apply these, at any tier, no matter how minor, obviously-correct, or narrowly-scoped to the one incident it looks from inside the review. This holds even under the `/learn that last task should have been xyz` invocation: "fix the immediate problem" there still means the reviewed session's own mistake, never the instructions that govern future sessions.
-
-Recurrence across multiple filed issues, not the salience of one transcript, is the evidence base for a framework change — and deciding on one — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro. Retro's job stops at naming the gap precisely in the filed issue.
+Carried by [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md), which retro applies unchanged. Retro's job stops at naming the gap precisely in the filed issue; deciding on a framework change — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro.
 
 ### 3. Output Requirements
 
