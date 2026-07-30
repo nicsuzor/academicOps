@@ -188,7 +188,7 @@ The script generates a complete force-directed layout of goals, projects, and ta
 
 - Use **curved arrows** with multiple points (click-click-click, not drag)
 - Arrows must **route around** unrelated boxes, never through them
-- Bind arrows to shapes (`startBinding`, `endBinding`) so they adapt when boxes move
+- Bind arrows to shapes (`startBinding`, `endBinding`) so they adapt when boxes move — for hand-authored JSON, use the current `mode: "orbit"` + `fixedPoint` binding shape, not the older `focus`/`gap` shape; see [[references/json-format]]
 
 **Layout style**:
 

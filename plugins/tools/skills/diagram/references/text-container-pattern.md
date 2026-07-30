@@ -379,6 +379,7 @@ Every element needs these properties:
   "opacity": 100,
   "groupIds": [],
   "frameId": null,
+  "index": "a0",
   "roundness": null,
   "seed": 123456789,
   "version": 1,
@@ -415,19 +416,19 @@ Every element needs these properties:
 }
 ```
 
-**For arrows, add**:
+**For arrows, add** (current excalidraw.com binding format — see [[json-format]] for the full `fixedPoint` anchor convention):
 
 ```json
 {
   "startBinding": {
+    "mode": "orbit",
     "elementId": "source-element-id",
-    "focus": 0,
-    "gap": 10
+    "fixedPoint": [0.5, 1]
   },
   "endBinding": {
+    "mode": "orbit",
     "elementId": "target-element-id",
-    "focus": 0,
-    "gap": 10
+    "fixedPoint": [0.5, 0]
   },
   "points": [[0, 0], [100, 50]], // Relative path
   "lastCommittedPoint": null
