@@ -1,8 +1,12 @@
 {
-  "__base__": {
-    "name": "aops-ida",
-    "description": "ida — the interactive face."
-  },
-  "claude": {},
-  "agy": {}
+  "manifestVersion": "1.0",
+  "name": "aops-ida",
+  "clients": {
+    "__base__": {
+      "name": "aops-ida",
+      "description": "ida — the interactive face."
+    },
+    "claude": {},
+    "agy": {}
+  }
 }

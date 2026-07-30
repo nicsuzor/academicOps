@@ -1,7 +1,6 @@
 {
   "manifestVersion": "1.0",
   "name": "aops-debug",
-  "version": "0.1.0",
   "clients": {
     "claude": {
       "hooks": {

@@ -1,8 +1,12 @@
 {
-  "__base__": {
-    "name": "fixture-alpha",
-    "description": "Fixture plugin alpha."
-  },
-  "claude": {},
-  "agy": {}
+  "manifestVersion": "1.0",
+  "name": "fixture-alpha",
+  "clients": {
+    "__base__": {
+      "name": "fixture-alpha",
+      "description": "Fixture plugin alpha."
+    },
+    "claude": {},
+    "agy": {}
+  }
 }

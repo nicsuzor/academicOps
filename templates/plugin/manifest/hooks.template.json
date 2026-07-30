@@ -1,31 +1,34 @@
 {
-  "__base__": {},
-  "claude": {
-    "hooks": {
-      "PreToolUse": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
-            }
-          ]
-        }
-      ]
-    }
-  },
-  "agy": {
-    "hooks": {
-      "PostInvocation": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
-            }
-          ]
-        }
-      ]
+  "manifestVersion": "1.0",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "agy": {
+      "hooks": {
+        "PostInvocation": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 }

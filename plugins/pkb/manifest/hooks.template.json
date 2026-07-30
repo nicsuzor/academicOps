@@ -1,31 +1,35 @@
 {
-  "__base__": {},
-  "claude": {
-    "hooks": {
-      "UserPromptSubmit": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude UserPromptSubmit"
-            }
-          ]
-        }
-      ]
-    }
-  },
-  "agy": {
-    "hooks": {
-      "PreInvocation": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
-            }
-          ]
-        }
-      ]
+  "manifestVersion": "1.0",
+  "name": "aops-pkb",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude UserPromptSubmit"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "agy": {
+      "hooks": {
+        "PreInvocation": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 }

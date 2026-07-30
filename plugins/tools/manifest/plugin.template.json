@@ -1,18 +1,22 @@
 {
-  "__base__": {
-    "name": "tools",
-    "description": "AcademicOps analysis and specialized data processing skills",
-    "author": {
-      "name": "Nicolas Suzor"
+  "manifestVersion": "1.0",
+  "name": "tools",
+  "clients": {
+    "__base__": {
+      "name": "tools",
+      "description": "AcademicOps analysis and specialized data processing skills",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "tools",
+        "analysis",
+        "skills"
+      ]
     },
-    "license": "MIT",
-    "keywords": [
-      "academicOps",
-      "tools",
-      "analysis",
-      "skills"
-    ]
-  },
-  "claude": {},
-  "agy": {}
+    "claude": {},
+    "agy": {}
+  }
 }

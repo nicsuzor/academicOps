@@ -1,15 +1,17 @@
 {
-  "__base__": {
-    "keywords": ["academicOps", "example"]
-  },
-  "claude": {
-    "userConfig": {
-      "example_api_key": {
-        "type": "string",
-        "description": "An example API key for this plugin."
+  "manifestVersion": "1.0",
+  "clients": {
+    "__base__": {
+      "keywords": ["academicOps", "example"]
+    },
+    "claude": {
+      "userConfig": {
+        "example_api_key": {
+          "type": "string",
+          "description": "An example API key for this plugin."
+        }
       }
-    }
-  },
-  "agy": {
+    },
+    "agy": {}
   }
 }
