@@ -40,7 +40,7 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 | `trend` | Many sessions / audit files         | Trend report + recommendations |
 | `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures |
 
-**Privacy Rule**: Anonymize all findings. Do not expose real names, emails, student details, or raw session dumps.
+**Privacy Rule**: the anonymisation clause in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md) binds every mode here, not only `retro`.
 
 ---
 

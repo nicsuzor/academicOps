@@ -13,10 +13,12 @@ working on this repository, and they are never packaged or shipped with it.
 
 @include doctrine/lesson-routing.md
 
-If the answer is any row other than the project row, stop and route it there
-instead. Writing a task-scoped preference into this file is the characteristic
-misuse of this skill: every future worker on the repository then inherits it as
-standing law.
+If the lesson lands on any row other than the project row, write nothing. Say
+which row it belongs to and hand it back — this skill holds `Read`, `Edit`, and
+`Write` on a rules file and nothing else, so it cannot reach the other
+destinations and must not approximate them here. Writing a task-scoped preference
+into this file is the characteristic misuse of this skill: every future worker on
+the repository then inherits it as standing law.
 
 ## Then write it
 
