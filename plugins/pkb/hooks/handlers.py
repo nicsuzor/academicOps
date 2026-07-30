@@ -1,7 +1,7 @@
 """pkb's hook handlers.
 
 One hook: ``UserPromptSubmit``. It tells the agent to ground the prompt in the
-PKB before acting on it, and names the searches worth running.
+PKB, via the pkb:hydrate skill, before acting on it.
 
 It does not reach the PKB itself. Establishing an MCP session, running a query,
 and ranking the result costs a multi-step round trip on the critical path of
@@ -25,10 +25,10 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     """Ground every prompt in the PKB before the agent acts on it.
 
     Loaded as a pair, because the message has two readers. The agent gets the
-    full instruction and the searches worth running; the person watching gets
-    one line saying their prompt was routed through the PKB first — this hook
-    fires on every prompt, so without that line the most frequent injection in
-    the session is also the one they can never see happen.
+    instruction to hydrate; the person watching gets one line telling them the
+    reminder fired — this hook fires on every prompt, so without that line the
+    most frequent injection in the session is also the one they can never see
+    happen.
     """
     return warn(*load_message_pair(ctx.hooks_dir, "pkb-context"))
 
