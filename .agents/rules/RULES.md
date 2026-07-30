@@ -25,12 +25,6 @@ New rule content carried by a mechanism the spec already describes owes no new
 section. Touch the spec only when the mechanism itself — its trigger, surface, or
 scope — changed.
 
-## Work commits directly to the current working branch
-
-Work on this repository commits directly to the current working branch
-(`v0.7`), alongside the user — no side branches, no pull requests — unless the
-user rules otherwise.
-
 ## Documentation goes where the taxonomy says
 
 Any change to an instruction, skill, or documentation file complies with
