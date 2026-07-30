@@ -59,6 +59,7 @@ CANONICAL_EVENTS = (
     "SessionEnd",
     "UserPromptSubmit",
     "PreToolUse",
+    "PostToolUse",
     "Stop",
     "SubagentStop",
 )
@@ -72,7 +73,10 @@ TO_CANONICAL = {
 }
 
 def to_canonical(client: str, wire_event: str) -> str | None:
-    return TO_CANONICAL.get(client, {}).get(wire_event)
+    mapping = TO_CANONICAL.get(client, {})
+    if wire_event in mapping:
+        return mapping[wire_event]
+    return wire_event
 
 
 def _log_fire(ctx: HookContext) -> None:
@@ -111,7 +115,11 @@ def _load_handlers(event: str, hooks_dir: Path) -> list[Handler]:
         return []
     
     registry = getattr(module, "HANDLERS", {})
-    return list(registry.get(event, []))
+    handlers = list(registry.get(event, []))
+    for h in registry.get("*", []):
+        if h not in handlers:
+            handlers.append(h)
+    return handlers
 
 
 def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
