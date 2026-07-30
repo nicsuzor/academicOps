@@ -160,6 +160,18 @@ container teardown to grab it.
   not contain the response you're looking for.
 - **No manual cleanup step needed:** `run`'s underlying `docker run` already
   passes `--rm`, so the container self-removes on exit.
+- **A bind-mount source outside the VM's shared paths fails silently, as an
+  empty directory rather than an error.** Where the daemon runs in a VM
+  (colima, Docker Desktop), only the host paths that VM is configured to share
+  reach the container. A `-v` whose source is outside them does not fail —
+  Docker creates an empty root-owned directory at the target instead, so the
+  mount appears to exist while containing nothing, and a write to it fails
+  with a permission error that reads like a UID problem. On colima, `mounts:
+  []` in `~/.colima/default/colima.yaml` means only `$HOME` is shared, which
+  excludes both `/tmp` and the `/var/folders/...` path Python's `tempfile` (and
+  so pytest's `tmp_path`) resolves to. Keep any workspace or probe directory
+  under `$HOME`, and read a permission denial on a fresh mount as a candidate
+  mount-source problem before treating it as a UID mismatch.
 - **Wedged-worker rescue:** if a worker won't respond to `/exit`, there is
   no dedicated rescue flag — the session dir is a live bind-mount rather
   than a copy-at-exit, so whatever's already been _written_ survives
