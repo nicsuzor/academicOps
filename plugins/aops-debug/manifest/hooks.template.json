@@ -73,6 +73,77 @@
             }
           ]
         }
+      ],
+      "PostToolUseFailure": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolUseFailure"
+            }
+          ],
+          "matcher": "*"
+        }
+      ],
+      "StopFailure": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude StopFailure"
+            }
+          ]
+        }
+      ],
+      "SubagentStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude SubagentStart"
+            }
+          ]
+        }
+      ],
+      "PreCompact": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreCompact"
+            }
+          ]
+        }
+      ],
+      "Notification": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Notification"
+            }
+          ]
+        }
+      ],
+      "PermissionRequest": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PermissionRequest"
+            }
+          ]
+        }
+      ],
+      "Setup": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Setup"
+            }
+          ]
+        }
       ]
     }
   },
