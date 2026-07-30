@@ -10,16 +10,25 @@ are directed to do.**
 - **In scope, fix immediately**: the concrete mistake or leftover bad state _this
   session_ produced — a wrong file it wrote, a task it left mis-filed, a broken
   reference or typo it introduced or tripped over, an actual code bug in a hook,
-  gate, skill, or tool. Fix these directly in the source, without seeking
-  permission.
-- **Out of scope, always**: adding, editing, or strengthening any rule, axiom,
-  persona instruction, gate, hook, or agent-definition text so that _future_
-  sessions behave differently — even one line, even when you are confident it is
-  correct and well-scoped. That is a framework change, not a fix to the session
-  under review. One incident is never sufficient warrant for it, however salient.
-  Name the gap precisely and route it; do not close it. Whether any standing
-  surface may be written at all, and under what warrant, is a routing decision
-  governed separately — diagnosis never makes it.
+  a gate, or a script bundled with a skill or tool. Fix these directly in the
+  source, without seeking permission.
+- **Out of scope, always**: adding, editing, or strengthening any rule — project
+  rules included — or any axiom, persona instruction, gate, hook, or
+  agent-definition text so that _future_ sessions behave differently — even one
+  line, even when you are confident it is correct and well-scoped. That is a
+  framework change, not a fix to the session under review. One incident is never
+  sufficient warrant for it, however salient. Name the gap precisely and route
+  it; do not close it.
+
+A skill's own instruction text is not code. Fixing a bug in a script a skill
+bundles is in scope; editing that skill's `SKILL.md` prose changes what future
+sessions are directed to do, and is not.
+
+**Diagnosis never decides where a lesson may be written.** Whether any standing
+surface — a project rules file included — may be written at all, and under what
+warrant, is a routing decision governed separately and reached after diagnosis
+ends. Read the prohibition above as binding on this step, not as a veto on the
+routing step that follows it.
 
 **Framework and behavioural changes are never a diagnosis fix.** A change to what
 an agent is directed to do — an instruction, persona edit, axiom, rule, hook,
@@ -55,4 +64,4 @@ have**, route a follow-up rather than landing a partial fix that degrades
 reliability.
 
 **Anonymise.** No real names, emails, student details, or raw session dumps in
-anything the diagnosis writes.
+anything you write — the record, the fix, or the report.

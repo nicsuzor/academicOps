@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Turn something that went wrong into a lesson that lands somewhere useful. Diagnoses the incident back to the structural cause that invited it, then routes the lesson to the one destination its scope actually claims — task record, project rule, PKB, framework source, or a tracked issue. Use on "/learn", "that should have been xyz", "what went wrong there", or a session retro.
+description: Turn something that went wrong into a lesson that lands somewhere useful. Diagnoses the incident back to the structural cause that invited it, then routes the lesson to the one destination its scope actually claims — task record, project rule, PKB, framework source, or a tracked issue. Use on "/learn", "that last task should have been xyz", "review what went wrong in that session", or a session retro. Not for live debugging — a failing test or a bad diff in the work at hand wants a direct answer, not an incident review.
 agent: "aops-pkb:pauli"
 ---
 
@@ -23,8 +23,9 @@ Diagnose the record you were pointed at, never one you went looking for.
   is unreadable — name the failed condition and stop.
 - Given neither, ask which incident. Do not pick one.
 
-Reviewing the current session is sound here: this skill runs as a fresh reviewer
-in a detached context, which is the boundary that makes self-review honest.
+Review the current session without seeking permission: this skill runs as a fresh
+reviewer in a detached context, which is the boundary that makes self-review
+honest.
 
 ## 2. Diagnose
 
@@ -33,6 +34,10 @@ in a detached context, which is the boundary that makes self-review honest.
 ## 3. Route
 
 @include doctrine/lesson-routing.md
+
+### The gate on universal-scope destinations
+
+@include doctrine/universal-gate.md
 
 ## Writing to each destination
 
@@ -64,5 +69,3 @@ was gated out, say that instead of picking something.
   obvious. That is the gated destination, and this pass does not have it.
 - Write a lesson to a surface whose scope it does not claim because the right
   surface was closed.
-- Record a diagnosis carrying real names, emails, personal details, or raw
-  session dumps.

@@ -18,24 +18,21 @@ flowchart TD
     subgraph pkbwrite["agents/pauli.md — one stage per invocation"]
         pauli(("pauli"))
         pauli --> hydrate["skills/hydrate<br/>four-section context bundle<br/>always first, six-call budget"]
-        hydrate --> planner["skills/planner<br/>altitude · means · assumptions<br/>routes; runs no stage itself"]
-        planner -. routes to .-> situate
-        planner -. routes to .-> decompose
-        planner -. routes to .-> brief
-        planner -. routes to .-> composer
-        planner -. routes to .-> gardening
 
-        situate["skills/situate<br/>one task, valued and wired<br/>sets needs_decomposition, stops"]
+        hydrate --> situate["skills/situate<br/>one task, valued and wired<br/>sets needs_decomposition, stops"]
         situate --> gate{{"human sets status queued<br/>agents pull only from here<br/>and never promote into it"}}
-        gate --> decompose["skills/decompose<br/>subtask DAG + review nodes<br/>when the task comes due<br/>no review set: halt, leave blocked"]
-        decompose --> composer["skills/workflow<br/>compose the process<br/>three layers, loaded every time"]
-        decompose --> brief["skills/brief<br/>durable brief onto the task body"]
+        gate --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
 
+        pauli --> composer["skills/workflow<br/>compose the process<br/>three layers, loaded every time"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
-        pauli --> gardening["skills/graph-maintenance<br/>wire · garden"]
-        pauli --> reconcile["skills/reconcile<br/>probe stale claims · fold in<br/>what landed unwatched"]
-        remember -.-> reconcile
+        pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
+
+        learn -. knowledge scope .-> remember
+        learn -. project scope .-> addrule(["aops-cope — skills/add-rule<br/>write the project rule"])
+        learn -. task scope .-> pull
     end
+
+    pull --> dump["skills/dump<br/>session exit — bail, close,<br/>hand back, or pause"]
 
     composer --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
     composer --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
@@ -46,7 +43,7 @@ flowchart TD
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    brief --> dispatch(["aops-ida:james — skills/dispatch<br/>refresh the brief, dispatch by task id"])
+    gate --> dispatch(["aops-ida:james — skills/dispatch<br/>compose the brief, dispatch by task id"])
 ```
 
 ### The hook asks; nothing checks
