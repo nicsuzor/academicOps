@@ -81,17 +81,16 @@ def _template(tmp_path: Path, payload: dict) -> Path:
     return path
 
 
-def test_versioned_template_renders_the_client_section(tmp_path):
-    """The versioned shape nests client sections under `clients`, keeping the
-    top level for plugin identity. Reading the client key at the top level
-    instead finds nothing and renders every event away — the plugin builds
-    clean and ships with no hooks.json at all."""
+def test_template_renders_the_client_section(tmp_path):
+    """Client sections nest under `clients`, keeping the top level for plugin
+    identity. Reading the client key at the top level instead finds nothing and
+    renders every event away — the plugin builds clean and ships with no
+    hooks.json at all."""
     path = _template(
         tmp_path,
         {
             "manifestVersion": "1.0",
             "name": "aops-debug",
-            "version": "0.1.0",
             "clients": {
                 "claude": {"hooks": {"SessionStart": [], "Stop": []}},
                 "agy": {"hooks": {"PreToolUse": []}},
@@ -102,24 +101,36 @@ def test_versioned_template_renders_the_client_section(tmp_path):
     assert sorted(render_template(path, "agy")["hooks"]) == ["PreToolUse"]
 
 
-def test_both_template_shapes_merge_base_the_same_way(tmp_path):
-    """`__base__` merging is the shapes' only shared contract, so migrating a
-    template between them must not change what it renders."""
-    sections = {"__base__": {"hooks": {"Stop": []}}, "claude": {"hooks": {"SessionStart": []}}}
-    expected = {"hooks": {"Stop": [], "SessionStart": []}}
+def test_base_section_merges_under_the_client_section(tmp_path):
+    """`__base__` carries what every client shares; the client's own section
+    merges on top of it."""
+    path = _template(
+        tmp_path,
+        {
+            "manifestVersion": "1.0",
+            "clients": {
+                "__base__": {"hooks": {"Stop": []}},
+                "claude": {"hooks": {"SessionStart": []}},
+            },
+        },
+    )
+    assert render_template(path, "claude") == {"hooks": {"Stop": [], "SessionStart": []}}
 
-    flat = _template(tmp_path, sections)
-    assert render_template(flat, "claude") == expected
 
-    versioned = _template(tmp_path, {"manifestVersion": "1.0", "clients": sections})
-    assert render_template(versioned, "claude") == expected
-
-
-def test_versioned_template_without_clients_is_a_hard_error(tmp_path):
+def test_template_without_clients_is_a_hard_error(tmp_path):
     """Rendering it empty would be indistinguishable from a plugin that
     genuinely has no hooks on any client."""
     path = _template(tmp_path, {"manifestVersion": "1.0", "name": "aops-debug"})
     with pytest.raises(BuildError, match="clients"):
+        render_template(path, "claude")
+
+
+def test_template_without_a_manifest_version_is_a_hard_error(tmp_path):
+    """The pre-versioned shape keyed sections at the top level. Still reading
+    them there would render a versioned template's identity keys as clients, so
+    the absent version is refused rather than guessed at."""
+    path = _template(tmp_path, {"__base__": {}, "claude": {"hooks": {"Stop": []}}})
+    with pytest.raises(BuildError, match="manifestVersion"):
         render_template(path, "claude")
 
 
