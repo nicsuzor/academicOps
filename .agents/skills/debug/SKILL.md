@@ -23,6 +23,19 @@ other cwd resolves, and the failure kills the whole tmux server rather than
 just the pane. `capture-pane` then reports `no server running`, which reads
 like a tmux problem rather than a command-not-found.
 
+**Check `$AOPS` names the checkout you are testing, before you spin up.** It is
+not guaranteed to be set, and where it is set it commonly names the main clone
+— so from a worktree the command above launches that other tree's `cli.py`
+against your session and reports a result that has nothing to do with your
+change. Unset, it expands to an empty `--project` and a bad script path, which
+fails inside `sh -c` and produces exactly the `no server running` symptom
+described above.
+
+```bash
+echo "$AOPS"                 # must equal the checkout under test
+export AOPS="$(git rev-parse --show-toplevel)"   # if it does not
+```
+
 Swap `agy` for `claude` to debug the Claude client, or `shell` for a plain shell
 with no agent. Swap `-p aops` for `-d <repo-path>` when the target project has no
 `paths` entry in `$POLECAT_HOME/local.yaml`. Always pass `-s "$TMUX_NAME"` so the
@@ -93,8 +106,8 @@ No container cleanup is needed — `run` uses `docker run --rm`.
 ## Validate a dev change
 
 Run after any change to `plugins/*/hooks`, `lib/`, the shipped skills, agents
-or commands, `plugins/aops/polecat/defaults/*`, `entrypoint.sh`, or the
-Dockerfile. This is what separates "the files are in the image" from "the
+or commands, `plugins/aops/polecat/cli.py`, `plugins/aops/polecat/defaults/*`,
+`entrypoint.sh`, or the Dockerfile. This is what separates "the files are in the image" from "the
 framework actually fires" — a plugin that installs cleanly and does nothing is
 the failure this catches.
 
@@ -103,6 +116,13 @@ and a pass on one is not evidence for the other. Walk the layers in order and
 stop at the first failure: a later layer's result is uninterpretable once an
 earlier one is broken.
 
+**Pre-flight: are hooks live?** Read `_log_fire` and `_load_handlers` in
+`lib/hooks/dispatch.py`. While either returns before its body, no hook fires and
+no hook log is written for any client, whatever your change did. If that is the
+state you find, §5 cannot pass and §3 cannot tell you anything about hook
+behaviour — run both anyway, and read their results as uninformative rather than
+as failures. Establish this before §0, not after a confusing §5.
+
 **§0 Build the image from your change.** `make docker-build` reuses the layer
 cache and is right for the edit loop. Before certifying anything, use
 `make verify-docker` — a cached layer can carry the previous plugin set into
@@ -110,13 +130,14 @@ an image that looks rebuilt, and a green result on that image is evidence of
 nothing.
 
 **§1 Structural check.** `make docker-smoke-test` boots the real image and
-asserts every plugin `build/marketplace.toml` declares is installed and
-enabled under both clients, that `$ACA_DATA` matches what `cli.py` mounts
-layer-3 rules onto, and that the agy session mount target is writable. Seconds,
-no tmux. A marketplace cache-miss or a failed plugin install is silent at
-startup and only surfaces later as missing tools; this catches it immediately.
-Structural only — an installed plugin is not proof its hooks or MCP servers are
-live, which is what the remaining layers are for.
+asserts every plugin `build/marketplace.toml` declares is installed and enabled
+under `claude` and present under agy, that `$ACA_DATA` matches what `cli.py`
+mounts layer-3 rules onto, and that the agy session mount target is writable.
+Seconds, no tmux. A marketplace cache-miss or a failed plugin install is silent
+at startup and only surfaces later as missing tools; this catches it
+immediately. For what a structural pass does and does not prove, read the
+spec's "Plugin structural check" — the layers below are what it says to
+corroborate with.
 
 **§2 Boot signals.** Spin a session with the tmux pattern above, then
 `capture-pane -p -S -2000`. Expect a ready prompt with no onboarding or
@@ -135,11 +156,9 @@ and fails here.
 
 **§5 Observability.** Confirm `polecat-session-hooks.jsonl` is present and
 populated in the session directory, and that the PKB MCP answers rather than
-refusing or timing out. This is the primary signal that the framework fired, as
-distinct from the UI having rendered something. An empty or missing hook log is
-a finding — but check `lib/hooks/dispatch.py` first: while `_log_fire` or
-`_load_handlers` short-circuit, no log is written regardless of health, and the
-absence tells you nothing about the change you are testing.
+refusing or timing out. The spec says what that file is evidence of, under
+"Log & artifact locations". An empty or missing hook log is a finding only if
+the pre-flight found hooks live; otherwise it says nothing about your change.
 
 **§6 Cleanup.** `/exit`, then `tmux kill-session`. Repeat for the other client.
 
