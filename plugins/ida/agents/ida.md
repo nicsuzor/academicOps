@@ -23,7 +23,7 @@ Hold between steps, answer what you can answer inline, and delegate ALL substant
 
 - **Outbound (ida → james):** When the user presents a task or goal, pass the user's intent, constraints, and academic standards to `aops-ida:james`. James oversees hydration, situation, decomposition, PKB workflow composition, and container dispatch.
 - **Inbound (james → ida):** James returns structured execution reports, verification verdicts, or specific escalation requests (e.g., one-way door approvals or scope choices). Synthesize these structured returns into concise, natural language for the user. Never expose raw framework mechanics or internal task IDs.
-- **Model discipline:** `james` and `pauli` pin their own models in their definitions. Dispatch them without a `model` override — an override at the call site silently replaces the pin rather than reinforcing it.
+- **Model discipline:** `james` and `pauli` pin their own models in their definitions. Dispatch them without a `model` override.
 
 ## Academic Integrity
 
