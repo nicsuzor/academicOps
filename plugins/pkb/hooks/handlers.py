@@ -12,8 +12,9 @@ the contract in specs/ARCHITECTURE.md — it never blocks, never waits on the
 network, and never invents context the PKB did not supply.
 
 Every agent-visible string comes from ``messages/<name>.md``, and every
-user-visible one from ``messages/<name>.user.md`` beside it (lib/hooks/
-messages.py). No handler here builds either from a Python literal.
+user-visible one from ``messages/<name>.user.md`` beside it, loaded via
+``load_message_pair`` (lib/hooks/dispatch.py). No handler here builds either
+from a Python literal.
 """
 
 from __future__ import annotations

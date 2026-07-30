@@ -148,3 +148,47 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
         f"{plugin_dir.name}: hooks.json declares hook script(s) that do not exist "
         f"in the built artifact:\n" + "\n".join(missing)
     )
+
+
+# ---------------------------------------------------------------------------
+# Stop/SubagentStop gate wiring: rbg's rule-check gate and ida's quiet gate
+# ship on the events and clients they claim; pkb ships neither (its stop gate
+# is deliberately deferred — no session -> task query exists server-side).
+# ---------------------------------------------------------------------------
+
+
+def _claude_hook_events(plugin_dir_name: str) -> set[str]:
+    hooks_json = DIST_ROOT / plugin_dir_name / "hooks" / "hooks.json"
+    if not hooks_json.exists():
+        return set()
+    return set(json.loads(hooks_json.read_text())["hooks"].keys())
+
+
+def _agy_hook_events(plugin_dir_name: str) -> set[str]:
+    hooks_json = DIST_ROOT / plugin_dir_name / "hooks.json"
+    if not hooks_json.exists():
+        return set()
+    return set(
+        json.loads(hooks_json.read_text()).get(plugin_dir_name.removesuffix("-agy"), {}).keys()
+    )
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_rbg_ships_the_stop_gate_on_claude_and_agy():
+    assert {"Stop", "SubagentStop"} <= _claude_hook_events("rbg-claude")
+    assert "Stop" in _agy_hook_events("rbg-agy")
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_ida_ships_the_quiet_gate_on_claude_only():
+    events = _claude_hook_events("ida-claude")
+    assert {"Stop", "SubagentStop", "PostToolUse"} <= events
+    assert not (DIST_ROOT / "ida-agy" / "hooks.json").exists()
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_pkb_ships_no_stop_gate():
+    """pkb's stop gate is out of scope for this branch (no session -> task
+    query exists server-side yet) — this pins that it stays unwired rather
+    than getting swept in by accident."""
+    assert _claude_hook_events("pkb-claude") == {"UserPromptSubmit"}

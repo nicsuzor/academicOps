@@ -34,6 +34,7 @@ class Result:
     inject_text: str
     user_text: str | None = None
     is_refusal: bool = False
+    is_block: bool = False
 
 
 def warn(message: str, user_text: str | None = None) -> Result:
@@ -42,6 +43,13 @@ def warn(message: str, user_text: str | None = None) -> Result:
 
 def refuse(reason: str, user_text: str | None = None) -> Result:
     return Result(reason, user_text, is_refusal=True)
+
+
+def block(reason: str, user_text: str | None = None) -> Result:
+    """A Stop/SubagentStop-only outcome: tell the agent to keep going, not
+    that the tool call is denied. Distinct from ``refuse`` — a refusal is
+    structural impossibility on a tool call, a block is "do not stop yet"."""
+    return Result(reason, user_text, is_block=True)
 
 
 def load_message_pair(hooks_dir: Path, name: str) -> tuple[str, str | None]:
@@ -72,11 +80,27 @@ TO_CANONICAL = {
     },
 }
 
+
 def to_canonical(client: str, wire_event: str) -> str | None:
     mapping = TO_CANONICAL.get(client, {})
     if wire_event in mapping:
         return mapping[wire_event]
     return wire_event
+
+
+# Claude Code (and Antigravity) can re-fire Stop/SubagentStop for the same
+# stop after a hook already ran once for it — the client re-invokes the same
+# hook to let it reconsider, and the re-invocation payload carries
+# stop_hook_active=true. Treating that re-entry as a fresh stop is the loop
+# that hit router.py on 2026-07-13. Guarded here, structurally, in the
+# dispatcher itself rather than in each handler, so every current and future
+# Stop/SubagentStop handler is covered without having to remember it.
+_SELF_LOOP_GUARDED_EVENTS = {"Stop", "SubagentStop"}
+
+# The only events "stopping" is a decision about, and so the only events
+# block() means anything on. Same set as the self-loop guard above, by the
+# same reasoning, kept as its own name so the two concerns read separately.
+_BLOCK_EVENTS = _SELF_LOOP_GUARDED_EVENTS
 
 
 def _log_fire(ctx: HookContext) -> None:
@@ -113,7 +137,7 @@ def _load_handlers(event: str, hooks_dir: Path) -> list[Handler]:
     except Exception as exc:
         print(f"aops hooks: failed to load {handlers_path}: {exc!r}", file=sys.stderr)
         return []
-    
+
     registry = getattr(module, "HANDLERS", {})
     handlers = list(registry.get(event, []))
     for h in registry.get("*", []):
@@ -133,9 +157,18 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
 
 
 def _merge(results: list[Result | None]) -> Result | None:
+    """Precedence, most authoritative first: a refusal beats a block, a block
+    beats a plain advisory, and among same-kind results the first registered
+    wins. A refusal means the call is structurally impossible and must not be
+    buried under a handler that merely wants the agent to keep working; a
+    block means "not done yet" and must not be drowned out by an ordinary
+    warn() from another handler on the same event."""
     present = [r for r in results if r is not None]
     for r in present:
         if r.is_refusal:
+            return r
+    for r in present:
+        if r.is_block:
             return r
     return present[0] if present else None
 
@@ -147,10 +180,29 @@ def _render_claude(result: Result, event: str) -> dict:
             "permissionDecision": "deny",
             "permissionDecisionReason": result.inject_text,
         }
+    elif result.is_block and event in _BLOCK_EVENTS:
+        # The one shape Claude Code reads as "do not stop": a top-level
+        # decision, not nested under hookSpecificOutput.
+        output: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
+        if result.user_text:
+            output["systemMessage"] = result.user_text
+        return output
     else:
+        if result.is_block:
+            # A block only means something on Stop/SubagentStop — Claude Code
+            # has no "block" shape for any other event. A handler that
+            # returns one here is a wiring bug: report it loudly and degrade
+            # to an advisory rather than emit a shape that corrupts the
+            # response or silently does nothing.
+            print(
+                f"dispatch: block() is illegal on event {event!r} (Claude Code only "
+                "reads a block decision on Stop/SubagentStop) — degrading to an "
+                "advisory instead of corrupting the hook response",
+                file=sys.stderr,
+            )
         specific = {"hookEventName": event, "additionalContext": result.inject_text}
-    
-    output: dict[str, Any] = {"hookSpecificOutput": specific}
+
+    output = {"hookSpecificOutput": specific}
     if result.user_text:
         output["systemMessage"] = result.user_text
     return output
@@ -159,6 +211,8 @@ def _render_claude(result: Result, event: str) -> dict:
 def _render_agy(result: Result) -> dict:
     if result.is_refusal:
         return {"decision": "deny", "reason": result.inject_text}
+    # agy has no blocking shape at all, on any event — a block() downgrades
+    # to the same advisory shape a warn() would render as.
     return {"injectSteps": [{"ephemeralMessage": result.inject_text}]}
 
 
@@ -203,6 +257,13 @@ def main(argv: list[str]) -> int:
     if event is None:
         return 0
 
+    # Structural self-loop guard (see _SELF_LOOP_GUARDED_EVENTS above): a
+    # truthy stop_hook_active on a Stop/SubagentStop payload means this is a
+    # self-triggered re-entry, not a fresh stop. No-op before any handler is
+    # loaded or run: no state is touched, nothing is printed.
+    if event in _SELF_LOOP_GUARDED_EVENTS and raw.get("stop_hook_active"):
+        return 0
+
     hooks_dir = Path(__file__).resolve().parent
     if str(hooks_dir) not in sys.path:
         sys.path.insert(0, str(hooks_dir))
@@ -211,7 +272,7 @@ def main(argv: list[str]) -> int:
     _log_fire(ctx)
 
     handlers = _load_handlers(event, hooks_dir)
-    
+
     kept_handlers = []
     for h in handlers:
         scope = getattr(h, "only_on_clients", None)
@@ -220,7 +281,7 @@ def main(argv: list[str]) -> int:
 
     results = [_run_handler(h, ctx) for h in kept_handlers]
     result = _merge(results)
-    
+
     output = render(client, event, result)
     if output:
         print(json.dumps(output))

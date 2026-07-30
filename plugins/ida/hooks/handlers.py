@@ -1,8 +1,9 @@
 """ida's hook handlers.
 
-One hook: ``PostToolUse``, matched to the ``Agent`` tool. It fires in the
-context of whoever dispatched a subagent, at the moment that subagent's report
-lands, and reminds them that a report is not evidence.
+``rule_against_hearsay`` is the ``PostToolUse`` handler, matched to the
+``Agent`` tool. It fires in the context of whoever dispatched a subagent, at
+the moment that subagent's report lands, and reminds them that a report is
+not evidence.
 
 The event is load-bearing. The rule binds the *caller* — the party who has to
 decide whether to trust the report — so it must be delivered on the caller's
@@ -12,16 +13,23 @@ session that dispatched it. Aimed at the worker, this text does worse than
 miss — the worker spends its final message arguing with a warning about
 itself, and the caller loses the report it was waiting for.
 
+``strip_the_reply`` is the ``Stop``/``SubagentStop`` gate. It returns a
+``block`` (lib/hooks/dispatch.py) directing ida to strip its own reply to the
+person down to load-bearing content before it stops — not a check on what was
+already said, since the hook has no transcript to read, only a reminder that
+fires at the moment ida is about to speak.
+
 Every agent-visible string comes from ``messages/<name>.md``, and every
-user-visible one from ``messages/<name>.user.md`` beside it (lib/hooks/
-messages.py). No handler here builds either from a Python literal.
+user-visible one from ``messages/<name>.user.md`` beside it, loaded via
+``load_message_pair`` (lib/hooks/dispatch.py). No handler here builds either
+from a Python literal.
 """
 
 from __future__ import annotations
 
 from dispatch import load_message_pair
 from dispatch import HookContext
-from dispatch import Result, warn
+from dispatch import Result, block, warn
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
@@ -39,6 +47,20 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
+def strip_the_reply(ctx: HookContext) -> Result | None:
+    """Direct the face to strip its reply down to what is load-bearing.
+
+    Always the same block, regardless of what actually happened this turn —
+    the hook has no transcript to judge, only the fact that a stop is about to
+    happen. Once per stop chain, not once per handler invocation: dispatch.py's
+    structural self-loop guard suppresses the ``stop_hook_active`` re-fire, so
+    this handler does not check that flag itself.
+    """
+    return block(*load_message_pair(ctx.hooks_dir, "quiet"))
+
+
 HANDLERS: dict[str, list] = {
     "PostToolUse": [rule_against_hearsay],
+    "Stop": [strip_the_reply],
+    "SubagentStop": [strip_the_reply],
 }
