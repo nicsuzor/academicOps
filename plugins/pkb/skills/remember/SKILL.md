@@ -16,10 +16,12 @@ the `synthesize-not-accrete` axiom, and it is the reason this skill exists in th
 shape it does.
 
 **Prohibited content, in every write:** timestamped history entries, dated
-session sections, decision logs, changelogs, deprecation notices, "formerly known
-as" notes, "as of \<date\>" qualifiers, migration commentary, and `superseded_by:`
-pointers left behind instead of a merge. History lives in version control, the
-task record, and the transcript — surfaces that are append-only by construction.
+session sections, progress logs, decision logs, changelogs, deprecation notices,
+"formerly known as" notes, "as of \<date\>" qualifiers, migration commentary, and
+`superseded_by:` pointers left behind instead of a merge. The audit surface is
+separate and outside the PKB: session transcripts and telemetry hold what
+happened; version control holds what changed. Nothing episodic enters the PKB —
+and a task body is the strictest case of the rule.
 
 The vocabulary you write in is
 [`../graph-maintenance/references/taxonomy.md`](../graph-maintenance/references/taxonomy.md).
@@ -58,9 +60,11 @@ that generalise to nothing.
    tool, project, skill, agent, concept. If one exists for this topic area, you
    **must** augment it. A broader canonical note covering the area means no new
    note gets created.
-3. **Augment** — `append(id=...)`, integrating the new observation into the
-   existing structure. Not a new dated section bolted on the end. A project note
-   reads as current state, never as a changelog.
+3. **Augment** — integrate the new observation into the existing structure and
+   rewrite the section it belongs in (`update_body`). `append` only where the
+   content is genuinely additive and supersedes nothing. Never a new dated
+   section bolted on the end. A note reads as current state, never as a
+   changelog.
 4. **Or create**, only when nothing matches — `create` for a document,
    `create_memory` for an atomic memory. Topical, never a session or date file.
 
@@ -68,10 +72,12 @@ Scale the write to the work: one decision is a bullet on an existing note; a few
 outcomes are observations on an existing topical note; a genuinely new topic
 earns a new note.
 
-Route by kind: operational records — agent activity, debug traces — update the
-parent task body and create nothing. Durable episodic records — meeting notes,
-daily notes — are saved with the right type. Durable knowledge becomes a topic
-note. Never create a timestamped session log.
+Route by kind: agent activity and debug traces stay in the transcript — the
+audit surface — and do not enter the PKB at all; what reaches the task is the
+synthesized state delta (what is now true, decided, or next), written by
+rewriting the body section it changes. Durable episodic records — meeting
+notes, daily notes — are saved with the right type. Durable knowledge becomes a
+topic note. Never create a timestamped session log.
 
 Report what you wrote: the tool, the title, the returned id. Not filesystem
 paths.
@@ -117,12 +123,16 @@ Full procedure: [`references/consolidation.md`](references/consolidation.md).
 The shape of it:
 
 ```
-daily notes · meeting notes · task bodies · transcripts     (episodic)
+daily notes · meeting notes · transcripts                    (episodic)
         ↓  identify the first-class topic each insight is about
 canonical topic notes                                        (durable)
         ↓  once a topic area has five or more
 Maps of Content                                              (navigation)
 ```
+
+A task body found carrying an episodic log — dated sections, resume stacks,
+progress entries — is drift. Repair it: lift anything durable into the right
+topic note, then rewrite the body as pure current state.
 
 **Consolidation is synthesis, not collection.** Merging five memories into a list
 of five bullets adds nothing over the five memories. Synthesis means finding the
@@ -130,9 +140,10 @@ connection the sources do not state — the principle they are all instances of.
 If you cannot name one, the material is not ready to consolidate.
 
 When a knowledge note **fully** replaces a memory, delete the memory. When the
-source is a primary episodic record — a daily note, a meeting note, a task body —
-mark its frontmatter `consolidated: <date>` and advance its status, but never
-change its content. Primary records are not rewritten.
+source is a primary episodic record — a daily note, a meeting note — mark its
+frontmatter `consolidated: <date>` and advance its status, but never change its
+content. Primary records are not rewritten. A task body is not a primary
+record: it is a state document, and consolidation rewrites it.
 
 **Consolidation mode mutates the graph.** `batch_merge`, `merge_node`,
 `batch_reparent`, `batch_reclassify`, and `batch_archive` all need pauli's tool

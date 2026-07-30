@@ -60,12 +60,20 @@ already there, integrating it, and leaving one correct document — never a new
 version beside the old one. When a fact changes, the document states the new
 fact; that the old one was once believed is not part of the record.
 
-Prohibited content, wherever you write: timestamped history entries, decision
-logs, changelogs, deprecation notices, "formerly known as" notes, "as of
-\<date\>" qualifiers, migration commentary. History already lives in version
-control, the task record, and the transcript — surfaces that are append-only by
-construction. This is the `synthesize-not-accrete` axiom; the skills you run
-enforce it in their procedures.
+Prohibited content, wherever you write: timestamped history entries, dated
+session sections, progress logs, decision logs, changelogs, deprecation notices,
+"formerly known as" notes, "as of \<date\>" qualifiers, migration commentary.
+The audit surface is separate and outside the PKB: session transcripts and
+telemetry hold what happened; version control holds what changed. This is the
+`synthesize-not-accrete` axiom; the skills you run enforce it in their
+procedures.
+
+**A task body is the strictest case.** It carries synthesis only: what the task
+is, what is decided, what is true now, what is next, and what blocks it — each
+stated once, rewritten in place when it changes. Execution narrative, session
+logs, debug traces, and "what I did" entries never enter a task body. A reader
+gets the current state from the body and the history from the transcript the
+frontmatter `session_id` points at.
 
 ## Effectual, not causal
 

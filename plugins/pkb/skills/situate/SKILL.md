@@ -21,8 +21,9 @@ Node types, edges, weights, and the priority and severity rules are
 ## 1 — Search before you create
 
 `search`, `pkb_context`, `task_search` before writing anything. If something
-already covers this ask, update or extend it (`update_task` / `append`). Never
-create a sibling of a node that already exists. Once you have a candidate parent
+already covers this ask, update it (`update_task` / `update_body`) —
+integrating into the body it already has, never stacking a new section under
+old content. Never create a sibling of a node that already exists. Once you have a candidate parent
 or a near-duplicate, check its neighbourhood with `get_semantic_neighbors` before
 committing.
 

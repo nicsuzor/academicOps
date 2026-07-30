@@ -7,20 +7,28 @@ description: "Session exit — one skill, four paths. Bare `/dump` is the emerge
 
 Every session exit runs through this skill. The first word after `/dump` picks the path; bare `/dump` means **bail**.
 
-| Path        | When                                            | Commits or PR | Task ends at                      |
-| ----------- | ----------------------------------------------- | ------------- | --------------------------------- |
-| **bail**    | You need a clean context now                    | No            | Left open, resume delta appended  |
-| **full**    | The task is genuinely done                      | Yes           | Released                          |
-| **partial** | You attempted the rest but refused some choices | Yes, if code  | Released at `partial`             |
-| **pause**   | Mid-flight — waiting on the user, or blocked    | No            | Stays `in_progress`, checkpointed |
+| Path        | When                                            | Commits or PR | Task ends at                         |
+| ----------- | ----------------------------------------------- | ------------- | ------------------------------------ |
+| **bail**    | You need a clean context now                    | No            | Left open, body state rewritten      |
+| **full**    | The task is genuinely done                      | Yes           | Released                             |
+| **partial** | You attempted the rest but refused some choices | Yes, if code  | Released at `partial`                |
+| **pause**   | Mid-flight — waiting on the user, or blocked    | No            | Stays `in_progress`, state rewritten |
 
 Do not guess. If the task is not actually finished, the path is bail, pause, or partial — never full.
+
+**Every task write on every path is a rewrite, never an append.** The task body
+carries synthesis only — current state, decisions, next action, blockers — held
+in one `## Now` section that each exit replaces wholesale. The audit record of
+what happened this session is the transcript itself, reached through the task's
+`session_id`; nothing episodic is copied onto the task. A body found carrying a
+stack of old resume or progress sections gets cleaned in passing: rewrite it to
+one current state.
 
 Terminate immediately after emitting the block for your path. Add no trailing text.
 
 ## Bail — emergency handover
 
-1. Update the bound task: set the session id, change nothing else in the frontmatter, and append a `## Resume <UTC-timestamp>` section with **State** (one sentence), **Next** (the concrete next action), and **Watch out** (in-flight side effects — uncommitted files, running processes, locks). With no task bound, create one under an appropriate parent carrying the same content.
+1. Update the bound task: set the session id, change nothing else in the frontmatter, and rewrite the body's `## Now` section — replacing any previous one — with **State** (one sentence), **Next** (the concrete next action), and **Watch out** (in-flight side effects — uncommitted files, running processes, locks). With no task bound, create one under an appropriate parent carrying the same content.
 
 2. Emit:
 
@@ -75,7 +83,7 @@ Every linked entity carries its stable identifier and a parenthesised precis. `O
 ## Partial — refuse and attempt
 
 1. Commit what you wrote and push it. If the deliverable is a pull request, open it as a draft.
-2. Update the task: set the session id and append `## Deliberately deferred`, listing the decisions you refused and the acceptance criteria still unmet.
+2. Update the task: set the session id and rewrite the body so it carries one `## Deliberately deferred` section listing the decisions you refused and the acceptance criteria still unmet — replacing any earlier deferred or resume sections.
 3. Release at `partial` with a summary of what was completed and what was refused. File follow-up tasks for the deferred work and link them.
 4. Emit the full-path blocks, marked `partial`, pointing at the deferred items.
 
@@ -95,4 +103,4 @@ Write **one** block for a reader returning with no memory of the session — sho
 - **Waiting on / watch out**: <the blocker; any in-flight side effects>
 ```
 
-Append that same block verbatim to the bound task with the session id set and **the status untouched** — the work is ongoing. The chat summary _is_ the task checkpoint. With no task bound, skip the write and say so in the block.
+Then rewrite the bound task's `## Now` section to the same content minus the timestamp heading, with the session id set and **the status untouched** — the work is ongoing. The timestamped block belongs to the chat, which is the transcript; the task carries only the current state, exactly one `## Now`, never a stack. With no task bound, skip the write and say so in the block.

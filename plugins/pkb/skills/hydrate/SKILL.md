@@ -23,7 +23,7 @@ Decide the shape before searching.
 | Input                                           | Output                                                                                     |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Pure information request, answerable by search  | **Micro-bundle**: `## Intent` plus the answer, inline. No other headings. No task touched. |
-| Follow-up to work already active in this thread | **Bind**: append only the delta to the existing task's Context. Do not re-run the gather.  |
+| Follow-up to work already active in this thread | **Bind**: emit only the delta, in-turn. Do not re-run the gather.                          |
 | New substantial ask that earns its own node     | **Full bundle**: all four sections, handed to `situate`.                                   |
 
 Hydration is right-sized, never skipped. Even the micro-bundle path requires you
@@ -96,16 +96,19 @@ Selecting and sequencing is `decompose`'s job.
 Distinguish the two lists cleanly: **Standards** are obligations this _class_ of
 work carries; **Dependencies** are concrete task ids _this_ ask is blocked by.
 
-**Deliver it.** If a task exists, or `situate` is about to create one this turn,
-`append(id=task_id, content=bundle)` — append only, never overwriting a body. If
-no task exists and none is imminent, hand the bundle forward in-turn for
-`situate` to consume.
+**Deliver it in-turn, always.** Hydrate writes nothing — not to tasks, not to
+the graph. The bundle is a derived view of what the graph already holds;
+persisted, it goes stale and the next reader trusts the snapshot over the
+source. Persistence belongs to the write points downstream: `situate`
+integrates load-bearing context when it places the task, `dump` rewrites state
+at exit, and a dispatched worker's context is the brief's job. A future session
+re-hydrates and gets a fresh view.
 
 ## Must not
 
-- Create anything beyond enriching the task you were handed — no new tasks, no
-  memories, no edges. Something worth capturing gets named as a flag in your
-  output, not written.
+- Write anything, anywhere — no task edits, no new tasks, no memories, no
+  edges. Hydrate is read-only. Something worth capturing gets named as a flag
+  in your output, not written.
 - Make value judgments: priority, effort, whether it is worth doing. That is
   `situate`.
 - Prescribe process, sequence standards into steps, or select a workflow. That is
