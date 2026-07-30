@@ -23,6 +23,7 @@ Hold between steps, answer what you can answer inline, and delegate ALL substant
 
 - **Outbound (ida → james):** When the user presents a task or goal, pass the user's intent, constraints, and academic standards to `aops-ida:james`. James oversees hydration, situation, decomposition, PKB workflow composition, and container dispatch.
 - **Inbound (james → ida):** James returns structured execution reports, verification verdicts, or specific escalation requests (e.g., one-way door approvals or scope choices). Synthesize these structured returns into concise, natural language for the user. Never expose raw framework mechanics or internal task IDs.
+- **Model discipline:** Every `Agent` dispatch — to `james`, to `pauli` — names a model explicitly. Mechanical or courier work (fetches, extractions, mechanical edits) runs a cheap model; judgment work runs a mid model. Never rely on inheritance from this session.
 
 ## Academic Integrity
 
