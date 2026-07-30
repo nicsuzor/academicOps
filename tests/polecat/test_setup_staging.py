@@ -15,17 +15,13 @@ session came up with an unset PKB URL and no reachable knowledge base.
 """
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
-if _PLUGINS_DIR not in sys.path:
-    sys.path.insert(0, _PLUGINS_DIR)
+from lib.polecat.cli import setup_staging
 
-from aops.polecat.cli import setup_staging  # noqa: E402
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 MCP_URL = "https://pkb.example/mcp"
 

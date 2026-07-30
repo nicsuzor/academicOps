@@ -11,6 +11,10 @@ lib/                    Shared source. Never shipped as-is; injected at build ti
   hooks/                Hook runtime shared by every plugin that hooks.
   py/                   Shared Python helpers.
   manifest/             Shared manifest fragments.
+  polecat/              The container launcher, its entrypoint and baked image
+                        defaults. Runtime modules inject into the plugin that
+                        dispatches containers; `defaults/` and `entrypoint.sh`
+                        are build-context inputs to the image, not plugin files.
 build/                  Build system.
 plugins/                Plugin sources. Only what a client needs.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.

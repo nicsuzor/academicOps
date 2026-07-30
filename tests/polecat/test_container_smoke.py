@@ -26,7 +26,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tomllib
 import uuid
 from pathlib import Path
@@ -35,15 +34,11 @@ import pytest
 
 pytestmark = pytest.mark.e2e
 
+from lib.polecat import cli  # for CONTAINER_ACA_DATA — no duplicated literal
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _MARKETPLACE_TOML = _REPO_ROOT / "build" / "marketplace.toml"
-_CLI_PY = _REPO_ROOT / "plugins" / "aops" / "polecat" / "cli.py"
-
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
-if _PLUGINS_DIR not in sys.path:
-    sys.path.insert(0, _PLUGINS_DIR)
-
-from aops.polecat import cli  # noqa: E402  (for CONTAINER_ACA_DATA — no duplicated literal)
+_CLI_PY = _REPO_ROOT / "lib" / "polecat" / "cli.py"
 
 # `make docker-build`'s second tag (Makefile, `docker-build:`) — always this
 # name locally regardless of $IMAGE, so it is the one fixed point a smoke
@@ -223,4 +218,7 @@ def test_every_declared_plugin_has_at_least_one_check_above():
     source really is the same file both tests read, not a stale copy."""
     expected = _expected_plugin_names()
     assert expected, "build/marketplace.toml declared no plugins — nothing to check"
-    assert "aops" in expected and "aops-cope" in expected
+    # Named rather than merely non-empty: a stale copy of the manifest would
+    # still parse and still yield names, so the pin has to be against plugins
+    # this repository actually declares (specs/ARCHITECTURE.md's plugin table).
+    assert {"ida", "pkb", "rbg"} <= expected

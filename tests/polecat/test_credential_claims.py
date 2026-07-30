@@ -24,16 +24,19 @@ import sys
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
 _LIB_HOOKS = str(_REPO_ROOT / "lib" / "hooks")
-for _path in (_PLUGINS_DIR, _LIB_HOOKS):
-    if _path not in sys.path:
-        sys.path.insert(0, _path)
+if _LIB_HOOKS not in sys.path:
+    sys.path.insert(0, _LIB_HOOKS)
 
 import credentials  # noqa: E402
-from aops.polecat import cli  # noqa: E402
 
-_MESSAGE = _REPO_ROOT / "plugins" / "aops" / "hooks" / "messages" / "session-start-isolated.md"
+from lib.polecat import cli  # noqa: E402
+
+# The message ships from the aops hooks plugin, currently parked under
+# plugins.disabled/. The pin travels with it.
+_MESSAGE = (
+    _REPO_ROOT / "plugins.disabled" / "aops" / "hooks" / "messages" / "session-start-isolated.md"
+)
 _USER_MESSAGE = _MESSAGE.with_suffix(".user.md")
 
 # Wordings that assert an exclusivity the mechanism does not provide.

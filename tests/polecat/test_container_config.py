@@ -15,18 +15,14 @@ wins when both are set.
 """
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
-if _PLUGINS_DIR not in sys.path:
-    sys.path.insert(0, _PLUGINS_DIR)
+from lib.polecat import cli
 
-from aops.polecat import cli  # noqa: E402
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # ---------------------------------------------------------------------------
 # resolve_rules_dir: the config path itself
@@ -213,9 +209,7 @@ def test_partial_cope_config_forwards_only_what_is_set():
 def test_no_endpoint_or_credential_is_compiled_into_the_source():
     """The binding constraint, asserted at the source: cli.py may plumb the
     path, but nothing in it may name a real endpoint, model, or key."""
-    text = (
-        Path(__file__).resolve().parent.parent.parent / "plugins/aops/polecat/cli.py"
-    ).read_text()
+    text = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
     for needle in ("http://", "https://", "zentropi", "gpt-", "localhost"):
         assert needle not in text, f"{needle!r} found in cli.py"
 

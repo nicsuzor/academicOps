@@ -19,18 +19,18 @@ the container.
 
 ## Giving Effect
 
-- [[plugins/aops/polecat/cli.py]] — the entire CLI: one Click command, `run`
-- [[plugins/aops/polecat/entrypoint.sh]] — container entrypoint: sets git identity,
+- [[lib/polecat/cli.py]] — the entire CLI: one Click command, `run`
+- [[lib/polecat/entrypoint.sh]] — container entrypoint: sets git identity,
   installs a token-based credential helper, merges staged per-session config over
   the image defaults, then execs the agent CLI
-- [[plugins/aops/polecat/defaults/]] — baked container defaults (`claude-settings.json`,
+- [[lib/polecat/defaults/]] — baked container defaults (`claude-settings.json`,
   `claude-config.json`, `ccstatusline-settings.json`, `agy-onboarding.json`,
   `docker_gemini_fixups.py`)
 - [[Dockerfile]] — the image `run` executes inside
-- [[plugins/aops/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
+- [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/aops/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
+- [[plugins/ida/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
   pathway to a polecat container; a raw `polecat run` outside this skill bypasses
   the dispatch contract
 - [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
@@ -90,9 +90,9 @@ the container.
    if not, then a hard failure — a clean exit is not evidence the seed was ever
    delivered); the workspace must have no uncommitted changes, and if `HEAD`
    moved, the new commit must be present on the remote. A delivery-guard failure
-   on a task that the PKB now shows in a terminal status (`done`, `completed`,
-   `complete`, `merge_ready`) reverts it to `in_progress` rather than letting a
-   silent loss stand as a recorded success.
+   exits non-zero naming the task, and stops there. Polecat does not write to
+   the knowledge base: reopening a task the worker closed without delivering is
+   the dispatcher's act against its own graph, not a launcher's.
 
 ## Guarantees
 
@@ -119,7 +119,7 @@ the container.
    certifying run therefore needs both a clean committed tree and a fresh
    `make docker-build`, which builds `dist/` from the working tree rather than
    from `HEAD`. Nothing enforces either; the obligation sits on the dispatcher,
-   in [`dispatch`](../../plugins/aops/skills/dispatch/SKILL.md) §3.
+   in [`dispatch`](../../plugins/ida/skills/dispatch/SKILL.md) §3.
 
 ## What `run` does not do
 
@@ -139,8 +139,8 @@ container.
    any git operation not using the forwarded token fail; only the forwarded token
    authenticates.
 3. **Delivery guard** — Test: a `run` that leaves uncommitted changes, or commits
-   that never reach the remote, exits non-zero and (with `--task`) reverts a
-   terminal-status task back to `in_progress`.
+   that never reach the remote, exits non-zero and (with `--task`) names the task
+   in the failure.
 4. **No stale image** — Test: `run` against an image not present in the local
    Docker cache fails with an explicit message, never a silent registry pull.
 5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.

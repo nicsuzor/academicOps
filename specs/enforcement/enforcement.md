@@ -39,8 +39,9 @@ Before escalating severity, check whether the actual failure is a cost or defaul
 
 ### 1. Structural prevention (the only mechanical layer)
 
-- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, [`plugins/aops/polecat/cli.py`](../../plugins/aops/polecat/cli.py)), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
+- **Container isolation** — polecat workers run inside Docker (`Dockerfile`, [`lib/polecat/cli.py`](../../lib/polecat/cli.py)), with no ambient host credentials, a read-only staging mount, and a scoped workspace volume. This is prevention by construction: a worker cannot exfiltrate host secrets or touch files outside its mount because the container doesn't have them, not because a rule told it not to.
 - **`polecat.yaml`** (loaded from `$AOPS_POLECAT_CONFIG` or `$AOPS_SESSIONS/polecat.yaml`, overridable per-machine via `<polecat_home>/local.yaml`) is the operator config for session configuration: cache root, container image, project-path map. No built-in fallback: a missing required value (`polecat_home`, `docker.image`) is a hard fail, not a silent default.
+- **Delivery guard** — a container that exits zero has not thereby delivered. Before `polecat run` reports success it checks the workspace has no uncommitted changes and no unpushed commits ([`lib/polecat/cli.py`](../../lib/polecat/cli.py), `_verify_workspace_delivery`), and for a seeded `agy -t <task>` dispatch that the agent's own transcript references the task id (`_seed_confirmed`) — a dropped seed leaves a clean workspace, so the delivery check alone would read it as a pass. Either failing exits non-zero naming the task. The guard **reports and stops there**: it does not reach into the knowledge base to reopen a task the worker closed. Reopening is the dispatcher's act, against its own graph, and a launcher holding a second hand-rolled client for someone else's tool namespace was a duplicate of the dispatcher's job rather than a stronger guarantee.
 
 ### 2. Rule advisory channel
 
@@ -81,7 +82,7 @@ gate: it can only add an advisory, and the tool call proceeds either way.
 
 ### 3. Claude Code's native auto-mode classifier
 
-A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`plugins/aops/polecat/defaults/claude-settings.json`](../../plugins/aops/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
+A model-based (not deterministic) tool-call classifier built into the harness, configured with prose rules in [`lib/polecat/defaults/claude-settings.json`](../../lib/polecat/defaults/claude-settings.json). Full design statement, admission criteria, and cost model: [auto-mode-classifier.md](auto-mode-classifier.md). Because it is an LLM judgment call over a stripped transcript rather than a deterministic pattern match, it sits inside the "agents all the way down" principle rather than beside it — it is the one place a per-action judgment call happens before the agent's own review loop closes.
 
 ### 4. Task-graph boundary — the primary enforcement point
 

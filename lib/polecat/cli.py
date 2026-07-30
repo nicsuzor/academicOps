@@ -12,7 +12,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib.request
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -25,7 +24,7 @@ import yaml
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
     from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV
-except ImportError:  # run directly as plugins/aops/polecat/cli.py
+except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -310,98 +309,6 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
                 )
 
     return True, None
-
-
-def _revert_task_if_terminal(mcp_url, task_id):
-    """Reopen a task the worker closed without delivering, so the close does
-    not silently strand the work. Returns the status it was reverted from."""
-    if not mcp_url or not task_id:
-        return None
-
-    def _call_tool(tool_name, arguments):
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-        }
-        sess_id = None
-        try:
-            init_req = urllib.request.Request(
-                mcp_url,
-                data=json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 1,
-                        "method": "initialize",
-                        "params": {
-                            "protocolVersion": "2024-11-05",
-                            "capabilities": {},
-                            "clientInfo": {"name": "polecat", "version": "1.0"},
-                        },
-                    }
-                ).encode("utf-8"),
-                headers=headers,
-            )
-            resp = urllib.request.urlopen(init_req, timeout=5)
-            sess_id = resp.headers.get("Mcp-Session-Id")
-            urllib.request.urlopen(
-                urllib.request.Request(
-                    mcp_url,
-                    data=json.dumps(
-                        {
-                            "jsonrpc": "2.0",
-                            "method": "notifications/initialized",
-                        }
-                    ).encode("utf-8"),
-                    headers={**headers, "Mcp-Session-Id": sess_id},
-                ),
-                timeout=5,
-            )
-        except Exception:
-            pass
-
-        if sess_id:
-            headers["Mcp-Session-Id"] = sess_id
-
-        prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "")
-        candidates = [f"{prefix}{tool_name}"] if prefix else []
-        candidates += [tool_name, f"pkb__{tool_name}"]
-
-        for candidate in candidates:
-            call_req = urllib.request.Request(
-                mcp_url,
-                data=json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 2,
-                        "method": "tools/call",
-                        "params": {"name": candidate, "arguments": arguments},
-                    }
-                ).encode("utf-8"),
-                headers=headers,
-            )
-            try:
-                resp = urllib.request.urlopen(call_req, timeout=5)
-                for line in resp.read().decode("utf-8").split("\n"):
-                    if line.startswith("data: "):
-                        data = json.loads(line[6:])
-                        if "result" in data:
-                            return data["result"]
-            except Exception:
-                continue
-        return None
-
-    try:
-        res = _call_tool("get_task", {"id": task_id})
-        if res and res.get("content"):
-            info = json.loads(res["content"][0].get("text", ""))
-            status = info.get("status") or (info.get("frontmatter") or {}).get("status")
-            if status in ("done", "completed", "complete", "merge_ready"):
-                _call_tool("update_task", {"id": task_id, "status": "in_progress"})
-                return status
-    except Exception as e:
-        click.echo(f"Warning: could not check or revert task status: {e}", err=True)
-
-    return None
 
 
 def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
@@ -881,16 +788,14 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             workspace_dir, initial_head=initial_head
         )
         if not delivery_ok:
-            reverted = _revert_task_if_terminal(mcp_url, task)
-            if reverted:
-                click.echo(
-                    f"Warning: reverted task {task!r} from {reverted!r} to "
-                    "'in_progress' to prevent silent delivery loss.",
-                    err=True,
-                )
+            # Reporting the failure is where this ends. Polecat launches a
+            # container and reports what came back; reopening a task the worker
+            # closed is the dispatcher's call to make against its own knowledge
+            # base, not something a launcher reaches across to do.
             fail(
                 f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
-                "Refusing to report success."
+                "Refusing to report success. The worker may have closed the task "
+                "without delivering — reopen it before dispatching again."
             )
 
     finally:
