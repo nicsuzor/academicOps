@@ -29,7 +29,24 @@ RBG_MANIFEST = REPO_ROOT / "plugins" / "rbg" / "manifest" / "hooks.template.json
 
 RULE_CHECK_TEXT = (RBG_HOOKS / "messages" / "rule-check.md").read_text(encoding="utf-8").strip()
 
+# Reading the expected reason out of the file under test proves the two agree,
+# not that either says anything. Emptying the file would satisfy every such
+# comparison while the gate refused each stop with a blank instruction. So the
+# shipped text is also held to an independent standard: it must exist, and it
+# must actually ask for the things this gate exists to obtain.
+REQUIRED_OF_THE_SHIPPED_TEXT = ("rule check", "evidence", "axioms")
+
 STOP_EVENTS = ("Stop", "SubagentStop")
+
+
+def test_the_shipped_reason_is_substantive():
+    """The oracle for every other assertion in this file. If this fails, those
+    comparisons are tautologies and prove nothing."""
+    assert RULE_CHECK_TEXT, "rule-check.md is empty; the gate would block with no instruction"
+    assert len(RULE_CHECK_TEXT) > 200, "the block reason is too short to be an instruction"
+    lowered = RULE_CHECK_TEXT.lower()
+    missing = [t for t in REQUIRED_OF_THE_SHIPPED_TEXT if t not in lowered]
+    assert not missing, f"the shipped reason never mentions {missing}"
 
 
 @pytest.fixture
@@ -132,6 +149,63 @@ def test_the_guard_is_in_the_runtime_not_the_handler(staged):
     finally:
         (staged / "handlers.py").unlink()
         (staged / "handlers.py.bak").rename(staged / "handlers.py")
+
+
+@pytest.mark.parametrize("content", ["", "   \n\n  "])
+def test_an_empty_message_file_lets_the_stop_through(staged, content):
+    """A block is an instruction. With no text there is no instruction, and
+    blocking would spend the agent's turn telling it nothing — strictly worse
+    than not blocking. `load_message_pair` returns "" for a missing file, which
+    is a fine default for an advisory and a bad one for a disposition, so the
+    handler checks rather than trusting it."""
+    (staged / "messages" / "rule-check.md").write_text(content, encoding="utf-8")
+    proc = fire(staged, "claude", "Stop", {"session_id": "s1"})
+    assert proc.returncode == 0
+    assert proc.stdout.strip() == "", "blocked with an empty reason"
+    assert "missing or empty" in proc.stderr
+
+
+def test_a_deleted_message_file_lets_the_stop_through(staged):
+    (staged / "messages" / "rule-check.md").unlink()
+    proc = fire(staged, "claude", "Stop", {"session_id": "s1"})
+    assert proc.returncode == 0
+    assert proc.stdout.strip() == ""
+    assert "missing or empty" in proc.stderr
+
+
+@pytest.mark.parametrize("event", STOP_EVENTS)
+def test_the_gate_is_silent_while_background_work_runs(staged, event):
+    """Nothing is being handed back yet, so there is nothing to check — and the
+    chain allows one block, which must not be spent on a turn that is not the
+    handback. Matches `ida`'s `honesty_floor`, which holds off for the same
+    reason on the same event."""
+    proc = fire(staged, "claude", event, {"session_id": "s1", "background_tasks": [{"id": "bg1"}]})
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == ""
+
+
+def test_a_block_outranks_an_advisory_when_handlers_are_merged(staged):
+    """`_merge` takes the strongest disposition, so an advisory registered
+    alongside the gate cannot displace it — first-registered order must not
+    decide which one the client sees.
+
+    This holds within one plugin's process only. Two plugins on the same event
+    are two processes and never reach `_merge` at all.
+    """
+    (staged / "handlers.py").write_text(
+        "from dispatch import block, warn\n\n"
+        "def advise(ctx):\n"
+        "    return warn('just a note')\n\n"
+        "def gate(ctx):\n"
+        "    return block('the real instruction')\n\n"
+        "HANDLERS = {'Stop': [advise, gate], 'SubagentStop': [gate, advise]}\n",
+        encoding="utf-8",
+    )
+    for event in STOP_EVENTS:
+        out = parsed(fire(staged, "claude", event, {"session_id": "s1"}))
+        assert out == {"decision": "block", "reason": "the real instruction"}, (
+            f"{event}: registration order decided the disposition"
+        )
 
 
 def test_the_reason_is_the_shipped_message_file_not_a_python_literal(staged):

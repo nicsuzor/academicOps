@@ -171,18 +171,33 @@ def rule_check(ctx: HookContext) -> Result | None:
 
     Blocking, and the only handler here that is. Layer 1 advises on one tool
     call at a time and cannot see the shape of the finished work; this is the
-    one moment the whole session is available to judge, and it is the last one —
+    one moment a whole turn is available to judge, and it is the last one —
     after the stop lands there is nothing left to correct.
 
-    Once per stop-chain, and the guard is dispatch.py's: it drops every handler
-    on a stop the client has marked ``stop_hook_active``, which is the re-entry
-    this handler's own injection causes. So the check is asked for once, the
-    continuation stop is silent, and the session ends.
+    Once per stop-chain, and that guard is dispatch.py's, not this handler's.
+
+    ``background_tasks`` holds it silent while work is still running: nothing is
+    being handed back yet, so there is nothing to check, and firing here would
+    spend the chain's one block on a turn that is not the handback.
 
     No transcript is read here. What the hook does is oblige the check; running
     it, and judging what it finds, stays with the agent.
     """
-    return block(load_message_pair(ctx.hooks_dir, "rule-check")[0])
+    if ctx.raw.get("background_tasks"):
+        return None
+
+    reason = load_message_pair(ctx.hooks_dir, "rule-check")[0]
+    if not reason:
+        # A block is an instruction to do something. With no text there is no
+        # instruction, and blocking would cost the agent a turn to be told
+        # nothing — worse than not blocking. Fail open and say why.
+        print(
+            "DEGRADED: rbg: hooks/messages/rule-check.md is missing or empty, so the stop-side "
+            "rule check cannot be asked for; letting the stop through",
+            file=sys.stderr,
+        )
+        return None
+    return block(reason)
 
 
 HANDLERS = {

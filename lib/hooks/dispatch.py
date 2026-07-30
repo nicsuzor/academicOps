@@ -175,7 +175,12 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
 
 
 def _merge(results: list[Result | None]) -> Result | None:
-    """Strongest disposition wins, then first-registered."""
+    """Strongest disposition wins, then first-registered.
+
+    Within one plugin's handlers only. Two plugins registered on the same event
+    are two processes and never meet here, so this settles registration order,
+    not precedence between plugins — the client decides that.
+    """
     present = [r for r in results if r is not None]
     for r in present:
         if r.is_refusal:
