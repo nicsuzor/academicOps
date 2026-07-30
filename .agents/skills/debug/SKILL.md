@@ -107,9 +107,9 @@ No container cleanup is needed — `run` uses `docker run --rm`.
 
 Run after any change to `plugins/*/hooks`, `lib/`, the shipped skills, agents
 or commands, `plugins/aops/polecat/cli.py`, `plugins/aops/polecat/defaults/*`,
-`entrypoint.sh`, or the Dockerfile. This is what separates "the files are in the image" from "the
-framework actually fires" — a plugin that installs cleanly and does nothing is
-the failure this catches.
+`entrypoint.sh`, or the Dockerfile. This is what separates "the files are in
+the image" from "the framework actually fires" — a plugin that installs
+cleanly and does nothing is the failure this catches.
 
 Run both clients. Asymmetric breakage between `claude` and `agy` is common,
 and a pass on one is not evidence for the other. Walk the layers in order and
