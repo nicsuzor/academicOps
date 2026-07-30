@@ -98,7 +98,7 @@ The stop gate is a different disposition on a different question, which is what 
 
 ## The stop gate
 
-`Stop` and `SubagentStop` fire at a **turn** boundary — the moment an agent has finished and is about to hand back. It is the last moment the work of that turn can still be corrected, and unlike `PreToolUse` it is a point where the whole turn is available to judge rather than one call at a time. `rule_check` uses it to withhold the handback: Claude Code reads `{"decision": "block", "reason": ...}` as "not yet", gives the agent another turn, and puts the reason in front of it. The reason is `messages/rule-check.md` — run the rule check over all three layers, and present evidence somebody else can check rather than a claim of compliance.
+`Stop` and `SubagentStop` fire at a **turn** boundary — the moment an agent has finished and is about to hand back. It is the last moment the work of that turn can still be corrected, and unlike `PreToolUse` it is a point where the whole turn is available to judge rather than one call at a time. `rule_check` uses it to withhold the handback: Claude Code reads `{"decision": "block", "reason": ...}` as "not yet", gives the agent another turn, and puts the reason in front of it. The reason is `hooks/messages/rule-check.md` — run the rule check over all three layers, and present evidence somebody else can check rather than a claim of compliance.
 
 A turn boundary is not a session boundary. `Stop` fires every time the session's own agent finishes a response, so an interactive session reaches this gate once per turn, not once at the end.
 
