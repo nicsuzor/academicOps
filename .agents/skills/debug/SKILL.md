@@ -39,10 +39,14 @@ project has a `paths` entry in `$POLECAT_HOME/local.yaml`. Always pass
 `-s "$TMUX_NAME"` so the tmux session name and the host log directory name
 match.
 
-Set every variable the script exports; the spec's "Dev-loop" section says what
-each is for and which are required. Keep the workspace under `$HOME` — the
-spec's Gotchas say why a mount source outside the VM's shared paths fails
-silently rather than loudly.
+Set every variable the script exports. `POLECAT_HOME` and `POLECAT_IMAGE` have
+no defaults and polecat exits naming whichever is missing; `entrypoint.sh`
+refuses to start without `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL` and
+`AOPS_BOT_GH_TOKEN`, and a probe session that never pushes can pass a
+placeholder for the token. An `agy` session also needs `POLECAT_AGENT_HOME`, or
+it boots into an OAuth wall instead of a ready prompt — the spec's "Dev-loop"
+section says why. Keep the workspace under `$HOME`; the spec's Gotchas say why
+a mount source outside the VM's shared paths fails silently rather than loudly.
 
 **Never pass `-d` a linked git worktree.** Its `.git` is a file pointing at the
 main checkout's `.git/worktrees/<name>`, which is outside the mounted directory,

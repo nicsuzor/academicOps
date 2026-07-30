@@ -24,7 +24,7 @@ category = "productivity"
 [[plugins]]
 directory = "ida"
 name = "ida"
-description = "ida — the interactive face."
+description = "ida — the interactive face; james — synthesis, dispatch, and the polecat container launcher."
 category = "productivity"
 
 [[plugins]]
