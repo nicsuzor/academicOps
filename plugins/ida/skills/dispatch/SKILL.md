@@ -28,6 +28,8 @@ A dependency outside the epic's hierarchy blocks you: halt and return whatever y
 
 Compose the delegation brief immediately before dispatching — never earlier, and freshly each time even if that task was briefed on an earlier pass, because the context has moved.
 
+@include doctrine/delegation-brief.md
+
 Choose a surface and a cadence per task. Cadence is a routing detail; the review shape does not depend on it.
 
 - **In-session subagent** — needed now, mechanical or exploratory, results reconciled in this session.

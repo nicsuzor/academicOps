@@ -1,1 +1,1 @@
-# HEARSAY WARNING: Agents are lazy and they frequently lie!
+# Subagent report received — claims unverified until evidence is shown.

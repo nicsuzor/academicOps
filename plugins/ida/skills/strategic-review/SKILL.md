@@ -73,7 +73,7 @@ Two reviewers reaching the same defect from different lenses is agreement, not c
 
 Severity: **REJECT** (fundamental — close or redesign) · **REVISE** (substantial rework, in scope) · **FIX** (a clear correct resolution exists) · **TRIVIAL** (cosmetic) · **ADVISORY** (non-blocking follow-up). Overall verdict: **APPROVE / MINOR CHANGES / REVISE / REJECT**.
 
-On REVISE or REJECT for brief-sourced work, address the synthesis to the brief — name which element failed (intent, scoped context, constraints, autonomy and non-goals, acceptance criteria, evidence contract, effort type) so re-dispatch is a brief edit, not a fresh plan.
+On REVISE or REJECT for brief-sourced work, address the synthesis to the brief — name which element failed, in the vocabulary the `dispatch` skill's brief doctrine defines (goal, constraints, evidence bar, and the subordinate elements under each), so re-dispatch is a brief edit, not a fresh plan.
 
 ## 5. Act on the verdict
 

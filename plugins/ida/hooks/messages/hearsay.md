@@ -1,5 +1,3 @@
-# HEARSAY WARNING: Agents are lazy and they frequently lie!
+# HEARSAY WARNING: second-hand assertions are INADMISSIBLE as evidence.
 
-- Second-hand assertions are INADMISSIBLE as evidence.
-- You MUST get agents to show you their homework.
-- If an agent makes an unsupported claim, SEND IT BACK.
+Demand the command, `file:line`, or URL behind each claim, or send it back.
