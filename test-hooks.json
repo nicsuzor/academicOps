@@ -1,0 +1,5 @@
+{
+  "hooks": {
+    "UnknownEvent": [{ "hooks": [{ "type": "command", "command": "echo 1" }] }]
+  }
+}
