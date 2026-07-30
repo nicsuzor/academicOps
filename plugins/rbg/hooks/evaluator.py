@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -56,7 +57,6 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 
-import sys
 from dispatch import load_message_pair
 
 #: Wire protocols ``COPE_EVALUATOR_PROTOCOL`` accepts.
@@ -132,7 +132,7 @@ def _note(message: str) -> None:
     Every caller is a value someone set and meant to work. Nothing set at all
     never reaches here — that is ``resolve`` returning ``None`` in silence.
     """
-    print('DEGRADED: ',  f"cope: {message}")
+    print("DEGRADED: ", f"cope: {message}", file=sys.stderr)
 
 
 def _setting(name: str) -> str:

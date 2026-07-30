@@ -26,14 +26,12 @@ that process — there is no server to keep warm.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import sys
 import evaluator
-from dispatch import load_message_pair
 import rules
-from dispatch import HookContext
-from dispatch import Result, warn
+from dispatch import HookContext, Result, load_message_pair, warn
 
 _rules_cache: dict[str, rules.Rule] | None = None
 
@@ -94,11 +92,12 @@ def evaluate(ctx: HookContext) -> Result | None:
     matches, failures = evaluator.check(config, policies, content, ctx.hooks_dir)
 
     if failures:
-        print("DEGRADED: ", 
-            
+        print(
+            "DEGRADED: ",
             f"cope: the rule evaluator did not answer for {len(failures)} of "
             f"{len(policies)} rules, so those rules are not being checked",
             "; ".join(failures),
+            file=sys.stderr,
         )
 
     if not matches:
