@@ -1,7 +1,8 @@
 # academicOps — build & install. Design: specs/ARCHITECTURE.md.
 
 .PHONY: help build install-dev uninstall-dev install clean test lint format \
-        docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test
+        docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test \
+        verify-docker
 
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
@@ -30,6 +31,9 @@ help:
 	@echo "                        actually reaches a throwaway collector"
 	@echo "make docker-smoke-test - build the image, then run its structural"
 	@echo "                        smoke test (plugin list, agy plugins, ACA_DATA)"
+	@echo "make verify-docker  - clean (--no-cache) image build; required before"
+	@echo "                        certifying a change, so no cached layer can"
+	@echo "                        produce a false-green result"
 
 # --- Build ---
 
@@ -124,6 +128,17 @@ docker-shell: docker-build
 	@env_args="$$(uv run python -m aops.polecat.env_contract --docker-args)" \
 		|| { echo "x could not read the container env contract" >&2; exit 1; }; \
 	docker run -it --rm $$env_args -v $(ROOT):/app -w /app $(IMAGE)
+
+# The build to certify a dev change against. `docker-build` reuses the layer
+# cache, so a layer whose inputs Docker judges unchanged is carried forward —
+# and an image that looks rebuilt while still holding the previous plugin set
+# reads as a pass that proves nothing. `--no-cache` rebuilds every layer from
+# source, which is the only form of this build whose green result is evidence.
+# Slow by construction; use `docker-build` for the edit loop and this before
+# certifying.
+verify-docker: build
+	@docker build --no-cache --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
+	@echo "✓ clean build: $(IMAGE) — every layer rebuilt from source"
 
 docker-push:
 	@docker push $(IMAGE)

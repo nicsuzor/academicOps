@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Use when asked to "debug a polecat", "run a polecat container interactively", "attach to a polecat session", or "check polecat logs". Spins up a `polecat run` container under tmux for live interaction, and says where the durable host-side session state lands.
+description: Use when asked to "debug a polecat", "run a polecat container interactively", "attach to a polecat session", "check polecat logs", or to verify that a change to plugins, hooks, lib/, skills, or the Dockerfile actually works inside a real container. Spins up a `polecat run` container under tmux for live interaction, says where the durable host-side session state lands, and walks the layered check that separates "installed in the image" from "actually fires".
 ---
 
 # Interactive polecat debugging
@@ -14,11 +14,14 @@ Do not duplicate that here.
 ```bash
 export TMUX_NAME="polecat-debug-$RANDOM"
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 \
-  "uv run python plugins/aops/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
+  "uv run --project $AOPS python $AOPS/plugins/aops/polecat/cli.py run agy -p aops -s $TMUX_NAME 'what directory are you in? answer in one sentence, then stop.'"
 ```
 
-Use the explicit path, not a shell alias — inside the `sh -c` tmux spawns, an
-unresolved alias kills the whole tmux server, not just the pane.
+Use the absolute path, not a shell alias and not a relative one — inside the
+`sh -c` tmux spawns, neither an unresolved alias nor a path relative to some
+other cwd resolves, and the failure kills the whole tmux server rather than
+just the pane. `capture-pane` then reports `no server running`, which reads
+like a tmux problem rather than a command-not-found.
 
 Swap `agy` for `claude` to debug the Claude client, or `shell` for a plain shell
 with no agent. Swap `-p aops` for `-d <repo-path>` when the target project has no
@@ -86,3 +89,58 @@ tmux kill-session -t "$TMUX_NAME"
 ```
 
 No container cleanup is needed — `run` uses `docker run --rm`.
+
+## Validate a dev change
+
+Run after any change to `plugins/*/hooks`, `lib/`, the shipped skills, agents
+or commands, `plugins/aops/polecat/defaults/*`, `entrypoint.sh`, or the
+Dockerfile. This is what separates "the files are in the image" from "the
+framework actually fires" — a plugin that installs cleanly and does nothing is
+the failure this catches.
+
+Run both clients. Asymmetric breakage between `claude` and `agy` is common,
+and a pass on one is not evidence for the other. Walk the layers in order and
+stop at the first failure: a later layer's result is uninterpretable once an
+earlier one is broken.
+
+**§0 Build the image from your change.** `make docker-build` reuses the layer
+cache and is right for the edit loop. Before certifying anything, use
+`make verify-docker` — a cached layer can carry the previous plugin set into
+an image that looks rebuilt, and a green result on that image is evidence of
+nothing.
+
+**§1 Structural check.** `make docker-smoke-test` boots the real image and
+asserts every plugin `build/marketplace.toml` declares is installed and
+enabled under both clients, that `$ACA_DATA` matches what `cli.py` mounts
+layer-3 rules onto, and that the agy session mount target is writable. Seconds,
+no tmux. A marketplace cache-miss or a failed plugin install is silent at
+startup and only surfaces later as missing tools; this catches it immediately.
+Structural only — an installed plugin is not proof its hooks or MCP servers are
+live, which is what the remaining layers are for.
+
+**§2 Boot signals.** Spin a session with the tmux pattern above, then
+`capture-pane -p -S -2000`. Expect a ready prompt with no onboarding or
+folder-trust dialog blocking it. Do not read footer chrome as a boot signal —
+it renders before the client is ready.
+
+**§3 First prompt.** Send a trivial prompt and capture again. A hook-blocked
+error is a pass for this layer, not a failure: the hook fired and reported.
+Treat the error text as primary evidence. The response itself is the liveness
+signal — do not build a poll loop beside it.
+
+**§4 Skill and subagent exercise.** Invoke a skill and dispatch a subagent from
+inside the session. Verify visible output in the pane, not merely that the call
+returned. A skill that resolves and produces nothing passes a structural check
+and fails here.
+
+**§5 Observability.** Confirm `polecat-session-hooks.jsonl` is present and
+populated in the session directory, and that the PKB MCP answers rather than
+refusing or timing out. This is the primary signal that the framework fired, as
+distinct from the UI having rendered something. An empty or missing hook log is
+a finding — but check `lib/hooks/dispatch.py` first: while `_log_fire` or
+`_load_handlers` short-circuit, no log is written regardless of health, and the
+absence tells you nothing about the change you are testing.
+
+**§6 Cleanup.** `/exit`, then `tmux kill-session`. Repeat for the other client.
+
+On failure, file one issue per root cause, not per symptom.
