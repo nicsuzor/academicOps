@@ -142,17 +142,15 @@ principle they are all instances of, the material is not ready.
 
 ### Skills
 
-| Skill               | Does                                                                                                        |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `planner`           | Effectual planning: fix the altitude, start from means, surface assumptions, sequence by what teaches most. |
-| `hydrate`           | Emit a right-sized context bundle so nothing downstream starts cold.                                        |
-| `situate`           | Turn a hydrated ask into one valued, well-connected task, then stop.                                        |
-| `decompose`         | Cut a due task into a subtask DAG and emit its review steps as blocking nodes.                              |
-| `brief`             | Turn the subtask that is due into a brief a cold agent can execute and be judged on.                        |
-| `workflow`          | Compose the process this work runs under, from the shipped library, the user layer, and the PKB.            |
-| `remember`          | Capture knowledge as it emerges; consolidate episodic records into durable notes.                           |
-| `reconcile`         | Probe stale claims and requeue the dead ones; fold in work that finished while nobody was watching.         |
-| `graph-maintenance` | Wire weighted `contributes_to` edges; garden parentage, links, duplicates, and orphans.                     |
+| Skill      | Does                                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| `hydrate`  | Emit a right-sized context bundle so nothing downstream starts cold.                                              |
+| `situate`  | Turn a hydrated ask into one valued, well-connected task, then stop.                                              |
+| `workflow` | Compose the process this work runs under, from the shipped library, the user layer, and the PKB.                  |
+| `pull`     | Claim a queued task, execute it, record the result on the task, and hand over.                                    |
+| `remember` | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                 |
+| `learn`    | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims. |
+| `dump`     | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                     |
 
 ### Command
 
