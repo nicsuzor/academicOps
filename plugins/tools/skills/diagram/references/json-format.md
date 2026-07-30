@@ -82,6 +82,7 @@ Each element in the `elements` array includes these properties:
 {
   "groupIds": [],
   "frameId": null,
+  "index": "a0",
   "roundness": { "type": 3 },
   "seed": 123456,
   "boundElements": null,
@@ -138,7 +139,7 @@ Editor configuration:
 }
 ```
 
-`lockedMultiSelections` is written by current excalidraw.com even on an empty scene — always include it (as `{}` if nothing is locked). Its absence is one of the things that triggers a full-file migration rewrite when the file is next opened and saved in the web app.
+Always include `appState.lockedMultiSelections` (as `{}` if nothing is locked) — current excalidraw.com writes it even on an empty scene.
 
 Additional properties may include zoom level, selected elements, UI state, etc.
 
@@ -163,7 +164,7 @@ def generate_indices(n: int) -> list[str]:
 
 (Fixed 3-character width keeps every key the same length, so lexicographic order is numeric order with no prefix-collision edge cases — up to 62×62 = 3,844 elements, far beyond any hand-authored diagram.)
 
-Assign `index` values in the same order elements should stack (later `index` = drawn on top). **Do not** reuse an old ad hoc scheme like sequential `"c00"`, `"c01"`, `"d02"`... — that was produced by the discontinued VS Code Excalidraw extension and is not recognized as valid by excalidraw.com's fractional-indexing validator, so the whole file's `index` values get silently regenerated (and the array order re-sorted) the moment it's opened and saved there. That single-property mismatch is what turns an otherwise-untouched file into a huge diff.
+Assign `index` values in the same order elements should stack (later `index` = drawn on top). **Do not** use a sequential ad hoc scheme like `"c00"`, `"c01"`, `"d02"`... — it is not valid per excalidraw.com's fractional-indexing scheme and will be silently regenerated on next open/save, resorting the whole element array with it.
 
 ## Files Object
 
@@ -269,7 +270,7 @@ When copying elements, use slightly different schema:
 - **Route around boxes** - arrows should never pass through unrelated elements
 - **roughness: 2** for consistent hand-drawn aesthetic
 
-**Arrow binding details** (current excalidraw.com format — as of the schema excalidraw.com itself now writes; this superseded an older `{elementId, focus, gap}` shape used by the discontinued VS Code extension, and older files will get silently rewritten wholesale the next time they're opened and saved on excalidraw.com):
+**Arrow binding details** (current excalidraw.com format):
 
 ```json
 {
@@ -286,7 +287,7 @@ When copying elements, use slightly different schema:
 }
 ```
 
-There is no more `focus`/`gap` pair — the anchor point and any visual gap are both folded into `fixedPoint`, a single normalized coordinate on the bound element's own bounding box: `[0, 0]` = top-left corner, `[1, 1]` = bottom-right corner.
+`fixedPoint` is the only anchor property — a single normalized coordinate on the bound element's own bounding box: `[0, 0]` = top-left corner, `[1, 1]` = bottom-right corner. Do not add `focus` or `gap` keys; they are not part of this binding shape.
 
 **`fixedPoint` anchor convention** (edge midpoints — use these for the vast majority of arrows):
 
@@ -298,7 +299,7 @@ There is no more `focus`/`gap` pair — the anchor point and any visual gap are 
 | Right-center       | `[1, 0.5]`   |
 | Dead center (rare) | `[0.5, 0.5]` |
 
-- **Vary the offset along the edge** (e.g. `[0.3, 0]` or `[0.7, 0]`) to prevent multiple arrows overlapping where they land on the same box — this replaces the old `focus: -0.5 .. 0.5` trick.
+- **Vary the offset along the edge** (e.g. `[0.3, 0]` or `[0.7, 0]`) to prevent multiple arrows overlapping where they land on the same box.
 - Pick the edge (`x`=0/0.5/1, `y`=0/0.5/1) based on the arrow's actual approach direction: an arrow arriving from below binds to the target's top edge (`[0.5, 0]`), one arriving from the side binds to the left/right edge, etc.
 - Don't try to reproduce excalidraw.com's own floating-point precision (it emits values like `0.5001` from its internal geometry solver) — clean `0`, `0.5`, `1` values are valid and load identically; the app will not rewrite a file just because your anchors are exact rather than jittered.
 - When position isn't specified for start/end, Excalidraw computes one from the arrow's x/y coordinates, but always set it explicitly for reproducible, diff-quiet output.
