@@ -10,34 +10,33 @@ Engagement after an absence starts one step earlier. Before taking new work, ida
 
 ```mermaid
 flowchart TD
-    U([user]) --> IDA["ida-flat<br/>agents/ida-flat.md"]
+    U([user]) --> IDA["ida<br/>agents/ida.md"]
     RET(["engagement after<br/>an absence"]) --> IDA
-    IDA --> Q{"can ida-flat settle<br/>this herself?"}
+    IDA --> Q{"can ida settle<br/>this herself?"}
 
     Q -->|"yes — a status check,<br/>a read, a cheap probe"| ANS["answer inline"]
     Q -->|"blocking judgment call —<br/>scope, taste, tradeoff"| ESC["AskUserQuestion:<br/>one named decision,<br/>options pre-resolved"]
-    Q -->|"no — substantive work"| DISP["dispatch to polecat<br/>(aops plugin)"]
+    Q -->|"no — substantive work"| J["james<br/>(aops plugin)"]
 
     IDA -->|"before new work"| PAULI["pauli — aops-pkb<br/>runs skills/reconcile.<br/>Named, never a general-purpose spawn:<br/>the only writer to the store"]
     PAULI --> UNC["landed but uncertified"]
-    UNC --> LENS
+    UNC --> J
 
-    DISP --> W["polecat containers"]
-    W --> EV["what comes back:<br/>execution handback,<br/>pauli's one sweep result"]
+    J --> W["review agents · agent teams ·<br/>polecat containers"]
+    W --> EV["evidence bundles<br/>and verdicts"]
     PAULI --> EV
-    EV --> LENS["review lenses:<br/>marsha (QA), pauli (strategy), rbg (compliance)"]
-    LENS --> F{"ida's filter (synthesis)"}
+    EV --> F{"ida's filter (synthesis)"}
 
-    F -->|"no checkable evidence<br/>and no stated failure reason"| REJECT["returned to dispatch —<br/>not a handback"]
+    F -->|"no checkable evidence<br/>and no stated failure reason"| REJECT["returned to james —<br/>not a handback"]
     F -->|"operational detail,<br/>per-worker outcomes,<br/>intermediate states"| DROP["dropped"]
-    F -->|"correct-but-wrong,<br/>or off the user's intent"| BLOCK["blocked —<br/>back to dispatch to replan"]
+    F -->|"correct-but-wrong,<br/>or off the user's intent"| BLOCK["blocked —<br/>back to james to replan"]
     F -->|"what happened,<br/>where it is heading,<br/>what the user must decide"| SYN["synthesis"]
 
     ANS --> U
     ESC --> U
     SYN --> U
-    BLOCK --> DISP
-    REJECT --> DISP
+    BLOCK --> J
+    REJECT --> J
 ```
 
 Ida holds between steps rather than driving ahead: after each step control returns to the user, who owns the sequence. Academic integrity is carried here — research data is immutable, and research, teaching, and publication outputs reach the user with full receipts before anything is marked done. The sign-off floor itself is not ida's alone: the `one-way-door` axiom binds every agent at an irreversible, outward-facing act, and ida's charter is the stricter domain layer over it.
@@ -72,11 +71,11 @@ What crosses between them is the evidence contract, defined once in `specs/enfor
 
 ## What it provides
 
-| Kind  | Name       | Purpose                                                                                            |
-| ----- | ---------- | -------------------------------------------------------------------------------------------------- |
-| Agent | `ida-flat` | The interactive face. Coordinates research work, directly dispatches via polecat, filters returns. |
+| Kind  | Name  | Purpose                                                                               |
+| ----- | ----- | ------------------------------------------------------------------------------------- |
+| Agent | `ida` | The interactive face. Coordinates research work, delegates to james, filters returns. |
 
-No skills, no commands, no hooks. `agents/ida-flat.md` holds the `Skill` tool and declares `skills: [strategic-review, dispatch]`. The skills the other plugins ship reach her only as work she delegates to polecat containers or to pauli.
+No skills, no commands, no hooks. The skills the other plugins ship reach her only as work she delegates to james or to pauli.
 
 ## Configuration
 
@@ -85,8 +84,5 @@ None. This plugin reads no environment variable and declares no `userConfig` fie
 ## Depends on
 
 - `lib/axioms/` — `bar`, `launder`, `probe`, `delegation`, `epistemics`, `governing-rules`, `halt`, `memory`. These are applied globally as rule context rather than inlined via `@include`.
-- The `aops` plugin at runtime, for **polecat containers**, **marsha**, and **rbg** (the review lenses). Ida-flat dispatches work using `aops`'s dispatch skill.
+- The `aops` plugin at runtime, for **james**. Ida delegates all substantive work to him; without him she has nowhere to send it.
 - The `aops-pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions.
-
-> [!NOTE]
-> This README reflects the experimental flattened hierarchy (`ida-flat.md`) which collapses the legacy `ida` -> `james` routing into a single tier. Currently in testing on branch `feat/ida-flat-orchestrator`.

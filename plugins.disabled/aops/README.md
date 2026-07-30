@@ -6,12 +6,12 @@ Review, QA, and dispatch: three reviewing agents, the machinery that reconciles 
 
 ```mermaid
 flowchart TD
-    USER([user]) --> IDA["ida-flat — plugins/ida<br/>the only agent that talks to the user"]
+    USER([user]) --> IDA["ida — plugins/ida<br/>the only agent that talks to the user"]
     IDA -->|"anything substantive"| DISP
     IDA -->|"engagement after an absence"| PAULI["pauli — plugins/pkb<br/>skills/reconcile sweep"]
     PAULI -->|"landed but uncertified"| DISP
 
-    DISP(("ida-flat (dispatch)<br/>agents/ida-flat.md"))
+    DISP(("james — the orchestrator<br/>and dispatcher"))
     DISP --> SR["skills/strategic-review<br/>premise test, then fan out"]
     DISP --> DISPATCH_SKILL["skills/dispatch<br/>claim epic · read the graph ·<br/>brief afresh · route by task id"]
 
@@ -20,10 +20,10 @@ flowchart TD
     SR --> PAULI2["pauli — plugins/pkb<br/>premise, architectural fit"]
     RBG --> INTERROGATE
     MARSHA --> INTERROGATE
-    PAULI2 --> INTERROGATE["ida-flat interrogates<br/>reject scope drift · send back<br/>evidence-free reports · iterate"]
+    PAULI2 --> INTERROGATE["james interrogates<br/>reject scope drift · send back<br/>evidence-free reports · iterate"]
     INTERROGATE --> VERDICT{"one verdict<br/>APPROVE · MINOR CHANGES<br/>· REVISE · REJECT"}
 
-    DISPATCH_SKILL -->|"needed now"| TEAM["plain subagents supervised by ida-flat —<br/>one, or several in parallel,<br/>reconciled into one result.<br/>No container. No delivery guard."]
+    DISPATCH_SKILL -->|"needed now"| TEAM["plain subagents supervised by james —<br/>one, or several in parallel,<br/>reconciled into one result.<br/>No container. No delivery guard."]
     DISPATCH_SKILL -->|"substantial autonomous repo work"| COURIER["courier: a plain background subagent<br/>runs the CLI in the foreground and<br/>returns the harvested result"]
     DISPATCH_SKILL -.->|"any surface the task<br/>contract permits"| OTHER["( another runner )<br/>in: one task id<br/>out: evidence + one output URL,<br/>written to the task record"]
 
@@ -52,7 +52,7 @@ flowchart TD
     BACK --> IDA
 
     HOOKS["hooks/handlers.py — fires in every Claude Code session,<br/>james's, the team's and the worker's alike.<br/>SessionStart · PreToolUse · Stop · SubagentStop.<br/>Advisory; not a step in this flow."]
-    HOOKS -.-> JAMES
+    HOOKS -.-> DISP
     HOOKS -.-> TEAM
     HOOKS -.-> WORKER
 ```
@@ -203,6 +203,6 @@ The plugin declares no `userConfig` fields.
 
 - `lib/hooks/` — shared hook runtime (`dispatch.py`, `context.py`, `result.py`, `clients.py`, `messages.py`, `credentials.py`, `telemetry.py`, `provenance.py`, `degraded.py`), injected into `hooks/` at build time.
 - `lib/axioms/` — injected into `axioms/` at build time; rbg's first rule source and the source of `axioms.jsonl`.
-- `lib/axioms/` — applied as global rule context. `delegation.md` is what makes the surface rules binding above ida-flat's own instructions.
-- `plugins/pkb` at runtime, for `pauli` (the third review lens, the only writer to the knowledge base, and the agent that runs the reconcile sweep) and the task graph ida-flat dispatches against.
+- `lib/axioms/` — applied as global rule context. `delegation.md` is what makes the surface rules binding above james's own instructions.
+- `plugins/pkb` at runtime, for `pauli` (the third review lens, the only writer to the knowledge base, and the agent that runs the reconcile sweep) and the task graph james dispatches against.
 - Docker on the host that runs `polecat`.
