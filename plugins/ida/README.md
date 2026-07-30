@@ -84,7 +84,11 @@ The polecat CLI is injected from `lib/polecat/` at build time rather than held h
 
 ## Configuration
 
-None. This plugin reads no environment variable and declares no `userConfig` field. No endpoint, host, path, token, or credential appears in anything it ships.
+No `userConfig` field, and the agents, skills and hook read no environment variable.
+
+The polecat CLI does, and it has no defaults — every value comes from the environment or the operator's `polecat.yaml`, and a missing required one is a loud failure rather than a guess. Two are required: `POLECAT_HOME` (or `polecat_home` in the config file), the local cache root for clones, staging and session logs; and `POLECAT_IMAGE` (or `docker.image`), the container image reference. Optional: `AOPS_POLECAT_CONFIG` and `AOPS_SESSIONS` locate the config file and the session-log root, `POLECAT_RULES_DIR` names a host directory of user rules to mount read-only, `POLECAT_AGENT_HOME` supplies agy's credentials, `POLECAT_WORKER_MODEL` and `POLECAT_PRINT_TIMEOUT` tune the inner invocation, and `PKB_MCP_URL` is forwarded to the container. Credentials — `AOPS_BOT_GH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` and the rest of the forwarded set — are read from the environment and passed through; none is stored.
+
+No endpoint, host, registry, account or credential is written into anything this plugin ships. The container-internal paths that do appear — `/data`, `/workspace`, `/home/worker/...` — are the image's own filesystem contract, which no host value could supply.
 
 ## Depends on
 
