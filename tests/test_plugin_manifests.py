@@ -148,3 +148,42 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
         f"{plugin_dir.name}: hooks.json declares hook script(s) that do not exist "
         f"in the built artifact:\n" + "\n".join(missing)
     )
+
+
+# ---------------------------------------------------------------------------
+# Stop/SubagentStop gate wiring, asserted against the *built* artifact rather
+# than the source manifest — a template can be right while the build drops it.
+# pkb ships neither: its stop gate is blocked server-side, and this pins that
+# it stays unwired rather than being swept in by accident.
+# ---------------------------------------------------------------------------
+
+
+def _claude_hook_events(plugin_dir_name: str) -> set[str]:
+    hooks_json = DIST_ROOT / plugin_dir_name / "hooks" / "hooks.json"
+    if not hooks_json.exists():
+        return set()
+    return set(json.loads(hooks_json.read_text())["hooks"].keys())
+
+
+def _agy_hook_events(plugin_dir_name: str) -> set[str]:
+    hooks_json = DIST_ROOT / plugin_dir_name / "hooks.json"
+    if not hooks_json.exists():
+        return set()
+    return set(
+        json.loads(hooks_json.read_text()).get(plugin_dir_name.removesuffix("-agy"), {}).keys()
+    )
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_rbg_ships_the_stop_gate_on_claude_and_agy():
+    assert {"Stop", "SubagentStop"} <= _claude_hook_events("rbg-claude")
+    # agy's wire name is PostInvocation; dispatch.py maps it onto canonical
+    # Stop, where it can only ever advise.
+    assert "PostInvocation" in _agy_hook_events("rbg-agy")
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_pkb_ships_no_stop_gate():
+    """pkb's stop gate is blocked on a server-side prerequisite, not merely
+    unbuilt. This pins that it stays unwired rather than being swept in."""
+    assert _claude_hook_events("pkb-claude") == {"UserPromptSubmit"}
