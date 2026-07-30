@@ -72,6 +72,7 @@ TO_CANONICAL = {
     },
 }
 
+
 def to_canonical(client: str, wire_event: str) -> str | None:
     mapping = TO_CANONICAL.get(client, {})
     if wire_event in mapping:
@@ -113,7 +114,7 @@ def _load_handlers(event: str, hooks_dir: Path) -> list[Handler]:
     except Exception as exc:
         print(f"aops hooks: failed to load {handlers_path}: {exc!r}", file=sys.stderr)
         return []
-    
+
     registry = getattr(module, "HANDLERS", {})
     handlers = list(registry.get(event, []))
     for h in registry.get("*", []):
@@ -149,7 +150,7 @@ def _render_claude(result: Result, event: str) -> dict:
         }
     else:
         specific = {"hookEventName": event, "additionalContext": result.inject_text}
-    
+
     output: dict[str, Any] = {"hookSpecificOutput": specific}
     if result.user_text:
         output["systemMessage"] = result.user_text
@@ -211,7 +212,7 @@ def main(argv: list[str]) -> int:
     _log_fire(ctx)
 
     handlers = _load_handlers(event, hooks_dir)
-    
+
     kept_handlers = []
     for h in handlers:
         scope = getattr(h, "only_on_clients", None)
@@ -220,7 +221,7 @@ def main(argv: list[str]) -> int:
 
     results = [_run_handler(h, ctx) for h in kept_handlers]
     result = _merge(results)
-    
+
     output = render(client, event, result)
     if output:
         print(json.dumps(output))

@@ -132,7 +132,7 @@ def _note(message: str) -> None:
     Every caller is a value someone set and meant to work. Nothing set at all
     never reaches here — that is ``resolve`` returning ``None`` in silence.
     """
-    print('DEGRADED: ',  f"cope: {message}")
+    print("DEGRADED: ", f"cope: {message}")
 
 
 def _setting(name: str) -> str:

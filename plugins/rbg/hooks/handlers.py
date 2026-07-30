@@ -94,8 +94,8 @@ def evaluate(ctx: HookContext) -> Result | None:
     matches, failures = evaluator.check(config, policies, content, ctx.hooks_dir)
 
     if failures:
-        print("DEGRADED: ", 
-            
+        print(
+            "DEGRADED: ",
             f"cope: the rule evaluator did not answer for {len(failures)} of "
             f"{len(policies)} rules, so those rules are not being checked",
             "; ".join(failures),

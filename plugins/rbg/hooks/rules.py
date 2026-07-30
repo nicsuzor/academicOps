@@ -52,7 +52,8 @@ def _parse(path: Path, layer: int) -> Rule | None:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        print('DEGRADED: ', 
+        print(
+            "DEGRADED: ",
             DEGRADED_RULES,
             f"cope: the rule file {path} could not be read, so that rule is not being checked",
             f"{exc!r}",
@@ -101,7 +102,8 @@ def _load_dir(layer: _Layer) -> dict[str, Rule]:
     try:
         if not layer.path.is_dir():
             if layer.absent_note:
-                print('DEGRADED: ', 
+                print(
+                    "DEGRADED: ",
                     DEGRADED_RULES,
                     f"cope: there is no rule directory at {layer.path} ({layer.absent_note}), "
                     f"so layer {layer.number} is not being checked",
@@ -109,7 +111,8 @@ def _load_dir(layer: _Layer) -> dict[str, Rule]:
             return rules
         paths = sorted(layer.path.glob("*.md"))
     except OSError as exc:
-        print('DEGRADED: ', 
+        print(
+            "DEGRADED: ",
             DEGRADED_RULES,
             f"cope: the rule directory {layer.path} could not be read, so layer "
             f"{layer.number} is not being checked",
@@ -125,7 +128,8 @@ def _load_dir(layer: _Layer) -> dict[str, Rule]:
             continue
         rules[rule.slug] = rule
     if skipped and layer.report_skips:
-        print('DEGRADED: ', 
+        print(
+            "DEGRADED: ",
             DEGRADED_UNMARKED,
             f"cope: {', '.join(skipped)} in {layer.path} are read by agents but never "
             "evaluated — add `trigger: always_on` frontmatter to send a file to the evaluator",

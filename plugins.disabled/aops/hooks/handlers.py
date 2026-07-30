@@ -70,7 +70,9 @@ def _isolate_credentials(ctx: HookContext) -> bool:
         persist["GIT_CONFIG_KEY_2"] = "credential.https://github.com.helper"
         persist["GIT_CONFIG_VALUE_2"] = ""
         persist["GIT_CONFIG_KEY_3"] = "credential.https://github.com.helper"
-        persist["GIT_CONFIG_VALUE_3"] = f'!f() {{ test "$1" = get && printf "username=x-access-token\\npassword=%s\\n" "{bot_token}"; }}; f'
+        persist["GIT_CONFIG_VALUE_3"] = (
+            f'!f() {{ test "$1" = get && printf "username=x-access-token\\npassword=%s\\n" "{bot_token}"; }}; f'
+        )
 
     try:
         with open(env_file, "a") as f:
@@ -84,11 +86,11 @@ def _isolate_credentials(ctx: HookContext) -> bool:
 def session_start(ctx: HookContext) -> Result | None:
     parts = ["aops hook: Session started."]
     user_parts = []
-    
+
     if _isolate_credentials(ctx):
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")
         user_parts.append("Credentials isolated.")
-        
+
     return warn("\n\n".join(parts), " ".join(user_parts) or None)
 
 
@@ -97,7 +99,7 @@ def present_checkable_evidence(ctx: HookContext) -> Result | None:
         return None
     return warn(
         "You are stopping. Please ensure you have presented checkable evidence.",
-        "Ensure evidence is presented."
+        "Ensure evidence is presented.",
     )
 
 
@@ -112,7 +114,7 @@ def refuse_interactive_prompt_when_headless(ctx: HookContext) -> Result | None:
         return None
     return refuse(
         f"Interactive tool {ctx.tool} cannot be used in a headless session. Please proceed automatically.",
-        f"Refused {ctx.tool} (headless)"
+        f"Refused {ctx.tool} (headless)",
     )
 
 
