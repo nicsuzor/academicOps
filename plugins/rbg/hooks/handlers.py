@@ -28,12 +28,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import degraded
+import sys
 import evaluator
-import messages
+from dispatch import load_message_pair
 import rules
-from context import HookContext
-from result import Result, warn
+from dispatch import HookContext
+from dispatch import Result, warn
 
 _rules_cache: dict[str, rules.Rule] | None = None
 
@@ -94,8 +94,8 @@ def evaluate(ctx: HookContext) -> Result | None:
     matches, failures = evaluator.check(config, policies, content, ctx.hooks_dir)
 
     if failures:
-        degraded.report(
-            evaluator.DEGRADED_EVALUATOR,
+        print("DEGRADED: ", 
+            
             f"cope: the rule evaluator did not answer for {len(failures)} of "
             f"{len(policies)} rules, so those rules are not being checked",
             "; ".join(failures),
@@ -103,7 +103,7 @@ def evaluate(ctx: HookContext) -> Result | None:
 
     if not matches:
         return None
-    agent, user = messages.load_pair(ctx.hooks_dir, "verdict")
+    agent, user = load_message_pair(ctx.hooks_dir, "verdict")
     return warn(
         agent.replace("{rules}", _matched(matches, loaded)).replace("{call}", content),
         user.replace("{rules}", _flagged(matches)) if user else None,
@@ -158,7 +158,7 @@ def inject_ruleset(ctx: HookContext) -> Result | None:
     loaded = _loaded_rules(ctx)
     if not loaded:
         return None
-    return warn(ctx.message("ruleset").replace("{rules}", _digest(loaded)))
+    return warn(load_message_pair(ctx.hooks_dir, "ruleset")[0].replace("{rules}", _digest(loaded)))
 
 
 HANDLERS = {

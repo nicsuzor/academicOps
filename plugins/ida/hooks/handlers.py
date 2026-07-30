@@ -19,9 +19,9 @@ messages.py). No handler here builds either from a Python literal.
 
 from __future__ import annotations
 
-import messages
-from context import HookContext
-from result import Result, warn
+from dispatch import load_message_pair
+from dispatch import HookContext
+from dispatch import Result, warn
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
@@ -36,7 +36,7 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
     the time this fires. It has one job, which is to arrive at the instant the
     caller is deciding what to believe.
     """
-    return warn(*messages.load_pair(ctx.hooks_dir, "hearsay"))
+    return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
 HANDLERS: dict[str, list] = {

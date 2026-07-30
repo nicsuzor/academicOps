@@ -18,9 +18,9 @@ messages.py). No handler here builds either from a Python literal.
 
 from __future__ import annotations
 
-import messages
-from context import HookContext
-from result import Result, warn
+from dispatch import load_message_pair
+from dispatch import HookContext
+from dispatch import Result, warn
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
@@ -32,7 +32,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     fires on every prompt, so without that line the most frequent injection in
     the session is also the one they can never see happen.
     """
-    return warn(*messages.load_pair(ctx.hooks_dir, "pkb-context"))
+    return warn(*load_message_pair(ctx.hooks_dir, "pkb-context"))
 
 
 HANDLERS: dict[str, list] = {

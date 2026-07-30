@@ -56,8 +56,8 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 
-import degraded
-import messages
+import sys
+from dispatch import load_message_pair
 
 #: Wire protocols ``COPE_EVALUATOR_PROTOCOL`` accepts.
 PROTOCOLS = ("cope", "openai")
@@ -132,7 +132,7 @@ def _note(message: str) -> None:
     Every caller is a value someone set and meant to work. Nothing set at all
     never reaches here — that is ``resolve`` returning ``None`` in silence.
     """
-    degraded.report(DEGRADED_CONFIG, f"cope: {message}")
+    print('DEGRADED: ',  f"cope: {message}")
 
 
 def _setting(name: str) -> str:
@@ -309,7 +309,7 @@ def check(
         return [], []
 
     system_prompt = (
-        messages.load(hooks_dir, "classifier-prompt") if config.protocol == "openai" else ""
+        load_message_pair(hooks_dir, "classifier-prompt")[0] if config.protocol == "openai" else ""
     )
     deadline = time.monotonic() + config.timeout
 
