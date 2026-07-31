@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -224,13 +225,14 @@ def _write_handlers(hooks_dir: Path, body: str) -> None:
 
 
 def _run_dispatch(
-    hooks_dir: Path, client: str, event: str, raw: dict
+    hooks_dir: Path, client: str, event: str, raw: dict, env: dict | None = None
 ) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(hooks_dir / "dispatch.py"), client, event],
         input=json.dumps(raw),
         capture_output=True,
         text=True,
+        env=env,
     )
 
 
@@ -287,6 +289,31 @@ def test_self_loop_guard_does_not_apply_to_other_events(gated_plugin):
     assert result.returncode == 0
     out = json.loads(result.stdout)
     assert out["hookSpecificOutput"]["additionalContext"] == "careful"
+
+
+def test_self_loop_guard_precedes_the_hook_fire_log(gated_plugin, tmp_path):
+    """The guard sits before ``_log_fire`` too, not just before the handler.
+
+    Every case above proves the *output* of a continuation stop is empty, which
+    a guard placed anywhere before ``render()`` would also produce — including
+    one moved to just after ``_log_fire()``. What distinguishes the early
+    position (``lib/hooks/dispatch.py``, before ``normalize()``) is that no
+    state is touched at all: a continuation must not append a record to
+    ``$AOPS_HOOK_LOG_PATH`` either, matching the guard comment's claim.
+    """
+    _write_handlers(gated_plugin, _BLOCKING_HANDLER)
+    log_path = tmp_path / "hooks.jsonl"
+    env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(log_path)}
+    result = _run_dispatch(
+        gated_plugin,
+        "claude",
+        "Stop",
+        {"hook_event_name": "Stop", "stop_hook_active": True},
+        env=env,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+    assert not log_path.exists(), "a continuation stop wrote to the hook-fire log"
 
 
 def test_dispatch_block_end_to_end_on_claude_stop(gated_plugin):

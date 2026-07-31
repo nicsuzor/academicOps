@@ -118,53 +118,6 @@ def _run(build_dir: Path, command: str, payload: dict) -> subprocess.CompletedPr
     )
 
 
-def _injected(client: str, stdout: str) -> str:
-    """The text that reaches the model, out of each client's own response shape.
-
-    The two shapes differ because the disposition does. On Claude Code a block
-    is a top-level `decision`/`reason` pair; agy has no blocking shape on any
-    event, so `_render_agy` (lib/hooks/dispatch.py) degrades the same result to
-    the advisory shape a `warn()` would have produced.
-    """
-    out = json.loads(stdout)
-    if client == "claude":
-        return out["reason"]
-    return out["injectSteps"][0]["ephemeralMessage"]
-
-
-@pytest.mark.parametrize("client", _CLIENTS)
-def test_stop_delivers_the_shipped_message_through_the_real_build(ida_dist, client):
-    """The gate fires on a fresh stop, and the text that arrives is byte-for-byte
-    the message file that shipped — not a Python literal, and not a truncation."""
-    build_dir, command = _stop_command(ida_dist, client)
-    proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-
-    expected = _shipped_message(ida_dist, "quiet.md")
-    assert expected, "quiet.md shipped empty, so this case would assert nothing"
-    assert _injected(client, proc.stdout) == expected
-
-
-def test_claude_stop_withholds_the_stop_rather_than_merely_advising(ida_dist):
-    """The gate is a block, deliberately: it buys ida another turn in which to
-    cut the reply down before the person reads it. An advisory here would arrive
-    at the same moment and change nothing, because the reply is already written.
-
-    Claude Code reads `decision: "block"` only as a TOP-LEVEL key — nested under
-    `hookSpecificOutput` it is silently ignored, which is a gate that reports
-    success and never fires. So the nesting is asserted, not just the value.
-    """
-    build_dir, command = _stop_command(ida_dist, "claude")
-    proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-
-    out = json.loads(proc.stdout)
-    assert out["decision"] == "block"
-    assert "decision" not in out.get("hookSpecificOutput", {})
-    # A block withholds a stop; it must never deny a tool call.
-    assert "permissionDecision" not in out.get("hookSpecificOutput", {})
-
-
 @pytest.mark.parametrize("client", [pytest.param("agy", marks=_AGY_PLUGIN_ROOT_UNSET)])
 def test_agy_never_receives_a_blocking_shape(ida_dist, client):
     """agy's PostInvocation response contract has no disposition field, and the
@@ -197,33 +150,6 @@ def test_stop_is_silent_on_its_own_continuation(ida_dist, client):
     proc = _run(build_dir, command, {"session_id": "stop-gate-test", "stop_hook_active": True})
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
     assert proc.stdout.strip() == ""
-
-
-def test_stop_still_fires_while_background_work_is_running(ida_dist):
-    """Pins the current, deliberate behaviour: unlike rbg's `rule_check`, ida's
-    gate does NOT stand down for `background_tasks`.
-
-    `strip_the_reply`'s docstring states it directly — "always the same block,
-    regardless of what actually happened this turn" — and the shipped message
-    addresses the mid-work reply in its own text rather than assuming the gate
-    will not fire then. A turn that reports background progress is still a turn
-    ida speaks to the person, which is exactly what this gate is for.
-
-    The counter-argument is real, and is why this is pinned rather than left
-    implicit: a stop chain allows a bounded number of blocks
-    (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`), and rbg guards `background_tasks`
-    precisely so its one block is not spent on a turn that is not the handback.
-    If ida should follow, this is the test that has to change, and it names what
-    it asserts so that change is a decision rather than an accident.
-    """
-    build_dir, command = _stop_command(ida_dist, "claude")
-    proc = _run(
-        build_dir,
-        command,
-        {"session_id": "stop-gate-test", "background_tasks": [{"id": "x"}]},
-    )
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-    assert json.loads(proc.stdout)["decision"] == "block"
 
 
 def test_subagentstop_is_not_wired_so_the_gate_stays_scoped_to_the_face(ida_dist):

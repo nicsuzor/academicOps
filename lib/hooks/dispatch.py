@@ -122,6 +122,16 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     again and re-fires the hook; the client marks that re-entry with
     ``stop_hook_active``. Answering yes here is what gives a stop hook
     once-per-chain semantics with no state of its own.
+
+    Claude Code (and Antigravity) can re-fire Stop/SubagentStop for the same
+    stop after a hook already ran once for it — the client re-invokes the same
+    hook to let it reconsider, and the re-invocation payload carries
+    ``stop_hook_active=true``. Treating that re-entry as a fresh stop is the
+    loop that hit ``router.py`` on 2026-07-13. Callers must check this before
+    ``normalize()``, before logging the fire, and before loading or running any
+    handler — structurally, in the dispatcher itself rather than in each
+    handler, so every current and future Stop/SubagentStop handler is covered
+    without having to remember it.
     """
     return event in STOP_EVENTS and bool(raw.get("stop_hook_active"))
 
@@ -140,16 +150,6 @@ def to_canonical(client: str, wire_event: str) -> str | None:
     if wire_event in mapping:
         return mapping[wire_event]
     return wire_event
-
-
-# Claude Code (and Antigravity) can re-fire Stop/SubagentStop for the same
-# stop after a hook already ran once for it — the client re-invokes the same
-# hook to let it reconsider, and the re-invocation payload carries
-# stop_hook_active=true. Treating that re-entry as a fresh stop is the loop
-# that hit router.py on 2026-07-13. Guarded here, structurally, in the
-# dispatcher itself rather than in each handler, so every current and future
-# Stop/SubagentStop handler is covered without having to remember it.
-_SELF_LOOP_GUARDED_EVENTS = frozenset(STOP_EVENTS)
 
 
 def _log_fire(ctx: HookContext) -> None:
@@ -315,11 +315,10 @@ def main(argv: list[str]) -> int:
     if event is None:
         return 0
 
-    # Structural self-loop guard (see _SELF_LOOP_GUARDED_EVENTS above): a
-    # truthy stop_hook_active on a Stop/SubagentStop payload means this is a
-    # self-triggered re-entry, not a fresh stop. No-op before any handler is
-    # loaded or run: no state is touched, nothing is printed.
-    if event in _SELF_LOOP_GUARDED_EVENTS and raw.get("stop_hook_active"):
+    # Structural self-loop guard: no-op before any handler is loaded or run,
+    # and before normalize() / _log_fire() — no state is touched, nothing is
+    # printed. See is_continuation()'s docstring for what this guards against.
+    if is_continuation(event, raw):
         return 0
 
     hooks_dir = Path(__file__).resolve().parent
@@ -328,12 +327,6 @@ def main(argv: list[str]) -> int:
 
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
-
-    # Guarded here rather than in each handler, so every current and future
-    # stop hook gets once-per-chain semantics without having to remember the
-    # check, and no handler can ship without it.
-    if is_continuation(event, raw):
-        return 0
 
     handlers = _load_handlers(event, hooks_dir)
 

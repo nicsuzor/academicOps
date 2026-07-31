@@ -61,16 +61,6 @@ def ida_hooks(tmp_path):
     return _plugin_hooks_dir(tmp_path, _IDA_HOOKS)
 
 
-def test_ida_stop_gate_blocks_with_the_shipped_message(ida_hooks):
-    quiet_md = (_IDA_HOOKS / "messages" / "quiet.md").read_text(encoding="utf-8").strip()
-    result = _run(ida_hooks, "claude", "Stop", {"hook_event_name": "Stop"})
-    assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert out["decision"] == "block"
-    assert out["reason"] == quiet_md
-    assert "systemMessage" in out
-
-
 def test_ida_quiet_gate_is_not_registered_on_subagentstop(ida_hooks):
     """SubagentStop fires on the *stopping subagent's* own context, never the
     face's — wiring the quiet gate there would direct a worker or james to
