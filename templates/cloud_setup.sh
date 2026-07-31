@@ -6,6 +6,9 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
+PKB_SERVER=""
+EMAIL_SERVER=""
+
 # 0) Accept apt release-info changes up front. The base image's ondrej/php PPA
 #    renamed its Label ("PPA for PHP" -> "Use packages.sury.org/php instead"),
 #    which makes every `apt-get update` hard-fail (exit 100) until accepted —
@@ -52,9 +55,12 @@ git config --global core.askPass /usr/local/bin/gh-token-askpass
 #    Optional explicit kick if auto-registration still doesn't trigger on boot:
 claude plugin marketplace add nicsuzor/academicOps#dist
 claude plugin install aops@academicOps
-claude plugin install aops-pkb@academicOps --config pkb_mcp_url="PKB_SERVER"
+claude plugin install aops-pkb@academicOps
 claude plugin install aops-ts@academicOps
 claude plugin install aops-tools@academicOps
-# env vars don't resolve this early in the boot process.
-claude mcp add --transport http --scope local services "PKB_SERVER"
-claude mcp add --transport http --scope local email "EMAIL_SERVER" 
+claude plugin install aops-ida@academicOps
+claude plugin install aops-rbg@academicOps
+
+# env vars don't resolve this early in the boot process, declare them above.
+claude mcp add --transport http --scope local services ${PKB_SERVER}
+claude mcp add --transport http --scope local email ${EMAIL_SERVER}
