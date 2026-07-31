@@ -1,6 +1,12 @@
 """Tests for the ``block`` result kind and the Stop/SubagentStop self-loop
-guard added to ``lib/hooks/dispatch.py`` for the rbg stop gate and the ida
-quiet gate.
+guard in ``lib/hooks/dispatch.py``, which the rbg stop gate is built on.
+
+Originally written on the `gate-wiring-v07` branch, carried across here rather
+than rewritten. The cases covering the ida quiet gate were dropped with that
+gate; everything about the shared runtime is kept. Its counterpart file
+``tests/test_rbg_stop_gate.py`` drives the same runtime end to end through the
+shipped plugin — these are the unit layer beneath it, and they are what pin
+``_merge``'s precedence, which no end-to-end case reaches.
 
 ``tests/test_hooks.py`` is the file that would normally carry these — its own
 docstring says it "covers the dispatch runtime" — but as of this branch it
@@ -124,7 +130,13 @@ def test_render_claude_block_on_a_non_stop_event_never_emits_decision_block(even
     assert "decision" not in out
     assert out["hookSpecificOutput"]["additionalContext"] == "keep going"
     assert "permissionDecision" not in out["hookSpecificOutput"]
-    assert "illegal" in capsys.readouterr().err
+    # Asserted on substance rather than on one word of the message: the report
+    # has to name the offending event and say the disposition did not survive,
+    # which is what makes it actionable. A single magic word would break on any
+    # rewording while proving less.
+    err = capsys.readouterr().err
+    assert event in err, f"the report does not name the event: {err!r}"
+    assert "advisory" in err, f"the report does not say it degraded: {err!r}"
 
 
 def test_render_claude_refusal_still_wins_its_own_shape_on_stop():

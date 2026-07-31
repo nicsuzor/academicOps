@@ -1,11 +1,11 @@
-"""cope's advisories: one per surface, each scoped to the clients that have it.
+"""rbg's rule checks: one per surface, each scoped to the clients that have it.
 
-``evaluate`` is the ``PreToolUse`` check. It loads the three-layer rule set
-(rules.py) and asks a Reflexes evaluator — a small language model, remote or
-locally hosted (evaluator.py) — whether the tool call matches each live rule.
-The judgment is the model's; cope only composes the question and reports what
-came back. Nothing about a rule's meaning is decided by matching text against
-a pattern.
+``evaluate`` is the ``PreToolUse`` check — layer 1, turn by turn. It loads the
+three-layer rule set (rules.py) and asks a Reflexes evaluator — a small language
+model, remote or locally hosted (evaluator.py) — whether the tool call matches
+each live rule. The judgment is the model's; rbg only composes the question and
+reports what came back. Nothing about a rule's meaning is decided by matching
+text against a pattern.
 
 ``inject_ruleset`` is the ``UserPromptSubmit`` (agy ``PreInvocation``) advisory.
 That surface carries a prompt, not a tool call, so there is nothing for the
@@ -14,17 +14,20 @@ the turn. It is scoped to agy because Claude Code fires both events and is
 already covered by ``evaluate``, and because the pkb plugin owns Claude's
 ``UserPromptSubmit`` injection.
 
-Both are advisory only — they return a ``Result`` (context injected for the
-agent to read), never a permission decision; see lib/hooks/dispatch.py and
-specs/ARCHITECTURE.md, Enforcement. Real enforcement is a separate merge-stage
-check.
+Both of those are advisory only, permanently. They return an advisory ``Result``
+— context injected for the agent to read — and never a disposition. A rule
+verdict from a small model is not something to enforce with.
 
-``check_rules_before_stopping`` is the ``Stop``/``SubagentStop`` gate. It
-returns a ``block`` (lib/hooks/dispatch.py) directing the agent to run the
-rule check itself before the turn ends — the hook has no transcript to
-evaluate and does not check anything on its own behalf. The once-per-chain
-semantics come from dispatch.py's structural self-loop guard; this handler
-does not re-check ``stop_hook_active``.
+``rule_check`` is layer 2, at the session's stop. It is the one handler here
+that carries a disposition, and what it withholds is the stop, not a tool call:
+the agent gets another turn in which to run the check and show its evidence.
+The disposition is legal because the thing being judged is whether the check has
+happened at all, which is a fact about the session rather than a reading of a
+rule. Registered on both ``Stop`` and ``SubagentStop`` — unlike ida's quiet
+gate below, rbg's rule check applies equally to the face and to a stopping
+worker, so both events are wired. The once-per-chain semantics come from
+dispatch.py's structural self-loop guard; this handler does not re-check
+``stop_hook_active`` itself.
 
 One hook invocation is one process (dispatch.py runs, does its job, exits), so
 the rule set is loaded once per call and cached at module scope for the life of
@@ -72,22 +75,19 @@ def _loaded_rules(ctx: HookContext) -> dict[str, rules.Rule]:
 def evaluate(ctx: HookContext) -> Result | None:
     """Ask the evaluator whether this tool call matches any live rule.
 
-    No evaluator configured is a clean no-op — cope has nothing to ask with,
+    No evaluator configured is a clean no-op — rbg has nothing to ask with,
     which is not a failure of the session. Nothing matched is a no-op too. Only
     a rule the model actually flagged produces an advisory, and the advisory
     hands back the rule's own text so the agent can correct its own course.
 
-    The advisory has two readers, so it is loaded as a pair via
-    ``load_message_pair`` (lib/hooks/dispatch.py), from this plugin's
-    ``messages/`` directory. The agent gets the rule text; the person watching
-    gets one line naming what was flagged, because a check that only ever
-    speaks to the agent leaves the person whose session it is with no idea it
-    fired.
+    The advisory has two readers, so it is loaded as a pair
+    (``load_message_pair``). The agent gets the rule text; the person watching
+    gets one line naming what was flagged, because a check that only ever speaks
+    to the agent leaves the person whose session it is with no idea it fired.
 
-    An evaluator that could not answer is reported to stderr, on every call it
-    happens on — there is no once-per-session dedup in this runtime. The call
-    still proceeds: a rule that went unjudged is not a rule that passed, and
-    it is not grounds to hold anything up.
+    An evaluator that could not answer is printed to stderr and nowhere else.
+    The call still proceeds: a rule that went unjudged is not a rule that
+    passed, and it is not grounds to hold anything up.
     """
     config = evaluator.resolve()
     if config is None:
@@ -102,9 +102,10 @@ def evaluate(ctx: HookContext) -> Result | None:
 
     if failures:
         print(
-            "DEGRADED: "
-            f"cope: the rule evaluator did not answer for {len(failures)} of "
-            f"{len(policies)} rules, so those rules are not being checked: " + "; ".join(failures),
+            "DEGRADED: ",
+            f"rbg: the rule evaluator did not answer for {len(failures)} of "
+            f"{len(policies)} rules, so those rules are not being checked",
+            "; ".join(failures),
             file=sys.stderr,
         )
 
@@ -168,26 +169,44 @@ def inject_ruleset(ctx: HookContext) -> Result | None:
     return warn(load_message_pair(ctx.hooks_dir, "ruleset")[0].replace("{rules}", _digest(loaded)))
 
 
-def check_rules_before_stopping(ctx: HookContext) -> Result | None:
-    """Direct the agent to run the rule check itself before the turn ends.
+def rule_check(ctx: HookContext) -> Result | None:
+    """Withhold the stop until the session's rule compliance has been checked
+    and its evidence presented.
 
-    This is not a transcript evaluator: it has no access to what actually
-    happened this turn, only to the fact that a stop is about to happen. So
-    it never judges anything — it always returns the same ``block``, telling
-    the agent to check its own work against the axioms, project rules, and
-    local rules, and to present checkable evidence rather than an assertion.
+    Blocking, and the only handler here that is. Layer 1 advises on one tool
+    call at a time and cannot see the shape of the finished work; this is the
+    one moment a whole turn is available to judge, and it is the last one —
+    after the stop lands there is nothing left to correct.
 
-    Once per stop chain, not once per handler invocation: dispatch.py's
-    structural self-loop guard (``_SELF_LOOP_GUARDED_EVENTS``) suppresses the
-    re-fire Claude Code sends with ``stop_hook_active`` true, so this handler
-    does not need to, and does not, check that flag itself.
+    Once per stop-chain, and that guard is dispatch.py's, not this handler's.
+
+    ``background_tasks`` holds it silent while work is still running: nothing is
+    being handed back yet, so there is nothing to check, and firing here would
+    spend the chain's one block on a turn that is not the handback.
+
+    No transcript is read here. What the hook does is oblige the check; running
+    it, and judging what it finds, stays with the agent.
     """
-    return block(*load_message_pair(ctx.hooks_dir, "stop-check"))
+    if ctx.raw.get("background_tasks"):
+        return None
+
+    reason = load_message_pair(ctx.hooks_dir, "rule-check")[0]
+    if not reason:
+        # A block is an instruction to do something. With no text there is no
+        # instruction, and blocking would cost the agent a turn to be told
+        # nothing — worse than not blocking. Fail open and say why.
+        print(
+            "DEGRADED: rbg: hooks/messages/rule-check.md is missing or empty, so the stop-side "
+            "rule check cannot be asked for; letting the stop through",
+            file=sys.stderr,
+        )
+        return None
+    return block(reason)
 
 
 HANDLERS = {
     "PreToolUse": [evaluate],
     "UserPromptSubmit": [inject_ruleset],
-    "Stop": [check_rules_before_stopping],
-    "SubagentStop": [check_rules_before_stopping],
+    "Stop": [rule_check],
+    "SubagentStop": [rule_check],
 }

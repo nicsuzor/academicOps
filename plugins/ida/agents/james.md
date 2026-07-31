@@ -7,7 +7,7 @@ skills:
   - strategic-review
   - dispatch
 subagents:
-  - "aops-cope:rbg"
+  - "rbg:rbg"
   - "aops-pkb:pauli"
   - "aops:marsha"
   - general-purpose

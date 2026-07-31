@@ -151,9 +151,10 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
 
 
 # ---------------------------------------------------------------------------
-# Stop/SubagentStop gate wiring: rbg's rule-check gate and ida's quiet gate
-# ship on the events and clients they claim; pkb ships neither (its stop gate
-# is deliberately deferred — no session -> task query exists server-side).
+# Stop/SubagentStop gate wiring, asserted against the *built* artifact rather
+# than the source manifest — a template can be right while the build drops it.
+# pkb ships neither: its stop gate is blocked server-side, and this pins that
+# it stays unwired rather than being swept in by accident.
 # ---------------------------------------------------------------------------
 
 
@@ -176,19 +177,28 @@ def _agy_hook_events(plugin_dir_name: str) -> set[str]:
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_rbg_ships_the_stop_gate_on_claude_and_agy():
     assert {"Stop", "SubagentStop"} <= _claude_hook_events("rbg-claude")
-    assert "Stop" in _agy_hook_events("rbg-agy")
+    # agy's wire name is PostInvocation; dispatch.py maps it onto canonical
+    # Stop, where it can only ever advise.
+    assert "PostInvocation" in _agy_hook_events("rbg-agy")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
-def test_ida_ships_the_quiet_gate_on_claude_only():
+def test_ida_ships_the_quiet_gate_on_claude_stop_only():
+    """ida's quiet gate directs the face to strip its own reply before it
+    speaks to the person. Registered on claude ``Stop`` and agy
+    ``PostInvocation`` (which dispatch.py maps onto canonical ``Stop``) only:
+    claude ``SubagentStop`` fires on the *stopping subagent's* own context, so
+    wiring it there would nag a worker (or james) about a reply it never sends
+    to the person — the fix for the defect the superseded gate-wiring-v07
+    branch shipped."""
     events = _claude_hook_events("ida-claude")
-    assert {"Stop", "SubagentStop", "PostToolUse"} <= events
-    assert not (DIST_ROOT / "ida-agy" / "hooks.json").exists()
+    assert {"Stop", "PostToolUse"} <= events
+    assert "SubagentStop" not in events
+    assert "PostInvocation" in _agy_hook_events("ida-agy")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_pkb_ships_no_stop_gate():
-    """pkb's stop gate is out of scope for this branch (no session -> task
-    query exists server-side yet) — this pins that it stays unwired rather
-    than getting swept in by accident."""
+    """pkb's stop gate is blocked on a server-side prerequisite, not merely
+    unbuilt. This pins that it stays unwired rather than being swept in."""
     assert _claude_hook_events("pkb-claude") == {"UserPromptSubmit"}

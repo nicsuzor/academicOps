@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "name": "aops-cope",
+  "name": "rbg",
   "clients": {
     "__base__": {},
     "claude": {
@@ -49,12 +49,12 @@
             ]
           }
         ],
-        "Stop": [
+        "PostInvocation": [
           {
             "hooks": [
               {
                 "type": "command",
-                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy Stop"
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
               }
             ]
           }

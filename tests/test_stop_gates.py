@@ -1,6 +1,11 @@
-"""End-to-end tests for the two Stop/SubagentStop gates this branch adds:
-rbg's rule-check gate (plugins/rbg/hooks/handlers.py:check_rules_before_stopping)
-and ida's quiet gate (plugins/ida/hooks/handlers.py:strip_the_reply).
+"""End-to-end tests for ida's quiet gate
+(plugins/ida/hooks/handlers.py:strip_the_reply).
+
+rbg's own Stop/SubagentStop gate (``rule_check``) has its end-to-end coverage
+in tests/test_rbg_stop_gate.py, added by the rbg-dual-channel-v07 branch this
+repo now runs; the rbg cases that used to live here (against the superseded
+gate-wiring-v07 ``check_rules_before_stopping``) were dropped as duplicates
+when that branch was superseded.
 
 Each case builds a synthetic hooks/ dir the way build stage 1 does — lib/hooks/
 copied in, the real plugin's handlers.py and messages/ laid on top, exactly as
@@ -21,7 +26,6 @@ import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
-_RBG_HOOKS = _REPO_ROOT / "plugins" / "rbg" / "hooks"
 _IDA_HOOKS = _REPO_ROOT / "plugins" / "ida" / "hooks"
 
 
@@ -48,56 +52,6 @@ def _run(hooks_dir: Path, client: str, event: str, raw: dict) -> subprocess.Comp
 
 
 # ---------------------------------------------------------------------------
-# rbg: check_rules_before_stopping
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def rbg_hooks(tmp_path):
-    return _plugin_hooks_dir(tmp_path, _RBG_HOOKS)
-
-
-@pytest.mark.parametrize("event", ["Stop", "SubagentStop"])
-def test_rbg_stop_gate_blocks_with_the_shipped_message(rbg_hooks, event):
-    stop_check_md = (_RBG_HOOKS / "messages" / "stop-check.md").read_text(encoding="utf-8").strip()
-    result = _run(rbg_hooks, "claude", event, {"hook_event_name": event})
-    assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert out["decision"] == "block"
-    assert out["reason"] == stop_check_md
-    assert "systemMessage" in out
-
-
-def test_rbg_stop_gate_self_loop_guard_suppresses_the_reentry(rbg_hooks):
-    result = _run(
-        rbg_hooks, "claude", "Stop", {"hook_event_name": "Stop", "stop_hook_active": True}
-    )
-    assert result.returncode == 0
-    assert result.stdout.strip() == ""
-
-
-def test_rbg_agy_stop_gets_an_advisory_never_a_block(rbg_hooks):
-    result = _run(rbg_hooks, "agy", "PostInvocation", {})
-    assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert "decision" not in out
-    assert "injectSteps" in out
-
-
-def test_rbg_pretooluse_and_userpromptsubmit_handlers_are_unaffected(rbg_hooks):
-    """The stop gate is additive — evaluate() and inject_ruleset() still run
-    their own events untouched, with no evaluator configured (clean no-op)."""
-    result = _run(
-        rbg_hooks,
-        "claude",
-        "PreToolUse",
-        {"hook_event_name": "PreToolUse", "tool_name": "Bash"},
-    )
-    assert result.returncode == 0
-    assert result.stdout.strip() == ""
-
-
-# ---------------------------------------------------------------------------
 # ida: strip_the_reply
 # ---------------------------------------------------------------------------
 
@@ -107,10 +61,9 @@ def ida_hooks(tmp_path):
     return _plugin_hooks_dir(tmp_path, _IDA_HOOKS)
 
 
-@pytest.mark.parametrize("event", ["Stop", "SubagentStop"])
-def test_ida_stop_gate_blocks_with_the_shipped_message(ida_hooks, event):
+def test_ida_stop_gate_blocks_with_the_shipped_message(ida_hooks):
     quiet_md = (_IDA_HOOKS / "messages" / "quiet.md").read_text(encoding="utf-8").strip()
-    result = _run(ida_hooks, "claude", event, {"hook_event_name": event})
+    result = _run(ida_hooks, "claude", "Stop", {"hook_event_name": "Stop"})
     assert result.returncode == 0
     out = json.loads(result.stdout)
     assert out["decision"] == "block"
@@ -118,12 +71,23 @@ def test_ida_stop_gate_blocks_with_the_shipped_message(ida_hooks, event):
     assert "systemMessage" in out
 
 
+def test_ida_quiet_gate_is_not_registered_on_subagentstop(ida_hooks):
+    """SubagentStop fires on the *stopping subagent's* own context, never the
+    face's — wiring the quiet gate there would direct a worker or james to
+    strip a reply it never sends to the person. This is the defect the
+    superseded gate-wiring-v07 branch shipped; the fix is that dispatch.py
+    finds no handler for SubagentStop here and emits nothing at all."""
+    result = _run(ida_hooks, "claude", "SubagentStop", {"hook_event_name": "SubagentStop"})
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
 def test_ida_stop_gate_self_loop_guard_suppresses_the_reentry(ida_hooks):
     result = _run(
         ida_hooks,
         "claude",
-        "SubagentStop",
-        {"hook_event_name": "SubagentStop", "stop_hook_active": True},
+        "Stop",
+        {"hook_event_name": "Stop", "stop_hook_active": True},
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""

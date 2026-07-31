@@ -13,11 +13,18 @@ session that dispatched it. Aimed at the worker, this text does worse than
 miss — the worker spends its final message arguing with a warning about
 itself, and the caller loses the report it was waiting for.
 
-``strip_the_reply`` is the ``Stop``/``SubagentStop`` gate. It returns a
-``block`` (lib/hooks/dispatch.py) directing ida to strip its own reply to the
-person down to load-bearing content before it stops — not a check on what was
+``strip_the_reply`` is the ``Stop`` gate. It returns a ``block``
+(lib/hooks/dispatch.py) directing ida to strip its own reply to the person
+down to load-bearing content before it stops — not a check on what was
 already said, since the hook has no transcript to read, only a reminder that
 fires at the moment ida is about to speak.
+
+The event is load-bearing, same reasoning as ``rule_against_hearsay`` above:
+``Stop`` fires only on the session's own turn boundary, so registering there
+scopes the gate to the face. ``SubagentStop`` fires on the *stopping
+subagent's* own context — wiring it there would direct a worker or james to
+strip a reply it never sends to the person, which is not what this gate is
+for. Deliberately not wired.
 
 Every agent-visible string comes from ``messages/<name>.md``, and every
 user-visible one from ``messages/<name>.user.md`` beside it, loaded via
@@ -62,5 +69,4 @@ def strip_the_reply(ctx: HookContext) -> Result | None:
 HANDLERS: dict[str, list] = {
     "PostToolUse": [rule_against_hearsay],
     "Stop": [strip_the_reply],
-    "SubagentStop": [strip_the_reply],
 }

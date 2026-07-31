@@ -32,6 +32,21 @@ class HookContext:
 
 @dataclass(frozen=True)
 class Result:
+    """One of three dispositions, in descending order of force.
+
+    ``is_refusal`` denies a tool call outright and is reserved for structural
+    impossibility — the session as configured cannot carry the call out, so
+    letting it through produces a hang rather than an outcome. It is never a
+    rule verdict.
+
+    ``is_block`` refuses to let a *stop* land: the turn continues so the agent
+    can do the thing the hook asked for. It is legal only on the events in
+    ``BLOCKABLE_EVENTS``, because no other event has a stop to withhold.
+
+    Neither set is an advisory: text the agent reads and weighs, which is what
+    every rule-driven handler is limited to.
+    """
+
     inject_text: str
     user_text: str | None = None
     is_refusal: bool = False
@@ -47,9 +62,6 @@ def refuse(reason: str, user_text: str | None = None) -> Result:
 
 
 def block(reason: str, user_text: str | None = None) -> Result:
-    """A Stop/SubagentStop-only outcome: tell the agent to keep going, not
-    that the tool call is denied. Distinct from ``refuse`` — a refusal is
-    structural impossibility on a tool call, a block is "do not stop yet"."""
     return Result(reason, user_text, is_block=True)
 
 
@@ -72,6 +84,26 @@ CANONICAL_EVENTS = (
     "Stop",
     "SubagentStop",
 )
+
+STOP_EVENTS = ("Stop", "SubagentStop")
+
+# The events a block disposition is honoured on. Claude Code reads
+# ``decision: "block"`` on a stop and gives the session another turn; on every
+# other event the field is not part of the response contract, so emitting it
+# there is a no-op the handler would mistake for enforcement.
+BLOCKABLE_EVENTS = STOP_EVENTS
+
+
+def is_continuation(event: str, raw: dict[str, Any]) -> bool:
+    """Is this stop the one our own injection caused, rather than a real one?
+
+    A hook that injects on a stop gives the session another turn, which stops
+    again and re-fires the hook; the client marks that re-entry with
+    ``stop_hook_active``. Answering yes here is what gives a stop hook
+    once-per-chain semantics with no state of its own.
+    """
+    return event in STOP_EVENTS and bool(raw.get("stop_hook_active"))
+
 
 TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
@@ -158,12 +190,12 @@ def _run_handler(handler: Handler, ctx: HookContext) -> Result | None:
 
 
 def _merge(results: list[Result | None]) -> Result | None:
-    """Precedence, most authoritative first: a refusal beats a block, a block
-    beats a plain advisory, and among same-kind results the first registered
-    wins. A refusal means the call is structurally impossible and must not be
-    buried under a handler that merely wants the agent to keep working; a
-    block means "not done yet" and must not be drowned out by an ordinary
-    warn() from another handler on the same event."""
+    """Strongest disposition wins, then first-registered.
+
+    Within one plugin's handlers only. Two plugins registered on the same event
+    are two processes and never meet here, so this settles registration order,
+    not precedence between plugins — the client decides that.
+    """
     present = [r for r in results if r is not None]
     for r in present:
         if r.is_refusal:
@@ -175,6 +207,23 @@ def _merge(results: list[Result | None]) -> Result | None:
 
 
 def _render_claude(result: Result, event: str) -> dict:
+    if result.is_block and event in BLOCKABLE_EVENTS:
+        blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
+        if result.user_text:
+            blocked["systemMessage"] = result.user_text
+        return blocked
+
+    if result.is_block:
+        # Degraded rather than dropped: the text is still worth delivering, but
+        # the disposition is not, and a handler must not read silence here as
+        # enforcement that happened.
+        print(
+            f"aops hooks: a block disposition was returned on {event!r}, which does not "
+            "honour one; degrading it to an advisory",
+            file=sys.stderr,
+        )
+
+    output: dict[str, Any]
     if result.is_refusal:
         specific = {
             "hookEventName": event,
@@ -203,13 +252,19 @@ def _render_claude(result: Result, event: str) -> dict:
             )
         specific = {"hookEventName": event, "additionalContext": result.inject_text}
 
-    output: dict[str, Any] = {"hookSpecificOutput": specific}
+    output = {"hookSpecificOutput": specific}
     if result.user_text:
         output["systemMessage"] = result.user_text
     return output
 
 
 def _render_agy(result: Result) -> dict:
+    """agy has no blockable event, so a block reaches it as advice or not at all.
+
+    Its ``PostInvocation`` response contract is a bare object with no disposition
+    field to carry one, and the invocation has already ended by the time the
+    event fires. The text still has somewhere to go, so it goes there.
+    """
     if result.is_refusal:
         return {"decision": "deny", "reason": result.inject_text}
     # agy has no blocking shape at all, on any event — a block() downgrades
@@ -271,6 +326,12 @@ def main(argv: list[str]) -> int:
 
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
+
+    # Guarded here rather than in each handler, so every current and future
+    # stop hook gets once-per-chain semantics without having to remember the
+    # check, and no handler can ship without it.
+    if is_continuation(event, raw):
+        return 0
 
     handlers = _load_handlers(event, hooks_dir)
 
