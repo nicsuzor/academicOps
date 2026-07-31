@@ -1,9 +1,9 @@
 {
   "manifestVersion": "1.0",
-  "name": "aops-ts",
+  "name": "ts",
   "clients": {
     "__base__": {
-      "name": "aops-ts",
+      "name": "ts",
       "description": "AcademicOps Tailscale bring-up — opt-in SessionStart hook that joins the tailnet in remote/cloud sessions so tailnet services (e.g. the PKB MCP) resolve",
       "author": {
         "name": "Nicolas Suzor"

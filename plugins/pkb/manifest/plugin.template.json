@@ -1,15 +1,22 @@
 {
   "manifestVersion": "1.0",
-  "name": "aops-pkb",
+  "name": "pkb",
   "clients": {
     "__base__": {
-      "name": "aops-pkb",
+      "name": "pkb",
       "description": "pauli. Memory, effectual planning, workflow composition, PKB MCP client config.",
       "author": {
         "name": "Nicolas Suzor"
       },
       "license": "MIT",
-      "keywords": ["academicOps", "pkb", "pauli", "memory", "planning", "knowledge-graph"]
+      "keywords": [
+        "academicOps",
+        "pkb",
+        "pauli",
+        "memory",
+        "planning",
+        "knowledge-graph"
+      ]
     },
     "claude": {
       "mcpServers": "./.mcp.json",

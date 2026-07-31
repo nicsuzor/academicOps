@@ -1,9 +1,9 @@
 {
   "manifestVersion": "1.0",
-  "name": "aops-ida",
+  "name": "ida",
   "clients": {
     "__base__": {
-      "name": "aops-ida",
+      "name": "ida",
       "description": "ida — the interactive face."
     },
     "claude": {},
