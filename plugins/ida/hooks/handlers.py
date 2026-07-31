@@ -13,8 +13,8 @@ session that dispatched it. Aimed at the worker, this text does worse than
 miss — the worker spends its final message arguing with a warning about
 itself, and the caller loses the report it was waiting for.
 
-``strip_the_reply`` is the ``Stop`` gate. It returns a ``block``
-(lib/hooks/dispatch.py) directing ida to strip its own reply to the person
+``strip_the_reply`` is the ``Stop`` gate. It returns a ``warn``
+(lib/hooks/dispatch.py) reminding ida to strip its own reply to the person
 down to load-bearing content before it stops — not a check on what was
 already said, since the hook has no transcript to read, only a reminder that
 fires at the moment ida is about to speak.
@@ -34,7 +34,7 @@ from a Python literal.
 
 from __future__ import annotations
 
-from dispatch import HookContext, Result, block, load_message_pair, warn
+from dispatch import HookContext, Result, load_message_pair, warn
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
@@ -53,9 +53,9 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 
 
 def strip_the_reply(ctx: HookContext) -> Result | None:
-    """Direct the face to strip its reply down to what is load-bearing.
+    """Remind the face to strip its reply down to what is load-bearing.
 
-    Always the same block, regardless of what actually happened this turn —
+    Always the same reminder, regardless of what actually happened this turn —
     the hook has no transcript to judge, only the fact that a stop is about to
     happen. Once per stop chain, not once per handler invocation: dispatch.py's
     structural self-loop guard suppresses the ``stop_hook_active`` re-fire, so
