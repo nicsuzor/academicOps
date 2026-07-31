@@ -118,6 +118,40 @@ def _run(build_dir: Path, command: str, payload: dict) -> subprocess.CompletedPr
     )
 
 
+def _injected(client: str, stdout: str) -> str:
+    """The agent-facing text, out of each client's own response shape.
+
+    Both shapes come from the same warn-only disposition — ida's Stop gate
+    never blocks (commit 81e32c09) — but `_render_claude` and `_render_agy`
+    (lib/hooks/dispatch.py) still carry it in different places. Claude Code
+    nests it under `hookSpecificOutput.additionalContext`; agy, which has no
+    blocking shape on any event, puts it at `injectSteps[0].ephemeralMessage`.
+    """
+    out = json.loads(stdout)
+    if client == "claude":
+        return out["hookSpecificOutput"]["additionalContext"]
+    return out["injectSteps"][0]["ephemeralMessage"]
+
+
+@pytest.mark.parametrize("client", _CLIENTS)
+def test_stop_delivers_the_shipped_message_through_the_real_build(ida_dist, client):
+    """The gate fires on a fresh stop, and the agent-facing text that arrives is
+    byte-for-byte the message file that shipped — not a Python literal, and not
+    a truncation.
+
+    This does not assert the gate's disposition — it is warn-only, not a block
+    (commit 81e32c09) — only that whichever shape carries the text carries the
+    right text.
+    """
+    build_dir, command = _stop_command(ida_dist, client)
+    proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+
+    expected = _shipped_message(ida_dist, "quiet.md")
+    assert expected, "quiet.md shipped empty, so this case would assert nothing"
+    assert _injected(client, proc.stdout) == expected
+
+
 @pytest.mark.parametrize("client", [pytest.param("agy", marks=_AGY_PLUGIN_ROOT_UNSET)])
 def test_agy_never_receives_a_blocking_shape(ida_dist, client):
     """agy's PostInvocation response contract has no disposition field, and the

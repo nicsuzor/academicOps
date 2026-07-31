@@ -9,13 +9,11 @@ shipped plugin — these are the unit layer beneath it, and they are what pin
 ``_merge``'s precedence, which no end-to-end case reaches.
 
 ``tests/test_hooks.py`` is the file that would normally carry these — its own
-docstring says it "covers the dispatch runtime" — but as of this branch it
-cannot be collected at all: it imports ``clients``, ``result``, ``messages``,
-``degraded``, ``credentials``, ``provenance`` and ``telemetry`` from
-``lib/hooks/``, none of which exist any more (``lib/hooks/`` now holds only
-``dispatch.py`` and ``messages/``). That break predates this change and is out
-of scope here, so these cases live in a file that actually runs instead of
-being added to one that cannot collect.
+docstring says it "covers the dispatch runtime" — and it does collect and pass
+(89733bf8 consolidated the old eight-module runtime into ``dispatch.py`` and
+fixed the imports). These cases live here instead of there because they were
+carried across from the `gate-wiring-v07` branch rather than merged in, not
+because the other file is broken.
 
 Two layers, matching the pattern the rest of the suite uses for the shared
 runtime: direct import of ``dispatch.py`` for the pure functions
