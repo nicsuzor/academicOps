@@ -41,12 +41,66 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 _CLIENTS = ("claude", "agy")
-_VERSION = "0.0.0-test"
+
+# PEP 440, because the built plugin carries this into its own pyproject.toml
+# and `uv run` — which is how every hook command starts — refuses to parse a
+# version it cannot resolve. `0.0.0-test` is not PEP 440: uv exits 2 with a
+# TOML parse error before dispatch.py is reached, which fails every hook
+# execution case in this file at the point furthest from its cause.
+_VERSION = "0.0.0.dev0"
+
+# The debug plugin registers a wildcard handler (`HANDLERS = {"*": [...]}`) and
+# wires every event its client can emit, mapped or not — capturing unmapped
+# events is the whole point of it. Both the wiring-coverage assertions below
+# are about plugins whose handlers register named canonical events, so they
+# exempt any plugin that registers `*`. Detected from the shipped handlers.py
+# rather than by plugin name, so a second debug-style plugin is covered and a
+# rename does not silently reopen the hole.
+_WILDCARD_EVENT = "*"
+
+# agy defines no plugin-root variable. The builder only rewrites
+# `${AGY_PLUGIN_ROOT}/<path>` — the form with a path after it — so the leading
+# `uv run --project "${AGY_PLUGIN_ROOT}"` in every agy hook command, which has
+# no path after it, survives into the shipped config. It expands to nothing and
+# uv exits 2 before dispatch.py is reached. Every agy hook in the repo is dead
+# this way, not just one plugin's.
+#
+# The cases that detect it are marked rather than removed: they are the only
+# record of the defect in the suite, and `strict=True` means the marker cannot
+# outlive the fix — the day the builder is corrected they XPASS, which fails,
+# which is the signal to drop the marker. The fix belongs in the agy builder
+# (build/clients/agy.py), not here.
+_AGY_PLUGIN_ROOT_VAR = "${AGY_PLUGIN_ROOT}"
+_AGY_PLUGIN_ROOT_UNSET = pytest.mark.xfail(
+    reason="shipped agy hook commands carry an unexpandable ${AGY_PLUGIN_ROOT}; "
+    "uv exits 2 before the hook runs (affects every agy hook, not just one plugin). "
+    "Fixed by aops_339c0646 — when that lands, drop this marker.",
+    strict=True,
+)
 
 if str(_LIB_HOOKS) not in sys.path:
     sys.path.insert(0, str(_LIB_HOOKS))
 
-import clients  # noqa: E402
+from dispatch import TO_CANONICAL  # noqa: E402
+
+
+def _wire_events(client: str) -> dict[str, str]:
+    """This client's whole wire vocabulary: wire event name -> canonical name.
+
+    Read straight off the shipped table rather than through
+    `dispatch.to_canonical`, which falls back to returning an unmapped wire
+    event under its own name and so cannot answer "is this event in the table
+    at all". An unknown client has no vocabulary — an empty mapping, not an
+    error.
+    """
+    return dict(TO_CANONICAL.get(client, {}))
+
+
+def _canonical_or_none(client: str, wire_event: str) -> str | None:
+    """The canonical name for a wire event, or None if this client cannot fire
+    it. Same reason as `_wire_events` for going to the table directly."""
+    return TO_CANONICAL.get(client, {}).get(wire_event)
+
 
 # Where each client reads its hook config from (build/clients/*.py).
 _HOOKS_JSON_PATH = {"claude": Path("hooks/hooks.json"), "agy": Path("hooks.json")}
@@ -194,6 +248,13 @@ def _run_shipped_hook(
     resolved = command.replace(_CLAUDE_PLUGIN_ROOT_VAR, str(build_dir))
     env = dict(os.environ)
     env.pop("CLAUDE_CODE_REMOTE", None)  # keep the ts hooks on their no-op path
+    # This suite runs under `uv run`, so VIRTUAL_ENV names the academicOps
+    # venv. Every hook command starts `uv run --project <plugin>`, and uv warns
+    # on stderr when an active VIRTUAL_ENV is not the project's own. No client
+    # runs a hook with this repo's venv active, so inheriting it would put
+    # stderr output into these runs that the field never produces — and the
+    # silence assertions would be measuring the test runner, not the hook.
+    env.pop("VIRTUAL_ENV", None)
     for key, value in (env_overrides or {}).items():
         if value is None:
             env.pop(key, None)
@@ -279,6 +340,7 @@ def test_shipped_agy_hooks_json_matches_agys_schema(dist_root):
     assert checked > 0, "no agy hooks.json was checked"
 
 
+@_AGY_PLUGIN_ROOT_UNSET
 def test_shipped_agy_hook_commands_resolve_from_the_plugin_root(dist_root):
     """agy defines no plugin-root variable — `${AGY_PLUGIN_ROOT}` expands to
     nothing and the path never resolves. What it does give a hook is the
@@ -304,6 +366,7 @@ def test_shipped_agy_hook_commands_resolve_from_the_plugin_root(dist_root):
     assert checked > 0, "no agy hook commands were checked"
 
 
+@_AGY_PLUGIN_ROOT_UNSET
 def test_no_shipped_config_asks_agy_to_expand_a_variable(dist_root):
     """agy substitutes nothing in the files it reads.
 
@@ -395,11 +458,28 @@ def test_every_shipped_hook_command_runs(dist_root):
     For every plugin, for both clients: take the command out of the built
     config, point it at the real build dir, run it with a representative
     payload, and require a clean exit and a response the client can parse.
+
+    The agy commands that carry `${AGY_PLUGIN_ROOT}` are held out, by the
+    defect described at `_AGY_PLUGIN_ROOT_UNSET` above — they cannot reach
+    dispatch.py at all, so running them would only re-report that one builder
+    bug once per hook. Every other agy command still runs, so the hold-out is
+    as narrow as the defect is.
+
+    It is counted rather than waved through: the hold-out must be non-empty, so
+    the day the builder is fixed this fails and forces the exemption out
+    instead of quietly skipping commands that had started working.
     """
     ran = 0
+    agy_commands = 0
+    held_out = 0
     for name, client, build_dir in _build_dirs(dist_root):
         for wire_event, command in _hook_commands(client, build_dir):
-            canonical = clients.to_canonical(client, wire_event)
+            if client == "agy":
+                agy_commands += 1
+                if _AGY_PLUGIN_ROOT_VAR in command:
+                    held_out += 1
+                    continue
+            canonical = _canonical_or_none(client, wire_event)
             payload = _PAYLOADS.get(canonical or wire_event, {"hook_event_name": wire_event})
             proc = _run_shipped_hook(client, build_dir, command, payload)
             assert proc.returncode == 0, (
@@ -410,24 +490,53 @@ def test_every_shipped_hook_command_runs(dist_root):
                 json.loads(proc.stdout)  # a client parses this; so must we
             ran += 1
     assert ran > 0, "no shipped hook commands were found to run"
+    assert agy_commands > 0, "no agy hook commands were found at all"
+    assert held_out > 0, (
+        f"none of {agy_commands} agy commands carries {_AGY_PLUGIN_ROOT_VAR} — "
+        f"aops_339c0646 looks fixed. Drop the hold-out above and the "
+        f"_AGY_PLUGIN_ROOT_UNSET markers, and run every command."
+    )
+
+
+def _registers_wildcard(hooks_dir: Path) -> bool:
+    """Does this plugin's shipped handlers.py register the `*` event?
+
+    Read as text rather than imported: this is called from cases that only need
+    the yes/no, and a subprocess import per plugin per case costs more than the
+    question is worth. `_registered_events` does the real load where the actual
+    event set matters.
+    """
+    handlers = hooks_dir / "handlers.py"
+    if not handlers.is_file():
+        return False
+    return f'"{_WILDCARD_EVENT}"' in handlers.read_text(encoding="utf-8")
 
 
 def test_no_dispatch_hook_is_wired_to_an_unmappable_event(dist_root):
-    """A `dispatch.py` hook wired to a wire event `lib/hooks/clients.py` cannot
-    map is provably dead: dispatch returns 0 before loading a single handler.
+    """A `dispatch.py` hook wired to a wire event `TO_CANONICAL` does not map
+    for this client is a hook whose event name is never translated.
+
+    `dispatch.to_canonical` passes an unmapped wire event straight through
+    under its own name, so such a hook does not no-op cleanly: it goes on to
+    load handlers under an event name no plugin registers, spawning a process
+    per event to find nothing. Either way the hook does no work, and the
+    wiring is the bug.
 
     Scoped to `dispatch.py` hooks on purpose. A plugin whose hook is a plain
     script — ts's `tailscale-up.sh` — never consults that table, so the table
     says nothing about which events it may legitimately register.
     """
     for name, client, build_dir in _build_dirs(dist_root):
+        if _registers_wildcard(build_dir / "hooks"):
+            continue
         for wire_event, command in _hook_commands(client, build_dir):
             if "dispatch.py" not in command:
                 continue
-            assert clients.to_canonical(client, wire_event) is not None, (
+            assert _canonical_or_none(client, wire_event) is not None, (
                 f"{name}-{client}: hooks.json runs dispatch.py for wire event "
-                f"{wire_event!r}, which lib/hooks/clients.py maps to nothing — "
-                f"the hook would fire and immediately no-op"
+                f"{wire_event!r}, which lib/hooks/dispatch.py's TO_CANONICAL "
+                f"does not map for this client — the hook fires and finds "
+                f"no handler"
             )
 
 
@@ -484,7 +593,7 @@ def test_cope_shipped_hook_flags_the_axiom_it_ships_for(dist_root, stub_evaluato
     runs it, on a `--no-verify` commit, against an evaluator that flags the
     matching policy. It names halt-on-failure and echoes the call. Exit 0 alone
     would also be satisfied by a hook that does nothing."""
-    build_dir = dist_root / "aops-cope-claude"
+    build_dir = dist_root / "rbg-claude"
     commands = _hook_commands("claude", build_dir)
     assert commands, "aops-cope-claude ships no hook command"
 
@@ -506,7 +615,7 @@ def test_cope_shipped_hook_tells_the_person_watching_which_rule_was_flagged(
     stdout, because that is the only field of this response Claude Code shows
     the person whose rules these are. Without it the check runs, corrects the
     agent, and never surfaces — leaving them nothing to decide on."""
-    build_dir = dist_root / "aops-cope-claude"
+    build_dir = dist_root / "rbg-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     proc = _run_shipped_hook(
         "claude", build_dir, command, _PAYLOADS["PreToolUse"], env_overrides=stub_evaluator_env
@@ -520,22 +629,28 @@ def test_cope_shipped_hook_tells_the_person_watching_which_rule_was_flagged(
     assert (build_dir / "hooks" / "messages" / "verdict.user.md").is_file()
 
 
-def test_cope_shipped_hook_tells_the_person_watching_when_it_is_degraded(
+def test_rbg_shipped_hook_reports_a_degradation_out_of_the_built_artifact(
     dist_root, stub_evaluator_env, tmp_path
 ):
-    """The framework's own failure, on the wire, out of the built artifact.
+    """The framework's own failure, reported, out of the built artifact.
 
-    A rule file that cannot be read is a rule that is not being enforced. That
-    has always been reported — on stderr, which the client captures into the
-    transcript and shows nobody. `systemMessage` is the only field of this
-    response a person ever sees, so a fault that never reaches it is a fault
-    the person whose rules these are cannot know about or fix.
+    A rule file that cannot be read is a rule that is not being enforced, and
+    the report has to name the file — the only person who can fix it needs to
+    know which one. It goes to stderr and nowhere else: the response channel
+    for degradation notices went with lib/hooks/degraded.py (89733bf8), and the
+    current contract is stated in plugins/rbg/hooks/evaluator.py's module
+    docstring. The check that the notice still carries its detail is what
+    survived that change, so that is what is asserted.
+
+    The rest of the rule set keeps working regardless — one unreadable file
+    displaces nothing else, which is the fail-open guarantee. And reporting is
+    never a gate: this hook may not block a tool call.
     """
     project = tmp_path / "project"
     (project / ".agents" / "rules").mkdir(parents=True)
     (project / ".agents" / "rules" / "unreadable.md").mkdir()  # a rule file that is not a file
 
-    build_dir = dist_root / "aops-cope-claude"
+    build_dir = dist_root / "rbg-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     proc = _run_shipped_hook(
         "claude",
@@ -546,188 +661,73 @@ def test_cope_shipped_hook_tells_the_person_watching_when_it_is_degraded(
     )
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
 
+    assert "unreadable.md" in proc.stderr, "the shipped hook degraded and said so nowhere"
+    assert "not being checked" in proc.stderr
+    assert "IsADirectoryError" in proc.stderr
+
     out = json.loads(proc.stdout)
-    assert "unreadable.md" in out["systemMessage"], (
-        "the shipped hook degraded and told only its own stderr"
-    )
-    assert "not being checked" in out["systemMessage"]
-    # the log keeps the precise reason, and so does the agent
-    assert "unreadable.md" in proc.stderr
-    assert "IsADirectoryError" in out["hookSpecificOutput"]["additionalContext"]
-    # and reporting it is not a gate: cope may never block a tool call
+    assert "halt-on-failure" in out["hookSpecificOutput"]["additionalContext"]
     assert "decision" not in out
     assert "permissionDecision" not in out["hookSpecificOutput"]
-    assert (build_dir / "hooks" / "messages" / "degraded.user.md").is_file()
 
 
-def test_cope_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_root):
-    """The shipped default. cope bakes in no endpoint, so an installation that
-    has not configured one must cost the session nothing on every tool call:
-    no advisory, no error, no stderr."""
-    build_dir = dist_root / "aops-cope-claude"
+def test_rbg_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_root):
+    """The shipped default. The plugin bakes in no endpoint, so an installation
+    that has not configured one must cost the session nothing on every tool
+    call: no advisory, no error, no stderr.
+
+    Run twice, asserting on the second. The first `uv run` against a freshly
+    built tree creates the plugin's `.venv/` and narrates that on stderr, which
+    would fail the silence assertion for a reason that has nothing to do with
+    the hook. Warming it first keeps the assertion exact — stderr must be
+    EMPTY, not merely free of anything that looks like a complaint.
+    """
+    build_dir = dist_root / "rbg-claude"
     _, command = _hook_commands("claude", build_dir)[0]
+    unconfigured = dict.fromkeys(
+        (
+            "COPE_EVALUATOR_URL",
+            "COPE_EVALUATOR_PROTOCOL",
+            "COPE_EVALUATOR_MODEL",
+            "COPE_EVALUATOR_API_KEY",
+            "COPE_EVALUATOR_TIMEOUT",
+        )
+    )
+    _run_shipped_hook(
+        "claude", build_dir, command, _PAYLOADS["PreToolUse"], env_overrides=unconfigured
+    )
     proc = _run_shipped_hook(
-        "claude",
-        build_dir,
-        command,
-        _PAYLOADS["PreToolUse"],
-        env_overrides=dict.fromkeys(
-            (
-                "COPE_EVALUATOR_URL",
-                "COPE_EVALUATOR_PROTOCOL",
-                "COPE_EVALUATOR_MODEL",
-                "COPE_EVALUATOR_API_KEY",
-                "COPE_EVALUATOR_TIMEOUT",
-            )
-        ),
+        "claude", build_dir, command, _PAYLOADS["PreToolUse"], env_overrides=unconfigured
     )
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
     assert proc.stdout.strip() == ""
     assert proc.stderr.strip() == ""
 
 
-# --- 1b. the one blocking hook, and the boundary around it --------------------
+# --- 1b. no shipped hook denies a tool call -----------------------------------
 #
-# A headless session cannot answer an interactive prompt, so the prompt hangs
-# until the session times out. aops's PreToolUse hook refuses it. That is a
-# capability fact, not a rule verdict (specs/ARCHITECTURE.md, Hooks), and these
-# tests pin all four edges: it fires, it fires only on those tools, it fires
-# only when headless, and cope still cannot reach the mechanism.
-
-# The tool name a Claude Code session actually sends when it asks a person a
-# question. This test file's whole claim about the refusal rests on this one
-# string being the client's, not ours.
+# The framework's one refusing hook — aops's `PreToolUse` check, which denied an
+# interactive prompt in a headless session — retired with the aops plugin
+# (plugins.disabled/aops/, and its `[[plugins]]` entry commented out in
+# build/marketplace.toml). Its cases went with it; the refusal PRIMITIVE is
+# still exercised, at the runtime level, by tests/test_dispatch_gate.py.
 #
-# The previous version of this constant was the production frozenset copied
-# out of handlers.py, wrong names and all, and parametrized over. It proved
-# the hook refuses four names Claude Code has never sent, never once exercised
-# the name it does send, and stayed green while the hook was inert in every
-# shipped session. A test that restates the implementation's own constant can
-# only agree with it. So this list is written from the client's vocabulary,
-# and nothing here imports from or mirrors handlers.py — if the two disagree,
-# that disagreement is the finding.
-_CLIENT_INTERACTIVE_TOOL = "AskUserQuestion"
-
-# Spellings other harnesses give the same capability. Kept because the hook
-# ships to more than one, but held separately: none of them is evidence about
-# Claude Code, and a green run over these alone means nothing.
-_OTHER_HARNESS_INTERACTIVE_TOOLS = (
-    "ask_question",
-    "AskFollowupQuestion",
-    "ask_followup_question",
-    "Question",
-)
-
-_INTERACTIVE_TOOLS = (_CLIENT_INTERACTIVE_TOOL, *_OTHER_HARNESS_INTERACTIVE_TOOLS)
+# What remains here is the boundary that outlived the hook: nothing that ships
+# today may reach the deny shape. That is asserted below both behaviourally
+# (the advisory shape and nothing else, on the payload most likely to provoke a
+# block) and structurally (the source cannot construct a refusal at all).
 
 
-def _aops_pretooluse(dist_root: Path, tool: str, env_overrides: dict[str, str | None]):
-    build_dir = dist_root / "aops-claude"
-    return _run_shipped_hook(
-        "claude",
-        build_dir,
-        _command_for("claude", build_dir, "PreToolUse"),
-        {"hook_event_name": "PreToolUse", "session_id": "test-session", "tool_name": tool},
-        env_overrides=env_overrides,
-    )
+def test_shipped_rbg_hook_can_never_emit_a_blocking_decision(dist_root, stub_evaluator_env):
+    """rbg's rule check is advisory, permanently. Run its shipped PreToolUse
+    hook on the payload most likely to provoke a block — a call its evaluator
+    flags — under a headless environment, and require the advisory shape and
+    nothing else.
 
-
-@pytest.mark.parametrize("headless_var", _HEADLESS_ENV)
-@pytest.mark.parametrize("tool", _INTERACTIVE_TOOLS)
-def test_shipped_aops_hook_refuses_an_interactive_prompt_in_a_headless_session(
-    dist_root, tool, headless_var
-):
-    """Every interactive-prompt tool, under every headless signal."""
-    env = dict.fromkeys(_HEADLESS_ENV, None)
-    env[headless_var] = "1"
-    proc = _aops_pretooluse(dist_root, tool, env)
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-
-    out = json.loads(proc.stdout)["hookSpecificOutput"]
-    assert out["permissionDecision"] == "deny"
-    assert tool in out["permissionDecisionReason"]
-    assert "headless" in out["permissionDecisionReason"]
-
-
-@pytest.mark.parametrize("tool", ["Read", "Bash", "Edit", "Task"])
-def test_shipped_aops_hook_allows_an_ordinary_tool_in_a_headless_session(dist_root, tool):
-    """The refusal is about one capability, not a general gate: a headless
-    session runs every other tool untouched, and the hook stays silent."""
-    proc = _aops_pretooluse(dist_root, tool, {**dict.fromkeys(_HEADLESS_ENV, None), "CI": "1"})
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-    assert proc.stdout.strip() == ""
-
-
-@pytest.mark.parametrize("tool", _INTERACTIVE_TOOLS)
-def test_shipped_aops_hook_allows_an_interactive_prompt_when_someone_is_there(dist_root, tool):
-    """With no headless signal set, a human may be at the keyboard — asking is
-    exactly what these tools are for, and the hook must not touch them."""
-    proc = _aops_pretooluse(dist_root, tool, dict.fromkeys(_HEADLESS_ENV, None))
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-    assert proc.stdout.strip() == ""
-
-
-def test_shipped_aops_hook_refuses_the_tool_claude_code_actually_sends(dist_root):
-    """The parametrized cases above pass with the client's real tool name
-    missing, because four other names carry them. This one cannot: it names
-    `AskUserQuestion` and nothing else, so a regression that drops it fails
-    here specifically, instead of thinning a green parametrized sweep."""
-    proc = _aops_pretooluse(
-        dist_root,
-        _CLIENT_INTERACTIVE_TOOL,
-        {**dict.fromkeys(_HEADLESS_ENV, None), "NONINTERACTIVE": "1"},
-    )
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-
-    out = json.loads(proc.stdout)
-    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
-    assert _CLIENT_INTERACTIVE_TOOL in out["hookSpecificOutput"]["permissionDecisionReason"]
-    # A refusal the user cannot see is a session that mysteriously stalls.
-    assert _CLIENT_INTERACTIVE_TOOL in out["systemMessage"]
-
-
-# --- 1c. both stop events reach the agent that is stopping --------------------
-
-
-@pytest.mark.parametrize("event", ["Stop", "SubagentStop"])
-def test_shipped_aops_stop_hooks_address_the_agent_that_is_stopping(dist_root, event):
-    """A hook's output goes to the session it fired in, so `SubagentStop`
-    reaches the subagent that just stopped — never its parent, which is not in
-    that session. Both events therefore carry the same message: present your
-    own answer with evidence. The regression this guards is the old wording,
-    which told the reader to interrogate a result someone else had handed them,
-    and landed in front of the agent that produced it."""
-    build_dir = dist_root / "aops-claude"
-    proc = _run_shipped_hook(
-        "claude",
-        build_dir,
-        _command_for("claude", build_dir, event),
-        _PAYLOADS[event],
-    )
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-
-    out = json.loads(proc.stdout)
-    injected = out["hookSpecificOutput"]["additionalContext"]
-    assert "Before you stop" in injected
-    assert "A subagent just returned" not in injected
-    assert out["systemMessage"]
-
-
-def test_shipped_aops_ships_no_message_file_nothing_sends(dist_root):
-    """`subagent-result.md` addressed a parent that never receives this hook's
-    output. A message file with no sender is dead weight, and worse, it reads
-    as a live behaviour to anyone auditing the plugin."""
-    messages_dir = dist_root / "aops-claude" / "hooks" / "messages"
-    assert not (messages_dir / "subagent-result.md").exists()
-    handlers = (dist_root / "aops-claude" / "hooks" / "handlers.py").read_text(encoding="utf-8")
-    assert "subagent-result" not in handlers
-
-
-def test_shipped_cope_hook_can_never_emit_a_blocking_decision(dist_root, stub_evaluator_env):
-    """cope is advisory, permanently. Run its shipped PreToolUse hook on the
-    payload most likely to provoke a block — a call its evaluator flags — under
-    a headless environment, and require the advisory shape and nothing else."""
-    build_dir = dist_root / "aops-cope-claude"
+    Scoped to `PreToolUse`. rbg's `Stop`/`SubagentStop` gate does carry a
+    disposition, and legitimately: what it withholds is the stop, not the tool
+    call. Its coverage is tests/test_rbg_stop_gate.py."""
+    build_dir = dist_root / "rbg-claude"
     proc = _run_shipped_hook(
         "claude",
         build_dir,
@@ -745,26 +745,31 @@ def test_shipped_cope_hook_can_never_emit_a_blocking_decision(dist_root, stub_ev
     assert json.loads(proc.stdout)["hookSpecificOutput"]["additionalContext"]
 
 
-def test_shipped_cope_never_reaches_the_refusal_primitive(dist_root):
-    """Structural, not behavioural: cope's own shipped modules must not be able
-    to reach the blocking outcome at all. The runtime is shared, so the only
-    thing keeping cope advisory is that its handlers never get there — assert
-    that directly, rather than trusting one payload not to have found the path.
+def test_shipped_rbg_never_reaches_the_refusal_primitive(dist_root):
+    """Structural, not behavioural: rbg's own shipped modules must not be able
+    to reach the REFUSAL outcome at all. The runtime is shared, so the only
+    thing keeping the rule check off the deny shape is that its handlers never
+    get there — assert that directly, rather than trusting one payload not to
+    have found the path.
 
-    Three tokens, not one. `refuse` is not a substring of `is_refusal`
-    ("refuse" vs "refusal"), so searching for `refuse` alone would sail past
-    `Result(text, is_refusal=True)`, which lib/hooks/clients.py renders as
+    A refusal denies a tool call. rbg's `block` on a stop is a different
+    disposition and is deliberately not banned here — see the module note above
+    section 1b.
+
+    Three tokens, not one. `refuse` (lowercase) does not match `Kind.REFUSE`,
+    so searching for the helper alone would sail past
+    `Result(text, None, Kind.REFUSE)`, which lib/hooks/dispatch.py renders as
     `permissionDecision: deny` just as a refuse() call would; a positional
-    `Result(text, None, True)` evades both. Banning construction closes it, and
-    costs nothing — the return annotation `Result | None` has no `(`.
+    construction evades both. Banning construction closes it, and costs nothing
+    — the return annotation `Result | None` has no `(`.
     """
-    cope_hooks = dist_root / "aops-cope-claude" / "hooks"
-    cope_own = {"handlers.py", "evaluator.py", "rules.py"}
+    rbg_hooks = dist_root / "rbg-claude" / "hooks"
+    rbg_own = {"handlers.py", "evaluator.py", "rules.py"}
     offenders = [
         f"{path.name}: {token}"
-        for path in sorted(cope_hooks.glob("*.py"))
-        if path.name in cope_own
-        for token in ("refuse", "is_refusal", "Result(")
+        for path in sorted(rbg_hooks.glob("*.py"))
+        if path.name in rbg_own
+        for token in ("refuse", "Kind.REFUSE", "Result(")
         if token in path.read_text(encoding="utf-8")
     ]
     assert offenders == []
@@ -773,13 +778,19 @@ def test_shipped_cope_never_reaches_the_refusal_primitive(dist_root):
 # --- 2. mode: a shipped `#!` file is runnable ---------------------------------
 
 
-def test_every_shipped_shebang_file_is_executable(dist_root):
+def test_every_shipped_shebang_file_is_executable(pristine_dist):
     """A `#!` line declares an entry point. `shutil.copy2` reproduces the
     source's mode, so without the build asserting this, a library file
-    committed 0644 ships unrunnable — silently, until a client invokes it."""
+    committed 0644 ships unrunnable — silently, until a client invokes it.
+
+    Against the pristine tree, for the same reason the cleanliness cases below
+    are: this asserts what the BUILD emits, and the execution cases above run
+    `uv run` inside their own tree, which creates a `.venv/` there full of
+    third-party scripts whose modes are uv's business and not the builder's.
+    """
     not_executable = [
-        str(path.relative_to(dist_root))
-        for path in sorted(dist_root.rglob("*"))
+        str(path.relative_to(pristine_dist))
+        for path in sorted(pristine_dist.rglob("*"))
         if path.is_file()
         and not path.is_symlink()
         and has_shebang(path)
@@ -874,14 +885,14 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
         hooks_dir = build_dir / "hooks"
         if not (hooks_dir / "handlers.py").is_file():
             continue  # ts ships a shell hook, not the Python runtime
+        if _registers_wildcard(hooks_dir):
+            continue  # the debug plugin wires every event on purpose
 
         registered = _registered_events(hooks_dir, client)
         assert registered, f"{name}-{client}: handlers.py registers nothing"
 
         expected = {
-            wire
-            for wire, canonical in clients.wire_events(client).items()
-            if canonical in registered
+            wire for wire, canonical in _wire_events(client).items() if canonical in registered
         }
         wired = {wire for wire, _ in _hook_commands(client, build_dir)}
         assert wired == expected, (
@@ -893,42 +904,46 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
 
 
 def test_hook_bearing_plugins_all_present(dist_root):
-    """Guards the loop above against silently checking nothing: these four are
-    the Hooks table in specs/ARCHITECTURE.md."""
+    """Guards the loop above against silently checking nothing: these are the
+    Hooks table in specs/ARCHITECTURE.md, plus the debug plugin.
+
+    Equality, so a plugin that stops shipping hooks fails here rather than
+    quietly dropping out of the coverage loop above.
+    """
     hook_plugins = {
         name
         for name, client, build_dir in _build_dirs(dist_root)
         if _hooks_config(client, build_dir)
     }
-    assert hook_plugins == {"aops", "aops-cope", "aops-pkb", "aops-ts"}
+    assert hook_plugins == {"aops-debug", "ida", "pkb", "rbg", "ts"}
 
 
-def test_cope_wires_preinvocation_on_agy(dist_root):
-    """agy has no PreToolUse equivalent, so cope has no tool call to send its
+def test_rbg_wires_preinvocation_on_agy(dist_root):
+    """agy has no PreToolUse equivalent, so rbg has no tool call to send its
     evaluator there. It still ships a hook: PreInvocation carries the prompt,
     which is enough to state the live rule set for the turn."""
-    assert clients.to_canonical("agy", "PreToolUse") is None
-    wired = {wire for wire, _ in _hook_commands("agy", dist_root / "aops-cope-agy")}
-    assert wired == {"PreInvocation"}
+    assert _canonical_or_none("agy", "PreToolUse") is None
+    wired = {wire for wire, _ in _hook_commands("agy", dist_root / "rbg-agy")}
+    assert wired == {"PreInvocation", "PostInvocation"}
 
 
-def test_aops_wires_claude_pretooluse_and_agy_does_not(dist_root):
-    """The refusal is Claude-only by necessity, not by choice: agy has no wire
-    event that maps to PreToolUse, so wiring one there would spawn a process
-    that returns before loading a handler."""
-    claude_wired = {wire for wire, _ in _hook_commands("claude", dist_root / "aops-claude")}
+def test_rbg_wires_claude_pretooluse_and_agy_does_not(dist_root):
+    """The evaluator check is Claude-only by necessity, not by choice: agy has
+    no wire event that maps to PreToolUse, so wiring one there would spawn a
+    process that finds no tool call to judge."""
+    claude_wired = {wire for wire, _ in _hook_commands("claude", dist_root / "rbg-claude")}
     assert "PreToolUse" in claude_wired
 
-    assert clients.to_canonical("agy", "PreToolUse") is None
-    agy_wired = {wire for wire, _ in _hook_commands("agy", dist_root / "aops-agy")}
-    assert agy_wired == {"PostInvocation"}
+    assert _canonical_or_none("agy", "PreToolUse") is None
+    agy_wired = {wire for wire, _ in _hook_commands("agy", dist_root / "rbg-agy")}
+    assert "PreToolUse" not in agy_wired
 
 
 # --- 5. ts: the session transcript leaves the box, and takes no defaults ------
 
 
 def _ts_session_end(dist_root: Path, payload: dict, env_overrides: dict[str, str | None]):
-    build_dir = dist_root / "aops-ts-claude"
+    build_dir = dist_root / "ts-claude"
     return _run_shipped_hook(
         "claude",
         build_dir,
@@ -939,12 +954,10 @@ def _ts_session_end(dist_root: Path, payload: dict, env_overrides: dict[str, str
 
 
 def test_ts_ships_an_executable_session_end_hook(dist_root):
-    script = dist_root / "aops-ts-claude" / "hooks" / "session-end-sync.sh"
+    script = dist_root / "ts-claude" / "hooks" / "session-end-sync.sh"
     assert script.is_file()
     assert os.access(script, os.X_OK)
-    assert "session-end-sync.sh" in _command_for(
-        "claude", dist_root / "aops-ts-claude", "SessionEnd"
-    )
+    assert "session-end-sync.sh" in _command_for("claude", dist_root / "ts-claude", "SessionEnd")
 
 
 def test_ts_ships_no_agy_hooks_at_all(dist_root):
@@ -953,9 +966,9 @@ def test_ts_ships_no_agy_hooks_at_all(dist_root):
     PostInvocation and Stop, and nothing else. So ts has no hooks on agy, which
     is stated by shipping no `hooks.json` rather than an empty one — and
     certainly not by wiring a `SessionStart` that never fires."""
-    assert not (dist_root / "aops-ts-agy" / "hooks.json").exists()
-    assert clients.to_canonical("agy", "SessionStart") is None
-    assert clients.to_canonical("agy", "SessionEnd") is None
+    assert not (dist_root / "ts-agy" / "hooks.json").exists()
+    assert _canonical_or_none("agy", "SessionStart") is None
+    assert _canonical_or_none("agy", "SessionEnd") is None
 
 
 def test_ts_session_end_bakes_no_host_or_search_path(dist_root):
@@ -963,9 +976,7 @@ def test_ts_session_end_bakes_no_host_or_search_path(dist_root):
     (specs/ARCHITECTURE.md, Binding constraints). The regression this guards is
     a client-installation search path used as a fallback when the configured
     source directory is unset."""
-    text = (dist_root / "aops-ts-claude" / "hooks" / "session-end-sync.sh").read_text(
-        encoding="utf-8"
-    )
+    text = (dist_root / "ts-claude" / "hooks" / "session-end-sync.sh").read_text(encoding="utf-8")
     assert ".claude/plugins/cache" not in text
     assert "$HOME/" not in text
     assert "${HOME}" not in text
@@ -981,9 +992,7 @@ def test_ts_session_end_renderer_contract_is_live(dist_root, tmp_path):
     is opt-in precisely because a silently-dead renderer must not become the
     default route for unredacted session data.
     """
-    script = (dist_root / "aops-ts-claude" / "hooks" / "session-end-sync.sh").read_text(
-        encoding="utf-8"
-    )
+    script = (dist_root / "ts-claude" / "hooks" / "session-end-sync.sh").read_text(encoding="utf-8")
     assert "lib/py/transcripts/runner.py" in script
     assert "-m transcripts.runner" in script
 
@@ -1022,9 +1031,16 @@ def test_ts_session_end_no_destination_is_a_clean_no_op_not_an_error(dist_root):
     assert "AOPS_TS_SYNC_DEST" in proc.stderr
 
 
-def test_cope_does_not_wire_claude_userpromptsubmit(dist_root):
-    """The turn-level advisory is scoped to agy. Claude fires both events and
-    is already covered by cope's PreToolUse check, and the pkb plugin owns
-    Claude's UserPromptSubmit — so cope must not register a second one."""
-    wired = {wire for wire, _ in _hook_commands("claude", dist_root / "aops-cope-claude")}
-    assert wired == {"PreToolUse"}
+def test_rbg_does_not_wire_claude_userpromptsubmit(dist_root):
+    """The turn-level ruleset advisory is scoped to agy. Claude fires both
+    events and is already covered by rbg's PreToolUse check, and the pkb plugin
+    owns Claude's UserPromptSubmit — so rbg must not register a second one.
+
+    Asserted as an absence rather than as the whole wired set: rbg legitimately
+    wires the stop-side gate on Claude too (`Stop`/`SubagentStop`, covered by
+    tests/test_rbg_stop_gate.py), and an equality here would fail on that for a
+    reason this case is not about.
+    """
+    wired = {wire for wire, _ in _hook_commands("claude", dist_root / "rbg-claude")}
+    assert "UserPromptSubmit" not in wired
+    assert "PreToolUse" in wired

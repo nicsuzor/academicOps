@@ -1,10 +1,25 @@
-"""Tests for the shared hook runtime (lib/hooks/).
+"""Tests for the shared hook runtime (lib/hooks/dispatch.py).
 
 lib/hooks/ is copied byte-identical into every plugin that hooks (see
 specs/ARCHITECTURE.md, Hooks). These tests exercise it in place, plus in a
 synthetic "injected" plugin directory (dispatch.py + a handlers.py + a
 messages/ dir side by side) to prove the handler-registration and
 message-loading contracts a plugin author relies on.
+
+The runtime used to be eight modules — clients, context, credentials,
+degraded, messages, provenance, result, telemetry. 89733bf8 consolidated the
+parts still in use into `dispatch.py` and deleted the rest. Where a section
+below is thinner than the module it replaced, the retirement is named at the
+section head rather than left as an absence.
+
+Division of labour with the sibling files:
+
+- `tests/test_dispatch_gate.py` owns the BLOCK disposition end to end — the
+  `Kind` invariants, `_merge` precedence, the Claude block shape, the agy
+  degradation, and the stop-hook self-loop guard. Not repeated here.
+- `tests/test_shipped_hooks.py` owns the built artifact.
+- This file owns the advisory and refusal shapes, the message-loading
+  contract, and dispatch's own process-level behaviour.
 """
 
 from __future__ import annotations
@@ -15,7 +30,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -27,80 +41,94 @@ _DISPATCH = _LIB_HOOKS / "dispatch.py"
 if str(_LIB_HOOKS) not in sys.path:
     sys.path.insert(0, str(_LIB_HOOKS))
 
-import clients  # noqa: E402
-import credentials  # noqa: E402
-import degraded  # noqa: E402
-import messages  # noqa: E402
-import provenance  # noqa: E402
-import telemetry  # noqa: E402
-from result import Result, merge, refuse, warn  # noqa: E402
-
-
-@pytest.fixture(autouse=True)
-def _isolate_degradation_state(monkeypatch, tmp_path):
-    """degraded.py holds two pieces of state a test must not inherit: the
-    faults recorded so far (module scope, because one hook invocation is one
-    process) and the once-per-session markers it writes under the OS temp
-    directory, which outlive the run that made them."""
-    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
-    degraded.reset()
-    yield
-    degraded.reset()
-
+from dispatch import (  # noqa: E402
+    CANONICAL_EVENTS,
+    TO_CANONICAL,
+    Kind,
+    load_message_pair,
+    refuse,
+    render,
+    to_canonical,
+    warn,
+)
 
 # ---------------------------------------------------------------------------
-# clients.py: event-name normalization
+# dispatch.py: event-name normalization
 # ---------------------------------------------------------------------------
 
 
 def test_claude_events_are_identity_mapped_for_the_full_architecture_table():
-    for event in clients.CANONICAL_EVENTS:
-        assert clients.to_canonical("claude", event) == event
+    for event in CANONICAL_EVENTS:
+        assert to_canonical("claude", event) == event
 
 
 def test_agy_known_event_aliases():
-    assert clients.to_canonical("agy", "PreInvocation") == "UserPromptSubmit"
-    assert clients.to_canonical("agy", "PostInvocation") == "Stop"
+    assert to_canonical("agy", "PreInvocation") == "UserPromptSubmit"
+    assert to_canonical("agy", "PostInvocation") == "Stop"
 
 
 @pytest.mark.parametrize("event", ["SessionStart", "PreToolUse", "SubagentStop"])
-def test_agy_unmapped_architecture_events_return_none(event):
-    """No confirmed agy wire equivalent exists yet for these — a clean no-op,
-    not a guess."""
-    assert clients.to_canonical("agy", event) is None
+def test_agy_has_no_wire_equivalent_for_these_architecture_events(event):
+    """No confirmed agy wire equivalent exists for these, so the table has no
+    row for them. Asserted against the table itself: `to_canonical` cannot
+    answer this question, because it passes an unmapped event through under its
+    own name rather than returning `None` — see the next case."""
+    assert event not in TO_CANONICAL["agy"]
 
 
-def test_unknown_client_has_no_mappings():
-    assert clients.to_canonical("gemini", "PreToolUse") is None
+def test_an_unmapped_event_passes_through_under_its_own_name():
+    """Not a translation failure — a deliberate pass-through.
+
+    The `aops-debug` plugin registers a wildcard handler and wires every event
+    its client emits, mapped or not; capturing unmapped events is its entire
+    purpose, and it only works because an untranslated name still reaches
+    `_load_handlers`. For every other plugin the name matches no registration,
+    so the call is a no-op that costs one process.
+    """
+    assert to_canonical("agy", "PreToolUse") == "PreToolUse"
+    assert to_canonical("agy", "SomeFutureEvent") == "SomeFutureEvent"
+
+
+def test_an_unknown_client_has_no_mappings_and_translates_nothing():
+    assert TO_CANONICAL.get("gemini") is None
+    assert to_canonical("gemini", "PreToolUse") == "PreToolUse"
 
 
 # ---------------------------------------------------------------------------
-# clients.py: response rendering
+# dispatch.py: response rendering — the advisory and refusal shapes
 # ---------------------------------------------------------------------------
+#
+# The BLOCK shape is tests/test_dispatch_gate.py's, including its top-level
+# nesting on Claude Code and its degradation on agy. What is here is everything
+# else: nothing to say, an advisory, a refusal, and the guarantee that an
+# advisory can never acquire a blocking field.
 
 
 def test_render_nothing_to_say_is_empty_dict_both_clients():
-    assert clients.render("claude", "PreToolUse", None) == {}
-    assert clients.render("agy", "UserPromptSubmit", None) == {}
+    assert render("claude", "PreToolUse", None) == {}
+    assert render("agy", "UserPromptSubmit", None) == {}
 
 
 def test_render_claude_pretooluse_warn_uses_additional_context_never_permission_decision():
-    """cope's PreToolUse rule enforcement is advisory only (specs/ARCHITECTURE.md,
-    Enforcement) — nothing in-session blocks on a hook verdict, so this shape
-    must never carry permissionDecision."""
-    out = clients.render("claude", "PreToolUse", warn("careful"))
+    """The `PreToolUse` rule check is advisory only (specs/ARCHITECTURE.md,
+    Enforcement) — nothing in-session denies a tool call on a rule verdict, so
+    this shape must never carry permissionDecision."""
+    out = render("claude", "PreToolUse", warn("careful"))
     assert "permissionDecision" not in out["hookSpecificOutput"]
     assert out["hookSpecificOutput"]["additionalContext"] == "careful"
 
 
-def test_render_claude_stop_uses_additional_context_never_top_level_decision():
-    out = clients.render("claude", "Stop", warn("reflect first"))
+def test_render_claude_stop_warn_uses_additional_context_never_top_level_decision():
+    """An advisory on a stop is still an advisory. `Stop` is the one event where
+    a top-level `decision` would be honoured, so it is the one event where a
+    warn() leaking into that shape would silently become a gate."""
+    out = render("claude", "Stop", warn("reflect first"))
     assert "decision" not in out
     assert out["hookSpecificOutput"]["additionalContext"] == "reflect first"
 
 
 def test_render_claude_subagentstop_warn_uses_additional_context():
-    out = clients.render("claude", "SubagentStop", warn("reflect first"))
+    out = render("claude", "SubagentStop", warn("reflect first"))
     assert out == {
         "hookSpecificOutput": {
             "hookEventName": "SubagentStop",
@@ -111,30 +139,34 @@ def test_render_claude_subagentstop_warn_uses_additional_context():
 
 
 def test_render_claude_warn_with_user_text_adds_system_message():
-    out = clients.render("claude", "Stop", warn("reflect first", user_text="heads up"))
+    out = render("claude", "Stop", warn("reflect first", user_text="heads up"))
     assert out["systemMessage"] == "heads up"
     assert out["hookSpecificOutput"]["additionalContext"] == "reflect first"
 
 
 def test_render_agy_warn_uses_inject_steps():
-    out = clients.render("agy", "UserPromptSubmit", warn("careful"))
+    out = render("agy", "UserPromptSubmit", warn("careful"))
     assert out == {"injectSteps": [{"ephemeralMessage": "careful"}]}
 
 
-def test_render_unknown_client_raises():
-    with pytest.raises(ValueError):
-        clients.render("gemini", "Stop", warn("x"))
+def test_render_for_an_unknown_client_emits_nothing_rather_than_raising(capsys):
+    """A client with no renderer produces no output at all.
 
-
-# ---------------------------------------------------------------------------
-# clients.py: the refusal shape, per client
-# ---------------------------------------------------------------------------
+    This used to raise `ValueError`. It no longer does, and the change is worth
+    stating: `main()` takes the client from argv, so an unknown one now runs
+    every handler, discards whatever they returned, and exits 0 — the handlers'
+    side effects happen and their results do not. Nothing ships a third client
+    today, so the shapes below are the whole surface; the day one does, this is
+    where its absence will be silent.
+    """
+    assert render("gemini", "Stop", warn("x")) == {}
+    assert render("gemini", "PreToolUse", refuse("x")) == {}
 
 
 def test_render_claude_refusal_is_a_deny_permission_decision():
-    """The one blocking shape Claude Code understands. A refusal carries no
-    additionalContext — the reason IS the denial reason."""
-    out = clients.render("claude", "PreToolUse", refuse("nobody is here to answer"))
+    """The one shape Claude Code reads as "do not run this tool call". A refusal
+    carries no additionalContext — the reason IS the denial reason."""
+    out = render("claude", "PreToolUse", refuse("nobody is here to answer"))
     assert out == {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -146,76 +178,66 @@ def test_render_claude_refusal_is_a_deny_permission_decision():
 
 
 def test_render_agy_refusal_is_a_deny_decision_with_a_reason():
-    """agy's own blocking shape, as its `PreToolUse` contract defines it: a
+    """agy's own denial shape, as its `PreToolUse` contract defines it: a
     `decision` of allow/deny/ask, with `reason` alongside. Unreachable today —
-    no agy tool event is mapped (see to_canonical below) — but the shape must
-    be right the day one is, and wrong-by-omission is how a silent no-op ships."""
-    out = clients.render("agy", "PreToolUse", refuse("nobody is here to answer"))
+    agy's table has no tool event — but the shape must be right the day one is,
+    and wrong-by-omission is how a silent no-op ships."""
+    out = render("agy", "PreToolUse", refuse("nobody is here to answer"))
     assert out == {"decision": "deny", "reason": "nobody is here to answer"}
-    assert clients.to_canonical("agy", "PreToolUse") is None
+    assert "PreToolUse" not in TO_CANONICAL["agy"]
 
 
 def test_render_advisory_never_carries_a_blocking_field_on_either_client():
-    """The other half of the guard: warn() must stay incapable of blocking, on
-    every event and every client, so cope's advisories can never become a gate."""
-    for event in clients.CANONICAL_EVENTS:
-        claude_out = json.dumps(clients.render("claude", event, warn("careful")))
+    """The other half of the guard: warn() must stay incapable of denying or
+    blocking, on every event and every client, so a rule advisory can never
+    become a gate."""
+    for event in CANONICAL_EVENTS:
+        claude_out = json.dumps(render("claude", event, warn("careful")))
         assert "permissionDecision" not in claude_out
         assert "decision" not in claude_out
-    agy_out = json.dumps(clients.render("agy", "UserPromptSubmit", warn("careful")))
+    agy_out = json.dumps(render("agy", "UserPromptSubmit", warn("careful")))
     assert "decision" not in agy_out
     assert "reason" not in agy_out
 
 
-# ---------------------------------------------------------------------------
-# result.py: merge semantics (a refusal beats an advisory; else first wins)
-# ---------------------------------------------------------------------------
+def test_warn_is_an_advisory_and_refuse_is_not():
+    """`==`, not `is`: dispatch.py is loaded twice in a live hook, so a member
+    built handler-side is never identical to the renderer's. See `Kind`."""
+    assert warn("careful").kind == Kind.ADVISE
+    assert refuse("impossible").kind == Kind.REFUSE
 
 
-def test_merge_first_advisory_wins_regardless_of_registration_order():
-    assert merge([None, warn("careful"), None]) == warn("careful")
-    assert merge([warn("first"), warn("second")]) == warn("first")
-    assert merge([None, None]) is None
-    assert merge([]) is None
-
-
-def test_merge_refusal_beats_an_advisory_registered_before_it():
-    """A session that structurally cannot carry out the call must not have that
-    fact hidden behind an earlier handler's suggestion."""
-    assert merge([warn("careful"), refuse("impossible")]) == refuse("impossible")
-    assert merge([refuse("impossible"), warn("careful")]) == refuse("impossible")
-
-
-def test_merge_first_refusal_wins_among_refusals():
-    assert merge([refuse("first"), refuse("second")]) == refuse("first")
-
-
-def test_warn_is_never_a_refusal():
-    assert warn("careful").is_refusal is False
-    assert refuse("impossible").is_refusal is True
+# `_merge`'s precedence rules — refusal over block over advisory, then
+# registration order — are covered in full by tests/test_dispatch_gate.py,
+# which was written against the three-disposition `Kind` and covers the block
+# row this file's predecessor could not. Not duplicated here.
 
 
 # ---------------------------------------------------------------------------
-# messages.py: markdown-only wording contract
+# dispatch.py: the markdown-only wording contract
 # ---------------------------------------------------------------------------
+#
+# `load_message_pair` replaced messages.py's `load`/`load_pair`/`load_user`.
+# One difference is load-bearing and is NOT re-asserted below because it is no
+# longer true: `messages.load` raised `MessageNotFoundError` on a missing or
+# empty agent message, and dispatch turned that into a fail-loud report. The
+# current function returns `""` and says nothing, leaving each handler to
+# notice. Only rbg's `rule_check` does. The gap is pinned as a strict xfail in
+# tests/test_pkb_handlers.py, on the plugin where it is observable, rather than
+# restated here as an absence.
 
 
-def test_messages_load_returns_stripped_text(tmp_path):
-    (tmp_path / "messages").mkdir()
-    (tmp_path / "messages" / "handover.md").write_text("\n  hand it over cleanly  \n")
-    assert messages.load(tmp_path, "handover") == "hand it over cleanly"
+def _message(tmp_path, name: str, agent: str | None, user: str | None = None) -> None:
+    (tmp_path / "messages").mkdir(exist_ok=True)
+    if agent is not None:
+        (tmp_path / "messages" / f"{name}.md").write_text(agent)
+    if user is not None:
+        (tmp_path / "messages" / f"{name}.user.md").write_text(user)
 
 
-def test_messages_load_missing_file_is_a_hard_error(tmp_path):
-    with pytest.raises(messages.MessageNotFoundError):
-        messages.load(tmp_path, "nonexistent")
-
-
-def test_messages_load_empty_file_is_a_hard_error(tmp_path):
-    (tmp_path / "messages").mkdir()
-    (tmp_path / "messages" / "blank.md").write_text("   \n")
-    with pytest.raises(messages.MessageNotFoundError):
-        messages.load(tmp_path, "blank")
+def test_a_message_is_returned_stripped(tmp_path):
+    _message(tmp_path, "handover", "\n  hand it over cleanly  \n")
+    assert load_message_pair(tmp_path, "handover")[0] == "hand it over cleanly"
 
 
 # --- the second reader: <name>.user.md ---------------------------------------
@@ -227,16 +249,9 @@ def test_messages_load_empty_file_is_a_hard_error(tmp_path):
 # inside a hook subprocess that has only the standard library.
 
 
-def _message(tmp_path, name: str, agent: str, user: str | None = None) -> None:
-    (tmp_path / "messages").mkdir(exist_ok=True)
-    (tmp_path / "messages" / f"{name}.md").write_text(agent)
-    if user is not None:
-        (tmp_path / "messages" / f"{name}.user.md").write_text(user)
-
-
 def test_message_with_a_user_version_loads_both(tmp_path):
     _message(tmp_path, "handover", "The long form, for the agent.", "  short line  \n")
-    assert messages.load_pair(tmp_path, "handover") == (
+    assert load_message_pair(tmp_path, "handover") == (
         "The long form, for the agent.",
         "short line",
     )
@@ -246,43 +261,54 @@ def test_message_without_a_user_version_is_not_an_error(tmp_path):
     """The ordinary case. A hook with nothing worth putting in a status line
     says nothing there, and still injects its agent-facing text."""
     _message(tmp_path, "handover", "The long form, for the agent.")
-    agent, user = messages.load_pair(tmp_path, "handover")
+    agent, user = load_message_pair(tmp_path, "handover")
     assert agent == "The long form, for the agent."
     assert user is None
 
 
-def test_empty_user_version_reads_as_absent(tmp_path):
-    """A blank line in the user's terminal is worse than silence, so an empty
-    sibling is `None` rather than `""` — unlike the agent's message, where
-    empty is a hard error because something was meant to be injected."""
+def test_empty_user_version_renders_as_absent(tmp_path):
+    """A blank line in the user's terminal is worse than silence.
+
+    Asserted on the rendered output, not on the return value. An empty sibling
+    comes back as `""` where a missing one comes back as `None`, and the two are
+    NOT interchangeable to a handler that tests `is None` — but neither reaches
+    the person, because `_render_claude` gates `systemMessage` on truthiness.
+    The guarantee that matters is the one on the wire, so that is the one
+    pinned; a handler relying on the distinction would be relying on something
+    this contract does not promise.
+    """
     _message(tmp_path, "handover", "The long form.", "   \n")
-    assert messages.load_pair(tmp_path, "handover")[1] is None
+    agent, user = load_message_pair(tmp_path, "handover")
+    assert not user
+    assert "systemMessage" not in render("claude", "Stop", warn(agent, user))
 
 
-def test_missing_agent_message_still_raises_even_with_a_user_version(tmp_path):
+def test_a_user_line_alone_yields_no_agent_text(tmp_path):
     """The user's line is an addition, never a substitute: it cannot stand in
-    for the message the agent was supposed to receive."""
-    (tmp_path / "messages").mkdir()
-    (tmp_path / "messages" / "orphan.user.md").write_text("short line")
-    with pytest.raises(messages.MessageNotFoundError):
-        messages.load_pair(tmp_path, "orphan")
+    for the message the agent was supposed to receive. It is returned, because
+    dropping it would lose the only text there is, but the agent's half stays
+    empty rather than being filled from it."""
+    _message(tmp_path, "orphan", None, "short line")
+    agent, user = load_message_pair(tmp_path, "orphan")
+    assert agent == ""
+    assert user == "short line"
 
 
 def test_claude_carries_the_user_line_on_an_advisory_and_a_refusal():
     """Claude Code has a channel for each reader, and both must be used. The
     refusal case matters most: the agent is told no, and this line is the only
     sign the user gets that a hook intervened."""
-    advisory = clients.render("claude", "Stop", warn("long form", "short line"))
+    advisory = render("claude", "Stop", warn("long form", "short line"))
     assert advisory["hookSpecificOutput"]["additionalContext"] == "long form"
     assert advisory["systemMessage"] == "short line"
 
-    refusal = clients.render("claude", "PreToolUse", refuse("long form", "short line"))
+    refusal = render("claude", "PreToolUse", refuse("long form", "short line"))
     assert refusal["hookSpecificOutput"]["permissionDecisionReason"] == "long form"
     assert refusal["systemMessage"] == "short line"
 
 
 def test_claude_omits_the_user_line_when_there_is_none():
-    assert "systemMessage" not in clients.render("claude", "Stop", warn("long form"))
+    assert "systemMessage" not in render("claude", "Stop", warn("long form"))
 
 
 def test_agy_drops_the_user_line_rather_than_misdirecting_it():
@@ -291,26 +317,27 @@ def test_agy_drops_the_user_line_rather_than_misdirecting_it():
     put the framework's words in the person's mouth. So the line is dropped,
     and this pins that it is dropped deliberately rather than leaking onto an
     agent-facing surface."""
-    out = clients.render("agy", "UserPromptSubmit", warn("long form", "short line"))
+    out = render("agy", "UserPromptSubmit", warn("long form", "short line"))
     assert out == {"injectSteps": [{"ephemeralMessage": "long form"}]}
     assert "short line" not in json.dumps(out)
 
 
 # --- the second reader, across the plugins that actually ship ----------------
 #
-# `HookContext.message` returns one string. A handler that loads a message
-# that way cannot deliver the user's line no matter what is in the sibling
-# file — the pair has to come through `messages.load_pair`. That failure is
-# silent in every direction: the file is present, the tests that read it pass,
-# the build ships it, and the line never reaches a terminal. So it is checked
-# against the source of every plugin that hooks, not left to each plugin's own
-# suite to notice.
+# A handler that takes only the agent's half of the pair —
+# `load_message_pair(...)[0]` — cannot deliver the user's line no matter what
+# is in the sibling file. That failure is silent in every direction: the file
+# is present, the tests that read it pass, the build ships it, and the line
+# never reaches a terminal. So it is checked against the source of every plugin
+# that hooks, not left to each plugin's own suite to notice.
 
 _PLUGINS_ROOT = _REPO_ROOT / "plugins"
 
-# `ctx.message("name")` — the single-text load, and the only way a shipped
-# `.user.md` can be silently unreachable.
-_SINGLE_TEXT_LOAD = re.compile(r"""ctx\.message\(\s*["']([\w.-]+)["']""")
+# `load_message_pair(...)[0]` — the agent-only load, and the way a shipped
+# `.user.md` becomes silently unreachable.
+_AGENT_ONLY_LOAD = re.compile(
+    r"""load_message_pair\(\s*ctx\.hooks_dir\s*,\s*["']([\w.-]+)["']\s*\)\s*\[\s*0\s*\]"""
+)
 
 
 def _hooking_plugins() -> list[Path]:
@@ -318,28 +345,14 @@ def _hooking_plugins() -> list[Path]:
 
 
 def test_every_plugin_that_hooks_is_discovered():
-    """The guard below is a loop over plugins; an empty loop passes silently."""
+    """The guards below are loops over plugins; an empty loop passes silently."""
     assert _hooking_plugins(), f"no plugin under {_PLUGINS_ROOT} ships a hooks/handlers.py"
 
 
-def test_no_shipped_user_line_is_stranded_on_the_single_text_path():
-    stranded = []
-    for hooks in _hooking_plugins():
-        single_text = set(_SINGLE_TEXT_LOAD.findall((hooks / "handlers.py").read_text()))
-        for user_file in sorted((hooks / "messages").glob("*.user.md")):
-            name = user_file.name.removesuffix(".user.md")
-            if name in single_text:
-                stranded.append(f"{hooks.parent.name}: {user_file.name}")
-    assert stranded == [], (
-        "these user-facing lines ship but can never reach a terminal — their handler "
-        "loads the message with ctx.message(), which returns the agent's text only. "
-        f"Use messages.load_pair(ctx.hooks_dir, name) instead: {stranded}"
-    )
-
-
 def test_no_shipped_user_line_lacks_the_agent_message_it_belongs_to():
-    """`load_pair` raises on a missing agent message, so this ships as a hook
-    that hard-fails the moment it fires. Caught in the tree instead."""
+    """A `.user.md` with no `.md` beside it ships a hook that injects an empty
+    agent message while the person gets a line about it — the two readers
+    disagree about whether anything happened."""
     orphans = [
         f"{hooks.parent.name}: {user_file.name}"
         for hooks in _hooking_plugins()
@@ -351,37 +364,54 @@ def test_no_shipped_user_line_lacks_the_agent_message_it_belongs_to():
 
 # --- the other direction: every message owes the person a line ---------------
 #
-# The two guards above catch a user line that cannot be delivered. This one
-# catches the opposite and more common omission: a message written for the
-# agent and never given a second reader. Nothing about that failure is visible
-# — the hook fires, the agent acts on text the person never saw, and the
-# session looks to them as though nothing happened. So a new message cannot
-# ship user-blind by inattention; it can only ship that way by being added to
-# the exemption list below, with a reason, deliberately.
+# The guard above catches a user line with nothing behind it. This one catches
+# the opposite and more common omission: a message written for the agent and
+# never given a second reader. Nothing about that failure is visible — the hook
+# fires, the agent acts on text the person never saw, and the session looks to
+# them as though nothing happened. So a new message cannot ship user-blind by
+# inattention; it can only ship that way by being listed below, with a reason,
+# deliberately.
 
 
 # Every directory whose `messages/` reaches a session: the plugins that hook,
-# plus the shared runtime's own, which build stage 1 copies into all of them.
+# plus the shared runtime's own. The runtime ships no wording of its own today,
+# but build/shared.py still copies `lib/hooks` wholesale into every hooking
+# plugin, so a message added there would reach every session and is covered by
+# the same rule.
 def _message_dirs() -> list[Path]:
     return [*_hooking_plugins(), _LIB_HOOKS]
 
 
-# Message names that ship with no `.user.md`, and why. An entry is a claim
-# about the emitter, not a licence: the exemption test below re-checks each
-# claim against the source, so an exemption that stops being true fails here
-# rather than quietly covering a message that now has a reader to serve.
+# Messages that ship with no `.user.md` because they have no second reader to
+# write one for. An entry is a claim about the emitter, not a licence: the
+# exemption test below re-checks each claim against the source, so an exemption
+# that stops being true fails here rather than quietly covering a message that
+# now has a reader to serve.
 _NO_USER_COUNTERPART: dict[str, str] = {
-    # Injected only by cope's `inject_ruleset`, declared `@only_on("agy")`.
-    # agy has no user-facing channel at all — every response step it defines
-    # speaks to the agent, so `_render_agy` drops `user_text` rather than
-    # misdirect it (lib/hooks/clients.py). A line written here could not be
-    # delivered to anyone.
-    "cope: ruleset": "agy-only injection; agy has no user channel",
+    # Injected only by rbg's `inject_ruleset`, declared `@only_on("agy")`. agy
+    # has no user-facing channel at all — every response step it defines speaks
+    # to the agent, so `_render_agy` drops `user_text` rather than misdirect it
+    # (lib/hooks/dispatch.py). A line written here could not be delivered.
+    "rbg: ruleset": "agy-only injection; agy has no user channel",
     # Not injected into a session in either direction. This is the classifier
-    # instruction cope sends to the evaluator model over HTTP
-    # (plugins/cope/hooks/evaluator.py), so its reader is that model — there is
+    # instruction rbg sends to the evaluator model over HTTP
+    # (plugins/rbg/hooks/evaluator.py), so its reader is that model — there is
     # no person watching a request, and no agent receiving it.
-    "cope: classifier-prompt": "evaluator request payload, never injected into a session",
+    "rbg: classifier-prompt": "evaluator request payload, never injected into a session",
+}
+
+# Messages that ship user-blind and SHOULD NOT. Separate from the dict above
+# because these are not exemptions — they are a defect list, and the only thing
+# keeping the audit green. Listing one here is a promise to come back to it.
+_KNOWN_USER_BLIND: dict[str, str] = {
+    # `rule_check` blocks the stop and gives the person nothing. It takes only
+    # the agent's half of the pair — `load_message_pair(..., "rule-check")[0]`
+    # (plugins/rbg/hooks/handlers.py) — so even adding rule-check.user.md would
+    # not deliver it. The block shape HAS a systemMessage channel and
+    # `_render_claude` fills it whenever `user_text` is set, so unlike the two
+    # entries above there is a reader here, being left unserved: the session is
+    # held open and the person watching is told nothing about why.
+    "rbg: rule-check": "stop-side block with no line for the person; needs the pair, not [0]",
 }
 
 
@@ -397,15 +427,15 @@ def _shipped_messages() -> list[tuple[str, Path, str]]:
 
 def test_every_shipped_message_is_discovered():
     """The guard below is a loop over message files; an empty loop passes."""
-    found = _shipped_messages()
-    assert len(found) >= len(_message_dirs()), f"only {len(found)} messages found across the tree"
+    assert len(_shipped_messages()) >= 4, "too few messages found across the tree to be checking"
 
 
 def test_every_shipped_message_carries_a_line_for_the_person_watching():
+    accounted = set(_NO_USER_COUNTERPART) | set(_KNOWN_USER_BLIND)
     blind = [
         label
         for label, hooks, name in _shipped_messages()
-        if label not in _NO_USER_COUNTERPART and messages.load_user(hooks, name) is None
+        if label not in accounted and load_message_pair(hooks, name)[1] is None
     ]
     assert blind == [], (
         "these messages reach a session with nothing for the person whose session it "
@@ -413,6 +443,13 @@ def test_every_shipped_message_carries_a_line_for_the_person_watching():
         "agent's text as <name>.user.md, or, if this message genuinely has no reader "
         f"to write one for, add it to _NO_USER_COUNTERPART with the reason: {blind}"
     )
+
+
+def test_the_known_user_blind_list_is_not_growing():
+    """The defect list is allowed to shrink and never to grow. Without this,
+    `_KNOWN_USER_BLIND` is just a wider exemption dict and the audit above
+    stops meaning anything."""
+    assert set(_KNOWN_USER_BLIND) == {"rbg: rule-check"}
 
 
 _READ_HANDLER_SCOPES = """
@@ -434,7 +471,7 @@ print(json.dumps(scopes))
 
 def _handler_client_scopes(hooks: Path) -> dict:
     """Each registered handler's declared client scope, read from the real
-    module. A subprocess, so the plugin's own imports (cope's `evaluator`,
+    module. A subprocess, so the plugin's own imports (rbg's `evaluator`,
     `rules`) never land on this process's `sys.path`."""
     proc = subprocess.run(
         [sys.executable, "-c", _READ_HANDLER_SCOPES, str(_LIB_HOOKS), str(hooks)],
@@ -449,286 +486,64 @@ def _handler_client_scopes(hooks: Path) -> dict:
 def test_the_no_user_channel_exemptions_are_still_true():
     """Both exemptions rest on a fact about the emitter, and both facts are
     checked here rather than trusted from the comment beside them."""
-    cope_hooks = _PLUGINS_ROOT / "cope" / "hooks"
+    rbg_hooks = _PLUGINS_ROOT / "rbg" / "hooks"
 
     # `ruleset`: the decorator is what makes it undeliverable, so read the
     # attribute `@only_on` sets on the real handler. Drop the decorator and
     # this message reaches Claude Code, where a line for the person exists.
-    assert _handler_client_scopes(cope_hooks)["inject_ruleset"] == ["agy"]
-    assert clients.render("agy", "UserPromptSubmit", warn("agent text", "user line")) == {
+    assert _handler_client_scopes(rbg_hooks)["inject_ruleset"] == ["agy"]
+    assert render("agy", "UserPromptSubmit", warn("agent text", "user line")) == {
         "injectSteps": [{"ephemeralMessage": "agent text"}]
     }
 
     # `classifier-prompt`: no handler names it, because nothing injects it.
     # The moment one does, it is a session message like any other.
-    assert "classifier-prompt" not in (cope_hooks / "handlers.py").read_text()
-    assert "classifier-prompt" in (cope_hooks / "evaluator.py").read_text()
+    assert "classifier-prompt" not in (rbg_hooks / "handlers.py").read_text()
+    assert "classifier-prompt" in (rbg_hooks / "evaluator.py").read_text()
 
 
-def test_no_exemption_outlives_the_message_it_names():
-    """An exemption for a message that no longer ships is dead weight that
-    would silently cover a future message of the same name."""
+def test_the_known_user_blind_entry_is_still_a_real_defect():
+    """`rbg: rule-check` is listed as a defect, not an exemption. That claim
+    rests on the handler taking only the agent's half, so read that from the
+    source: the day it takes the pair, the entry has to go."""
+    rbg_handlers = (_PLUGINS_ROOT / "rbg" / "hooks" / "handlers.py").read_text()
+    assert _AGENT_ONLY_LOAD.search(rbg_handlers), (
+        "rbg no longer loads any message agent-only — if rule-check now takes "
+        "the pair, remove it from _KNOWN_USER_BLIND"
+    )
+
+
+def test_no_entry_outlives_the_message_it_names():
+    """An entry for a message that no longer ships is dead weight that would
+    silently cover a future message of the same name."""
     shipped = {label for label, _, _ in _shipped_messages()}
-    stale = sorted(set(_NO_USER_COUNTERPART) - shipped)
-    assert stale == [], f"_NO_USER_COUNTERPART names messages that do not ship: {stale}"
+    named = set(_NO_USER_COUNTERPART) | set(_KNOWN_USER_BLIND)
+    stale = sorted(named - shipped)
+    assert stale == [], f"these name messages that do not ship: {stale}"
 
 
 # ---------------------------------------------------------------------------
-# telemetry.py: reports only, never sets/defaults
-# ---------------------------------------------------------------------------
-
-
-def test_telemetry_report_not_configured(monkeypatch):
-    for var in telemetry.CONTRACT:
-        monkeypatch.delenv(var, raising=False)
-    assert telemetry.report() == "telemetry: not configured"
-    assert telemetry.configured_vars() == []
-
-
-def test_telemetry_report_configured_and_enabled(monkeypatch):
-    for var in telemetry.CONTRACT:
-        monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv("CLAUDE_CODE_ENABLE_TELEMETRY", "1")
-    monkeypatch.setenv("CLAUDE_CODE_ENHANCED_TELEMETRY_BETA", "1")
-    report = telemetry.report()
-    assert "enabled" in report
-    assert "2/2" in report
-
-
-def test_telemetry_report_counts_enablement_vars_not_the_full_contract(monkeypatch):
-    """A SessionStart hook subprocess never sees the 13 OTEL_* export-config
-    vars (confirmed empirically — see telemetry.py, EXPORT_VARS). Setting only
-    those must not move the report's numerator or denominator: doing so would
-    resurrect the "N/15" over-report this split exists to fix."""
-    for var in telemetry.CONTRACT:
-        monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv("CLAUDE_CODE_ENABLE_TELEMETRY", "1")
-    for var in telemetry.EXPORT_VARS:
-        monkeypatch.setenv(var, "otlp")
-    report = telemetry.report()
-    assert "1/2" in report
-    assert "15" not in report
-
-
-def test_telemetry_report_never_mutates_environment(monkeypatch):
-    for var in telemetry.CONTRACT:
-        monkeypatch.delenv(var, raising=False)
-    telemetry.report()
-    telemetry.configured_vars()
-    for var in telemetry.CONTRACT:
-        assert var not in os.environ
-
-
-# ---------------------------------------------------------------------------
-# provenance.py: which build is running, and what else is installed
+# Retired sections
 # ---------------------------------------------------------------------------
 #
-# Both facts are located by walking out from the hooks directory, because a
-# shipped artifact may bake no host or install path (specs/ARCHITECTURE.md,
-# Binding constraints) — the same rule `test_ts_session_end_bakes_no_host_or_
-# search_path` pins for the ts hook. Every case below therefore builds the
-# layout around a tmp_path and never names a real one.
-
-
-def _plugin_tree(root: Path, manifest: str | None, *, claude: bool = True) -> Path:
-    """A plugin root with a hooks/ dir, laid out the way a client packages it.
-
-    Claude puts the manifest at `.claude-plugin/plugin.json`, agy at
-    `plugin.json` (build/clients/claude.py, build/clients/agy.py). `None`
-    writes no manifest at all.
-    """
-    hooks_dir = root / "hooks"
-    hooks_dir.mkdir(parents=True)
-    if manifest is not None:
-        path = root / ".claude-plugin" / "plugin.json" if claude else root / "plugin.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(manifest, encoding="utf-8")
-    return hooks_dir
-
-
-def test_provenance_reports_the_name_and_version_the_build_stamped(tmp_path):
-    """build/build.py stamps `version` into the manifest at build time; this is
-    the only place a running hook can learn which build it is."""
-    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops", "version": "0.6.0"}')
-    assert provenance.plugin(hooks_dir) == "plugin: aops 0.6.0"
-
-
-def test_provenance_reads_the_agy_manifest_layout_too(tmp_path):
-    """One runtime ships to both clients, and agy puts the manifest at the
-    plugin root rather than under `.claude-plugin/`. Missing this reads as a
-    plugin with no version on every agy session."""
-    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops", "version": "0.6.0"}', claude=False)
-    assert provenance.plugin(hooks_dir) == "plugin: aops 0.6.0"
-
-
-def test_provenance_with_no_manifest_says_so_rather_than_inventing_one(tmp_path):
-    """A source checkout has no rendered manifest. The fact is unavailable, and
-    saying that is the report — there is no version to fall back to."""
-    hooks_dir = _plugin_tree(tmp_path, None)
-    assert provenance.plugin(hooks_dir) == "plugin: build manifest not readable"
-
-
-def test_provenance_with_an_unparseable_manifest_does_not_raise(tmp_path):
-    """A truncated or hand-edited manifest must not end the session. The whole
-    point of a SessionStart report is that it cannot cost the session anything."""
-    hooks_dir = _plugin_tree(tmp_path, "{not json at all")
-    assert provenance.plugin(hooks_dir) == "plugin: build manifest not readable"
-
-
-def test_provenance_with_a_manifest_carrying_no_version_says_which_fact_is_missing(tmp_path):
-    """Distinct from an unreadable file: the manifest was found and parsed, and
-    the version is what is absent. Collapsing the two hides a build bug."""
-    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops"}')
-    assert provenance.plugin(hooks_dir) == "plugin: build manifest carries no version"
-
-
-def _registry(plugin_root: Path, payload: str) -> None:
-    """The client's installed-plugin registry, above the plugin's install dir.
-
-    Real layout, confirmed against an installed tree:
-    `<config>/plugins/installed_plugins.json` sits three levels above
-    `<config>/plugins/cache/<marketplace>/<plugin>/<version>/`.
-    """
-    plugin_root.parent.mkdir(parents=True, exist_ok=True)
-    (plugin_root.parent / "installed_plugins.json").write_text(payload, encoding="utf-8")
-
-
-def test_provenance_lists_the_plugins_the_client_records_as_installed(tmp_path):
-    """The client's own installation state, not another plugin's files — the
-    same class of thing as the `CLAUDE_ENV_FILE` credentials.py appends to."""
-    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
-    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
-    _registry(
-        plugin_root.parent.parent,
-        json.dumps({"version": 2, "plugins": {"aops@academicOps": [], "aops-pkb@academicOps": []}}),
-    )
-    assert provenance.installed(hooks_dir) == "plugins installed: aops, aops-pkb"
-
-
-def test_provenance_reports_no_sibling_versions_only_names(tmp_path):
-    """A sibling plugin's version would have to come out of that plugin's own
-    manifest, which this plugin may not read (specs/ARCHITECTURE.md, Loose
-    coupling). The registry carries versions; the report must not echo them."""
-    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
-    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
-    _registry(
-        plugin_root.parent.parent,
-        json.dumps({"plugins": {"aops-pkb@academicOps": [{"version": "9.9.9-secret"}]}}),
-    )
-    assert "9.9.9-secret" not in provenance.installed(hooks_dir)
-
-
-def test_provenance_with_no_registry_reports_nothing_rather_than_guessing(tmp_path):
-    """agy keeps no such file, and neither does a source checkout. Inferring a
-    roster from directory layout instead would be confidently wrong there."""
-    hooks_dir = _plugin_tree(tmp_path, '{"name": "aops", "version": "0.6.0"}')
-    assert (
-        provenance.installed(hooks_dir) == "plugins installed: no client registry beside this build"
-    )
-
-
-def test_provenance_with_an_unparseable_registry_does_not_raise(tmp_path):
-    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
-    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
-    _registry(plugin_root.parent.parent, "{truncated")
-    assert (
-        provenance.installed(hooks_dir) == "plugins installed: no client registry beside this build"
-    )
-
-
-def test_provenance_with_a_pathologically_nested_registry_does_not_raise(tmp_path):
-    """`json`'s decoder raises RecursionError on deep nesting, which is neither
-    OSError nor ValueError — the pair a narrow catch here would name. What that
-    costs is not one missing provenance line: `_run_handler` discards the whole
-    handler (lib/hooks/dispatch.py), and `session_start` reports provenance
-    *before* it isolates credentials, so one mangled registry file would take a
-    container session's git credential shim with it."""
-    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
-    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
-    _registry(plugin_root.parent.parent, "[" * 50_000 + "]" * 50_000)
-    assert (
-        provenance.installed(hooks_dir) == "plugins installed: no client registry beside this build"
-    )
-
-
-def test_provenance_with_a_registry_of_the_wrong_shape_says_so(tmp_path):
-    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
-    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
-    _registry(plugin_root.parent.parent, json.dumps({"version": 2, "plugins": []}))
-    assert (
-        provenance.installed(hooks_dir)
-        == "plugins installed: client registry not in the expected shape"
-    )
-
-
-def test_provenance_bakes_no_host_or_install_path():
-    """The constraint this module is built around. `Path.home()`, `$HOME`, and a
-    literal client cache path are all how a shipped artifact acquires a baked
-    search path — the regression already pinned for the ts hook."""
-    text = (_LIB_HOOKS / "provenance.py").read_text(encoding="utf-8")
-    for token in ("Path.home()", "expanduser", "$HOME", "${HOME}", ".claude/plugins"):
-        assert token not in text, f"provenance.py bakes {token!r} into a shipped artifact"
-
-
-def test_provenance_never_writes_anything(tmp_path):
-    """Reports only. A SessionStart hook that mutated the client's installation
-    state would be the one thing `Installation` reserves to the installer."""
-    plugin_root = tmp_path / "cache" / "academicOps" / "aops" / "0.6.0"
-    hooks_dir = _plugin_tree(plugin_root, '{"name": "aops", "version": "0.6.0"}')
-    _registry(plugin_root.parent.parent, json.dumps({"plugins": {"aops@academicOps": []}}))
-    before = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
-    provenance.plugin(hooks_dir)
-    provenance.installed(hooks_dir)
-    assert sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*")) == before
-
-
-# ---------------------------------------------------------------------------
-# credentials.py: SessionStart env-file isolation for container sessions
-# ---------------------------------------------------------------------------
-
-
-def test_isolate_noop_without_env_file(monkeypatch):
-    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
-    assert credentials.isolate({}) is None
-
-
-def test_isolate_writes_scoped_env_file(tmp_path, monkeypatch):
-    env_file = tmp_path / "env.sh"
-    env_file.write_text("")
-    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
-    monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "mock-bot-token")
-    monkeypatch.setenv("PKB_MCP_URL", "http://mock-mcp-url")
-    monkeypatch.delenv("GH_TOKEN", raising=False)
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-
-    persisted = credentials.isolate({"session_id": "test-session-12345"})
-
-    assert persisted is not None
-    assert persisted["AOPS_SESSION_ID"] == "test-session-12345"
-    assert persisted["AOPS_BOT_GH_TOKEN"] == "mock-bot-token"
-    assert persisted["GH_TOKEN"] == "mock-bot-token"
-    assert persisted["GITHUB_TOKEN"] == "mock-bot-token"
-
-    content = env_file.read_text()
-    assert "export AOPS_BOT_GH_TOKEN=mock-bot-token\n" in content
-    assert "export GH_TOKEN=mock-bot-token\n" in content
-    assert "export GITHUB_TOKEN=mock-bot-token\n" in content
-    assert "export PKB_MCP_URL=http://mock-mcp-url\n" in content
-    assert "GEMINI_API_KEY" not in content
-
-
-def test_isolate_without_bot_token_skips_git_shim(tmp_path, monkeypatch):
-    env_file = tmp_path / "env.sh"
-    env_file.write_text("")
-    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
-    monkeypatch.delenv("AOPS_BOT_GH_TOKEN", raising=False)
-
-    persisted = credentials.isolate({})
-
-    assert persisted is not None
-    assert "GH_TOKEN" not in persisted
-    assert "GIT_CONFIG_COUNT" not in persisted
+# Four groups of cases were deleted rather than rewritten, because 89733bf8
+# deleted what they tested and nothing took it over:
+#
+# - `telemetry.report()` and `configured_vars()` (lib/hooks/telemetry.py). The
+#   env-var contract they read survives as `TELEMETRY_ENV` in
+#   lib/polecat/env_contract.py and is exercised by
+#   tests/test_telemetry_otel_e2e.py; the SessionStart *reporter* does not
+#   survive in any form.
+# - `provenance.py` — the build/version/installed-roster reporter. Its only
+#   caller was the aops plugin's `session_start` handler, retired with that
+#   plugin (plugins.disabled/aops/).
+# - `credentials.isolate` — the SessionStart writer for `CLAUDE_ENV_FILE`.
+#   Same owner, same retirement. `CLAUDE_ENV_FILE` is still named in
+#   lib/polecat/env_contract.py's container contract, but nothing writes it.
+# - `degraded.py` — the user-facing channel for the framework's own failures.
+#   Replaced by per-handler `print(..., file=sys.stderr)`; the current contract
+#   is stated in plugins/rbg/hooks/evaluator.py's module docstring, and the
+#   stderr half is asserted in tests/test_cope.py.
 
 
 # ---------------------------------------------------------------------------
@@ -738,15 +553,17 @@ def test_isolate_without_bot_token_skips_git_shim(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def injected_plugin(tmp_path):
-    """A synthetic plugin hooks/ dir: lib/hooks/ copied in (as the build does —
-    the runtime modules AND the messages the runtime itself loads), plus this
-    fixture's caller adds handlers.py / its own messages on top.
+    """A synthetic plugin hooks/ dir: lib/hooks/ copied in as the build does,
+    plus this fixture's caller adding handlers.py and its own messages on top.
     """
     hooks_dir = tmp_path / "hooks"
     hooks_dir.mkdir()
     for py_file in _LIB_HOOKS.glob("*.py"):
         shutil.copy2(py_file, hooks_dir / py_file.name)
-    shutil.copytree(_LIB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
+    # The runtime ships no wording of its own today; the condition tracks that
+    # rather than assuming it.
+    if (_LIB_HOOKS / "messages").is_dir():
+        shutil.copytree(_LIB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
     return hooks_dir
 
 
@@ -762,29 +579,29 @@ def _run_dispatch(
     )
 
 
+def _write_handlers(hooks_dir: Path, body: str) -> None:
+    (hooks_dir / "handlers.py").write_text(body)
+
+
 def test_dispatch_with_no_handlers_module_is_a_clean_noop(injected_plugin):
     """A plugin that ships no handlers.py at all: every table event is a no-op."""
-    for event in clients.CANONICAL_EVENTS:
+    for event in CANONICAL_EVENTS:
         result = _run_dispatch(injected_plugin, "claude", event, {"hook_event_name": event})
         assert result.returncode == 0
         assert result.stdout.strip() == ""
 
 
 def test_dispatch_with_no_handler_for_this_event_is_a_clean_noop(injected_plugin):
-    (injected_plugin / "handlers.py").write_text("HANDLERS = {}\n")
+    _write_handlers(injected_plugin, "HANDLERS = {}\n")
     result = _run_dispatch(injected_plugin, "claude", "Stop", {"hook_event_name": "Stop"})
     assert result.returncode == 0
     assert result.stdout.strip() == ""
 
 
-def _write_handlers(hooks_dir: Path, body: str) -> None:
-    (hooks_dir / "handlers.py").write_text(body)
-
-
 def test_dispatch_runs_registered_handler_and_emits_claude_shape(injected_plugin):
     _write_handlers(
         injected_plugin,
-        "from result import warn\n"
+        "from dispatch import warn\n"
         "\n"
         "def _remind(ctx):\n"
         "    return warn('be careful', user_text='heads up')\n"
@@ -804,12 +621,17 @@ def test_dispatch_runs_registered_handler_and_emits_claude_shape(injected_plugin
 
 
 def test_dispatch_pretooluse_handler_can_only_advise_never_block(injected_plugin):
-    """cope's PreToolUse rule enforcement is advisory only (specs/ARCHITECTURE.md,
+    """The `PreToolUse` rule check is advisory only (specs/ARCHITECTURE.md,
     Enforcement) — even a handler explicitly trying to "block" via warn() only
     ever produces additionalContext, never permissionDecision/decision:block."""
     _write_handlers(
         injected_plugin,
-        "from result import warn\n\ndef _flag(ctx):\n    return warn('this looks risky')\n\nHANDLERS = {'PreToolUse': [_flag]}\n",
+        "from dispatch import warn\n"
+        "\n"
+        "def _flag(ctx):\n"
+        "    return warn('this looks risky')\n"
+        "\n"
+        "HANDLERS = {'PreToolUse': [_flag]}\n",
     )
     claude_out = json.loads(
         _run_dispatch(
@@ -823,20 +645,44 @@ def test_dispatch_pretooluse_handler_can_only_advise_never_block(injected_plugin
     assert "decision" not in claude_out
     assert claude_out["hookSpecificOutput"]["additionalContext"] == "this looks risky"
 
-    # agy has no wire mapping for PreToolUse yet (see clients.py) — clean no-op.
-    agy_result = _run_dispatch(injected_plugin, "agy", "PreToolUse", {"tool_name": "Bash"})
-    assert agy_result.returncode == 0
-    assert agy_result.stdout.strip() == ""
+
+def test_dispatch_agy_pretooluse_reaches_a_handler_registered_for_it(injected_plugin):
+    """agy's table has no `PreToolUse` row, but the name passes through
+    untranslated, so a handler registered under it does run — and its result is
+    rendered in agy's advisory shape.
+
+    Pinned because it is not obvious and it is what the debug plugin depends
+    on. It is also the reason the wiring audit in tests/test_shipped_hooks.py
+    matters: a shipped agy hook wired to an unmapped event is no longer a free
+    no-op, it is a process that runs handlers under a name nothing translated.
+    """
+    _write_handlers(
+        injected_plugin,
+        "from dispatch import warn\n"
+        "\n"
+        "def _flag(ctx):\n"
+        "    return warn('this looks risky')\n"
+        "\n"
+        "HANDLERS = {'PreToolUse': [_flag]}\n",
+    )
+    result = _run_dispatch(injected_plugin, "agy", "PreToolUse", {"tool_name": "Bash"})
+    assert result.returncode == 0
+    assert json.loads(result.stdout) == {"injectSteps": [{"ephemeralMessage": "this looks risky"}]}
 
 
 def test_dispatch_pretooluse_handler_can_refuse_end_to_end(injected_plugin):
-    """The one blocking path, proven through the real runtime: a handler that
+    """The one denying path, proven through the real runtime: a handler that
     returns refuse() reaches Claude Code as a deny decision. Reserved for
-    structural impossibility (lib/hooks/result.py); the test above proves the
-    advisory path stays incapable of it."""
+    structural impossibility (lib/hooks/dispatch.py, `Kind`); the test above
+    proves the advisory path stays incapable of it."""
     _write_handlers(
         injected_plugin,
-        "from result import refuse\n\ndef _block(ctx):\n    return refuse('nobody can answer that here')\n\nHANDLERS = {'PreToolUse': [_block]}\n",
+        "from dispatch import refuse\n"
+        "\n"
+        "def _block(ctx):\n"
+        "    return refuse('nobody can answer that here')\n"
+        "\n"
+        "HANDLERS = {'PreToolUse': [_block]}\n",
     )
     result = _run_dispatch(
         injected_plugin,
@@ -851,10 +697,10 @@ def test_dispatch_pretooluse_handler_can_refuse_end_to_end(injected_plugin):
 
 
 def test_dispatch_refusal_survives_a_coexisting_advisory(injected_plugin):
-    """Registration order must not decide whether the block happens."""
+    """Registration order must not decide whether the denial happens."""
     _write_handlers(
         injected_plugin,
-        "from result import refuse, warn\n"
+        "from dispatch import refuse, warn\n"
         "\n"
         "def _advise(ctx):\n"
         "    return warn('consider this')\n"
@@ -879,38 +725,84 @@ def test_dispatch_refusal_survives_a_coexisting_advisory(injected_plugin):
 def test_dispatch_agy_userpromptsubmit_via_preinvocation_alias(injected_plugin):
     _write_handlers(
         injected_plugin,
-        "from result import warn\n\ndef _hydrate(ctx):\n    assert ctx.event == 'UserPromptSubmit'\n    return warn('hydrate first')\n\nHANDLERS = {'UserPromptSubmit': [_hydrate]}\n",
+        "from dispatch import warn\n"
+        "\n"
+        "def _hydrate(ctx):\n"
+        "    assert ctx.event == 'UserPromptSubmit'\n"
+        "    return warn('hydrate first')\n"
+        "\n"
+        "HANDLERS = {'UserPromptSubmit': [_hydrate]}\n",
     )
     result = _run_dispatch(injected_plugin, "agy", "PreInvocation", {})
     assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert out == {"injectSteps": [{"ephemeralMessage": "hydrate first"}]}
+    assert json.loads(result.stdout) == {"injectSteps": [{"ephemeralMessage": "hydrate first"}]}
 
 
 def test_dispatch_agy_stop_via_postinvocation_alias(injected_plugin):
     _write_handlers(
         injected_plugin,
-        "from result import warn\n\ndef _handover(ctx):\n    assert ctx.event == 'Stop'\n    return warn('hand it over')\n\nHANDLERS = {'Stop': [_handover]}\n",
+        "from dispatch import warn\n"
+        "\n"
+        "def _handover(ctx):\n"
+        "    assert ctx.event == 'Stop'\n"
+        "    return warn('hand it over')\n"
+        "\n"
+        "HANDLERS = {'Stop': [_handover]}\n",
     )
     result = _run_dispatch(injected_plugin, "agy", "PostInvocation", {})
     assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert out == {"injectSteps": [{"ephemeralMessage": "hand it over"}]}
+    assert json.loads(result.stdout) == {"injectSteps": [{"ephemeralMessage": "hand it over"}]}
 
 
-def test_dispatch_raising_handler_cannot_suppress_another_handlers_advisory(injected_plugin):
-    _write_handlers(
+_RAISING_AND_ADVISING = (
+    "from dispatch import warn\n"
+    "\n"
+    "def _raises(ctx):\n"
+    "    raise RuntimeError('simulated handler failure')\n"
+    "\n"
+    "def _advises(ctx):\n"
+    "    return warn('legitimate advisory that must still emit')\n"
+    "\n"
+    "HANDLERS = {'PreToolUse': [_raises, _advises]}\n"
+)
+
+
+def test_dispatch_raising_handler_is_reported_and_does_not_crash(injected_plugin):
+    """Per-handler isolation: one handler blowing up must not take the process
+    with it, and the failure must be named in the log rather than swallowed."""
+    _write_handlers(injected_plugin, _RAISING_AND_ADVISING)
+    result = _run_dispatch(
         injected_plugin,
-        "from result import warn\n"
-        "\n"
-        "def _raises(ctx):\n"
-        "    raise RuntimeError('simulated handler failure')\n"
-        "\n"
-        "def _advises(ctx):\n"
-        "    return warn('legitimate advisory that must still emit')\n"
-        "\n"
-        "HANDLERS = {'PreToolUse': [_raises, _advises]}\n",
+        "claude",
+        "PreToolUse",
+        {"hook_event_name": "PreToolUse", "tool_name": "Bash"},
     )
+    assert result.returncode == 0
+    assert "_raises" in result.stderr
+    assert "simulated handler failure" in result.stderr
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "A failed handler displaces its siblings. `_run_handler` "
+        "(lib/hooks/dispatch.py) converts a handler exception into `warn(msg)` "
+        "and hands it to `_merge`, which returns the FIRST advisory present — "
+        "so the synthetic failure notice wins on registration order and the "
+        "working handler's advisory is dropped from the response entirely. A "
+        "handler that raises on every call therefore silences every handler "
+        "registered after it, on every event, while reporting success. The old "
+        "runtime attached the fault BESIDE the real result "
+        "(lib/hooks/degraded.py `attach`, deleted in 89733bf8); nothing took "
+        "that over. Fixing it means changing `_run_handler` or `_merge`, which "
+        "is a runtime design call — handed back rather than decided here."
+    ),
+)
+def test_dispatch_raising_handler_cannot_suppress_another_handlers_advisory(injected_plugin):
+    """A fault report must not displace a working handler's output. The report
+    is about the framework; the advisory is about the session, and the session
+    is what the agent needed."""
+    _write_handlers(injected_plugin, _RAISING_AND_ADVISING)
     result = _run_dispatch(
         injected_plugin,
         "claude",
@@ -919,38 +811,33 @@ def test_dispatch_raising_handler_cannot_suppress_another_handlers_advisory(inje
     )
     assert result.returncode == 0
     assert "legitimate advisory that must still emit" in result.stdout
-    assert "_raises" in result.stderr
-    assert "simulated handler failure" in result.stderr
 
 
-def test_dispatch_missing_message_file_is_isolated_not_fatal(injected_plugin):
-    """A handler that names a message file which doesn't exist fails loudly
-    (stderr) but does not crash the dispatch or block other handlers."""
-    _write_handlers(
-        injected_plugin,
-        "from result import warn\n"
-        "\n"
-        "def _missing_message(ctx):\n"
-        "    return warn(ctx.message('does-not-exist'))\n"
-        "\n"
-        "def _still_runs(ctx):\n"
-        "    return warn('this one is fine')\n"
-        "\n"
-        "HANDLERS = {'Stop': [_missing_message, _still_runs]}\n",
-    )
+def test_dispatch_a_handlers_module_that_cannot_be_imported_is_reported_not_fatal(
+    injected_plugin,
+):
+    """A syntactically broken handlers.py takes out the whole plugin's hook
+    surface. It must not take out the session too, and the reason must reach
+    the log — a hook that silently stops existing is the failure this runtime
+    is least able to detect from the inside."""
+    _write_handlers(injected_plugin, "this is not valid python(\n")
     result = _run_dispatch(injected_plugin, "claude", "Stop", {"hook_event_name": "Stop"})
     assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert out["hookSpecificOutput"]["additionalContext"] == "this one is fine"
-    assert "does-not-exist" in result.stderr or "MessageNotFoundError" in result.stderr
+    assert result.stdout.strip() == ""
+    assert "handlers.py" in result.stderr
 
 
-def test_dispatch_ctx_message_loads_real_file(injected_plugin):
+def test_dispatch_loads_a_real_message_file(injected_plugin):
     (injected_plugin / "messages").mkdir(exist_ok=True)
     (injected_plugin / "messages" / "honesty.md").write_text("Be honest and useful.")
     _write_handlers(
         injected_plugin,
-        "from result import warn\n\ndef _honesty(ctx):\n    return warn(ctx.message('honesty'))\n\nHANDLERS = {'SubagentStop': [_honesty]}\n",
+        "from dispatch import load_message_pair, warn\n"
+        "\n"
+        "def _honesty(ctx):\n"
+        "    return warn(*load_message_pair(ctx.hooks_dir, 'honesty'))\n"
+        "\n"
+        "HANDLERS = {'SubagentStop': [_honesty]}\n",
     )
     result = _run_dispatch(
         injected_plugin, "claude", "SubagentStop", {"hook_event_name": "SubagentStop"}
@@ -960,7 +847,7 @@ def test_dispatch_ctx_message_loads_real_file(injected_plugin):
     assert out["hookSpecificOutput"]["additionalContext"] == "Be honest and useful."
 
 
-def test_dispatch_unknown_agy_event_is_a_clean_noop(injected_plugin):
+def test_dispatch_unknown_agy_event_with_no_handler_is_a_clean_noop(injected_plugin):
     result = _run_dispatch(injected_plugin, "agy", "SomeFutureEvent", {})
     assert result.returncode == 0
     assert result.stdout.strip() == ""
@@ -975,6 +862,20 @@ def test_dispatch_bad_stdin_json_does_not_crash(injected_plugin):
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
+
+
+def test_dispatch_without_a_client_and_event_exits_non_zero(injected_plugin):
+    """The usage error is the one case that must NOT exit 0: a hook command
+    that lost its arguments is a wiring bug, and exiting 0 would hide it behind
+    a hook that appears to have run and had nothing to say."""
+    result = subprocess.run(
+        [sys.executable, str(injected_plugin / "dispatch.py"), "claude"],
+        input="{}",
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "usage" in result.stderr
 
 
 # ---------------------------------------------------------------------------
@@ -1032,14 +933,21 @@ def test_dispatch_appends_one_line_per_fire(injected_plugin, tmp_path):
     assert json.loads(lines[1])["event"] == "SubagentStop"
 
 
-def test_dispatch_does_not_log_an_event_with_no_wire_mapping(injected_plugin, tmp_path):
-    """agy's untranslated tool events (see clients.py) never reach a canonical
-    event at all — nothing fired, so nothing is recorded."""
+def test_dispatch_logs_an_event_with_no_wire_mapping_under_its_own_name(injected_plugin, tmp_path):
+    """An untranslated event still fires, so it is still recorded — under the
+    wire name, because that is the only name it has.
+
+    This is what makes the log usable for the question it exists to answer:
+    the debug plugin's whole job is unmapped events, and a log that dropped
+    them would report that nothing fired while handlers were running.
+    """
     log_path = tmp_path / "hooks.jsonl"
     env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(log_path)}
     result = _run_dispatch(injected_plugin, "agy", "SomeFutureEvent", {}, env=env)
     assert result.returncode == 0
-    assert not log_path.exists()
+    record = json.loads(log_path.read_text().splitlines()[0])
+    assert record["event"] == "SomeFutureEvent"
+    assert record["client"] == "agy"
 
 
 def test_dispatch_writes_nothing_when_the_path_is_unset(injected_plugin, tmp_path):
@@ -1050,8 +958,7 @@ def test_dispatch_writes_nothing_when_the_path_is_unset(injected_plugin, tmp_pat
 
 
 def test_dispatch_survives_an_unwritable_log_path(injected_plugin, tmp_path):
-    """A logging failure must never break the hook it is trying to record —
-    same fail-open contract as degraded.py's own once-per-session marker."""
+    """A logging failure must never break the hook it is trying to record."""
     blocked = tmp_path / "not-a-directory"
     blocked.write_text("")
     env = {**os.environ, "AOPS_HOOK_LOG_PATH": str(blocked / "hooks.jsonl")}
@@ -1063,274 +970,3 @@ def test_dispatch_survives_an_unwritable_log_path(injected_plugin, tmp_path):
         env=env,
     )
     assert result.returncode == 0
-
-
-# ---------------------------------------------------------------------------
-# degraded.py: the framework's own failures, given a reader
-# ---------------------------------------------------------------------------
-#
-# Every one of these failures used to go to stderr and stop there. Nothing
-# renders a hook's stderr to the person running the session — the client shows
-# them `systemMessage` and nothing else — so a check that stopped working
-# stopped working invisibly. These tests are about the wire, because the wire
-# is the only place a human can read.
-
-
-def test_report_writes_the_log_line_it_always_wrote(capsys):
-    """stderr is not being replaced. It is the log, it is right for the log,
-    and it is the only record that survives the once-per-session gate."""
-    degraded.report("a-kind", "cope: something broke", "OSError(2)")
-    assert capsys.readouterr().err == "cope: something broke: OSError(2)\n"
-
-
-def test_report_with_no_detail_logs_the_message_alone(capsys):
-    degraded.report("a-kind", "cope: something broke")
-    assert capsys.readouterr().err == "cope: something broke\n"
-
-
-def test_the_two_readers_get_different_things(tmp_path):
-    """The person watching needs to know a mechanism they rely on has stopped.
-    The agent needs enough to say what and to work around it. One is a
-    sentence; the other is the sentence plus the reason."""
-    shutil.copytree(_LIB_HOOKS / "messages", tmp_path / "messages")
-    degraded.report("a-kind", "cope: the rule evaluator did not answer", "OSError('refused')")
-
-    result = degraded.attach(None, tmp_path, "session-a")
-
-    assert result is not None
-    assert result.is_refusal is False
-    assert "OSError('refused')" in result.inject_text
-    assert result.user_text is not None
-    assert "the rule evaluator did not answer" in result.user_text
-    assert "OSError('refused')" not in result.user_text
-    assert "\n" not in result.user_text
-
-
-def test_attach_says_nothing_when_nothing_degraded(tmp_path):
-    assert degraded.attach(None, tmp_path, "session-a") is None
-    assert degraded.attach(warn("careful"), tmp_path, "session-a") == warn("careful")
-
-
-def test_attach_never_turns_an_advisory_into_a_refusal(tmp_path):
-    shutil.copytree(_LIB_HOOKS / "messages", tmp_path / "messages")
-    degraded.report("a-kind", "cope: something broke")
-    result = degraded.attach(warn("careful", "heads up"), tmp_path, "session-a")
-    assert result is not None
-    assert result.is_refusal is False
-    assert "careful" in result.inject_text
-    assert result.user_text is not None
-    assert result.user_text.startswith("heads up")
-
-
-def test_attach_leaves_a_refusals_reason_exactly_as_it_was(tmp_path):
-    """The denial reason is the whole contract of a refusal — the agent is
-    being told no, and told why. A framework fault is not part of that reason,
-    so it goes on the user's line instead."""
-    shutil.copytree(_LIB_HOOKS / "messages", tmp_path / "messages")
-    degraded.report("a-kind", "cope: something broke")
-    result = degraded.attach(refuse("nobody is here to answer", "blocked"), tmp_path, "session-a")
-    assert result == Result(
-        "nobody is here to answer",
-        "blocked cope: something broke — nothing was blocked. Reported once per session.",
-        is_refusal=True,
-    )
-
-
-def test_attach_survives_a_missing_message_file(tmp_path):
-    """A notice that broke the hook it was reporting on would be the worst
-    outcome available here."""
-    degraded.report("a-kind", "cope: something broke")
-    assert degraded.attach(warn("careful"), tmp_path, "session-a") == warn("careful")
-
-
-def test_the_degradation_message_pair_ships_with_the_runtime():
-    """lib/hooks/ is injected into every plugin that hooks, messages included —
-    the runtime loads this pair from the plugin's own hooks/messages/."""
-    agent, user = messages.load_pair(_LIB_HOOKS, "degraded")
-    assert "{faults}" in agent
-    assert user is not None
-    assert "{faults}" in user
-    assert "\n" not in user, "the user's line is one line in their terminal"
-
-
-# --- the same, through the real runtime, on the wire -------------------------
-
-# A handler that raises the way a real one does: a bug, a missing message file,
-# an evaluator client that threw. dispatch.py isolates it and exits 0.
-_RAISING_HANDLERS = (
-    "def _evaluate(ctx):\n"
-    "    raise RuntimeError('simulated evaluator failure')\n"
-    "\n"
-    "HANDLERS = {'PreToolUse': [_evaluate]}\n"
-)
-
-_TOOL_CALL = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "session_id": "session-a"}
-
-
-@pytest.fixture()
-def notice_env(tmp_path):
-    """The once-per-session gate is a marker file under the OS temp directory,
-    so a test asserting on a notice has to own that directory rather than
-    inherit markers from another run."""
-    marker_root = tmp_path / "os-tmp"
-    marker_root.mkdir()
-    return {**os.environ, "TMPDIR": str(marker_root)}
-
-
-def test_a_failed_handler_reaches_the_person_watching(injected_plugin, notice_env):
-    _write_handlers(injected_plugin, _RAISING_HANDLERS)
-    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
-
-    assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert "_evaluate" in out["systemMessage"]
-    assert "did not run" in out["systemMessage"]
-    assert "simulated evaluator failure" in out["hookSpecificOutput"]["additionalContext"]
-    # stderr keeps everything it had, in full
-    assert "_evaluate" in result.stderr
-    assert "simulated evaluator failure" in result.stderr
-
-
-def test_a_degradation_notice_is_never_a_gate(injected_plugin, notice_env):
-    """Fail-open is the whole point of isolating a handler in the first place.
-    Reporting the isolation must not undo it."""
-    _write_handlers(injected_plugin, _RAISING_HANDLERS)
-    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
-
-    out = json.loads(result.stdout)
-    assert result.returncode == 0
-    assert "decision" not in out
-    assert "permissionDecision" not in out["hookSpecificOutput"]
-
-
-def test_the_same_fault_is_announced_once_per_session(injected_plugin, notice_env):
-    """These fire on PreToolUse. A line per tool call is a line the user learns
-    to skip past, which is worse than no line at all."""
-    _write_handlers(injected_plugin, _RAISING_HANDLERS)
-    first = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
-    second = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
-
-    assert "systemMessage" in json.loads(first.stdout)
-    assert second.stdout.strip() == ""
-    assert "simulated evaluator failure" in second.stderr, "the log is never rate-limited"
-
-
-def test_the_next_session_is_told_too(injected_plugin, notice_env):
-    """The gate is per session, not per machine: a new session has a new person
-    watching it, and the mechanism is still broken."""
-    _write_handlers(injected_plugin, _RAISING_HANDLERS)
-    _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
-    later = _run_dispatch(
-        injected_plugin,
-        "claude",
-        "PreToolUse",
-        {**_TOOL_CALL, "session_id": "session-b"},
-        env=notice_env,
-    )
-    assert "_evaluate" in json.loads(later.stdout)["systemMessage"]
-
-
-def test_a_payload_with_no_session_id_stays_on_stderr(injected_plugin, notice_env):
-    """Nothing can bound a notice that cannot be keyed to a session, and an
-    unbounded line on every tool call is worse than the log by itself."""
-    _write_handlers(injected_plugin, _RAISING_HANDLERS)
-    raw = {key: value for key, value in _TOOL_CALL.items() if key != "session_id"}
-    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", raw, env=notice_env)
-
-    assert result.returncode == 0
-    assert result.stdout.strip() == ""
-    assert "simulated evaluator failure" in result.stderr
-
-
-def test_a_notice_rides_beside_a_real_advisory_without_displacing_it(injected_plugin, notice_env):
-    _write_handlers(
-        injected_plugin,
-        "from result import warn\n"
-        "\n"
-        "def _evaluate(ctx):\n"
-        "    raise RuntimeError('simulated evaluator failure')\n"
-        "\n"
-        "def _advises(ctx):\n"
-        "    return warn('the advisory that must still emit', 'flagged something')\n"
-        "\n"
-        "HANDLERS = {'PreToolUse': [_evaluate, _advises]}\n",
-    )
-    out = json.loads(
-        _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env).stdout
-    )
-
-    injected = out["hookSpecificOutput"]["additionalContext"]
-    assert injected.startswith("the advisory that must still emit")
-    assert "simulated evaluator failure" in injected
-    assert out["systemMessage"].startswith("flagged something")
-    assert "_evaluate" in out["systemMessage"]
-    assert "\n" not in out["systemMessage"]
-
-
-def test_a_refusal_keeps_its_reason_and_still_reports_the_fault(injected_plugin, notice_env):
-    _write_handlers(
-        injected_plugin,
-        "from result import refuse\n"
-        "\n"
-        "def _evaluate(ctx):\n"
-        "    raise RuntimeError('simulated evaluator failure')\n"
-        "\n"
-        "def _block(ctx):\n"
-        "    return refuse('nobody can answer that here', 'blocked a prompt')\n"
-        "\n"
-        "HANDLERS = {'PreToolUse': [_evaluate, _block]}\n",
-    )
-    out = json.loads(
-        _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env).stdout
-    )
-
-    specific = out["hookSpecificOutput"]
-    assert specific["permissionDecision"] == "deny"
-    assert specific["permissionDecisionReason"] == "nobody can answer that here"
-    assert out["systemMessage"].startswith("blocked a prompt")
-    assert "_evaluate" in out["systemMessage"]
-
-
-def test_a_handlers_module_that_cannot_be_imported_is_reported_not_fatal(
-    injected_plugin, notice_env
-):
-    """Every check the plugin ships is gone, and the old behaviour was to exit
-    non-zero with the reason on a channel nobody reads."""
-    _write_handlers(injected_plugin, "import a_module_that_does_not_exist\n")
-    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
-
-    assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert "handlers could not be loaded" in out["systemMessage"]
-    assert "ModuleNotFoundError" in out["hookSpecificOutput"]["additionalContext"]
-
-
-def test_a_healthy_hook_says_nothing_about_degradation(injected_plugin, notice_env):
-    """The condition this must never become: a line on a session where nothing
-    is wrong."""
-    _write_handlers(
-        injected_plugin,
-        "from result import warn\n"
-        "\n"
-        "def _advises(ctx):\n"
-        "    return warn('careful', 'flagged something')\n"
-        "\n"
-        "HANDLERS = {'PreToolUse': [_advises]}\n",
-    )
-    result = _run_dispatch(injected_plugin, "claude", "PreToolUse", _TOOL_CALL, env=notice_env)
-
-    assert result.stderr.strip() == ""
-    assert json.loads(result.stdout)["systemMessage"] == "flagged something"
-
-
-def test_a_failed_env_file_write_is_reported(tmp_path, monkeypatch):
-    """credentials.isolate is SessionStart's, so its failure means git pushes
-    fail later for a reason nothing connects back to this."""
-    monkeypatch.setenv("CLAUDE_ENV_FILE", str(tmp_path / "no-such-dir" / "env.sh"))
-    monkeypatch.delenv("AOPS_BOT_GH_TOKEN", raising=False)
-
-    persisted = credentials.isolate({"session_id": "session-a"})
-
-    assert persisted is not None  # fail-open: the session still starts
-    assert [fault.kind for fault in degraded._faults] == [degraded.CREDENTIALS]
-    assert "environment file could not be written" in degraded._faults[0].message

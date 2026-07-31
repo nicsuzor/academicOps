@@ -1,18 +1,23 @@
-"""Tests for the cope plugin (plugins/cope/).
+"""Tests for the CoPE rule check, which ships in the rbg plugin (plugins/rbg/).
 
-cope's PreToolUse hook is advisory-only rule enforcement — nothing in-session
-blocks on its verdict (specs/ARCHITECTURE.md, cope and Enforcement). The
-judgment itself is a small language model's, reached over the Reflexes
-evaluator contract: one rule in, one label back. cope composes the question and
-reports the answer; it never decides what a rule means by matching text against
-a pattern.
+The plugin directory was `plugins/cope/` until it was renamed to `plugins/rbg/`
+(e3a8bd39, 8edff6fa); the three modules under test — rules.py, evaluator.py,
+handlers.py — moved with it unchanged in name and surface. The environment
+variables, the `DEGRADED_*` kind strings, and the message files are still
+CoPE's, so the vocabulary below is unchanged.
+
+The `PreToolUse` hook is advisory-only rule enforcement — nothing in-session
+blocks on its verdict (specs/ARCHITECTURE.md, Enforcement). The judgment itself
+is a small language model's, reached over the Reflexes evaluator contract: one
+rule in, one label back. The plugin composes the question and reports the
+answer; it never decides what a rule means by matching text against a pattern.
 
 These tests exercise the real plugin source: rules.py's three-layer loading and
 its graceful degradation, evaluator.py's configuration gate and both wire
 protocols, handlers.py's advisory composition and its fail-open behaviour, and
 the whole thing end to end through lib/hooks/dispatch.py against a real
 loopback HTTP evaluator — simulating build stage 1's shared injection, where
-lib/hooks/*.py and plugins/cope/hooks/*.py land in one directory.
+lib/hooks/*.py and plugins/rbg/hooks/*.py land in one directory.
 """
 
 from __future__ import annotations
@@ -34,18 +39,16 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _LIB_AXIOMS = _REPO_ROOT / "lib" / "axioms"
-_COPE_HOOKS = _REPO_ROOT / "plugins" / "cope" / "hooks"
+_COPE_HOOKS = _REPO_ROOT / "plugins" / "rbg" / "hooks"
 
 for _dir in (_LIB_HOOKS, _COPE_HOOKS):
     if str(_dir) not in sys.path:
         sys.path.insert(0, str(_dir))
 
-import degraded  # noqa: E402  (lib/hooks/degraded.py)
-import evaluator  # noqa: E402  (plugins/cope/hooks/evaluator.py)
-import handlers  # noqa: E402  (plugins/cope/hooks/handlers.py)
-import rules  # noqa: E402  (plugins/cope/hooks/rules.py)
-from context import HookContext  # noqa: E402
-from result import warn  # noqa: E402
+import evaluator  # noqa: E402  (plugins/rbg/hooks/evaluator.py)
+import handlers  # noqa: E402  (plugins/rbg/hooks/handlers.py)
+import rules  # noqa: E402  (plugins/rbg/hooks/rules.py)
+from dispatch import HookContext, Kind, warn  # noqa: E402
 
 # Every environment variable cope reads for its evaluator, named once because
 # both the isolation fixture and the README-truthfulness test need the set.
@@ -77,16 +80,13 @@ def _isolate_cope_environment(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _isolate_degradation_state(monkeypatch, tmp_path):
-    """cope's stderr reports are also recorded for the user-facing channel
-    (lib/hooks/degraded.py), at module scope and behind a once-per-session
-    marker file under the OS temp directory. Neither may cross a test — nor
-    reach the hook subprocesses below, which read the environment for it."""
+def _isolate_temp_directory(monkeypatch, tmp_path):
+    """Nothing this plugin writes may land in the shared OS temp directory,
+    where it could cross into another test or another run. Kept as a floor even
+    though the current runtime keeps no on-disk state of its own: a subprocess
+    below that starts writing one must not do it in a shared location."""
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     monkeypatch.setenv("TMPDIR", str(tmp_path))
-    degraded.reset()
-    yield
-    degraded.reset()
 
 
 @pytest.fixture(autouse=True)
@@ -495,7 +495,7 @@ def test_the_manifest_declares_exactly_the_options_the_code_reads():
     a variable nobody sets — and cope's failure mode for missing configuration
     is a clean no-op, which would look exactly like working correctly."""
     manifest = json.loads(
-        (_REPO_ROOT / "plugins" / "cope" / "manifest" / "plugin.template.json").read_text()
+        (_REPO_ROOT / "plugins" / "rbg" / "manifest" / "plugin.template.json").read_text()
     )
     declared = manifest["clients"]["claude"]["userConfig"]
     assert {key.upper() for key in declared} == set(_COPE_ENV)
@@ -1021,14 +1021,19 @@ def test_the_verdict_message_file_carries_both_placeholders():
 
 
 # ---------------------------------------------------------------------------
-# Result shape: cope is advisory-only, and cannot reach the blocking outcome
+# Result shape: the rule check may never refuse a tool call
 # ---------------------------------------------------------------------------
 #
-# The shared runtime does carry one blocking outcome — a refusal, reserved for
-# structural impossibility and used by exactly one hook, aops's headless
-# interactive-prompt check (lib/hooks/result.py). cope is not that hook and
-# never will be: rule enforcement is advisory, permanently. So the guarantee is
-# asserted about cope rather than about the type.
+# The shared runtime carries three dispositions (lib/hooks/dispatch.py `Kind`).
+# `REFUSE` denies a tool call outright and is reserved for structural
+# impossibility — the session as configured cannot carry the call out. A rule
+# verdict from a small model is never that, permanently, so the guarantee is
+# asserted about this plugin's source rather than about the type.
+#
+# `BLOCK` is a different disposition and is deliberately NOT banned here: it
+# withholds a *stop*, not a tool call, and `rule_check` legitimately returns one
+# (plugins/rbg/hooks/handlers.py). What may never happen is a rule verdict
+# denying the call it was asked to judge.
 
 
 def test_warn_never_produces_a_refusal():
@@ -1036,30 +1041,32 @@ def test_warn_never_produces_a_refusal():
     assert {f.name for f in dataclasses.fields(result)} == {
         "inject_text",
         "user_text",
-        "is_refusal",
+        "kind",
     }
-    assert result.is_refusal is False
+    # `==`, not `is`: dispatch.py is loaded twice in a live hook, so a member
+    # built handler-side is never identical to the renderer's. See `Kind`.
+    assert result.kind == Kind.ADVISE
 
 
-# Every way cope's own source could reach the blocking outcome. `refuse` is the
-# obvious one; the other two are not, and matter more.
+# Every way this plugin's own source could reach the refusal outcome. `refuse`
+# is the obvious one; the other two are not, and matter more.
 #
-# `refuse` is NOT a substring of `is_refusal` — check it: "refuse" vs
-# "refusal", the fifth letter differs. So a grep for `refuse` alone sails past
-# `Result("blocked", is_refusal=True)`, which lib/hooks/clients.py renders as
-# `permissionDecision: deny` exactly like a refuse() call would. Constructing a
-# `Result` positionally, `Result(text, None, True)`, evades both. Banning
-# construction is what actually closes it: handlers.py legitimately imports
-# `Result` for its return annotation, and `Result | None` contains no `(`.
-_BLOCKING_TOKENS = ("refuse", "is_refusal", "Result(")
+# `refuse` (lowercase) does not match `Kind.REFUSE`, so a grep for the helper
+# alone sails past `Result("blocked", None, Kind.REFUSE)`, which dispatch.py
+# renders as `permissionDecision: deny` exactly like a refuse() call would.
+# Constructing a `Result` positionally evades both. Banning construction is what
+# actually closes it: handlers.py legitimately imports `Result` for its return
+# annotation, and `Result | None` contains no `(`.
+_BLOCKING_TOKENS = ("refuse", "Kind.REFUSE", "Result(")
 
 
 def test_cope_source_can_never_reach_the_blocking_outcome():
-    """cope may only ever call warn(). Checked at the source, so a future
-    handler cannot acquire a blocking path without this failing — a payload
-    that happens not to trigger one would not notice.
+    """The rule check may only ever advise or withhold a stop — never deny the
+    tool call. Checked at the source, so a future handler cannot acquire a
+    refusal path without this failing; a payload that happens not to trigger one
+    would not notice.
 
-    An LLM verdict is exactly the kind of thing that grows a "block on high
+    An LLM verdict is exactly the kind of thing that grows a "deny on high
     confidence" branch later. This is the test that has to fail when it does.
     """
     offenders = [
@@ -1078,8 +1085,8 @@ def test_the_blocking_token_list_would_actually_catch_a_violation(tmp_path):
     spelling that was checked."""
     for source in (
         "return refuse('no')",
-        "return Result('no', None, True)",
-        "return Result('no', is_refusal=True)",
+        "return Result('no', None, Kind.REFUSE)",
+        "return Result('no', kind=Kind.REFUSE)",
     ):
         assert any(token in source for token in _BLOCKING_TOKENS), (
             f"a handler could ship {source!r} without the guard noticing"
@@ -1114,7 +1121,7 @@ def test_every_cope_handler_returns_an_advisory_or_nothing(
             result = handler(ctx)
             if result is None:
                 continue
-            assert result.is_refusal is False, f"{handler.__name__} refused on {event}"
+            assert result.kind != Kind.REFUSE, f"{handler.__name__} refused on {event}"
             fired += 1
     assert fired > 0, "no cope handler produced a result; the assertion checked nothing"
 
@@ -1162,7 +1169,7 @@ def stub_evaluator():
 @pytest.fixture()
 def built_cope_plugin(tmp_path):
     """Assembles the plugin the way build stage 1 would: lib/hooks/*.py and
-    plugins/cope/hooks/*.py copied into one hooks/ dir, plus a sibling
+    plugins/rbg/hooks/*.py copied into one hooks/ dir, plus a sibling
     axioms/ dir carrying lib/axioms/ verbatim — index docs included, because
     that is what ships, and a fixture that filtered them would hide whether
     the loader distinguishes a rule from a reference doc."""
@@ -1174,9 +1181,13 @@ def built_cope_plugin(tmp_path):
     for py_file in _COPE_HOOKS.glob("*.py"):
         shutil.copy2(py_file, hooks / py_file.name)
     shutil.copytree(_COPE_HOOKS / "messages", hooks / "messages")
-    # The shared runtime ships wording of its own, merged into the same
-    # messages/ directory at build time (build/shared.py).
-    shutil.copytree(_LIB_HOOKS / "messages", hooks / "messages", dirs_exist_ok=True)
+    # Any wording the shared runtime ships of its own is merged into the same
+    # messages/ directory at build time (build/shared.py, `from = "hooks"`).
+    # It currently ships none — the condition tracks that rather than assuming
+    # it, so re-introducing shared wording does not silently bypass the build
+    # step this fixture is standing in for.
+    if (_LIB_HOOKS / "messages").is_dir():
+        shutil.copytree(_LIB_HOOKS / "messages", hooks / "messages", dirs_exist_ok=True)
     shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
     return hooks
 
@@ -1305,39 +1316,55 @@ def test_dispatch_end_to_end_unconfigured_is_a_silent_no_op(built_cope_plugin, p
     assert result.stderr.strip() == ""
 
 
+# A degradation is reported on stderr and nowhere else. It used to be attached
+# to the hook response as well, so the person whose rules stopped being checked
+# saw one line in `systemMessage`; that channel was removed with
+# lib/hooks/degraded.py (89733bf8) and the current contract is stated in
+# plugins/rbg/hooks/evaluator.py's module docstring: "Reporting means stderr, on
+# every occurrence — there is no once-per-session dedup or hook-response
+# injection in this runtime." The assertions below therefore read stderr. The
+# *content* of every notice is unchanged, so nothing that was checked has
+# stopped being checked; only the channel moved.
+
+
 def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin, project_cwd):
     """A configured endpoint that is not listening must not take the session
-    down with it: exit 0, no verdict, no permission decision — and the person
-    whose rules stopped being checked is told, once, that they stopped."""
+    down with it: exit 0, no verdict, nothing on the wire at all — and the
+    failure named on stderr, naming the rules that went unchecked."""
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
     raw = {**_PRETOOLUSE, "session_id": "unreachable-evaluator", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
-    assert "cope:" in result.stderr
+    assert "rule evaluator did not answer" in result.stderr
+    assert "not being checked" in result.stderr
 
-    out = json.loads(result.stdout)
-    assert "rule evaluator did not answer" in out["systemMessage"]
-    assert "decision" not in out
-    assert "permissionDecision" not in out["hookSpecificOutput"]
+    # An evaluator that could not answer produces no verdict, so there is no
+    # advisory and no response at all — which is also, and more strongly than
+    # the old assertion, no permission decision.
+    assert result.stdout.strip() == ""
 
 
 def test_dispatch_end_to_end_partial_configuration_says_so_and_stands_down(
     built_cope_plugin, project_cwd
 ):
+    """Half a configuration is a mistake someone made, and the report has to
+    name the variable they still have to set — not just that something is
+    wrong."""
     env = _dispatch_env(COPE_EVALUATOR_URL=_DEAD_URL)
     raw = {**_PRETOOLUSE, "session_id": "partial-configuration", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     assert result.returncode == 0
     assert "COPE_EVALUATOR_MODEL" in result.stderr
-    assert "COPE_EVALUATOR_MODEL" in json.loads(result.stdout)["systemMessage"]
+    assert "not evaluating" in result.stderr
+    assert result.stdout.strip() == ""
 
 
-def test_dispatch_end_to_end_tells_the_user_a_rule_file_could_not_be_read(
+def test_dispatch_end_to_end_reports_a_rule_file_that_could_not_be_read(
     built_cope_plugin, stub_evaluator, project_cwd
 ):
-    """The degradation the plugin's own README used to claim was visible. A
-    rule that cannot be read is a rule that is not being enforced, and the only
-    person who can fix the file is the one the response has to reach."""
+    """A rule that cannot be read is a rule that is not being enforced. The
+    report has to name the file — the only person who can fix it needs to know
+    which one — and the rest of the rule set has to keep working."""
     rules_dir = project_cwd / ".agents" / "rules"
     rules_dir.mkdir(parents=True)
     (rules_dir / "unreadable.md").mkdir()  # a rule file that is not a file
@@ -1353,22 +1380,25 @@ def test_dispatch_end_to_end_tells_the_user_a_rule_file_could_not_be_read(
     )
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
 
+    assert "unreadable.md" in result.stderr
+    assert "not being checked" in result.stderr
+    assert "IsADirectoryError" in result.stderr
+
+    # The flagged rule is still delivered — one unreadable file displaces
+    # nothing else, which is the fail-open guarantee this case exists for.
     out = json.loads(result.stdout)
-    assert "unreadable.md" in out["systemMessage"]
-    assert "not being checked" in out["systemMessage"]
-    assert "IsADirectoryError" in out["hookSpecificOutput"]["additionalContext"]
+    assert "halt-on-failure" in out["hookSpecificOutput"]["additionalContext"]
     assert "decision" not in out
     assert "permissionDecision" not in out["hookSpecificOutput"]
-    # the flagged rule is still delivered — a fault report displaces nothing
-    assert "halt-on-failure" in out["hookSpecificOutput"]["additionalContext"]
 
 
-def test_dispatch_end_to_end_tells_the_user_a_rule_file_is_never_evaluated(
+def test_dispatch_end_to_end_reports_a_rule_file_that_is_never_evaluated(
     built_cope_plugin, stub_evaluator, project_cwd
 ):
     """A project rule with no `trigger: always_on` marker is read by agents and
     never sent to the evaluator. Its author has no way to tell from inside the
-    session, which is how a rule quietly stops being enforced."""
+    session, which is how a rule quietly stops being enforced — so the report
+    names both the file and the frontmatter line that would fix it."""
     rules_dir = project_cwd / ".agents" / "rules"
     rules_dir.mkdir(parents=True)
     (rules_dir / "costly-ops-approval.md").write_text("---\ndescription: no marker\n---\n\nAsk.\n")
@@ -1384,25 +1414,29 @@ def test_dispatch_end_to_end_tells_the_user_a_rule_file_is_never_evaluated(
     )
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
 
-    system_message = json.loads(result.stdout)["systemMessage"]
-    assert "costly-ops-approval.md" in system_message
-    assert "trigger: always_on" in system_message
+    assert "costly-ops-approval.md" in result.stderr
+    assert "trigger: always_on" in result.stderr
 
 
-def test_dispatch_end_to_end_says_the_same_thing_once_not_once_per_tool_call(
+def test_dispatch_end_to_end_reports_the_same_fault_on_every_tool_call(
     built_cope_plugin, project_cwd
 ):
-    """cope's hook fires on every tool call. A notice repeated per call is one
-    the user stops reading, so the second call is silent while the log is
-    not."""
+    """One hook invocation is one process, so there is nowhere to remember that
+    a fault was already reported without keeping state on disk. This runtime
+    keeps none: the notice goes to stderr on every occurrence, and the log is
+    never rate-limited or dropped. Pinned both calls, because "reported once"
+    and "reported every time" are the two possible contracts and a reader of
+    the log needs to know which one they are looking at."""
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
-    raw = {**_PRETOOLUSE, "session_id": "repeat-suppressed", "cwd": str(project_cwd)}
+    raw = {**_PRETOOLUSE, "session_id": "repeated-fault", "cwd": str(project_cwd)}
     first = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     second = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
 
-    assert "systemMessage" in json.loads(first.stdout)
+    assert "rule evaluator did not answer" in first.stderr
+    assert "rule evaluator did not answer" in second.stderr
+    # Neither call puts a fault report on the wire.
+    assert first.stdout.strip() == ""
     assert second.stdout.strip() == ""
-    assert "cope:" in second.stderr
 
 
 def test_dispatch_end_to_end_an_unconfigured_session_is_never_called_degraded(

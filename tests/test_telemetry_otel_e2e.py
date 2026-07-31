@@ -1,6 +1,7 @@
 """End-to-end proof that Claude Code's native OpenTelemetry export actually
-delivers records when the framework's env contract (lib/hooks/telemetry.py
-`CONTRACT`) is populated. See specs/ARCHITECTURE.md, Observability: the
+delivers records when the framework's env contract
+(lib/polecat/env_contract.py `TELEMETRY_ENV`) is populated. See
+specs/ARCHITECTURE.md, Observability: the
 framework defines and forwards the contract but emits no spans of its own —
 Claude Code's native export is the only mechanism, and this is the one place
 that mechanism is exercised against a real collector rather than assumed.
@@ -30,11 +31,10 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_HOOKS_DIR = str(_REPO_ROOT / "lib" / "hooks")
-if _HOOKS_DIR not in sys.path:
-    sys.path.insert(0, _HOOKS_DIR)
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-from telemetry import CONTRACT  # noqa: E402
+from lib.polecat.env_contract import TELEMETRY_ENV as CONTRACT  # noqa: E402
 
 pytestmark = pytest.mark.otel_e2e
 
@@ -227,10 +227,11 @@ def test_native_otel_export_reaches_a_real_collector(tmp_path):
             "OTEL_LOGS_EXPORT_INTERVAL": "1000",
             "OTEL_TRACES_EXPORT_INTERVAL": "1000",
         }
-        # Every key set above must be one telemetry.py actually contracts
-        # for — this test proves the real contract works, not a look-alike.
+        # Every key set above must be one the shipped contract actually
+        # forwards — this test proves the real contract works, not a
+        # look-alike.
         for name in contract_env:
-            assert name in CONTRACT, f"{name} is not in telemetry.CONTRACT"
+            assert name in CONTRACT, f"{name} is not in env_contract.TELEMETRY_ENV"
 
         session_env = os.environ.copy()
         session_env.update(contract_env)
