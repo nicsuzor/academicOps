@@ -70,16 +70,12 @@ marketplace name and is the single source of truth for the built plugin set.
 | Directory               | Marketplace name | Owns                                                                                |
 | ----------------------- | ---------------- | ----------------------------------------------------------------------------------- |
 | `plugins/pkb`           | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.     |
-| `plugins/ida`           | `ida`            | ida, the interactive face; james, synthesis and dispatch.                           |
+| `plugins/ida`           | `ida`            | ida, the interactive face; james, synthesis and dispatch; marsha, QA.               |
 | `plugins/rbg`           | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate. |
 | `plugins/ts`            | `ts`             | Tailscale bring-up for remote sessions.                                             |
 | `plugins/tools`         | `tools`          | Domain research skills.                                                             |
 | `plugins/aops-debug`    | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                          |
-| `plugins.disabled/aops` | not built        | marsha. Review, QA, verification.                                                   |
-
-### aops (disabled)
-
-**marsha** judges whether an artifact is outstanding. She runs it.
+| `plugins.disabled/aops` | not built        | Session-start, headless-prompt-refusal, and answer-evidence hooks.                  |
 
 ### pkb
 
@@ -111,6 +107,26 @@ review agents, interrogates their output, resolves conflicting verdicts into one
 judgment, and delegates substantive work — either to a supervised in-session
 agent team or to an asynchronous polecat container. Ida delegates to james;
 james never talks to the user.
+
+**marsha** judges whether an artifact is outstanding. She runs it. Her `verify`
+skill is bound to her and ships alongside her.
+
+She ships here rather than in a plugin of her own, and that is a deliberate
+call rather than a consequence of how she is reached. Co-location buys nothing
+at dispatch: james reaches `rbg:rbg` and `pkb:pauli` across plugin boundaries
+by namespace, and would reach marsha the same way from anywhere. What decides
+it is that `rbg` and `pkb` exist around infrastructure only their owner needs —
+rbg's `PreToolUse` and `Stop` hooks, pkb's MCP client config — while marsha
+carries none: an agent body and one bound skill, no hooks, no config, no
+`lib/` injection. A plugin of her own would be a namespace and nothing else, so
+she ships with the review machinery that commissions her.
+
+Her independence is unaffected, because it never rested on packaging. It comes
+from reviewing blind to the other reviewers and from james treating every
+verdict as input rather than truth (`plugins/ida/skills/strategic-review/SKILL.md`).
+What packaging does decide is whether she resolves at all: a shipping
+instruction naming a reviewer who does not ship leaves the review short-handed
+while reading as complete.
 
 ### rbg
 

@@ -9,7 +9,7 @@ skills:
 subagents:
   - "rbg:rbg"
   - "pkb:pauli"
-  - "aops:marsha"
+  - "ida:marsha"
   - general-purpose
 ---
 

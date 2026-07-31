@@ -19,6 +19,7 @@ from build.errors import BuildError
 from build.includes import resolve_includes
 from build.manifest import merge_one_level, render_template
 from build.marketplace import load_marketplace_toml
+from build.shared import load_shared_entries
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
@@ -105,6 +106,84 @@ def test_include_cycle_is_hard_error(tmp_path):
     (lib_dir / "b.md").write_text("@include a.md\n")
     with pytest.raises(BuildError, match="cycle"):
         resolve_includes("@include a.md\n", lib_dir, "origin.md")
+
+
+# --- stage 1: shared-injection declarations fail loudly, never silently ------
+
+
+def _plugin_toml(tmp_path: Path, body: str) -> Path:
+    path = tmp_path / "plugin.toml"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_scaffold_hint_shape_is_a_hard_error_not_a_silent_no_op(tmp_path):
+    """The exact shape `templates/plugin/manifest/plugin.toml` used to hint at.
+
+    `[build]` / `includes` is not the schema `load_shared_entries` consumes, and
+    a plain `data.get("shared", [])` read it as zero entries — no error, no
+    warning, no `lib/` injection. Anyone scaffolding a plugin and following the
+    template's own hint got a plugin silently missing its shared material, which
+    `.agents/CORE.md` makes the sole permitted route for shared content. This
+    pins that the unrecognised declaration fails the build by name instead.
+    """
+    path = _plugin_toml(tmp_path, '[build]\nincludes = [ "lib/my_module" ]\n')
+    with pytest.raises(BuildError, match=r"unrecognised top-level key\(s\) \['build'\]"):
+        load_shared_entries(path)
+
+
+def test_declaring_nothing_is_still_legal(tmp_path):
+    """Fail-loud must not fail plugins that legitimately declare nothing: an
+    absent file and a comment-only file both mean "declares nothing"."""
+    assert load_shared_entries(tmp_path / "absent.toml") == []
+    assert load_shared_entries(_plugin_toml(tmp_path, "# just a comment\n")) == []
+
+
+def test_misspelled_entry_key_is_a_hard_error(tmp_path):
+    path = _plugin_toml(tmp_path, '[[shared]]\nfrom = "hooks"\nto = "hooks"\nfrmo = "typo"\n')
+    with pytest.raises(BuildError, match=r"unrecognised key\(s\) \['frmo'\]"):
+        load_shared_entries(path)
+
+
+def test_shared_as_wrong_type_is_a_hard_error(tmp_path):
+    with pytest.raises(BuildError, match="must be an array of tables"):
+        load_shared_entries(_plugin_toml(tmp_path, 'shared = "hooks"\n'))
+
+
+def test_malformed_toml_names_the_file(tmp_path):
+    with pytest.raises(BuildError, match="malformed TOML"):
+        load_shared_entries(_plugin_toml(tmp_path, "[[shared]\nfrom = \n"))
+
+
+def test_well_formed_shared_still_loads(tmp_path):
+    path = _plugin_toml(tmp_path, '[[shared]]\nfrom = "hooks"\nto = "hooks"\n')
+    assert load_shared_entries(path) == [{"from": "hooks", "to": "hooks"}]
+
+
+def test_scaffold_template_hints_the_shape_the_build_consumes(tmp_path):
+    """The scaffold's own example must be something `load_shared_entries` accepts.
+
+    Uncommenting that example is the path a new plugin author takes; if the
+    shape it hints at is not the consumed one, the scaffold steers them into a
+    silent violation of the `lib/`-injection constraint. Asserting the text
+    alone would not catch a drift in the consumer, so this uncomments the
+    example and feeds it through the real loader.
+    """
+    text = (PROJECT_ROOT / "templates" / "plugin" / "manifest" / "plugin.toml").read_text(
+        encoding="utf-8"
+    )
+    assert "[build]" not in text, "scaffold still hints at the unconsumed [build] shape"
+
+    uncommented = "\n".join(
+        line.lstrip("#").strip() for line in text.splitlines() if line.lstrip().startswith("#")
+    )
+    assert "[[shared]]" in uncommented, "scaffold shows no [[shared]] example to copy"
+    # rindex, not index: the prose above the example names `[[shared]]` too, and
+    # the copyable example is the last thing in the file.
+    example = uncommented[uncommented.rindex("[[shared]]") :]
+    assert load_shared_entries(_plugin_toml(tmp_path, example)) == [
+        {"from": "my_module", "to": "my_module"}
+    ]
 
 
 # --- stage 3: manifest rendering --------------------------------------------

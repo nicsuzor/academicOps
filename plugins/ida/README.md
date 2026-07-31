@@ -75,8 +75,10 @@ What crosses between them is the evidence contract, defined once in `specs/enfor
 | ----- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agent | `ida`              | The interactive face. Coordinates research work, delegates to james, filters returns.                                                                 |
 | Agent | `james`            | The orchestrator. Commissions review, synthesises one verdict, dispatches work.                                                                       |
+| Agent | `marsha`           | QA. Judges whether an artifact is outstanding, and runs it to find out.                                                                               |
 | Skill | `dispatch`         | Routes a decomposed unit to its worker surface and holds the epic until every unit lands.                                                             |
 | Skill | `strategic-review` | Deploys the review lenses in parallel and reconciles their findings into one verdict.                                                                 |
+| Skill | `verify`           | marsha's QA pass: assume it is broken, then prove otherwise. Commissioned, never invoked directly.                                                    |
 | Hook  | `handlers.py`      | The quiet gate on `Stop` — strips ida's reply to load-bearing content before it speaks to the person — and the rule against hearsay on `PostToolUse`. |
 | CLI   | polecat            | The container launcher `dispatch` invokes at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.                                                                  |
 
@@ -94,5 +96,5 @@ No endpoint, host, registry, account or credential is written into anything this
 
 - `lib/axioms/` — `bar`, `launder`, `probe`, `delegation`, `epistemics`, `governing-rules`, `halt`, `memory`. These are applied globally as rule context rather than inlined via `@include`.
 - The `pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions, and who performs every write to the task graph that `dispatch` decides on.
-- The `aops` plugin at runtime, for **marsha**, whom `strategic-review` always runs and whose `verify` skill `dispatch` commissions rather than invokes. That plugin is currently not built, so this dependency is declared but unmet.
+- The `rbg` plugin at runtime, for **rbg**, whom `strategic-review` always runs as its compliance lens.
 - Docker, and an image built from this repository, for the polecat containers `dispatch` launches.
