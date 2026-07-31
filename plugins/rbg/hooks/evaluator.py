@@ -34,10 +34,10 @@ none of them produce an advisory either. They are reported and the tool call
 proceeds untouched. There are no retries: a retry in this position multiplies
 the stall the agent is waiting through.
 
-Reporting means both readers, not just the log: an evaluator that has stopped
-answering is rule checking that has stopped happening, which the person in the
-session needs told once (lib/hooks/degraded.py). A session with nothing
-configured is not that, and stays silent — see ``resolve``.
+Reporting means stderr, on every occurrence — there is no once-per-session
+dedup or hook-response injection in this runtime; see ``_note``. A session
+with nothing configured is not a degraded one, and stays silent — see
+``resolve``.
 
 The whole check runs inside one deadline. Two things enforce it, because either
 alone leaks: the remaining budget is passed down as the socket timeout, so no
@@ -131,8 +131,11 @@ def _note(message: str) -> None:
 
     Every caller is a value someone set and meant to work. Nothing set at all
     never reaches here — that is ``resolve`` returning ``None`` in silence.
+
+    stderr, not stdout: stdout is the hook's JSON response channel, and a
+    print here would corrupt it.
     """
-    print("DEGRADED: ", f"cope: {message}", file=sys.stderr)
+    print(f"DEGRADED: cope: {message}", file=sys.stderr)
 
 
 def _setting(name: str) -> str:

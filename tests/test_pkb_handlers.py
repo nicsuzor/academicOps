@@ -168,7 +168,8 @@ def _pkb_plugin(tmp_path):
     hooks_dir.mkdir()
     for py_file in LIB_HOOKS.glob("*.py"):
         shutil.copy2(py_file, hooks_dir / py_file.name)
-    shutil.copytree(LIB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
+    if (LIB_HOOKS / "messages").is_dir():
+        shutil.copytree(LIB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
     shutil.copy2(PKB_HOOKS / "handlers.py", hooks_dir / "handlers.py")
     shutil.copytree(PKB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
     return hooks_dir

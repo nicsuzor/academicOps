@@ -15,9 +15,16 @@ already covered by ``evaluate``, and because the pkb plugin owns Claude's
 ``UserPromptSubmit`` injection.
 
 Both are advisory only — they return a ``Result`` (context injected for the
-agent to read), never a permission decision; see lib/hooks/result.py and
+agent to read), never a permission decision; see lib/hooks/dispatch.py and
 specs/ARCHITECTURE.md, Enforcement. Real enforcement is a separate merge-stage
 check.
+
+``check_rules_before_stopping`` is the ``Stop``/``SubagentStop`` gate. It
+returns a ``block`` (lib/hooks/dispatch.py) directing the agent to run the
+rule check itself before the turn ends — the hook has no transcript to
+evaluate and does not check anything on its own behalf. The once-per-chain
+semantics come from dispatch.py's structural self-loop guard; this handler
+does not re-check ``stop_hook_active``.
 
 One hook invocation is one process (dispatch.py runs, does its job, exits), so
 the rule set is loaded once per call and cached at module scope for the life of
@@ -31,7 +38,7 @@ from pathlib import Path
 
 import evaluator
 import rules
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import HookContext, Result, block, load_message_pair, warn
 
 _rules_cache: dict[str, rules.Rule] | None = None
 
@@ -70,15 +77,17 @@ def evaluate(ctx: HookContext) -> Result | None:
     a rule the model actually flagged produces an advisory, and the advisory
     hands back the rule's own text so the agent can correct its own course.
 
-    The advisory has two readers, so it is loaded as a pair (lib/hooks/
-    messages.py). The agent gets the rule text; the person watching gets one
-    line naming what was flagged, because a check that only ever speaks to the
-    agent leaves the person whose session it is with no idea it fired.
+    The advisory has two readers, so it is loaded as a pair via
+    ``load_message_pair`` (lib/hooks/dispatch.py), from this plugin's
+    ``messages/`` directory. The agent gets the rule text; the person watching
+    gets one line naming what was flagged, because a check that only ever
+    speaks to the agent leaves the person whose session it is with no idea it
+    fired.
 
-    An evaluator that could not answer reaches both of them for the same
-    reason, once per session (lib/hooks/degraded.py). The call still proceeds:
-    a rule that went unjudged is not a rule that passed, and it is not grounds
-    to hold anything up.
+    An evaluator that could not answer is reported to stderr, on every call it
+    happens on — there is no once-per-session dedup in this runtime. The call
+    still proceeds: a rule that went unjudged is not a rule that passed, and
+    it is not grounds to hold anything up.
     """
     config = evaluator.resolve()
     if config is None:
@@ -93,10 +102,9 @@ def evaluate(ctx: HookContext) -> Result | None:
 
     if failures:
         print(
-            "DEGRADED: ",
+            "DEGRADED: "
             f"cope: the rule evaluator did not answer for {len(failures)} of "
-            f"{len(policies)} rules, so those rules are not being checked",
-            "; ".join(failures),
+            f"{len(policies)} rules, so those rules are not being checked: " + "; ".join(failures),
             file=sys.stderr,
         )
 
@@ -160,7 +168,26 @@ def inject_ruleset(ctx: HookContext) -> Result | None:
     return warn(load_message_pair(ctx.hooks_dir, "ruleset")[0].replace("{rules}", _digest(loaded)))
 
 
+def check_rules_before_stopping(ctx: HookContext) -> Result | None:
+    """Direct the agent to run the rule check itself before the turn ends.
+
+    This is not a transcript evaluator: it has no access to what actually
+    happened this turn, only to the fact that a stop is about to happen. So
+    it never judges anything — it always returns the same ``block``, telling
+    the agent to check its own work against the axioms, project rules, and
+    local rules, and to present checkable evidence rather than an assertion.
+
+    Once per stop chain, not once per handler invocation: dispatch.py's
+    structural self-loop guard (``_SELF_LOOP_GUARDED_EVENTS``) suppresses the
+    re-fire Claude Code sends with ``stop_hook_active`` true, so this handler
+    does not need to, and does not, check that flag itself.
+    """
+    return block(*load_message_pair(ctx.hooks_dir, "stop-check"))
+
+
 HANDLERS = {
     "PreToolUse": [evaluate],
     "UserPromptSubmit": [inject_ruleset],
+    "Stop": [check_rules_before_stopping],
+    "SubagentStop": [check_rules_before_stopping],
 }

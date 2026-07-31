@@ -1,32 +1,35 @@
 """ida's hook handlers.
 
-Two hooks, and each one's event is load-bearing.
+``rule_against_hearsay`` is the ``PostToolUse`` handler, matched to the
+``Agent`` tool. It fires in the context of whoever dispatched a subagent, at
+the moment that subagent's report lands, and reminds them that a report is
+not evidence.
 
-``PostToolUse``, matched to the ``Agent`` tool, fires in the context of whoever
-dispatched a subagent, at the moment that subagent's report lands, and reminds
-them that a report is not evidence. The rule binds the *caller* — the party who
-has to decide whether to trust the report — so it must be delivered on the
-caller's own side. ``SubagentStop`` cannot carry it: that event fires on the
-stopping subagent's context and its injection is visible only there, never to
-the session that dispatched it. Aimed at the worker, this text does worse than
-miss — the worker spends its final message arguing with a warning about itself,
-and the caller loses the report it was waiting for.
+The event is load-bearing. The rule binds the *caller* — the party who has to
+decide whether to trust the report — so it must be delivered on the caller's
+own side. ``SubagentStop`` cannot carry it: that event fires on the stopping
+subagent's context and its injection is visible only there, never to the
+session that dispatched it. Aimed at the worker, this text does worse than
+miss — the worker spends its final message arguing with a warning about
+itself, and the caller loses the report it was waiting for.
 
-``Stop`` carries the honesty floor, and is the counterpart: hearsay governs what
-ida accepts from a worker, the floor governs what ida then asserts to the user.
-``Stop`` fires only on the session's own turn boundary, so a handler registered
-there reaches the face and nothing else — a subagent ends on ``SubagentStop``,
-which is not wired here. That is what scopes this to ida without a per-agent
-discriminator, which the hook payload does not carry.
+``strip_the_reply`` is the ``Stop``/``SubagentStop`` gate. It returns a
+``block`` (lib/hooks/dispatch.py) directing ida to strip its own reply to the
+person down to load-bearing content before it stops — not a check on what was
+already said, since the hook has no transcript to read, only a reminder that
+fires at the moment ida is about to speak.
 
 Every agent-visible string comes from ``messages/<name>.md``, and every
-user-visible one from ``messages/<name>.user.md`` beside it (lib/hooks/
-messages.py). No handler here builds either from a Python literal.
+user-visible one from ``messages/<name>.user.md`` beside it, loaded via
+``load_message_pair`` (lib/hooks/dispatch.py). No handler here builds either
+from a Python literal.
 """
 
 from __future__ import annotations
 
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import load_message_pair
+from dispatch import HookContext
+from dispatch import Result, block, warn
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
@@ -44,26 +47,20 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
-def honesty_floor(ctx: HookContext) -> Result | None:
-    """Require every claim in the handback to carry its evidence and its
-    confidence, at the moment ida is about to answer the user.
+def strip_the_reply(ctx: HookContext) -> Result | None:
+    """Direct the face to strip its reply down to what is load-bearing.
 
-    Advisory (``warn``), which renders as ``additionalContext`` on this event:
-    the text reaches the model and the turn continues, so ida can revise before
-    the answer lands rather than being forced back into the turn.
-
-    ``stop_hook_active`` is the guard that makes this fire once per stop-chain.
-    Injecting on a stop gives the session another turn, which stops again — so
-    without the check this handler would re-fire against its own continuation
-    and never let the session end. ``background_tasks`` holds it silent while
-    work is still running, because a handback is not being written yet.
+    Always the same block, regardless of what actually happened this turn —
+    the hook has no transcript to judge, only the fact that a stop is about to
+    happen. Once per stop chain, not once per handler invocation: dispatch.py's
+    structural self-loop guard suppresses the ``stop_hook_active`` re-fire, so
+    this handler does not check that flag itself.
     """
-    if ctx.raw.get("stop_hook_active") or ctx.raw.get("background_tasks"):
-        return None
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+    return block(*load_message_pair(ctx.hooks_dir, "quiet"))
 
 
 HANDLERS: dict[str, list] = {
     "PostToolUse": [rule_against_hearsay],
-    "Stop": [honesty_floor],
+    "Stop": [strip_the_reply],
+    "SubagentStop": [strip_the_reply],
 }
