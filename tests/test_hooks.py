@@ -981,7 +981,7 @@ def test_dispatch_bad_stdin_json_does_not_crash(injected_plugin):
 # dispatch.py: $AOPS_HOOK_LOG_PATH — "did the framework actually fire"
 # ---------------------------------------------------------------------------
 #
-# polecat wires this env var (plugins/aops/polecat/cli.py) to
+# polecat wires this env var (lib/polecat/cli.py) to
 # polecat-session-hooks.jsonl and specs/polecat/tmux-interactive-driving.md
 # names its absence a functional defect. Nothing in the hook runtime read the
 # var at all until this writer existed, so the file was never produced in any

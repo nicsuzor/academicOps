@@ -26,17 +26,13 @@ isolated clone, never leaks into the canonical repo's branch list at all.
 """
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_POLECAT_DIR = str(_REPO_ROOT / "plugins" / "aops" / "polecat")
-if _POLECAT_DIR not in sys.path:
-    sys.path.insert(0, _POLECAT_DIR)
+from lib.polecat.cli import cleanup_isolated_workspace, resolve_isolated_workspace
 
-from cli import cleanup_isolated_workspace, resolve_isolated_workspace  # noqa: E402
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _run(*args, cwd):

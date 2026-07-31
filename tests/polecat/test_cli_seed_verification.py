@@ -14,17 +14,13 @@ These tests cover the two things that changed:
 """
 
 import subprocess
-import sys
 from pathlib import Path
 
 from click.testing import CliRunner
 
-repo_root = Path(__file__).resolve().parent.parent.parent
-_plugins_dir = str(repo_root / "plugins")
-if _plugins_dir not in sys.path:
-    sys.path.insert(0, _plugins_dir)
+from lib.polecat import cli
 
-from aops.polecat import cli  # noqa: E402
+repo_root = Path(__file__).resolve().parent.parent.parent
 
 # --------------------------------------------------------------------------
 # _seed_confirmed

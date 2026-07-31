@@ -29,13 +29,10 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
-if _PLUGINS_DIR not in sys.path:
-    sys.path.insert(0, _PLUGINS_DIR)
+from lib.polecat import cli
+from lib.polecat.env_contract import CONTAINER_SET_ENV, docker_env_args
 
-from aops.polecat import cli  # noqa: E402
-from aops.polecat.env_contract import CONTAINER_SET_ENV, docker_env_args  # noqa: E402
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _base_mocks(monkeypatch, tmp_path):
@@ -268,9 +265,9 @@ def test_docker_args_cli_output_matches_the_makefile_contract():
     """The Makefile's docker targets splice this output straight into
     `docker run`, so the CLI surface must carry the name too."""
     result = subprocess.run(
-        [sys.executable, "-m", "aops.polecat.env_contract", "--docker-args"],
+        [sys.executable, "-m", "lib.polecat.env_contract", "--docker-args"],
         cwd=_REPO_ROOT,
-        env={"PYTHONPATH": _PLUGINS_DIR, "PATH": "/usr/bin:/bin"},
+        env={"PYTHONPATH": str(_REPO_ROOT), "PATH": "/usr/bin:/bin"},
         capture_output=True,
         text=True,
     )
@@ -288,7 +285,7 @@ def test_cli_runs_as_a_bare_script():
     """cli.py is documented as directly runnable (specs/polecat/), which takes
     the ImportError fallback rather than the package import."""
     result = subprocess.run(
-        [sys.executable, str(_REPO_ROOT / "plugins" / "aops" / "polecat" / "cli.py"), "--help"],
+        [sys.executable, str(_REPO_ROOT / "lib" / "polecat" / "cli.py"), "--help"],
         capture_output=True,
         text=True,
     )
@@ -303,7 +300,7 @@ def test_polecat_typechecks_clean():
     runtime: the fallback used to import a bare `env_contract` that no
     configured path could resolve."""
     result = subprocess.run(
-        ["basedpyright", "--outputjson", "plugins/aops/polecat/"],
+        ["basedpyright", "--outputjson", "lib/polecat/"],
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,

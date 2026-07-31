@@ -6,11 +6,16 @@ Everything here is current state. Nothing here is history.
 ## Repository layout
 
 ```
-lib/                    Shared source. Never shipped as-is; injected at build time.
+lib/                    Shared source, never shipped as-is. Most of it is injected
+                        into plugin build trees; the rest feeds the image build.
   axioms/               The axioms. Single source of truth.
   hooks/                Hook runtime shared by every plugin that hooks.
   py/                   Shared Python helpers.
   manifest/             Shared manifest fragments.
+  polecat/              The container launcher, its entrypoint and baked image
+                        defaults. Runtime modules inject into the plugin that
+                        dispatches containers; `defaults/` and `entrypoint.sh`
+                        are build-context inputs to the image, not plugin files.
 build/                  Build system.
 plugins/                Plugin sources. Only what a client needs.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.
@@ -53,23 +58,26 @@ academicOps is structured around **4 core pillars**:
 
 1. **Prompt Situation (`aops-pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
 2. **Workflow Composition (`aops-pkb`):** Select task-appropriate assurance and review levels (`workflow`) matching risk and blast radius.
+   <<<<<<< HEAD
 3. **Containerized Execution & Dispatch (`aops`):** Dispatch tasks to isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
-4. **Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), advisory only. The stop-side gate this pillar was designed around does not exist: no `Stop` or `SubagentStop` handler is registered in any plugin except ida's advisory honesty floor, and nothing in-session blocks on a rule verdict (see [Enforcement](#enforcement)). The shared hook runtime can render a block (`lib/hooks/dispatch.py`, `block`), so the capability is there and unwired.
+4. # **Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), advisory only. The stop-side gate this pillar was designed around does not exist: no `Stop` or `SubagentStop` handler is registered in any plugin except ida's advisory honesty floor, and nothing in-session blocks on a rule verdict (see [Enforcement](#enforcement)). The shared hook runtime can render a block (`lib/hooks/dispatch.py`, `block`), so the capability is there and unwired.
+5. **Containerized Execution & Dispatch (`ida`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `ida`), writing results back to the PKB task record, committing changes, and pushing.
+6. **Dual-Layer Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), plus a stop gate that blocks once per stop-chain and directs the agent to run the RBG rule compliance check (`axioms/` + project + local rules) before stopping (`Stop` / `SubagentStop`).
 
 ## Plugins
 
 Directory names are short. `build/marketplace.toml` maps directory →
 marketplace name and is the single source of truth for the built plugin set.
 
-| Directory               | Marketplace name | Owns                                                                            |
-| ----------------------- | ---------------- | ------------------------------------------------------------------------------- |
-| `plugins/pkb`           | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config. |
-| `plugins/ida`           | `ida`            | ida, the interactive face; james, synthesis and dispatch.                       |
-| `plugins/rbg`           | `rbg`            | rbg. Rule enforcement: the turn-by-turn evaluator advisory. No stop-side gate.  |
-| `plugins/ts`            | `ts`             | Tailscale bring-up for remote sessions.                                         |
-| `plugins/tools`         | `tools`          | Domain research skills.                                                         |
-| `plugins/aops-debug`    | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                      |
-| `plugins.disabled/aops` | not built        | marsha. Review, QA, verification, dispatch, polecat containers.                 |
+| Directory               | Marketplace name | Owns                                                                                |
+| ----------------------- | ---------------- | ----------------------------------------------------------------------------------- |
+| `plugins/pkb`           | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.     |
+| `plugins/ida`           | `ida`            | ida, the interactive face; james, synthesis and dispatch.                           |
+| `plugins/rbg`           | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate. |
+| `plugins/ts`            | `ts`             | Tailscale bring-up for remote sessions.                                             |
+| `plugins/tools`         | `tools`          | Domain research skills.                                                             |
+| `plugins/aops-debug`    | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                          |
+| `plugins.disabled/aops` | not built        | marsha. Review, QA, verification.                                                   |
 
 ### aops (disabled)
 

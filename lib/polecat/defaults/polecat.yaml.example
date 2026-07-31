@@ -4,7 +4,7 @@
 # on purpose: it sets no defaults, and polecat has none. Copy it, uncomment
 # what you need, and fill in values that belong to your machine.
 #
-# Where polecat looks for the real file (plugins/aops/polecat/cli.py,
+# Where polecat looks for the real file (lib/polecat/cli.py,
 # load_config): $AOPS_POLECAT_CONFIG if set, otherwise polecat.yaml under
 # $AOPS_SESSIONS. Having no config file at all is legal — every required value
 # can arrive from the environment instead.

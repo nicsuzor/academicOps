@@ -120,12 +120,12 @@ docker-build: build
 	@docker build --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
 	@echo "✓ built $(IMAGE)"
 
-# The environment contract is defined once, in plugins/aops/polecat/env_contract.py,
+# The environment contract is defined once, in lib/polecat/env_contract.py,
 # and shared with polecat's own `docker run` (specs/ARCHITECTURE.md "Observability").
 # `-e NAME` forwards the host's value and sets nothing: a variable unset on the
 # host stays unset in the container.
 docker-shell: docker-build
-	@env_args="$$(uv run python -m aops.polecat.env_contract --docker-args)" \
+	@env_args="$$(uv run python -m lib.polecat.env_contract --docker-args)" \
 		|| { echo "x could not read the container env contract" >&2; exit 1; }; \
 	docker run -it --rm $$env_args -v $(ROOT):/app -w /app $(IMAGE)
 

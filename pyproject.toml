@@ -31,7 +31,7 @@ notify = [
 anthropic = ["anthropic>=0.75.0"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["lib", "tests", "scripts", "plugins/aops"]
+packages = ["lib", "tests", "scripts"]
 
 [build-system]
 requires = ["hatchling"]
@@ -306,4 +306,4 @@ markers = [
 ]
 
 [project.scripts]
-polecat = "aops.polecat.cli:main" # resolves via [tool.hatch.build.targets.wheel] packages = [..., "plugins/aops"]
+polecat = "lib.polecat.cli:main" # resolves via [tool.hatch.build.targets.wheel] packages = ["lib", ...]

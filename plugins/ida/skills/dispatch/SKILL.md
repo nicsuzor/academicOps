@@ -47,6 +47,7 @@ The courier's brief must require it to:
 - run that command in the foreground — never detached, never under `tmux`, and never spawning subagents of its own;
 - take the exit code directly rather than through a pipe, because `cmd | tail` reports the pipe's status and will report success over a container that aborted;
 - read the return contract off the task and quote it, rather than summarising its own shell output;
+- report the exit code and, on a non-zero exit, polecat's failure message verbatim — a task whose contract reads `done` under a non-zero exit is the case to report loudest, because the contract alone reports success over a delivery that never happened;
 - carry the entire result in its final message, because nothing it says earlier reaches you.
 
 Spawn couriers plainly. A named or teammate-mode spawn returns an idle signal and strands the report where no one reads it.
@@ -75,4 +76,6 @@ A courier that returns an acknowledgement instead of a result has failed its bri
 
 ## 6. React to what comes back
 
-A FAIL or a re-dispatch call is not a separate phase — it is information the next graph pass reads like any other. Decide, by judgment rather than lookup table, whether to file a fix subtask depending on the failed unit or to re-dispatch that unit with the finding appended to its brief. Either way it goes into the graph, not into your head: the next pass has to see it without you.
+**Reopen before anything else.** A worker can write `done` to the graph and deliver nothing — `polecat run` exits non-zero and names the task when it catches that, and the status it left behind is still `done` to everything that reads the graph afterwards. On a non-zero container exit for a unit whose task is marked `done` or `partial`, have pauli set that task back to `in_progress` before you decide what to do next. Reopening is repair, not judgment: filing a fix subtask does not undo the parent's status, and a re-dispatch against a task still marked `done` is dispatched into a lie. Leave `failed` and `blocked` alone — those records are already accurate, and overwriting them asserts a worker holds the task when none does. pauli is the sole writer to the graph, so this is commissioned, never done directly.
+
+Then decide. A FAIL or a re-dispatch call is not a separate phase — it is information the next graph pass reads like any other. Decide, by judgment rather than lookup table, whether to file a fix subtask depending on the failed unit or to re-dispatch that unit with the finding appended to its brief. Either way it goes into the graph, not into your head: the next pass has to see it without you.

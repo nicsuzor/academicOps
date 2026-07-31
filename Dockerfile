@@ -122,7 +122,7 @@ RUN npm install -g markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm 
 
 # Create data and workspace directories. World-writable/traversable rather
 # than chown'd to worker: polecat crew containers run as the invoking host
-# UID (`docker run -u $(id -u):$(id -g)`, plugins/aops/polecat/cli.py), which
+# UID (`docker run -u $(id -u):$(id -g)`, lib/polecat/cli.py), which
 # is worker's UID 1000 only by coincidence on a given host. A plain chown
 # leaves any other UID unable to write /data (e.g. cope/rbg's layer-3 rules
 # mount lands under here), silently and only on someone else's machine. Same
@@ -208,7 +208,7 @@ RUN umask 000 && mkdir -p /home/worker/.claude \
 # (see #1384: different gate_config.py versions crashed Gemini hooks).
 
 # Fixup script for post-install Gemini/Antigravity config (see file for why).
-COPY --chown=worker:worker plugins/aops/polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
+COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/worker/docker_gemini_fixups.py
 
 # Both CLIs internally set 444 on git objects — chmod after each install.
 #
@@ -240,7 +240,7 @@ COPY --chown=worker:worker plugins/aops/polecat/defaults/docker_gemini_fixups.py
 # marketplace `aops` so a HOST `make install-dev` doesn't collide with a real
 # `academicOps` release install on the same machine — but that coexistence
 # concern doesn't apply inside this ephemeral image, and
-# plugins/aops/polecat/cli.py's setup_staging() stages `pluginConfigs` under the
+# lib/polecat/cli.py's setup_staging() stages `pluginConfigs` under the
 # key `aops-pkb@academicOps`. A local build that installed as `aops-pkb@aops` would
 # silently fail to receive that staged config (pkb_mcp_url never reaching the
 # plugin), so we rewrite the local marketplace.json's name to `academicOps`
@@ -257,7 +257,7 @@ COPY --chown=worker:worker plugins/aops/polecat/defaults/docker_gemini_fixups.py
 # .claude is pre-created (in the batched mkdir above) so BuildKit doesn't
 # auto-create it while applying --chmod, which would leave it 0644 and
 # non-traversable.
-COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
+COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
     && MP_NAME=academicOps \
@@ -308,13 +308,13 @@ RUN umask 000 \
 # install` / `agy plugin install` write into ~/.claude, ~/.claude.json and
 # ~/.gemini, so these files have to land after it to win. Only their parent
 # dirs were hoisted (see the batched mkdir further up).
-COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
+COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
 # Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
 # via CLAUDE_CODE_OAUTH_TOKEN skip the interactive theme/login prompts. The
-# env-only auth model (plugins/aops/polecat/cli.py's get_env_forwards()) stages no
+# env-only auth model (lib/polecat/cli.py's get_env_forwards()) stages no
 # files, so without this seed claude regenerates a minimal .claude.json that
 # triggers onboarding even when the token is set.
-COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/claude-config.json /home/worker/.claude.json
+COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-config.json /home/worker/.claude.json
 
 # Seed agy's (Antigravity CLI) onboarding-complete marker so headless/crew
 # workers skip its interactive first-run wizard (theme picker → migration →
@@ -324,10 +324,10 @@ COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/claude-conf
 # reaches a prompt (regression aops-d9cc656a, verified 2026-06-29). This is the
 # agy analog of the Claude `hasCompletedOnboarding` seed above. Its cache dir
 # is pre-created in the batched mkdir further up.
-COPY --chown=worker:worker --chmod=666 plugins/aops/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
+COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
 
 # Copy entrypoint script
-COPY --chown=worker:worker --chmod=777 plugins/aops/polecat/entrypoint.sh /home/worker/entrypoint.sh
+COPY --chown=worker:worker --chmod=777 lib/polecat/entrypoint.sh /home/worker/entrypoint.sh
 
 # Make home dir itself traversable/writable for any UID — polecat crew runs
 # containers as the host UID (non-root), which may differ from worker UID 1000.

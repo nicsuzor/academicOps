@@ -12,7 +12,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib.request
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -25,7 +24,7 @@ import yaml
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
     from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV
-except ImportError:  # run directly as plugins/aops/polecat/cli.py
+except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -312,98 +311,6 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
     return True, None
 
 
-def _revert_task_if_terminal(mcp_url, task_id):
-    """Reopen a task the worker closed without delivering, so the close does
-    not silently strand the work. Returns the status it was reverted from."""
-    if not mcp_url or not task_id:
-        return None
-
-    def _call_tool(tool_name, arguments):
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-        }
-        sess_id = None
-        try:
-            init_req = urllib.request.Request(
-                mcp_url,
-                data=json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 1,
-                        "method": "initialize",
-                        "params": {
-                            "protocolVersion": "2024-11-05",
-                            "capabilities": {},
-                            "clientInfo": {"name": "polecat", "version": "1.0"},
-                        },
-                    }
-                ).encode("utf-8"),
-                headers=headers,
-            )
-            resp = urllib.request.urlopen(init_req, timeout=5)
-            sess_id = resp.headers.get("Mcp-Session-Id")
-            urllib.request.urlopen(
-                urllib.request.Request(
-                    mcp_url,
-                    data=json.dumps(
-                        {
-                            "jsonrpc": "2.0",
-                            "method": "notifications/initialized",
-                        }
-                    ).encode("utf-8"),
-                    headers={**headers, "Mcp-Session-Id": sess_id},
-                ),
-                timeout=5,
-            )
-        except Exception:
-            pass
-
-        if sess_id:
-            headers["Mcp-Session-Id"] = sess_id
-
-        prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "")
-        candidates = [f"{prefix}{tool_name}"] if prefix else []
-        candidates += [tool_name, f"pkb__{tool_name}"]
-
-        for candidate in candidates:
-            call_req = urllib.request.Request(
-                mcp_url,
-                data=json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 2,
-                        "method": "tools/call",
-                        "params": {"name": candidate, "arguments": arguments},
-                    }
-                ).encode("utf-8"),
-                headers=headers,
-            )
-            try:
-                resp = urllib.request.urlopen(call_req, timeout=5)
-                for line in resp.read().decode("utf-8").split("\n"):
-                    if line.startswith("data: "):
-                        data = json.loads(line[6:])
-                        if "result" in data:
-                            return data["result"]
-            except Exception:
-                continue
-        return None
-
-    try:
-        res = _call_tool("get_task", {"id": task_id})
-        if res and res.get("content"):
-            info = json.loads(res["content"][0].get("text", ""))
-            status = info.get("status") or (info.get("frontmatter") or {}).get("status")
-            if status in ("done", "completed", "complete", "merge_ready"):
-                _call_tool("update_task", {"id": task_id, "status": "in_progress"})
-                return status
-    except Exception as e:
-        click.echo(f"Warning: could not check or revert task status: {e}", err=True)
-
-    return None
-
-
 def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     """Create a per-session standalone clone of `canonical_dir` and return the
     path to mount, so a container never writes to a shared checkout.
@@ -598,6 +505,225 @@ def setup_staging(staging_dir, mcp_url, agent_home):
         )
 
 
+def _reject_bad_agent_cmd(agent_cmd, extra_args):
+    """Catch the two shapes that would otherwise fail deep inside the container,
+    after a clone and an image check, with an error naming neither polecat nor
+    the flag's replacement."""
+    # Unknown options pass through to the inner CLI, so an option appearing
+    # where AGENT_CMD belongs would be silently absorbed as the agent name.
+    if agent_cmd.startswith("-"):
+        fail(
+            f"AGENT_CMD resolved to {agent_cmd!r}, which is an option, not an "
+            f"agent name (extra_args={extra_args!r}). AGENT_CMD is a plain "
+            "positional: claude, agy, shell, bash, or sleep."
+        )
+
+    # Neither agent CLI has a --non-interactive flag; both exit on an unknown one.
+    if agent_cmd in ("claude", "agy") and "--non-interactive" in extra_args:
+        fail(
+            f"{agent_cmd} has no --non-interactive flag and exits immediately when "
+            "given one. Headless one-shot mode is --print (-p), which polecat adds "
+            "on its own when stdin is not a tty."
+        )
+
+
+def _resolve_workspace(repo_dir, project, polecat_home):
+    """The host directory to mount at /workspace. No default: an unresolvable
+    workspace is a hard failure, never a guess at the current directory."""
+    if repo_dir:
+        workspace_dir = repo_dir.resolve()
+    elif project:
+        proj_path = load_local_overlay(polecat_home).get("paths", {}).get(project)
+        workspace_dir = expand(proj_path).resolve() if proj_path else None
+    else:
+        workspace_dir = None
+
+    if not workspace_dir or not workspace_dir.exists():
+        fail(
+            "could not resolve a workspace path. Pass --repo-dir, or map the "
+            "project under `paths` in <polecat_home>/local.yaml. There is no "
+            "default workspace."
+        )
+    return workspace_dir
+
+
+def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headless, task):
+    """The command run inside the container, and the container path that agent
+    writes its session state to.
+
+    Returns (inner_cmd, container_session_path, seeded_from_task).
+    """
+    claude_session_path = "/home/worker/.claude/projects/-workspace"
+
+    if agent_cmd == "claude":
+        container_session_path = claude_session_path
+        inner_cmd = ["claude", "--permission-mode=auto", "--setting-sources=user,project"]
+        if not is_interactive and not explicit_headless:
+            # Headless one-shot mode is `--print`, and it is the only one claude
+            # has: without it claude opens its interactive UI against a pipe. The
+            # prompt is a positional, so it still arrives from extra_args below,
+            # or from stdin when there is none.
+            inner_cmd.append("--print")
+    elif agent_cmd == "agy":
+        container_session_path = "/home/worker/.gemini/tmp/workspace"
+        inner_cmd = [
+            "agy",
+            "--dangerously-skip-permissions",
+            "--log-file",
+            "/home/worker/.gemini/antigravity-cli/cli.log",
+        ]
+    elif agent_cmd in ("shell", "bash"):
+        container_session_path = claude_session_path
+        inner_cmd = ["bash"]
+    elif agent_cmd.startswith("sleep"):
+        container_session_path = claude_session_path
+        inner_cmd = ["sleep", "infinity"]
+    else:
+        container_session_path = claude_session_path
+        inner_cmd = [agent_cmd]
+
+    seeded_from_task = bool(task) and not extra_args
+    if seeded_from_task:
+        extra_args = (f"/pull {task}",)
+
+    if extra_args:
+        agy_prompt_flags = {
+            "-p",
+            "--print",
+            "--prompt",
+            "-i",
+            "--prompt-interactive",
+            "-c",
+            "--continue",
+            "--conversation",
+        }
+        if agent_cmd == "agy" and not agy_prompt_flags.intersection(extra_args):
+            # Autonomous dispatch runs headless so the agent completes its loop
+            # and exits; an interactive prompt would leave a live container
+            # idling forever. The print timeout must precede --print with
+            # nothing between --print and its prompt value: a value-taking flag
+            # consumes the next token whatever it is, so an interposed flag
+            # becomes the prompt and the real one is silently dropped.
+            print_timeout = os.environ.get("POLECAT_PRINT_TIMEOUT")
+            if print_timeout:
+                inner_cmd.extend(["--print-timeout", print_timeout])
+            inner_cmd.extend(["--print", extra_args[0], *extra_args[1:]])
+        else:
+            inner_cmd.extend(extra_args)
+
+    return inner_cmd, container_session_path, seeded_from_task
+
+
+def _build_docker_argv(
+    *,
+    image,
+    inner_cmd,
+    workspace_dir,
+    staging_dir,
+    session_dir,
+    container_session_path,
+    env,
+    rules_dir,
+    config,
+    docker_args,
+):
+    """The full `docker run` argv. Also pre-creates the bind-mount targets
+    under `session_dir` — see below for why that cannot wait until launch."""
+    # Pre-create the bind-mount targets as the invoking user. Docker
+    # auto-creates a missing bind source as root, which the container's non-root
+    # user cannot write, silently losing logs and conversation state.
+    (session_dir / "agy-brain").mkdir(parents=True, exist_ok=True)
+    (session_dir / "agy-cli.log").touch(exist_ok=True)
+    (session_dir / "agy-logs").mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "-u",
+        f"{os.getuid()}:{os.getgid()}",
+        "-v",
+        f"{workspace_dir}:/workspace",
+        "-w",
+        "/workspace",
+        "-v",
+        f"{staging_dir}:/tmp/staging:ro",
+        "-v",
+        f"{session_dir}:{container_session_path}",
+        "-v",
+        f"{session_dir}/agy-brain:/home/worker/.gemini/antigravity-cli/brain",
+        "-v",
+        f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
+        "-v",
+        f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
+        "--add-host",
+        "host.docker.internal:host-gateway",
+    ]
+
+    # Layer 3 of cope/rbg's rule set, read-only: absent when the operator
+    # configured no rules_dir (resolve_rules_dir already failed loudly if one
+    # was configured but unreadable, before any container started).
+    if rules_dir:
+        cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
+
+    # The host docker socket is a container escape. Mount it only where the
+    # container legitimately spawns siblings, and document why.
+    if config.get("docker", {}).get("enable_socket", False):
+        cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
+        try:
+            cmd.extend(["--group-add", str(Path("/var/run/docker.sock").stat().st_gid)])
+        except Exception:
+            pass
+
+    cmd.extend(docker_args)
+    for key, value in env.items():
+        cmd.extend(["-e", f"{key}={value}"])
+    cmd.append(image)
+    cmd.extend(inner_cmd)
+    return cmd
+
+
+def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task, verify_seed):
+    """Run the container, and for a seeded dispatch confirm the agent actually
+    saw the task before letting a clean exit stand as success.
+
+    A clean exit is not evidence the task was worked: the seed can be dropped
+    before delivery, which leaves a clean workspace the delivery guard reads as
+    a pass. Retry once, then fail rather than report an unverified success.
+    """
+    max_attempts = 2 if verify_seed else 1
+    returncode = 1
+    seed_ok = not verify_seed
+
+    for attempt in range(1, max_attempts + 1):
+        suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
+        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd[:3])} ...")
+        returncode = subprocess.run(cmd).returncode
+
+        if not verify_seed:
+            break
+        seed_ok = returncode == 0 and _seed_confirmed(session_dir, task)
+        if seed_ok:
+            break
+        if attempt < max_attempts:
+            click.echo(
+                f"Warning: could not confirm the agent processed seeded task "
+                f"{task!r} (exit={returncode}). Retrying once.",
+                err=True,
+            )
+
+    if not seed_ok:
+        fail(
+            f"seeding task {task!r} could not be confirmed after "
+            f"{max_attempts} attempt(s) (last exit={returncode}). The agent's "
+            f"transcript shows no trace of the task id, so the seed was "
+            f"likely dropped before delivery rather than processed and "
+            f"failed. Inspect {session_dir}. Refusing to report success."
+        )
+    return returncode
+
+
 @click.group()
 def main():
     """Polecat: run an agent CLI inside an isolated container."""
@@ -626,46 +752,13 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     Anything after AGENT_CMD that is not one of this command's own options is
     forwarded verbatim to the inner invocation.
     """
-    # Unknown options pass through to the inner CLI, so an option appearing
-    # where AGENT_CMD belongs would be silently absorbed as the agent name and
-    # fail deep inside the container. Reject it here instead.
-    if agent_cmd.startswith("-"):
-        fail(
-            f"AGENT_CMD resolved to {agent_cmd!r}, which is an option, not an "
-            f"agent name (extra_args={extra_args!r}). AGENT_CMD is a plain "
-            "positional: claude, agy, shell, bash, or sleep."
-        )
-
-    # Neither agent CLI has a --non-interactive flag; both exit on an unknown
-    # option. Forwarded verbatim it would fail deep inside the container, after
-    # a clone and an image pull, with an error naming neither polecat nor the
-    # flag's replacement.
-    if agent_cmd in ("claude", "agy") and "--non-interactive" in extra_args:
-        fail(
-            f"{agent_cmd} has no --non-interactive flag and exits immediately when "
-            "given one. Headless one-shot mode is --print (-p), which polecat adds "
-            "on its own when stdin is not a tty."
-        )
+    _reject_bad_agent_cmd(agent_cmd, extra_args)
 
     config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
     rules_dir = resolve_rules_dir(config)
-
-    workspace_dir = None
-    if repo_dir:
-        workspace_dir = repo_dir.resolve()
-    elif project:
-        proj_path = load_local_overlay(polecat_home).get("paths", {}).get(project)
-        if proj_path:
-            workspace_dir = expand(proj_path).resolve()
-
-    if not workspace_dir or not workspace_dir.exists():
-        fail(
-            "could not resolve a workspace path. Pass --repo-dir, or map the "
-            "project under `paths` in <polecat_home>/local.yaml. There is no "
-            "default workspace."
-        )
+    workspace_dir = _resolve_workspace(repo_dir, project, polecat_home)
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
     sessions_base = os.environ.get("AOPS_SESSIONS")
@@ -721,159 +814,39 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             env["CLAUDE_CODE_NON_INTERACTIVE"] = "1"
             env["CLAUDE_NON_INTERACTIVE"] = "1"
 
-        if agent_cmd == "claude":
-            container_session_path = "/home/worker/.claude/projects/-workspace"
-            inner_cmd = ["claude", "--permission-mode=auto", "--setting-sources=user,project"]
-            if not is_interactive and not explicit_headless:
-                # Headless one-shot mode is `--print`, and it is the only one
-                # claude has: without it claude opens its interactive UI against
-                # a pipe. The prompt is a positional, so it still arrives from
-                # extra_args below, or from stdin when there is none.
-                inner_cmd.append("--print")
-        elif agent_cmd == "agy":
-            container_session_path = "/home/worker/.gemini/tmp/workspace"
-            inner_cmd = [
-                "agy",
-                "--dangerously-skip-permissions",
-                "--log-file",
-                "/home/worker/.gemini/antigravity-cli/cli.log",
-            ]
-        elif agent_cmd in ("shell", "bash"):
-            container_session_path = "/home/worker/.claude/projects/-workspace"
-            inner_cmd = ["bash"]
-        elif agent_cmd.startswith("sleep"):
-            container_session_path = "/home/worker/.claude/projects/-workspace"
-            inner_cmd = ["sleep", "infinity"]
-        else:
-            container_session_path = "/home/worker/.claude/projects/-workspace"
-            inner_cmd = [agent_cmd]
-
-        seeded_from_task = bool(task) and not extra_args
-        if not extra_args and task:
-            extra_args = (f"/pull {task}",)
-
-        if extra_args:
-            agy_prompt_flags = {
-                "-p",
-                "--print",
-                "--prompt",
-                "-i",
-                "--prompt-interactive",
-                "-c",
-                "--continue",
-                "--conversation",
-            }
-            if agent_cmd == "agy" and not agy_prompt_flags.intersection(extra_args):
-                # Autonomous dispatch runs headless so the agent completes its
-                # loop and exits; an interactive prompt would leave a live
-                # container idling forever. The print timeout must precede
-                # --print with nothing between --print and its prompt value:
-                # a value-taking flag consumes the next token whatever it is,
-                # so an interposed flag becomes the prompt and the real one is
-                # silently dropped.
-                print_timeout = os.environ.get("POLECAT_PRINT_TIMEOUT")
-                if print_timeout:
-                    inner_cmd.extend(["--print-timeout", print_timeout])
-                inner_cmd.extend(["--print", extra_args[0], *extra_args[1:]])
-            else:
-                inner_cmd.extend(extra_args)
+        inner_cmd, container_session_path, seeded_from_task = _build_inner_command(
+            agent_cmd, extra_args, is_interactive, explicit_headless, task
+        )
 
         env["AOPS_POLECAT_CONTAINER"] = "1"
         env["POLECAT_CREW_NAME"] = session_id
         env["AOPS_SESSION_STATE_DIR"] = container_session_path
         env["AOPS_HOOK_LOG_PATH"] = f"{container_session_path}/polecat-session-hooks.jsonl"
 
-        # Pre-create the bind-mount targets as the invoking user. Docker
-        # auto-creates a missing bind source as root, which the container's
-        # non-root user cannot write, silently losing logs and conversation
-        # state.
-        (session_dir / "agy-brain").mkdir(parents=True, exist_ok=True)
-        (session_dir / "agy-cli.log").touch(exist_ok=True)
-        (session_dir / "agy-logs").mkdir(parents=True, exist_ok=True)
-
-        cmd = [
-            "docker",
-            "run",
-            "--rm",
-            "--pull=never",
-            "-u",
-            f"{os.getuid()}:{os.getgid()}",
-            "-v",
-            f"{workspace_dir}:/workspace",
-            "-w",
-            "/workspace",
-            "-v",
-            f"{staging_dir}:/tmp/staging:ro",
-            "-v",
-            f"{session_dir}:{container_session_path}",
-            "-v",
-            f"{session_dir}/agy-brain:/home/worker/.gemini/antigravity-cli/brain",
-            "-v",
-            f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
-            "-v",
-            f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
-            "--add-host",
-            "host.docker.internal:host-gateway",
-        ]
-
-        # Layer 3 of cope/rbg's rule set, read-only: absent when the operator
-        # configured no rules_dir (resolve_rules_dir already failed loudly if
-        # one was configured but unreadable, before any container started).
-        if rules_dir:
-            cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
-
-        # The host docker socket is a container escape. Mount it only where the
-        # container legitimately spawns siblings, and document why.
-        if config.get("docker", {}).get("enable_socket", False):
-            cmd.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock"])
-            try:
-                cmd.extend(["--group-add", str(Path("/var/run/docker.sock").stat().st_gid)])
-            except Exception:
-                pass
-
-        cmd.extend(docker_args)
-        for key, value in env.items():
-            cmd.extend(["-e", f"{key}={value}"])
-        cmd.append(image)
-        cmd.extend(inner_cmd)
+        cmd = _build_docker_argv(
+            image=image,
+            inner_cmd=inner_cmd,
+            workspace_dir=workspace_dir,
+            staging_dir=staging_dir,
+            session_dir=session_dir,
+            container_session_path=container_session_path,
+            env=env,
+            rules_dir=rules_dir,
+            config=config,
+            docker_args=docker_args,
+        )
 
         click.echo(f"Workspace: {workspace_dir}")
         click.echo(f"Session logs: {session_dir}")
 
-        # A clean exit on a seeded dispatch is not evidence the task was
-        # worked: the seed can be dropped before delivery. Confirm the agent's
-        # own transcript references the task, retry once, then fail rather
-        # than report an unverified success.
-        verify_seed = agent_cmd == "agy" and seeded_from_task
-        max_attempts = 2 if verify_seed else 1
-        returncode = 1
-        seed_ok = not verify_seed
-
-        for attempt in range(1, max_attempts + 1):
-            suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
-            click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd[:3])} ...")
-            returncode = subprocess.run(cmd).returncode
-
-            if not verify_seed:
-                break
-            seed_ok = returncode == 0 and _seed_confirmed(session_dir, task)
-            if seed_ok:
-                break
-            if attempt < max_attempts:
-                click.echo(
-                    f"Warning: could not confirm the agent processed seeded task "
-                    f"{task!r} (exit={returncode}). Retrying once.",
-                    err=True,
-                )
-
-        if not seed_ok:
-            fail(
-                f"seeding task {task!r} could not be confirmed after "
-                f"{max_attempts} attempt(s) (last exit={returncode}). The agent's "
-                f"transcript shows no trace of the task id, so the seed was "
-                f"likely dropped before delivery rather than processed and "
-                f"failed. Inspect {session_dir}. Refusing to report success."
-            )
+        returncode = _execute_with_seed_verification(
+            cmd,
+            image=image,
+            inner_cmd=inner_cmd,
+            session_dir=session_dir,
+            task=task,
+            verify_seed=agent_cmd == "agy" and seeded_from_task,
+        )
         if returncode != 0:
             sys.exit(returncode)
 
@@ -881,16 +854,16 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             workspace_dir, initial_head=initial_head
         )
         if not delivery_ok:
-            reverted = _revert_task_if_terminal(mcp_url, task)
-            if reverted:
-                click.echo(
-                    f"Warning: reverted task {task!r} from {reverted!r} to "
-                    "'in_progress' to prevent silent delivery loss.",
-                    err=True,
-                )
+            # Detection ends here; repair belongs to the dispatcher, which owns
+            # the graph this task lives in (dispatch/SKILL.md section 6). A
+            # launcher carrying its own client for the knowledge base would be a
+            # second copy of that plugin's job, so the exit code and this message
+            # are the whole of the handoff.
             fail(
                 f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
-                "Refusing to report success."
+                "Refusing to report success. If this task is in a terminal status, "
+                "the dispatcher must reopen it (via pauli) before filing a fix "
+                "subtask or re-dispatching."
             )
 
     finally:
