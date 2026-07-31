@@ -15,7 +15,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +31,7 @@ class HookContext:
     hooks_dir: Path = field(default_factory=Path)
 
 
-class Kind(StrEnum):
+class Kind(Enum):
     """One of three dispositions, in descending order of force.
 
     ``REFUSE`` denies a tool call outright and is reserved for structural
@@ -51,15 +51,10 @@ class Kind(StrEnum):
     order, and a result that was both a refusal and a block would render as
     whichever each renderer happened to test first.
 
-    **Compare members with ``==``, never with ``is``.** This module is loaded
-    twice in a live hook: once as ``__main__`` (the entry point) and again as
-    ``dispatch`` when a plugin's ``handlers.py`` does ``from dispatch import
-    block``. Those are two module objects with two distinct ``Kind`` classes, so
-    a member built handler-side is never *identical* to the one the renderer
-    tests against. ``StrEnum`` is what makes ``==`` still hold across them — a
-    plain ``Enum`` compares unequal, by identity, and would break this. An
-    ``is`` comparison here fails silently too: the disposition degrades to an
-    advisory and a gate that reports success never fires.
+    Members are compared with ``is``, which holds because the entry point at
+    the bottom of this file guarantees one module object — and so one ``Kind``
+    class — for the whole run. That guarantee is what makes this an ordinary
+    enum rather than something defensive; see the ``__main__`` block.
     """
 
     ADVISE = "advise"
@@ -214,16 +209,16 @@ def _merge(results: list[Result | None]) -> Result | None:
     """
     present = [r for r in results if r is not None]
     for r in present:
-        if r.kind == Kind.REFUSE:
+        if r.kind is Kind.REFUSE:
             return r
     for r in present:
-        if r.kind == Kind.BLOCK:
+        if r.kind is Kind.BLOCK:
             return r
     return present[0] if present else None
 
 
 def _render_claude(result: Result, event: str) -> dict:
-    if result.kind == Kind.BLOCK and event in BLOCKABLE_EVENTS:
+    if result.kind is Kind.BLOCK and event in BLOCKABLE_EVENTS:
         # The one shape Claude Code reads as "do not stop": a top-level
         # decision, not nested under hookSpecificOutput.
         blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
@@ -231,7 +226,7 @@ def _render_claude(result: Result, event: str) -> dict:
             blocked["systemMessage"] = result.user_text
         return blocked
 
-    if result.kind == Kind.BLOCK:
+    if result.kind is Kind.BLOCK:
         # A block only means something on Stop/SubagentStop — Claude Code has no
         # "block" shape for any other event. A handler that returns one here is
         # a wiring bug: report it loudly and degrade to an advisory rather than
@@ -245,7 +240,7 @@ def _render_claude(result: Result, event: str) -> dict:
             file=sys.stderr,
         )
 
-    if result.kind == Kind.REFUSE:
+    if result.kind is Kind.REFUSE:
         specific = {
             "hookEventName": event,
             "permissionDecision": "deny",
@@ -267,7 +262,7 @@ def _render_agy(result: Result) -> dict:
     field to carry one, and the invocation has already ended by the time the
     event fires. The text still has somewhere to go, so it goes there.
     """
-    if result.kind == Kind.REFUSE:
+    if result.kind is Kind.REFUSE:
         return {"decision": "deny", "reason": result.inject_text}
     # agy has no blocking shape at all, on any event — a block() downgrades
     # to the same advisory shape a warn() would render as.
@@ -346,8 +341,24 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    # Hand off to this same file imported under its own name, and do no work
+    # here. Running it directly makes it the module ``__main__``; a plugin's
+    # ``handlers.py`` then does ``from dispatch import ...``, which loads the
+    # file a second time as ``dispatch``. Calling ``main`` on this side would
+    # leave the handlers building results from one set of classes while the
+    # renderers tested another — ``Result`` and ``Kind`` would be two unrelated
+    # types with the same names, so every ``is`` comparison would be false and
+    # every disposition would degrade to an advisory while reporting success.
+    #
+    # Re-entering here makes ``dispatch`` the only module that does anything:
+    # handlers import it, ``main`` runs inside it, one set of classes. This
+    # block is the whole reason those comparisons can be identity checks.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+    import dispatch
+
     try:
-        sys.exit(main(sys.argv))
+        sys.exit(dispatch.main(sys.argv))
     except Exception as exc:
         print(f"dispatch: fatal error: {exc!r}", file=sys.stderr)
         sys.exit(1)

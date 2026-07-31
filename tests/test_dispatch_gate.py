@@ -25,7 +25,6 @@ beyond a handlers.py.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import subprocess
@@ -63,35 +62,7 @@ def test_a_result_cannot_hold_two_dispositions_at_once():
     denial on agy. A single field makes that object unrepresentable.
     """
     for result in (dispatch.warn("x"), dispatch.refuse("x"), dispatch.block("x")):
-        assert sum(result.kind == k for k in dispatch.Kind) == 1
-
-
-def test_a_disposition_survives_this_module_being_loaded_twice():
-    """The failure this guards is silent, and it is the live shape of the hook.
-
-    `dispatch.py` runs as `__main__`; a plugin's `handlers.py` then does
-    `from dispatch import block`, which loads the same file again under the name
-    `dispatch`. Two module objects, two `Kind` classes — so the member a handler
-    builds is never *identical* to the one the renderer tests. Subclassing `str`
-    is what keeps `==` true across them. Were this to regress (a plain `Enum`,
-    or an `is` comparison in a renderer), every gate would degrade to an
-    advisory while still reporting success.
-    """
-    second = importlib.util.spec_from_file_location("dispatch_second_load", dispatch.__file__)
-    assert second is not None and second.loader is not None
-    other = importlib.util.module_from_spec(second)
-    sys.modules["dispatch_second_load"] = other
-    second.loader.exec_module(other)
-
-    assert other.Kind is not dispatch.Kind, "the two loads must really be distinct classes"
-    assert other.Kind.BLOCK == dispatch.Kind.BLOCK
-
-    # A block built against the second load must still render as a real block.
-    handler_side = other.block("keep going")
-    assert dispatch.render("claude", "Stop", handler_side) == {
-        "decision": "block",
-        "reason": "keep going",
-    }
+        assert sum(result.kind is k for k in dispatch.Kind) == 1
 
 
 def test_block_carries_a_user_line_like_warn_and_refuse_do():
@@ -242,6 +213,32 @@ _BLOCKING_HANDLER = (
     "\n"
     "HANDLERS = {'Stop': [_gate], 'SubagentStop': [_gate]}\n"
 )
+
+
+def test_a_handler_built_disposition_survives_the_entry_point(gated_plugin):
+    """The entry point must hand off to `dispatch`, not do the work itself.
+
+    Run directly, this file becomes the module `__main__`; the handler's
+    `from dispatch import block` then loads it a second time as `dispatch`.
+    Two module objects means two `Result` classes and two `Kind` enums with the
+    same names, so a disposition built handler-side is a different type from
+    the one the renderer tests — every identity check is false and the block
+    degrades to an advisory while still exiting 0.
+
+    That failure is invisible from inside the process, which is why this drives
+    the real subprocess. If the `__main__` block is ever changed back to
+    calling `main` directly, this is what catches it.
+    """
+    _write_handlers(gated_plugin, _BLOCKING_HANDLER)
+    result = _run_dispatch(gated_plugin, "claude", "Stop", {"hook_event_name": "Stop"})
+
+    assert result.returncode == 0, result.stderr
+    out = json.loads(result.stdout)
+    assert out["decision"] == "block", (
+        "a handler's block degraded to an advisory — the entry point is doing "
+        "the work instead of delegating to the imported module"
+    )
+    assert out["reason"] == "keep going"
 
 
 @pytest.mark.parametrize("event", ["Stop", "SubagentStop"])
