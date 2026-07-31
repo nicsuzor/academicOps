@@ -14,7 +14,7 @@ claude plugin install aops-ida@academicOps
 claude plugin install aops-pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
 
-`aops-cope`, `aops-tools`, and `aops-ts` install the same way. `--config` is
+`rbg`, `aops-tools`, and `aops-ts` install the same way. `--config` is
 valid only against the plugin that declares the key; `pkb_mcp_url` belongs to
 `aops-pkb` alone.
 

@@ -6,7 +6,7 @@ academicOps is a streamlined suite of six plugins for Claude Code and Antigravit
 
 1. **Prompt Situation (`aops-pkb`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
 2. **Workflow Composition (`aops-pkb`):** Selects appropriate risk-matched review and QA assurance levels for the task.
-3. **Containerized Execution & Dispatch (`aops`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
+3. **Containerized Execution & Dispatch (`ida`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Runs a turn-by-turn local model evaluator on tool calls, advisory only; plus a stop gate that withholds the stop once per chain, directing the agent to verify RBG rule compliance (`axioms/` + project + local rules) and present checkable evidence before handing back.
 
 ---
@@ -74,13 +74,13 @@ academicOps uses Claude Code's native OpenTelemetry export forwarded through a l
 
 Install what you need — plugins are separately installable and loosely coupled:
 
-| Plugin       | Owns                                                                            |
-| ------------ | ------------------------------------------------------------------------------- |
-| `aops-pkb`   | pauli. Memory, effectual planning, workflow composition, PKB MCP client config. |
-| `aops-ida`   | ida, the interactive face; james, synthesis and dispatch.                       |
-| `aops-cope`  | Automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook.      |
-| `aops-tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.).     |
-| `aops-ts`    | Tailscale bring-up for remote sessions.                                         |
+| Plugin       | Owns                                                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `aops-pkb`   | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.                                        |
+| `aops-ida`   | ida, the interactive face; james, synthesis and dispatch.                                                              |
+| `rbg`        | Automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook and a `Stop`/`SubagentStop` rule-check gate. |
+| `aops-tools` | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.).                                            |
+| `aops-ts`    | Tailscale bring-up for remote sessions.                                                                                |
 
 ---
 
@@ -93,7 +93,7 @@ claude plugin install aops-ida@academicOps
 claude plugin install aops-pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
 
-`aops-cope`, `aops-tools`, and `aops-ts` install the same way.
+`rbg`, `aops-tools`, and `aops-ts` install the same way.
 
 Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
 

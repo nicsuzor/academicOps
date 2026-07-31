@@ -177,8 +177,8 @@ def test_a_deleted_message_file_lets_the_stop_through(staged):
 def test_the_gate_is_silent_while_background_work_runs(staged, event):
     """Nothing is being handed back yet, so there is nothing to check — and the
     chain allows one block, which must not be spent on a turn that is not the
-    handback. Matches `ida`'s `honesty_floor`, which holds off for the same
-    reason on the same event."""
+    handback. Matches `ida`'s `strip_the_reply` quiet gate, which holds off for
+    the same reason on the same event."""
     proc = fire(staged, "claude", event, {"session_id": "s1", "background_tasks": [{"id": "bg1"}]})
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.strip() == ""
