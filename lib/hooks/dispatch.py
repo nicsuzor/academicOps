@@ -15,6 +15,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -30,27 +31,47 @@ class HookContext:
     hooks_dir: Path = field(default_factory=Path)
 
 
-@dataclass(frozen=True)
-class Result:
+class Kind(StrEnum):
     """One of three dispositions, in descending order of force.
 
-    ``is_refusal`` denies a tool call outright and is reserved for structural
+    ``REFUSE`` denies a tool call outright and is reserved for structural
     impossibility — the session as configured cannot carry the call out, so
     letting it through produces a hang rather than an outcome. It is never a
     rule verdict.
 
-    ``is_block`` refuses to let a *stop* land: the turn continues so the agent
+    ``BLOCK`` refuses to let a *stop* land: the turn continues so the agent
     can do the thing the hook asked for. It is legal only on the events in
     ``BLOCKABLE_EVENTS``, because no other event has a stop to withhold.
 
-    Neither set is an advisory: text the agent reads and weighs, which is what
+    ``ADVISE`` is neither: text the agent reads and weighs, which is what
     every rule-driven handler is limited to.
+
+    One field with three values rather than a flag per disposition, so a result
+    cannot hold two at once. The renderers resolve the dispositions in their own
+    order, and a result that was both a refusal and a block would render as
+    whichever each renderer happened to test first.
+
+    **Compare members with ``==``, never with ``is``.** This module is loaded
+    twice in a live hook: once as ``__main__`` (the entry point) and again as
+    ``dispatch`` when a plugin's ``handlers.py`` does ``from dispatch import
+    block``. Those are two module objects with two distinct ``Kind`` classes, so
+    a member built handler-side is never *identical* to the one the renderer
+    tests against. ``StrEnum`` is what makes ``==`` still hold across them — a
+    plain ``Enum`` compares unequal, by identity, and would break this. An
+    ``is`` comparison here fails silently too: the disposition degrades to an
+    advisory and a gate that reports success never fires.
     """
 
+    ADVISE = "advise"
+    REFUSE = "refuse"
+    BLOCK = "block"
+
+
+@dataclass(frozen=True)
+class Result:
     inject_text: str
     user_text: str | None = None
-    is_refusal: bool = False
-    is_block: bool = False
+    kind: Kind = Kind.ADVISE
 
 
 def warn(message: str, user_text: str | None = None) -> Result:
@@ -58,11 +79,11 @@ def warn(message: str, user_text: str | None = None) -> Result:
 
 
 def refuse(reason: str, user_text: str | None = None) -> Result:
-    return Result(reason, user_text, is_refusal=True)
+    return Result(reason, user_text, Kind.REFUSE)
 
 
 def block(reason: str, user_text: str | None = None) -> Result:
-    return Result(reason, user_text, is_block=True)
+    return Result(reason, user_text, Kind.BLOCK)
 
 
 def load_message_pair(hooks_dir: Path, name: str) -> tuple[str, str | None]:
@@ -128,12 +149,7 @@ def to_canonical(client: str, wire_event: str) -> str | None:
 # that hit router.py on 2026-07-13. Guarded here, structurally, in the
 # dispatcher itself rather than in each handler, so every current and future
 # Stop/SubagentStop handler is covered without having to remember it.
-_SELF_LOOP_GUARDED_EVENTS = {"Stop", "SubagentStop"}
-
-# The only events "stopping" is a decision about, and so the only events
-# block() means anything on. Same set as the self-loop guard above, by the
-# same reasoning, kept as its own name so the two concerns read separately.
-_BLOCK_EVENTS = _SELF_LOOP_GUARDED_EVENTS
+_SELF_LOOP_GUARDED_EVENTS = frozenset(STOP_EVENTS)
 
 
 def _log_fire(ctx: HookContext) -> None:
@@ -198,61 +214,47 @@ def _merge(results: list[Result | None]) -> Result | None:
     """
     present = [r for r in results if r is not None]
     for r in present:
-        if r.is_refusal:
+        if r.kind == Kind.REFUSE:
             return r
     for r in present:
-        if r.is_block:
+        if r.kind == Kind.BLOCK:
             return r
     return present[0] if present else None
 
 
 def _render_claude(result: Result, event: str) -> dict:
-    if result.is_block and event in BLOCKABLE_EVENTS:
+    if result.kind == Kind.BLOCK and event in BLOCKABLE_EVENTS:
+        # The one shape Claude Code reads as "do not stop": a top-level
+        # decision, not nested under hookSpecificOutput.
         blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
         if result.user_text:
             blocked["systemMessage"] = result.user_text
         return blocked
 
-    if result.is_block:
-        # Degraded rather than dropped: the text is still worth delivering, but
-        # the disposition is not, and a handler must not read silence here as
-        # enforcement that happened.
+    if result.kind == Kind.BLOCK:
+        # A block only means something on Stop/SubagentStop — Claude Code has no
+        # "block" shape for any other event. A handler that returns one here is
+        # a wiring bug: report it loudly and degrade to an advisory rather than
+        # emit a shape that corrupts the response or silently does nothing. The
+        # text is still worth delivering; the disposition is not, and a handler
+        # must not read silence here as enforcement that happened.
         print(
-            f"aops hooks: a block disposition was returned on {event!r}, which does not "
-            "honour one; degrading it to an advisory",
+            f"dispatch: block() is illegal on event {event!r} (Claude Code only "
+            "reads a block decision on Stop/SubagentStop) — degrading to an "
+            "advisory instead of corrupting the hook response",
             file=sys.stderr,
         )
 
-    output: dict[str, Any]
-    if result.is_refusal:
+    if result.kind == Kind.REFUSE:
         specific = {
             "hookEventName": event,
             "permissionDecision": "deny",
             "permissionDecisionReason": result.inject_text,
         }
-    elif result.is_block and event in _BLOCK_EVENTS:
-        # The one shape Claude Code reads as "do not stop": a top-level
-        # decision, not nested under hookSpecificOutput.
-        output: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
-        if result.user_text:
-            output["systemMessage"] = result.user_text
-        return output
     else:
-        if result.is_block:
-            # A block only means something on Stop/SubagentStop — Claude Code
-            # has no "block" shape for any other event. A handler that
-            # returns one here is a wiring bug: report it loudly and degrade
-            # to an advisory rather than emit a shape that corrupts the
-            # response or silently does nothing.
-            print(
-                f"dispatch: block() is illegal on event {event!r} (Claude Code only "
-                "reads a block decision on Stop/SubagentStop) — degrading to an "
-                "advisory instead of corrupting the hook response",
-                file=sys.stderr,
-            )
         specific = {"hookEventName": event, "additionalContext": result.inject_text}
 
-    output = {"hookSpecificOutput": specific}
+    output: dict[str, Any] = {"hookSpecificOutput": specific}
     if result.user_text:
         output["systemMessage"] = result.user_text
     return output
@@ -265,7 +267,7 @@ def _render_agy(result: Result) -> dict:
     field to carry one, and the invocation has already ended by the time the
     event fires. The text still has somewhere to go, so it goes there.
     """
-    if result.is_refusal:
+    if result.kind == Kind.REFUSE:
         return {"decision": "deny", "reason": result.inject_text}
     # agy has no blocking shape at all, on any event — a block() downgrades
     # to the same advisory shape a warn() would render as.

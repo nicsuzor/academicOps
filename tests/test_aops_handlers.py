@@ -35,7 +35,7 @@ print(json.dumps(
     None if res is None else {
         "inject_text": res.inject_text,
         "user_text": res.user_text,
-        "is_refusal": res.is_refusal,
+        "kind": res.kind.value,
     }
 ))
 """
@@ -166,7 +166,7 @@ def test_askuserquestion_is_refused_in_a_headless_session():
     will answer."""
     res = _ask("AskUserQuestion", {**dict.fromkeys(_HEADLESS_ENV, None), "NONINTERACTIVE": "1"})
     assert res is not None
-    assert res["is_refusal"]
+    assert res["kind"] == "refuse"
     assert "AskUserQuestion" in res["inject_text"]
 
 
@@ -220,7 +220,7 @@ def test_session_start_does_not_raise_when_neither_fact_is_available():
     Both facts are unavailable and the handler still returns an advisory."""
     res = _session_start()
     assert res is not None
-    assert res["is_refusal"] is False
+    assert res["kind"] == "advise"
     assert "not readable" in res["inject_text"]
     assert "no client registry" in res["inject_text"]
 

@@ -27,6 +27,7 @@ beyond a handlers.py.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -49,11 +50,49 @@ import dispatch  # noqa: E402
 
 
 def test_block_is_distinct_from_refuse_and_warn():
-    b = dispatch.block("keep going")
-    assert b.is_block is True
-    assert b.is_refusal is False
-    assert dispatch.warn("careful").is_block is False
-    assert dispatch.refuse("impossible").is_block is False
+    assert dispatch.block("keep going").kind == dispatch.Kind.BLOCK
+    assert dispatch.warn("careful").kind == dispatch.Kind.ADVISE
+    assert dispatch.refuse("impossible").kind == dispatch.Kind.REFUSE
+
+
+def test_a_result_cannot_hold_two_dispositions_at_once():
+    """Why `kind` is one field and not a flag per disposition.
+
+    With a boolean each, `Result(text, None, is_refusal=True, is_block=True)` is
+    constructible, and each renderer resolves the dispositions in its own order
+    — so one object could render as a stop-gate on Claude Code and a permission
+    denial on agy. A single field makes that object unrepresentable.
+    """
+    for result in (dispatch.warn("x"), dispatch.refuse("x"), dispatch.block("x")):
+        assert sum(result.kind == k for k in dispatch.Kind) == 1
+
+
+def test_a_disposition_survives_this_module_being_loaded_twice():
+    """The failure this guards is silent, and it is the live shape of the hook.
+
+    `dispatch.py` runs as `__main__`; a plugin's `handlers.py` then does
+    `from dispatch import block`, which loads the same file again under the name
+    `dispatch`. Two module objects, two `Kind` classes — so the member a handler
+    builds is never *identical* to the one the renderer tests. Subclassing `str`
+    is what keeps `==` true across them. Were this to regress (a plain `Enum`,
+    or an `is` comparison in a renderer), every gate would degrade to an
+    advisory while still reporting success.
+    """
+    second = importlib.util.spec_from_file_location("dispatch_second_load", dispatch.__file__)
+    assert second is not None and second.loader is not None
+    other = importlib.util.module_from_spec(second)
+    sys.modules["dispatch_second_load"] = other
+    second.loader.exec_module(other)
+
+    assert other.Kind is not dispatch.Kind, "the two loads must really be distinct classes"
+    assert other.Kind.BLOCK == dispatch.Kind.BLOCK
+
+    # A block built against the second load must still render as a real block.
+    handler_side = other.block("keep going")
+    assert dispatch.render("claude", "Stop", handler_side) == {
+        "decision": "block",
+        "reason": "keep going",
+    }
 
 
 def test_block_carries_a_user_line_like_warn_and_refuse_do():

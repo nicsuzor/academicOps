@@ -55,7 +55,7 @@ print(json.dumps(
     None if res is None else {
         "inject_text": res.inject_text,
         "user_text": res.user_text,
-        "is_refusal": res.is_refusal,
+        "kind": res.kind.value,
     }
 ))
 """
@@ -131,13 +131,13 @@ def test_search_the_pkb_has_no_client_scope_so_it_fires_on_both():
 
 
 def test_search_the_pkb_returns_an_advisory_never_a_refusal():
-    """The hook-runtime Result contract: `is_refusal` must stay False, because
+    """The hook-runtime Result contract: the kind must stay advisory, because
     nothing in-session may block on this hook (specs/ARCHITECTURE.md,
     Enforcement) — a refusal is reserved for structural impossibility
-    (lib/hooks/result.py), and searching the PKB is never that."""
+    (lib/hooks/dispatch.py), and searching the PKB is never that."""
     res = _run("search_the_pkb", {"hook_event_name": "UserPromptSubmit", "prompt": "anything"})
     assert res is not None
-    assert res["is_refusal"] is False
+    assert res["kind"] == "advise"
     assert res["inject_text"]
 
 

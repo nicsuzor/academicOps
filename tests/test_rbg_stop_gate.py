@@ -254,7 +254,7 @@ def test_a_block_on_a_non_blockable_event_degrades_and_says_so(staged):
         assert out is not None
         assert "decision" not in out
         assert out["hookSpecificOutput"]["additionalContext"] == "wrong event"
-        assert "does not honour one" in proc.stderr
+        assert "is illegal on event" in proc.stderr
     finally:
         (staged / "handlers.py").unlink()
         (staged / "handlers.py.bak").rename(staged / "handlers.py")
@@ -280,9 +280,10 @@ def test_no_layer_one_surface_can_ever_carry_a_disposition(staged):
     Asserted at the source, because a payload that happens not to trigger a
     disposition would not notice one being added.
 
-    Three spellings, because `refuse` is not a substring of `is_refusal` and a
-    positional `Result(text, None, True)` evades both — and `block` is now a
-    fourth route the older form of this guard could not see.
+    Four spellings, because the helpers (`refuse`, `block(`) are not the only
+    route: a handler can name the disposition directly (`Kind.`) or build the
+    dataclass itself, positionally or by keyword (`Result(`), and each of those
+    evades a guard that only knows the helpers.
     """
     layer_one = ("evaluate", "inject_ruleset")
     source = (RBG_HOOKS / "handlers.py").read_text(encoding="utf-8")
@@ -290,7 +291,7 @@ def test_no_layer_one_surface_can_ever_carry_a_disposition(staged):
     for name in layer_one:
         start = source.index(f"def {name}(")
         body = source[start : source.index("\ndef ", start + 1)]
-        for token in ("refuse", "is_refusal", "is_block", "block(", "Result("):
+        for token in ("refuse", "block(", "Kind.", "Result("):
             assert token not in body, f"{name} can reach a disposition via {token!r}"
 
 
@@ -298,13 +299,13 @@ def test_that_token_list_would_actually_catch_a_violation():
     """The guard above is a string search, so it is worth exactly what its
     tokens catch. Prove each construction is caught, and that the shapes Layer 1
     legitimately uses are not."""
-    tokens = ("refuse", "is_refusal", "is_block", "block(", "Result(")
+    tokens = ("refuse", "block(", "Kind.", "Result(")
     for violation in (
         "return refuse('no')",
-        "return Result('no', None, True)",
-        "return Result('no', is_refusal=True)",
+        "return Result('no', None, Kind.REFUSE)",
+        "return Result('no', kind=Kind.REFUSE)",
         "return block('no')",
-        "return Result('no', is_block=True)",
+        "return Result('no', kind=Kind.BLOCK)",
     ):
         assert any(t in violation for t in tokens), f"a handler could ship {violation!r} unnoticed"
 
