@@ -87,8 +87,11 @@ behind carrying a pointer — that is duplication with extra steps.
 - Wikilink proper nouns. Use markdown links for external issues and PRs.
 - Wikilinks in prose only — never inside code blocks, inline code, or technical
   tables. No "See Also" section; links live where the thing is discussed.
-- Typed relations go in a `## Relationships` section:
-  `- [related] [[task-id]] — one line on why`.
+- Typed relations on a **note** go in a `## Relationships` section:
+  `- [related] [[task-id]] — one line on why`. Not on a task body: there the
+  relation is a real graph edge (`depends_on`, `supersedes`, `contributes_to`)
+  and anything else is one bullet under `## Pointers`. A prose section
+  restating an edge is a parallel copy that drifts.
 - Capture the generalisable pattern, not the local implementation detail.
 - Factual claims in an episodic note carry an observation callout:
 

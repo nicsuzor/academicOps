@@ -81,19 +81,9 @@ fixed.
 
 ### Stages advance by invocation, not by trigger
 
-Each skill runs in its own invocation and stops. No stage fires the next one.
-`hydrate` emits a bundle. `situate` sets `needs_decomposition: true` and halts —
-nothing polls for that flag or consumes it. Turning a `needs_decomposition`
-task into subtasks has no shipped owner in this tree: `decompose`, `brief`,
-`planner`, and `reconcile` are named in the surrounding design docs but ship
-under no `plugins/*/skills/` path — a library gap, not a stage to route
-around or assume exists.
-
-The gate in the middle is a person. `queued` means the user has released the
-work for agent dispatch; agents pull only from there and never promote into it.
-Any reconciliation of an abandoned claim must return it to `ready`, never
-`queued` — the same rule, wherever it runs. So the pipeline cannot run end to
-end unattended.
+Each skill runs, then stops; no stage fires the next.
+`needs_decomposition` is a graph signal nothing yet consumes — see
+[`skills/situate/SKILL.md`](skills/situate/SKILL.md).
 
 ### Dispatch composes the brief itself
 
@@ -117,11 +107,6 @@ skill names rather than silently passing — with no shipped skill currently
 turning that gap into a blocking node (see the stages note above).
 
 ### Remembering
-
-`remember` is not a command. It fires on a standing obligation inlined into
-pauli, ida, james and marsha at build time: write facts, decisions, and state to
-the knowledge base the moment they emerge, without waiting to be asked. Any
-agent under that obligation reaches for the skill; pauli holds the write.
 
 Consolidation turns episodic records into canonical topic notes — synthesis,
 not collection. The standard for what that means is
