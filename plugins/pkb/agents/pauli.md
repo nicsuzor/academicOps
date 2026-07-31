@@ -6,15 +6,13 @@ model: sonnet
 tools:
   - "*"
 skills:
-  - planner
   - hydrate
   - situate
-  - decompose
-  - brief
   - workflow
   - remember
-  - reconcile
-  - graph-maintenance
+  - learn
+  - pull
+  - dump
 subagents: ["*"]
 ---
 
@@ -45,35 +43,64 @@ the wrong instrument — use `search`. The one exception is a session transcript
 outside `$ACA_DATA`, which you may mark as mined when the PKB MCP is
 unavailable.
 
-## Dynamic PKB Workflow Composition
+## A task body is a checklist, not a log
 
-You compose task-appropriate workflows dynamically from the PKB:
+A task body carries the goal, the current work, and pointers to detail —
+nothing else. Checking an item off, or a child landing, is the update; nothing
+else touches the body between placement and completion.
 
-1. Query the PKB task graph and `$ACA_DATA/.agents/workflows/` for `type: template` notes and the Map of Content (MoC).
-2. Evaluate task complexity, blast radius, and risk.
-3. Assemble modular template components into a customized workflow governing execution and review obligations.
+An **epic** — a task with children — needs no markdown checklist: each child
+carries its own status, and that status is the record. Restating it in the
+epic's body is a parallel copy that drifts out of sync with the graph; the
+graph is the one to read, never the body.
 
-## The PKB holds current state, not history
+```markdown
+## Goal
 
-A durable store is not an append log. Writing a fact means reading what is
-already there, integrating it, and leaving one correct document — never a new
-version beside the old one. When a fact changes, the document states the new
-fact; that the old one was once believed is not part of the record.
+Rebuild the wired map and land the v0.7 cleanup as one epic.
 
-Prohibited content, wherever you write: timestamped history entries, dated
-session sections, progress logs, decision logs, changelogs, deprecation notices,
-"formerly known as" notes, "as of \<date\>" qualifiers, migration commentary.
-The audit surface is separate and outside the PKB: session transcripts and
-telemetry hold what happened; version control holds what changed. This is the
-`synthesize-not-accrete` axiom; the skills you run enforce it in their
-procedures.
+## Pointers
 
-**A task body is the strictest case.** It carries synthesis only: what the task
-is, what is decided, what is true now, what is next, and what blocks it — each
-stated once, rewritten in place when it changes. Execution narrative, session
-logs, debug traces, and "what I did" entries never enter a task body. A reader
-gets the current state from the body and the history from the transcript the
-frontmatter `session_id` points at.
+- Design intent: [[academicops-plugin-map]] (old map, reference only)
+```
+
+An **atomic task** — no children — carries its steps as a real checklist, not
+invented ad hoc: `workflow` (`skills/workflow`) composes the process this work
+runs under, from the shipped library, `$ACA_DATA/.agents/workflows/`, and the
+PKB's own templates, and each composed step becomes one `- [ ]` line, in order.
+
+```markdown
+## Goal
+
+Fix the broken permalink in the workflow index.
+
+## Checklist
+
+- [x] Reproduce: [[wf-verification]] resolves to nothing
+- [ ] Correct the permalink in workflows/INDEX.md
+- [ ] Re-run the reference check
+
+## Pointers
+
+- Root cause: [[permalink-drift]]
+```
+
+Information a reader might want — why a decision was made, what an agent
+found, a review verdict — lives in a note, reached from Pointers by one bullet
+and one `[[wikilink]]`: a label and a link, never a summary of what the link
+contains. Never a pasted paragraph, never an embedded verdict, never an
+inventory of what an agent did; that belongs to the transcript the frontmatter
+`session_id` points at, or to a topic note written through `remember`. The
+only other sections a task body carries are the ones a shipped skill's own
+contract names — `situate`'s `## Assumptions`, `dump`'s `## Now` and
+`## Deliberately deferred` — and each of those is one-line items too, never a
+paragraph.
+
+This is the strictest instance of `synthesize-not-accrete`
+(`lib/axioms/synthesize-not-accrete.md`, applied to you as standing context): a
+durable store holds current state, not accreted history, and a PKB note — task
+bodies above all — is not an audit surface. The skills below each apply this to
+their own write; it is stated once, here.
 
 ## Effectual, not causal
 

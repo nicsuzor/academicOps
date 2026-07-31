@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Compose the process this piece of work runs under, by reading templates from the shipped library, the user's own layer, and the PKB's workflow templates. Read and compose in context — never parse, never solve. Fires whenever decompose or a dispatcher needs a process, and whenever an ask needs routing to the right one.
+description: Compose the process this piece of work runs under, by reading templates from the shipped library, the user's own layer, and the PKB's workflow templates. Read and compose in context — never parse, never solve. Fires whenever a dispatcher needs a process, and whenever an ask needs routing to the right one.
 agent: "pkb:pauli"
 ---
 
@@ -99,14 +99,20 @@ picked.
 
 ## Emit
 
-Name the composed process explicitly on the task — the templates by name, the
-order, and the one-sentence proportionality call. A process referred to vaguely
-("the usual review") is not composed; nobody downstream can check it was
-followed, and the evaluator has nothing to audit against.
+Write the composed process onto the task as its checklist: one `- [ ] <step>`
+line per composed step, in order, plus one pointer bullet naming the templates
+and the one-sentence proportionality call — never a paragraph describing the
+process. This is the task-body shape
+[`../../agents/pauli.md`](../../agents/pauli.md) states canonically — and it
+applies to an atomic task only: an epic's children already carry their own
+status, so its checklist is the graph, not a markdown restatement. A
+process referred to vaguely ("the usual review") is not composed; nobody
+downstream can check it was followed, and a checklist line nobody can point at
+a template for has nothing to audit against.
 
-State it once, as the current process. When the process changes, restate it —
-do not leave the superseded version beside the new one with a note about which
-came first.
+State it once, as the current checklist. When the process changes, rewrite the
+checklist in place — do not leave the superseded version beside the new one
+with a note about which came first.
 
 ## Must not
 

@@ -6,22 +6,12 @@ agent: "pkb:pauli"
 
 # Remember
 
-The PKB holds **current state, synthesised**. It is not an append log, and it is
-not a diary.
-
-Writing a fact means reading what is already there, integrating the new fact, and
-leaving **one** correct document. When a fact changes, the document states the
-new fact; that the old one was once believed is not part of the record. This is
-the `synthesize-not-accrete` axiom, and it is the reason this skill exists in the
-shape it does.
-
-**Prohibited content, in every write:** timestamped history entries, dated
-session sections, progress logs, decision logs, changelogs, deprecation notices,
-"formerly known as" notes, "as of \<date\>" qualifiers, migration commentary, and
-`superseded_by:` pointers left behind instead of a merge. The audit surface is
-separate and outside the PKB: session transcripts and telemetry hold what
-happened; version control holds what changed. Nothing episodic enters the PKB —
-and a task body is the strictest case of the rule.
+This skill is the write boundary for `synthesize-not-accrete`
+(`lib/axioms/synthesize-not-accrete.md`). A task body is the rule's strictest
+instance — goal, checklist, pointers, canonical in
+[`../../agents/pauli.md`](../../agents/pauli.md) — where a
+knowledge note carries synthesised prose instead, never accreted history in any
+form.
 
 The vocabulary you write in — node types, edges, status, weights — is the one
 the PKB MCP tool schemas declare (`create`, `create_task`, `update_task`). Read
@@ -74,11 +64,11 @@ outcomes are observations on an existing topical note; a genuinely new topic
 earns a new note.
 
 Route by kind: agent activity and debug traces stay in the transcript — the
-audit surface — and do not enter the PKB at all; what reaches the task is the
-synthesized state delta (what is now true, decided, or next), written by
-rewriting the body section it changes. Durable episodic records — meeting
+audit surface — and do not enter the PKB at all; what reaches the task is a
+checked-off checklist item, or, where the checklist itself changed, the line
+rewritten to match — never a narrated delta. Durable episodic records — meeting
 notes, daily notes — are saved with the right type. Durable knowledge becomes a
-topic note. Never create a timestamped session log.
+topic note, in prose. Never create a timestamped session log.
 
 Report what you wrote: the tool, the title, the returned id. Not filesystem
 paths.
@@ -133,7 +123,7 @@ Maps of Content                                              (navigation)
 
 A task body found carrying an episodic log — dated sections, resume stacks,
 progress entries — is drift. Repair it: lift anything durable into the right
-topic note, then rewrite the body as pure current state.
+topic note, then rewrite the body to goal, checklist, pointers.
 
 **Consolidation is synthesis, not collection.** Merging five memories into a list
 of five bullets adds nothing over the five memories. Synthesis means finding the
@@ -144,7 +134,7 @@ When a knowledge note **fully** replaces a memory, delete the memory. When the
 source is a primary episodic record — a daily note, a meeting note — mark its
 frontmatter `consolidated: <date>` and advance its status, but never change its
 content. Primary records are not rewritten. A task body is not a primary
-record: it is a state document, and consolidation rewrites it.
+record: it is a checklist, and consolidation rewrites it to one.
 
 **Consolidation mode mutates the graph.** `batch_merge`, `merge_node`,
 `batch_reparent`, `batch_reclassify`, and `batch_archive` all need pauli's tool

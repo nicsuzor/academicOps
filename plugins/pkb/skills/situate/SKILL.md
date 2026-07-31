@@ -80,16 +80,17 @@ where the two disagree.
 
 ## 5 — Surface the assumptions
 
-Name, in the task body, what must be true for this task to matter — the beliefs
-that, if wrong, invalidate the estimate or the placement. An unexamined
-assumption here is a silent failure two stages downstream.
+Name, as one-line bullets under `## Assumptions` in the task body, what must be
+true for this task to matter — the beliefs that, if wrong, invalidate the
+estimate or the placement. An unexamined assumption here is a silent failure
+two stages downstream.
 
 ## 6 — Route the unknowns
 
-- **DECIDE** — a clear best option exists. Make the call, record it in the body,
-  move on.
+- **DECIDE** — a clear best option exists. Make the call and record it as one
+  bullet under `## Assumptions`, move on.
 - **DEFER** — the missing input is runtime data you do not have. Say what is
-  missing, in the body, and wait.
+  missing as one bullet under `## Assumptions`, and wait.
 - **SURFACE** — a genuine trade-off, a naming call, a wide blast radius, or
   anything touching the user's own intent, priority included. Raise it via
   `AskUserQuestion`, the visible channel. Writing it into the body alone is not
@@ -118,6 +119,7 @@ valuing it required. Frame the question for decompose's worker; do not answer it
 
 After you run: the graph shows **one** new node, well connected — parent, a
 `contributes_to` edge to a real target, densified relations — carrying a value
-estimate and assumptions a reviewer can audit against the bundle it came from.
-And nothing else changed. If a reviewer cannot reconstruct why the placement and
-the estimate are what they are from the body alone, the pass was rushed.
+estimate and an `## Assumptions` bullet list a reviewer can audit against the
+bundle it came from. And nothing else changed. If a reviewer cannot reconstruct
+why the placement and the estimate are what they are from the body's bullets and
+edges alone — not from a prose justification — the pass was rushed.

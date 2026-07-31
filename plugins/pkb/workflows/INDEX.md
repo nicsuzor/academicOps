@@ -46,7 +46,7 @@ Request
   +-- Simple question only? -----------------------------------> [[simple-question]]
   +-- Continuation of active session work? --------------------> [[interactive-followup]]
   +-- New idea, fragment, or constraint? ----------------------> the situate skill
-  +-- Break down a goal or epic? ------------------------------> the decompose skill
+  +-- Break down a goal or epic? ------------------------------> no shipped skill (library gap)
   +-- Multiple similar items? ---------------------------------> [[batch]], or [[burst]] across sessions
   +-- Email or communications? --------------------------------> [[email-triage]]
   |       +-- Extracting a ready-to-work task from an email? --> [[email-capture]]

@@ -41,8 +41,8 @@ honest.
 
 ## Writing to each destination
 
-- **Task record** — write the preference into the task's body as current state,
-  in the section it belongs to. Not a dated entry, not a log.
+- **Task record** — fold the preference into the task's checklist or pointers,
+  in the section it belongs to, as one line. Not a dated entry, not a log.
 - **Project rule** — invoke the `add-rule` skill. Do not write
   `.agents/rules/RULES.md` yourself; that skill owns the file's shape and checks
   the frontmatter the in-session rule check depends on.

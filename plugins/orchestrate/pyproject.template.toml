@@ -1,0 +1,11 @@
+[project]
+name = "james"
+version = "0.1.0"
+description = "The Orchestrator: routes work to a supervised in-session team or an autonomous out-of-session worker."
+requires-python = ">=3.11"
+dependencies = [
+  # Add your plugin's python dependencies here.
+  # The framework's core dependencies (for things like mcp servers or scripts) go here.
+  "pydantic>=2.0",
+  "fastmcp>=2.13.1",
+]

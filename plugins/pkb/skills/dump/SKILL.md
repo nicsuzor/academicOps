@@ -16,13 +16,11 @@ Every session exit runs through this skill. The first word after `/dump` picks t
 
 Do not guess. If the task is not actually finished, the path is bail, pause, or partial — never full.
 
-**Every task write on every path is a rewrite, never an append.** The task body
-carries synthesis only — current state, decisions, next action, blockers — held
-in one `## Now` section that each exit replaces wholesale. The audit record of
-what happened this session is the transcript itself, reached through the task's
-`session_id`; nothing episodic is copied onto the task. A body found carrying a
-stack of old resume or progress sections gets cleaned in passing: rewrite it to
-one current state.
+**Every task write on every path is a rewrite, never an append** — the shape is
+[`../../agents/pauli.md`](../../agents/pauli.md)'s (goal, checklist, pointers). Dump's own instance is
+`## Now`: one section, replaced wholesale on every exit, never stacked beside an
+earlier one. A body found carrying a stack of old resume or progress sections
+gets cleaned in passing to that same shape.
 
 Terminate immediately after emitting the block for your path. Add no trailing text.
 

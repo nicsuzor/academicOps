@@ -23,7 +23,7 @@ flowchart TD
         situate --> gate{{"human sets status queued<br/>agents pull only from here<br/>and never promote into it"}}
         gate --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
 
-        pauli --> composer["skills/workflow<br/>compose the process<br/>three layers, loaded every time"]
+        pauli --> composer["skills/workflow<br/>compose the process into a checklist<br/>three layers, loaded every time"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
 
@@ -83,38 +83,38 @@ fixed.
 
 Each skill runs in its own invocation and stops. No stage fires the next one.
 `hydrate` emits a bundle. `situate` sets `needs_decomposition: true` and halts —
-nothing polls for that flag. `decompose` runs when the task comes due, `brief`
-just before dispatch. `planner` is a router: it fixes the altitude, names the
-means and assumptions, then sends the work to the stage that owns it.
+nothing polls for that flag or consumes it. Turning a `needs_decomposition`
+task into subtasks has no shipped owner in this tree: `decompose`, `brief`,
+`planner`, and `reconcile` are named in the surrounding design docs but ship
+under no `plugins/*/skills/` path — a library gap, not a stage to route
+around or assume exists.
 
 The gate in the middle is a person. `queued` means the user has released the
 work for agent dispatch; agents pull only from there and never promote into it.
-Reconcile obeys the same gate — an abandoned claim goes back to `ready`, never
-`queued`. So the pipeline cannot run end to end unattended.
+Any reconciliation of an abandoned claim must return it to `ready`, never
+`queued` — the same rule, wherever it runs. So the pipeline cannot run end to
+end unattended.
 
-### Briefing and dispatching are two hands
+### Dispatch composes the brief itself
 
-`brief` composes the delegation brief and appends it to the subtask body, then
-dispatches by task id — the executor reads it fresh, so the composer is never
-the executor. James, running `skills/dispatch`, composes the brief immediately
-before dispatch and freshly each time, because context moves between passes. The
-two meet at the stable-artifact clause: a brief written in an earlier invocation
-and unchanged since may be dispatched directly. Pauli's `brief` writes the
-durable brief onto the task; james re-reads it at dispatch time and refreshes it
-if the context has moved.
+`ida`'s `dispatch` composes the delegation brief immediately before dispatching
+a unit, freshly each time — never earlier, because context moves between
+passes. There is no separate composer stage: the skill that writes the brief
+and the skill that dispatches it are the same invocation.
 
 ### Composing a workflow
 
-`workflow` runs inside pauli, called by `decompose` at composition time — every
-time, never carried in pauli's own text. Its three template layers sit outside
-the box because they are sources, not stages: the shipped library, the user's
+`workflow` runs inside pauli — read and composed in context, every time, never
+carried in pauli's own text. Its three template layers sit outside the box
+because they are sources, not stages: the shipped library, the user's
 `$ACA_DATA/.agents/workflows/`, and PKB documents tagged `wf-template`. They form
 one namespace; a PKB template composes exactly like a shipped one.
 
-The output is prose named on the task: the templates by name, the order, and a
-one-sentence proportionality call. Not a file, not a document. `decompose`
-persists it as part of the record. An empty review set is a library gap —
-decompose records it, leaves the task `blocked`, and writes no DAG.
+The output lands on the task as its checklist, not as a file or a document:
+the composed steps, in order, plus one pointer bullet naming the templates and
+the proportionality call. An empty review set is a library gap the composing
+skill names rather than silently passing — with no shipped skill currently
+turning that gap into a blocking node (see the stages note above).
 
 ### Remembering
 
@@ -123,11 +123,9 @@ pauli, ida, james and marsha at build time: write facts, decisions, and state to
 the knowledge base the moment they emerge, without waiting to be asked. Any
 agent under that obligation reaches for the skill; pauli holds the write.
 
-Consolidation is synthesis, not collection. Episodic records — daily notes,
-meeting notes, task bodies, transcripts — become canonical topic notes, and a
-topic area with five or more of those earns a Map of Content. Merging five
-memories into five bullets is not consolidation; if you cannot name the
-principle they are all instances of, the material is not ready.
+Consolidation turns episodic records into canonical topic notes — synthesis,
+not collection. The standard for what that means is
+[`skills/remember/references/quality.md`](skills/remember/references/quality.md).
 
 ## What it provides
 
