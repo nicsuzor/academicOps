@@ -1,3 +1,4 @@
 # HEARSAY WARNING: second-hand assertions are INADMISSIBLE as evidence.
 
-Demand the command, `file:line`, or URL behind each claim, or send it back.
+- Demand the citation (in whatever form it takes) and level of uncertainty behind EVERY claim.
+- Send anything less back!

@@ -61,7 +61,7 @@ def strip_the_reply(ctx: HookContext) -> Result | None:
     structural self-loop guard suppresses the ``stop_hook_active`` re-fire, so
     this handler does not check that flag itself.
     """
-    return block(*load_message_pair(ctx.hooks_dir, "quiet"))
+    return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
 
 
 HANDLERS: dict[str, list] = {
