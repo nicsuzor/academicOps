@@ -451,11 +451,12 @@ def setup_staging(staging_dir, mcp_url, agent_home):
 
     settings = {}
     if mcp_url:
-        # `pkb_mcp_url` is declared by the aops-pkb plugin's userConfig, so the
-        # value must be staged under that plugin's key. Under any other key the
-        # option is silently ignored and the container's PKB MCP server starts
-        # with no URL.
-        settings["pluginConfigs"] = {"aops-pkb@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
+        # `pkb_mcp_url` is declared by the pkb plugin's userConfig, so the value
+        # must be staged under that plugin's key. Under any other key the option
+        # is silently ignored and the container's PKB MCP server starts with no
+        # URL. The key is `<plugin name>@<marketplace name>`, and both halves
+        # come from build/marketplace.toml — see build/marketplace.py.
+        settings["pluginConfigs"] = {"pkb@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
     worker_model = os.environ.get("POLECAT_WORKER_MODEL")
     if worker_model:
         settings["model"] = worker_model

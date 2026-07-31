@@ -1,4 +1,4 @@
-# aops-tools
+# tools
 
 Domain research skills for academicOps: data analysis, document conversion,
 diagramming, peer review, and project scaffolding.

@@ -20,7 +20,8 @@ build/                  Build system.
 plugins/                Plugin sources. Only what a client needs.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.
   ida/                  ida — the interactive face; james — synthesis and dispatch.
-  rbg/                  rbg — rule enforcement hooks, advisory only.
+  rbg/                  rbg — rule enforcement: an advisory turn-by-turn evaluator plus a
+                        stop-side rule-check gate.
   ts/                   Tailscale bring-up.
   tools/                Domain research skills.
   aops-debug/           Debug plugin that dumps raw hook payloads.
@@ -56,8 +57,8 @@ plugin's files.
 
 academicOps is structured around **4 core pillars**:
 
-1. **Prompt Situation (`aops-pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
-2. **Workflow Composition (`aops-pkb`):** Select task-appropriate assurance and review levels (`workflow`) matching risk and blast radius.
+1. **Prompt Situation (`pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
+2. **Workflow Composition (`pkb`):** Select task-appropriate assurance and review levels (`workflow`) matching risk and blast radius.
 3. **Containerized Execution & Dispatch (`ida`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `ida`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), plus a stop gate that blocks once per stop-chain and directs the agent to run the RBG rule compliance check (`axioms/` + project + local rules) before stopping (`Stop` / `SubagentStop`).
 
@@ -126,11 +127,13 @@ surface: a parallel turn-by-turn `PreToolUse` hook running a lightweight local
 Reflexes LLM evaluator model. It returns `warn`, so a flagged call still
 proceeds.
 
-There is no stop-side rule gate. `plugins/rbg/hooks/handlers.py` registers
-`PreToolUse` and `UserPromptSubmit` only; a session can end without rbg ever
-having been invoked. A `Stop` / `SubagentStop` gate that held the stop until the
-rule check ran is wanted and unbuilt — the runtime can render the block
-(`lib/hooks/dispatch.py`, `block`), nothing is wired to emit one.
+There is also a stop-side rule gate, and it ships. `plugins/rbg/hooks/handlers.py`
+registers `Stop` and `SubagentStop`, alongside `PreToolUse` and
+`UserPromptSubmit`. On both stop events it withholds the stop once per
+stop-chain (`block`, `lib/hooks/dispatch.py`), directing the agent to run the
+RBG rule-compliance check over the three sources above and present checkable
+evidence before it stops. See Hooks and Enforcement below for the full
+behaviour.
 
 ## Hooks
 

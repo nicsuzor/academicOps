@@ -1,4 +1,4 @@
-# aops-pkb
+# pkb
 
 Pauli — memory, effectual planning, workflow composition, and the client wiring
 for a Personal Knowledge Base.
@@ -43,7 +43,7 @@ flowchart TD
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    gate --> dispatch(["aops-ida:james — skills/dispatch<br/>compose the brief, dispatch by task id"])
+    gate --> dispatch(["ida:james — skills/dispatch<br/>compose the brief, dispatch by task id"])
 ```
 
 ### The hook asks; nothing checks

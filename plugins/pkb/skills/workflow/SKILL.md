@@ -1,7 +1,7 @@
 ---
 name: workflow
 description: Compose the process this piece of work runs under, by reading templates from the shipped library, the user's own layer, and the PKB's workflow templates. Read and compose in context — never parse, never solve. Fires whenever decompose or a dispatcher needs a process, and whenever an ask needs routing to the right one.
-agent: "aops-pkb:pauli"
+agent: "pkb:pauli"
 ---
 
 # Workflow Composition

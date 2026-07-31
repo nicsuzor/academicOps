@@ -108,13 +108,13 @@ agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
 (`plugins/ida/agents/james.md`) declares the explicit list
-`["rbg:rbg", "aops-pkb:pauli", "aops:marsha", "general-purpose"]` — the
+`["rbg:rbg", "pkb:pauli", "aops:marsha", "general-purpose"]` — the
 three reviewers his own description names, plus the plain worker surface his
 dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) and `marsha`
 (`plugins.disabled/aops/agents/marsha.md`) declare `subagents: []` — neither's
 own description involves spawning: rbg returns a verdict, marsha verifies and
 never fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
-`["aops-ida:james", "aops-pkb:pauli"]`, matching the only two delegation targets
+`["ida:james", "pkb:pauli"]`, matching the only two delegation targets
 named in its own file. The row now describes a real declaration on every agent
 file, not an absent gate — though nothing yet enforces membership against it
 (see Lint Rules below: the frontmatter lint that would check `subagents`
@@ -266,7 +266,7 @@ Violations are reported as `error` (1–3, 6, 7 — schema, naming, referential,
 
 ## Derived Agents
 
-Some agents are thin wrappers over a canonical source persona rather than independent definitions. **`enforcer`** is the `rbg` persona reused on the PR pipeline: the workflow (`.github/workflows/agent-enforcer.yml`) concatenates `plugins/aops/agents/rbg.md` with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and runs it on Sonnet with `Bash,Read,Edit,Write` granted via `claude_args`.
+Some agents are thin wrappers over a canonical source persona rather than independent definitions. **`enforcer`** is the `rbg` persona reused on the PR pipeline: the workflow (`.github/workflows/agent-enforcer.yml`) concatenates `plugins/rbg/agents/rbg.md` with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and runs it on Sonnet with `Bash,Read,Edit,Write` granted via `claude_args`.
 
 ## GitHub Action Agents
 

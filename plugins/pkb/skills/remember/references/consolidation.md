@@ -151,11 +151,11 @@ answered by reading.
 
 ### Staleness and closure
 
-Delegate to [`../../reconcile/SKILL.md`](../../reconcile/SKILL.md) in batch
-context: in-flight claims whose session has gone quiet, the pull requests closed
-since the last cycle, aged non-terminal tasks, and artifact rot. That skill owns
-the procedure and returns one result — fold it into this cycle's summary rather
-than restating it.
+This sweep covers, in batch context: in-flight claims whose session has gone
+quiet, the pull requests closed since the last cycle, aged non-terminal tasks,
+and artifact rot. No shipped skill currently owns that procedure. That is a
+library gap — name it in this cycle's summary rather than freelancing a check
+to fill it.
 
 ### Misclassification
 
@@ -199,9 +199,10 @@ stage so the metrics reflect it.
 
 ## 7 — Maintain the graph
 
-Delegate to [`../../graph-maintenance/SKILL.md`](../../graph-maintenance/SKILL.md).
-Select the strategy from this cycle's baseline; that skill executes it and owns
-the triage rules.
+This stage selects a maintenance strategy from this cycle's baseline and applies
+the triage rules. No shipped skill currently owns that procedure. That is a
+library gap — name it in this cycle's summary rather than freelancing a strategy
+to fill it.
 
 **Convergence.** An unchanged `metrics_hash` means the _actionable_ graph has
 converged — skip the actionable strategies and log it. It says nothing about the

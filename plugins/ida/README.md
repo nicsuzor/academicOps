@@ -1,4 +1,4 @@
-# aops-ida
+# ida
 
 The interactive face: one agent, ida, who is the only agent in the framework that talks to the user.
 
@@ -18,7 +18,7 @@ flowchart TD
     Q -->|"blocking judgment call —<br/>scope, taste, tradeoff"| ESC["AskUserQuestion:<br/>one named decision,<br/>options pre-resolved"]
     Q -->|"no — substantive work"| J["james<br/>agents/james.md"]
 
-    IDA -->|"before new work"| PAULI["pauli — aops-pkb<br/>runs skills/reconcile.<br/>Named, never a general-purpose spawn:<br/>the only writer to the store"]
+    IDA -->|"before new work"| PAULI["pauli — pkb<br/>runs skills/reconcile.<br/>Named, never a general-purpose spawn:<br/>the only writer to the store"]
     PAULI --> UNC["landed but uncertified"]
     UNC --> J
 
@@ -43,7 +43,7 @@ Ida holds between steps rather than driving ahead: after each step control retur
 
 ### She does not touch the knowledge base — as a rule, not as a limitation
 
-Her frontmatter declares a narrow `tools` list and exactly two delegation targets, `aops-ida:james` and `aops-pkb:pauli`. Those are the only agents she may spawn, and a general-purpose spawn is forbidden outright for the sweep: pauli is the only writer to the store, and a spawn that lands anywhere else reads a graph it cannot correct.
+Her frontmatter declares a narrow `tools` list and exactly two delegation targets, `ida:james` and `pkb:pauli`. Those are the only agents she may spawn, and a general-purpose spawn is forbidden outright for the sweep: pauli is the only writer to the store, and a spawn that lands anywhere else reads a graph it cannot correct.
 
 The prohibition is written as a rule she keeps rather than a capability she lacks, because the capability claim is not true of the runtime. `specs/agents/agent-authority.md` records an observed spawned ida holding `Agent, Artifact, Bash, Edit, Read, Skill, ToolSearch, Write` plus the full PKB MCP namespace, against a frontmatter granting four tools and no MCP at all. A rule survives an allowlist that does not hold; "she has no tools for it" stops being a reason the moment the harness hands her some.
 
@@ -71,14 +71,14 @@ What crosses between them is the evidence contract, defined once in `specs/enfor
 
 ## What it provides
 
-| Kind  | Name               | Purpose                                                                                   |
-| ----- | ------------------ | ----------------------------------------------------------------------------------------- |
-| Agent | `ida`              | The interactive face. Coordinates research work, delegates to james, filters returns.     |
-| Agent | `james`            | The orchestrator. Commissions review, synthesises one verdict, dispatches work.           |
-| Skill | `dispatch`         | Routes a decomposed unit to its worker surface and holds the epic until every unit lands. |
-| Skill | `strategic-review` | Deploys the review lenses in parallel and reconciles their findings into one verdict.     |
-| Hook  | `handlers.py`      | The honesty floor on `Stop`, and the rule against hearsay on `PostToolUse`.               |
-| CLI   | polecat            | The container launcher `dispatch` invokes at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.      |
+| Kind  | Name               | Purpose                                                                                                                                               |
+| ----- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent | `ida`              | The interactive face. Coordinates research work, delegates to james, filters returns.                                                                 |
+| Agent | `james`            | The orchestrator. Commissions review, synthesises one verdict, dispatches work.                                                                       |
+| Skill | `dispatch`         | Routes a decomposed unit to its worker surface and holds the epic until every unit lands.                                                             |
+| Skill | `strategic-review` | Deploys the review lenses in parallel and reconciles their findings into one verdict.                                                                 |
+| Hook  | `handlers.py`      | The quiet gate on `Stop` — strips ida's reply to load-bearing content before it speaks to the person — and the rule against hearsay on `PostToolUse`. |
+| CLI   | polecat            | The container launcher `dispatch` invokes at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.                                                                  |
 
 No commands. The skills the other plugins ship reach ida only as work she delegates to james or to pauli.
 
@@ -93,6 +93,6 @@ No endpoint, host, registry, account or credential is written into anything this
 ## Depends on
 
 - `lib/axioms/` — `bar`, `launder`, `probe`, `delegation`, `epistemics`, `governing-rules`, `halt`, `memory`. These are applied globally as rule context rather than inlined via `@include`.
-- The `aops-pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions, and who performs every write to the task graph that `dispatch` decides on.
+- The `pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions, and who performs every write to the task graph that `dispatch` decides on.
 - The `aops` plugin at runtime, for **marsha**, whom `strategic-review` always runs and whose `verify` skill `dispatch` commissions rather than invokes. That plugin is currently not built, so this dependency is declared but unmet.
 - Docker, and an image built from this repository, for the polecat containers `dispatch` launches.

@@ -1,7 +1,7 @@
 ---
 name: situate
 description: Strategic intake — turn a hydrated ask into exactly ONE valued, well-connected task on the graph, marked needs_decomposition, then stop. Fires after hydrate for any non-trivial ask. Never decomposes, briefs, or dispatches.
-agent: "aops-pkb:pauli"
+agent: "pkb:pauli"
 ---
 
 # Situate
@@ -15,8 +15,9 @@ You work from the bundle `hydrate` emits — `## Intent`, `## Context`,
 is hydrate's job done twice. If the bundle is thin or missing for work that is
 clearly substantial, that is a hydration gap: flag it, do not silently backfill.
 
-Node types, edges, weights, and the priority and severity rules are
-[`../graph-maintenance/references/taxonomy.md`](../graph-maintenance/references/taxonomy.md).
+Node types, edges, weights, and the priority and severity rules are the ones the
+PKB MCP tool schemas declare. Read the schema of the tool you are about to call
+and write in its terms.
 
 ## 1 — Search before you create
 

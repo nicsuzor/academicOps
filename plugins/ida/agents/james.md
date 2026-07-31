@@ -8,7 +8,7 @@ skills:
   - dispatch
 subagents:
   - "rbg:rbg"
-  - "aops-pkb:pauli"
+  - "pkb:pauli"
   - "aops:marsha"
   - general-purpose
 ---

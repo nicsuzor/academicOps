@@ -49,7 +49,7 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 This skill delegates execution to keep the main context clean. Both dispatch targets below are **personality-bound to `pauli`**, for two distinct reasons — this is not merely "delegate somewhere to save context":
 
 - **`retro` / `trend` mode — earmarking.** §2a's bad-premise attribution ("was this a good idea, in this shape?") and the architectural-fit read of structural causes are pauli's premise-test / architectural-fit judgment register (`plugins/pkb/agents/pauli.md`), the same lens she applies in `/strategic-review`. A generic subagent could mechanically follow the output format without holding that disposition, which is exactly the failure mode §2a exists to catch — so the judgment, not just the context-hygiene delegation, is why this is pauli's.
-- **`sweep` mode — permission-control.** Issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work requiring the PKB tool surface only pauli's frontmatter grants (`plugins/pkb/agents/pauli.md`, "the sole writer to the PKB" — see also `plugins/pkb/skills/planner/SKILL.md`'s identical binding). Ambiguous classifications are flagged in the cycle report rather than blocking, matching pauli's flag-don't-resolve posture.
+- **`sweep` mode — permission-control.** Issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work requiring the PKB tool surface only pauli's frontmatter grants (`plugins/pkb/agents/pauli.md`, "the sole writer to the PKB"). Ambiguous classifications are flagged in the cycle report rather than blocking, matching pauli's flag-don't-resolve posture.
 
 ---
 

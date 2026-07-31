@@ -1,4 +1,4 @@
-# aops-ts
+# ts
 
 Opt-in Tailscale bring-up for academicOps remote/cloud sessions, and the
 transcript sync that gets a session's record off the box before it disappears.

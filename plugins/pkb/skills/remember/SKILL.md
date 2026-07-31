@@ -1,7 +1,7 @@
 ---
 name: remember
 description: Write knowledge into the PKB and keep it worth trusting. Capture mode persists facts, decisions, and state as they emerge; consolidation mode turns episodic records into durable knowledge and repairs what has drifted. Every write integrates into what is already there and leaves one correct document.
-agent: "aops-pkb:pauli"
+agent: "pkb:pauli"
 ---
 
 # Remember
@@ -23,8 +23,9 @@ separate and outside the PKB: session transcripts and telemetry hold what
 happened; version control holds what changed. Nothing episodic enters the PKB —
 and a task body is the strictest case of the rule.
 
-The vocabulary you write in is
-[`../graph-maintenance/references/taxonomy.md`](../graph-maintenance/references/taxonomy.md).
+The vocabulary you write in — node types, edges, status, weights — is the one
+the PKB MCP tool schemas declare (`create`, `create_task`, `update_task`). Read
+the schema of the tool you are about to call and write in its terms.
 What a good note looks like is [`references/quality.md`](references/quality.md).
 
 ## Invariants

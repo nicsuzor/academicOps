@@ -47,9 +47,10 @@ separate research path.
 1. **Contract** — the unit's premise, worth, and acceptance criteria are
    settled _at decomposition time_, before compute is spent executing it.
    This is pauli's pre-hoc lens (premise/worth/shape). The `decompose` skill
-   (see [`plugins/pkb/skills/decompose/SKILL.md`](../../plugins/pkb/skills/decompose/SKILL.md))
-   emits it as a standing, early-blocking task node in the epic's DAG — the
-   rest of the epic's work depends on it clearing. The previously
+   was built to emit it as a standing, early-blocking task node in the
+   epic's DAG, so the rest of the epic's work depends on it clearing — the
+   skill is retired to `plugins.disabled/skills.disabled/decompose/SKILL.md`
+   and excluded from the build, so nothing currently emits this node. The previously
    separate standalone premise-gate concept — a two-judge hard-refuse
    ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is retired;
    dispatch surfaces trust pauli's decomposition without re-judging

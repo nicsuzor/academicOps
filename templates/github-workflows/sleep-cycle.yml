@@ -159,7 +159,7 @@ jobs:
               Use Grep/Glob to search, Write/Edit to create/modify files. Do NOT
               reference mcp__services__pkb__* tools. Changes sync to PKB consumers via git push.
             - **Sub-agent dispatch (Phases 2, 4, quality review)**: when you
-              delegate to `aops-pkb:pauli` sub-agents, you MUST pass the explicit
+              delegate to `pkb:pauli` sub-agents, you MUST pass the explicit
               `tools` list per the "Sub-Agent Dispatch" section in maintenance-phases.md.
               Pauli's default profile lacks `Bash`, `Glob`, `Edit`, and the PKB
               MCP tools — without an explicit `tools` arg the sub-agent will only
