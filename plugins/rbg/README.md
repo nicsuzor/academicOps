@@ -213,25 +213,28 @@ Then point the evaluator at the shim:
 
 An upstream that is unreachable, slow, or answering with anything other than `0` or `1` gets a 5xx from the shim and never a label — which `evaluate` fails open on, as it does on any other evaluator failure.
 
-### What a CPU build costs
+### What the CUDA requirement is worth
 
-The CUDA requirement above is not a preference. Measured against a llama.cpp b10155 **CPU** build serving `cope-b-a4b` Q4_K_M over the 23 live rules (22 axioms and one project rule), on a host that has an RTX 3080 but no CUDA-compiled binary to use it — so `-ngl 99` is inert and every layer runs on the 26 CPU cores:
+Not a preference. The same host, the same `cope-b-a4b` Q4_K_M, the same 23 live rules (22 axioms and one project rule) — served once by a CPU-only llama.cpp build and once by a CUDA build on an RTX 3080:
 
-| Sweep                                | Wall clock                                               |
-| ------------------------------------ | -------------------------------------------------------- |
-| Cold `--warmup` over the 22 axioms   | 189 s; 18 of 22 answered, 4 exceeded the shim's deadline |
-| Warm `PreToolUse`, whole rule set    | 1.5 s to 41 s across runs, rising with use within a run  |
-| Warm sweep issued one rule at a time | 2.8 s                                                    |
+| Sweep                                         | CPU build                                                | CUDA build     |
+| --------------------------------------------- | -------------------------------------------------------- | -------------- |
+| Cold `--warmup` over the 22 axioms            | 189 s; 18 of 22 answered, 4 exceeded the shim's deadline | 19 s; 22 of 22 |
+| Warm `PreToolUse` sweep of the whole rule set | 1.5 s to 41 s, rising with use                           | 3.4 s to 4.4 s |
 
-The spread is the point: warm is not a number, it is a range that depends on cache state, and its top end sits far above the `15` this section recommends. When a sweep exceeds the budget every rule times out, the tool call proceeds unevaluated, and the only sign is the degradation line on stderr. Treat that line as the signal that the rule set is not being checked.
+On the CPU build the top of that range sits far above the `15 s` budget this section recommends, so sweeps routinely time out, the tool call proceeds unevaluated, and the only sign is the degradation line on stderr. On the CUDA build every sweep lands inside the budget with room to spare. Serve this on a GPU or use a hosted evaluator; the CPU path is not a usable fallback.
 
-Note also that 10 GB of VRAM does not hold a 16 GB quantisation, which is what `--n-cpu-moe 99` in the launcher's serving flags is for — it keeps the expert tensors on the CPU and offloads the rest. A CUDA build is what makes that split available at all.
+10 GB of VRAM does not hold a 16 GB quantisation, which is what `--n-cpu-moe 99` in the launcher's serving flags is for: expert tensors stay on the CPU, everything else offloads. That split is what a 10 GB card can run, and it is the configuration the numbers above were measured in.
 
-### Concurrency changes the verdicts, not just the latency
+Under WSL the CUDA build needs `LD_LIBRARY_PATH=/usr/lib/wsl/lib` to find the driver, as noted above — without it the binary reports `no CUDA-capable device is detected` and silently serves on the CPU, which looks like a working stack that is ten times too slow.
 
-The same tool call, judged against the same 23 policies by the same server process, produces a different set of matches depending on how the requests are issued. Reproduced three times in a row: 8-wide (what `evaluator.check` does, and what `--parallel 8` serves) flagged `durable-capture` and not `full-observability`; the identical sweep issued one rule at a time flagged `full-observability` and not `durable-capture`. Two of twenty-three verdicts flipped, stably, in both directions.
+### A verdict is not reproducible, and some are simply wrong
 
-The mechanism is not established. What the server log shows is slot reuse by longest-common-prefix similarity — `selected slot by LCP similarity, sim_best = 0.30` against a threshold of `0.100` — which is a slot being handed to a policy that shares very little with the one whose KV state it still holds. That is a candidate explanation and no more; it has not been isolated, and until it is, a match from this stack names a rule the model may not have been asked about. Sequential issue was also faster here (2.8 s against 44.7 s on the first comparison), so the parallelism is not obviously buying anything on this hardware either.
+Two limits an operator should know before treating a match as a finding.
+
+**Verdicts vary run to run on identical input.** Six consecutive `PreToolUse` sweeps of the same two tool calls returned different match sets each time — a clean `Read` flagged `launch-claim` twice and `full-observability, launch-claim` the third time; the same violating `Bash` call flagged four rules, then five, then four again. This is at `temperature 0`. Batched inference is not bitwise deterministic — batch composition changes the order of floating-point reductions — so a policy whose logit sits near the decision boundary can land either side of it. The effect is worst under contention: on the CPU build, an 8-wide sweep and the identical sweep issued one rule at a time disagreed on two of twenty-three verdicts, reproducibly; on the CUDA build the two agreed on two runs of three. Treat a single match as a prompt to look, never as a fact about the call.
+
+**Some false positives are stable.** A plain read-only `Read` of a README is flagged `durable-capture` and `launch-claim` on every sequential run. That is not noise; it is the rule set. `rules.py` sends each axiom's markdown body verbatim as `criteria_text`, and an axiom is doctrine written for an agent to read, not a CoPE criteria document — it has no `Excludes` section, so nothing tells the classifier that reading a file cannot be a failure to capture knowledge. Judged in isolation the raw prose is not hopeless (a read scores 0 at confidence 0.83, a state-writing call scores 1 at 0.76), but the margins are thin, and thin margins are exactly what the non-determinism above tips over. Rewriting the axioms as criteria documents with contrastive `Includes` / `Excludes` widens the margin — a hand-written one for the same rule scored 0.99 both ways — and is the open work here.
 
 ## Depends on
 
