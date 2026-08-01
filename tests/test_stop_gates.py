@@ -1,5 +1,6 @@
 """End-to-end tests for ida's quiet gate
-(plugins/ida/hooks/handlers.py:strip_the_reply).
+(plugins/ida/hooks/handlers.py:strip_the_reply) and orchestrate's hearsay
+handler (plugins/orchestrate/hooks/handlers.py:rule_against_hearsay).
 
 rbg's own Stop/SubagentStop gate (``rule_check``) has its end-to-end coverage
 in tests/test_rbg_stop_gate.py, added by the rbg-dual-channel-v07 branch this
@@ -27,6 +28,7 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _IDA_HOOKS = _REPO_ROOT / "plugins" / "ida" / "hooks"
+_ORCHESTRATE_HOOKS = _REPO_ROOT / "plugins" / "orchestrate" / "hooks"
 
 
 def _plugin_hooks_dir(tmp_path: Path, plugin_hooks: Path) -> Path:
@@ -83,10 +85,22 @@ def test_ida_stop_gate_self_loop_guard_suppresses_the_reentry(ida_hooks):
     assert result.stdout.strip() == ""
 
 
-def test_ida_posttooluse_hearsay_handler_is_unaffected(ida_hooks):
-    hearsay_md = (_IDA_HOOKS / "messages" / "hearsay.md").read_text(encoding="utf-8").strip()
+# ---------------------------------------------------------------------------
+# orchestrate: rule_against_hearsay
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def orchestrate_hooks(tmp_path):
+    return _plugin_hooks_dir(tmp_path, _ORCHESTRATE_HOOKS)
+
+
+def test_orchestrate_posttooluse_hearsay_handler_is_unaffected(orchestrate_hooks):
+    hearsay_md = (
+        (_ORCHESTRATE_HOOKS / "messages" / "hearsay.md").read_text(encoding="utf-8").strip()
+    )
     result = _run(
-        ida_hooks,
+        orchestrate_hooks,
         "claude",
         "PostToolUse",
         {"hook_event_name": "PostToolUse", "tool_name": "Agent"},

@@ -3,6 +3,10 @@ name: rbg
 description: "The Judge — rule-compliance reviewer. Applies the axioms and local rules with judgment, not mechanical matching, and returns a verdict. May fix clear, mechanical violations directly; flags anything requiring judgment for the caller."
 model: sonnet
 color: red
+tools:
+  - "*"
+skills: []
+subagents: []
 ---
 
 # RBG — The Judge

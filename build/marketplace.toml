@@ -10,12 +10,6 @@ name = "Nicolas Suzor"
 email = "nic@suzor.net"
 #
 [[plugins]]
-directory = "orchestrate"
-name = "orchestrate"
-description = "James. Dispatch to containers or local."
-category = "productivity"
-
-[[plugins]]
 directory = "pkb"
 name = "pkb"
 description = "pauli. Memory, effectual planning, workflow composition, PKB MCP client config."
@@ -24,7 +18,13 @@ category = "productivity"
 [[plugins]]
 directory = "ida"
 name = "ida"
-description = "ida — the interactive face; james — synthesis, dispatch, and the polecat container launcher."
+description = "ida — the interactive face."
+category = "productivity"
+
+[[plugins]]
+directory = "orchestrate"
+name = "orchestrate"
+description = "james — synthesis, dispatch, and the polecat container launcher; marsha — QA and UX excellence."
 category = "productivity"
 
 [[plugins]]

@@ -170,9 +170,8 @@ Per the governing principle
 handback _content_** — that would be a mechanical quality verdict, which the
 framework forbids. The obligation is carried two ways: (1) **agentically** —
 the `Stop` hook's reminder instructed every agent to hand back with checkable
-evidence or a stated failure reason (`plugins.disabled/aops/hooks/messages/answer-evidence.md`);
-that hook is retired along with the `aops` plugin and excluded from the build,
-so this specific reminder no longer ships — the nearest shipped parallel is
+evidence or a stated failure reason; that hook is retired along with the
+`aops` plugin, so this specific reminder no longer ships — the nearest shipped parallel is
 `rbg`'s stop-side rule-check gate (`Stop`/`SubagentStop`), which directs the
 agent to present checkable evidence for rule compliance specifically, narrower
 than the general handback shape this reminder covered — and

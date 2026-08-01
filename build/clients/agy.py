@@ -26,6 +26,17 @@ from build.context import BuildContext
 from build.errors import BuildError
 
 _PLUGIN_ROOT_RE = re.compile(r'"?\$\{AGY_PLUGIN_ROOT\}/([^"\s]*)"?')
+# The bare, no-trailing-slash form — `--project "${AGY_PLUGIN_ROOT}"` — used to
+# pin a `uv run` invocation to the plugin root rather than name a file inside
+# it. `_PLUGIN_ROOT_RE` above requires a `/` right after the closing brace, so
+# it never matches this form and left it in the shipped hooks.json verbatim: a
+# literal `${AGY_PLUGIN_ROOT}` token that isn't a real shell variable, which
+# agy's shell then expands to nothing, dropping the `--project` value
+# entirely and failing every hook invocation with "a value is required for
+# '--project <PROJECT>' but none was supplied". Since `_handler`'s own
+# guarantee is that agy's cwd for the hook is already the plugin root, the
+# fix is the same relative form the CLI needs elsewhere: `.`.
+_PLUGIN_ROOT_BARE_RE = re.compile(r'"\$\{AGY_PLUGIN_ROOT\}"')
 _COMMAND_TYPE_RE = re.compile(r"(?m)^type:\s*command\s*$")
 _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
@@ -196,7 +207,8 @@ def _handler(hook: dict) -> dict:
     """
     resolved = dict(hook)
     if "command" in resolved:
-        resolved["command"] = _PLUGIN_ROOT_RE.sub(r"\1", resolved["command"])
+        command = _PLUGIN_ROOT_BARE_RE.sub(".", resolved["command"])
+        resolved["command"] = _PLUGIN_ROOT_RE.sub(r"\1", command)
     return resolved
 
 

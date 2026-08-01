@@ -32,31 +32,7 @@ from build.build import build_all
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 
-# agy sets no plugin-root variable, and the builder only rewrites
-# `${AGY_PLUGIN_ROOT}/<path>` — the form with a path after it. Every agy hook
-# command in this repo also opens with `uv run --project "${AGY_PLUGIN_ROOT}"`,
-# which has no path after it, so it survives into the shipped config, expands
-# to nothing, and `uv` exits 2 before dispatch.py is reached. That is true of
-# `pkb-agy` today and has nothing to do with this hook, so these cases are
-# marked rather than silently dropped: when the builder is fixed they pass, and
-# the marker is the record that ida's gate does not currently bind on agy.
-#
-# `strict=True` so that fix cannot land quietly. Non-strict, these would XPASS
-# the day the builder is corrected and nothing would say so — leaving the
-# marker, and this comment, asserting a gap that had closed. Strict turns that
-# into a failing test that names the file to edit, which is the only signal
-# anyone gets: the fix will come from the agy builder task, not from here.
-_AGY_PLUGIN_ROOT_UNSET = pytest.mark.xfail(
-    reason="shipped agy hook commands carry an unexpandable ${AGY_PLUGIN_ROOT}; "
-    "uv exits 2 before the hook runs (affects every agy hook, not just this one). "
-    "Fixed by aops_339c0646 — when that lands, drop this marker.",
-    strict=True,
-)
-
-_CLIENTS = [
-    "claude",
-    pytest.param("agy", marks=_AGY_PLUGIN_ROOT_UNSET),
-]
+_CLIENTS = ["claude", "agy"]
 
 
 @pytest.fixture(scope="module")
@@ -152,7 +128,7 @@ def test_stop_delivers_the_shipped_message_through_the_real_build(ida_dist, clie
     assert _injected(client, proc.stdout) == expected
 
 
-@pytest.mark.parametrize("client", [pytest.param("agy", marks=_AGY_PLUGIN_ROOT_UNSET)])
+@pytest.mark.parametrize("client", ["agy"])
 def test_agy_never_receives_a_blocking_shape(ida_dist, client):
     """agy's PostInvocation response contract has no disposition field, and the
     invocation has already ended by the time the event fires. The same result

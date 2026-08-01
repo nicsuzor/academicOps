@@ -42,12 +42,20 @@ except ModuleNotFoundError:  # pragma: no cover - depends on the hook layer's st
 
 from lib.polecat import cli  # noqa: E402
 
-# The message ships from the aops hooks plugin, currently parked under
-# plugins.disabled/. The pin travels with it.
+# The message shipped from the aops hooks plugin, which is now retired and
+# removed from the tree entirely (was `plugins.disabled/aops/`). Session-start
+# credential isolation lives on in `plugins/orchestrate/hooks/handlers.py`, but
+# builds its text from Python literals rather than a message file, so there is
+# no longer a file to pin.
 _MESSAGE = (
     _REPO_ROOT / "plugins.disabled" / "aops" / "hooks" / "messages" / "session-start-isolated.md"
 )
 _USER_MESSAGE = _MESSAGE.with_suffix(".user.md")
+_MESSAGE_RETIRED = pytest.mark.skipif(
+    not _MESSAGE.is_file(),
+    reason="the aops plugin and its session-start-isolated.md message are retired "
+    "and removed from the tree; nothing left to pin",
+)
 
 # Wordings that assert an exclusivity the mechanism does not provide.
 _FALSE_CLAIMS = (
@@ -89,6 +97,7 @@ def test_env_file_is_built_from_the_process_environment(tmp_path, monkeypatch):
     assert "mock-bot-token" in env_file.read_text()
 
 
+@_MESSAGE_RETIRED
 def test_message_claims_no_scoping_it_cannot_deliver():
     text = _MESSAGE.read_text().lower() + _USER_MESSAGE.read_text().lower()
 
@@ -99,6 +108,7 @@ def test_message_claims_no_scoping_it_cannot_deliver():
         )
 
 
+@_MESSAGE_RETIRED
 def test_message_still_forbids_handling_credentials():
     """Correcting the false claim must not cost the operative instruction —
     that is the part with real effect on agent behaviour."""

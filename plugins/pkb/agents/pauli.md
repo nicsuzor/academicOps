@@ -5,6 +5,15 @@ color: blue
 model: sonnet
 tools:
   - "*"
+skills:
+  - hydrate
+  - situate
+  - workflow
+  - remember
+  - learn
+  - pull
+  - dump
+subagents: ["*"]
 ---
 
 # Pauli — Memory and Strategy
