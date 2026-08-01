@@ -9,11 +9,11 @@ description = "academicOps - Research workflow automation framework"
 name = "Nicolas Suzor"
 email = "nic@suzor.net"
 #
-# [[plugins]]
-# directory = "aops"
-# name = "aops"
-# description = "marsha. Review, QA, verification."
-# category = "productivity"
+[[plugins]]
+directory = "orchestrate"
+name = "orchestrate"
+description = "James. Dispatch to containers or local."
+category = "productivity"
 
 [[plugins]]
 directory = "pkb"
