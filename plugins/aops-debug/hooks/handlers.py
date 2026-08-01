@@ -22,11 +22,9 @@ def dump_payload(ctx: HookContext) -> Result | None:
     os.makedirs(temp_dir, exist_ok=True)
     log_path = os.path.join(temp_dir, f"aops_debug_hooks_{ident}.jsonl")
 
-    try:
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(ctx.raw) + "\n")
-    except OSError:
-        pass
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(ctx.raw) + "\n")
+        
     return None
 
 
