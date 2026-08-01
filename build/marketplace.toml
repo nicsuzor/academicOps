@@ -10,12 +10,6 @@ name = "Nicolas Suzor"
 email = "nic@suzor.net"
 #
 [[plugins]]
-directory = "orchestrate"
-name = "orchestrate"
-description = "James. Dispatch to containers or local."
-category = "productivity"
-
-[[plugins]]
 directory = "pkb"
 name = "pkb"
 description = "pauli. Memory, effectual planning, workflow composition, PKB MCP client config."
