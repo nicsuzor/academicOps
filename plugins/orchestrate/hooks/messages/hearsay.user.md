@@ -1,1 +1,1 @@
-# Subagent report received — claims unverified until evidence is shown.
+# Reminded dispatching agent to require supporting evidence for all claims.
