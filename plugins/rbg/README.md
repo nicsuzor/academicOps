@@ -201,16 +201,23 @@ An upstream that is unreachable, slow, or answering with anything other than `0`
 
 ### What a CPU build costs
 
-The CUDA requirement above is not a preference. Measured on a 26-core CPU-only host (no GPU, llama.cpp b10155 CPU build, `cope-b-a4b` Q4_K_M, 23 live rules — 22 axioms and one project rule):
+The CUDA requirement above is not a preference. Measured against a llama.cpp b10155 **CPU** build serving `cope-b-a4b` Q4_K_M over the 23 live rules (22 axioms and one project rule), on a host that has an RTX 3080 but no CUDA-compiled binary to use it — so `-ngl 99` is inert and every layer runs on the 26 CPU cores:
 
-| Sweep                                                     | Wall clock                                               |
-| --------------------------------------------------------- | -------------------------------------------------------- |
-| Cold `--warmup` over the 22 axioms                        | 189 s; 18 of 22 answered, 4 exceeded the shim's deadline |
-| Warm `PreToolUse`, whole rule set, five consecutive calls | 20 s, 29 s, 36 s, 39 s, 41 s                             |
+| Sweep                                | Wall clock                                               |
+| ------------------------------------ | -------------------------------------------------------- |
+| Cold `--warmup` over the 22 axioms   | 189 s; 18 of 22 answered, 4 exceeded the shim's deadline |
+| Warm `PreToolUse`, whole rule set    | 1.5 s to 41 s across runs, rising with use within a run  |
+| Warm sweep issued one rule at a time | 2.8 s                                                    |
 
-Every one of those is above the `15` this section recommends, so on hardware like that every rule times out, every tool call proceeds unevaluated, and the only sign is the degradation line on stderr. Warm does not converge downward either: `--parallel 8` gives the server eight KV slots, the rule set needs twenty-three, so most policies cannot hold a slot between calls and pay for their prefix again — which is the mechanism the rising figures are consistent with, not a measurement of the cache itself.
+The spread is the point: warm is not a number, it is a range that depends on cache state, and its top end sits far above the `15` this section recommends. When a sweep exceeds the budget every rule times out, the tool call proceeds unevaluated, and the only sign is the degradation line on stderr. Treat that line as the signal that the rule set is not being checked.
 
-Two things follow for an operator. A GPU is what makes this path usable at all; without one, prefer a hosted evaluator. And the `15` budget is a real gate, not a formality — check the stderr degradation line before believing the rule set is being checked.
+Note also that 10 GB of VRAM does not hold a 16 GB quantisation, which is what `--n-cpu-moe 99` in the launcher's serving flags is for — it keeps the expert tensors on the CPU and offloads the rest. A CUDA build is what makes that split available at all.
+
+### Concurrency changes the verdicts, not just the latency
+
+The same tool call, judged against the same 23 policies by the same server process, produces a different set of matches depending on how the requests are issued. Reproduced three times in a row: 8-wide (what `evaluator.check` does, and what `--parallel 8` serves) flagged `durable-capture` and not `full-observability`; the identical sweep issued one rule at a time flagged `full-observability` and not `durable-capture`. Two of twenty-three verdicts flipped, stably, in both directions.
+
+The mechanism is not established. What the server log shows is slot reuse by longest-common-prefix similarity — `selected slot by LCP similarity, sim_best = 0.30` against a threshold of `0.100` — which is a slot being handed to a policy that shares very little with the one whose KV state it still holds. That is a candidate explanation and no more; it has not been isolated, and until it is, a match from this stack names a rule the model may not have been asked about. Sequential issue was also faster here (2.8 s against 44.7 s on the first comparison), so the parallelism is not obviously buying anything on this hardware either.
 
 ## Depends on
 
