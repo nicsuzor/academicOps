@@ -8,7 +8,6 @@ from collections.abc import Callable
 
 from dispatch import HookContext, Result, load_message_pair, warn
 
-
 Handler = Callable[[HookContext], Result | None]
 
 _BASIC_VARS = (
