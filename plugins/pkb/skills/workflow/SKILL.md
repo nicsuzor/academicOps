@@ -99,20 +99,13 @@ picked.
 
 ## Emit
 
-Write the composed process onto the task as its checklist: one `- [ ] <step>`
-line per composed step, in order, plus one pointer bullet naming the templates
-and the one-sentence proportionality call — never a paragraph describing the
-process. This is the task-body shape
-[`../../agents/pauli.md`](../../agents/pauli.md) states canonically — and it
-applies to an atomic task only: an epic's children already carry their own
-status, so its checklist is the graph, not a markdown restatement. A
-process referred to vaguely ("the usual review") is not composed; nobody
-downstream can check it was followed, and a checklist line nobody can point at
-a template for has nothing to audit against.
-
-State it once, as the current checklist. When the process changes, rewrite the
-checklist in place — do not leave the superseded version beside the new one
-with a note about which came first.
+Write the composed process onto an atomic task as its checklist, in the body
+shape [`../../agents/pauli.md`](../../agents/pauli.md) states canonically: one
+`- [ ] <step>` line per composed step, in order, plus one pointer bullet naming
+the templates and the one-sentence proportionality call — never a paragraph
+describing the process. A process referred to vaguely ("the usual review") is
+not composed; nobody downstream can check it was followed, and a checklist line
+nobody can point at a template for has nothing to audit against.
 
 ## Must not
 

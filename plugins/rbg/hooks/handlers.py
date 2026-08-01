@@ -19,8 +19,11 @@ Both of those are advisory only, permanently. They return an advisory ``Result``
 verdict from a small model is not something to enforce with.
 
 ``rule_check`` is layer 2, at the session's stop. It is the one handler here
-that carries a disposition, and what it withholds is the stop, not a tool call:
-the agent gets another turn in which to run the check and show its evidence.
+that carries a disposition, and what it asks to withhold is the stop, not a tool
+call: the agent gets another turn in which to run the check and cite its
+findings. Whether the disposition is honoured at all belongs to the runtime and
+to ``manifest/hooks.template.json`` — which declares these stop hooks ``async``
+— not to this handler (specs/ARCHITECTURE.md, Hooks).
 The disposition is legal because the thing being judged is whether the check has
 happened at all, which is a fact about the session rather than a reading of a
 rule. Registered on both ``Stop`` and ``SubagentStop`` — unlike ida's quiet

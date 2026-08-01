@@ -13,25 +13,9 @@ composed **in context, by comprehension** — never parsed, never solved. The
 composition procedure is [`../skills/workflow/SKILL.md`](../skills/workflow/SKILL.md);
 this file is the catalogue and the routing tree.
 
-Two kinds:
-
-- **Process templates** — `process/`. How a class of work proceeds: routing
-  signals, NOT-this signals, the steps unique to it, and where it exits to.
-- **Workflow templates** — the `wf-*` obligations. These are **not files**. They
-  live in the PKB as documents tagged `wf-template`; enumerate them with
-  `list_documents(tag="wf-template")` and read one with `get_document(id)`. The
-  table below is a catalogue, not the source — the PKB is authoritative, and a
-  template must be read from it before it is composed in.
-
-Templates in `$ACA_DATA/.agents/workflows/` override a shipped template of the
-same filename and extend the library with any new one. `$ACA_DATA` comes from the
-environment; if it is unset the user layer simply does not exist.
-
-Four frontmatter hints are the entire vocabulary a composer reasons over:
-`requires` (always pulled in), `pairs-with` (composed proportionate to stakes),
-`recommends` (a soft suggestion), `conflicts` (mutually exclusive). Door type —
-one-way versus two-way — is expressed as which templates get composed in, not as
-a separate mechanism.
+Two kinds: **process templates** in `process/` — how a class of work proceeds —
+and the `wf-*` obligations, which are not files at all (see "Workflow templates"
+below).
 
 ## Routing
 

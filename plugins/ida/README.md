@@ -4,9 +4,9 @@ The interactive face: one agent, ida, who is the only agent in the framework tha
 
 ## How it works
 
-Everything the user says arrives at ida. Ida either answers it, escalates one named decision, or delegates it to james — and everything that comes back is filtered before the user sees it. The filter is the point of this plugin.
+Everything the user says arrives at ida. Ida either answers it, escalates one named decision, or delegates it to `orchestrate:james` — and everything that comes back is filtered before the user sees it. The filter is the point of this plugin.
 
-Engagement after an absence starts one step earlier. Before taking new work, ida commissions a reconcile sweep from pauli, and routes whatever finished uncertified to james for certification.
+Engagement after an absence starts one step earlier. Before taking new work, ida commissions a sweep from `pkb:pauli`, and routes whatever finished uncertified to james for certification.
 
 ```mermaid
 flowchart TD
@@ -16,9 +16,9 @@ flowchart TD
 
     Q -->|"yes — a status check,<br/>a read, a cheap probe"| ANS["answer inline"]
     Q -->|"blocking judgment call —<br/>scope, taste, tradeoff"| ESC["AskUserQuestion:<br/>one named decision,<br/>options pre-resolved"]
-    Q -->|"no — substantive work"| J["james<br/>agents/james.md"]
+    Q -->|"no — substantive work"| J["orchestrate:james"]
 
-    IDA -->|"before new work"| PAULI["pauli — pkb<br/>runs skills/reconcile.<br/>Named, never a general-purpose spawn:<br/>the only writer to the store"]
+    IDA -->|"before new work"| PAULI["pkb:pauli — sweeps what moved.<br/>Named, never a general-purpose spawn:<br/>the only writer to the store"]
     PAULI --> UNC["landed but uncertified"]
     UNC --> J
 
@@ -37,13 +37,15 @@ flowchart TD
     SYN --> U
     BLOCK --> J
     REJECT --> J
+
+    IDA -.->|"about to speak"| H["Stop hook → handlers.py:<br/>strip_the_reply → messages/quiet.md"]
 ```
 
 Ida holds between steps rather than driving ahead: after each step control returns to the user, who owns the sequence. Academic integrity is carried here — research data is immutable, and research, teaching, and publication outputs reach the user with full receipts before anything is marked done. The sign-off floor itself is not ida's alone: the `one-way-door` axiom binds every agent at an irreversible, outward-facing act, and ida's charter is the stricter domain layer over it.
 
 ### She does not touch the knowledge base — as a rule, not as a limitation
 
-Her frontmatter declares a narrow `tools` list and exactly two delegation targets, `ida:james` and `pkb:pauli`. Those are the only agents she may spawn, and a general-purpose spawn is forbidden outright for the sweep: pauli is the only writer to the store, and a spawn that lands anywhere else reads a graph it cannot correct.
+Her frontmatter declares a narrow `tools` list and exactly two delegation targets, `orchestrate:james` and `pkb:pauli`. Those are the only agents she may spawn, and a general-purpose spawn is forbidden outright for the sweep: pauli is the only writer to the store, and a spawn that lands anywhere else reads a graph it cannot correct.
 
 The prohibition is written as a rule she keeps rather than a capability she lacks, because the capability claim is not true of the runtime. `specs/agents/agent-authority.md` records an observed spawned ida holding `Agent, Artifact, Bash, Edit, Read, Skill, ToolSearch, Write` plus the full PKB MCP namespace, against a frontmatter granting four tools and no MCP at all. A rule survives an allowlist that does not hold; "she has no tools for it" stops being a reason the moment the harness hands her some.
 
@@ -53,7 +55,7 @@ The sweep stays hers to commission for a reason that is not about tooling. Re-en
 
 Two floors, and they are different questions.
 
-**Is this a handback at all?** Every load-bearing claim carries checkable evidence — a command and its output, a `file:line` pointer, a resolving URL, a quoted source — or a stated failure reason. There is no third option, and honest failure is always a legal exit. A return carrying neither is not a thin handback to be summarised charitably; it is noise, and it goes back to james rather than to the user (`specs/enforcement/evidence-contract.md`).
+**Is this a handback at all?** The evidence rule is `lib/doctrine/handback.md`, `@include`d into her body and written nowhere else in this plugin. A return that does not clear it is not a thin handback to be summarised charitably; it goes back to james rather than to the user — and she does not verify the claim, re-run the work, or fill the gap herself.
 
 **Is this what was actually wanted?** She is the only layer holding the user's intent, and a brief carries the ask, never the ambition behind it. So she judges every delivered artifact against the intent, not against the brief it was written from — and blocks work that is correct-but-wrong, which is a planning failure and goes back to be replanned rather than into another fix loop. A worker's self-reported success is never rubber-stamped, and "fixed" means the originally-failing behaviour was observed passing, not that a diff exists.
 
@@ -65,36 +67,25 @@ Two signatures land on `done`, in this order, and neither substitutes for the ot
 
 **Acceptance is ida's**, against the user's intent. Certification without acceptance ships work nobody weighed against what was wanted; acceptance without certification asks her to vouch for mechanics she never saw.
 
-Ida routes but never certifies. The reconcile sweep detects uncertified work but never certifies it either. There is no status and no frontmatter field for certification: it is prose on the task record.
-
-What crosses between them is the evidence contract, defined once in `specs/enforcement/evidence-contract.md`. Whichever form a handback takes, two rules bind it: checkable evidence or a stated failure reason, and every claim labelled Observed or Reported. It is written to the PKB task record, which is the only message bus; a result held in a transcript or a pull-request body has not been delivered.
+Ida routes but never certifies. The sweep detects uncertified work but never certifies it either. There is no status and no frontmatter field for certification: it is prose on the task record.
 
 ## What it provides
 
-| Kind  | Name               | Purpose                                                                                                                                               |
-| ----- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Agent | `ida`              | The interactive face. Coordinates research work, delegates to james, filters returns.                                                                 |
-| Agent | `james`            | The orchestrator. Commissions review, synthesises one verdict, dispatches work.                                                                       |
-| Agent | `marsha`           | QA. Judges whether an artifact is outstanding, and runs it to find out.                                                                               |
-| Skill | `dispatch`         | Routes a decomposed unit to its worker surface and holds the epic until every unit lands.                                                             |
-| Skill | `strategic-review` | Deploys the review lenses in parallel and reconciles their findings into one verdict.                                                                 |
-| Skill | `verify`           | marsha's QA pass: assume it is broken, then prove otherwise. Commissioned, never invoked directly.                                                    |
-| Hook  | `handlers.py`      | The quiet gate on `Stop` — strips ida's reply to load-bearing content before it speaks to the person — and the rule against hearsay on `PostToolUse`. |
-| CLI   | polecat            | The container launcher `dispatch` invokes at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.                                                                  |
+| Kind  | Name   | Purpose                                                                                                  |
+| ----- | ------ | -------------------------------------------------------------------------------------------------------- |
+| Agent | `ida`  | The interactive face. Coordinates research work, delegates to james, filters returns.                    |
+| Hook  | `Stop` | The quiet gate — reminds ida to strip her reply to load-bearing content before she speaks to the person. |
 
-No commands. The skills the other plugins ship reach ida only as work she delegates to james or to pauli.
+No skills and no commands. Everything substantive is work she delegates to `orchestrate:james` or `pkb:pauli`.
 
 ## Configuration
 
-No `userConfig` field, and the agents, skills and hook read no environment variable.
-
-The polecat CLI does, and it has no defaults — every value comes from the environment or the operator's `polecat.yaml`, and a missing required one is a loud failure rather than a guess. Two are required: `POLECAT_HOME` (or `polecat_home` in the config file), the local cache root for clones, staging and session logs; and `POLECAT_IMAGE` (or `docker.image`), the container image reference. Optional: `AOPS_POLECAT_CONFIG` and `AOPS_SESSIONS` locate the config file and the session-log root, `POLECAT_RULES_DIR` names a host directory of user rules to mount read-only, `POLECAT_AGENT_HOME` supplies agy's credentials, `POLECAT_WORKER_MODEL` and `POLECAT_PRINT_TIMEOUT` tune the inner invocation, and `PKB_MCP_URL` is forwarded to the container. Credentials — `AOPS_BOT_GH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` and the rest of the forwarded set — are read from the environment and passed through; none is stored.
-
-No endpoint, host, registry, account or credential is written into anything this plugin ships. The container-internal paths that do appear — `/data`, `/workspace`, `/home/worker/...` — are the image's own filesystem contract, which no host value could supply.
+No `userConfig` field. The agent and the hook read no environment variable, and nothing this plugin ships carries an endpoint, host, account, or credential.
 
 ## Depends on
 
-- `lib/axioms/` — `bar`, `launder`, `probe`, `delegation`, `epistemics`, `governing-rules`, `halt`, `memory`. These are applied globally as rule context rather than inlined via `@include`.
-- The `pkb` plugin at runtime, for **pauli**, who runs the **reconcile** skill her engagement sweep commissions, and who performs every write to the task graph that `dispatch` decides on.
-- The `rbg` plugin at runtime, for **rbg**, whom `strategic-review` always runs as its compliance lens.
-- Docker, and an image built from this repository, for the polecat containers `dispatch` launches.
+- `lib/doctrine/handback.md`, resolved by `@include` at build time — the doctrine is not copied into this plugin.
+- `lib/hooks/` for the hook runtime, injected at build time (`manifest/plugin.toml`).
+- The `orchestrate` plugin at runtime, for **james**, to whom she delegates everything substantive.
+- The `pkb` plugin at runtime, for **pauli**, who runs her engagement sweep and performs every write to the task graph.
+- The axioms in `lib/axioms/`, applied globally as rule context rather than inlined via `@include`.

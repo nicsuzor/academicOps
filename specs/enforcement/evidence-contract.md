@@ -169,13 +169,15 @@ Per the governing principle
 §0 "agents all the way down"), there is **no mechanical gate that judges
 handback _content_** — that would be a mechanical quality verdict, which the
 framework forbids. The obligation is carried two ways: (1) **agentically** —
-the `Stop` hook's reminder instructed every agent to hand back with checkable
-evidence or a stated failure reason (`plugins.disabled/aops/hooks/messages/answer-evidence.md`);
-that hook is retired along with the `aops` plugin and excluded from the build,
-so this specific reminder no longer ships — the nearest shipped parallel is
-`rbg`'s stop-side rule-check gate (`Stop`/`SubagentStop`), which directs the
-agent to present checkable evidence for rule compliance specifically, narrower
-than the general handback shape this reminder covered — and
+`orchestrate`'s `Stop`/`SubagentStop` reminder instructs every stopping agent to
+hand back with checkable evidence or a stated failure reason
+(`plugins/orchestrate/hooks/messages/honesty.md`, which `@include`s
+[`lib/doctrine/handback.md`](../../lib/doctrine/handback.md)); its receiver-side
+half fires on `PostToolUse` and tells the caller to send back a report that
+arrived without proof (`plugins/orchestrate/hooks/messages/hearsay.md`). Both are
+advisory. `rbg`'s stop-side rule-check gate (`Stop`/`SubagentStop`) is the one
+that withholds a stop, and it directs the agent to present checkable evidence for
+rule compliance specifically — narrower than the general handback shape. And
 the boundary-check / QA-around reviewers judge whether the evidence actually
 holds (§Substance over form above); and (2) **structurally, presence-only** —
 `release_task`/`complete_task` make the required fields mandatory and advertise

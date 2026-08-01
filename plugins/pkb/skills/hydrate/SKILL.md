@@ -13,8 +13,7 @@ work, cut it, or say how it should proceed. Your only job is to make sure nothin
 downstream starts cold.
 
 **Budget: six PKB calls for a full bundle, one or two for a micro-bundle.** PKB
-search and named index files only. No `Grep` or `Glob` fishing through a repo,
-and none at all over `$ACA_DATA` — that is what `search` is for.
+search and named index files only — no `Grep` or `Glob` fishing through a repo.
 
 ## Step 1 — right-size
 
@@ -91,7 +90,7 @@ prior task found (`task_search('dashboard graph')`, 0 hits)". That rules out
 you find with its source. Do not pick one template and call it the workflow, and
 do not invent a gate that is in neither the index nor the project rules because
 the work seems risky. Under-coverage is a gap to name, not licence to freelance.
-Selecting and sequencing is `decompose`'s job.
+Selecting and sequencing them is `workflow`'s job.
 
 Distinguish the two lists cleanly: **Standards** are obligations this _class_ of
 work carries; **Dependencies** are concrete task ids _this_ ask is blocked by.
@@ -112,7 +111,7 @@ re-hydrates and gets a fresh view.
 - Make value judgments: priority, effort, whether it is worth doing. That is
   `situate`.
 - Prescribe process, sequence standards into steps, or select a workflow. That is
-  `decompose`.
+  `workflow`.
 - Touch `needs_decomposition` or any other frontmatter. `situate` owns it.
 - Write a full four-section bundle for a one-line factual question, or re-run the
   whole gather on every follow-up in a thread.

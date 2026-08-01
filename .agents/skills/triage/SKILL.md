@@ -46,10 +46,7 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 
 ## Dispatch Model
 
-This skill delegates execution to keep the main context clean. Both dispatch targets below are **personality-bound to `pauli`**, for two distinct reasons — this is not merely "delegate somewhere to save context":
-
-- **`retro` / `trend` mode — earmarking.** §2a's bad-premise attribution ("was this a good idea, in this shape?") and the architectural-fit read of structural causes are pauli's premise-test / architectural-fit judgment register (`plugins/pkb/agents/pauli.md`), the same lens she applies in `/strategic-review`. A generic subagent could mechanically follow the output format without holding that disposition, which is exactly the failure mode §2a exists to catch — so the judgment, not just the context-hygiene delegation, is why this is pauli's.
-- **`sweep` mode — permission-control.** Issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work requiring the PKB tool surface only pauli's frontmatter grants (`plugins/pkb/agents/pauli.md`, "the sole writer to the PKB"). Ambiguous classifications are flagged in the cycle report rather than blocking, matching pauli's flag-don't-resolve posture.
+Every mode dispatches to `pauli`: the premise test these reviews turn on, and the graph mutation `sweep` performs, are both hers (`plugins/pkb/agents/pauli.md`).
 
 ---
 
@@ -60,7 +57,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 ### 1. Transcript Selection & Quality Gate
 
 - **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
-- **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
+- **Same-Session Review Allowed**: the current session may be reviewed by a fresh subagent, whose detached context is what makes the review honest. What is never allowed is the same agent grading its own work in the same context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
 - Resolve the target session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/`. Each session has a markdown, an HTML, and a JSON sidecar artifact — see [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#3-output-formats). Read the markdown.
 - **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
@@ -72,17 +69,13 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 
 ### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
 
-When the transcript shows an artifact whose **premise** a sharp principal would have bounced — _"was this a good idea?"_ answered no; good, working, well-tested work done for a bad idea (canonical instance: a deterministic rig — regex/threshold/NLP/checklist — built for a call a smart agent should just make, `judgment-non-delegable`) — that nonetheless passed review, classify it as a **bad-premise approval** and score the miss **against the reviewer who approved it**, not only the author:
+Good, working, well-tested work done for a bad idea is a **bad-premise approval**, and the miss is scored against the reviewer who passed it, not only the author. Every review surface (arch-fit / `/verify` / rbg / pauli) carries a forced step-0 premise test — _was this worth building at all, in this shape?_ — so a PASS on a bad premise means that test was skipped or rationalised past, and test-passing is never the excuse.
 
-- Identify the review surface that emitted PASS / MERGE / APPROVE on the bad premise (arch-fit / `/verify` / rbg / pauli). Each of those carries a forced step-0 premise test — _was this worth building at all, in this shape?_ An approval means that forcing function was skipped or rationalised past — a reviewer failure, with test-passing as its expected surface, never an excuse.
-- The filed issue names the **approving reviewer/surface as the locus of the miss** (anonymised per the Privacy Rule) alongside the premise that should have been bounced — not just the authoring agent.
-- Generalised framing: this is "was this worth building at all, in this shape?", **not** an overengineering-only pattern. Overengineering (deterministic-rig-for-a-judgment-call) is one worked instance of the broader "dumb idea" class.
-
-This makes the reviewer's miss visible and attributed: a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it rather than compounding silently across future reviews.
+The filed issue names the approving surface as the locus of the miss, alongside the premise that should have been bounced. A deterministic rig — regex/threshold/NLP/checklist — built for a call a smart agent should just make (`judgment-non-delegable`) is one worked instance, not the whole class.
 
 ### 2b. Framework/behavioral changes are never a retro fix
 
-Carried by [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md), which retro applies unchanged. Retro's job stops at naming the gap precisely in the filed issue; deciding on a framework change — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro.
+Retro's job stops at naming the gap precisely in the filed issue. Deciding on a framework change — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro.
 
 ### 3. Output Requirements
 
@@ -113,15 +106,6 @@ Produce a review in this exact format. Keep text concise:
 - **Execution & Validation**:
   - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
   - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
-
-### 5. Retro Anti-Patterns
-
-| Anti-pattern                                                                                                                                                                | What to do instead                                                                                                                                                                                                                    |
-| :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Same-context self-grading (the same agent reviewing their own work within the same conversation/turn context without a fresh reviewer boundary)                             | Review by a fresh subagent (like `pauli` dispatched within the same session) or a separate reviewer, ensuring a detached/clean review context. Same-session review by a fresh subagent is structurally sound and explicitly allowed.  |
-| Including remediation proposals in the report                                                                                                                               | Stop at facts, structural context, and impact — a detached cross-incident pass decides on rule changes. Fix the reviewed session's own mistake directly in the codebase if in scope (§2), but keep the filed issue strictly forensic. |
-| Citing a single session as justification for a new mechanism                                                                                                                | Recurrence is the evidence base for framework change, not the salience of a single transcript.                                                                                                                                        |
-| Editing an agent's instructions, persona, rules, hooks, or gates directly from retro because the fix looks small, obviously correct, or narrowly scoped to the one incident | Apply §2b: that is a framework change regardless of size. File it in the RCA issue and stop — closing it is a separate, deliberate, cross-incident pass, never this one.                                                              |
 
 ---
 

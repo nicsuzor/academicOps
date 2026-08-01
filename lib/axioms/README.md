@@ -8,6 +8,11 @@ description: Index of the axioms.
 | ------------------------ | ------------------------------------------------------------------------------------------------------- | --------- |
 | `categorical-imperative` | Every action justifiable as a general rule covering the whole class, never a one-off carve-out.         | yes       |
 | `closure`                | Decide nothing not derivable from the axioms, a framework instruction, or a session user directive.     | yes       |
+| `excellence`             | Excellence is the standard; compliance is the floor.                                                    | yes       |
+| `governing-rules`        | Obey the rules governing any artifact you change; binds delegation end to end.                          | yes       |
+| `probe-uncertainty`      | Empirical, process-determined, or taste; cheapest discriminating experiment.                            | yes       |
+| `launch-claim`           | The `Dispatched:` record written before a worker starts; two claims, not one.                           | yes       |
+| `durable-capture`        | Capture knowledge not verdicts; update don't duplicate; only persistence surface.                       | yes       |
 | `honest-epistemics`      | Claim only what you have observed; state an unverified claim as unverified.                             | yes       |
 | `cite-sources`           | Attribute every non-trivial claim to a named source.                                                    | yes       |
 | `single-source-of-truth` | Exactly one authoritative copy of every fact, rule, or artifact; everything else points to it.          | yes       |

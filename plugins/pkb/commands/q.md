@@ -14,4 +14,4 @@ run `Skill(skill="situate")` and let it read the current turn for what to
 capture.
 
 Pass the argument through unchanged. Do not interpret it, expand it, or start
-the work — `situate` hydrates it, places one task, and stops.
+the work — `situate` places one task and stops.

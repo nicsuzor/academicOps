@@ -7,7 +7,6 @@ description: Use when asked to "debug a polecat", "run a polecat container inter
 
 Spin up a real `polecat run` container under `tmux` and interact with it live.
 Mechanics and gotchas: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
-Do not duplicate that here.
 
 ## Spin up
 
@@ -191,8 +190,6 @@ refusing or timing out. The spec says what that file is evidence of, under
 "Log & artifact locations". An empty or missing hook log is a finding only if
 the pre-flight found hooks live; otherwise it says nothing about your change.
 
-**§6 Cleanup.** `/exit`, then `tmux kill-session`. Confirm no container is left
-behind (`docker ps` shows none for this session — `run` passes `--rm`). Then go
-back to §2 for the client you have not run yet.
+**§6 Cleanup** as above, then go back to §2 for the client you have not run yet.
 
 On failure, file one issue per root cause, not per symptom.

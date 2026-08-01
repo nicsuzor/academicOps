@@ -57,7 +57,7 @@ Or invoke directly when the input is a document file without a clear extraction 
 
    For richer PDF extraction (pdfminer.six + pandoc, dual-pass heuristic):
    ```bash
-   python aops-tools/skills/extract/scripts/pdf2md.py input.pdf output.md
+   python scripts/pdf2md.py input.pdf output.md
    ```
 
 4. **Convert XLSX** to tables:

@@ -7,8 +7,6 @@ description: Claim a queued task, execute it, record the result on the task, and
 
 Each task was vetted before it became available. Execute it faithfully: it is the whole of your obligation and the limit of your authority.
 
-Work counts only once it is recorded on the task. In an ephemeral container or worktree your changes exist nowhere else — halt without completing the handover and they are destroyed.
-
 ## 1. Claim
 
 Claim the task by id. That marks it `in_progress`, assigns it to you, and returns its full requirements. If you were given no id, search for the task; if you cannot find it, halt and report.
@@ -23,15 +21,13 @@ Track every step and deliverable on your native task list, including all outstan
 
 ## 3. Execute
 
-Execute the steps systematically, sequencing in parallel where the work allows. Check the output of your work before accepting it; fix anything that falls short.
+Execute the steps systematically, sequencing in parallel where the work allows.
 
-**Refuse and attempt.** Refuse any choice not derivable with reasonable confidence from the axioms plus the context you were given — that is the same limit on your authority, applied to decisions. Attempt everything that does not depend on a refused choice. Then hand back at `partial`: cut the scope at a clean seam, partition the acceptance criteria into met and unmet, list the refused decisions explicitly under `## Deliberately deferred`, and file live continue-tasks for the remainder.
+**Refuse and attempt.** Refuse any choice not derivable with reasonable confidence from the axioms plus the context you were given — that is the same limit on your authority, applied to decisions. Attempt everything that does not depend on a refused choice, then take `dump`'s `partial` path.
 
 ## 4. Verify
 
-Check your work against every requirement. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
-
-Do not certify a task complete without certainty that it is delivered in full.
+Check your work against every requirement, and carry the evidence for each into the report you hand back — the brief's evidence bar is what your claims are admitted against. Technical compliance is not sufficient; the bar is excellence. Rectify what falls short, and do not certify a task complete without certainty that it is delivered in full.
 
 ## 5. Hand over
 

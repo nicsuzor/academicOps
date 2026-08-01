@@ -8,7 +8,7 @@ tags: [template, peer-review]
 
 Instantiate this with the criteria, weights, and band descriptors fetched from the current round's handbook (Stage 0). Do **not** hardcode prior-year structure — copy the criteria list verbatim from this round.
 
-This template is deliberately lean: one criterion block, comments plus the evidence located. **Cut critique is not carried forward.** When a reservation is trimmed in the voice pass, it lives in the **git history** of the one living draft — not in a growing reserve appendix and not in `-v2`/`-v3` files. The git record is what makes a cut auditable (was it consciously parked, or accidentally lost?) without bloating the template.
+This template is deliberately lean: one criterion block, comments plus the evidence located. A reservation trimmed in the voice pass is not appended here — it lives in the one living draft's git history.
 
 ```markdown
 # {SCHEME} {ROUND} Assessment

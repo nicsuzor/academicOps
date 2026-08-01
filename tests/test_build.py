@@ -36,33 +36,34 @@ def built(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="module")
-def built_ida(tmp_path_factory) -> Path:
-    """The real ida plugin, not a fixture — see test_polecat_cli_ships_with_ida."""
-    dist_root = tmp_path_factory.mktemp("build-dist-ida")
+def built_orchestrate(tmp_path_factory) -> Path:
+    """The real orchestrate plugin, not a fixture — see
+    test_polecat_cli_ships_with_orchestrate."""
+    dist_root = tmp_path_factory.mktemp("build-dist-orchestrate")
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["ida"],
+        plugins=["orchestrate"],
         version=VERSION,
     )
     return dist_root
 
 
-def test_polecat_cli_ships_with_ida(built_ida):
-    """`skills/dispatch` invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`, and that
-    path is true only because `manifest/plugin.toml` injects it from `lib/`.
+def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
+    """James invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`
+    (`plugins/orchestrate/agents/james.md`), and that path is true only because
+    `plugins/orchestrate/manifest/plugin.toml` injects it from `lib/polecat/`.
 
-    Drop those `[[shared]]` stanzas — which the queued ida/james package split
-    has to move — and nothing fails at build time. Dispatch fails at runtime,
-    inside a container, with file-not-found. This is the check that turns that
-    into a build-time failure instead.
+    Drop those `[[shared]]` stanzas and nothing fails at build time. Dispatch
+    fails at runtime, inside a container, with file-not-found. This is the check
+    that turns that into a build-time failure instead.
     """
     for client in ("claude", "agy"):
-        polecat = built_ida / f"ida-{client}" / "polecat"
-        assert (polecat / "cli.py").is_file(), f"ida-{client} ships no polecat/cli.py"
+        polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
+        assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
         assert (polecat / "env_contract.py").is_file(), (
-            f"ida-{client} ships cli.py without the env_contract it imports"
+            f"orchestrate-{client} ships cli.py without the env_contract it imports"
         )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()

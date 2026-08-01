@@ -30,14 +30,14 @@ Test whether a set of instructions produces correct, complete, and verified outc
 
 Before writing instructions or propagating subagent results:
 
-- **Verify verdicts**: Use `/verify` by citation to evaluate the subagent's actual output (freshness, completeness, limitations) against the original brief. Do not blindly accept or relay its self-reported status.
+- **Bounce unproven reports**: a self-reported status is not a result. Hold the subagent's report to the evidence bar its brief set, and send back anything that asserts success without it.
 - **Sample data sources**: Open and read sample files directly. Do not assume data formats or presence (e.g. verify if a file contains input vs. output).
 - **Map data channels**: Understand how data flows between main agents, subagents, and hooks/logs. Verify the exact delivery mechanism (e.g. tool result vs. system message).
 - **Glob safety**: Avoid globbing large directories (10K+ files) with commands like `ls *.md` (which fail silently). Use targeted list/find queries (`find` or `ls | head`).
 
 ### Phase 1: Research and Draft
 
-- Write self-contained instructions detailing objectives, exact data paths, sampling parameters, expected output format, and saving locations.
+- Write the instructions to be self-contained, and brief the run per [`lib/doctrine/delegation-brief.md`](../../../lib/doctrine/delegation-brief.md).
 - Work directly in the target skill file for mature instructions. Avoid leaving stray scratch files in the repo.
 - Enforce `/craft` author mode review to check for shallow-execution vulnerabilities before delegating.
 

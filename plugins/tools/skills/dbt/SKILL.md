@@ -8,14 +8,9 @@ description: dbt (data build tool) implementation of the analyst transformation 
 
 # dbt — Transformation Layer (academicOps)
 
-This skill is the **dbt-specific implementation** of the transformation layer described
-in the tech-agnostic `analyst` skill (aops-tools). The analyst skill owns the
-_principles_ (all transformation in a versioned/tested/reproducible layer; presentation
-displays pre-computed data only); this skill owns the _dbt how-to_.
-
-dbt is one **swappable** choice of transformation layer. The analyst principles hold
-regardless of which engine you use; only the commands and file layout below are
-dbt-specific.
+dbt is one **swappable** implementation of the transformation layer. The `analyst`
+skill owns the principles, which hold whichever engine you use; this skill owns the
+dbt how-to — the commands and file layout below.
 
 ## Contents
 

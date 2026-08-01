@@ -88,7 +88,6 @@ When invoked, analyze the input and route to the appropriate workflow:
 
 - Input is a document file (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC, DOTX)
 - User mentions "convert", "convert to markdown", "docx to markdown", "pdf to markdown"
-- Invoked as `/convert-to-md` (alias preserved for backwards compatibility)
 - Goal is format conversion, not structured extraction
 
 **Route to**: `workflows/docs-to-md.md`
@@ -234,8 +233,6 @@ When adding examples to public framework docs:
 **Use specialized skill directly**:
 
 - `Skill(skill="remember")` - When you know you want to add to knowledge base
-
-**Note on `/convert-to-md`**: This trigger is now an alias for `/extract`. Invoking `/convert-to-md` routes to the `workflows/docs-to-md.md` workflow.
 
 ## Error Handling
 

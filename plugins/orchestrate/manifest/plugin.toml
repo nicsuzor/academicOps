@@ -6,7 +6,7 @@
 from = "hooks"
 to = "hooks"
 
-# The polecat launcher, which skills/dispatch invokes as
+# The polecat launcher, which james invokes as
 # `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. Only the runtime modules are
 # injected: `defaults/` and `entrypoint.sh` under lib/polecat/ are inputs to
 # the image build (Dockerfile), not files a plugin ever reads.

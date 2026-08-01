@@ -30,9 +30,11 @@ the container.
 - [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/ida/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
-  pathway to a polecat container; a raw `polecat run` outside this skill bypasses
-  the dispatch contract
+- [[plugins/orchestrate/agents/james.md]] — coordinator-side: the agent that
+  chooses the surface and launches a container. He carries no procedure beyond
+  that choice; the obligations this spec places on a dispatcher (§§3, 6 of
+  "Guarantees" below) are stated here and in no shipped instruction, since the
+  `dispatch` skill that held them is retired
 - [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
   `polecat run` container interactively via tmux (see
   [[tmux-interactive-driving]])
@@ -92,9 +94,10 @@ the container.
    moved, the new commit must be present on the remote. A delivery-guard failure
    exits non-zero naming the task. Polecat detects; it does not repair. Writing
    to the knowledge base belongs to its sole writer, so the task is reopened by
-   the dispatcher through pauli ([[plugins/ida/skills/dispatch/SKILL.md]] §6) —
-   the guarantee is that a caught delivery loss never leaves a terminal status
-   standing, and it takes both halves to hold.
+   the dispatcher through pauli — the guarantee is that a caught delivery loss
+   never leaves a terminal status standing, and it takes both halves to hold.
+   Only the launcher's half is built: the dispatcher's half is named in the
+   failure message `run` prints ([[lib/polecat/cli.py]]) and nowhere else.
 
 ## Guarantees
 
@@ -112,8 +115,10 @@ the container.
    `run` cannot repair it without holding a client for another plugin's tool
    namespace. The repair is the dispatcher's — it reopens the task through
    pauli on a non-zero exit for a `done` or `partial` unit. Nothing enforces
-   that half; the obligation sits on the dispatcher, in
-   [`dispatch`](../../plugins/ida/skills/dispatch/SKILL.md) §6.
+   that half and no shipped instruction states it — the obligation sits on the
+   dispatcher, and reaches it only as the text `run` prints on its way out
+   ([`lib/polecat/cli.py`](../../lib/polecat/cli.py), `_verify_workspace_delivery`
+   call site).
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
 5. **One plugin path.** Plugins load only from the image's own plugin cache. No
@@ -126,8 +131,11 @@ the container.
    host-side instruction files is live in the next `run` with no rebuild. A
    certifying run therefore needs both a clean committed tree and a fresh
    `make docker-build`, which builds `dist/` from the working tree rather than
-   from `HEAD`. Nothing enforces either; the obligation sits on the dispatcher,
-   in [`dispatch`](../../plugins/ida/skills/dispatch/SKILL.md) §3.
+   from `HEAD`. Nothing enforces either. The obligation sits on the dispatcher
+   and no shipped instruction states it; the only place it is written down for
+   an agent is this repository's own
+   [`debug`](../../.agents/skills/debug/SKILL.md) skill (§0), which is not
+   distributed to consuming projects.
 
 ## What `run` does not do
 

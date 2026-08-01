@@ -20,9 +20,6 @@ What a good note looks like is [`references/quality.md`](references/quality.md).
 
 ## Invariants
 
-- **Writes go through the PKB tools.** Never `Write` or `Edit` a file under
-  `$ACA_DATA` — direct filesystem writes bypass indexing, deduplication, and the
-  write boundary. Never `Glob` or `Grep` it either; `search` is the instrument.
 - **Search before you write.** Every time, including before asserting a fact you
   think you already know.
 - **Never fabricate.** Extract what a source actually states or clearly implies.
@@ -138,11 +135,6 @@ source is a primary episodic record — a daily note, a meeting note — mark it
 frontmatter `consolidated: <date>` and advance its status, but never change its
 content. Primary records are not rewritten. A task body is not a primary
 record: it is a checklist, and consolidation rewrites it to one.
-
-**Consolidation mode mutates the graph.** `batch_merge`, `merge_node`,
-`batch_reparent`, `batch_reclassify`, and `batch_archive` all need pauli's tool
-grant, and they all default to `dry_run=true` — a call that omits it previews and
-changes nothing.
 
 ## Must not
 

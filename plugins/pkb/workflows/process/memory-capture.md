@@ -19,21 +19,8 @@ should include this at session end or before task completion.
 
 1. **Identify findings** — what did you learn, discover, or decide that isn't
    already obvious from the code/task itself?
-2. **Store to PKB** as a memory, tagged for retrieval.
-3. **Write durable artifacts** if findings warrant persistence beyond a memory
-   entry (e.g. a durable markdown doc).
-
-## Storage Hierarchy
-
-| What              | Primary storage                 | Also store to |
-| ----------------- | ------------------------------- | ------------- |
-| Epics/projects    | Task manager (`epic`/`project`) | PKB           |
-| Tasks/issues      | GitHub Issues                   | PKB           |
-| Durable knowledge | Markdown files                  | PKB           |
-| Session findings  | Task body updates               | PKB           |
-
-PKB is the universal semantic index — write to the primary store, then also
-index it in PKB.
+2. **Invoke the `remember` skill** with them. It decides what earns a write,
+   where it lands, and how it integrates with what is already there.
 
 ## When to Include
 

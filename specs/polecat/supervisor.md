@@ -161,6 +161,9 @@ extensions (`partial` is part of that canonical set).
 
 - [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- `plugins/pkb/skills/pull/SKILL.md` and `plugins/ida/skills/dispatch/SKILL.md`
-  — The operative skills: claiming a unit, and delivering an epic's children to a
-  terminal state.
+- `plugins/pkb/skills/pull/SKILL.md` — the operative worker-side skill: claiming
+  a unit, executing it, recording the result, handing over.
+- `plugins/orchestrate/agents/james.md` — the operative coordinator-side surface.
+  It chooses a dispatch surface and launches; no shipped skill covers delivering
+  an epic's children to a terminal state, so the supervisor behaviour this spec
+  describes has no implementation behind it.

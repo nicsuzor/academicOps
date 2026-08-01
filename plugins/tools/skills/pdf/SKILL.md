@@ -186,6 +186,6 @@ brew install pandoc
 
 ## Bundled Resources
 
-- **`assets/academic-style.css`**, **`assets/letter-style.css`** — the two stylesheets (see Style Features above).
-- **`assets/fonts/`** — embedded Roboto family (Regular/Bold/Italic/Light/Medium) plus RobotoMono Nerd Font; loaded via `@font-face`, no system install needed.
+- **`assets/academic-style.css`**, **`assets/letter-style.css`** — see Style Features above.
+- **`assets/fonts/`** — the Roboto family and RobotoMono Nerd Font, loaded via `@font-face`; no system install needed.
 - **`scripts/generate_pdf.py`** — pandoc wrapper: auto-detects document type, applies the stylesheet, derives the title, resolves the output path, supports `--type` override, and can be imported as a module.

@@ -8,9 +8,8 @@ agent: "pauli"
 
 Turn a hydrated ask into **one** task, placed on the graph, valued, wired, and
 marked `needs_decomposition`. Nothing more. You stop the instant the task is
-placed. `needs_decomposition` is a graph signal, not a promise a stage exists
-to consume it — `decompose` ships nowhere in this tree today, a library gap,
-not a stage to route around. Mark it anyway.
+placed. `needs_decomposition` is a graph signal, not a promise a stage exists to
+consume it: no shipped skill consumes it today. Mark it anyway.
 
 You work from the bundle `hydrate` emits — `## Intent`, `## Context`,
 `## Standards`, `## Dependencies`. Trust it. Re-searching what it already found
@@ -102,16 +101,14 @@ two stages downstream.
 
 ## 7 — Mark and stop
 
-`update_task` to set `needs_decomposition: true`. Then stop. Do not create
-subtasks, write a brief, dispatch, or investigate the ask beyond what placing and
-valuing it required. Frame the question; do not answer it — out of scope here,
-shipped owner or not.
+`update_task` to set `needs_decomposition: true`. Then stop. Frame the question;
+do not answer it.
 
 ## Must not
 
 - Create subtasks, write a brief, or dispatch — not this skill's job, shipped
   owner or not.
-- Investigate inline.
+- Investigate the ask beyond what placing and valuing it required.
 - Write `priority`. New work sits at the default band unless the user directed
   otherwise in this turn. To give work weight, reach for `contributes_to` weight
   and target `severity`.
