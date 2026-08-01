@@ -199,6 +199,19 @@ Then point the evaluator at the shim:
 
 An upstream that is unreachable, slow, or answering with anything other than `0` or `1` gets a 5xx from the shim and never a label — which `evaluate` fails open on, as it does on any other evaluator failure.
 
+### What a CPU build costs
+
+The CUDA requirement above is not a preference. Measured on a 26-core CPU-only host (no GPU, llama.cpp b10155 CPU build, `cope-b-a4b` Q4_K_M, 23 live rules — 22 axioms and one project rule):
+
+| Sweep                                                     | Wall clock                                               |
+| --------------------------------------------------------- | -------------------------------------------------------- |
+| Cold `--warmup` over the 22 axioms                        | 189 s; 18 of 22 answered, 4 exceeded the shim's deadline |
+| Warm `PreToolUse`, whole rule set, five consecutive calls | 20 s, 29 s, 36 s, 39 s, 41 s                             |
+
+Every one of those is above the `15` this section recommends, so on hardware like that every rule times out, every tool call proceeds unevaluated, and the only sign is the degradation line on stderr. Warm does not converge downward either: `--parallel 8` gives the server eight KV slots, the rule set needs twenty-three, so most policies cannot hold a slot between calls and pay for their prefix again — which is the mechanism the rising figures are consistent with, not a measurement of the cache itself.
+
+Two things follow for an operator. A GPU is what makes this path usable at all; without one, prefer a hosted evaluator. And the `15` budget is a real gate, not a formality — check the stderr degradation line before believing the rule set is being checked.
+
 ## Depends on
 
 - `lib/hooks/` — shared hook runtime (`dispatch.py`), injected into `hooks/` at build time. It carries the payload normaliser, the handler registry loader, the three `Result` dispositions and their per-client rendering, the `stop_hook_active` self-loop guard, and `load_message_pair`.

@@ -334,6 +334,21 @@ class _Server(ThreadingHTTPServer):
         self.config = config
         super().__init__(address, _Handler)
 
+    def handle_error(self, request, client_address):
+        """A client that hung up is the ordinary case here, not a fault.
+
+        Every caller evaluates a whole rule set under one deadline and abandons
+        whatever has not answered when the budget runs out. Those abandoned
+        requests are still in flight, so writing their answer raises. The
+        default handler prints a full traceback per occurrence, which on a
+        budget shorter than the model's response time is most requests — and a
+        log that is mostly expected tracebacks is one nobody can find a real
+        fault in. Every other error still gets its traceback.
+        """
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
 
 def build_server(host: str, port: int, config: Config) -> _Server:
     """A bound, unstarted server. Pass port 0 for an ephemeral one."""

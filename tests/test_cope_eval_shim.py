@@ -481,3 +481,37 @@ def test_sixteen_simultaneous_evaluations_are_all_answered_in_parallel(upstream,
     assert all(body["label"] == 1 for _, body in results)
     assert len(upstream.seen) == 16
     assert elapsed < 16 * upstream.delay / 2, f"served serially: {elapsed:.2f}s"
+
+
+def _raise_through_handle_error(server, exception: BaseException) -> None:
+    """Drive ``handle_error`` the way socketserver does — from inside an active
+    ``except`` block, since it reads the live exception off ``sys.exc_info()``."""
+    try:
+        raise exception
+    except BaseException:  # noqa: BLE001 - reproducing socketserver's own call site
+        server.handle_error(None, ("127.0.0.1", 0))
+
+
+def test_a_client_that_hung_up_mid_answer_is_not_logged_as_a_fault(capsys):
+    """Callers abandon whatever has not answered when their budget runs out, so
+    a broken pipe here is the ordinary case. A traceback per abandoned request
+    would bury the faults the log exists to show."""
+    server = build_server("127.0.0.1", 0, Config(upstream="http://127.0.0.1:1", timeout=1.0))
+    try:
+        _raise_through_handle_error(server, BrokenPipeError(32, "Broken pipe"))
+        _raise_through_handle_error(server, ConnectionResetError(104, "Connection reset by peer"))
+        assert capsys.readouterr().err == ""
+    finally:
+        server.server_close()
+
+
+def test_any_other_error_still_gets_its_traceback(capsys):
+    """The silence above is scoped to the two disconnect errors. A shim that
+    swallowed everything would fail open invisibly, which is the one thing it
+    is built not to do."""
+    server = build_server("127.0.0.1", 0, Config(upstream="http://127.0.0.1:1", timeout=1.0))
+    try:
+        _raise_through_handle_error(server, ValueError("something actually broke"))
+        assert "something actually broke" in capsys.readouterr().err
+    finally:
+        server.server_close()
