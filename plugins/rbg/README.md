@@ -159,6 +159,11 @@ Every one of these is inert on agy except `ACA_DATA`, which still selects layer 
 
 ## Running against a local model
 
+<!-- NS: I don't know who wrote this file, but it's not a readme. it's a mix of discoveries (should b in PKB if they're durable memories) and spec (should be in specs). Evidently the writing agent wasn't required to follow the documentation standards.
+
+Separately, a decision: we run only local on GPU; else we fall back to the API from zentropi.
+-->
+
 The classifier is open-weights ([`zentropi-ai/cope-b-a4b`](https://huggingface.co/zentropi-ai/cope-b-a4b)), so the `cope` protocol can point at loopback instead of a hosted service. Take the Q4_K_M GGUF from [`mradermacher/cope-b-a4b-GGUF`](https://huggingface.co/mradermacher/cope-b-a4b-GGUF) and a llama.cpp build at b10155 or later, compiled with CUDA.
 
 Two processes serve it: `llama-server` holding the model, and `scripts/cope_eval_shim.py` in front of it translating the CoPE label API onto single-token completions. Start both with one command:
