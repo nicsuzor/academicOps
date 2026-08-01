@@ -40,6 +40,7 @@ import sys
 from pathlib import Path
 
 import evaluator
+import evaluator_otel_trace
 import evaluator_trace
 import rules
 from dispatch import HookContext, Result, block, load_message_pair, warn
@@ -73,6 +74,27 @@ def _loaded_rules(ctx: HookContext) -> dict[str, rules.Rule]:
     return _rules_cache
 
 
+def _combine_sinks(*sinks):
+    """Fan one ``on_outcome`` call out to every configured trace sink.
+
+    ``evaluator.check()`` takes exactly one ``on_outcome`` callback, and
+    ``evaluator_trace`` (JSON Lines) and ``evaluator_otel_trace`` (OTLP JSON)
+    are independent, additive sinks — either, both, or neither may be
+    configured. ``None`` entries (an unconfigured sink) are dropped; ``None``
+    comes back when every sink is unconfigured, exactly what ``evaluator.check``
+    already treats as "no sink at all".
+    """
+    live = [sink for sink in sinks if sink is not None]
+    if not live:
+        return None
+
+    def _call(outcome: evaluator.EvalOutcome) -> None:
+        for sink in live:
+            sink(outcome)
+
+    return _call
+
+
 def evaluate(ctx: HookContext) -> Result | None:
     """Ask the evaluator whether this tool call matches any live rule.
 
@@ -95,9 +117,12 @@ def evaluate(ctx: HookContext) -> Result | None:
     anything up.
 
     Every rule this sweep asks about — matched, clean, or failed — is durably
-    traced when ``COPE_EVALUATOR_TRACE_PATH`` is set (``evaluator_trace.py``).
-    Tracing is a side channel: it changes nothing about what this function
-    returns, and its own failures never reach the caller.
+    traced when ``COPE_EVALUATOR_TRACE_PATH`` is set (``evaluator_trace.py``),
+    and again as an OTel span in OTLP JSON when
+    ``COPE_EVALUATOR_OTEL_TRACE_PATH`` is set (``evaluator_otel_trace.py``) —
+    two independent, additive sinks, either or both or neither. Tracing is a
+    side channel: it changes nothing about what this function returns, and
+    its own failures never reach the caller.
     """
     config = evaluator.resolve()
     if config is None:
@@ -110,11 +135,29 @@ def evaluate(ctx: HookContext) -> Result | None:
     policies = [(rule.slug, rule.body) for rule in sorted(loaded.values(), key=lambda r: r.slug)]
 
     trace_config = evaluator_trace.resolve()
-    on_outcome = (
-        evaluator_trace.sink_for(trace_config, ctx, config, loaded)
+    otel_config = evaluator_otel_trace.resolve()
+    # sweep_temperature is a one-shot cold/warm marker keyed on session id: the
+    # first sink to ask claims "cold" and every one after reads "warm". Taken
+    # once here and handed to both sinks, so they agree on it for this sweep
+    # instead of the second-built sink always reading one step warmer than
+    # the first. Skipped entirely when neither sink is configured, so an
+    # unconfigured session claims no marker.
+    temperature = (
+        evaluator_trace.sweep_temperature(ctx.session_id)
+        if trace_config is not None or otel_config is not None
+        else None
+    )
+    json_on_outcome = (
+        evaluator_trace.sink_for(trace_config, ctx, config, loaded, temperature=temperature)
         if trace_config is not None
         else None
     )
+    otel_on_outcome = (
+        evaluator_otel_trace.sink_for(otel_config, ctx, config, loaded, temperature=temperature)
+        if otel_config is not None
+        else None
+    )
+    on_outcome = _combine_sinks(json_on_outcome, otel_on_outcome)
     matches, failures = evaluator.check(
         config, policies, content, ctx.hooks_dir, on_outcome=on_outcome
     )

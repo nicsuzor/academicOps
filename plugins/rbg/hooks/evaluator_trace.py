@@ -129,6 +129,7 @@ def sink_for(
     ctx: HookContext,
     eval_config: evaluator.Config,
     loaded: dict[str, rules.Rule],
+    temperature: str | None = None,
 ) -> Callable[[evaluator.EvalOutcome], None] | None:
     """Build the ``on_outcome`` callback ``evaluator.check()`` calls once per
     rule, or ``None`` when tracing is off.
@@ -138,11 +139,19 @@ def sink_for(
     across every rule in it — the temperature is a property of the sweep, not
     of any single rule inside it, and grouping by ``sweep_id`` is what lets a
     later reader reassemble "everything this one tool call was asked."
+
+    ``sweep_temperature`` is a one-shot marker: the first call for a session
+    id claims "cold" and every later one reads "warm". Where a caller (like
+    ``handlers.evaluate``, wiring this sink alongside ``evaluator_otel_trace``'s)
+    already has a reading for this exact sweep, it passes it in as
+    ``temperature`` so both sinks agree; omitted, this computes its own —
+    every existing caller's behaviour, unchanged.
     """
     if config is None:
         return None
     sweep_id = uuid.uuid4().hex[:12]
-    temperature = sweep_temperature(ctx.session_id)
+    if temperature is None:
+        temperature = sweep_temperature(ctx.session_id)
     content = evaluator.render_content(ctx.tool, ctx.raw.get("tool_input"))
     reported_failure = False
 

@@ -46,6 +46,7 @@ for _dir in (_LIB_HOOKS, _COPE_HOOKS):
         sys.path.insert(0, str(_dir))
 
 import evaluator  # noqa: E402  (plugins/rbg/hooks/evaluator.py)
+import evaluator_otel_trace  # noqa: E402  (plugins/rbg/hooks/evaluator_otel_trace.py)
 import evaluator_trace  # noqa: E402  (plugins/rbg/hooks/evaluator_trace.py)
 import handlers  # noqa: E402  (plugins/rbg/hooks/handlers.py)
 import rules  # noqa: E402  (plugins/rbg/hooks/rules.py)
@@ -60,6 +61,7 @@ _COPE_ENV = (
     "COPE_EVALUATOR_API_KEY",
     "COPE_EVALUATOR_TIMEOUT",
     "COPE_EVALUATOR_TRACE_PATH",
+    "COPE_EVALUATOR_OTEL_TRACE_PATH",
 )
 
 # A port nothing listens on. Every in-process test that uses it also replaces
@@ -995,6 +997,193 @@ def test_no_evaluator_configured_means_no_trace_is_attempted(
     hooks, cwd = hooks_dir_with_axioms
     trace_path = tmp_path / "trace.jsonl"
     monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(trace_path))
+    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    assert not trace_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# evaluator_otel_trace.py: the same records, as OTel spans in OTLP JSON
+# ---------------------------------------------------------------------------
+
+
+def _otlp_spans(path) -> list[dict]:
+    """Every span out of every ``resourceSpans``/``scopeSpans`` entry across
+    every appended OTLP JSON line, flattened for easy assertion."""
+    spans = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        record = json.loads(line)
+        for resource_spans in record.get("resourceSpans", []):
+            for scope_spans in resource_spans.get("scopeSpans", []):
+                spans.extend(scope_spans.get("spans", []))
+    return spans
+
+
+def _span_attrs(span: dict) -> dict:
+    """OTLP JSON's ``AnyValue`` is tagged by type (``stringValue``,
+    ``doubleValue``, ``intValue``, ``boolValue``). ``intValue`` is itself a
+    JSON *string* in the wire format — the OTLP JSON mapping avoids the
+    precision loss a 64-bit int would take as a bare JSON number — so it is
+    decoded back to ``int`` here rather than compared as a string."""
+    out = {}
+    for attr in span.get("attributes", []):
+        value = attr["value"]
+        if "intValue" in value:
+            out[attr["key"]] = int(value["intValue"])
+        else:
+            out[attr["key"]] = next(iter(value.values()))
+    return out
+
+
+def test_otel_trace_resolve_is_none_when_unset():
+    assert evaluator_otel_trace.resolve() is None
+
+
+def test_otel_trace_resolve_reads_the_plain_variable(monkeypatch, tmp_path):
+    path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(path))
+    config = evaluator_otel_trace.resolve()
+    assert config is not None
+    assert config.path == path
+
+
+def test_otel_trace_resolve_reads_the_plugin_option_over_the_plain_variable(monkeypatch, tmp_path):
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(tmp_path / "ambient.jsonl"))
+    monkeypatch.setenv(
+        "CLAUDE_PLUGIN_OPTION_COPE_EVALUATOR_OTEL_TRACE_PATH", str(tmp_path / "opt.jsonl")
+    )
+    config = evaluator_otel_trace.resolve()
+    assert config is not None
+    assert config.path == tmp_path / "opt.jsonl"
+
+
+def test_otel_sink_for_is_none_when_tracing_is_unconfigured(hooks_dir_with_axioms):
+    hooks, cwd = hooks_dir_with_axioms
+    ctx = _bash_ctx(hooks, cwd)
+    assert evaluator_otel_trace.sink_for(None, ctx, evaluator.resolve() or object(), {}) is None
+
+
+def test_otel_sink_for_writes_one_span_per_rule_including_clean_ones(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch, COPE_EVALUATOR_API_KEY="super-secret")
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+        "explanation": "why",
+    }
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+
+    ctx = _bash_ctx(hooks, cwd, "git commit --no-verify -m x")
+    result = handlers.evaluate(ctx)
+    assert result is not None  # sanity: this call really did flag something
+
+    spans = _otlp_spans(trace_path)
+    live = rules.load(hooks.parent, cwd)
+    assert len(spans) == len(live), "one span per live rule, not only the flagged ones"
+
+    by_slug = {_span_attrs(s)["rule_slug"]: (s, _span_attrs(s)) for s in spans}
+    span, attrs = by_slug["halt-on-failure"]
+    assert attrs["label"] == 1
+    assert attrs["confidence"] == 0.8
+    assert attrs["reason"] == "why"
+    assert attrs["rule_layer"] == 1
+    assert attrs["rule_text"] == live["halt-on-failure"].body
+    assert attrs["model"] == "test-model"
+    assert attrs["protocol"] == "cope"
+    assert attrs["concurrency"] == evaluator.MAX_CONCURRENCY
+    assert attrs["session_id"] == "test-session"
+    assert attrs["tool"] == "Bash"
+    assert "git commit --no-verify -m x" in attrs["content"]
+    assert attrs["sweep_temperature"] == "cold"
+    assert "latency_ms" in attrs
+    assert int(span["endTimeUnixNano"]) >= int(span["startTimeUnixNano"])
+    assert span["status"]["code"] == 1  # STATUS_CODE_OK
+
+    labels = {a["label"] for _, a in by_slug.values()}
+    assert 1 in labels and 0 in labels, "both matches and clean verdicts must be traced"
+
+    dump = json.dumps(spans)
+    assert "super-secret" not in dump
+    assert "api_key" not in dump.lower()
+
+    sweep_ids = {a["sweep_id"] for _, a in by_slug.values()}
+    assert len(sweep_ids) == 1, "every rule in one tool call shares one sweep_id"
+
+
+def test_otel_sink_for_sets_error_status_for_a_failed_rule(monkeypatch, hooks_dir_with_axioms, tmp_path):
+    """``error`` maps onto the span's own status, not only an attribute —
+    the OTel-native way a reader would filter for failed evaluations."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    ctx = _bash_ctx(hooks, cwd)
+    loaded = rules.load(hooks.parent, cwd)
+    sink = evaluator_otel_trace.sink_for(
+        evaluator_otel_trace.resolve(), ctx, evaluator.resolve(), loaded
+    )
+    outcome = evaluator.EvalOutcome(
+        slug=next(iter(loaded)),
+        label=None,
+        confidence=None,
+        reason=None,
+        error="transport error",
+        latency_s=0.01,
+    )
+    sink(outcome)
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    assert spans[0]["status"]["code"] == 2  # STATUS_CODE_ERROR
+    assert _span_attrs(spans[0])["error"] == "transport error"
+
+
+def test_both_trace_sinks_write_independently_when_both_configured(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    """The JSON Lines trace and the OTel trace are additive, not exclusive —
+    configuring both must not disable, replace, or interfere with either."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 0, "confidence": 0.1}
+    json_path = tmp_path / "trace.jsonl"
+    otel_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(json_path))
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(otel_path))
+
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+
+    live = rules.load(hooks.parent, cwd)
+    json_lines = json_path.read_text(encoding="utf-8").splitlines()
+    assert len(json_lines) == len(live)
+    assert len(_otlp_spans(otel_path)) == len(live)
+
+
+def test_otel_trace_destination_that_cannot_be_written_does_not_break_the_tool_call(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+    }
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(blocker / "sub" / "trace.jsonl"))
+
+    result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
+    assert result is not None
+    assert "halt-on-failure" in result.inject_text
+
+
+def test_no_evaluator_configured_means_no_otel_span_is_attempted(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
     assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
     assert not trace_path.exists()
 

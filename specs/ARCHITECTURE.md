@@ -195,6 +195,20 @@ Claude Code's native OpenTelemetry export is the primary tracing mechanism forwa
 
 The framework forwards this contract into containers and scheduled runs.
 
+Claude Code's native export carries no knowledge of any single plugin's own
+internal state — a tool invocation, not a rule evaluated inside `rbg`. Where a
+plugin needs its own OTel spans, it builds and exports them itself: `rbg`'s
+`evaluator_otel_trace.py` emits one span per rule evaluation (`COPE_EVALUATOR_OTEL_TRACE_PATH`,
+plugins/rbg/README.md, "As OTel spans, in OTLP JSON"), as an additional sink
+alongside its own JSON Lines trace, using `opentelemetry-sdk` and
+`opentelemetry-exporter-otlp-json-file`'s `FileSpanExporter` to write real
+OTLP JSON straight to a file path rather than a network endpoint. This
+dependency is declared in `plugins/rbg/pyproject.toml` — the first
+plugin-owned `pyproject.toml` in the tree, rather than the shared
+`templates/plugin/pyproject.template.toml` every other plugin still builds
+from — because it is the first plugin whose hooks need a dependency the
+generic template does not carry.
+
 ## Build
 
 `build/build.py` assembles `dist/<plugin>-<client>` for each plugin and client.
