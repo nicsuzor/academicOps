@@ -40,7 +40,7 @@ HEADLESS_FLAGS = {"-p", "--print"}
 # only the image's own filesystem resolves, not a host value, so it is a
 # constant here rather than something forwarded or configured (env_contract.py,
 # CONTAINER_SET_ENV docstring, draws the same line). cope's layer 3
-# (plugins/cope/hooks/rules.py) reads `$ACA_DATA/.agents/rules/`, so mounting
+# (plugins/rbg/hooks/rules.py) reads `$ACA_DATA/.agents/rules/`, so mounting
 # a host directory at this path is what makes that layer reach the container.
 CONTAINER_ACA_DATA = "/data"
 
@@ -122,7 +122,7 @@ def resolve_rules_dir(config):
 
     From $POLECAT_RULES_DIR, else config `rules_dir`. Wholly optional: absent
     is a clean, silent no-op — the container simply has no layer 3, exactly
-    like a host session with $ACA_DATA unset (plugins/cope/hooks/rules.py).
+    like a host session with $ACA_DATA unset (plugins/rbg/hooks/rules.py).
     Configured but unusable is never silent: a path that does not resolve to a
     readable directory is a hard failure, because setting it is a claim the
     layer exists.
@@ -152,7 +152,7 @@ def resolve_cope_evaluator(config):
     treats a fully-absent configuration. A value that lands unusable (a bad
     protocol, a partial set) is not this layer's concern to validate — it
     reaches the same fail-loud-once-per-session degradation report that a
-    misconfigured ambient environment already gets (plugins/cope/hooks/
+    misconfigured ambient environment already gets (plugins/rbg/hooks/
     evaluator.py, resolve()); duplicating that check here would be a second
     copy of rules this plugin does not own.
     """

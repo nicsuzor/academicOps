@@ -489,20 +489,33 @@ def test_a_blank_user_config_option_falls_through_rather_than_blanking_the_value
     assert config.model == "ambient-model"
 
 
-def test_the_manifest_declares_exactly_the_options_the_code_reads():
+def test_every_option_the_manifest_declares_is_one_the_code_reads():
     """The coupling that silently breaks: Claude Code derives the environment
     variable from the option KEY, so renaming one side leaves the other reading
     a variable nobody sets — and cope's failure mode for missing configuration
-    is a clean no-op, which would look exactly like working correctly."""
+    is a clean no-op, which would look exactly like working correctly.
+
+    The manifest currently declares no options at all, so every value travels
+    by plain environment variable. That is a supported configuration, not a
+    broken one — ``_setting`` reads the option first and the plain variable
+    second, and the second route alone is what agy and container sessions have
+    always used. What this pins is the coupling, in whichever direction it
+    exists: an option that is declared must name a variable the code reads, and
+    it must carry no default and no unmarked credential.
+    """
     manifest = json.loads(
         (_REPO_ROOT / "plugins" / "rbg" / "manifest" / "plugin.template.json").read_text()
     )
-    declared = manifest["clients"]["claude"]["userConfig"]
-    assert {key.upper() for key in declared} == set(_COPE_ENV)
-    assert declared["cope_evaluator_api_key"]["sensitive"] is True, (
-        "the API key must be marked sensitive so it goes to secure storage "
-        "rather than settings.json"
+    declared = manifest["clients"]["claude"].get("userConfig", {})
+    assert {key.upper() for key in declared} <= set(_COPE_ENV), (
+        "an option whose key does not uppercase to a variable evaluator.py reads "
+        "is a setting nobody can supply"
     )
+    if "cope_evaluator_api_key" in declared:
+        assert declared["cope_evaluator_api_key"]["sensitive"] is True, (
+            "the API key must be marked sensitive so it goes to secure storage "
+            "rather than settings.json"
+        )
     for key, option in declared.items():
         assert "default" not in option, f"{key} declares a default; cope may not have one"
         for field in ("type", "title", "description"):

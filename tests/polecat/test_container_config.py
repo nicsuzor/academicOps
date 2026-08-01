@@ -142,7 +142,7 @@ def test_rules_dir_mounted_read_only_at_container_aca_data(tmp_path, monkeypatch
 def test_rules_mount_target_matches_what_cope_reads_for_aca_data_slash_data(tmp_path, monkeypatch):
     """The mount target must be exactly `$ACA_DATA/.agents/rules` as the
     Dockerfile's `ENV ACA_DATA=/data` resolves it — the same path
-    plugins/cope/hooks/rules.py builds from `os.environ["ACA_DATA"]`."""
+    plugins/rbg/hooks/rules.py builds from `os.environ["ACA_DATA"]`."""
     assert cli.CONTAINER_ACA_DATA == "/data"
     rules = tmp_path / "pkb-rules"
     rules.mkdir()
