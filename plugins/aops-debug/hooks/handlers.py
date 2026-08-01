@@ -19,7 +19,7 @@ def dump_payload(ctx: HookContext) -> Result | None:
     # but still keep all events for a single session in one file.
     ident = ctx.session_id or str(os.getpid())
     temp_dir = tempfile.gettempdir()
-    os.mkdirs(temp_dir, exist_ok=True)
+    os.makedirs(temp_dir, exist_ok=True)
     log_path = os.path.join(temp_dir, f"aops_debug_hooks_{ident}.jsonl")
 
     try:
