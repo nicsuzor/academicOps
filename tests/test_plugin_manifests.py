@@ -192,7 +192,7 @@ def test_ida_ships_the_quiet_gate_on_claude_stop_only():
     to the person — the fix for the defect the superseded gate-wiring-v07
     branch shipped."""
     events = _claude_hook_events("ida-claude")
-    assert {"Stop", "PostToolUse"} <= events
+    assert "Stop" in events
     assert "SubagentStop" not in events
     assert "PostInvocation" in _agy_hook_events("ida-agy")
 

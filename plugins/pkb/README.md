@@ -43,7 +43,7 @@ flowchart TD
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    gate --> dispatch(["ida:james — skills/dispatch<br/>compose the brief, dispatch by task id"])
+    gate --> dispatch(["orchestrate:james — skills/dispatch<br/>compose the brief, dispatch by task id"])
 ```
 
 ### The hook asks; nothing checks

@@ -108,13 +108,13 @@ agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
 (`plugins/orchestrate/agent/james.md`) declares the explicit list
-`["rbg:rbg", "pkb:pauli", "ida:marsha", "general-purpose"]` — the
+`["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
 three reviewers his own description names, plus the plain worker surface his
 dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) and `marsha`
 (`plugins/orchestrate/agent/marsha.md`) declare `subagents: []` — neither's
 own description involves spawning: rbg returns a verdict, marsha verifies and
 never fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
-`["ida:james", "pkb:pauli"]`, matching the only two delegation targets
+`["orchestrate:james", "pkb:pauli"]`, matching the only two delegation targets
 named in its own file. The row now describes a real declaration on every agent
 file, not an absent gate — though nothing yet enforces membership against it
 (see Lint Rules below: the frontmatter lint that would check `subagents`

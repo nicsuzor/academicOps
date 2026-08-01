@@ -90,10 +90,11 @@ install-dev: build
 	@echo "Local marketplace '$(LOCAL_MARKETPLACE)' -> $(DIST). Run 'make uninstall-dev' to restore the release channel."
 
 uninstall-dev:
-	@for p in $(PLUGIN_NAMES); do \
+	@for p in $(STALE_PLUGIN_NAMES) $(PLUGIN_NAMES); do \
 		command claude plugin uninstall $$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
-		command -v agy >/dev/null 2>&1 && agy plugin uninstall $$p >/dev/null 2>&1 || true; \
-		rm -rf ~/.gemini/config/plugins/$$p; \
+		command claude plugin uninstall aops-$$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
+		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall aops-$$p >/dev/null 2>&1 || true); \
+		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
 	done
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@uv run python -m build.install uninstall

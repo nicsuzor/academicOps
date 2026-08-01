@@ -43,7 +43,7 @@ Ida holds between steps rather than driving ahead: after each step control retur
 
 ### She does not touch the knowledge base — as a rule, not as a limitation
 
-Her frontmatter declares a narrow `tools` list and exactly two delegation targets, `ida:james` and `pkb:pauli`. Those are the only agents she may spawn, and a general-purpose spawn is forbidden outright for the sweep: pauli is the only writer to the store, and a spawn that lands anywhere else reads a graph it cannot correct.
+Her frontmatter declares a narrow `tools` list and exactly two delegation targets, `orchestrate:james` and `pkb:pauli`. Those are the only agents she may spawn, and a general-purpose spawn is forbidden outright for the sweep: pauli is the only writer to the store, and a spawn that lands anywhere else reads a graph it cannot correct.
 
 The prohibition is written as a rule she keeps rather than a capability she lacks, because the capability claim is not true of the runtime. `specs/agents/agent-authority.md` records an observed spawned ida holding `Agent, Artifact, Bash, Edit, Read, Skill, ToolSearch, Write` plus the full PKB MCP namespace, against a frontmatter granting four tools and no MCP at all. A rule survives an allowlist that does not hold; "she has no tools for it" stops being a reason the moment the harness hands her some.
 
