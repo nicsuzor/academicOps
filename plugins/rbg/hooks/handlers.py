@@ -40,6 +40,7 @@ import sys
 from pathlib import Path
 
 import evaluator
+import evaluator_trace
 import rules
 from dispatch import HookContext, Result, block, load_message_pair, warn
 
@@ -92,6 +93,11 @@ def evaluate(ctx: HookContext) -> Result | None:
     and not a line per call. The call still proceeds either way: a rule that
     went unjudged is not a rule that passed, and it is not grounds to hold
     anything up.
+
+    Every rule this sweep asks about — matched, clean, or failed — is durably
+    traced when ``COPE_EVALUATOR_TRACE_PATH`` is set (``evaluator_trace.py``).
+    Tracing is a side channel: it changes nothing about what this function
+    returns, and its own failures never reach the caller.
     """
     config = evaluator.resolve()
     if config is None:
@@ -102,7 +108,16 @@ def evaluate(ctx: HookContext) -> Result | None:
 
     content = evaluator.render_content(ctx.tool, ctx.raw.get("tool_input"))
     policies = [(rule.slug, rule.body) for rule in sorted(loaded.values(), key=lambda r: r.slug)]
-    matches, failures = evaluator.check(config, policies, content, ctx.hooks_dir)
+
+    trace_config = evaluator_trace.resolve()
+    on_outcome = (
+        evaluator_trace.sink_for(trace_config, ctx, config, loaded)
+        if trace_config is not None
+        else None
+    )
+    matches, failures = evaluator.check(
+        config, policies, content, ctx.hooks_dir, on_outcome=on_outcome
+    )
 
     outage = None
     if failures:

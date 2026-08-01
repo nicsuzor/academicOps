@@ -58,6 +58,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
@@ -110,6 +111,7 @@ def claim_outage_once(session_id: str) -> bool:
     except OSError:
         return False
 
+
 #: Ceiling on the whole evaluation, in seconds, when ``COPE_EVALUATOR_TIMEOUT``
 #: is unset. Every rule is evaluated inside this one budget, so it is the
 #: longest a tool call can be held up — not a per-request allowance.
@@ -153,6 +155,32 @@ class Verdict:
     label: int
     confidence: float | None
     reason: str | None
+
+
+@dataclass(frozen=True)
+class EvalOutcome:
+    """One rule's result from one ``check()`` sweep — matched, clean, or failed.
+
+    ``check()``'s own return is a *view* of these built for the advisory: only
+    the matches, and only the failures as strings. A trace sink sees every one
+    of them, which is the point of it existing — a false positive and a true
+    negative are equally load-bearing tuning data, and a view that already
+    dropped one of them cannot be reconstructed from downstream.
+
+    ``label`` and ``error`` are mutually exclusive: a successful call carries a
+    label and no error; a failed or timed-out one carries an error and no
+    label, confidence, or reason. ``latency_s`` is always populated — for a
+    cancelled (timed-out) call it is the budget it was cancelled at, an upper
+    bound on the wait rather than a measurement of the call itself, since a
+    cancelled future never reports how long the server actually took.
+    """
+
+    slug: str
+    label: int | None
+    confidence: float | None
+    reason: str | None
+    error: str | None
+    latency_s: float
 
 
 #: Claude Code exports every declared ``userConfig`` option into a hook's
@@ -340,13 +368,26 @@ def _chat_call(
 
 
 def check(
-    config: Config, policies: list[tuple[str, str]], content: str, hooks_dir: Path
+    config: Config,
+    policies: list[tuple[str, str]],
+    content: str,
+    hooks_dir: Path,
+    *,
+    on_outcome: Callable[[EvalOutcome], None] | None = None,
 ) -> tuple[list[Verdict], list[str]]:
     """Evaluate ``content`` against every ``(slug, policy_text)`` in parallel.
 
     Returns the matching verdicts (``label == 1``) and a list of human-readable
     failures. A failure is never a match: an evaluator that could not answer
     has said nothing, so the tool call proceeds.
+
+    ``on_outcome``, when given, is called once per policy with an
+    ``EvalOutcome`` — matched, clean, or failed alike — as each one finishes.
+    It is the research trace's whole hook into this function and changes
+    nothing about the return value: existing callers that ignore it see no
+    behavioural difference. A callback that raises is not this function's
+    failure to carry, so it is never allowed to interrupt a sweep — see the
+    call sites below.
     """
     if not policies:
         return [], []
@@ -356,16 +397,30 @@ def check(
     )
     deadline = time.monotonic() + config.timeout
 
+    def _emit(outcome: EvalOutcome) -> None:
+        if on_outcome is None:
+            return
+        try:
+            on_outcome(outcome)
+        except Exception:  # noqa: BLE001 - a trace sink must never break the sweep it traces
+            pass
+
     def run(slug: str, policy: str) -> Verdict:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError(f"budget of {config.timeout}s spent before {slug} was evaluated")
-        if config.protocol == "cope":
-            label, confidence, reason = _label_call(config, policy, content, remaining)
-        else:
-            label, confidence, reason = _chat_call(
-                config, policy, content, remaining, system_prompt
-            )
+        started = time.monotonic()
+        try:
+            if config.protocol == "cope":
+                label, confidence, reason = _label_call(config, policy, content, remaining)
+            else:
+                label, confidence, reason = _chat_call(
+                    config, policy, content, remaining, system_prompt
+                )
+        except _EVALUATION_ERRORS as exc:
+            _emit(EvalOutcome(slug, None, None, None, repr(exc), time.monotonic() - started))
+            raise
+        _emit(EvalOutcome(slug, label, confidence, reason, None, time.monotonic() - started))
         return Verdict(slug=slug, label=label, confidence=confidence, reason=reason)
 
     matches: list[Verdict] = []
@@ -377,7 +432,17 @@ def check(
         _, pending = wait(futures, timeout=max(deadline - time.monotonic(), 0))
         for future in pending:
             future.cancel()
-            failures.append(f"{futures[future]}: no answer within the {config.timeout}s budget")
+            slug = futures[future]
+            failures.append(f"{slug}: no answer within the {config.timeout}s budget")
+            # Cancelled before run() could report its own outcome (or before it
+            # was ever scheduled) — traced here so a timed-out rule is not
+            # silently missing from the record. latency_s is the budget it was
+            # cancelled at, not a measurement of the call itself: see EvalOutcome.
+            _emit(
+                EvalOutcome(
+                    slug, None, None, None, "no answer within the timeout budget", config.timeout
+                )
+            )
         for future, slug in futures.items():
             if future in pending:
                 continue

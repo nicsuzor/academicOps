@@ -540,6 +540,7 @@ def stub_evaluator_env(tmp_path):
         "COPE_EVALUATOR_MODEL": "stub-model",
         "COPE_EVALUATOR_API_KEY": None,
         "COPE_EVALUATOR_TIMEOUT": "20",
+        "COPE_EVALUATOR_TRACE_PATH": None,  # unset here; tests that want it set it themselves
         "ACA_DATA": None,
         "TMPDIR": str(marker_root),
     }
@@ -650,6 +651,7 @@ def test_rbg_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_ro
             "COPE_EVALUATOR_MODEL",
             "COPE_EVALUATOR_API_KEY",
             "COPE_EVALUATOR_TIMEOUT",
+            "COPE_EVALUATOR_TRACE_PATH",
         )
     )
     _run_shipped_hook(
@@ -661,6 +663,47 @@ def test_rbg_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_ro
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
     assert proc.stdout.strip() == ""
     assert proc.stderr.strip() == ""
+
+
+def test_rbg_shipped_hook_traces_every_rule_evaluated_not_only_the_matches(
+    dist_root, stub_evaluator_env, tmp_path
+):
+    """End-to-end proof that tracing is wired into the shipped artifact: set
+    ``COPE_EVALUATOR_TRACE_PATH``, run the real hook against the real 23-rule
+    axiom set, and check that every live rule shows up in the trace — not just
+    ``halt-on-failure``, which is the one the stub evaluator flags. A tuning
+    set built from the flags alone could never show what an unflagged rule was
+    asked and answered, which is the whole reason every evaluation is traced."""
+    build_dir = dist_root / "rbg-claude"
+    _, command = _hook_commands("claude", build_dir)[0]
+    trace_path = tmp_path / "trace" / "rbg-eval-trace.jsonl"
+    env = dict(stub_evaluator_env)
+    env["COPE_EVALUATOR_TRACE_PATH"] = str(trace_path)
+
+    proc = _run_shipped_hook(
+        "claude", build_dir, command, _PAYLOADS["PreToolUse"], env_overrides=env
+    )
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+
+    lines = trace_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) > 1, "only one rule was traced; the whole live rule set should be"
+    records = [json.loads(line) for line in lines]
+
+    matched = [r for r in records if r["rule_slug"] == "halt-on-failure"]
+    assert matched and matched[0]["label"] == 1
+    assert matched[0]["error"] is None
+
+    clean = [r for r in records if r["label"] == 0]
+    assert clean, "no clean (label=0) rule made it into the trace — only flags were recorded"
+
+    for record in records:
+        assert record["rule_text"], f"{record['rule_slug']} traced with no policy text"
+        assert record["model"] == "stub-model"
+        assert record["protocol"] == "cope"
+        assert record["concurrency"] == 8
+        assert record["sweep_temperature"] == "cold"  # first sweep this session has run
+        assert "api_key" not in record and "COPE_EVALUATOR_API_KEY" not in json.dumps(record)
+    assert len({r["sweep_id"] for r in records}) == 1, "one tool call is one sweep"
 
 
 # --- 1b. no shipped hook denies a tool call -----------------------------------

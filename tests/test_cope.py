@@ -46,6 +46,7 @@ for _dir in (_LIB_HOOKS, _COPE_HOOKS):
         sys.path.insert(0, str(_dir))
 
 import evaluator  # noqa: E402  (plugins/rbg/hooks/evaluator.py)
+import evaluator_trace  # noqa: E402  (plugins/rbg/hooks/evaluator_trace.py)
 import handlers  # noqa: E402  (plugins/rbg/hooks/handlers.py)
 import rules  # noqa: E402  (plugins/rbg/hooks/rules.py)
 from dispatch import HookContext, Kind, warn  # noqa: E402
@@ -58,6 +59,7 @@ _COPE_ENV = (
     "COPE_EVALUATOR_MODEL",
     "COPE_EVALUATOR_API_KEY",
     "COPE_EVALUATOR_TIMEOUT",
+    "COPE_EVALUATOR_TRACE_PATH",
 )
 
 # A port nothing listens on. Every in-process test that uses it also replaces
@@ -734,6 +736,267 @@ def test_an_enormous_tool_input_is_truncated_before_it_is_sent():
     rendered = evaluator.render_content("Write", {"content": "x" * 100_000})
     assert len(rendered) < evaluator.MAX_CONTENT_CHARS + 200
     assert "truncated" in rendered
+
+
+# ---------------------------------------------------------------------------
+# evaluator.py: on_outcome — the research trace's whole hook into check()
+# ---------------------------------------------------------------------------
+
+
+def test_on_outcome_fires_for_every_policy_matched_and_clean_alike(
+    monkeypatch, transport, hooks_dir
+):
+    """The tuning data check() itself never returns: a rule check() decided was
+    clean (label 0) never reaches `matches`, but a trace sink must still see
+    it — a false positive and a true negative are equally load-bearing."""
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {
+        "label": 1 if payload["criteria_text"] == "flag me" else 0,
+        "confidence": 0.7,
+    }
+    seen: list[evaluator.EvalOutcome] = []
+    matches, failures = evaluator.check(
+        evaluator.resolve(),
+        [("flagged", "flag me"), ("clean", "leave me")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=seen.append,
+    )
+    assert failures == []
+    assert {o.slug for o in seen} == {"flagged", "clean"}
+    by_slug = {o.slug: o for o in seen}
+    assert by_slug["flagged"].label == 1
+    assert by_slug["clean"].label == 0
+    assert by_slug["clean"].error is None
+    assert [m.slug for m in matches] == ["flagged"], (
+        "on_outcome must not change check()'s own return"
+    )
+
+
+def test_on_outcome_fires_with_the_error_for_a_failed_policy(monkeypatch, hooks_dir):
+    _configure(monkeypatch)
+
+    def explode(config, payload, timeout):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(evaluator, "_post", explode)
+    seen: list[evaluator.EvalOutcome] = []
+    evaluator.check(
+        evaluator.resolve(), [("closure", "body")], "Tool: Bash", hooks_dir, on_outcome=seen.append
+    )
+    assert len(seen) == 1
+    assert seen[0].label is None
+    assert seen[0].confidence is None
+    assert "connection refused" in seen[0].error
+
+
+def test_on_outcome_reports_a_positive_latency(monkeypatch, transport, hooks_dir):
+    _configure(monkeypatch)
+    seen: list[evaluator.EvalOutcome] = []
+    evaluator.check(
+        evaluator.resolve(),
+        [("closure", "body")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=seen.append,
+    )
+    assert seen[0].latency_s >= 0
+
+
+def test_on_outcome_fires_for_a_rule_that_never_got_a_slot_within_the_budget(
+    monkeypatch, hooks_dir
+):
+    """A rule cancelled before the budget ran out still needs a trace record —
+    otherwise a timed-out rule is simply missing from the tuning data rather
+    than present and marked as unanswered."""
+
+    def hang(config, payload, timeout):
+        time.sleep(10)
+        return {"label": 1}
+
+    _configure(monkeypatch, COPE_EVALUATOR_TIMEOUT="0.2")
+    monkeypatch.setattr(evaluator, "_post", hang)
+    seen: list[evaluator.EvalOutcome] = []
+    evaluator.check(
+        evaluator.resolve(),
+        [("a", "body a"), ("b", "body b")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=seen.append,
+    )
+    assert {o.slug for o in seen} == {"a", "b"}
+    assert all(o.label is None and o.error for o in seen)
+
+
+def test_a_broken_on_outcome_sink_does_not_break_the_sweep(monkeypatch, transport, hooks_dir):
+    """A trace sink is a side channel with its own module (evaluator_trace.py)
+    to fail in; check() itself must never let a broken sink turn a working
+    evaluation into a failed one."""
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 1, "confidence": 0.9}
+
+    def broken_sink(outcome):
+        raise RuntimeError("boom")
+
+    matches, failures = evaluator.check(
+        evaluator.resolve(),
+        [("closure", "body")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=broken_sink,
+    )
+    assert [m.slug for m in matches] == ["closure"]
+    assert failures == []
+
+
+# ---------------------------------------------------------------------------
+# evaluator_trace.py: the durable input/rule/verdict tuple
+# ---------------------------------------------------------------------------
+
+
+def test_trace_resolve_is_none_when_unset():
+    assert evaluator_trace.resolve() is None
+
+
+def test_trace_resolve_reads_the_plain_variable(monkeypatch, tmp_path):
+    path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(path))
+    config = evaluator_trace.resolve()
+    assert config is not None
+    assert config.path == path
+
+
+def test_trace_resolve_reads_the_plugin_option_over_the_plain_variable(monkeypatch, tmp_path):
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(tmp_path / "ambient.jsonl"))
+    monkeypatch.setenv(
+        "CLAUDE_PLUGIN_OPTION_COPE_EVALUATOR_TRACE_PATH", str(tmp_path / "opt.jsonl")
+    )
+    config = evaluator_trace.resolve()
+    assert config is not None
+    assert config.path == tmp_path / "opt.jsonl"
+
+
+def test_sweep_temperature_is_cold_then_warm_for_the_same_session():
+    session_id = "sweep-temp-session"
+    assert evaluator_trace.sweep_temperature(session_id) == "cold"
+    assert evaluator_trace.sweep_temperature(session_id) == "warm"
+    assert evaluator_trace.sweep_temperature(session_id) == "warm"
+
+
+def test_sweep_temperature_is_unknown_for_an_empty_session_id():
+    assert evaluator_trace.sweep_temperature("") == "unknown"
+
+
+def test_sink_for_is_none_when_tracing_is_unconfigured(hooks_dir_with_axioms):
+    hooks, cwd = hooks_dir_with_axioms
+    ctx = _bash_ctx(hooks, cwd)
+    assert evaluator_trace.sink_for(None, ctx, evaluator.resolve() or object(), {}) is None
+
+
+def test_sink_for_writes_one_record_per_rule_including_clean_ones(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch, COPE_EVALUATOR_API_KEY="super-secret")
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+        "explanation": "why",
+    }
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(trace_path))
+
+    ctx = _bash_ctx(hooks, cwd, "git commit --no-verify -m x")
+    result = handlers.evaluate(ctx)
+    assert result is not None  # sanity: this call really did flag something
+
+    lines = trace_path.read_text(encoding="utf-8").splitlines()
+    live = rules.load(hooks.parent, cwd)
+    assert len(lines) == len(live), "one trace record per live rule, not only the flagged ones"
+    records = [json.loads(line) for line in lines]
+    labels = {r["label"] for r in records}
+    assert 1 in labels and 0 in labels, "both matches and clean verdicts must be traced"
+
+    matched = next(r for r in records if r["rule_slug"] == "halt-on-failure")
+    assert matched["label"] == 1
+    assert matched["confidence"] == 0.8
+    assert matched["reason"] == "why"
+    assert matched["rule_layer"] == 1
+    assert matched["rule_text"] == live["halt-on-failure"].body
+    assert matched["model"] == "test-model"
+    assert matched["protocol"] == "cope"
+    assert matched["concurrency"] == evaluator.MAX_CONCURRENCY
+    assert matched["session_id"] == "test-session"
+    assert matched["tool"] == "Bash"
+    assert "git commit --no-verify -m x" in matched["content"]
+    assert matched["sweep_temperature"] == "cold"
+
+    dump = json.dumps(records)
+    assert "super-secret" not in dump
+    assert "api_key" not in dump.lower()
+
+    sweep_ids = {r["sweep_id"] for r in records}
+    assert len(sweep_ids) == 1, "every rule in one tool call shares one sweep_id"
+
+
+def test_sink_for_appends_across_sweeps_never_rewriting(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 0, "confidence": 0.1}
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(trace_path))
+
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+    first_count = len(trace_path.read_text(encoding="utf-8").splitlines())
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+    second_count = len(trace_path.read_text(encoding="utf-8").splitlines())
+
+    assert second_count == first_count * 2, (
+        "the second sweep appended, it did not replace the first"
+    )
+
+    records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
+    temperatures = {r["sweep_id"]: r["sweep_temperature"] for r in records}
+    assert set(temperatures.values()) == {"cold", "warm"}, "first sweep cold, second sweep warm"
+
+
+def test_trace_destination_that_cannot_be_written_does_not_break_the_tool_call(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    """A trace failure must never surface as a failed evaluation — the tool
+    call this sweep judges must proceed exactly as it would with no tracing
+    configured at all."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+    }
+    # A file where the trace's parent directory needs to be: mkdir(parents=True)
+    # on this path must fail, which is exactly what an unwritable destination
+    # looks like from evaluator_trace.py's side.
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(blocker / "sub" / "trace.jsonl"))
+
+    result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
+    assert result is not None
+    assert "halt-on-failure" in result.inject_text
+
+
+def test_no_evaluator_configured_means_no_trace_is_attempted(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    """Tracing rides on evaluate() already having a configured evaluator; an
+    unconfigured session must not write a trace file at all, mirroring the
+    no-network-call guarantee for the evaluator itself."""
+    hooks, cwd = hooks_dir_with_axioms
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(trace_path))
+    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    assert not trace_path.exists()
 
 
 # ---------------------------------------------------------------------------
