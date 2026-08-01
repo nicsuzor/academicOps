@@ -37,21 +37,6 @@ from __future__ import annotations
 from dispatch import HookContext, Result, load_message_pair, warn
 
 
-def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind the dispatcher that a subagent's report is not evidence.
-
-    Loaded as a pair, because the message has two readers. The agent gets the
-    rule; the person watching gets one line saying a subagent just reported
-    back and the claim is unverified — otherwise the moment a report enters
-    the session's reasoning is invisible to them.
-
-    Advisory only (``warn``): it cannot block, and the call has already run by
-    the time this fires. It has one job, which is to arrive at the instant the
-    caller is deciding what to believe.
-    """
-    return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
-
-
 def strip_the_reply(ctx: HookContext) -> Result | None:
     """Remind the face to strip its reply down to what is load-bearing.
 
@@ -65,6 +50,5 @@ def strip_the_reply(ctx: HookContext) -> Result | None:
 
 
 HANDLERS: dict[str, list] = {
-    "PostToolUse": [rule_against_hearsay],
     "Stop": [strip_the_reply],
 }

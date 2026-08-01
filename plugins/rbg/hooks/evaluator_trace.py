@@ -130,6 +130,7 @@ def sink_for(
     eval_config: evaluator.Config,
     loaded: dict[str, rules.Rule],
     temperature: str | None = None,
+    sweep_id: str | None = None,
 ) -> Callable[[evaluator.EvalOutcome], None] | None:
     """Build the ``on_outcome`` callback ``evaluator.check()`` calls once per
     rule, or ``None`` when tracing is off.
@@ -146,10 +147,18 @@ def sink_for(
     already has a reading for this exact sweep, it passes it in as
     ``temperature`` so both sinks agree; omitted, this computes its own —
     every existing caller's behaviour, unchanged.
+
+    ``sweep_id`` works the same way: ``handlers.evaluate`` generates one id per
+    sweep and hands it to both this sink and ``evaluator_otel_trace``'s, so a
+    reader can join the JSON Lines trace and the OTel spans for the same tool
+    call on ``sweep_id`` directly rather than a fuzzy match on timestamp and
+    content. Omitted, this generates its own — every existing caller's
+    behaviour, unchanged.
     """
     if config is None:
         return None
-    sweep_id = uuid.uuid4().hex[:12]
+    if sweep_id is None:
+        sweep_id = uuid.uuid4().hex[:12]
     if temperature is None:
         temperature = sweep_temperature(ctx.session_id)
     content = evaluator.render_content(ctx.tool, ctx.raw.get("tool_input"))
