@@ -441,11 +441,17 @@ def _minimal_agent_settings(host_settings):
     return minimal
 
 
-def setup_staging(staging_dir, mcp_url, agent_home):
+def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
     """Stage per-session settings and credentials for the container.
 
     `agent_home` is the host directory holding the agent CLI's own config,
-    from $POLECAT_AGENT_HOME. When unset, no credential is staged.
+    from $GEMINI_CONFIG_DIR. `agy` dispatch stages its Antigravity OAuth
+    credentials from here; without them agy falls back to an interactive
+    Google login prompt that a headless container can never answer, so for
+    `agent_cmd == "agy"` a missing/incomplete agent_home is a hard failure
+    rather than a silent no-op. Other agents (claude) authenticate a
+    different way (CLAUDE_CODE_OAUTH_TOKEN, forwarded separately) and do not
+    need this — for them an unset agent_home stays a legal no-op.
     """
     staging_dir = Path(staging_dir)
 
@@ -466,9 +472,19 @@ def setup_staging(staging_dir, mcp_url, agent_home):
         (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
     if not agent_home:
+        if agent_cmd == "agy":
+            fail(
+                "agy dispatch requires $GEMINI_CONFIG_DIR (the host directory "
+                "holding your Antigravity CLI config, normally ~/.gemini) to "
+                "stage OAuth credentials into the container. Unset, agy falls "
+                "back to an interactive Google login prompt a headless "
+                "container can never answer. Export GEMINI_CONFIG_DIR and retry."
+            )
         return
     gemini_src = Path(agent_home)
     if not gemini_src.is_dir():
+        if agent_cmd == "agy":
+            fail(f"$GEMINI_CONFIG_DIR={agent_home!r} is not a directory.")
         return
 
     gemini_dst = staging_dir / ".gemini"
@@ -493,16 +509,31 @@ def setup_staging(staging_dir, mcp_url, agent_home):
     if agy_src.is_dir():
         agy_dst = gemini_dst / "antigravity-cli"
         agy_dst.mkdir(parents=True, exist_ok=True)
+        token_staged = False
         for name in ("antigravity-oauth-token", "installation_id"):
             src_file = agy_src / name
             if src_file.exists():
                 shutil.copy2(src_file, agy_dst / name)
+                if name == "antigravity-oauth-token":
+                    token_staged = True
+        if agent_cmd == "agy" and not token_staged:
+            fail(
+                f"{agy_src / 'antigravity-oauth-token'} does not exist, so no "
+                "Antigravity OAuth token can be staged for agy. Run agy "
+                "interactively on this host at least once to create it."
+            )
 
         # The container's only workspace must be pre-trusted, or the trust
         # dialog swallows the seeded prompt. Host project paths and MCP
         # blocks are never copied.
         (agy_dst / "settings.json").write_text(
             json.dumps({"trustedWorkspaces": ["/workspace"]}, indent=2)
+        )
+    elif agent_cmd == "agy":
+        fail(
+            f"{agy_src} does not exist, so no Antigravity OAuth token can be "
+            "staged for agy. Run agy interactively on this host at least once "
+            "to create it."
         )
 
 
@@ -786,7 +817,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     os.chmod(staging_dir, 0o700)
 
     try:
-        setup_staging(staging_dir, mcp_url, os.environ.get("POLECAT_AGENT_HOME"))
+        setup_staging(staging_dir, mcp_url, os.environ.get("GEMINI_CONFIG_DIR"), agent_cmd)
 
         # The container must run the image built on this machine. --pull=never
         # below blocks a registry fetch; this check turns the resulting "no

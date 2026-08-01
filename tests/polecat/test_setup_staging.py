@@ -33,7 +33,7 @@ LEAKED_HOST_PROJECT_PATH = "/home/nic/src/some-other-private-project"
 
 @pytest.fixture
 def fake_gemini_home(tmp_path):
-    """A fake $POLECAT_AGENT_HOME containing exactly the shape that leaked live."""
+    """A fake $GEMINI_CONFIG_DIR containing exactly the shape that leaked live."""
     home = tmp_path / "fake_home"
     gemini = home / ".gemini"
     gemini.mkdir(parents=True)

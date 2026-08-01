@@ -230,11 +230,11 @@ EOF
 token — a `dev-probe` session needs both set, same as any other `run`
 invocation; a real bot token is not required for a session that never pushes:
 
-An `agy` dev-loop session additionally needs `$POLECAT_AGENT_HOME` set on the
+An `agy` dev-loop session additionally needs `$GEMINI_CONFIG_DIR` set on the
 host, or it boots straight into an interactive Google OAuth wall instead of a
 ready prompt. `setup_staging()` (`lib/polecat/cli.py`) stages agy's
 credentials — `antigravity-oauth-token` and `installation_id` — from
-`$POLECAT_AGENT_HOME/antigravity-cli/` into the container; unset, no
+`$GEMINI_CONFIG_DIR/antigravity-cli/` into the container; unset, no
 credential is staged and agy has nothing to authenticate with. `claude`
 dev-loop sessions are unaffected — this variable is agy-only.
 

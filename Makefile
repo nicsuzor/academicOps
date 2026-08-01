@@ -78,13 +78,13 @@ install-dev: build
 	done
 	@mkdir -p ~/.gemini/config/plugins
 	@for p in $(PLUGIN_NAMES); do \
-		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall aops-$$p >/dev/null 2>&1 || true); \
+		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall "$(DIST)/$$p-agy" && echo "✓ agy $$p installed" || echo "x agy $$p install failed"); \
 		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
 		if [ -d "$(DIST)/$$p-agy" ]; then \
 			cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"; \
 			command -v agy >/dev/null 2>&1 && (agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 && echo "✓ agy $$p installed" || true); \
 		fi; \
-	done
+	done || true
 	@uv run python -m build.install install --dist-root $(DIST)
 	@uv run pre-commit install >/dev/null 2>&1 || true
 	@echo "Local marketplace '$(LOCAL_MARKETPLACE)' -> $(DIST). Run 'make uninstall-dev' to restore the release channel."

@@ -41,7 +41,9 @@ def _base_mocks(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
     monkeypatch.setattr(cli, "load_config", lambda: {})
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
-    monkeypatch.setattr(cli, "setup_staging", lambda staging_dir, mcp_url, agent_home: None)
+    monkeypatch.setattr(
+        cli, "setup_staging", lambda staging_dir, mcp_url, agent_home, agent_cmd=None: None
+    )
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")

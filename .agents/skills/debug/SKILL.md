@@ -43,7 +43,7 @@ Set every variable the script exports. `POLECAT_HOME` and `POLECAT_IMAGE` have
 no defaults and polecat exits naming whichever is missing; `entrypoint.sh`
 refuses to start without `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL` and
 `AOPS_BOT_GH_TOKEN`, and a probe session that never pushes can pass a
-placeholder for the token. An `agy` session also needs `POLECAT_AGENT_HOME`, or
+placeholder for the token. An `agy` session also needs `GEMINI_CONFIG_DIR`, or
 it boots into an OAuth wall instead of a ready prompt — the spec's "Dev-loop"
 section says why. Keep the workspace under `$HOME`; the spec's Gotchas say why
 a mount source outside the VM's shared paths fails silently rather than loudly.

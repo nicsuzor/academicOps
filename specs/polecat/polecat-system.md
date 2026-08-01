@@ -52,7 +52,7 @@ the container.
    real remote and nothing the container does is visible in the host checkout
    until pushed. This clone is deleted again when `run` exits, success or failure.
 4. Stages a per-session credential/settings directory (`pluginConfigs.pkb_mcp_url`,
-   an optional worker model override, and — when `POLECAT_AGENT_HOME` is set — a
+   an optional worker model override, and — when `GEMINI_CONFIG_DIR` is set — a
    secret-stripped copy of the agy/Gemini CLI's own auth files) and mounts it
    read-only at `/tmp/staging`; `entrypoint.sh` merges it into `$HOME` inside the
    container.

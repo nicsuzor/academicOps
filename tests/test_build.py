@@ -445,6 +445,42 @@ def test_agy_command_converted_to_skill(built):
     assert not (built / "fixture-alpha-agy" / "commands").exists()
 
 
+def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
+    import json
+    import yaml
+
+    dist_root = tmp_path_factory.mktemp("build-dist-agents")
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["ida"],
+        version=VERSION,
+    )
+
+    # Check claude dist retains original Claude Code canonical tool names in agents/ida.md
+    claude_ida = dist_root / "ida-claude" / "agents" / "ida.md"
+    assert claude_ida.is_file()
+    claude_fm = yaml.safe_load(claude_ida.read_text().split("---")[1])
+    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion"]
+
+    # Check agy dist converts agents/ida.md to agents/ida/agent.md with translated tools
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
+    assert agy_ida_md.is_file()
+    assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
+
+    parts = agy_ida_md.read_text().split("---")
+    agy_fm = yaml.safe_load(parts[1])
+    assert agy_fm["name"] == "ida"
+    assert "interactive face" in agy_fm["description"]
+    assert agy_fm["hidden"] is False
+    assert agy_fm["tools"] == ["read_file", "Skill", "invoke_subagent", "ask_question"]
+
+    body = parts[2]
+    assert "# Agent System Instructions" in body
+    assert "# Ida — The Interactive Face" in body
+
+
 def test_axioms_always_on_wired_per_client(built):
     claude_jsonl = (built / "fixture-alpha-claude" / "axioms.jsonl").read_text().splitlines()
     assert len(claude_jsonl) == 1
