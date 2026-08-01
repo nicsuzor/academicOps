@@ -1112,7 +1112,9 @@ def test_otel_sink_for_writes_one_span_per_rule_including_clean_ones(
     assert len(sweep_ids) == 1, "every rule in one tool call shares one sweep_id"
 
 
-def test_otel_sink_for_sets_error_status_for_a_failed_rule(monkeypatch, hooks_dir_with_axioms, tmp_path):
+def test_otel_sink_for_sets_error_status_for_a_failed_rule(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
     """``error`` maps onto the span's own status, not only an attribute —
     the OTel-native way a reader would filter for failed evaluations."""
     hooks, cwd = hooks_dir_with_axioms
@@ -1137,6 +1139,102 @@ def test_otel_sink_for_sets_error_status_for_a_failed_rule(monkeypatch, hooks_di
     assert len(spans) == 1
     assert spans[0]["status"]["code"] == 2  # STATUS_CODE_ERROR
     assert _span_attrs(spans[0])["error"] == "transport error"
+
+
+def test_extract_parent_context_is_none_without_traceparent(monkeypatch):
+    """No ``TRACEPARENT`` in the hook subprocess's own environment — the
+    common case, and every case before Claude Code's native-export contract
+    is fully populated — means a span starts as a fresh root, exactly as
+    before this existed."""
+    monkeypatch.delenv("TRACEPARENT", raising=False)
+    monkeypatch.delenv("TRACESTATE", raising=False)
+    assert evaluator_otel_trace._extract_parent_context() is None
+
+
+def test_extract_parent_context_is_none_for_an_unparseable_traceparent(monkeypatch):
+    monkeypatch.setenv("TRACEPARENT", "not-a-w3c-traceparent")
+    assert evaluator_otel_trace._extract_parent_context() is None
+
+
+def test_otel_span_nests_under_the_traceparent_claude_code_exported(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    """When Claude Code has exported a W3C trace context into this hook
+    subprocess's own environment (``TRACEPARENT``), every span this sink
+    emits is parented to it — real linkage to the session's own trace rather
+    than an orphaned root (specs/ARCHITECTURE.md, "Observability & OTEL
+    Tracing"; verified empirically against a real headless ``claude`` session
+    with a diagnostic hook)."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    monkeypatch.setenv("TRACEPARENT", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+    ctx = _bash_ctx(hooks, cwd)
+    loaded = rules.load(hooks.parent, cwd)
+    sink = evaluator_otel_trace.sink_for(
+        evaluator_otel_trace.resolve(), ctx, evaluator.resolve(), loaded
+    )
+    outcome = evaluator.EvalOutcome(
+        slug=next(iter(loaded)), label=0, confidence=0.1, reason=None, error=None, latency_s=0.01
+    )
+    sink(outcome)
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    assert spans[0]["traceId"] == "4bf92f3577b34da6a3ce929d0e0e4736"
+    assert spans[0]["parentSpanId"] == "00f067aa0ba902b7"
+
+
+def test_otel_span_is_a_fresh_root_when_no_traceparent_is_exported(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    """The degrade path: an unconfigured or absent native-export contract
+    must not error, and must not fabricate a parent — the span still gets
+    written, just as a root."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    monkeypatch.delenv("TRACEPARENT", raising=False)
+    ctx = _bash_ctx(hooks, cwd)
+    loaded = rules.load(hooks.parent, cwd)
+    sink = evaluator_otel_trace.sink_for(
+        evaluator_otel_trace.resolve(), ctx, evaluator.resolve(), loaded
+    )
+    outcome = evaluator.EvalOutcome(
+        slug=next(iter(loaded)), label=0, confidence=0.1, reason=None, error=None, latency_s=0.01
+    )
+    sink(outcome)
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    assert "parentSpanId" not in spans[0] or spans[0]["parentSpanId"] == ""
+
+
+def test_both_sinks_share_the_same_sweep_id(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    """``handlers.evaluate`` is the only caller that wires both sinks together
+    for one real tool call, and it must hand both the identical ``sweep_id`` —
+    otherwise the JSON Lines trace and the OTel spans for the same evaluation
+    carry two unrelated ids and cannot be joined directly."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 0, "confidence": 0.1}
+    json_path = tmp_path / "trace.jsonl"
+    otel_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(json_path))
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(otel_path))
+
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+
+    json_records = [json.loads(line) for line in json_path.read_text(encoding="utf-8").splitlines()]
+    otel_spans = _otlp_spans(otel_path)
+    json_sweep_ids = {r["sweep_id"] for r in json_records}
+    otel_sweep_ids = {_span_attrs(s)["sweep_id"] for s in otel_spans}
+    assert len(json_sweep_ids) == 1
+    assert json_sweep_ids == otel_sweep_ids, (
+        "the JSON Lines trace and the OTel spans must share one sweep_id for the same tool call"
+    )
 
 
 def test_both_trace_sinks_write_independently_when_both_configured(

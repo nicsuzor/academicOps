@@ -37,6 +37,7 @@ that process — there is no server to keep warm.
 from __future__ import annotations
 
 import sys
+import uuid
 from pathlib import Path
 
 import evaluator
@@ -147,13 +148,24 @@ def evaluate(ctx: HookContext) -> Result | None:
         if trace_config is not None or otel_config is not None
         else None
     )
+    # One sweep_id per sweep, shared the same way: generated once here and
+    # handed to both sinks so the JSON Lines trace and the OTel spans for this
+    # exact tool call carry the identical id, joinable directly rather than by
+    # a fuzzy match on timestamp and content.
+    sweep_id = (
+        uuid.uuid4().hex[:12] if trace_config is not None or otel_config is not None else None
+    )
     json_on_outcome = (
-        evaluator_trace.sink_for(trace_config, ctx, config, loaded, temperature=temperature)
+        evaluator_trace.sink_for(
+            trace_config, ctx, config, loaded, temperature=temperature, sweep_id=sweep_id
+        )
         if trace_config is not None
         else None
     )
     otel_on_outcome = (
-        evaluator_otel_trace.sink_for(otel_config, ctx, config, loaded, temperature=temperature)
+        evaluator_otel_trace.sink_for(
+            otel_config, ctx, config, loaded, temperature=temperature, sweep_id=sweep_id
+        )
         if otel_config is not None
         else None
     )

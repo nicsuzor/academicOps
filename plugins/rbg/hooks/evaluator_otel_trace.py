@@ -65,18 +65,31 @@ whether its own span could be recorded.
   carry (``rule is None``) omits both rather than sending a placeholder —
   span attributes cannot carry ``None``.
 - ``model``, ``protocol``, ``concurrency`` -> attributes, unchanged.
-- ``sweep_id``, ``sweep_temperature`` -> attributes. ``sweep_id`` here is its
-  own value, generated independently of ``evaluator_trace.py``'s — the two
-  channels are not correlated by id, only by carrying the same fields for the
-  same sweep. ``sweep_temperature`` reuses
-  ``evaluator_trace.sweep_temperature`` rather than recomputing the same
-  cold/warm marker twice.
+- ``sweep_id``, ``sweep_temperature`` -> attributes. ``handlers.evaluate``
+  generates one ``sweep_id`` per sweep and hands it to both this sink and
+  ``evaluator_trace.py``'s, so the two channels are directly joinable on it —
+  the same tool call's JSON Lines record and OTel span carry the identical id.
+  ``sweep_temperature`` likewise reuses ``evaluator_trace.sweep_temperature``
+  rather than recomputing the same cold/warm marker twice.
 - ``session_id``, ``client``, ``event``, ``tool``, ``content`` -> attributes,
   unchanged.
 - resource ``service.name`` -> fixed to ``rbg-evaluator``, identifying every
   span this module emits regardless of whatever ``OTEL_RESOURCE_ATTRIBUTES``
   or ``OTEL_SERVICE_NAME`` an operator has set for Claude Code's own native
   export.
+
+**Parenting** (``_extract_parent_context``). Every span this module starts is
+given the W3C trace context Claude Code exports as ``TRACEPARENT`` (and
+``TRACESTATE``, when present) in this hook subprocess's own environment, so a
+rule-evaluation span lands in the same trace as the Claude Code session that
+triggered it rather than as an orphaned root — real linkage where both sides
+export to the same collector. That context is one id pair *per Claude Code
+process*, confirmed unchanged across two sequential tool calls in one session,
+so it nests every span in a session under the same parent rather than under a
+distinct span per tool call; ``sweep_id`` is what still groups one tool call's
+spans together. Absent (no ``TRACEPARENT`` — the native-export contract is not
+fully populated) or unparseable, spans start as fresh roots exactly as before;
+nothing here is required for this module to keep working.
 
 **Never write a credential.** Same contract as ``evaluator_trace.py``: the
 evaluator's API key never enters a span attribute, a span name, or a log line
@@ -85,6 +98,7 @@ anywhere in this file.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 import uuid
@@ -132,12 +146,69 @@ def _attributes(record: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in record.items() if value is not None}
 
 
+def _extract_parent_context() -> Any | None:
+    """Pick up the W3C trace context Claude Code exports to a hook subprocess
+    for the tool call it is currently dispatching, or ``None`` when no such
+    context is present.
+
+    Claude Code sets ``TRACEPARENT`` (and, when present, ``TRACESTATE``) in a
+    hook subprocess's environment whenever the full native-export contract is
+    populated — ``CLAUDE_CODE_ENABLE_TELEMETRY``, ``CLAUDE_CODE_ENHANCED_TELEMETRY_BETA``,
+    and ``OTEL_TRACES_EXPORTER=otlp`` together (verified empirically against a
+    real headless ``claude`` session with a diagnostic hook: absent with any one
+    of the three missing, present with all three). The framework's own
+    ``lib/polecat/env_contract.py`` ``TELEMETRY_ENV`` already forwards this
+    whole contract, so any session with telemetry enabled the way the
+    framework sets it up carries this context into every hook subprocess,
+    this one included.
+
+    That context is one W3C trace/span id **per Claude Code process**, not one
+    per tool call — confirmed by comparing ``TRACEPARENT`` across two
+    sequential tool calls in one session: identical trace id and identical
+    span id both times. So extracting it and using it as the parent nests
+    every rule-evaluation span under the session's own trace — real,
+    verifiable linkage to Claude Code's native export when both reach the same
+    collector — but it does not, and cannot on this harness, distinguish one
+    tool call's spans from another's: that distinction is what ``sweep_id``
+    carries instead (see ``sink_for``'s docstring).
+
+    Returns ``None`` — meaning "no parent, start a fresh root" — exactly when
+    ``TRACEPARENT`` is absent or unparseable, so a session without the full
+    contract populated degrades to today's behavior with no error.
+    """
+    traceparent = os.environ.get("TRACEPARENT")
+    if not traceparent:
+        return None
+    try:
+        from opentelemetry.trace import get_current_span
+        from opentelemetry.trace.propagation.tracecontext import (
+            TraceContextTextMapPropagator,
+        )
+    except ImportError:
+        return None
+    carrier = {"traceparent": traceparent}
+    tracestate = os.environ.get("TRACESTATE")
+    if tracestate:
+        carrier["tracestate"] = tracestate
+    ctx = TraceContextTextMapPropagator().extract(carrier=carrier)
+    # An unparseable traceparent extracts to a context with no span in it
+    # rather than raising — the propagator degrades silently by design. That
+    # context is harmless to hand to start_span (an invalid parent starts a
+    # fresh root, the same outcome as passing None), but returning it here
+    # would blur "we got a real parent" with "extraction quietly no-opped".
+    # Checking the span it actually carries keeps the two distinguishable.
+    if not get_current_span(ctx).get_span_context().is_valid:
+        return None
+    return ctx
+
+
 def sink_for(
     config: Config | None,
     ctx: HookContext,
     eval_config: evaluator.Config,
     loaded: dict[str, rules.Rule],
     temperature: str | None = None,
+    sweep_id: str | None = None,
 ) -> Callable[[evaluator.EvalOutcome], None] | None:
     """Build the ``on_outcome`` callback ``evaluator.check()`` calls once per
     rule, or ``None`` when this emission path is off.
@@ -155,6 +226,14 @@ def sink_for(
     the one reading ``handlers.evaluate`` already took for this sweep in as
     ``temperature`` so both sinks report the same value; omitted, this
     computes its own (only relevant for a caller that runs this sink alone).
+
+    ``sweep_id`` is likewise taken from the caller when given, so this sink's
+    spans and ``evaluator_trace``'s JSON Lines records carry the identical id
+    for the same tool call — the join key a reader needs to line up one
+    channel's record against the other's span for the same evaluation, rather
+    than two independently-generated ids that merely describe the same sweep.
+    Omitted, this generates its own (only relevant for a caller that runs this
+    sink alone).
     """
     if config is None:
         return None
@@ -179,10 +258,12 @@ def sink_for(
         print(f"rbg otel trace: could not open {config.path}: {exc!r}", file=sys.stderr)
         return None
 
-    sweep_id = uuid.uuid4().hex[:12]
+    if sweep_id is None:
+        sweep_id = uuid.uuid4().hex[:12]
     if temperature is None:
         temperature = evaluator_trace.sweep_temperature(ctx.session_id)
     content = evaluator.render_content(ctx.tool, ctx.raw.get("tool_input"))
+    parent_ctx = _extract_parent_context()
     reported_failure = False
 
     def _on_outcome(outcome: evaluator.EvalOutcome) -> None:
@@ -215,6 +296,7 @@ def sink_for(
         try:
             span = tracer.start_span(
                 f"rbg.rule_evaluation.{outcome.slug}",
+                context=parent_ctx,
                 start_time=start_ns,
                 attributes=attrs,
             )
