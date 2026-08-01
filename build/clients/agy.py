@@ -9,6 +9,8 @@
 - commands/<name>.md    -> skills/cmd-<name>/SKILL.md, frontmatter
   `type: command` rewritten to `type: skill`; the commands/ dir itself is
   dropped (agy has no commands/ concept).
+- agents/<name>.md      -> agents/<name>/agent.json (agy customAgent schema
+  with inline prompt body, toolNames translated, and default includeSections).
 - axioms with `trigger: always_on` -> rules/<source_file>
 """
 
@@ -17,6 +19,8 @@ import re
 import shutil
 from pathlib import Path
 
+import yaml
+
 from build.axioms import load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
@@ -24,6 +28,22 @@ from build.errors import BuildError
 _PLUGIN_ROOT_RE = re.compile(r'"?\$\{AGY_PLUGIN_ROOT\}/([^"\s]*)"?')
 _COMMAND_TYPE_RE = re.compile(r"(?m)^type:\s*command\s*$")
 _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
+_FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
+
+_TOOL_MAP = {
+    "Read": "read_file",
+    "Write": "write_file",
+    "Edit": "replace",
+    "Bash": "run_shell_command",
+    "Grep": "grep_search",
+    "Glob": "glob",
+    "AskUserQuestion": "ask_question",
+    "Agent": "invoke_subagent",
+    "WebSearch": "search_web",
+    "WebFetch": "read_url_content",
+    "TodoWrite": "todo_write",
+    "NotebookEdit": "notebook_edit",
+}
 
 # agy's five hook events, split by the structure each one takes. The tool
 # events group their handlers under a `matcher` regex; the rest take a flat
@@ -32,6 +52,7 @@ _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
 # "Hook Spec Fields" and "Supported Event Types" sections define them.
 _GROUPED_EVENTS = ("PreToolUse", "PostToolUse")
 _FLAT_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
+_AGY_INCLUDE_SECTIONS = ["user_information", "skills", "messaging", "mcp_servers"]
 
 
 def adapt(build_dir: Path, ctx: BuildContext) -> None:
@@ -56,6 +77,7 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
         _write_json(build_dir / "mcp_config.json", _checked_mcp(servers, ctx))
 
     _convert_commands_to_skills(build_dir)
+    _adapt_agents(build_dir)
 
     always_on = load_always_on_axioms(build_dir / "axioms")
     if always_on:
@@ -191,6 +213,89 @@ def _convert_commands_to_skills(build_dir: Path) -> None:
         dst.write_text(content, encoding="utf-8")
 
     shutil.rmtree(commands_dir)
+
+
+def _translate_tool_name(tool: str) -> str:
+    if tool in _TOOL_MAP:
+        return _TOOL_MAP[tool]
+    if tool.startswith("mcp__"):
+        return tool.replace("__", "_")
+    return tool
+
+
+def _adapt_agents(build_dir: Path) -> None:
+    agents_dir = build_dir / "agents"
+    if not agents_dir.is_dir():
+        return
+
+    md_files = sorted(agents_dir.glob("*.md"))
+    if not md_files:
+        return
+
+    for md_file in md_files:
+        content = md_file.read_text(encoding="utf-8")
+        m = _FRONTMATTER_RE.match(content)
+        if not m:
+            continue
+
+        try:
+            frontmatter = yaml.safe_load(m.group(1))
+        except yaml.YAMLError as e:
+            raise BuildError(f"{md_file}: failed to parse YAML frontmatter: {e}")
+
+        if not isinstance(frontmatter, dict):
+            continue
+
+        name = frontmatter.get("name") or md_file.stem
+        if not re.match(r"^[a-z0-9_-]+$", name):
+            raise BuildError(
+                f"{md_file}: invalid agy agent name {name!r} — must be lowercase letters, numbers, hyphens, or underscores"
+            )
+
+        description = frontmatter.get("description")
+        if not description or not str(description).strip():
+            raise BuildError(f"{md_file}: missing required frontmatter field 'description'")
+
+        hidden = bool(frontmatter.get("hidden", False))
+        body = m.group(2).lstrip("\n")
+
+        raw_tools = frontmatter.get("tools", [])
+        if isinstance(raw_tools, str):
+            raw_tools = [t.strip() for t in raw_tools.split(",") if t.strip()]
+        elif not isinstance(raw_tools, list):
+            raw_tools = []
+
+        tool_names: list[str] = []
+        seen: set[str] = set()
+        for t in raw_tools:
+            if not isinstance(t, str):
+                continue
+            mapped = _translate_tool_name(t)
+            if mapped and mapped not in seen:
+                seen.add(mapped)
+                tool_names.append(mapped)
+
+        agent_data = {
+            "name": name,
+            "description": str(description).strip(),
+            "hidden": hidden,
+            "config": {
+                "customAgent": {
+                    "systemPromptSections": [
+                        {"title": "Agent System Instructions", "content": body}
+                    ],
+                    "toolNames": tool_names,
+                    "systemPromptConfig": {
+                        "includeSections": list(_AGY_INCLUDE_SECTIONS)
+                    },
+                }
+            },
+        }
+
+        agent_dir = agents_dir / name
+        agent_dir.mkdir(parents=True, exist_ok=True)
+        _write_json(agent_dir / "agent.json", agent_data)
+        md_file.unlink()
 
 
 def _write_json(path: Path, data: dict) -> None:

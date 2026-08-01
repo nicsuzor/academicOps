@@ -36,33 +36,33 @@ def built(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="module")
-def built_ida(tmp_path_factory) -> Path:
-    """The real ida plugin, not a fixture — see test_polecat_cli_ships_with_ida."""
-    dist_root = tmp_path_factory.mktemp("build-dist-ida")
+def built_orchestrate(tmp_path_factory) -> Path:
+    """The real orchestrate plugin, not a fixture — see test_polecat_cli_ships_with_orchestrate."""
+    dist_root = tmp_path_factory.mktemp("build-dist-orchestrate")
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["ida"],
+        plugins=["orchestrate"],
         version=VERSION,
     )
     return dist_root
 
 
-def test_polecat_cli_ships_with_ida(built_ida):
+def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
     """`skills/dispatch` invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`, and that
     path is true only because `manifest/plugin.toml` injects it from `lib/`.
 
-    Drop those `[[shared]]` stanzas — which the queued ida/james package split
-    has to move — and nothing fails at build time. Dispatch fails at runtime,
-    inside a container, with file-not-found. This is the check that turns that
-    into a build-time failure instead.
+    Drop those `[[shared]]` stanzas — which the orchestrate plugin requires — and
+    nothing fails at build time. Dispatch fails at runtime, inside a container,
+    with file-not-found. This is the check that turns that into a build-time
+    failure instead.
     """
     for client in ("claude", "agy"):
-        polecat = built_ida / f"ida-{client}" / "polecat"
-        assert (polecat / "cli.py").is_file(), f"ida-{client} ships no polecat/cli.py"
+        polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
+        assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
         assert (polecat / "env_contract.py").is_file(), (
-            f"ida-{client} ships cli.py without the env_contract it imports"
+            f"orchestrate-{client} ships cli.py without the env_contract it imports"
         )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()
@@ -443,6 +443,48 @@ def test_agy_command_converted_to_skill(built):
     assert "type: skill" in content
     assert "type: command" not in content
     assert not (built / "fixture-alpha-agy" / "commands").exists()
+
+
+def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
+    import json
+    import yaml
+
+    dist_root = tmp_path_factory.mktemp("build-dist-agents")
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["ida"],
+        version=VERSION,
+    )
+
+    # Check claude dist retains original Claude Code canonical tool names in agents/ida.md
+    claude_ida = dist_root / "ida-claude" / "agents" / "ida.md"
+    assert claude_ida.is_file()
+    claude_fm = yaml.safe_load(claude_ida.read_text().split("---")[1])
+    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion"]
+
+    # Check agy dist converts agents/ida.md to agents/ida/agent.json schema
+    agy_ida_json = dist_root / "ida-agy" / "agents" / "ida" / "agent.json"
+    assert agy_ida_json.is_file()
+    assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
+
+    agent_data = json.loads(agy_ida_json.read_text())
+    assert agent_data["name"] == "ida"
+    assert "interactive face" in agent_data["description"]
+    assert agent_data["hidden"] is False
+
+    custom_agent = agent_data["config"]["customAgent"]
+    assert custom_agent["toolNames"] == ["read_file", "Skill", "invoke_subagent", "ask_question"]
+    assert len(custom_agent["systemPromptSections"]) == 1
+    assert custom_agent["systemPromptSections"][0]["title"] == "Agent System Instructions"
+    assert "# Ida — The Interactive Face" in custom_agent["systemPromptSections"][0]["content"]
+    assert custom_agent["systemPromptConfig"]["includeSections"] == [
+        "user_information",
+        "skills",
+        "messaging",
+        "mcp_servers",
+    ]
 
 
 def test_axioms_always_on_wired_per_client(built):
