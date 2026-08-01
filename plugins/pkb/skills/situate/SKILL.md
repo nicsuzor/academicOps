@@ -1,7 +1,7 @@
 ---
 name: situate
 description: Strategic intake — turn a hydrated ask into exactly ONE valued, well-connected task on the graph, marked needs_decomposition, then stop. Fires after hydrate for any non-trivial ask. Never decomposes, briefs, or dispatches.
-agent: "pkb:pauli"
+agent: "pauli"
 ---
 
 # Situate

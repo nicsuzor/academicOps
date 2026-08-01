@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Effectual planning — build a plan from the means at hand, treat it as a hypothesis, and sequence the next step by what it teaches rather than by what feels urgent. The entry point for "plan this", "what should I do next", and "where does this work go". Routes into hydrate, situate, decompose, and brief; wires the result onto the graph.
-agent: "aops-pkb:pauli"
+agent: "pauli"
 ---
 
 # Planner

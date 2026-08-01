@@ -1,7 +1,7 @@
 ---
 name: decompose
 description: Cut a situated task into an unexploded subtask DAG when it comes due, compose the process it runs under, and emit its review steps as real blocking nodes. Structure and process only — no delegation briefs, no dispatch.
-agent: "aops-pkb:pauli"
+agent: "pauli"
 ---
 
 # Decompose

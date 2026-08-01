@@ -1,7 +1,7 @@
 ---
 name: graph-maintenance
 description: Keep the PKB graph structurally sound — wire weighted contributes_to edges from work to targets, and run garden passes over parentage, wikilinks, duplicates, and orphans. Fires on graph-hygiene asks, never on valuation or decomposition. Bound to pauli, the graph's sole shaper.
-agent: "aops-pkb:pauli"
+agent: "pauli"
 ---
 
 # Graph Maintenance

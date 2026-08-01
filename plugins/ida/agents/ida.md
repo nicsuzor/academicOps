@@ -8,9 +8,6 @@ tools:
   - Skill
   - Agent
   - AskUserQuestion
-subagents:
-  - "ida:james"
-  - "pkb:pauli"
 ---
 
 # Ida — The Interactive Face

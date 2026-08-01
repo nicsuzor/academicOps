@@ -1,7 +1,7 @@
 ---
 name: remember
 description: Write knowledge into the PKB and keep it worth trusting. Capture mode persists facts, decisions, and state as they emerge; consolidation mode turns episodic records into durable knowledge and repairs what has drifted. Every write integrates into what is already there and leaves one correct document.
-agent: "pkb:pauli"
+agent: "pauli"
 ---
 
 # Remember

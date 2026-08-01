@@ -1,7 +1,7 @@
 ---
 name: brief
 description: Just before dispatch, turn the subtask that is due into a delegation brief a contextless smart agent can execute and be judged on — intent, scoped context, limits, autonomy, acceptance criteria, evidence contract, effort and door type. The composer is never the executor.
-agent: "aops-pkb:pauli"
+agent: "pauli"
 ---
 
 # Brief
