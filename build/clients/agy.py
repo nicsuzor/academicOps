@@ -275,26 +275,24 @@ def _adapt_agents(build_dir: Path) -> None:
                 seen.add(mapped)
                 tool_names.append(mapped)
 
-        agent_data = {
+        new_fm = {
             "name": name,
             "description": str(description).strip(),
+            "tools": tool_names,
             "hidden": hidden,
-            "config": {
-                "customAgent": {
-                    "systemPromptSections": [
-                        {"title": "Agent System Instructions", "content": body}
-                    ],
-                    "toolNames": tool_names,
-                    "systemPromptConfig": {
-                        "includeSections": list(_AGY_INCLUDE_SECTIONS)
-                    },
-                }
-            },
         }
+
+        if not body.startswith("# Agent System Instructions"):
+            body_content = f"# Agent System Instructions\n\n{body}"
+        else:
+            body_content = body
+
+        fm_yaml = yaml.dump(new_fm, sort_keys=False).strip()
+        new_md_content = f"---\n{fm_yaml}\n---\n\n{body_content}\n"
 
         agent_dir = agents_dir / name
         agent_dir.mkdir(parents=True, exist_ok=True)
-        _write_json(agent_dir / "agent.json", agent_data)
+        (agent_dir / "agent.md").write_text(new_md_content, encoding="utf-8")
         md_file.unlink()
 
 

@@ -464,27 +464,21 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     claude_fm = yaml.safe_load(claude_ida.read_text().split("---")[1])
     assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion"]
 
-    # Check agy dist converts agents/ida.md to agents/ida/agent.json schema
-    agy_ida_json = dist_root / "ida-agy" / "agents" / "ida" / "agent.json"
-    assert agy_ida_json.is_file()
+    # Check agy dist converts agents/ida.md to agents/ida/agent.md with translated tools
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
+    assert agy_ida_md.is_file()
     assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
 
-    agent_data = json.loads(agy_ida_json.read_text())
-    assert agent_data["name"] == "ida"
-    assert "interactive face" in agent_data["description"]
-    assert agent_data["hidden"] is False
+    parts = agy_ida_md.read_text().split("---")
+    agy_fm = yaml.safe_load(parts[1])
+    assert agy_fm["name"] == "ida"
+    assert "interactive face" in agy_fm["description"]
+    assert agy_fm["hidden"] is False
+    assert agy_fm["tools"] == ["read_file", "Skill", "invoke_subagent", "ask_question"]
 
-    custom_agent = agent_data["config"]["customAgent"]
-    assert custom_agent["toolNames"] == ["read_file", "Skill", "invoke_subagent", "ask_question"]
-    assert len(custom_agent["systemPromptSections"]) == 1
-    assert custom_agent["systemPromptSections"][0]["title"] == "Agent System Instructions"
-    assert "# Ida — The Interactive Face" in custom_agent["systemPromptSections"][0]["content"]
-    assert custom_agent["systemPromptConfig"]["includeSections"] == [
-        "user_information",
-        "skills",
-        "messaging",
-        "mcp_servers",
-    ]
+    body = parts[2]
+    assert "# Agent System Instructions" in body
+    assert "# Ida — The Interactive Face" in body
 
 
 def test_axioms_always_on_wired_per_client(built):
