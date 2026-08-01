@@ -1,0 +1,12 @@
+# Shared material this plugin needs from lib/, injected at build time. Delete
+# this file if the plugin needs none — an absent file and an empty one both
+# mean "declares nothing", and both build clean.
+#
+# `from` is a path under lib/; a file is copied as one file, a directory is
+# copied recursively. `to` is the destination inside the plugin's build tree.
+# Neither may contain a `..` segment. `[[shared]]` carrying `from` and `to` is
+# the only shape the build accepts — anything else fails the build by name.
+#
+# [[shared]]
+# from = "my_module"
+# to = "my_module"
