@@ -839,8 +839,11 @@ def test_nothing_flagged_is_a_clean_no_op(hooks_dir_with_axioms, transport, monk
 
 
 def test_evaluate_fails_open_when_the_evaluator_errors(hooks_dir_with_axioms, monkeypatch, capsys):
-    """A broken endpoint must cost the agent nothing but a stderr line. It must
-    never manufacture an advisory, and it must never raise into dispatch."""
+    """A broken endpoint must never manufacture a rule verdict and must never
+    raise into dispatch. It costs the agent a stderr line on every occurrence,
+    and — the first time in the session — a one-time outage notice on the
+    wire (`evaluator.claim_outage_once`); see the block comment above these
+    tests for the current contract."""
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
 
@@ -848,7 +851,10 @@ def test_evaluate_fails_open_when_the_evaluator_errors(hooks_dir_with_axioms, mo
         raise OSError("connection refused")
 
     monkeypatch.setattr(evaluator, "_post", explode)
-    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    result = handlers.evaluate(_bash_ctx(hooks, cwd))
+    assert result is not None  # first outage this session: the one-time notice
+    assert result.kind is Kind.ADVISE
+    assert "rule evaluator is not answering" in result.inject_text
     assert "connection refused" in capsys.readouterr().err
 
 
@@ -856,7 +862,10 @@ def test_evaluate_fails_open_on_a_malformed_response(hooks_dir_with_axioms, tran
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
     transport.respond = lambda payload: {"nothing": "useful"}
-    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    result = handlers.evaluate(_bash_ctx(hooks, cwd))
+    assert result is not None  # first outage this session: the one-time notice
+    assert result.kind is Kind.ADVISE
+    assert "rule evaluator is not answering" in result.inject_text
 
 
 def test_evaluate_says_nothing_when_there_is_no_tool_call(
@@ -1329,21 +1338,24 @@ def test_dispatch_end_to_end_unconfigured_is_a_silent_no_op(built_cope_plugin, p
     assert result.stderr.strip() == ""
 
 
-# A degradation is reported on stderr and nowhere else. It used to be attached
-# to the hook response as well, so the person whose rules stopped being checked
-# saw one line in `systemMessage`; that channel was removed with
-# lib/hooks/degraded.py (89733bf8) and the current contract is stated in
-# plugins/rbg/hooks/evaluator.py's module docstring: "Reporting means stderr, on
-# every occurrence — there is no once-per-session dedup or hook-response
-# injection in this runtime." The assertions below therefore read stderr. The
-# *content* of every notice is unchanged, so nothing that was checked has
-# stopped being checked; only the channel moved.
+# A misconfiguration (evaluator.DEGRADED_CONFIG, via `_note`) is reported on
+# stderr only, on every occurrence — see plugins/rbg/hooks/evaluator.py's
+# module docstring. An unreachable evaluator (evaluator.DEGRADED_EVALUATOR) is
+# different: it can recur on every tool call for a session's whole duration,
+# so it additionally gets one hook-response notice per session
+# (`evaluator.claim_outage_once`, plugin-local — not the modular
+# lib/hooks/degraded.py that commit 89733bf8 removed repo-wide; this is a
+# smaller, single-plugin mechanism built for aops_b62f583d). The assertions
+# below read both channels accordingly: stderr on every call, the wire only
+# on the first call of a session.
 
 
 def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin, project_cwd):
     """A configured endpoint that is not listening must not take the session
-    down with it: exit 0, no verdict, nothing on the wire at all — and the
-    failure named on stderr, naming the rules that went unchecked."""
+    down with it: exit 0, no rule verdict — and the failure named on stderr,
+    naming the rules that went unchecked. It is the first call of this
+    session, so the one-time outage notice is on the wire too; that is not a
+    rule verdict either, and it carries no `decision`/`permissionDecision`."""
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
     raw = {**_PRETOOLUSE, "session_id": "unreachable-evaluator", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
@@ -1351,10 +1363,10 @@ def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin,
     assert "rule evaluator did not answer" in result.stderr
     assert "not being checked" in result.stderr
 
-    # An evaluator that could not answer produces no verdict, so there is no
-    # advisory and no response at all — which is also, and more strongly than
-    # the old assertion, no permission decision.
-    assert result.stdout.strip() == ""
+    out = json.loads(result.stdout)
+    assert "rule evaluator is not answering" in out["hookSpecificOutput"]["additionalContext"]
+    assert "decision" not in out
+    assert "permissionDecision" not in out["hookSpecificOutput"]
 
 
 def test_dispatch_end_to_end_partial_configuration_says_so_and_stands_down(
@@ -1434,12 +1446,13 @@ def test_dispatch_end_to_end_reports_a_rule_file_that_is_never_evaluated(
 def test_dispatch_end_to_end_reports_the_same_fault_on_every_tool_call(
     built_cope_plugin, project_cwd
 ):
-    """One hook invocation is one process, so there is nowhere to remember that
-    a fault was already reported without keeping state on disk. This runtime
-    keeps none: the notice goes to stderr on every occurrence, and the log is
-    never rate-limited or dropped. Pinned both calls, because "reported once"
-    and "reported every time" are the two possible contracts and a reader of
-    the log needs to know which one they are looking at."""
+    """One hook invocation is one process, so stderr carries the same fault
+    on every occurrence — never rate-limited or dropped, because the log is
+    not the channel a person is watching. The hook-response channel is
+    different on purpose: it is rate-limited to once per session
+    (`evaluator.claim_outage_once`), so the first call gets the notice and the
+    second — same session, same recurring fault — gets none. Pinned both
+    calls so a reader can see which contract each channel follows."""
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
     raw = {**_PRETOOLUSE, "session_id": "repeated-fault", "cwd": str(project_cwd)}
     first = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
@@ -1447,8 +1460,9 @@ def test_dispatch_end_to_end_reports_the_same_fault_on_every_tool_call(
 
     assert "rule evaluator did not answer" in first.stderr
     assert "rule evaluator did not answer" in second.stderr
-    # Neither call puts a fault report on the wire.
-    assert first.stdout.strip() == ""
+    # First call this session: the one-time notice is on the wire.
+    assert "rule evaluator is not answering" in first.stdout
+    # Second call, same session: already announced, so nothing on the wire.
     assert second.stdout.strip() == ""
 
 

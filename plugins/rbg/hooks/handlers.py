@@ -85,9 +85,13 @@ def evaluate(ctx: HookContext) -> Result | None:
     gets one line naming what was flagged, because a check that only ever speaks
     to the agent leaves the person whose session it is with no idea it fired.
 
-    An evaluator that could not answer is printed to stderr and nowhere else.
-    The call still proceeds: a rule that went unjudged is not a rule that
-    passed, and it is not grounds to hold anything up.
+    An evaluator that could not answer is printed to stderr on every
+    occurrence, and named to the agent and the person watching once per
+    session (``evaluator.claim_outage_once``) — an outage that recurs on every
+    tool call for a session's whole duration is worth one notice, not silence
+    and not a line per call. The call still proceeds either way: a rule that
+    went unjudged is not a rule that passed, and it is not grounds to hold
+    anything up.
     """
     config = evaluator.resolve()
     if config is None:
@@ -100,22 +104,31 @@ def evaluate(ctx: HookContext) -> Result | None:
     policies = [(rule.slug, rule.body) for rule in sorted(loaded.values(), key=lambda r: r.slug)]
     matches, failures = evaluator.check(config, policies, content, ctx.hooks_dir)
 
+    outage = None
     if failures:
-        print(
-            "DEGRADED: ",
+        detail = (
             f"rbg: the rule evaluator did not answer for {len(failures)} of "
-            f"{len(policies)} rules, so those rules are not being checked",
-            "; ".join(failures),
-            file=sys.stderr,
+            f"{len(policies)} rules, so those rules are not being checked"
         )
+        print("DEGRADED: ", detail, "; ".join(failures), file=sys.stderr)
+        if evaluator.claim_outage_once(ctx.session_id):
+            agent_o, user_o = load_message_pair(ctx.hooks_dir, "evaluator-outage")
+            outage = warn(
+                agent_o.replace("{detail}", detail) if agent_o else detail,
+                user_o.replace("{detail}", detail) if user_o else None,
+            )
 
     if not matches:
-        return None
+        return outage
     agent, user = load_message_pair(ctx.hooks_dir, "verdict")
-    return warn(
+    verdict = warn(
         agent.replace("{rules}", _matched(matches, loaded)).replace("{call}", content),
         user.replace("{rules}", _flagged(matches)) if user else None,
     )
+    if outage is None:
+        return verdict
+    combined_user = " ".join(t for t in (verdict.user_text, outage.user_text) if t) or None
+    return warn(f"{verdict.inject_text}\n\n{outage.inject_text}", combined_user)
 
 
 def _flagged(matches: list[evaluator.Verdict]) -> str:

@@ -34,10 +34,13 @@ none of them produce an advisory either. They are reported and the tool call
 proceeds untouched. There are no retries: a retry in this position multiplies
 the stall the agent is waiting through.
 
-Reporting means stderr, on every occurrence — there is no once-per-session
-dedup or hook-response injection in this runtime; see ``_note``. A session
-with nothing configured is not a degraded one, and stays silent — see
-``resolve``.
+A misconfiguration (``_note``) is reported on stderr on every occurrence — it
+is a mistake someone made and is rare enough that repetition costs little. An
+evaluator that was configured correctly but could not be reached is different:
+it can recur on every single tool call for a session's whole duration, so
+``claim_outage_once`` rate-limits that specific case to one hook response per
+session; see ``handlers.evaluate``. A session with nothing configured is not a
+degraded one, and stays silent either way — see ``resolve``.
 
 The whole check runs inside one deadline. Two things enforce it, because either
 alone leaks: the remaining budget is passed down as the socket timeout, so no
@@ -47,9 +50,11 @@ that ignores its timeout cannot hold up the response either.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -58,6 +63,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from dispatch import load_message_pair
+
+#: Where the once-per-session outage marker lives, under
+#: ``tempfile.gettempdir()``. Plugin-local by design — see ``claim_outage_once``.
+_OUTAGE_MARKER_DIR = "aops-rbg-evaluator-outage"
 
 #: Wire protocols ``COPE_EVALUATOR_PROTOCOL`` accepts.
 PROTOCOLS = ("cope", "openai")
@@ -69,6 +78,37 @@ DEGRADED_CONFIG = "cope-config"
 #: A configured evaluator could not answer, so the rules it was asked about
 #: went unchecked.
 DEGRADED_EVALUATOR = "cope-evaluator"
+
+
+def claim_outage_once(session_id: str) -> bool:
+    """True for exactly one hook process in this session; every other call
+    for the same session gets ``False``.
+
+    An unreachable evaluator can recur on every tool call for a session's
+    whole duration, so the outage is worth naming to the agent and the person
+    watching exactly once — see ``handlers.evaluate``, the only caller. One
+    hook invocation is one process, so the gate cannot live in memory; it is a
+    zero-length marker file per session, claimed with ``O_CREAT | O_EXCL``
+    under the directory the OS names for temporary files. No path is compiled
+    in, and the marker name is a digest so a session id read from the payload
+    can never name a path of its own.
+
+    A failure to claim and an already-claimed marker are the same answer on
+    purpose: both mean this process does not speak, and the stderr line
+    (``handlers.evaluate``) has already been written either way. A session id
+    that is empty or missing can never claim — an unbounded notice would be
+    worse than the stderr line by itself.
+    """
+    if not session_id:
+        return False
+    try:
+        root = Path(tempfile.gettempdir()) / _OUTAGE_MARKER_DIR
+        root.mkdir(parents=True, exist_ok=True)
+        marker = root / hashlib.sha256(session_id.encode()).hexdigest()[:32]
+        os.close(os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+        return True
+    except OSError:
+        return False
 
 #: Ceiling on the whole evaluation, in seconds, when ``COPE_EVALUATOR_TIMEOUT``
 #: is unset. Every rule is evaluated inside this one budget, so it is the
