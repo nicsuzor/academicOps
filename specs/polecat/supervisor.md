@@ -161,6 +161,6 @@ extensions (`partial` is part of that canonical set).
 
 - [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- `plugins/pkb/skills/pull/SKILL.md` and `plugins/ida/skills/dispatch/SKILL.md`
+- `plugins/pkb/skills/pull/SKILL.md` and `plugins/orchestrate/skills/dispatch/SKILL.md`
   — The operative skills: claiming a unit, and delivering an epic's children to a
   terminal state.

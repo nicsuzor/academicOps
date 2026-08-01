@@ -30,7 +30,7 @@ the container.
 - [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/ida/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
+- [[plugins/orchestrate/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
   pathway to a polecat container; a raw `polecat run` outside this skill bypasses
   the dispatch contract
 - [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
@@ -92,7 +92,7 @@ the container.
    moved, the new commit must be present on the remote. A delivery-guard failure
    exits non-zero naming the task. Polecat detects; it does not repair. Writing
    to the knowledge base belongs to its sole writer, so the task is reopened by
-   the dispatcher through pauli ([[plugins/ida/skills/dispatch/SKILL.md]] §6) —
+   the dispatcher through pauli ([[plugins/orchestrate/skills/dispatch/SKILL.md]] §6) —
    the guarantee is that a caught delivery loss never leaves a terminal status
    standing, and it takes both halves to hold.
 
@@ -113,7 +113,7 @@ the container.
    namespace. The repair is the dispatcher's — it reopens the task through
    pauli on a non-zero exit for a `done` or `partial` unit. Nothing enforces
    that half; the obligation sits on the dispatcher, in
-   [`dispatch`](../../plugins/ida/skills/dispatch/SKILL.md) §6.
+   [`dispatch`](../../plugins/orchestrate/skills/dispatch/SKILL.md) §6.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
 5. **One plugin path.** Plugins load only from the image's own plugin cache. No
@@ -127,7 +127,7 @@ the container.
    certifying run therefore needs both a clean committed tree and a fresh
    `make docker-build`, which builds `dist/` from the working tree rather than
    from `HEAD`. Nothing enforces either; the obligation sits on the dispatcher,
-   in [`dispatch`](../../plugins/ida/skills/dispatch/SKILL.md) §3.
+   in [`dispatch`](../../plugins/orchestrate/skills/dispatch/SKILL.md) §3.
 
 ## What `run` does not do
 

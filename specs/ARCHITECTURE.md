@@ -123,7 +123,7 @@ she ships with the review machinery that commissions her.
 
 Her independence is unaffected, because it never rested on packaging. It comes
 from reviewing blind to the other reviewers and from james treating every
-verdict as input rather than truth (`plugins/ida/skills/strategic-review/SKILL.md`).
+verdict as input rather than truth (`plugins/orchestrate/skills/strategic-review/SKILL.md`).
 What packaging does decide is whether she resolves at all: a shipping
 instruction naming a reviewer who does not ship leaves the review short-handed
 while reading as complete.
