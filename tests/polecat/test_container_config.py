@@ -82,7 +82,11 @@ def test_configured_but_a_file_not_a_directory_is_a_hard_failure(tmp_path, monke
 
 def _base_mocks(monkeypatch, tmp_path, config):
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
-    monkeypatch.setattr(cli, "load_config", lambda: config)
+    cfg = dict(config)
+    cfg.setdefault(
+        "git_identity", {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}
+    )
+    monkeypatch.setattr(cli, "load_config", lambda: cfg)
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
     monkeypatch.setattr(
         cli, "setup_staging", lambda staging_dir, mcp_url, agent_home, agent_cmd=None: None
@@ -232,11 +236,12 @@ def test_get_env_forwards_carries_cope_config_into_the_container(monkeypatch):
         monkeypatch.delenv(name, raising=False)
 
     config = {
+        "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"},
         "cope": {
             "evaluator_url": "https://evaluator.example/v1/label",
             "evaluator_protocol": "cope",
             "evaluator_model": "test-model",
-        }
+        },
     }
     env = cli.get_env_forwards(config)
     assert env["COPE_EVALUATOR_URL"] == "https://evaluator.example/v1/label"
@@ -246,14 +251,56 @@ def test_get_env_forwards_carries_cope_config_into_the_container(monkeypatch):
 
 def test_host_env_var_wins_over_cope_config(monkeypatch):
     monkeypatch.setenv("COPE_EVALUATOR_MODEL", "ambient-model")
-    env = cli.get_env_forwards({"cope": {"evaluator_model": "configured-model"}})
+    config = {
+        "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"},
+        "cope": {"evaluator_model": "configured-model"},
+    }
+    env = cli.get_env_forwards(config)
     assert env["COPE_EVALUATOR_MODEL"] == "ambient-model"
 
 
-def test_get_env_forwards_still_works_with_no_config_argument(monkeypatch):
-    """Callers that never pass a config (the pre-existing call shape) must not
-    break — config is optional and defaults to empty."""
+def test_get_env_forwards_requires_git_identity(monkeypatch):
+    """Calling get_env_forwards without git_identity in config fails loudly."""
     for name in ("COPE_EVALUATOR_URL", "COPE_EVALUATOR_PROTOCOL", "COPE_EVALUATOR_MODEL"):
         monkeypatch.delenv(name, raising=False)
-    env = cli.get_env_forwards()
-    assert "COPE_EVALUATOR_URL" not in env
+    with pytest.raises(SystemExit):
+        cli.get_env_forwards()
+
+
+# ---------------------------------------------------------------------------
+# resolve_git_identity: strictly from polecat.yaml git_identity
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_git_identity_success():
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
+    identity = cli.resolve_git_identity(config)
+    assert identity == {
+        "GIT_AUTHOR_NAME": "botnicbot",
+        "GIT_AUTHOR_EMAIL": "botnicbot@users.noreply.github.com",
+        "GIT_COMMITTER_NAME": "botnicbot",
+        "GIT_COMMITTER_EMAIL": "botnicbot@users.noreply.github.com",
+    }
+
+
+def test_missing_git_identity_block_fails(monkeypatch):
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "operator-name")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "operator-email@example.com")
+    with pytest.raises(SystemExit):
+        cli.resolve_git_identity({})
+
+
+def test_incomplete_git_identity_fails():
+    with pytest.raises(SystemExit):
+        cli.resolve_git_identity({"git_identity": {"name": "botnicbot"}})
+    with pytest.raises(SystemExit):
+        cli.resolve_git_identity({"git_identity": {"email": "bot@example.com"}})
+
+
+def test_get_env_forwards_does_not_fallback_to_user_env(monkeypatch):
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "user-name")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "user-email@example.com")
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
+    env = cli.get_env_forwards(config)
+    assert env["GIT_AUTHOR_NAME"] == "botnicbot"
+    assert env["GIT_AUTHOR_EMAIL"] == "botnicbot@users.noreply.github.com"

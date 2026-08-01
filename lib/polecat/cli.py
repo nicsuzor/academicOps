@@ -172,10 +172,43 @@ def resolve_cope_evaluator(config):
     return env
 
 
+def resolve_git_identity(config):
+    """Resolve git author/committer identity from polecat config (polecat.yaml).
+
+    Must be defined under `git_identity` (keys: `name` and `email`).
+    No fallbacks to host environment (os.environ) or user git config to avoid
+    inheriting operator identity. A missing or incomplete identity is a hard failure.
+    """
+    config = config or {}
+    identity = config.get("git_identity")
+    if not isinstance(identity, dict):
+        fail(
+            "no git identity configured. Set `git_identity` ({name: ..., email: ...}) "
+            "in polecat config (polecat.yaml). There is no default or env fallback."
+        )
+
+    name = identity.get("name")
+    email = identity.get("email")
+
+    if not name or not email:
+        fail("git_identity in polecat config must contain both `name` and `email`.")
+
+    return {
+        "GIT_AUTHOR_NAME": str(name),
+        "GIT_AUTHOR_EMAIL": str(email),
+        "GIT_COMMITTER_NAME": str(name),
+        "GIT_COMMITTER_EMAIL": str(email),
+    }
+
+
 def get_env_forwards(config=None):
     """Build the environment forwarded into the container."""
     config = config or {}
     env = {}
+
+    # Git identity MUST come strictly from polecat.yaml git_identity block.
+    # No fallback to host environment.
+    env.update(resolve_git_identity(config))
 
     oauth = os.environ.get("AOPS_CC_OAUTH_TOKEN") or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
     if oauth:
@@ -191,7 +224,10 @@ def get_env_forwards(config=None):
             if os.environ.get(key):
                 env[key] = os.environ[key]
 
+    git_keys = {"GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"}
     for key in FORWARDED_ENV:
+        if key in git_keys:
+            continue
         if os.environ.get(key):
             env[key] = os.environ[key]
 
