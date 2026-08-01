@@ -215,16 +215,18 @@ An upstream that is unreachable, slow, or answering with anything other than `0`
 
 ### What the CUDA requirement is worth
 
-Not a preference. The same host, the same `cope-b-a4b` Q4_K_M, the same 23 live rules (22 axioms and one project rule) — served once by a CPU-only llama.cpp build and once by a CUDA build on an RTX 3080:
+Not a preference. The same host and the same `cope-b-a4b` Q4_K_M, served once by a CPU-only llama.cpp build and once by a CUDA build on an RTX 3080:
 
-| Sweep                                         | CPU build                                                | CUDA build     |
-| --------------------------------------------- | -------------------------------------------------------- | -------------- |
-| Cold `--warmup` over the 22 axioms            | 189 s; 18 of 22 answered, 4 exceeded the shim's deadline | 19 s; 22 of 22 |
-| Warm `PreToolUse` sweep of the whole rule set | 1.5 s to 41 s, rising with use                           | 3.4 s to 4.4 s |
+| Sweep                                                  | CPU build                                                | CUDA build     |
+| ------------------------------------------------------ | -------------------------------------------------------- | -------------- |
+| Cold `--warmup` over the 22 axioms                     | 189 s; 18 of 22 answered, 4 exceeded the shim's deadline | 19 s; 22 of 22 |
+| Warm `PreToolUse` sweep, 23 rules, layers 1 and 2 only | 1.5 s to 41 s, rising with use                           | 3.4 s to 4.4 s |
 
-On the CPU build the top of that range sits far above the `15 s` budget this section recommends, so sweeps routinely time out, the tool call proceeds unevaluated, and the only sign is the degradation line on stderr. On the CUDA build every sweep lands inside the budget with room to spare. Serve this on a GPU or use a hosted evaluator; the CPU path is not a usable fallback.
+Read the second row's conditions before carrying the number anywhere: those are warm sweeps of one repeated call over a rule set with no layer 3. A session that sets `$ACA_DATA` adds layer 3, and the figures move. Measured on the CUDA build over the 25 rules that configuration produces, alternating two different tool calls: **46 s** for the first sweep, then 14.3, 8.3, 11.6, 5.1, 4.6, 8.3, 5.9 s.
 
-10 GB of VRAM does not hold a 16 GB quantisation, which is what `--n-cpu-moe 99` in the launcher's serving flags is for: expert tensors stay on the CPU, everything else offloads. That split is what a 10 GB card can run, and it is the configuration the numbers above were measured in.
+So on a GPU the honest figure is roughly **5-14 s warm**, which straddles rather than clears the `15 s` budget — and the first sweep of a session pays far more. `--warmup` takes a single directory, so warming `lib/axioms` leaves layers 2 and 3 cold; that unpaid cost is what the 46 s is. Warm every layer that is live, or expect a session's opening tool calls to go partly unevaluated. On the CPU build the whole range sits above the budget and the check is effectively off.
+
+10 GB of VRAM does not hold a 16 GB quantisation, which is what `--n-cpu-moe 99` in the launcher's serving flags is for: expert tensors stay on the CPU, everything else offloads. That split is what a 10 GB card can run, and it is the configuration these numbers were measured in.
 
 Under WSL the CUDA build needs `LD_LIBRARY_PATH=/usr/lib/wsl/lib` to find the driver, as noted above — without it the binary reports `no CUDA-capable device is detected` and silently serves on the CPU, which looks like a working stack that is ten times too slow.
 
