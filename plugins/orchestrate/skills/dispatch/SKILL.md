@@ -1,7 +1,7 @@
 ---
 name: dispatch
 description: Coordinator-side pathway to a worker surface — a supervised in-session team or an isolated polecat container. The mandatory route to `polecat run`; a raw invocation outside this skill bypasses the delivery-guard and image-freshness obligations below.
-agent: "orchestrate:james"
+agent: "james"
 ---
 
 # Dispatch

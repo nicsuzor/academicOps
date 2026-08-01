@@ -107,11 +107,11 @@ instead of "no tool calls permitted."
 agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
-(`plugins/orchestrate/agent/james.md`) declares the explicit list
+(`plugins/orchestrate/agents/james.md`) declares the explicit list
 `["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
 three reviewers his own description names, plus the plain worker surface his
 dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) and `marsha`
-(`plugins/orchestrate/agent/marsha.md`) declare `subagents: []` — neither's
+(`plugins/orchestrate/agents/marsha.md`) declare `subagents: []` — neither's
 own description involves spawning: rbg returns a verdict, marsha verifies and
 never fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
 `["orchestrate:james", "pkb:pauli"]`, matching the only two delegation targets
@@ -122,8 +122,8 @@ membership does not exist, so this remains a declared commitment rather than a
 checked one). The claim at "No implicit orchestrator privilege" below — that
 each orchestrator lists its `subagents` explicitly — is now true of the tree.
 
-`plugins/orchestrate/agent/james.md` omits `tools` for this reason;
-`plugins/pkb/agents/pauli.md`, `plugins/orchestrate/agent/marsha.md`, and
+`plugins/orchestrate/agents/james.md` omits `tools` for this reason;
+`plugins/pkb/agents/pauli.md`, `plugins/orchestrate/agents/marsha.md`, and
 `plugins/rbg/agents/rbg.md` declare the wildcard `tools: ["*"]` rather than an
 explicit allowlist, to the same end. Each of the four needs
 `mcp__services__pkb__*` (or broader) to function at all, so an unenforced

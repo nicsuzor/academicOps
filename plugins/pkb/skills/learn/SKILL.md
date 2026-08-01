@@ -1,7 +1,7 @@
 ---
 name: learn
 description: Turn something that went wrong into a lesson that lands somewhere useful. Diagnoses the incident back to the structural cause that invited it, then routes the lesson to the one destination its scope actually claims — task record, project rule, PKB, framework source, or a tracked issue. Use on "/learn", "that last task should have been xyz", "review what went wrong in that session", or a session retro. Not for live debugging — a failing test or a bad diff in the work at hand wants a direct answer, not an incident review.
-agent: "pkb:pauli"
+agent: "pauli"
 ---
 
 # Learn

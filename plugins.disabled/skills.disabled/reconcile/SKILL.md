@@ -1,7 +1,7 @@
 ---
 name: reconcile
 description: Establish what is actually true about work the graph still claims is in flight, and about work that finished while nobody was watching. Probes stale claims and requeues the dead ones, folds in merged and closed pull requests, and routes completed-but-uncertified units onward for certification. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
-agent: "aops-pkb:pauli"
+agent: "pauli"
 ---
 
 # Reconcile
