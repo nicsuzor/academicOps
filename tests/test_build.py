@@ -446,7 +446,6 @@ def test_agy_command_converted_to_skill(built):
 
 
 def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
-    import json
     import yaml
 
     dist_root = tmp_path_factory.mktemp("build-dist-agents")

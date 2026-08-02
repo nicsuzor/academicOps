@@ -253,7 +253,7 @@ def _adapt_agents(build_dir: Path) -> None:
         try:
             frontmatter = yaml.safe_load(m.group(1))
         except yaml.YAMLError as e:
-            raise BuildError(f"{md_file}: failed to parse YAML frontmatter: {e}")
+            raise BuildError(f"{md_file}: failed to parse YAML frontmatter: {e}") from e
 
         if not isinstance(frontmatter, dict):
             continue
