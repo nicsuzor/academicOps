@@ -15,6 +15,7 @@ import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import NoReturn
 
 import click
 import yaml
@@ -45,7 +46,7 @@ HEADLESS_FLAGS = {"-p", "--print"}
 CONTAINER_ACA_DATA = "/data"
 
 
-def fail(message):
+def fail(message: str) -> NoReturn:
     """Report and exit non-zero. Nothing proceeds on a missing requirement."""
     click.echo(f"Error: {message}", err=True)
     sys.exit(1)
@@ -179,14 +180,20 @@ def resolve_git_identity(config):
     No fallbacks to host environment (os.environ) or user git config to avoid
     inheriting operator identity. A missing or incomplete identity is a hard failure.
     """
-    config = config or {}
-    identity = config.get("git_identity")
-    if not isinstance(identity, dict):
+    if config is None or not isinstance(config, dict):
         fail(
             "no git identity configured. Set `git_identity` ({name: ..., email: ...}) "
             "in polecat config (polecat.yaml). There is no default or env fallback."
         )
 
+    raw_identity = config.get("git_identity")
+    if not isinstance(raw_identity, dict):
+        fail(
+            "no git identity configured. Set `git_identity` ({name: ..., email: ...}) "
+            "in polecat config (polecat.yaml). There is no default or env fallback."
+        )
+
+    identity = dict(raw_identity)
     name = identity.get("name")
     email = identity.get("email")
 

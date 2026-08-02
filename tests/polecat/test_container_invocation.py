@@ -39,7 +39,13 @@ def _base_mocks(monkeypatch, tmp_path):
     """Everything docker- and filesystem-heavy stubbed out, so `run()` is
     exercised purely for the command it builds."""
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
-    monkeypatch.setattr(cli, "load_config", lambda: {})
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}
+        },
+    )
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
     monkeypatch.setattr(
         cli, "setup_staging", lambda staging_dir, mcp_url, agent_home, agent_cmd=None: None
@@ -207,8 +213,9 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 
 def test_env_file_is_set_for_the_container(monkeypatch):
     monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
 
-    env = cli.get_env_forwards()
+    env = cli.get_env_forwards(config)
 
     assert env["CLAUDE_ENV_FILE"] == CONTAINER_SET_ENV["CLAUDE_ENV_FILE"]
     assert env["CLAUDE_ENV_FILE"].startswith("/")
@@ -218,8 +225,9 @@ def test_host_env_file_path_never_reaches_the_container(monkeypatch):
     """A host path names a file the container cannot see; the credential hook
     would fail to write it and the session would run unscoped."""
     monkeypatch.setenv("CLAUDE_ENV_FILE", "/home/someone/host-only/session.env")
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
 
-    assert cli.get_env_forwards()["CLAUDE_ENV_FILE"] == CONTAINER_SET_ENV["CLAUDE_ENV_FILE"]
+    assert cli.get_env_forwards(config)["CLAUDE_ENV_FILE"] == CONTAINER_SET_ENV["CLAUDE_ENV_FILE"]
 
 
 def test_env_file_is_outside_every_bind_mount(tmp_path, monkeypatch):

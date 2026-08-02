@@ -89,7 +89,13 @@ def _base_mocks(monkeypatch, tmp_path):
     as a pure control-flow unit. Each test installs its own `subprocess.run`
     and `_seed_confirmed` fakes afterwards."""
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
-    monkeypatch.setattr(cli, "load_config", lambda: {})
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}
+        },
+    )
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
     monkeypatch.setattr(
         cli, "setup_staging", lambda staging_dir, mcp_url, agent_home, agent_cmd=None: None

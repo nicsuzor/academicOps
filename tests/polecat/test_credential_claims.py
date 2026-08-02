@@ -69,8 +69,9 @@ _FALSE_CLAIMS = (
 def test_tokens_reach_the_container_as_plain_environment(monkeypatch):
     """The fact the message has to be consistent with."""
     monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "mock-bot-token")
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
 
-    env = cli.get_env_forwards()
+    env = cli.get_env_forwards(config)
 
     assert env["AOPS_BOT_GH_TOKEN"] == "mock-bot-token"
     assert env["GH_TOKEN"] == "mock-bot-token"

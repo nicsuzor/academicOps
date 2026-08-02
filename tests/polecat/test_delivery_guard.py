@@ -95,7 +95,12 @@ def test_run_fails_loudly_on_uncommitted_changes(tmp_path, monkeypatch):
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
     monkeypatch.setattr("lib.polecat.cli._image_available_locally", lambda image: True)
-    monkeypatch.setattr("lib.polecat.cli.load_config", lambda: {})
+    monkeypatch.setattr(
+        "lib.polecat.cli.load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}
+        },
+    )
     monkeypatch.setattr("lib.polecat.cli.load_local_overlay", lambda home: {})
     monkeypatch.setattr(
         "lib.polecat.cli.setup_staging",
