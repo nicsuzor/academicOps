@@ -413,7 +413,15 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
     clone_result = subprocess.run(
-        ["git", "clone", "--local", "--no-checkout", str(repo_root), str(clone_path)],
+        [
+            "git",
+            "clone",
+            "--local",
+            "-c",
+            "push.autoSetupRemote=true",
+            str(repo_root),
+            str(clone_path),
+        ],
         capture_output=True,
         text=True,
     )
