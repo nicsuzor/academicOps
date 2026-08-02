@@ -9,11 +9,16 @@ Each task was vetted before it became available. Execute it faithfully: it is th
 
 Work counts only once it is recorded on the task. In an ephemeral container or worktree your changes exist nowhere else — halt without completing the handover and they are destroyed.
 
-## 1. Claim
+## 1. Claim and continuously update your task
 
-Claim the task by id. That marks it `in_progress`, assigns it to you, and returns its full requirements. If you were given no id, search for the task; if you cannot find it, halt and report.
+Claim your task through the knowledge base and synchronise it with your internal TODO list.
 
-**Check the status is `queued` before you execute.** Anything else means it is not ready — halt and report.
+- If you were given no id, search for the task by title; if you cannot find it, halt and report.
+- Ensure both the PKB and your internal TODO list are COMPREHENSIVE and always IMMEDIATELY updated.
+- DO NOT append your actions, findings, or plans to the PKB. The PKB task is a WORKFLOW, not a LOG.
+- DO NOT allow the PKB task to grow with your findings and considerations. It must always remain concise, structured, and action-oriented.
+- IMMEDIATELY write completion information to each subtask as it is completed. You may be interrupted at any time and any internal state will be DESTROYED.
+- SYNTHESISE, DO NOT APPEND: the ONLY information you may write to your PKB task is: completion status for each step, links to the deliverable, and concise evidence of completion.
 
 The claimed task is your unit of delivery, children included. Existing children are input to your plan: execute them directly in sequence or in parallel where the work allows. The return contract attaches to the **claimed** task — one deliverable, with evidence and an output URL — never a spray of per-child deliverables.
 
@@ -25,20 +30,27 @@ Track every step and deliverable on your native task list, including all outstan
 
 Execute the steps systematically, sequencing in parallel where the work allows. Check the output of your work before accepting it; fix anything that falls short.
 
-**Refuse and attempt.** Refuse any choice not derivable with reasonable confidence from the axioms plus the context you were given — that is the same limit on your authority, applied to decisions. Attempt everything that does not depend on a refused choice. Then hand back at `partial`: cut the scope at a clean seam, partition the acceptance criteria into met and unmet, list the refused decisions explicitly under `## Deliberately deferred`, and file live continue-tasks for the remainder.
+## 4. Fail FAST and LOUD
 
-## 4. Verify
+Failures are routine and provide valuable information.
 
-Check your work against every requirement. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
+- **NO WORKAROUNDS**: DO NOT attempt to bypass or repair an infrastructure or tooling problem.
+- **HALT IMMEDIATELY** and provide concise and clear evidence of the failure in your task.
+- **Workarounds are selfish and dangerous**: failures must be dealt with upstream so that others do not repeat the same mistakes.
+
+## 5. Partial completion is SUCCESS
+
+Complete what steps you can and cut at a clean seam. Mark what is incomplete and why.
+
+## 6. Verify
+
+Check your work against the literal requirements and acceptance criteria set out in the task. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
 
 Do not certify a task complete without certainty that it is delivered in full.
 
-## 5. Hand over
+## 7. Handover
 
-Invoke the `dump` skill. It records your work and lets the task proceed; halt without it and the work is destroyed. Take its `full` path when the task is done, `partial` when you refused choices but attempted the rest, and its failure path when you are genuinely blocked.
+Invoke the `dump` skill. It records your work and lets the task proceed to the next stage.
 
-## Halt conditions
-
-- Any failed check — stop. Do not work around an infrastructure or tooling problem.
-- **Non-interactive execution.** In a headless environment, never emit an interactive prompt or wait for input. Every decision path needs an automatic route or a handback at `partial`.
-- In every case — complete, partial, or failed — exit through the handover. Do not script around it.
+- Your environment is EPHEMERAL. You must use the `dump` skill or your work will be DESTROYED.
+- Your supervisor is STRICT. If you do not adhere precisely to the handover instructions, your work will be SILENTLY REJECTED.

@@ -4,76 +4,66 @@ description: Coordinator-side pathway to a worker surface — a supervised in-se
 agent: "james"
 ---
 
-# Dispatch
+# Dispatch Skill
 
-An epic is just a task with children. You are the supervisor delivering the whole of it: you never do the work, you coordinate sequenced and parallel workers, and your responsibility ends only when every unit is `done`, `partial`, `failed`, or `blocked`. `partial` is a legal, expected handback, not a failure — read it as new graph information, confirm its continue-tasks exist, and route the remainder.
+- You are the dispatcher responsible for ASSIGNING ELEGIBLE TASKS.
+- You NEVER do the work.
+- **FIRE AND FORGET**: you NEVER wait for completion or poll your workers.
+- Return tasks that are currently ineligible intact for the next dispatch sequence.
+- **Quick failures are high value information**: if a task cannot be fully completed, just report the problem, do not waste time investigating alternatives.
+- **Partial completions are expected and routine**: Do what you can; report what you were unable to complete. Turn-around time is important, and planning decisions are explicitly out of your scope.
+- **Payload Boundary**: When spawning child workers, send only target task IDs and explicit delta inputs.
 
-## 1. Claim the epic
+## 2. Read the graph and dispatch BLOCKING tasks and CHILD tasks FIRST
 
-Claim it through the knowledge base. That locks it to you and gives you the one place to log findings and decisions. Update it as you go: if you are interrupted, that record is how the next pass resumes.
+**Task Eligibility**: fully specified + queued + dependencies met + children completed + within the hierarchy of the tasks you were given.
 
-## 2. Read the graph
+Pull the dependency tree and identify eligible tasks.
 
-Pull the dependency tree. A child with an unmet dependency is not dispatchable this pass.
+- Any task with an unmet dependency is not dispatchable this pass.
+- A task with internal subtasks must ONLY be dispatched as a whole.
+- Dispatch all eligible tasks in PARALLEL.
+- Dispatch tasks SEQUENTIALLY WHERE REQUIRED by dependency or overlap.
+- Return any ineligible tasks intact for the next dispatch sequence.
+- **DO NOT STRAY**: A dependency outside the epic's hierarchy blocks you: halt and return whatever you completed.
 
-**Eligibility** = fully specified + queued + dependencies met — regardless of whether it has children. A task with children may go whole to one worker, who owns its internal sequencing and returns **one** deliverable: evidence plus an output URL on the task.
+## 3. Dispatch ENTIRE tasks ASYNCHRONOUSLY by TASK ID
 
-**Consolidate.** If you do route children separately, the workflow must still converge on one deliverable — never a spray of per-child pull requests reviewed individually. This duty is not scoped to one epic: before dispatching anything, check for other ready tasks touching the same file or subsystem, siblings in other epics included, and bundle them into one worker producing one pull request whose body lists every task id, tested together.
+- Polecats are designed to `/pull` and complete an entire task.
+- A container emits no completion signal of its own.
+- **DO NOT WAIT**, and DO NOT POLL FOR COMPLETION.
 
-A dependency outside the epic's hierarchy blocks you: halt and return whatever you completed.
-
-## 3. Brief, then dispatch
-
-Compose the delegation brief immediately before dispatching — never earlier, and freshly each time even if that task was briefed on an earlier pass, because the context has moved.
-
-@include doctrine/delegation-brief.md
-
-Choose a surface and a cadence per task. Cadence is a routing detail; the review shape does not depend on it.
-
-- **In-session subagent** — needed now, mechanical or exploratory, results reconciled in this session.
-- **Agent team** — parallel work you supervise to a single reconciled result.
-- **Polecat container** — substantial autonomous repo work landing a durable artifact. Higher latency; wrong for anything needed now.
-
-**Polecat launch.** The plugin ships the CLI at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. A container emits no completion signal of its own, and a detached session's report reaches nobody. Dispatch every container inside a plain background subagent — the courier — which runs the CLI in the foreground, waits for the container to exit, and returns the harvested result as its own final message. That final message is what the harness delivers back to you.
+**Dispatch commands**:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy -p <project> -t <task-id>
+uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy -p <project> -t <task-id>
 ```
 
-The courier's brief must require it to:
-
-- run that command in the foreground — never detached, never under `tmux`, and never spawning subagents of its own;
-- take the exit code directly rather than through a pipe, because `cmd | tail` reports the pipe's status and will report success over a container that aborted;
-- read the return contract off the task and quote it, rather than summarising its own shell output;
-- report the exit code and, on a non-zero exit, polecat's failure message verbatim — a task whose contract reads `done` under a non-zero exit is the case to report loudest, because the contract alone reports success over a delivery that never happened;
-- carry the entire result in its final message, because nothing it says earlier reaches you.
-
-Spawn couriers plainly. A named or teammate-mode spawn returns an idle signal and strands the report where no one reads it.
-
+- `ssh $POLECAT_HOST -c ...` if dispatching to a remote docker server.
 - `-t <task-id>` seeds `/pull <task-id>` as the container's initial prompt and runs headless, so the worker executes the task and exits. Never add an interactive prompt flag to an autonomous dispatch — that leaves a live container idling at a ready prompt forever, which looks like progress and finishes nothing.
-- `-p <project>` is that task's own target repo. Check the task, not the epic — they differ.
+- `-p <project>` is that task's own target repo. Check the task, not the parent — they may differ.
+
+**Check return status**:
+
+- Polecat script will return the ID of the dispatched container if successful.
+- If the polecat script fails, mark the task failed immediately and record the reason.
+
+**CONFIRM SUCCESSFUL DISPATCH ONCE ONLY**:
+
+Set a timer for 60 seconds and poll ONLY ONCE:
+
+```bash
+[ssh $POLECAT_HOST -c] docker ps -a --filter 'name=<polecat_id>
+```
+
+## 4. Mark unsuccessful dispatches as failures
+
+- Use the PKB's update task command to record each failure with a succinct reason.
 - Every path, image, endpoint, and the committing git identity comes from the environment. If one is missing polecat fails loudly; supply nothing yourself.
 
-**Rebuild before a run whose result you intend to certify.** The image carries the plugin code the worker runs, and `make docker-build` builds it from the working tree as it stands — so a certifying run starts from a clean committed tree and a fresh build. Nothing checks this for you. Instruction state does not travel that path at all: project skills, `CLAUDE.md`, and the project rule layer reach the worker from the mounted workspace, so a committed change to those is already live.
+## 5. Return immediately
 
-## 4. Verify by side-effect
-
-A live session is not success. Exit zero on the launch wrapper is not success. A unit is done when the return contract lands on the task — status flip, evidence, output URL — checked directly by you or a subagent, against the brief's acceptance criteria.
-
-**Then certify it, and record the verdict.** A unit that has landed is not finished until its certification is on the task record. Commission that certification through the review machinery already wired into the graph — the review nodes decomposition emitted as blocking dependencies — and write back the verdict it returns. Reach each node through the agent that owns the skill it names: `strategic-review` is yours to run; `verify` is marsha's, so you commission her rather than invoke it. Executing those nodes _is_ certification at completion; standing a second review beside them gives you two paths and one of them unread.
-
-**You cannot certify from a context that cannot spawn.** Commissioning a review means deploying reviewers, so check that you hold the surface before you take this on. If you do not, hand the unit to a context that does and say so — never read the artifact yourself and call that the verdict. A gate that returns neither a verdict nor a failure is the one outcome this step must not produce.
-
-Quality assurance inside the unit is the worker's business, and the judgment is the reviewer's; substitute your own certification for neither. Never relay a worker's own "confirmed" as fact — commissioning the review and recording what it returns is the whole of your part in it.
-
-## 5. Watch for exits, do not poll
-
-The courier's completion notification is the signal. Wait on it — never a sleep loop, and never a poll against the container. When one lands: verify its side-effect, re-read the graph for whatever that unblocked, dispatch that. Workers coordinate through the atomic claim, not through you; you need no lock of your own.
-
-A courier that returns an acknowledgement instead of a result has failed its brief, whatever the container did. Send it back.
-
-## 6. React to what comes back
-
-**Reopen before anything else.** A worker can write `done` to the graph and deliver nothing — `polecat run` exits non-zero and names the task when it catches that, and the status it left behind is still `done` to everything that reads the graph afterwards. On a non-zero container exit for a unit whose task is marked `done` or `partial`, have pauli set that task back to `in_progress` before you decide what to do next. Reopening is repair, not judgment: filing a fix subtask does not undo the parent's status, and a re-dispatch against a task still marked `done` is dispatched into a lie. Leave `failed` and `blocked` alone — those records are already accurate, and overwriting them asserts a worker holds the task when none does. pauli is the sole writer to the graph, so this is commissioned, never done directly.
-
-Then decide. A FAIL or a re-dispatch call is not a separate phase — it is information the next graph pass reads like any other. Decide, by judgment rather than lookup table, whether to file a fix subtask depending on the failed unit or to re-dispatch that unit with the finding appended to its brief. Either way it goes into the graph, not into your head: the next pass has to see it without you.
+- Report a list of tasks dispatched: Task ID, Title, and docker container ID of responsible polecat.
+- Report each failed dispatch with its Task ID and failure reason.
+- Report total number of ineligible and undispatched tasks, but do not list each individually.
+- Report an optimistic number of your ineligible tasks that should be ready for you to dispatch in the next iteration, assuming each currently-running container completes successfully.
