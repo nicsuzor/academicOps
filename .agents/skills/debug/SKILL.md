@@ -170,10 +170,9 @@ the input box — the ccstatusline row (`Model: … | Ctx: … | ⎇ <branch> | 
 and the mode row (`⏵⏵ auto mode on …`). Both render while the client is still
 starting, so neither tells you it is ready. Read the input box, not the footer.
 
-**§3 First prompt.** Send a trivial prompt and capture again. A hook-blocked
-error is a pass for this layer, not a failure: the hook fired and reported.
-Treat the error text as primary evidence. The response itself is the liveness
-signal — do not build a poll loop beside it.
+**§3 First prompt.** Send a trivial prompt (e.g. "what is 2 + 2?") and capture again.
+You MUST verify that the agent actually produced the expected model response (e.g. the literal string `4`) in the captured pane or session log.
+Do not treat the mere rendering of the CLI prompt box or container boot as a response — poll or re-capture the pane until the model's actual answer is visible in the output transcript, and assert that exact response in your test report. A hook-blocked error is also a pass for this layer if the hook fired and reported error text.
 
 **§4 Exercise the path you changed.** Invoke a skill and dispatch a subagent
 from inside the session — and choose ones that run through the code your change
