@@ -394,19 +394,19 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     clone_path = clones_dir / session_id
     branch_name = f"polecat/{session_id}"
 
-    # Clone from the commit the canonical repo currently has checked out, not
-    # from its default branch.
+    # Clone from the commit the canonical checkout (canonical_dir) currently has
+    # checked out (HEAD), not from its default branch.
     head_result = subprocess.run(
-        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        ["git", "-C", str(canonical_dir), "rev-parse", "HEAD"],
         capture_output=True,
         text=True,
     )
     if head_result.returncode != 0:
-        fail(f"failed to resolve HEAD in {repo_root}:\n{head_result.stderr}")
+        fail(f"failed to resolve HEAD in {canonical_dir}:\n{head_result.stderr}")
     head_sha = head_result.stdout.strip()
 
     origin_result = subprocess.run(
-        ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+        ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
         capture_output=True,
         text=True,
     )
