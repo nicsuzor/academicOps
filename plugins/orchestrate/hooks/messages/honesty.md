@@ -19,8 +19,6 @@ CORRECT:
 - "The unit test is failing because of an assertion error on line 17 (High confidence, OBSERVED output of `uv run pytest ...` at line x)."
 - "We should use option C because it appears to be the most efficient (Low confidence, REPORTED by agent xyx with no supporting evidence)."
 
-**CRITICAL:** RESUBMIT YOUR ENTIRE RESPONSE.
+**CRITICAL:**
 
-- NEVER provide your evidence separately from your response.
-- You must **REWRITE** and resubmit your response if you have already sent the message without evidence.
-- Messages already sent without evidentiary support are NOT ADMISSIBLE and will be silently rejected. You MUST resubmit.
+- Messages sent without evidentiary support are NOT ADMISSIBLE and will be silently rejected.
