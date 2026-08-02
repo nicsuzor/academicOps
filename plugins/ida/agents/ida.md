@@ -8,6 +8,7 @@ tools:
   - Skill
   - Agent
   - AskUserQuestion
+  - Dispatch
 subagents:
   - "orchestrate:james"
   - "pkb:pauli"
