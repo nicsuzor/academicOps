@@ -43,9 +43,9 @@ export TMUX_NAME="polecat-debug-$RANDOM"
 # Env assignments, a `uv run` invocation and a quoted prompt do not survive one
 # round of shell quoting inside `tmux new-session` — see Gotchas.
 cat > /tmp/"$TMUX_NAME".sh <<EOF
-#!/bin/zsh
-exec uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py \\
-  run agy -p aops -s $TMUX_NAME \\
+#!/bin/bash
+exec uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py \
+  run -d $CHECKOUT -s $TMUX_NAME agy -- \
   'what directory are you in? answer in one sentence, then stop.'
 EOF
 chmod +x /tmp/"$TMUX_NAME".sh

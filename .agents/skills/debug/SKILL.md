@@ -26,8 +26,8 @@ export TMUX_NAME="polecat-debug-$RANDOM"
 cat > /tmp/launch-$TMUX_NAME.sh <<EOF
 #!/bin/bash
 export POLECAT_HOME=... POLECAT_IMAGE=... GIT_AUTHOR_NAME=... GIT_AUTHOR_EMAIL=... AOPS_BOT_GH_TOKEN=...
-exec uv run --project "$CHECKOUT" python "$CHECKOUT/lib/polecat/cli.py" \\
-  run claude -d <repo-path> -s "$TMUX_NAME"
+exec uv run --project "$CHECKOUT" python "$CHECKOUT/lib/polecat/cli.py" \
+  run -d "$CHECKOUT" -s "$TMUX_NAME" claude -- "what is 2 + 2?"
 EOF
 chmod +x /tmp/launch-$TMUX_NAME.sh
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 "/tmp/launch-$TMUX_NAME.sh"
@@ -38,6 +38,12 @@ shell with no agent. Use `-p <project>` in place of `-d <repo-path>` when the
 project has a `paths` entry in `$POLECAT_HOME/local.yaml`. Always pass
 `-s "$TMUX_NAME"` so the tmux session name and the host log directory name
 match.
+
+**Click option interception and `--` flag separator:**
+`lib/polecat/cli.py` defines `-p` as `@click.option("-p", "--project")` on the `run` command.
+If you pass `-p` after `run` without using `--` (e.g. `run -d <dir> -s <sess> claude -p "prompt"`), Click intercepts `-p` as `run`'s `--project` parameter, creating a session log folder named after the prompt text!
+To pass `-p` or trailing options to the agent CLI, place `--` (double dash) before the agent arguments, or pass the prompt positionally:
+`python lib/polecat/cli.py run -d <dir> -s <session> claude -- -p "what is 2 + 2?"`
 
 Set every variable the script exports. `POLECAT_HOME` and `POLECAT_IMAGE` have
 no defaults and polecat exits naming whichever is missing; `entrypoint.sh`
