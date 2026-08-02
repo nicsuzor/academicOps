@@ -66,3 +66,4 @@ Set a timer for 60 seconds and poll ONLY ONCE:
 - Report a list of tasks dispatched: Task ID, Title, and docker container ID of responsible polecat.
 - Report each failed dispatch with its Task ID and failure reason.
 - Report total number of ineligible and undispatched tasks, but do not list each individually.
+- Report an optimistic number of your ineligible tasks that should be ready for you to dispatch in the next iteration, assuming each currently-running container completes successfully.
