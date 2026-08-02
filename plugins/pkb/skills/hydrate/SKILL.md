@@ -2,6 +2,9 @@
 name: hydrate
 description: Put an inbound ask or an existing task into full current context before anything downstream acts on it. Searches the PKB, project rules, and the workflow library, then emits a right-sized context bundle. Always first, never skipped, zero planning judgment.
 agent: "pauli"
+context: fork
+background: no
+allowed-tools: ["*mcp__services__pkb__*"]
 ---
 
 # Hydrate
