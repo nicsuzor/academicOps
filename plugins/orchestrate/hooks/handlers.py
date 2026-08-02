@@ -77,8 +77,9 @@ def session_start(ctx: HookContext) -> Result | None:
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
     """Remind the dispatcher that a subagent's report is not evidence."""
-    if ctx.tool == "Agent":
-        return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
+    for tool in ctx.tool_calls:
+        if tool.get("tool_name") == "Agent":
+            return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
 def honest_output(ctx: HookContext) -> Result | None:
@@ -88,7 +89,7 @@ def honest_output(ctx: HookContext) -> Result | None:
 
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
-    "PostToolUse": [rule_against_hearsay],
+    "PostToolBatch": [rule_against_hearsay],
     "Stop": [honest_output],
     "SubagentStop": [honest_output],
 }

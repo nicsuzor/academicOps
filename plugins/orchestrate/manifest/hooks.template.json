@@ -14,6 +14,16 @@
             ]
           }
         ],
+        "PostToolBatch": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolBatch"
+              }
+            ]
+          }
+        ],
         "PostToolUse": [
           {
             "hooks": [

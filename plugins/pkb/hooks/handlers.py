@@ -19,21 +19,19 @@ from a Python literal.
 
 from __future__ import annotations
 
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import HookContext, Result
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
     """Ground every prompt in the PKB before the agent acts on it.
 
-    Loaded as a pair, because the message has two readers. The agent gets the
-    instruction to hydrate; the person watching gets one line telling them the
-    reminder fired — this hook fires on every prompt, so without that line the
-    most frequent injection in the session is also the one they can never see
-    happen.
+    We can't run this stop on any agent that deals with subagents, because subagents returning trigger the hook and it piles up quickly and confuses the agent.
     """
-    return warn(*load_message_pair(ctx.hooks_dir, "pkb-context"))
+    return None
+
+    # return warn(*load_message_pair(ctx.hooks_dir, "pkb-context"))
 
 
 HANDLERS: dict[str, list] = {
-    "UserPromptSubmit": [search_the_pkb],
+    # "UserPromptSubmit": [search_the_pkb],
 }
