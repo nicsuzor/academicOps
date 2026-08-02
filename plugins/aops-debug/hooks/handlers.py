@@ -24,7 +24,7 @@ def dump_payload(ctx: HookContext) -> Result | None:
 
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(ctx.raw) + "\n")
-        
+
     return None
 
 

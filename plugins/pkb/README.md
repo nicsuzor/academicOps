@@ -17,22 +17,28 @@ flowchart TD
 
     subgraph pkbwrite["agents/pauli.md — one stage per invocation"]
         pauli(("pauli"))
-        pauli --> hydrate["skills/hydrate<br/>four-section context bundle<br/>always first, six-call budget"]
+        pauli --> hydrate["skills/hydrate<br/>a few reworded searches →<br/>shortlist of ids, one line each<br/>always first, six-call budget"]
 
-        hydrate --> situate["skills/situate<br/>one task, valued and wired<br/>sets needs_decomposition, stops"]
-        situate --> gate{{"human sets status queued<br/>agents pull only from here<br/>and never promote into it"}}
-        gate --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
+        hydrate --> capture["commands/q<br/>record one inbox node<br/>and stop"]
+        capture --> situate["skills/situate<br/>placed, valued, wired;<br/>assumptions tested vs hopes,<br/>forks and their probes, decision list<br/>promotes to ready"]
+        situate --> gate{{"human sets status queued<br/>resolves the decision list<br/>agents pull only from here<br/>and never promote into it"}}
+        gate --> brief["skills/brief<br/>size at the forks, compose the process,<br/>emit review and sign-off nodes,<br/>write the brief, dispatch by task id"]
+        brief --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
 
         pauli --> composer["skills/workflow<br/>compose the process into a checklist<br/>three layers, loaded every time"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
+        pauli --> plan["skills/plan<br/>on-demand lens — fix the altitude,<br/>route to the stage that owns it"]
 
+        brief --> composer
         learn -. knowledge scope .-> remember
         learn -. project scope .-> addrule(["rbg — skills/add-rule<br/>write the project rule"])
         learn -. task scope .-> pull
     end
 
     pull --> dump["skills/dump<br/>session exit — bail, close,<br/>hand back, or pause"]
+    pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
+    reconcile -- "re-plan when the wave lands" --> situate
 
     composer --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
     composer --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
@@ -43,7 +49,7 @@ flowchart TD
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    gate --> dispatch(["orchestrate:james — skills/dispatch<br/>compose the brief, dispatch by task id"])
+    brief --> dispatch(["orchestrate:james — skills/dispatch<br/>route the briefed unit to a worker surface,<br/>by task id"])
 ```
 
 ### The hook asks; nothing checks
@@ -63,10 +69,16 @@ exclude them, and the message covers that case: say the tools are unavailable
 and work from what is visible, rather than guessing at what the PKB would have
 said.
 
-The `hydrate` skill is a different mechanism with a similar name. It is pauli's,
-runs inside pauli's pipeline, spends a six-call budget, and appends a
-four-section bundle to a task. There, it is always first and never skipped. The
-hook's read is neither pauli's nor enforced.
+The `hydrate` skill is a different mechanism with a similar name, and the
+difference is that it runs. The hook asks the agent to search and never checks;
+the skill actually issues the searches, spends a six-call budget, and returns a
+shortlist. There, it is always first and never skipped.
+
+What it returns is **pointers, not prose**: ids with a line each, saying what
+the thing is and why it might bear on the ask. It does not open them. The
+searching is close to mechanical — the judgment it adds is cutting the returned
+lines down to the handful worth a read. Reading them is `situate`'s job, once,
+on the asks that turn out to be worth it.
 
 ### Mutation is a convention, not a boundary
 
@@ -81,16 +93,53 @@ fixed.
 
 ### Stages advance by invocation, not by trigger
 
-Each skill runs, then stops; no stage fires the next.
-`needs_decomposition` is a graph signal nothing yet consumes — see
-[`skills/situate/SKILL.md`](skills/situate/SKILL.md).
+Each skill runs, then stops; no stage fires the next. `inbox` is the signal
+`situate` consumes — there is no second flag beside the status — and whether it
+runs inline or in the consolidation sweep is a cost call, not a trigger.
 
-### Dispatch composes the brief itself
+Two breakpoints are the user's, and no agent crosses either. The first is
+promotion: `situate` leaves a task at `ready` with a decision list on its body,
+and the user resolves that list and sets `queued`. The second is the pull
+request and the one-way-door sign-offs `brief` wired into the graph.
 
-`ida`'s `dispatch` composes the delegation brief immediately before dispatching
-a unit, freshly each time — never earlier, because context moves between
-passes. There is no separate composer stage: the skill that writes the brief
-and the skill that dispatches it are the same invocation.
+### Capture is hydrate plus one write
+
+`/q` runs `hydrate` and records one `inbox` node carrying the ask and the
+shortlist. That is the whole of capture: no parent judgment, no valuation, no
+edges, no decisions.
+Every judgment made at capture time is one made on the thinnest context anyone
+will ever have about the ask, and capture that costs more than a few seconds is
+capture that stops happening. `situate` does all of it afterwards, on a node
+that already exists.
+
+### The composer is not the executor
+
+`brief` fires at dispatch time, on a unit the user has already released. It
+sizes the unit, composes its process, emits its review nodes, writes the brief
+into the task body, and then dispatches **by task id** — never by handing the
+freshly-composed text to a worker as a prompt. The executor's first act is to
+read the brief cold from the task, which is what makes the brief bind rather
+than merely restate the reasoning that produced it.
+
+`orchestrate`'s `dispatch` routes that unit to a worker surface. It composes
+nothing.
+
+### Sizing is a fork question, not a size question
+
+A dispatchable unit is the largest chunk containing no unresolved fork. `brief`
+cuts only at an unresolved fork or a responsibility boundary, and defaults to no
+cut — one container-sized unit. Where a fork is blocked on missing information,
+what gets dispatched is the probe `situate` designed: the cheapest experiment
+that discriminates between the branches.
+
+### The return channel writes facts, and nothing else
+
+`reconcile` establishes what is true about work the graph still claims is in
+flight — merged and closed pull requests, abandoned claims, rotted criteria —
+and writes that back. It closes nothing on its own judgment, prunes nothing,
+scores nothing, and certifies nothing. Where a fact it wrote changes what should
+happen next, it hands the affected tasks to `situate` rather than re-planning
+them.
 
 ### Composing a workflow
 
@@ -103,8 +152,8 @@ one namespace; a PKB template composes exactly like a shipped one.
 The output lands on the task as its checklist, not as a file or a document:
 the composed steps, in order, plus one pointer bullet naming the templates and
 the proportionality call. An empty review set is a library gap the composing
-skill names rather than silently passing — with no shipped skill currently
-turning that gap into a blocking node (see the stages note above).
+skill names rather than silently passing, and `brief` halts on it: it records
+the gap, leaves the task `blocked`, and dispatches nothing.
 
 ### Remembering
 
@@ -122,21 +171,24 @@ not collection. The standard for what that means is
 
 ### Skills
 
-| Skill      | Does                                                                                                              |
-| ---------- | ----------------------------------------------------------------------------------------------------------------- |
-| `hydrate`  | Emit a right-sized context bundle so nothing downstream starts cold.                                              |
-| `situate`  | Turn a hydrated ask into one valued, well-connected task, then stop.                                              |
-| `workflow` | Compose the process this work runs under, from the shipped library, the user layer, and the PKB.                  |
-| `pull`     | Claim a queued task, execute it, record the result on the task, and hand over.                                    |
-| `remember` | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                 |
-| `learn`    | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims. |
-| `dump`     | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                     |
+| Skill       | Does                                                                                                              |
+| ----------- | ----------------------------------------------------------------------------------------------------------------- |
+| `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                 |
+| `situate`   | Place, value, and wire one task; sort its assumptions, name its forks and probes; promote to `ready`.             |
+| `brief`     | At dispatch time: size at the forks, compose the process, emit the review nodes, write the brief, dispatch by id. |
+| `workflow`  | Compose the process this work runs under, from the shipped library, the user layer, and the PKB.                  |
+| `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                    |
+| `reconcile` | Establish what is true about in-flight and finished work, write it back, hand the affected tasks to `situate`.    |
+| `plan`      | On-demand lens — fix the altitude, check the effectual commitments, route each piece to the stage that owns it.   |
+| `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                 |
+| `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims. |
+| `dump`      | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                     |
 
 ### Command
 
-| Command | Does                                                          |
-| ------- | ------------------------------------------------------------- |
-| `/q`    | Quick-queue a thought onto the graph. Delegates to `situate`. |
+| Command | Does                                                                    |
+| ------- | ----------------------------------------------------------------------- |
+| `/q`    | Quick-queue a thought onto the graph: `hydrate`, then one `inbox` node. |
 
 ### Hook
 

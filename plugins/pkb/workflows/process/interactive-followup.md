@@ -22,7 +22,7 @@ quick-action verb — "save/add/put/update/log/note"; or "one more"/"quick"/
 
 ## What Gets Skipped
 
-- Full hydration (no fresh context bundle)
+- Full hydration (the previous shortlist stands; search the new term only)
 - New task binding — inherits the active task from the session
 
 ## What Still Applies

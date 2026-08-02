@@ -210,4 +210,4 @@ Practising what we preach:
 - [[non-interactive-c1dda99b]] -- agent lifecycle and Phase 1 decomposition protocol
 - [[polecat-swarms]] -- execution layer; consumes reviewed artifacts
 - [[research-decomposition]] -- downstream domain application (research project planning instantiates this workflow)
-- [[plugins.disabled/skills.disabled/decompose/SKILL.md]] -- general decomposition workflow; retired and excluded from the build
+- [[plugins/pkb/skills/brief/SKILL.md]] -- general sizing and process composition; emits the review nodes this workflow's lenses run against

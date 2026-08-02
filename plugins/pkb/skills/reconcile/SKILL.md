@@ -1,6 +1,6 @@
 ---
 name: reconcile
-description: Establish what is actually true about work the graph still claims is in flight, and about work that finished while nobody was watching. Probes stale claims and requeues the dead ones, folds in merged and closed pull requests, and routes completed-but-uncertified units onward for certification. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
+description: The return channel. Establish what is actually true about work the graph still claims is in flight and about work that finished while nobody was watching, write those facts back, and hand the tasks a landed wave touched to `situate` for re-planning. Truth maintenance only — it never closes work on its own judgment, never prunes, and never scores. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
 agent: "pauli"
 ---
 
@@ -15,6 +15,24 @@ criteria name files that were renamed away a fortnight ago. You establish what i
 This is the only place the reconcile procedure lives. Other skills invoke it;
 none of them re-implements it. What it governs is tasks and the pull requests
 they resolve against.
+
+## What you are
+
+**A fact-writing channel, and nothing else.** Every write you make is something
+you observed: a pull request merged, a branch went quiet, a named file no longer
+exists, a person wrote a close reason. That is the whole of your authority.
+
+- You **never close work on your own judgment.** Where a close is right, it is
+  because an observable criterion was met or a person said so — never because a
+  task is old, quiet, duplicative, or inconvenient.
+- You **never prune.** You do not cancel on age, merge nodes, delete edges, or
+  tidy the graph's shape. Structure is not yours.
+- You **never score.** `focus_score` is computed by the graph engine from the
+  signals already on the nodes. You do not write it, and you do not write
+  `priority` or `severity` to move it.
+- You **never certify**, and you never re-plan. When facts you wrote change what
+  should happen next, you hand the affected tasks to `situate` (§7) rather than
+  deciding it yourself.
 
 ## Contexts
 
@@ -32,15 +50,13 @@ than acting on it.
 
 ## 1 — Read the graph, claims included
 
-`list_tasks` over **every non-terminal status** — the actionable set as
-[the taxonomy](../graph-maintenance/references/taxonomy.md) defines it, which is
-the source; never a list inlined here. Later steps read and write across the whole
-of that set, so a sweep that loads only the statuses which look in flight reports
-itself complete while skipping whole classes of work.
+`list_tasks` over **every non-terminal status** the PKB MCP schema declares —
+that schema is the source, never a list inlined here. Later steps read and write
+across the whole of that set, so a sweep that loads only the statuses which look
+in flight reports itself complete while skipping whole classes of work.
 
 Then read the **claim** on each. A status by itself is not a claim; the assignee
-and the session are what make it one, and they are what you check. Two records
-carry that, and the contract for both is below.
+and the session are what make it one, and they are what you check.
 
 Filter the slice before you pull it. An unfiltered `list_tasks` on a mature graph
 spills to a temp file, and then you have lost the turn rather than gained the
@@ -81,10 +97,13 @@ matching the task's recorded branch; the title matching the task title
 whole-word, ignoring conventional-commit prefixes. A reverse match on distinctive
 title substrings is surfaced as _likely closed by_ and **never auto-completes**.
 
-- **Merged** → re-read the task's acceptance criteria against the merged artifact
-  before closing. Every criterion clearly met → complete it, recording the pull
-  request and the date. Any criterion unmet or needing judgment → leave it and
-  surface the criterion, quoted. Surface, do not block.
+- **Merged** → write the facts first: the pull request, the merge date, the
+  branch. Then re-read the task's acceptance criteria against the merged
+  artifact. Every criterion **observably** met → complete it. Any criterion
+  unmet, or met only on a reading that takes judgment → leave the task open and
+  surface the criterion, quoted. Surface, do not block, and do not resolve the
+  judgment yourself: an acceptance criterion that needs interpreting is exactly
+  the case this channel does not decide.
 - **Closed without merge** → route it (§4). Never re-queue automatically.
 - **No match** → surface it. Never invent a task.
 
@@ -124,15 +143,20 @@ review state, labels, whether the branch was deleted, and whether the task
 already carries repeated closed-without-merge reports.
 
 Then **have an agent read it and classify**. This is a semantic judgment, not a
-string match — a "wontfix" label is a signal, not the verdict. Exactly one of:
+string match — a "wontfix" label is a signal, not the verdict. What you are
+reading for is **the decision a person already made**; you are recording it, not
+reaching it. Where the comments do not clearly carry one, the class is
+`bad-implementation`, which files a question rather than closing anything.
+Exactly one of:
 
 | Class                  | Signal                                                                                    | Action                                                                                                                                                             |
 | ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **wontfix**            | Clear "do not do this", not-planned, superseded, or the reviewer rejects the goal itself. | Cancel the task, or complete it if a sibling superseded it. Record the pull request and the reason in the body. File no follow-up.                                 |
+| **wontfix**            | Clear "do not do this", not-planned, superseded, or the reviewer rejects the goal itself. | Cancel the task, or complete it if a sibling superseded it. Record the pull request and the person's stated reason in the body. File no follow-up.                 |
 | **bad-implementation** | Wrong approach, design rejected, repeated failure, "needs a rethink", or ambiguous.       | Cancel the original. File a sibling investigation task under the same parent, softly depending on the original, saying what went wrong and what must change first. |
 | **retry-as-is**        | Rare. Unrelated infrastructure failure, documented in the comments. Nothing was wrong.    | Re-queue to `inbox`, with the justification written into both the task body and the result.                                                                        |
 
-Record the chosen route, the close reason, and any node created.
+Record the chosen route, the close reason quoted from where you read it, and any
+node created.
 
 ## 5 — Staleness and rot
 
@@ -146,7 +170,8 @@ environment, skip the verification and flag the candidates.
 **Artifact rot.** For `ready` and `queued` tasks aged past about a fortnight,
 verify that the files and symbols the task's criteria name still exist where they
 claim to. Where they have rotted, demote the task to `inbox` with an annotation
-saying so, and re-decompose. Rot triggers demotion; age alone does not.
+saying exactly what no longer exists, and hand it to `situate` (§7). Rot triggers
+demotion; age alone does not.
 
 ## 6 — Route the completed-but-uncertified
 
@@ -162,23 +187,50 @@ You certify none of them yourself. You did not do the work and you are not the
 reviewer, and a worker's own "confirmed" on a task record is a claim, not a
 verdict — read it as one more thing needing certification.
 
-## 7 — Emit one result
+## 7 — Hand the affected tasks to `situate`
+
+**Re-plan when the wave lands.** A merged pull request settles assumptions that
+other tasks were built on; a rotted artifact invalidates the criteria that named
+it. Neither is yours to re-plan, and both change what should happen next.
+
+Collect the tasks a fact you wrote actually touched:
+
+- what the completed unit's `depends_on` edges unblocked, and its live siblings
+  under the same parent;
+- anything whose `## Assumptions` names a belief the landed work tested — the
+  probe that came back is the case this exists for;
+- everything §5 demoted for rot;
+- the investigation tasks §4 filed.
+
+Hand that set to [`situate`](../situate/SKILL.md), inline where the set is small
+and to the consolidation sweep where it is not. You pass the tasks and the facts
+you established. You do not re-sort their assumptions, re-rank their forks,
+re-cut them, or promote them — `situate` does that, and the user's gate is what
+releases the result.
+
+## 8 — Emit one result
 
 One synthesized result for whoever called you, whatever the sweep touched. Never
 a per-task feed: a caller who has to read twenty rows to find the two that matter
 has been handed your sweep instead of its outcome.
 
 Lead with what needs a person's decision, then what you changed, then what you
-found and deliberately left alone. Name ids for everything completed, requeued,
-demoted, routed, or surfaced — a bare count is not checkable. Close with the one
-thing the next sweep should pick up, and with the window you covered — a result
-that does not say where you stopped leaves the next sweep no way to start.
+found and deliberately left alone, then what you handed to `situate`. Name ids
+for everything completed, requeued, demoted, routed, surfaced, or handed on — a
+bare count is not checkable. Close with the one thing the next sweep should pick
+up, and with the window you covered — a result that does not say where you
+stopped leaves the next sweep no way to start.
 
 ## Must not
 
 - Close, cancel, or complete anything because it is old, quiet, or inconvenient.
   Age is a candidacy signal and nothing more.
+- Resolve an acceptance criterion that needs interpreting, or supply the
+  judgment a person has not made.
+- Prune, restructure, merge, or re-parent anything.
+- Write `focus_score`, `priority`, or `severity`.
 - Promote work into `queued`. That gate is the user's.
+- Re-plan: re-sort assumptions, design probes, cut units, or write briefs.
 - Certify work, or relay a worker's self-report as a certification verdict.
 - Decide by pattern where prose is what decides. Mechanical matching is for
   structured surfaces only — a frontmatter field, a recorded branch, a pull
@@ -190,6 +242,6 @@ that does not say where you stopped leaves the next sweep no way to start.
 ## Fitness test
 
 From your result alone — without opening the graph — the caller can say which
-in-flight claims are still live and why, what you changed and on which ids, and
-what is now waiting on a person. If any of those three needs re-deriving, the
-sweep is not done.
+in-flight claims are still live and why, what you changed and on which ids, what
+is now waiting on a person, and which tasks went back to `situate` and on what
+fact. If any of those needs re-deriving, the sweep is not done.
