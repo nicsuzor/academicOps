@@ -61,7 +61,7 @@ Two floors, and they are different questions.
 
 Two signatures land on `done`, in this order, and neither substitutes for the other (`specs/enforcement/workflow.md`).
 
-**Certification is james's**, at unit completion. He commissions the review the graph already carries — the review nodes `decompose` emitted as blocking dependencies — reads the verdict, and writes it onto the task record. What it certifies is mechanics, quality, and compliance with the brief. He supplies no judgment of his own there and never relays a worker's own claim of success in its place.
+**Certification is james's**, at unit completion. He commissions the review the graph already carries — the review nodes `brief` emitted as blocking dependencies — reads the verdict, and writes it onto the task record. What it certifies is mechanics, quality, and compliance with the brief. He supplies no judgment of his own there and never relays a worker's own claim of success in its place.
 
 **Acceptance is ida's**, against the user's intent. Certification without acceptance ships work nobody weighed against what was wanted; acceptance without certification asks her to vouch for mechanics she never saw.
 
@@ -76,7 +76,7 @@ What crosses between them is the evidence contract, defined once in `specs/enfor
 | Agent | `ida`              | The interactive face. Coordinates research work, delegates to james, filters returns.                                                                 |
 | Agent | `james`            | The orchestrator. Commissions review, synthesises one verdict, dispatches work.                                                                       |
 | Agent | `marsha`           | QA. Judges whether an artifact is outstanding, and runs it to find out.                                                                               |
-| Skill | `dispatch`         | Routes a decomposed unit to its worker surface and holds the epic until every unit lands.                                                             |
+| Skill | `dispatch`         | Routes a briefed unit to its worker surface and holds the epic until every unit lands.                                                                |
 | Skill | `strategic-review` | Deploys the review lenses in parallel and reconciles their findings into one verdict.                                                                 |
 | Skill | `verify`           | marsha's QA pass: assume it is broken, then prove otherwise. Commissioned, never invoked directly.                                                    |
 | Hook  | `handlers.py`      | The quiet gate on `Stop` — strips ida's reply to load-bearing content before it speaks to the person — and the rule against hearsay on `PostToolUse`. |

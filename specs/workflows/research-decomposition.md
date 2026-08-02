@@ -31,7 +31,8 @@ _No implementation yet. This spec defines research-specific decomposition as a d
 - [[specs/workflows/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
 - [[plugins/pkb/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
 - PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools (reused; the standalone `mcp-decomposition-tools.md` spec describing an 18-tool `tasks_server.py` was retired as stale during the 2026-07 simplification pass, since the current MCP surface doesn't match it)
-- [[plugins.disabled/skills.disabled/decompose/SKILL.md]] -- general decomposition workflow; this spec extends it with research primitives. Both `decompose` and `planner` (referenced throughout below) are retired to `plugins.disabled/skills.disabled/` and excluded from the build — every reference to either in this spec names the retired file, not a shipped skill.
+- [[plugins/pkb/skills/situate/SKILL.md]] -- placement, valuation, assumption sorting, fork ranking, and probe design; this spec extends it with research primitives
+- [[plugins/pkb/skills/brief/SKILL.md]] -- dispatch-time sizing and process composition; this spec supplies the primitives it cuts to
 
 ## Motivation
 
@@ -41,7 +42,7 @@ The intellectual foundations for why research needs its own decomposition approa
 
 Together, these traditions explain why research decomposition cannot simply be software project management with different labels. Research operates under genuine uncertainty -- not risk (known probability distribution) but uncertainty (unknown unknowns). The decomposition must respect this by front-loading information-gathering, treating assumptions as first-class objects, and maintaining the flexibility to pivot when early findings reshape the question.
 
-This spec composes with the general decomposition workflow in `plugins.disabled/skills.disabled/decompose/SKILL.md` and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
+This spec composes with the general pipeline — `plugins/pkb/skills/situate/SKILL.md` and `plugins/pkb/skills/brief/SKILL.md` — and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
 
 ## The User
 
@@ -96,36 +97,36 @@ These failure modes are well-documented in research methods pedagogy. They motiv
 
 ## Relationship to Upstream Specs
 
-### Effectual Planning Agent
+### Effectual Planning
 
-The effectual planner (see `plugins.disabled/skills.disabled/planner/SKILL.md`) provides the strategic framework: fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning. It receives fragments of information incrementally, organises them into a semantic web, and proposes high-value next steps based on information value across the network.
+The effectual framework — fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning — lives in one stage. `plugins/pkb/skills/situate/SKILL.md` places the fragment, values it, sorts the assumptions into tested and hopes, ranks the open forks by information value across the network, and designs the probe for each; `plugins/pkb/skills/plan/SKILL.md` is the on-demand lens over it.
 
-This spec does NOT replace the effectual planner. Instead, it provides three things the planner uses when the domain is research:
+This spec does NOT replace that pipeline. Instead, it provides three things the pipeline uses when the domain is research:
 
-1. **Domain-specific primitives.** When the effectual planner decomposes a research project, it draws from the research primitive table below (spike, lit-review, methodology, etc.) rather than generic task types. These primitives carry semantic meaning that shapes sequencing and dependency decisions.
+1. **Domain-specific primitives.** When `brief` cuts a research project into dispatchable units, it draws from the research primitive table below (spike, lit-review, methodology, etc.) rather than generic task types. These primitives carry semantic meaning that shapes sequencing and dependency decisions.
 
-2. **Domain-specific review lenses.** When a research decomposition is reviewed, the conceptual review workflow selects from the research lens table below. The effectual planner does not perform review -- it hands off to the review workflow, which uses these lenses.
+2. **Domain-specific review lenses.** When a research decomposition is reviewed, the conceptual review workflow selects from the research lens table below. Neither `situate` nor `brief` performs review -- `brief` emits the review nodes, and the review workflow executes them using these lenses.
 
-3. **A maturity-gated entry path.** The effectual planner's formality gradient (seeds vs. active projects) maps to seedling vs. forest mode. A half-formed research idea enters as a seedling; a defined project enters as a forest. The planner's maturity indicators determine which path applies.
+3. **A maturity-gated entry path.** The formality gradient (seeds vs. active projects) maps to seedling vs. forest mode. A half-formed research idea enters as a seedling; a defined project enters as a forest.
 
-The intended handoff works as follows: the effectual planner receives a research idea, applies the primitives and sequencing rules from this spec, produces a decomposition, and then the conceptual review workflow reviews it using the research-specific lenses. The planner's assumption-surfacing capability feeds directly into the assumptions table that this spec requires as output. (See Open Question #5 for integration path alternatives -- this handoff mechanism is not yet specified.)
+The intended handoff works as follows: `situate` applies the sequencing rules from this spec to a captured research idea, `brief` cuts to the primitives below and emits the review nodes, and the conceptual review workflow reviews using the research-specific lenses. `situate`'s assumption map feeds directly into the assumptions table that this spec requires as output. (See Open Question #5 for integration path alternatives -- this handoff mechanism is not yet specified.)
 
-### Decompose Workflow
+### Brief Workflow
 
-The existing `plugins.disabled/skills.disabled/decompose/SKILL.md` provides general decomposition infrastructure:
+`plugins/pkb/skills/brief/SKILL.md` provides the general sizing and composition infrastructure:
 
-- **Spike patterns**: when to investigate vs. commit; spike completion checklists
+- **Fork-based sizing**: a dispatchable unit is the largest chunk containing no unresolved fork; where a fork is blocked on missing information, the unit dispatched is the probe
 - **Dependency types**: hard (`depends_on`) vs. soft (`soft_depends_on`) dependency decisions; human handoff patterns
-- **Knowledge flow**: propagating findings between siblings; confirmed vs. TBD tables
-- **Academic Output Layer**: Prep --> Decision Support --> Decisions --> Writing --> Integration --> Audit
-- **Completion loops**: verify-parent tasks that force a return to the original problem
-- **Post-decomposition self-checks**: decision prerequisites, execution gating, writing data dependencies, methodology layer
+- **Process composition**: the workflow templates the unit runs under, loaded from all three layers at composition time
+- **Review nodes**: each composed obligation emitted as a real blocking node, plus an unconditional sign-off node wherever the door is one-way or ambiguous
 
-This spec composes with `decompose.md`; it does not replace it. Specifically:
+The Academic Output Layer, verify-parent completion loops, and the post-decomposition self-check list this spec previously named do not ship anywhere in the tree. They are target shape, not current behaviour.
 
-- **Research primitives map to existing types** (no schema changes). A `lit-review` is a `learn` task with a research-semantic label. An `ethics` task is a `task` with a gate marker. The decompose workflow's infrastructure handles all of these.
+This spec composes with `brief`; it does not replace it. Specifically:
+
+- **Research primitives map to existing types** (no schema changes). A `lit-review` is a `learn` task with a research-semantic label. An `ethics` task is a `task` with a gate marker. The existing graph vocabulary handles all of these.
 - **The Academic Output Layer applies to research outputs.** A research paper follows the same Prep --> Decision Support --> Decisions --> Writing --> Integration --> Audit sequence. This spec does not add new layers; it specifies what each layer contains for research (e.g., Prep includes literature search and data access validation; Audit includes claim-evidence cross-referencing).
-- **The `soft_depends_on` + knowledge-flow pattern is especially important for research** because findings from one spike reshape sibling tasks more often than in software. A literature review spike may reveal that the intended methodology has known limitations, requiring the methodology task to be revisited. The decompose workflow's knowledge-flow pattern -- propagate findings to downstream tasks whose scope or approach may be affected -- is the mechanism for this.
+- **The `soft_depends_on` + knowledge-flow pattern is especially important for research** because findings from one spike reshape sibling tasks more often than in software. A literature review spike may reveal that the intended methodology has known limitations, requiring the methodology task to be revisited. The mechanism for this is the return channel: `reconcile` writes what the landed spike established and hands the affected siblings back to `situate`.
 
 ### Conceptual Review Workflow
 
@@ -206,7 +207,7 @@ The typical sequencing above is a default, not a mandate. Common deviations:
 
 1. **Start with unknowns.** Every unknown becomes a spike or pilot. Information-gathering precedes commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption gets: confidence level, validation path, and contingency (what happens if wrong).
-3. **Non-linear dependencies.** Research is iterative. Use `depends_on` for hard gates, `soft_depends_on` for informational dependencies where findings reshape downstream work. When an upstream soft dependency completes, propagate its findings to any downstream task whose scope or approach may be affected (knowledge-flow pattern from `plugins.disabled/skills.disabled/decompose/SKILL.md`). The downstream task is not blocked -- it proceeds with current knowledge -- but should be revisited once upstream findings arrive.
+3. **Non-linear dependencies.** Research is iterative. Use `depends_on` for hard gates, `soft_depends_on` for informational dependencies where findings reshape downstream work. When an upstream soft dependency completes, propagate its findings to any downstream task whose scope or approach may be affected (the return channel: `reconcile` writes the finding, `situate` re-runs on what it touched). The downstream task is not blocked -- it proceeds with current knowledge -- but should be revisited once upstream findings arrive.
 4. **Collaboration gates.** Any step requiring human judgment or external input is a separate task marked as a gate.
 5. **Artifact-aware.** Each task specifies its output type: document, dataset, code, presentation, decision.
 
@@ -322,7 +323,7 @@ Forest mode applies when the researcher has:
 
 ### Process
 
-1. **Decomposer agent produces plan.** The agent uses the research primitives, the sequencing rules from this spec, and the Academic Output Layer from `plugins.disabled/skills.disabled/decompose/SKILL.md`. It runs the post-decomposition self-checks (decision prerequisites, execution gating, writing data dependencies, methodology layer). It produces all four output items: assumptions table, task graph, dependency visualisation, and MVC.
+1. **Decomposer agent produces plan.** The agent uses the research primitives, the sequencing rules from this spec, and the Academic Output Layer this spec defines. It runs the post-decomposition self-checks (decision prerequisites, execution gating, writing data dependencies, methodology layer). Neither the layer nor the self-checks ships in any skill today — this step is target shape. It produces all four output items: assumptions table, task graph, dependency visualisation, and MVC.
 
 2. **Reviewer agent reviews.** The conceptual review workflow activates with research-specific lenses. The reviewer applies the prioritised critique protocol: lead with the single most important concern (typically methodological coherence or assumption hygiene for research), propose a resolution, then list up to 2 secondary concerns.
 
@@ -435,7 +436,7 @@ verify: "Verify: platform governance study objectives met"
 
 - Research decomposition primitives and sequencing rules
 - Seedling and forest modes with fully specified outputs
-- Integration with effectual planner and `plugins.disabled/skills.disabled/decompose/SKILL.md`
+- Integration with `plugins/pkb/skills/situate/SKILL.md` and `plugins/pkb/skills/brief/SKILL.md`
 - Research-specific review lenses for the conceptual review workflow
 
 ### Out of scope
@@ -449,8 +450,8 @@ verify: "Verify: platform governance study objectives met"
 1. **When to decompose.** What heuristics determine seedling vs. forest? Input length, presence of methodology keywords, and user's stated intent are candidates, but the boundary is fuzzy.
 2. **Domain expertise injection.** How do we inject field-specific knowledge into the reviewer? Literature search via Zotero? User-provided context documents? Retrieval-augmented review? (Shared with the conceptual review workflow.)
 3. **Methodology primitive granularity.** Is one "methodology" primitive sufficient, or does it need sub-primitives (research design, sampling strategy, analysis plan, instrument development)?
-4. **Multi-project decomposition.** How do related projects' decompositions interact? A researcher working on two governance studies should share literature review and ethics tasks. The effectual planner's network-based prioritisation may handle this, but the mechanism is unspecified.
-5. **Effectual planner integration path.** What is the concrete handoff mechanism? Does the planner invoke this spec's rules directly, or does it produce a draft that this spec's primitives then reshape?
+4. **Multi-project decomposition.** How do related projects' decompositions interact? A researcher working on two governance studies should share literature review and ethics tasks. `situate`'s network-based fork ranking may handle this, but the mechanism is unspecified.
+5. **Pipeline integration path.** What is the concrete handoff mechanism? Do `situate` and `brief` invoke this spec's rules directly, or do they produce a draft that this spec's primitives then reshape?
 
 ## Future Work
 
@@ -465,4 +466,4 @@ verify: "Verify: platform governance study objectives met"
 - [[plugins/pkb/agents/pauli.md]] -- upstream strategic planning; this spec specialises it for research
 - PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools; reused for structured output
 - [[specs/polecat/polecat-system.md]] -- execution layer; consumes decomposed task graphs
-- [[plugins.disabled/skills.disabled/decompose/SKILL.md]] -- general decomposition workflow; this spec extends it with research primitives
+- [[plugins/pkb/skills/brief/SKILL.md]] -- general sizing and process composition; this spec extends it with research primitives

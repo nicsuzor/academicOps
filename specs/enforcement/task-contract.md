@@ -43,11 +43,13 @@ work.
 ### Mechanisms
 
 - **Premise judgment** — no longer a standalone gate at `claim_task`. The
-  premise/worth/shape assessment happens earlier, at decomposition time,
-  inside the `decompose` skill (pauli's lens) — see
+  assessment happens earlier and in two places, both pauli's: premise and worth
+  at intake (`situate` places and values it, sorts its assumptions, and names
+  its open forks), shape and acceptance criteria at dispatch time in the
+  `brief` skill — see
   [enforcement.md § Task-boundary review](enforcement.md#5-task-boundary-review--three-lenses-reviewer--executor).
-  Dispatch surfaces (`/pull`, `/dispatch`) trust that decomposition rather than
-  re-judging the premise themselves.
+  Dispatch surfaces (`/pull`, `/dispatch`) trust that rather than re-judging the
+  premise themselves.
 - **Task-binding invariant** — no mutating work without a task bound to the
   session via `claim_task`. The invariant is **one session claims exactly one
   task** (possibly multiple subtasks of it) — never `$AOPS_TASK_ID`, which
