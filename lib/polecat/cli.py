@@ -624,7 +624,7 @@ def _resolve_workspace(repo_dir, project, polecat_home):
     if not workspace_dir or not workspace_dir.exists():
         fail(
             "could not resolve a workspace path. Pass --repo-dir, or map the "
-            "project under `paths` in <polecat_home>/local.yaml. There is no "
+            f"project under `paths` in {polecat_home}/local.yaml. There is no "
             "default workspace."
         )
     return workspace_dir
