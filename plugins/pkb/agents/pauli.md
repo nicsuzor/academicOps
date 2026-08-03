@@ -6,14 +6,9 @@ model: sonnet
 tools:
   - "*"
 skills:
-  - hydrate
-  - situate
-  - brief
-  - remember
-  - learn
   - pull
   - dump
-subagents: ["*"]
+subagents: []
 ---
 
 # Pauli — Memory and Strategy

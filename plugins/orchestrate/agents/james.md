@@ -3,9 +3,7 @@ name: james
 description: "The Orchestrator: routes work to a supervised in-session team or an autonomous out-of-session worker."
 model: opus
 color: orange
-skills:
-  - dispatch
-  - strategic-review
+skills: []
 subagents:
   - "rbg:rbg"
   - "pkb:pauli"
