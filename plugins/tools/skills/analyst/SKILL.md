@@ -86,16 +86,12 @@ This takes more time. That's the point. Transformations deserve scrutiny.
 
 ### Instructions (_CHUNKS/)
 
-- **Investigation**: [[instructions/data-investigation.md]], [[instructions/exploratory-analysis.md]]
+- **Investigation**: [[instructions/exploratory-analysis.md]]
 - **Research docs**: [[instructions/research-documentation.md]] (REQUIRED), [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]]
 
 ### References
 
-[[references/context-discovery.md]], [[references/quick-reference-commands.md]]
-
-### Statistical Analysis (references/)
-
-Start with [[references/statistical-analysis.md]] (complete guide). Also: [[references/test_selection_guide.md]], [[references/assumptions_and_diagnostics.md]], [[references/effect_sizes_and_power.md]], [[references/bayesian_statistics.md]], [[references/reporting_standards.md]].
+[[references/context-discovery.md]]
 
 ### Technology-Specific Skills (aops-tools)
 
@@ -318,9 +314,7 @@ When testing LLM pipelines or templated content, validate **substantive content*
 
 ## Follow Data Investigation Workflow
 
-When investigating data quality issues (missing values, unexpected patterns, join coverage), create REUSABLE investigation scripts in `analyses/` directory. Never use throwaway one-liners for data investigation.
-
-**For complete workflow, script templates, and when to create investigation scripts, see [[instructions/data-investigation.md]]**
+When investigating data quality issues (missing values, unexpected patterns, join coverage), create REUSABLE investigation scripts in `analyses/` directory. Never use throwaway one-liners for data investigation — the finding has to be re-runnable by someone else, which a shell history is not.
 
 ## Exploratory Analysis
 
@@ -348,10 +342,22 @@ When exploring data patterns and relationships, follow collaborative discovery p
 
 Documentation is updated in the SAME commit as the code it describes, and each fact has one home.
 
+## Statistical Methodology
+
+The formulas, test-selection trees, and APA reporting shapes are public knowledge and are not restated here. What binds is the methodology, and it is the researcher's call before it is yours:
+
+- **The question picks the test, not the data.** Choosing a test after seeing which one gives a significant result is p-hacking whatever else it is called. Where the analysis plan was not fixed in advance, say so in the write-up.
+- **State and check the assumptions the test rests on** — independence, distributional form, homogeneity of variance, whatever the specific test requires — and report what you found, including when an assumption fails and you proceeded anyway with a justification.
+- **Effect sizes and intervals, always.** A p-value alone is not a result. Report the magnitude and its uncertainty, and interpret both in the units the research question is asked in.
+- **Every exploratory pass is exploratory in the write-up.** Multiple comparisons, subgroup hunts, and post-hoc contrasts are labelled as such and corrected or flagged; they never migrate into the confirmatory frame.
+- **Halt on a methodological choice nobody made.** Which model, which covariates, which exclusions, how to handle missing data — these are the researcher's, not conveniences to settle so the pipeline runs. Ask.
+
+Where you need a specific library's API, reach for the aops-tools `python-viz` skill rather than reconstructing it here.
+
 ## Collaborative Workflow Principles
 
 **One step at a time:** perform ONE action (create chart, write model, run test), show the result, explain what it means, then STOP and wait for the user's direction. Never run a complex workflow end to end without checkpoints, and never assume the next step — offer the options and ask.
 
 ## Quick Reference
 
-See [[references/quick-reference-commands.md]] for common data-pipeline and DuckDB commands. For engine-specific commands, see the aops-tools `dbt` and `streamlit` skills.
+For engine-specific commands, see the aops-tools `dbt` and `streamlit` skills.

@@ -4,7 +4,7 @@ kind: process
 category: academic
 description: Finalize/revise an academic report after reviewer or stakeholder feedback — discovery before any edits
 requires: [task-tracking]
-pairs-with: [outbound-review]
+pairs-with: [wf-outbound-review]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-report-finalization
@@ -42,7 +42,7 @@ Execute the approved task tree.
 Consistency check (numbers, cross-references, terminology). Walk the
 consolidated feedback list — verify every must-do addressed, note deferred
 should-dos with rationale. Commit, update tasks, summarize what changed/
-deferred/needs review. Before external release, compose [[outbound-review]].
+deferred/needs review. Before external release, compose [[wf-outbound-review]].
 
 ## Anti-patterns
 

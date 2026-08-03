@@ -26,7 +26,7 @@ stays traceable on the graph, not a workflow in its own right.
 5. **Undertake work** — update the task body with findings as you go.
 6. **Record commits and PRs** in the task log — this creates bidirectional
    traceability: commits reference tasks (`Task:` trailer, see the
-   [[handover]] gate), tasks reference commits/PRs (log entries).
+   [[wf-handover]] gate), tasks reference commits/PRs (log entries).
 7. **Mark complete** when done.
 
 ## When to Skip

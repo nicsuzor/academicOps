@@ -4,7 +4,7 @@ kind: process
 category: email
 description: Classify incoming emails into Task/FYI/Skip/Uncertain with priority inference
 requires: [task-tracking]
-pairs-with: [handover]
+pairs-with: [wf-handover]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-email-triage

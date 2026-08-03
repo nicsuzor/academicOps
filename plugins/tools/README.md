@@ -11,8 +11,6 @@ flowchart TD
 
     K -->|External doc, email, review, feedback| EX["extract/SKILL.md"]
     EX --> ES{Input signal}
-    ES -->|"review feedback + source doc"| TD["extract/workflows/training-data.md"]
-    ES -->|"DOCX/PDF/XLSX -> markdown"| DM["extract/workflows/docs-to-md.md"]
     ES -->|"tracked-changes review"| RIC["extract/procedures/review-inline-comments.md"]
 
     K -->|Empirical data pipeline| AN["analyst/SKILL.md"]
@@ -22,9 +20,6 @@ flowchart TD
     AS -->|plots, stats models| PV["python-viz/SKILL.md"]
 
     K -->|Diagram needed| DG["diagram/SKILL.md"]
-    DG --> DS{style param}
-    DS -->|mermaid| DGM[references/mermaid-techniques.md]
-    DS -->|excalidraw| DGE[references/json-format.md]
 
     K -->|Markdown -> PDF| PDF["pdf/SKILL.md"]
     K -->|Grant/submission review| PR["peer-review/SKILL.md"]

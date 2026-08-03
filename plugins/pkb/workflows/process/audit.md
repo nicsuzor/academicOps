@@ -3,8 +3,8 @@ id: audit
 kind: process
 category: meta
 description: Framework governance audit — structure sync, index curation, acceptance tests, persisted report
-requires: [handover]
-pairs-with: [monitor-prevent-bloat]
+requires: [wf-handover]
+pairs-with: []
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-audit
@@ -16,9 +16,8 @@ permalink: workflows-process-audit
 
 **Manual trigger** (recommended): after significant framework changes (new
 skills, hooks, agents); before major releases; to re-sync docs/indices with
-the filesystem. **Session-end**: optionally trigger the lighter
-[[session-effectiveness]] sub-check instead — a full audit is too heavy for
-routine session-end.
+the filesystem. A full audit is too heavy for routine session-end; for a
+post-session read, invoke the `triage` skill in `retro` mode instead.
 
 ## Phases
 

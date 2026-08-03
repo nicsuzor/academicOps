@@ -3,360 +3,177 @@ name: diagram
 description: Creating diagrams in any style — Mermaid flowcharts (structured, code-based) or Excalidraw (hand-drawn, organic). Use style parameter to select.
 ---
 
-# Diagram Design Skill
+# Diagram
 
-**Purpose**: Create diagrams that communicate clearly. Choose the right style for the job.
+Make diagrams that communicate one thing clearly. Mermaid and Excalidraw syntax
+is public knowledge — what follows is the routing rule, the user's taste, and the
+hazards syntax knowledge does not cover.
 
-## Style Selection
+## Style routing
 
-Invoke with a style argument:
+- `style="mermaid"` — structured, code-based flowcharts. Use when the diagram
+  lives in documentation, is read in a diff, and must stay in version control.
+- `style="excalidraw"` — hand-drawn, organic. Use for mind maps, concept maps,
+  informal architecture sketches, and presentation visuals where feel matters.
 
-- `diagram(style="mermaid", ...)` — structured, code-based Mermaid flowcharts for process flows, decision trees, system diagrams
-- `diagram(style="excalidraw", ...)` — hand-drawn, organic Excalidraw diagrams for mind maps, concept maps, informal architecture sketches
+If the user has not said which, ask before drawing. Converting after the fact
+loses the layout work.
 
-**Quick heuristic**: Use `mermaid` when the diagram lives in documentation and needs version control. Use `excalidraw` when the diagram is for presentations, exploration, or visual communication where feel matters.
+## Craft rules (both styles)
 
----
+- **One message per chart.** State the purpose in one line first ("how a session
+  moves from prompt to cleanup"), then cut everything that does not serve it. A
+  deep sub-process gets its own chart.
+- **Chunk.** Group related steps; keep any one group under 6–9 nodes.
+- **Happy path on a straight spine.** Exceptions and loops go to the side.
+  Minimise backward arrows and edge crossings.
+- **Verb-first labels, 3–9 words.** Detail goes in a note or legend, never inside
+  the box. Big blocks of text in boxes are the most common failure.
+- **Distinct shapes carry distinct semantics** — process, decision, terminal,
+  data/IO. Never reuse one shape for two meanings in the same chart.
+- **Same hierarchy level, same size and weight.** Uniform everything is chaos;
+  so is arbitrary variation.
 
 ## Style: mermaid
 
-**Purpose**: Create Mermaid flowcharts that are clear, readable, and visually attractive.
+**Default to `LR`.** Charts trend too tall and screens are wider than they are
+tall. Reach for `TD` only when branching logic genuinely fans out. For
+phases-with-steps, use `LR` at the top level with `direction TB` inside each
+subgraph.
 
-**Key principle**: One message per chart. Hierarchy and chunking. Obvious flow. Distinct shapes for distinct semantics.
+**Link subgraph to subgraph — never a subgraph-internal node to an outside
+node.** Internal-to-external links force direction inheritance and wreck the
+layout.
 
-### When to Use Mermaid
+**Past ~15 nodes, or with many cross-links, switch to the ELK layout engine**
+(`layout: elk`, `mergeEdges: true`, `nodePlacementStrategy: SIMPLE` in the
+frontmatter config block). The default renderer degrades badly at that size.
 
-- Creating flowcharts for documentation
-- Designing process flows, decision trees, or system diagrams
-- Documenting execution flows or workflows
-- Any task requiring code-based structured diagrams
-
-### Universal Chart Craft
-
-#### Define One Message Per Chart
-
-- Write a one-line purpose before starting ("This chart shows how a session moves from prompt to cleanup")
-- Remove anything that doesn't serve that message
-- Use separate charts for deep sub-processes
-
-#### Use Hierarchy and Chunking
-
-- Group related steps into visual blocks (subgraphs: "INIT", "PROMPT", "HYDRATE")
-- Keep each block under 6-9 nodes
-- If it grows, split to a new chart or link out
-
-#### Make the Flow Obvious
-
-- Use consistent direction (top-down or left-right)
-- Minimize backward arrows and edge crossings
-- Put the "happy path" on a straight spine; move exceptions/loops to the side
-
-#### Use Distinct Shapes for Distinct Semantics
-
-| Shape         | Mermaid Syntax | Use For       |
-| ------------- | -------------- | ------------- |
-| Rectangle     | `[text]`       | Process steps |
-| Diamond       | `{text}`       | Decisions     |
-| Rounded       | `([text])`     | Start/End     |
-| Parallelogram | `[/text/]`     | Data/IO       |
-| Stadium       | `([text])`     | Terminals     |
-
-#### Write Tight, Scannable Labels
-
-- Start with a **verb** ("Invoke skill", "Verify criteria", "HALT + ask user")
-- Aim for 3-9 words
-- Split long text across `<br/>` lines or move detail to notes/legends
-
-### Color and Styling
-
-Maintain visual hierarchy and accessibility through deliberate color choices and consistent typography.
-
-> See [[references/color-and-styling]] for palettes, accessibility guidelines, and typography rules.
-
-### Layout Strategy: Horizontal Space First
-
-**Default assumption**: Charts are too tall. Optimize for horizontal spread - most users' screens are wider than tall.
-
-#### Choose Direction Based on Content
-
-| Content Type              | Direction                          | When to Use                           | Result                          |
-| ------------------------- | ---------------------------------- | ------------------------------------- | ------------------------------- |
-| Linear process (≤8 steps) | `LR`                               | Simple pipelines, single thread       | 1 tall row, many columns (BEST) |
-| Branching/decisions       | `TD`                               | Multiple branches, complex logic      | Wider at branch points          |
-| Parallel workflows        | `LR` with `direction TB` subgraphs | Phases left-to-right, steps top-down  | Compact horizontal grouping     |
-| Complex systems (>15)     | `LR` + ELK layout                  | Systems with cross-links, multi-layer | Optimal automatic distribution  |
-
-**PRINCIPLE: Prefer LR layout for 80% of use cases.** It naturally spreads horizontally, matching screen dimensions.
-
-#### Use ELK for Complex Diagrams
-
-For diagrams with many nodes (>15) or cross-links, ELK layout produces dramatically better results:
-
-```yaml
----
-config:
-  layout: elk
-  elk:
-    mergeEdges: true
-    nodePlacementStrategy: SIMPLE
----
-```
-
-#### Mixed-Direction Subgraphs
-
-Place phases horizontally, let steps flow vertically within:
-
-```mermaid
-flowchart LR
-    subgraph PHASE1["Phase 1"]
-        direction TB
-        A1[Step 1] --> A2[Step 2]
-    end
-    subgraph PHASE2["Phase 2"]
-        direction TB
-        B1[Step 1] --> B2[Step 2]
-    end
-    PHASE1 --> PHASE2
-```
-
-**Critical**: Link between subgraphs, not between internal nodes. Internal-to-external links force direction inheritance.
-
-### Mermaid-Specific Techniques
-
-Master advanced layout tricks, initialization blocks, and professional styling.
-
-> See [[references/mermaid-techniques]] for spacing configurations, multi-layer alignment, and semantic styling.
-
-### Quality and Anti-Patterns
-
-Ensure your charts meet high standards and avoid common Mermaid pitfalls.
-
-> See [[references/quality-and-anti-patterns]] for a final quality checklist and a list of common layout, visual, and structural sins.
-
-### Phase-Based Organization (Recommended for Complex Flows)
-
-For flows with many steps (10+ nodes), organize into **numbered phases** rather than one long chain. Link phase subgraphs to each other (`INIT --> EXEC --> END`), never their internal nodes, and route auxiliary systems (hooks, agents, external services) into a separate dashed side panel with minimal, always-dashed cross-connections.
-
-**Key principles:**
-
-1. **Numbered phase labels** (① ② ③) - Creates visual hierarchy and reading order
-2. **Phase subgraphs link to each other** - keeps the main flow clean
-3. **Auxiliary systems in dashed side panels** - Hooks, agents, external services
-4. **Minimal cross-connections** - Only essential interactions, always dashed
-5. **Color-coded phases** - Distinct hues per phase (green → yellow → gray for start → process → end)
-
-See [[references/templates-and-examples.md]] for a complete runnable multi-phase template.
-
-### Mermaid Templates and Examples
-
-See [[references/templates-and-examples.md]] for complete templates including:
-
-- Horizontal process flow (simple linear)
-- Multi-phase workflow (phases with internal steps)
-- Complex system flow (hook pipelines with ELK layout)
-
----
+**At 10+ steps, organise into numbered phases** (① ② ③) instead of one long
+chain. Colour phases by position in the flow (green → gold → gray for
+start → work → end) using the palette below. Route hooks, agents, and external
+services into a separate side panel connected only by dashed edges, and only
+where the interaction is essential.
 
 ## Style: excalidraw
 
-**Purpose**: Create hand-drawn, organic diagrams that communicate clearly and feel human.
-
-**Key principle**: Rigid, corporate diagrams fail to engage. Sloppy, hand-drawn aesthetics with spatial mind-map layouts capture attention and convey meaning effectively.
-
-### Special Note: Task Visualization
-
-**For task visualization specifically**, use the automated `task_viz.py` script instead of this skill:
-
-```bash
-uv run python skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
-```
-
-The script generates a complete force-directed layout of goals, projects, and tasks. Only invoke this diagram skill with `style=excalidraw` AFTER the script runs if manual refinement or customization is needed.
-
-### Aesthetic Defaults (CRITICAL)
-
-**Always use these settings for the hand-drawn feel**:
-
-| Property      | Value                    | Why                                                    |
-| ------------- | ------------------------ | ------------------------------------------------------ |
-| `roughness`   | `2`                      | Maximum sketchiness - embrace the hand-drawn aesthetic |
-| `fontFamily`  | `1` (Virgil/xkcd script) | Handwritten font, NOT Helvetica                        |
-| `strokeStyle` | `"solid"`                | But with high roughness looks hand-drawn               |
-| `fillStyle`   | `"hachure"`              | Sketchy hatching, not solid fills                      |
-
-**Arrow style**:
-
-- Use **curved arrows** with multiple points (click-click-click, not drag)
-- Arrows must **route around** unrelated boxes, never through them
-- Bind arrows to shapes (`startBinding`, `endBinding`: `mode: "orbit"` + `fixedPoint`) so they adapt when boxes move; see [[references/json-format]] for the binding shape
-
-**Layout style**:
-
-- **NO rigid alignment** - don't align everything on vertical/horizontal axes
-- **Radial/clustered positioning** - mind map in all directions, not top-to-bottom
-- **Embrace asymmetry** - "randomness dressed up as creativity"
-- **Use zoom for hierarchy** - big things BIG (use Excalidraw's unlimited canvas), children progressively smaller
-
-### Core Visual Design Principles
-
-#### 1. Visual Hierarchy
-
-**Identical content looks completely different based on presentation.** Position and style choices are critical.
-
-**Create hierarchy through**:
-
-- **Size contrast**: Titles (XL) > Subtitles (L) > Body (M) > Labels (S)
-- **Color contrast**: Darker = more important, lighter = supporting
-- **Spatial position**: Top/center = primary focus
-- **Grouping**: Related elements clustered together
-- **Weight variation**: Stroke width signals importance
-
-**Anti-pattern**: Everything the same size/color/weight = visual chaos
-
-**Anti-pattern**: Big blocks of text in boxes. Keep labels SHORT (1-5 words). Don't overload the user's view.
-
-#### Mind Mapping Design Principles
-
-For mind maps and concept maps, apply four fundamental design principles: **Proximity** (group related elements), **Alignment** (consistent positioning), **Contrast** (hierarchy through visual differences), and **Repetition** (unified patterns).
-
-**Key guidelines**: Use keywords over paragraphs, keep labels concise (1-5 words), visual over textual.
-
-See [[references/mind-mapping-principles.md]] for complete principles and examples.
-
-#### 2. The Two-Phase Design Process
-
-**Phase 1: Structure** (ignore aesthetics)
-
-- Map all components and relationships
-- Focus purely on accuracy and completeness
-- Don't worry about positioning or visual appeal
-- Challenge assumptions about connections and flow
-
-**Phase 2: Visual Refinement** (maintain structure)
-
-- Reposition elements for clarity and flow
-- Apply consistent styling
-- Create visual rhythm and balance
-- Optimize whitespace and alignment
-
-**Why this works**: Ensures diagrams are both technically correct AND visually appealing.
-
-#### 3. Whitespace is a Design Element
-
-Whitespace (negative space) is not "empty"—it's a powerful tool for:
-
-**Macro whitespace** (between major sections):
-
-- Separates conceptual groups
-- Creates breathing room
-- Guides eye flow through the diagram
-- Establishes rhythm and pacing
-
-**Micro whitespace** (within groups):
-
-- Spacing between text lines
-- Padding around elements
-- Gap between connected items
-- Distance between labels and shapes
-
-**Rule of thumb**: If it feels crowded, it IS crowded. Add more space than you think you need.
-
-### Technical Elements
-
-**Colors**: User's preferred muted terminal theme (see [[references/theme-colors.md]]) - muted gold, soft greens, blues, on **WHITE backgrounds** (NOT dark). Maintain 4.5:1 contrast ratio for accessibility.
-
-**Typography**: XL (40-48px) titles, L (24-32px) headers, M (16-20px) body, S (12-14px) labels
-
-**Shapes**: Rectangles (most versatile), circles (start/end/actors), diamonds (decisions), ellipses (organic feel for mind maps)
-
-**Arrows**: Thin (1-2px) default, medium (3-4px) emphasis, **must bind to shapes**, click-click-click for multi-point. Curved arrows for organic/mind-map layouts. **Directional arrows free up positioning** - children can be placed anywhere around parent (not just below) to avoid overlap.
-
-**Icons**: Material Symbols (recommended) or built-in libraries. Recolor to theme, use sparingly. See [[references/icon-integration.md]].
-
-**Layout**: Prefer organic, spatial, mind-map layouts over rigid hierarchies. **Spread elements to prevent arrow overlap** - arrows are directional, so children can be positioned anywhere around parent (360° freedom). Grid snapping for precision, radial/clustered positioning for mind maps.
-
-**Grouping**: **Always bind text to containers** using `containerId` property (programmatic) or group manually (select both → Cmd/Ctrl+G). Text should auto-size to container width. This ensures text moves WITH its box. See [[references/text-container-pattern.md]] for JSON binding pattern.
-
-**CRITICAL - Arrow Binding**: Arrows MUST use `startBinding` and `endBinding` to anchor to boxes. This ensures arrows adapt when boxes are moved. Never create floating arrows.
-
-See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[references/theme-colors.md]] for user's preferred color palette. See [[references/text-container-pattern.md]] for text-in-container binding.
-
-### Finishing: Export with Quality
-
-Apply the Two-Phase Design Process above (structure, then visual refinement), then export:
-
-- **Use WHITE background** (default, always preferred)
-- Enable background (unless transparency needed)
-- Use 2x or 3x scale for high resolution
-- Choose "Embed scene" to preserve editability
-- Export formally (don't screenshot)
-
-### Excalidraw Common Patterns & Templates
-
-See [[references/common-patterns.md]] for diagram templates: System Architecture, Process Flow, Concept/Mind Map, Graph/Network, and Comparison Matrix patterns.
-
-### Component Libraries & Resources
-
-**Built-in libraries** (`~/.claude/skills/diagram/libraries/`): 6 curated libraries available - awesome-icons, data-processing, data-viz, hearts, stick-figures, stick-figures-collaboration.
-
-**Material Symbols** (RECOMMENDED for new icons): Professional icon set from Google Fonts. Import SVGs, recolor to theme palette. See [[references/icon-integration.md]] for complete workflow.
-
-**Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `~/.claude/skills/diagram/libraries/`
-
-**Usage tips**:
-
-- **Recolor to theme** ([[references/theme-colors.md]]): Gold `#c9b458`, Green `#8fbc8f`, Blue `#7a9fbf`, Orange `#ffa500`, Red `#ff6666`
-- **Use sparingly** for emphasis (1-3 icons per section)
-- **Don't mix too many styles** (pick Material Symbols OR library icons, not both)
-- **Size appropriately** (M size: 20-24px for most use cases)
-
-See [[references/library-guide.md]] for library loading, [[references/icon-integration.md]] for Material Symbols integration, [[references/theme-colors.md]] for color palette.
-
-### Excalidraw Quality Checklist
-
-Before considering a diagram complete:
-
-**Visual hierarchy**:
-
-- [ ] Clear primary focus (largest/darkest/most prominent)
-- [ ] Consistent sizing for same hierarchy level
-- [ ] Typography follows size system (S/M/L/XL)
-
-**Alignment & spacing**:
-
-- [ ] All elements aligned to grid/each other
-- [ ] Consistent spacing within groups
-- [ ] Generous whitespace between sections
-- [ ] No accidental misalignments
-
-**Color & contrast**:
-
-- [ ] Limited color palette (2-4 colors)
-- [ ] Sufficient contrast (4.5:1 for text)
-- [ ] Color used meaningfully, not randomly
-- [ ] Accessible to colorblind users
-
-**Arrows & flow**:
-
-- [ ] No crossing arrows (unless unavoidable)
-- [ ] Consistent arrow directions
-- [ ] All arrows bound to elements
-- [ ] Flow is obvious and unambiguous
-
-**Polish**:
-
-- [ ] Consistent fill patterns
-- [ ] Consistent roughness level
-- [ ] No orphaned elements
-- [ ] Readable at intended viewing size
-- [ ] Professional export (2-3x scale)
-
-### Tools & Shortcuts
-
-Keyboard shortcuts, snapping and multi-point-arrow techniques, browser extensions, and paste-table-to-chart: see [[references/productivity-tips.md]].
-
-### Technical Integration
-
-- **MCP server** (real-time canvas manipulation): [[references/mcp-server-setup.md]].
-- **JSON format** (direct file manipulation / batch automation): [[references/json-format.md]].
-- **Mermaid conversion**: Excalidraw can import Mermaid.js and convert to hand-drawn style — quick for standard types, but styling control is limited; direct creation usually looks better.
+### Aesthetic defaults
+
+| Property      | Value        | Why                                      |
+| ------------- | ------------ | ---------------------------------------- |
+| `roughness`   | `2`          | Maximum sketchiness — commit to the look |
+| `fontFamily`  | `1` (Virgil) | Handwritten, never Helvetica             |
+| `fillStyle`   | `"hachure"`  | Sketchy hatching, not solid fill         |
+| `strokeStyle` | `"solid"`    | Reads as hand-drawn at roughness 2       |
+
+Canvas background is **white**, always. The palette below is a terminal theme,
+but diagrams need contrast and printability — never a dark canvas.
+
+### Binding is mandatory
+
+- **Text binds to its shape** — `containerId` on the text element,
+  `boundElements` on the shape. Unbound text does not move with its box, and the
+  diagram desynchronises on the first edit. Text should auto-size to container
+  width. Manual equivalent: select both → Cmd/Ctrl+G.
+- **Arrows bind at both ends** — `startBinding` and `endBinding`. A floating
+  arrow points at nothing the moment a box moves. Never create one.
+
+### The index-order hazard
+
+When writing `.excalidraw` files directly: every element carries a fractional
+`index` key setting z-order, and **the `elements` array must itself be
+serialised in ascending `index` order**. If array order and index order
+disagree, Excalidraw will not open the file — while every referential check
+still passes (ids resolve, bindings match, each index is individually valid), so
+nothing warns you. Sort by `index` immediately before writing, every time.
+
+Use fixed-width keys of equal length over the `0-9A-Za-z` ASCII alphabet (`a00`,
+`a01`, …) so lexicographic order is numeric order with no prefix collisions. An
+ad hoc scheme like `c00`, `d02` is silently regenerated on the next open/save,
+resorting the whole array with it.
+
+### Layout
+
+- **No rigid alignment.** Radial and clustered, spreading in all directions —
+  not a top-to-bottom tree.
+- **Arrows are directional, so a child can sit anywhere around its parent** —
+  360° of freedom. Use it to keep arrows from crossing and overlapping.
+- **Curved multi-point arrows** (click-click-click, not drag), routed _around_
+  unrelated boxes, never through them.
+- **Whitespace is structure.** Macro gaps separate concept groups; micro gaps
+  pad within them. If it feels crowded, it is crowded — add more than you think.
+- **Scale carries hierarchy.** The canvas is unlimited: make the important thing
+  genuinely big and let children shrink.
+
+### Structure first, then look
+
+Map every component and relationship for accuracy alone, ignoring position and
+style; challenge the connections while doing it. Only then reposition, restyle,
+and balance — without changing what the diagram claims. Doing both at once
+produces diagrams that are pretty and wrong.
+
+### Typography and shapes
+
+XL 40–48px titles · L 24–32px headers · M 16–20px body · S 12–14px labels.
+
+Rectangles for most things, circles for start/end/actors, diamonds for
+decisions, ellipses when a mind map wants an organic feel. Arrows thin (1–2px)
+by default, medium (3–4px) for emphasis.
+
+### Bundled libraries
+
+Six `.excalidrawlib` files ship in `libraries/` beside this file:
+
+- `awesome-icons` — general-purpose icon set
+- `data-processing`, `data-viz` — pipeline stages and chart elements
+- `stick-figures`, `stick-figures-collaboration` — people, and group scenes
+- `hearts` — decorative
+
+Load through the Excalidraw library panel → "Load library from file". Recolour
+to the palette below, use 1–3 icons per section, size them to the neighbouring
+text, and do not mix icon styles within one diagram. Material Symbols Outlined
+SVGs are a good source for anything the bundled libraries lack.
+
+### Export
+
+White background, background enabled, 2–3× scale, "Embed scene" on so the file
+stays editable. Export properly — never screenshot.
+
+## Colour palette (user's theme)
+
+Muted retro-terminal, low saturation, dark text on white.
+
+| Role                          | Hex                    |
+| ----------------------------- | ---------------------- |
+| Emphasis / goals / headers    | `#c9b458` (muted gold) |
+| Success / active              | `#8fbc8f` (soft green) |
+| Success, brighter accent      | `#76c893`              |
+| Info / links                  | `#7a9fbf` (muted blue) |
+| Warning / queued              | `#ffa500` (orange)     |
+| Error / blocked               | `#ff6666` (soft red)   |
+| Primary text, text on fills   | `#1a1a1a`              |
+| De-emphasised text, done work | `#888888`              |
+| Borders, default arrows       | `#404040`              |
+| Surface / completed fills     | `#252525`              |
+
+Rules:
+
+- **4–6 colours maximum per diagram.** Rainbow explosion and saturation fights
+  both read as noise. Colour must mean something.
+- **Fills at 10–35% opacity**, with `#1a1a1a` text on top. Solid fill only where
+  maximum contrast is needed.
+- **4.5:1 contrast minimum.** `#1a1a1a` on white is 19.6:1, on gold 9.2:1, on
+  green 8.1:1, on orange 7.5:1. `#888888` on white is 5.6:1 — de-emphasis only.
+- **Never light text on white** (`#b8c5b8`, `#a89968` fail there).
+- Check the result is still legible to colourblind readers.
+
+## Before calling it done
+
+- One clear primary focus; consistent sizing within each hierarchy level.
+- Every arrow bound at both ends; every text bound to its container.
+- Flow unambiguous, crossings only where unavoidable.
+- Palette limited and meaningful; contrast holds.
+- Consistent roughness and fill pattern; no orphaned elements.
+- Readable at the size it will actually be viewed.
+- For a hand-written `.excalidraw`: elements array sorted by `index`, and the
+  file opens.

@@ -169,11 +169,6 @@ refs = [
 reason = "The research-project layout this skill prescribes — paths in the researcher's own repository."
 
 [[tool.refcheck.allow]]
-docs = "plugins/tools/skills/diagram/references/json-format.md"
-refs = ["packages/excalidraw/element/types.ts", "packages/excalidraw/types.ts"]
-reason = "Source locations in the upstream Excalidraw repository."
-
-[[tool.refcheck.allow]]
 docs = "plugins/tools/skills/peer-review/references/probes.md"
 refs = ["reviews/arc/templates/nic-review-style.md"]
 reason = "A path in the user's knowledge base, not in this repository."

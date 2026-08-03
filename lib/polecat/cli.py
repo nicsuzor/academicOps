@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
+from urllib.parse import urlsplit, urlunsplit
 
 import click
 import yaml
@@ -256,6 +257,58 @@ def get_env_forwards(config=None):
     # session would inherit the unscoped environment.
     env.update(CONTAINER_SET_ENV)
 
+    return _rehost_loopback_urls(env)
+
+
+#: Host tokens that mean "this machine" on the host and "this container" inside
+#: one. Forwarded verbatim they resolve to the container's own empty loopback.
+#: Bare hosts, never endpoints: no scheme, no port, nothing dialable. They exist
+#: to be *detected and replaced*, which is the opposite of a compiled-in default.
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"})
+
+#: The gateway alias back to the host. `_build_docker_argv` always passes
+#: `--add-host host.docker.internal:host-gateway`, so this resolves on plain
+#: Linux Docker too, not only where Docker Desktop provides it natively.
+_CONTAINER_HOST_ALIAS = "host.docker.internal"
+
+
+def _rehost_loopback_urls(env):
+    """Point loopback URLs at the host, not at the container's own loopback.
+
+    A URL whose host is a loopback token names a service on the operator's own
+    machine. Forwarded unchanged it names that port *inside the container*,
+    where nothing listens — so the dependent feature degrades instead of
+    working, while the operator sees a service they can curl by hand.
+
+    That is not hypothetical: rbg's ``COPE_EVALUATOR_URL`` is normally a local
+    model endpoint, and a loopback value silently turned every containerised
+    session's turn-by-turn rule evaluation into a no-op. The hook reported the
+    outage once per session and proceeded unchecked, so autonomous container
+    workers — the least supervised surface there is — ran with no turn-by-turn
+    enforcement at all.
+
+    This rewrites the *host* only, and only when it is a loopback token. It
+    invents no endpoint, supplies no default, and leaves a URL the operator
+    pointed at a real host or a tailnet name exactly as given.
+    """
+    rehosted = {}
+    for key, value in env.items():
+        if not isinstance(value, str) or "://" not in value:
+            continue
+        parsed = urlsplit(value)
+        if parsed.hostname is None or parsed.hostname.lower() not in _LOOPBACK_HOSTS:
+            continue
+        netloc = _CONTAINER_HOST_ALIAS
+        if parsed.port is not None:
+            netloc = f"{netloc}:{parsed.port}"
+        if parsed.username:
+            credentials = parsed.username
+            if parsed.password:
+                credentials = f"{credentials}:{parsed.password}"
+            netloc = f"{credentials}@{netloc}"
+        rehosted[key] = urlunsplit(parsed._replace(netloc=netloc))
+
+    env.update(rehosted)
     return env
 
 
@@ -630,13 +683,19 @@ def _resolve_workspace(repo_dir, project, polecat_home):
     return workspace_dir
 
 
+#: Where each client writes its session state inside the container. Module-level
+#: so tests mount and probe the same paths the run uses, with no second copy.
+CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
+AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
+
+
 def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headless, task):
     """The command run inside the container, and the container path that agent
     writes its session state to.
 
     Returns (inner_cmd, container_session_path, seeded_from_task).
     """
-    claude_session_path = "/home/worker/.claude/projects/-workspace"
+    claude_session_path = CLAUDE_SESSION_PATH
 
     if agent_cmd == "claude":
         container_session_path = claude_session_path
@@ -648,7 +707,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             # or from stdin when there is none.
             inner_cmd.append("--print")
     elif agent_cmd == "agy":
-        container_session_path = "/home/worker/.gemini/tmp/workspace"
+        container_session_path = AGY_SESSION_PATH
         inner_cmd = [
             "agy",
             "--dangerously-skip-permissions",

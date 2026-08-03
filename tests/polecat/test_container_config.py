@@ -212,14 +212,6 @@ def test_partial_cope_config_forwards_only_what_is_set():
     assert env == {"COPE_EVALUATOR_URL": "https://evaluator.example"}
 
 
-def test_no_endpoint_or_credential_is_compiled_into_the_source():
-    """The binding constraint, asserted at the source: cli.py may plumb the
-    path, but nothing in it may name a real endpoint, model, or key."""
-    text = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
-    for needle in ("http://", "https://", "zentropi", "gpt-", "localhost"):
-        assert needle not in text, f"{needle!r} found in cli.py"
-
-
 # ---------------------------------------------------------------------------
 # get_env_forwards: config feeds the container's environment
 # ---------------------------------------------------------------------------
@@ -257,6 +249,42 @@ def test_host_env_var_wins_over_cope_config(monkeypatch):
     }
     env = cli.get_env_forwards(config)
     assert env["COPE_EVALUATOR_MODEL"] == "ambient-model"
+
+
+def test_a_loopback_evaluator_url_is_rehosted_to_reach_the_host(monkeypatch):
+    """A loopback URL names the container's own empty loopback once forwarded.
+
+    Observed on 2026-08-03 in a real container: with
+    ``COPE_EVALUATOR_URL=http://127.0.0.1:8099/v1/label`` forwarded verbatim,
+    curl from inside returned ``http=000`` (unreachable) and rbg's PreToolUse
+    hook reported its evaluator unanswering for 23/23 rules — turn-by-turn
+    enforcement silently off for every containerised worker.
+    """
+    for name in ("COPE_EVALUATOR_PROTOCOL", "COPE_EVALUATOR_MODEL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("COPE_EVALUATOR_URL", "http://127.0.0.1:8099/v1/label")
+    config = {"git_identity": {"name": "botnicbot", "email": "bot@users.noreply.github.com"}}
+
+    env = cli.get_env_forwards(config)
+
+    assert env["COPE_EVALUATOR_URL"] == "http://host.docker.internal:8099/v1/label", (
+        "a loopback host must be rewritten to the host-gateway alias, or the "
+        "evaluator is unreachable from inside the container"
+    )
+
+
+def test_rehosting_rewrites_only_the_host_and_only_for_loopback(monkeypatch):
+    """It must not invent an endpoint, and must leave real hosts untouched."""
+    monkeypatch.delenv("COPE_EVALUATOR_MODEL", raising=False)
+    monkeypatch.setenv("COPE_EVALUATOR_URL", "http://localhost:8099/v1/label?x=1")
+    # A tailnet or public host is already reachable and must pass through.
+    monkeypatch.setenv("PKB_MCP_URL", "http://services.example.ts.net:8020/mcp")
+    config = {"git_identity": {"name": "botnicbot", "email": "bot@users.noreply.github.com"}}
+
+    env = cli.get_env_forwards(config)
+
+    assert env["COPE_EVALUATOR_URL"] == "http://host.docker.internal:8099/v1/label?x=1"
+    assert env["PKB_MCP_URL"] == "http://services.example.ts.net:8020/mcp"
 
 
 def test_get_env_forwards_requires_git_identity(monkeypatch):

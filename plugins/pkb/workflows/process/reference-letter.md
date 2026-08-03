@@ -4,7 +4,7 @@ kind: process
 category: academic
 description: Draft, review, and finalize reference letters for students or colleagues (request → draft → review → send)
 requires: [task-tracking]
-pairs-with: [handover]
+pairs-with: [wf-handover]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-reference-letter
@@ -37,4 +37,4 @@ email with PDF attached) or upload to the relevant portal. Mark the task
 
 ## NOT this template
 
-- General review/feedback work → [[peer-review]]
+- General review/feedback work → the `peer-review` skill

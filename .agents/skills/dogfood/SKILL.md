@@ -33,7 +33,7 @@ Method and epistemics rubric: [references/decomposition-eval.md](references/deco
 
 - **Hypothesis before observation.** Written down first, every time. This is what lets you discover you were wrong.
 - **Blind means blind.** The executing agent never sees the gold standard, your hypothesis, or verbal coaching.
-- **Recusal.** The session that experienced the failure reports facts and impact; it does not propose the remedy (AXIOMS § recusal). A detached review — reading many records — is the only place rule changes are authored.
+- **Recusal.** The session that experienced the failure reports facts and impact; it does not propose the remedy. A detached review — reading many records — is the only place rule changes are authored. The `learn` skill's forensic-scope doctrine is where this is stated canonically.
 - **Evidence is recurrence, not salience.** One painful incident is a data point. Three cited recurrences justify a mechanism; fewer justify at most a text change.
 - **Friction is filed, not fixed.** Inline fixes destroy the evidence trail and violate recusal.
 
