@@ -214,10 +214,38 @@ def test_partial_cope_config_forwards_only_what_is_set():
 
 def test_no_endpoint_or_credential_is_compiled_into_the_source():
     """The binding constraint, asserted at the source: cli.py may plumb the
-    path, but nothing in it may name a real endpoint, model, or key."""
+    path, but nothing in it may name a real endpoint, model, or key.
+
+    A *dialable* endpoint is what is forbidden — a scheme, or a host with a
+    port. A bare loopback token in `_LOOPBACK_HOSTS` is not one: those exist to
+    be detected and rewritten by `_rehost_loopback_urls`, which is the opposite
+    of a compiled-in default. Pinned below so the exemption cannot widen.
+    """
     text = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
-    for needle in ("http://", "https://", "zentropi", "gpt-", "localhost"):
+    for needle in ("http://", "https://", "zentropi", "gpt-"):
         assert needle not in text, f"{needle!r} found in cli.py"
+
+    # `localhost` is permitted only as a bare member of the loopback set.
+    for line in text.splitlines():
+        if "localhost" not in line:
+            continue
+        assert line.strip().startswith("_LOOPBACK_HOSTS = frozenset("), (
+            f"'localhost' outside the loopback-detection set: {line.strip()!r}"
+        )
+
+    # Nothing in that set may carry a scheme or a port — i.e. be dialable.
+    # A single colon followed by digits is host:port; more colons is an IPv6
+    # literal like `::1`, which is a bare host.
+    for host in cli._LOOPBACK_HOSTS:
+        looks_dialable = "//" in host or (
+            host.count(":") == 1 and host.rpartition(":")[2].isdigit()
+        )
+        assert not looks_dialable, (
+            f"{host!r} in _LOOPBACK_HOSTS looks like an endpoint, not a bare host"
+        )
+
+    # The alias replacing them is Docker's own, and carries no port either.
+    assert ":" not in cli._CONTAINER_HOST_ALIAS
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +285,42 @@ def test_host_env_var_wins_over_cope_config(monkeypatch):
     }
     env = cli.get_env_forwards(config)
     assert env["COPE_EVALUATOR_MODEL"] == "ambient-model"
+
+
+def test_a_loopback_evaluator_url_is_rehosted_to_reach_the_host(monkeypatch):
+    """A loopback URL names the container's own empty loopback once forwarded.
+
+    Observed on 2026-08-03 in a real container: with
+    ``COPE_EVALUATOR_URL=http://127.0.0.1:8099/v1/label`` forwarded verbatim,
+    curl from inside returned ``http=000`` (unreachable) and rbg's PreToolUse
+    hook reported its evaluator unanswering for 23/23 rules — turn-by-turn
+    enforcement silently off for every containerised worker.
+    """
+    for name in ("COPE_EVALUATOR_PROTOCOL", "COPE_EVALUATOR_MODEL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("COPE_EVALUATOR_URL", "http://127.0.0.1:8099/v1/label")
+    config = {"git_identity": {"name": "botnicbot", "email": "bot@users.noreply.github.com"}}
+
+    env = cli.get_env_forwards(config)
+
+    assert env["COPE_EVALUATOR_URL"] == "http://host.docker.internal:8099/v1/label", (
+        "a loopback host must be rewritten to the host-gateway alias, or the "
+        "evaluator is unreachable from inside the container"
+    )
+
+
+def test_rehosting_rewrites_only_the_host_and_only_for_loopback(monkeypatch):
+    """It must not invent an endpoint, and must leave real hosts untouched."""
+    monkeypatch.delenv("COPE_EVALUATOR_MODEL", raising=False)
+    monkeypatch.setenv("COPE_EVALUATOR_URL", "http://localhost:8099/v1/label?x=1")
+    # A tailnet or public host is already reachable and must pass through.
+    monkeypatch.setenv("PKB_MCP_URL", "http://services.example.ts.net:8020/mcp")
+    config = {"git_identity": {"name": "botnicbot", "email": "bot@users.noreply.github.com"}}
+
+    env = cli.get_env_forwards(config)
+
+    assert env["COPE_EVALUATOR_URL"] == "http://host.docker.internal:8099/v1/label?x=1"
+    assert env["PKB_MCP_URL"] == "http://services.example.ts.net:8020/mcp"
 
 
 def test_get_env_forwards_requires_git_identity(monkeypatch):
