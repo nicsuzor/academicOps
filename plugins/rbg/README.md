@@ -1,6 +1,6 @@
 # rbg
 
-In-session rule checking on two layers. Turn by turn, on every tool call, it asks a small language model whether the call matches any rule in a three-layer rule set and injects the matched rule into the agent's context so it can correct itself — advisory, and never a block. At the session's stop it withholds the stop once, so the agent runs an explicit rule check over the whole session's work and presents evidence for it before handing back.
+In-session rule checking on two layers. Turn by turn, on every tool call, it asks a small language model whether the call matches any rule in a three-layer rule set and injects the matched rule into the agent's context so it can correct itself — advisory, and never a block. At the session's stop it asks once for the stop to be held, so the agent runs an explicit rule check over the whole session's work and cites what makes each finding checkable. Whether that ask is honoured as a disposition or lands as an advisory is the shared runtime's and the manifest's business, not this plugin's (`specs/ARCHITECTURE.md`, Hooks).
 
 ```mermaid
 flowchart TD
@@ -12,7 +12,7 @@ flowchart TD
     B3 --> S{"dispatch.py:<br/>stop_hook_active?"}
     S -->|"true — this is the<br/>stop our own block caused"| S1[silent, no output —<br/>the session ends]
     S -->|false| S2["handlers.py: rule_check<br/>→ messages/rule-check.md"]
-    S2 --> S3["decision: block<br/>(the turn continues so the<br/>check can actually run)"]
+    S2 --> S3["decision: block<br/>(honoured where the runtime and the<br/>manifest allow — see ARCHITECTURE.md)"]
 
     C --> R{"evaluator.py: resolve()<br/>CLAUDE_PLUGIN_OPTION_*,<br/>else plain COPE_EVALUATOR_*"}
     R -->|nothing set| R1[clean no-op — no network, no output]
@@ -60,18 +60,18 @@ Every degradation here is printed to stderr, which the client captures into the 
 
 ## What this plugin provides
 
-| Component                    | File                                   | Purpose                                                                                                            |
-| ---------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `PreToolUse` hook            | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                                               |
-| `PreInvocation` hook         | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                                                            |
-| `Stop` / `SubagentStop` hook | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes at a turn boundary; agy reaches it as `PostInvocation`.                           |
-| Evaluation handler           | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.                                      |
-| Ruleset handler              | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                                              |
-| Stop handler                 | `hooks/handlers.py` — `rule_check`     | Blocks the stop once per chain and directs the agent to run the rule check and show its evidence.                  |
-| Evaluator client             | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.                                   |
-| Rule loader                  | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.                                  |
-| Hook wording                 | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, `rule-check.md`, and `classifier-prompt.md`. Editable without code. |
-| `add-rule` skill             | `skills/add-rule/SKILL.md`             | Writes a project-local rule into `$CWD/.agents/rules/RULES.md` — layer 2 of the rule set below.                    |
+| Component                    | File                                   | Purpose                                                                                                               |
+| ---------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `PreToolUse` hook            | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                                                  |
+| `PreInvocation` hook         | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                                                               |
+| `Stop` / `SubagentStop` hook | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes at a turn boundary; agy reaches it as `PostInvocation`.                              |
+| Evaluation handler           | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.                                         |
+| Ruleset handler              | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                                                 |
+| Stop handler                 | `hooks/handlers.py` — `rule_check`     | Returns `block` once per chain, directing the agent to run the rule check and cite what makes its findings checkable. |
+| Evaluator client             | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.                                      |
+| Rule loader                  | `hooks/rules.py`                       | Three-layer loading described above; carries each rule's body as its policy text.                                     |
+| Hook wording                 | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, `rule-check.md`, and `classifier-prompt.md`. Editable without code.    |
+| `add-rule` skill             | `skills/add-rule/SKILL.md`             | Writes a project-local rule into `$CWD/.agents/rules/RULES.md` — layer 2 of the rule set below.                       |
 
 ## How the judgment is made
 
@@ -98,7 +98,7 @@ The stop gate is a different disposition on a different question, which is what 
 
 ## The stop gate
 
-`Stop` and `SubagentStop` fire at a **turn** boundary — the moment an agent has finished and is about to hand back. It is the last moment the work of that turn can still be corrected, and unlike `PreToolUse` it is a point where the whole turn is available to judge rather than one call at a time. `rule_check` uses it to withhold the handback: Claude Code reads `{"decision": "block", "reason": ...}` as "not yet", gives the agent another turn, and puts the reason in front of it. The reason is `hooks/messages/rule-check.md` — run the rule check over all three layers, and present evidence somebody else can check rather than a claim of compliance.
+`Stop` and `SubagentStop` fire at a **turn** boundary — the moment an agent has finished and is about to hand back. It is the last moment the work of that turn can still be corrected, and unlike `PreToolUse` it is a point where the whole turn is available to judge rather than one call at a time. `rule_check` uses it to ask for the handback to be held: it returns `{"decision": "block", "reason": ...}`, which Claude Code reads as "not yet" wherever a block is honoured (`specs/ARCHITECTURE.md`, Hooks — including what this plugin's own `"async": true` declaration does to it). The reason is `hooks/messages/rule-check.md` — run the rule check over all three layers, and cite what makes each finding checkable rather than claiming compliance. It says nothing about the handback evidence contract, which is `orchestrate`'s and is not restated here.
 
 A turn boundary is not a session boundary. `Stop` fires every time the session's own agent finishes a response, so an interactive session reaches this gate once per turn, not once at the end.
 

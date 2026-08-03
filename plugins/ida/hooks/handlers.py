@@ -1,30 +1,18 @@
 """ida's hook handlers.
 
-``rule_against_hearsay`` is the ``PostToolUse`` handler, matched to the
-``Agent`` tool. It fires in the context of whoever dispatched a subagent, at
-the moment that subagent's report lands, and reminds them that a report is
-not evidence.
-
-The event is load-bearing. The rule binds the *caller* — the party who has to
-decide whether to trust the report — so it must be delivered on the caller's
-own side. ``SubagentStop`` cannot carry it: that event fires on the stopping
-subagent's context and its injection is visible only there, never to the
-session that dispatched it. Aimed at the worker, this text does worse than
-miss — the worker spends its final message arguing with a warning about
-itself, and the caller loses the report it was waiting for.
-
-``strip_the_reply`` is the ``Stop`` gate. It returns a ``warn``
+``strip_the_reply`` is the ``Stop`` gate, and the only handler here. It returns a ``warn``
 (lib/hooks/dispatch.py) reminding ida to strip its own reply to the person
 down to load-bearing content before it stops — not a check on what was
 already said, since the hook has no transcript to read, only a reminder that
 fires at the moment ida is about to speak.
 
-The event is load-bearing, same reasoning as ``rule_against_hearsay`` above:
-``Stop`` fires only on the session's own turn boundary, so registering there
-scopes the gate to the face. ``SubagentStop`` fires on the *stopping
-subagent's* own context — wiring it there would direct a worker or james to
-strip a reply it never sends to the person, which is not what this gate is
-for. Deliberately not wired.
+The event is load-bearing. ``Stop`` fires only on the session's own turn
+boundary, so registering there scopes the gate to the face — ida is the only
+agent this plugin ships, and the only one that speaks to the person.
+``SubagentStop`` fires on the *stopping
+subagent's* own context — wiring it there would direct a worker to strip a
+reply it never sends to the person, which is not what this gate is for.
+Deliberately not wired.
 
 Every agent-visible string comes from ``messages/<name>.md``, and every
 user-visible one from ``messages/<name>.user.md`` beside it, loaded via
@@ -50,5 +38,5 @@ def strip_the_reply(ctx: HookContext) -> Result | None:
 
 
 HANDLERS: dict[str, list] = {
-    "Stop": [strip_the_reply],
+    # "Stop": [strip_the_reply],
 }

@@ -27,6 +27,10 @@ class HookContext:
     tool: str = ""
     command: str = ""
     session_id: str = ""
+    # PostToolBatch only: every tool call in the resolved batch, each a
+    # ``{tool_name, tool_input, tool_use_id, tool_response}`` mapping. Empty on
+    # every other event, so a handler can read it without guarding the event.
+    tool_calls: tuple[dict[str, Any], ...] = ()
     raw: dict[str, Any] = field(default_factory=dict)
     hooks_dir: Path = field(default_factory=Path)
 
@@ -282,12 +286,17 @@ def render(client: str, event: str, result: Result | None) -> dict:
 def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> HookContext:
     tool_input = raw.get("tool_input")
     command = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
+    raw_calls = raw.get("tool_calls")
+    tool_calls = (
+        tuple(c for c in raw_calls if isinstance(c, dict)) if isinstance(raw_calls, list) else ()
+    )
     return HookContext(
         client=client,
         event=event,
         tool=raw.get("tool_name") or raw.get("toolName") or "",
         command=command,
         session_id=raw.get("session_id") or raw.get("conversationId") or "",
+        tool_calls=tool_calls,
         raw=raw,
         hooks_dir=hooks_dir,
     )

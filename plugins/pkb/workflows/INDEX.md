@@ -20,25 +20,9 @@ the session, an email is triaged. Any agent reads the tree directly; no skill
 stands between them and it. Only work released for dispatch gets a full process
 assembled around it, and that is `brief`'s job.
 
-Two kinds:
-
-- **Process templates** — `process/`. How a class of work proceeds: routing
-  signals, NOT-this signals, the steps unique to it, and where it exits to.
-- **Workflow templates** — the `wf-*` obligations. These are **not files**. They
-  live in the PKB as documents tagged `wf-template`; enumerate them with
-  `list_documents(tag="wf-template")` and read one with `get_document(id)`. The
-  table below is a catalogue, not the source — the PKB is authoritative, and a
-  template must be read from it before it is composed in.
-
-Templates in `$ACA_DATA/.agents/workflows/` override a shipped template of the
-same filename and extend the library with any new one. `$ACA_DATA` comes from the
-environment; if it is unset the user layer simply does not exist.
-
-Four frontmatter hints are the entire vocabulary a composer reasons over:
-`requires` (always pulled in), `pairs-with` (composed proportionate to stakes),
-`recommends` (a soft suggestion), `conflicts` (mutually exclusive). Door type —
-one-way versus two-way — is expressed as which templates get composed in, not as
-a separate mechanism.
+Two kinds: **process templates** in `process/` — how a class of work proceeds —
+and the `wf-*` obligations, which are not files at all (see "Workflow templates"
+below).
 
 ## Routing
 

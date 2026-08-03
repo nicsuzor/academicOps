@@ -35,11 +35,9 @@ that leaves that unstated gets it resolved silently in favour of finishing.
 
 ### Evidence bar — what makes a claim admissible
 
-The bar is the evidence contract at brief scale, and the brief sets it. It is not
-the worker's to choose, and "I verified it" is not evidence. Require, for every
-claim the report makes, one of: the command run with its observed output,
-`file:line`, or a commit hash — each labelled Observed where the worker saw it and
-Reported where it is passing on someone else's word.
+The handback doctrine fixes the shape every report must carry; the brief fixes the
+bar for this unit. It is not the worker's to choose, and "I verified it" is not
+evidence.
 
 - **Acceptance criteria** — what must be true for the unit to be accepted, each
   written so that it names the evidence that would settle it. A criterion nothing
@@ -48,7 +46,7 @@ Reported where it is passing on someone else's word.
   the only surface anything downstream reads.
 
 A report asserting success without evidence is a failed brief, not a finished
-unit. Send it back, and raise the bar that let it through.
+unit. Raise the bar that let it through.
 
 ### Sizing
 

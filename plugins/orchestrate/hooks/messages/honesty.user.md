@@ -1,1 +1,1 @@
-Honesty floor: require agents to ensure every claim is evidenced.
+Honesty floor: reminded to attach evidence to every claim before handing back.

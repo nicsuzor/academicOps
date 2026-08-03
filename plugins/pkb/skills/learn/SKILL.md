@@ -53,19 +53,10 @@ honest.
   precisely enough that the deliberate cross-incident pass can act on it: which
   instruction, which agent, what it currently says, what the incident showed.
 - **Tracked issue** (gated) — search open issues first and comment on the match
-  rather than opening a duplicate. Forensic fields only: incident facts,
-  structural shape, impact.
+  rather than opening a duplicate.
 
 ## Report
 
 Name the diagnosis in one sentence, the scope you assigned, the destination, and
 the id or path of what was written. If the scope was ambiguous, or a destination
 was gated out, say that instead of picking something.
-
-## Must not
-
-- Route to more than one destination to be safe. One lesson, one home.
-- Change what a shipped agent is directed to do because the incident made it
-  obvious. That is the gated destination, and this pass does not have it.
-- Write a lesson to a surface whose scope it does not claim because the right
-  surface was closed.

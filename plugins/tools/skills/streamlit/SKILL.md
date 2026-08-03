@@ -5,13 +5,9 @@ description: Streamlit implementation of the analyst presentation layer. Use whe
 
 # Streamlit — Presentation Layer (academicOps)
 
-This skill is the **Streamlit-specific implementation** of the presentation layer
-described in the tech-agnostic `analyst` skill (aops-tools). The analyst skill owns the
-_principle_ (display-only, never transform); this skill owns the _Streamlit how-to_ —
-see **Hard boundary** below for what that means in practice.
-
-Streamlit is one **swappable** choice of presentation layer. The display-only rule holds
-regardless of which dashboard tool you use; only the patterns below are Streamlit-specific.
+Streamlit is one **swappable** implementation of the presentation layer. The `analyst`
+skill owns the principle — display only, never transform — which holds whichever
+dashboard tool you use; this skill owns the Streamlit how-to.
 
 ## Contents
 

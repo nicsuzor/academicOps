@@ -16,15 +16,10 @@ Five signals, in order of importance.
 
 ## Synthesis, not concatenation
 
-Consolidating five memories into a list of the five rules they each state adds
-nothing over the five memories. Synthesis means naming the connection the sources
-do not state themselves — the single principle they are all instances of — and
-then showing how each specific behaviour follows from it. If you cannot name the
-principle, the material is not ready.
-
-The sweet spot is four to six sources. Below three there is usually not enough to
-synthesise, and the result reads as a restated problem rather than distilled
-knowledge.
+Having named the principle the sources are all instances of, show how each
+specific behaviour follows from it. The sweet spot is four to six sources: below
+three there is usually not enough to synthesise, and the result reads as a
+restated problem rather than distilled knowledge.
 
 ## What to watch for
 

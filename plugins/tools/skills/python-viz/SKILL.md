@@ -9,14 +9,9 @@ description: Python plotting and statistical-modelling libraries (matplotlib, se
 
 # Python Visualisation & Statistical Modelling (academicOps)
 
-This skill collects the **Python library-specific** references that support the
-tech-agnostic `analyst` skill (aops-tools). The analyst skill owns the _statistical
-methodology and presentation principles_; this skill owns the _library how-to_ for
-producing figures and fitting models in Python.
-
-These libraries are **swappable** — the analyst statistical-methodology guidance (test
-selection, assumptions, effect sizes, reporting standards) is library-neutral. Use this
-skill when you have settled on the Python ecosystem.
+These libraries are one **swappable** implementation. The `analyst` skill owns the
+statistical-methodology and presentation principles, which are library-neutral; this
+skill owns the how-to for producing figures and fitting models in Python.
 
 ## Contents
 

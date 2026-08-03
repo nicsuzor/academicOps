@@ -26,9 +26,9 @@ The test for a final-register sentence: _could the academic assert this confiden
 careful reading, without checking a figure?_ If it depends on a number the reader would have
 to re-verify, it belongs in prep, not the final text.
 
-Everything cut in moving from prep to final is preserved in **git history** of the one
-living draft — not a carried-forward appendix, not `-v2`/`-v3` files. The git record is also
-what lets verification distinguish _consciously parked_ from _accidentally lost_.
+Everything cut in moving from prep to final is preserved in the one living draft's git
+history, which is what lets verification distinguish _consciously parked_ from
+_accidentally lost_.
 
 ## Render boldly — the one voice rule that subsumes the rest
 
@@ -64,8 +64,7 @@ loop and a _generic_ starter, and let each academic train their own.
 A signature phrase used **once** is voice; the **same** phrase used across six reviews in
 one panel is a **fingerprint**. Fingerprints only exist _across_ documents, so this pass runs
 over the **entire round's set** at once, after verification, before the academic's own
-rewrite. (A lone-review user gets the within-review intensifier diet but not the
-cross-document fingerprint guard — that's expected, not a gap.)
+rewrite. A lone review gets the within-review intensifier diet only.
 
 ### Procedure
 

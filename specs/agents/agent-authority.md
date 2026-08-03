@@ -103,31 +103,34 @@ confirmed to deliver the full tool pool, including MCP servers, is omitting
 `tools` entirely — the agent then inherits its parent's complete effective set
 instead of "no tool calls permitted."
 
-**The same inversion held for `subagents` until this was ruled on: all five
-agent files now declare it, each per its actual role.** `pauli`
+**The same inversion held for `subagents` until this was ruled on: four of the
+five agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
 (`plugins/orchestrate/agents/james.md`) declares the explicit list
 `["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
 three reviewers his own description names, plus the plain worker surface his
-dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) and `marsha`
-(`plugins/orchestrate/agents/marsha.md`) declare `subagents: []` — neither's
-own description involves spawning: rbg returns a verdict, marsha verifies and
-never fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
-`["orchestrate:james", "pkb:pauli"]`, matching the only two delegation targets
-named in its own file. The row now describes a real declaration on every agent
-file, not an absent gate — though nothing yet enforces membership against it
-(see Lint Rules below: the frontmatter lint that would check `subagents`
-membership does not exist, so this remains a declared commitment rather than a
-checked one). The claim at "No implicit orchestrator privilege" below — that
-each orchestrator lists its `subagents` explicitly — is now true of the tree.
+dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
+`subagents: []`: its own description does not involve spawning, since it
+returns a verdict. `ida` (`plugins/ida/agents/ida.md`) declares the explicit
+list `["orchestrate:james", "pkb:pauli"]`, matching the only two delegation
+targets named in its own file. **`marsha`
+(`plugins/orchestrate/agents/marsha.md`) is the outstanding one** — her
+frontmatter carries neither `subagents` nor `tools`, so the grid row still
+describes an absent gate for her alone. Nothing enforces membership against
+any of the four either (see Lint Rules below: the frontmatter lint that would
+check `subagents` membership does not exist, so these remain declared
+commitments rather than checked ones). The claim at "No implicit orchestrator
+privilege" below — that each orchestrator lists its `subagents` explicitly —
+is true of every orchestrating agent in the tree; marsha orchestrates nothing.
 
-`plugins/orchestrate/agents/james.md` omits `tools` for this reason;
-`plugins/pkb/agents/pauli.md`, `plugins/orchestrate/agents/marsha.md`, and
-`plugins/rbg/agents/rbg.md` declare the wildcard `tools: ["*"]` rather than an
-explicit allowlist, to the same end. Each of the four needs
-`mcp__services__pkb__*` (or broader) to function at all, so an unenforced
-grant is preferable to a materialized set of six built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
+`plugins/orchestrate/agents/james.md` omits `tools` for the materialization
+reason above, as does `plugins/orchestrate/agents/marsha.md`;
+`plugins/pkb/agents/pauli.md` and `plugins/rbg/agents/rbg.md` declare the
+wildcard `tools: ["*"]` rather than an explicit allowlist, to the same end.
+Each of the four needs `mcp__services__pkb__*` (or broader) to function at
+all, so an unenforced grant is preferable to a materialized set of six
+built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
 restriction is deliberate, but see the runtime finding below: declaring it does
 not currently mean it is enforced. Consequence: RBG's ultra-vires review (L4
 below) has no frontmatter ground truth for these four agents until the harness
@@ -221,7 +224,7 @@ Portability here is the permission-control half of the personalities-are-not-ski
 
 **Nested delegation.** A skill may itself invoke further skills or spawn sub-agents — only if the enclosing agent's `skills`/`subagents` list permits it. Nested invocation never expands authority; at every level the controlling envelope is the agent's own declared allowlists.
 
-**No implicit orchestrator privilege.** Orchestrator agents (james, supervisor, planner) have no special spawning rights. Each lists its `subagents` explicitly. "Orchestrator" is a role description, not a permission class.
+**No implicit orchestrator privilege.** Orchestrator agents (ida, james, pauli) have no special spawning rights. Each must list its `subagents` explicitly — an obligation this spec states and no shipped agent file currently meets (see "Known exception" above). "Orchestrator" is a role description, not a permission class.
 
 ## Sub-agent Delegation (Agent tool)
 

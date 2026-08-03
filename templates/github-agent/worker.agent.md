@@ -25,20 +25,11 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
    unrelated issues, refactor adjacent code, or add features not requested.
    If you find something broken, note it in a comment — don't fix it.
 
-3. **Run validation before committing:**
-   ```bash
-   uv run ruff check --fix . && uv run ruff format .
-   uv run dprint fmt
-   uv run pytest -x
-   ```
-   All three must pass. If tests fail, fix the issue or stop and report.
+3. **Run validation before committing.** Lint, format, and tests, as
+   `.github/copilot-instructions.md` defines them for this repo. All must pass.
+   If tests fail, fix the issue or stop and report.
 
-4. **Commit with a clear message:**
-   ```
-   <descriptive summary of what changed>
-
-   Closes: <task-id if present>
-   ```
+4. **Commit** in the message format `.github/copilot-instructions.md` sets.
 
 5. **Fail fast.** If the issue is ambiguous, the required files don't exist,
    or you're unsure how to proceed — stop and post a comment on the issue
@@ -53,12 +44,11 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 
 ## Key Conventions
 
-- **Tests live in `tests/`** at the repo root, NOT inside `plugins/`.
-- **Python 3.12**, managed by `uv`. Always use `uv run` for tools.
-- **Type hints** throughout. Pydantic for data models.
-- **No backup files.** Git is the backup system (`single-source-of-truth`).
+Repo conventions — language, tooling, test layout, commit format — are in
+`.github/copilot-instructions.md`. On top of them:
+
 - **No workarounds.** Never use `--no-verify` or `--force` (`halt-on-failure`).
-- **No perpetual commands (`bounded-execution`).** No `--watch`, `tail -f`, `gh run watch`, or unbounded polling loops. Every command must have a visible upper bound on runtime. Use single-run test invocations (not `--watch`/`--watchAll`). If you background a process, capture its PID and `kill` it before finishing — orphaned background processes keep the GHA runner alive past your work and cause "job timed out" failures.
+- **No perpetual commands (`bounded-execution`).** No `--watch`, `tail -f`, `gh run watch`, or unbounded polling loops; every command needs a visible upper bound on runtime. Background a process and you own its PID: `kill` it before finishing, or it keeps the runner alive past your work and the job times out.
 
 ## What NOT to Modify
 
@@ -68,11 +58,6 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 
 ## PR Description
 
-Write a clear PR description that explains:
-
-- What the issue asked for
-- What you changed and why
-- How you verified it works
-
-The PR will be reviewed by automated agents (enforcer, QA).
-Clear descriptions help them evaluate scope compliance.
+Write a PR description a reviewer can check you against: what the issue asked
+for, what you changed and why, and the evidence that it works — the commands you
+ran and what they returned, not an assurance that you ran them.

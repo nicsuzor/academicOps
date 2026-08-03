@@ -111,9 +111,6 @@ more canonical notes and navigation would help. Skip it by default.
 Pacing, per cycle: roughly ten episodic sources, three canonical notes created or
 substantially restructured, at most one MOC.
 
-**Age alone never justifies cancellation.** Old episodic sources get surfaced for
-review, not retired.
-
 ## 4 — Reconcile data quality
 
 Before any structural work, fix the data. Three activities, bounded.
@@ -170,7 +167,7 @@ about thirty a cycle.
 Orphans and under-specified work, as **signals** rather than verdicts. Run
 `pkb_orphans()` for the actionable layer and the knowledge-layer call from stage
 1 for the other. Read the flagged nodes and decide whether they genuinely need
-attention. Surface candidates; do not auto-cancel on age.
+attention, and surface candidates rather than retiring them.
 
 ## 6 — Process refiles
 

@@ -77,9 +77,8 @@ def session_start(ctx: HookContext) -> Result | None:
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
     """Remind the dispatcher that a subagent's report is not evidence."""
-    for tool in ctx.tool_calls:
-        if tool.get("tool_name") == "Agent":
-            return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
+    if any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
+        return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
 def honest_output(ctx: HookContext) -> Result | None:

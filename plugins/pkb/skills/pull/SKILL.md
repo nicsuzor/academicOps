@@ -28,7 +28,9 @@ Track every step and deliverable on your native task list, including all outstan
 
 ## 3. Execute
 
-Execute the steps systematically, sequencing in parallel where the work allows. Check the output of your work before accepting it; fix anything that falls short.
+Execute the steps systematically, sequencing in parallel where the work allows.
+
+**Refuse and attempt.** Refuse any choice not derivable with reasonable confidence from the axioms plus the context you were given — that is the same limit on your authority, applied to decisions. Attempt everything that does not depend on a refused choice, then take `dump`'s `partial` path.
 
 ## 4. Fail FAST and LOUD
 
@@ -44,7 +46,7 @@ Complete what steps you can and cut at a clean seam. Mark what is incomplete and
 
 ## 6. Verify
 
-Check your work against the literal requirements and acceptance criteria set out in the task. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
+Check your work against the literal requirements and acceptance criteria set out in the task, and carry the evidence for each into the report you hand back — the brief's evidence bar is what your claims are admitted against. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
 
 Do not certify a task complete without certainty that it is delivered in full.
 

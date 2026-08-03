@@ -7,8 +7,11 @@ each live rule. The judgment is the model's; rbg only composes the question and
 reports what came back.
 
 ``rule_check`` is layer 2, at the session's stop. It is the one handler here
-that carries a disposition, and what it withholds is the stop, not a tool call:
-the agent gets another turn in which to run the check and show its evidence.
+that carries a disposition, and what it asks to withhold is the stop, not a tool
+call: the agent gets another turn in which to run the check and cite its
+findings. Whether the disposition is honoured at all belongs to the runtime and
+to ``manifest/hooks.template.json`` — which declares these stop hooks ``async``
+— not to this handler (specs/ARCHITECTURE.md, Hooks).
 The disposition is legal because the thing being judged is whether the check has
 happened at all, which is a fact about the session rather than a reading of a
 rule. Registered on both ``Stop`` and ``SubagentStop``, rbg's rule check applies
@@ -247,6 +250,6 @@ def rule_check(ctx: HookContext) -> Result | None:
 
 HANDLERS = {
     "PreToolUse": [evaluate],
-    "Stop": [rule_check],
+    # "Stop": [rule_check],
     "SubagentStop": [rule_check],
 }

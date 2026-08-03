@@ -51,12 +51,15 @@ def built_orchestrate(tmp_path_factory) -> Path:
 
 
 def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
-    """`skills/dispatch` invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`, and that
-    path is true only because `manifest/plugin.toml` injects it from `lib/`.
+    """James invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` via
+    `skills/dispatch` (`plugins/orchestrate/agents/james.md`,
+    `plugins/orchestrate/skills/dispatch/SKILL.md`), and that path is true only
+    because `plugins/orchestrate/manifest/plugin.toml` injects it from
+    `lib/polecat/`.
 
     Drop those `[[shared]]` stanzas and nothing fails at build time. Dispatch
-    fails at runtime, inside a container, with file-not-found. This is the
-    check that turns that into a build-time failure instead.
+    fails at runtime, inside a container, with file-not-found. This is the check
+    that turns that into a build-time failure instead.
     """
     for client in ("claude", "agy"):
         polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
