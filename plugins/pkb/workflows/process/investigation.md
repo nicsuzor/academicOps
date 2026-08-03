@@ -1,19 +1,19 @@
 ---
 id: investigation
 kind: process
-category: fragment
+category: process
 description: Hypothesis-probe-conclude cycle for debugging and exploratory work with an unknown cause
 requires: []
-pairs-with: []
+pairs-with: [wf-verification]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-investigation
 ---
 
-# Process fragment: Investigation
+# Process: Investigation
 
-**Composable fragment.** Used by debugging, decompose spikes, and any
-exploratory work where the cause isn't known yet.
+Routed to directly for a bug whose cause is unknown, and composable into
+decompose spikes and any other exploratory work.
 
 ## Pattern
 

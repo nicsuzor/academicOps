@@ -49,8 +49,8 @@ Request
   |       +-- Finalise a report after feedback? ---------------> [[finalize-report]]
   |       +-- Reply to docx review comments? ------------------> [[review-response]]
   +-- Bug or issue?
-  |       +-- Cause unknown -----------------------------------> [[investigation]]
-  |       +-- Cause known, fix clear --------------------------> [[feature-dev]]
+  |       +-- Cause established by a read, not assumed --------> [[feature-dev]]
+  |       +-- Anything else (a trigger is not a cause) --------> [[investigation]]
   +-- Planning or designing known work? -----------------------> [[feature-dev]] or [[develop-specification]]
   +-- Submitting an external batch API job? -------------------> [[external-batch-submission]]
   +-- Sharing, sending, or publishing externally? -------------> [[wf-outbound-review]]
@@ -70,7 +70,7 @@ Request
 | Template          | Routes                                              | Requires           | Pairs with                           |
 | ----------------- | --------------------------------------------------- | ------------------ | ------------------------------------ |
 | [[feature-dev]]   | Test-first feature or known-cause bug, idea to ship | task-tracking, tdd | [[wf-verification]], [[wf-handover]] |
-| [[investigation]] | Hypothesis, probe, conclude — unknown cause         | —                  | —                                    |
+| [[investigation]] | Hypothesis, probe, conclude — unknown cause         | —                  | [[wf-verification]]                  |
 
 ### Email and communications
 
