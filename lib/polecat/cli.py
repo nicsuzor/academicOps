@@ -683,13 +683,19 @@ def _resolve_workspace(repo_dir, project, polecat_home):
     return workspace_dir
 
 
+#: Where each client writes its session state inside the container. Module-level
+#: so tests mount and probe the same paths the run uses, with no second copy.
+CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
+AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
+
+
 def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headless, task):
     """The command run inside the container, and the container path that agent
     writes its session state to.
 
     Returns (inner_cmd, container_session_path, seeded_from_task).
     """
-    claude_session_path = "/home/worker/.claude/projects/-workspace"
+    claude_session_path = CLAUDE_SESSION_PATH
 
     if agent_cmd == "claude":
         container_session_path = claude_session_path
@@ -701,7 +707,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             # or from stdin when there is none.
             inner_cmd.append("--print")
     elif agent_cmd == "agy":
-        container_session_path = "/home/worker/.gemini/tmp/workspace"
+        container_session_path = AGY_SESSION_PATH
         inner_cmd = [
             "agy",
             "--dangerously-skip-permissions",

@@ -9,15 +9,10 @@ agent: "james"
 Assign eligible tasks to workers and return. You never do the work, and you make
 no planning decisions — those are out of scope and belong upstream.
 
-**Confirming a launch is not waiting for a result.** These are different acts and
-only one of them is forbidden:
-
-- **Startup confirmation — required, once.** A dispatch that silently failed to
-  start is indistinguishable from one running well, so you check once that the
-  container exists, and that check is bounded.
-- **Completion polling — never.** A container emits no completion signal of its
-  own, and its result arrives on the task record, not back through you. Waiting
-  on one blocks the dispatcher for the length of the work it just delegated.
+**Never wait, never poll.** A container emits no completion signal of its own;
+its result arrives on the task record, not back through you. The launch command's
+own exit is the whole of your launch evidence — success returns the container ID,
+failure fails loudly, and nothing about either needs a follow-up check.
 
 **Quick failures are high-value information.** If a task cannot be dispatched,
 report the problem; do not investigate alternatives. Partial completions are
@@ -55,15 +50,8 @@ uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy -p <project> -t <t
 - Every path, image, endpoint, and the committing git identity comes from the
   environment. If one is missing polecat fails loudly — supply nothing yourself.
 
-Polecat returns the container ID on success. Then confirm startup once, and only
-once:
-
-```bash
-docker ps -a --filter "name=<polecat_id>"
-```
-
-If polecat itself failed, or the container is absent, mark the task failed
-immediately with a succinct reason on its record.
+Polecat returns the container ID on success. If it failed instead, mark the task
+failed immediately with a succinct reason on its record, and move on.
 
 ## 3. Return immediately
 

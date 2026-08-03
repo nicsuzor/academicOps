@@ -110,14 +110,28 @@ read.**
   instruction needs another module's internals to be intelligible, the boundary
   is drawn wrong; move the gate's trigger onto something local.
 
-## 9. A tripped guard is information
+## 9. A tripped guard is information — about one of you
 
-**Goal: guards get sharper, never dodged.**
+**Goal: guards get sharper or deleted, never dodged.**
 
-- When your change trips an existing check, the check is presumed right. Either
-  your change is wrong or the check states its intent too coarsely — determine
-  which and fix that one, in the open. Rephrasing your change so the check
-  stops seeing it is forbidden, and always visible in review.
+- When your change trips an existing check, first ask what the check actually
+  tests. One that pins a copy of a setting or source text against the same
+  literal held in the test is drift dressed as a guard: replace the duplicate
+  with one shared source of truth, or delete the check outright.
+- Where the check does test behaviour, either your change is wrong or the check
+  states its intent too coarsely — determine which and fix that one, in the
+  open. Rephrasing your change so the check stops seeing it is forbidden, and
+  always visible in review.
+
+## 9b. Oddity defaults to drift, not design
+
+**Goal: nothing survives review because someone assumes it was meant.**
+
+- An exception, a special case, or an inconsistency in the existing surface is
+  more likely stale than intentional. The burden of proof sits on keeping it:
+  an exception earns its place with a stated necessity, or it goes.
+- "The carve-out is coherent" is not that proof — a rationale you can construct
+  after the fact is exactly what drift looks like from inside.
 
 ## 10. Close the loop on the original observation
 

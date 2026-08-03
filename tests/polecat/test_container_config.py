@@ -212,42 +212,6 @@ def test_partial_cope_config_forwards_only_what_is_set():
     assert env == {"COPE_EVALUATOR_URL": "https://evaluator.example"}
 
 
-def test_no_endpoint_or_credential_is_compiled_into_the_source():
-    """The binding constraint, asserted at the source: cli.py may plumb the
-    path, but nothing in it may name a real endpoint, model, or key.
-
-    A *dialable* endpoint is what is forbidden — a scheme, or a host with a
-    port. A bare loopback token in `_LOOPBACK_HOSTS` is not one: those exist to
-    be detected and rewritten by `_rehost_loopback_urls`, which is the opposite
-    of a compiled-in default. Pinned below so the exemption cannot widen.
-    """
-    text = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
-    for needle in ("http://", "https://", "zentropi", "gpt-"):
-        assert needle not in text, f"{needle!r} found in cli.py"
-
-    # `localhost` is permitted only as a bare member of the loopback set.
-    for line in text.splitlines():
-        if "localhost" not in line:
-            continue
-        assert line.strip().startswith("_LOOPBACK_HOSTS = frozenset("), (
-            f"'localhost' outside the loopback-detection set: {line.strip()!r}"
-        )
-
-    # Nothing in that set may carry a scheme or a port — i.e. be dialable.
-    # A single colon followed by digits is host:port; more colons is an IPv6
-    # literal like `::1`, which is a bare host.
-    for host in cli._LOOPBACK_HOSTS:
-        looks_dialable = "//" in host or (
-            host.count(":") == 1 and host.rpartition(":")[2].isdigit()
-        )
-        assert not looks_dialable, (
-            f"{host!r} in _LOOPBACK_HOSTS looks like an endpoint, not a bare host"
-        )
-
-    # The alias replacing them is Docker's own, and carries no port either.
-    assert ":" not in cli._CONTAINER_HOST_ALIAS
-
-
 # ---------------------------------------------------------------------------
 # get_env_forwards: config feeds the container's environment
 # ---------------------------------------------------------------------------

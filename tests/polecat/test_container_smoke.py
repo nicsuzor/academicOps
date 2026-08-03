@@ -48,11 +48,9 @@ _DEFAULT_IMAGE = "aops-crew:latest"
 
 _CONTAINER_TIMEOUT = 60
 
-# The agy session-state mount target `cli.py`'s `run()` hardcodes for
-# `agent_cmd == "agy"`. Not importable — it is a local inside `run()`, not a
-# module constant — so this is pinned by the companion contract test below
-# rather than silently drifting out of sync with the real source.
-_AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
+# The agy session-state mount target, imported from the source that uses it —
+# no duplicated literal, nothing to drift.
+_AGY_SESSION_PATH = cli.AGY_SESSION_PATH
 
 
 def _expected_plugin_names() -> set[str]:
@@ -198,18 +196,6 @@ def test_agy_session_mount_target_is_writable_by_the_invoking_host_uid(real_imag
     assert result.returncode == 0, result.stderr
     assert "WROTE" in result.stdout
     assert (host_dir / "probe").exists()
-
-
-def test_the_agy_session_path_literal_is_pinned_to_the_real_source():
-    """The companion contract for the test above: `_AGY_SESSION_PATH` is a
-    copy of a local variable inside `cli.py`'s `run()`, not an import — this
-    is what stops that copy from silently drifting if the real path is ever
-    renamed there."""
-    source = _CLI_PY.read_text()
-    assert _AGY_SESSION_PATH in source, (
-        f"{_AGY_SESSION_PATH!r} no longer appears in cli.py — this test's mount "
-        "target has drifted from the real agy container_session_path"
-    )
 
 
 def test_every_declared_plugin_has_at_least_one_check_above():
