@@ -142,6 +142,30 @@ read.**
 - File what you fixed and what you deliberately left, each with its evidence,
   where the next session will find it.
 
+## 11. Publish the grades where the next round starts
+
+**Goal: the next session starts from your verdicts, not your transcript.**
+
+- Grade every component you drove against the real bar: **green** — observed
+  working end-to-end _and_ efficient and useful; **amber** — works, but with
+  caveats, pending operator action, or usefulness unproven; **unmarked** — not
+  field-tested. "Technically working" is not a grade. Repeated injections,
+  redundant token spend, and noise a user must wade through are amber findings
+  even when the mechanism functions.
+- **Mark the grades on the project's wired map** (the excalidraw file the
+  umbrella epic names). Convention: append-only badge elements placed beside the
+  component — green `✅` / amber `⚠` text, each badge dated and naming the PR it
+  came from — plus one legend stating the bar and that unmarked means untested.
+  Append with index keys after the current maximum, then verify the file
+  re-parses with element order preserved before leaving it: the map can pass
+  every referential check and still be unopenable, and an unopenable map is
+  worse than no marks.
+- **Stale badges lie.** On a later round, update or remove any badge your new
+  evidence supersedes before adding your own.
+- File one evidence record per finding — wins as well as friction — and put the
+  per-component grade table on the round's task record, which is the only
+  surface a cold session is guaranteed to read.
+
 ## Fitness test
 
 A stranger holding only your report can tell which claims were observed and on
