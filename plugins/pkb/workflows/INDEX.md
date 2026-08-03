@@ -10,8 +10,15 @@ permalink: workflows-index
 
 Short markdown files describing how a class of work proceeds. They are read and
 composed **in context, by comprehension** — never parsed, never solved. The
-composition procedure is [`../skills/workflow/SKILL.md`](../skills/workflow/SKILL.md);
-this file is the catalogue and the routing tree.
+composition procedure is [`../skills/brief/SKILL.md`](../skills/brief/SKILL.md)
+§3; this file is the catalogue and the routing tree.
+
+**Routing and composition are different jobs.** The tree below routes an ask to
+the template for its class of work, and most of what it routes never reaches
+composition — a simple question is answered and halted, a follow-up continues
+the session, an email is triaged. Any agent reads the tree directly; no skill
+stands between them and it. Only work released for dispatch gets a full process
+assembled around it, and that is `brief`'s job.
 
 Two kinds:
 

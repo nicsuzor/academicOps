@@ -8,7 +8,7 @@ tools:
 skills:
   - hydrate
   - situate
-  - workflow
+  - brief
   - remember
   - learn
   - pull
@@ -65,9 +65,9 @@ Rebuild the wired map and land the v0.7 cleanup as one epic.
 ```
 
 An **atomic task** — no children — carries its steps as a real checklist, not
-invented ad hoc: `workflow` (`skills/workflow`) composes the process this work
-runs under, from the shipped library, `$ACA_DATA/.agents/workflows/`, and the
-PKB's own templates, and each composed step becomes one `- [ ]` line, in order.
+invented ad hoc: `brief` (`skills/brief` §3) composes the process this work runs
+under, from the shipped library, `$ACA_DATA/.agents/workflows/`, and the PKB's
+own templates, and each composed step becomes one `- [ ]` line, in order.
 
 ```markdown
 ## Goal

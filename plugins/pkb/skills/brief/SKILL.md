@@ -1,6 +1,6 @@
 ---
 name: brief
-description: Dispatch time. Size the queued unit against its open forks, compose the process it runs under, emit its review and sign-off nodes as blocking dependencies, then write the delegation brief a contextless agent can execute and be judged on. Persists to the task body and dispatches by task id. The composer is never the executor.
+description: Compose everything a released unit needs before anyone works on it — size it at its open forks, assemble the process it runs under from the three template layers, emit its review and sign-off nodes as blocking dependencies, and write the delegation brief onto the task body. Composes only. Never dispatches, never executes.
 agent: "pauli"
 ---
 
@@ -16,29 +16,30 @@ architectural judgment and never touch the work's substance. `situate` already
 sorted the assumptions, named the forks, and designed the probes; you consume
 that, you do not redo it.
 
-## The composer is not the executor
+## Everything you produce lands on the graph, and then you stop
 
-**The agent identity that writes this brief must not, in the same invocation,
-execute the work.** Same-context self-instruction does not bind: an agent that
-has just reasoned its way to a plan acts on the reasoning trace and skips the
-discipline the brief exists to impose.
+The brief goes onto the task body. The review and sign-off nodes go into the
+graph. That is the whole of your output.
 
-- Compose the brief, persist it to the task body, then dispatch **by task id**.
-  Hand the executor an id, never the freshly-composed text inlined as a prompt.
-  Its first act is to read the brief fresh from the task.
-- If you find yourself starting the actual work in this call — stop. That is the
-  next invocation's job.
-- A brief that is already a stable artifact — written in an earlier invocation,
-  unchanged since — may be dispatched directly. What is load-bearing is the
-  separation of identities, not elapsed time.
+**You do not dispatch.** Handing the unit to a worker surface is a separate act,
+by a separate identity, later — `orchestrate`'s `dispatch` reads the task by id
+and routes it. You never call it, never spawn a worker, and never start the work
+yourself. If you find yourself doing any of the three, stop: what you have
+written is already the deliverable.
+
+That separation is what makes the brief bind. An agent that has just reasoned
+its way to a plan acts on the reasoning trace rather than on the brief, so a
+brief that never leaves the composing context has constrained nothing. The
+executor's first act is to read it cold, from the task, having not seen you
+write it.
 
 ## Scope — only what is due
 
-Brief **exactly** the unit about to be dispatched: dependencies resolved, at the
-front of the queue. Do not pre-write briefs for work behind it. It may be
-reshaped by what this wave returns, and paying the cost early is the waste
-rolling-wave elaboration exists to avoid. More than one unit due? Brief and
-dispatch each independently. Never bundle.
+Brief **exactly** the unit that is due: dependencies resolved, at the front of
+the queue. Do not pre-write briefs for work behind it. It may be reshaped by
+what this wave returns, and paying the cost early is the waste rolling-wave
+elaboration exists to avoid. More than one unit due? Brief each independently.
+Never bundle.
 
 ## 1 — Read what is there
 
@@ -60,7 +61,7 @@ context is worse than a slow one.
 **A decision on `## Decisions` that this work depends on and that the user has
 not resolved is a halt.** Promotion to `queued` was the gate where it should
 have been answered. Say which decision is outstanding, leave the task where it
-is, and stop — do not answer it on the user's behalf and do not dispatch around
+is, and stop — do not answer it on the user's behalf and do not compose around
 it.
 
 ## 2 — Size it: cut at forks, not at size
@@ -81,12 +82,12 @@ tracking, review nodes, and dependency edges that some surface now has to
 maintain, in exchange for process theatre. Trust depth, throttle width: give one
 worker a substantive chunk rather than micro-decomposing for them.
 
-**Where a fork is blocked on information, the unit you dispatch is the probe** —
-the cheapest experiment `situate` designed to discriminate between the branches,
-not the work waiting behind it. Dispatch the probe, and leave the work behind it
-as one coarse placeholder with a one-line scope and a dependency back to the
-probe. When the probe lands, `reconcile` folds in what it established and
-`situate` runs again on what it unblocked.
+**Where a fork is blocked on information, the unit is the probe** — the cheapest
+experiment `situate` designed to discriminate between the branches, not the work
+waiting behind it. Leave the work behind it as one coarse placeholder with a
+one-line scope and a dependency back to the probe. When the probe lands,
+`reconcile` folds in what it established and `situate` runs again on what it
+unblocked.
 
 If you do cut, take dependencies off the boundaries you just drew: `depends_on`
 only where one unit's _start_ genuinely needs another's _output_. Everything
@@ -108,27 +109,93 @@ defence.
 
 ## 3 — Compose the process
 
-Assemble the workflow this work runs under — the outer process by which it
-reaches acceptance, and the inner process by which each unit reaches done. Use
-[`../workflow/SKILL.md`](../workflow/SKILL.md); do not re-derive template
-selection here. There is no separate research path — a literature review, a
-paper critique, and a code change are the same contract with different processes
+Assemble the process this work runs under — the **outer** process by which the
+whole thing reaches acceptance, and the **inner** process by which each unit
+reaches done. There is no separate research path: a literature review, a paper
+critique, and a code change are the same contract with different processes
 composed in.
 
-Every step comes from a loaded template. The three layers — the shipped library,
-the user's `$ACA_DATA/.agents/workflows/`, and the PKB's own templates behind
-`get_document("pkb-workflow-index")` — are one namespace of equal components,
-and a PKB template composes exactly like a shipped one. Load them at composition
-time, every time. Do not carry a process in your own text, assume the shipped
-library is the whole of it, or reach for a familiar template without reading the
-layers that may have replaced it.
+### Read the templates; never solve them
 
-**No upstream stage hands you a candidate list.** Nothing earlier reads the
-template layers, and nothing earlier should: an obligation surfaced at intake is
-one loaded from a tree that has since moved. Finding them and sequencing them
-are both yours, in this pass.
+Templates are short markdown files you **read and compose by comprehension**.
+There is no rule language, no solver, no evaluation, no resolution algorithm.
+You read the candidates, you understand what they oblige, and you assemble a
+process for the work actually in front of you. A template that seems to need
+parsing is a template being misused.
 
-**Proportion the assurance to the risk**, and say which end you chose:
+**Never compose a template you have not read.** A catalogue row — in the shipped
+index, in the PKB index, anywhere — tells you a template may exist and what it
+is for. It is not the template. Read the document before composing its
+obligation in, and where a row resolves to nothing, that row is the finding.
+
+### The three layers
+
+Resolved in this order; later layers win by **template name** — the filename on
+disk, the permalink in the PKB.
+
+1. **Shipped library** — [`../../workflows/`](../../workflows/). Process
+   templates in `process/`, catalogued by
+   [`../../workflows/INDEX.md`](../../workflows/INDEX.md), which also carries
+   the routing tree naming the template for this class of work.
+2. **The user's layer** — `$ACA_DATA/.agents/workflows/`. A file here with the
+   same name as a shipped template replaces it outright; a file with a new name
+   extends the library. `$ACA_DATA` comes from the environment and has no
+   default. If it is unset, or the directory does not exist, there simply is no
+   user layer — that is not an error, and it is not something to work around.
+3. **The PKB layer** — dynamic templates in the knowledge base, behind
+   `get_document("pkb-workflow-index")`. Read the index, then `get_document`
+   each template listed there that looks applicable.
+
+A template from any of the three is the same kind of thing: one namespace
+resolved by name, later layers winning. The `wf-*` obligation templates are a
+naming convention inside that namespace, not a privileged set — treat one
+discovered in the PKB exactly as you treat a shipped `process/` file.
+
+Load them at composition time, every time. Do not carry a process in your own
+text, assume the shipped library is the whole of it, or reach for a familiar
+template without reading the layers that may have replaced it.
+
+**Resolving a bare name against the `wf-` convention.** A shipped template names
+what it needs bare — `[[verification]]`, `[[human-approval]]` — while the PKB
+carries the same template under its prefixed permalink, `wf-verification`. So a
+name with no file in `process/` is not yet a gap: try it prefixed with `wf-` in
+the PKB layer before you conclude anything. Every review obligation the shipped
+library names resolves this way and no other, so an agent that skips the
+prefixed lookup finds nothing, obliges no review, and reports a clean pass. Only
+a name that resolves neither bare nor prefixed, in any layer, is a gap.
+
+Reconcile the PKB layer once per composition: `list_documents(tag="wf-template")`
+against the index's entries. A template tagged but unlisted, or listed but
+unresolvable, is an index defect — **report it, do not repair it here and do not
+route around it.** If the index document itself does not exist, compose from the
+tag enumeration and report the missing index.
+
+If a template you need exists in none of the three, that is a library gap.
+**Name it. Do not freelance a process to fill it.**
+
+### The four hints
+
+Each template's frontmatter carries four, and they are the whole vocabulary you
+reason over:
+
+- **`requires`** — fragments this template always pulls in.
+- **`pairs-with`** — templates and gates composed **proportionate to stakes**,
+  not always. This is where your judgment goes.
+- **`recommends`** — a soft suggestion; take it or leave it, and say which.
+- **`conflicts`** — mutually exclusive. Two conflicting intents are two
+  processes, not one.
+
+**Door type is expressed as which templates get composed in.** There is no
+separate reversibility mechanism — a one-way step is one that pulls in the
+approval and review templates, a two-way step is one that does not. When
+reversibility is ambiguous, treat it as one-way.
+
+### Proportion
+
+Proportion is the whole of this step. The same work under a heavier process than
+its stakes warrant is process theatre; under a lighter one, it ships unreviewed.
+Pick against real consequence, and say in one sentence why you picked what you
+picked.
 
 - **Wide blast radius, hard to reverse** — per-chunk instances of each lens,
   each blocking at its own juncture.
@@ -138,24 +205,44 @@ are both yours, in this pass.
 The invariant is only that the composed set blocks acceptance, however you
 distribute it.
 
+### Emit the composed process
+
+Write it onto the task as its checklist: one `- [ ] <step>` line per composed
+step, in order, plus one pointer bullet naming the templates and the
+one-sentence proportionality call — never a paragraph describing the process.
+This is the task-body shape [`../../agents/pauli.md`](../../agents/pauli.md)
+states canonically, and it applies to an atomic task only: an epic's children
+already carry their own status, so its checklist is the graph, not a markdown
+restatement.
+
+A process referred to vaguely ("the usual review") is not composed; nobody
+downstream can check it was followed, and a checklist line nobody can point at a
+template for has nothing to audit against. State it once, as the current
+checklist. When the process changes, rewrite the checklist in place — do not
+leave the superseded version beside the new one.
+
+**The checklist is not the gate.** Steps that must block acceptance become nodes
+in §4; the checklist carries the rest. Where a step appears in both, the node is
+authoritative — a tick is a claim, an unmet blocking dependency is a fact.
+
 ## 4 — Emit the review and sign-off nodes
 
 Review is **real nodes in the graph, wired as blocking `depends_on`** — never a
 prose-only "review step".
 
-**Load the review process from the same three layers §3 composed from**, later
-layers winning by template name. The composed process names the review it
-obliges; you turn each obligation into a node. A review set carried in from
-memory is one the user can never override, and a review the composed process
-obliges but no layer defines is a library gap: name it and stop.
+The process you just composed names the review it obliges; you turn each
+obligation into a node, resolving each name through the same three layers, later
+layers winning. A review set carried in from memory is one the user can never
+override, and a review the composed process obliges but no layer defines is a
+library gap: name it and stop.
 
 **An empty review set is that same gap, however it came to be empty.** Nothing
 surfaces, because nothing was obliged, and the record reads complete — so this
 is the one branch you have to look for rather than notice. Where the composed
 set names no lens, name _that_ as the gap and **halt**: record it on the task
-body, leave the task `blocked`, dispatch nothing, and write no brief. Templates
-that named nothing, a layer that would not load, a composition that never ran —
-the cause changes what you report, never whether you halt.
+body, leave the task `blocked`, and write no brief. Templates that named
+nothing, a layer that would not load, a composition that never ran — the cause
+changes what you report, never whether you halt.
 
 **Human sign-off is the one node you emit uncomposed.** Where the unit's door is
 one-way — the `one-way-door` axiom's list governs, and you need no second list
@@ -201,8 +288,7 @@ spec sections, prior decisions, the two or three files most likely relevant. A
 short list, not a literature review. Deliberately leave out the epic's broader
 strategy, the options considered and rejected, and organisational context: none
 of it sharpens tactical judgment on this piece of work, and including it invites
-re-litigation of settled decisions. If you refreshed hydration, say in one
-sentence what changed.
+re-litigation of settled decisions.
 
 **3. Constraints.** What must not change and what is out of bounds — the
 boundary of the sandbox, not the path through it.
@@ -229,8 +315,8 @@ claim without a citable check is not evidence; and the **procedural record** —
 which steps of the composed process were actually followed. Thin evidence here
 is itself a fail condition; say so where the stakes warrant it.
 
-**7. Effort and door type.** Carry the classification forward from §2 and §4.
-Reclassify only if something you learned while briefing changed the
+**7. Effort and door type.** Carry the classification forward from §2 and §3.
+Reclassify only if something you learned while composing changed the
 reversibility call, and say what changed if you do. Give a rough size so the
 executor calibrates ambition.
 
@@ -253,25 +339,28 @@ The one exception is a strict read-then-do sequence, and only where the work is
 genuinely order-critical or dangerous — irreversible operations, sequencing that
 matters for correctness rather than habit.
 
-## 6 — Persist and dispatch
+## 6 — Persist and stop
 
-`append` the brief to the unit's body — append only, never overwriting. Then
-dispatch **by task id**.
+`append` the brief to the unit's body — append only, never overwriting. The
+checklist from §3 and the nodes from §4 are already written. Then stop.
 
 ## Must not
 
-- Dispatch when §4 halted, or when a decision this work depends on is
-  unresolved. A unit without its review nodes is worse than none, because it
-  dispatches.
+- Dispatch, spawn a worker, or begin the work. You compose; another surface
+  routes what you wrote.
+- Write a brief when §4 halted, or when a decision this work depends on is
+  unresolved. A unit without its review nodes is worse than none.
 - Cut on size, on a hunch, or to make a unit feel manageable.
-- Re-situate: re-sort the assumptions, re-rank the forks, or design a new probe.
-  If the fork map is wrong, hand it back to `situate` rather than silently
-  rewriting it.
-- Add approval gates. The composed process already placed them at the real
-  junctures, and mid-stream "draft it, then surface for review before
-  proceeding" is theatre.
-- Invent process outside the library without flagging the gap, or drop a review
-  the composed process obliged.
+- Re-do `situate`: re-sort the assumptions, re-rank the forks, or design a new
+  probe. If the fork map is wrong, hand it back rather than silently rewriting.
+- Parse, evaluate, or solve a template. Read it.
+- Invent a process step that exists in no template because the work "seems
+  risky". Under-coverage is a gap to name.
+- Write how-to detail into the composed process. That is a skill's job; a
+  process that explains how to do a step has swallowed one.
+- Hardcode a path to `$ACA_DATA`, or fall back to a default when it is unset.
+- Add approval gates beyond what the composed process placed. Mid-stream "draft
+  it, then surface for review before proceeding" is theatre.
 - Promote anything into `queued`, or run the review nodes you emitted.
 
 ## Fitness test
@@ -284,9 +373,10 @@ Two readers, from the task body alone:
   evidence the brief demanded, without redoing the investigation.
 
 And a third, for the structure: a reviewer can state why the unit was or was not
-cut, name the composed process and every review node blocking its acceptance,
-and see a sign-off node wherever the door is one-way or ambiguous.
+cut, name every template the process was composed from and the proportionality
+call behind it, and see a blocking node for every obligation that gates
+acceptance — plus a sign-off node wherever the door is one-way or ambiguous.
 
 A halt passes this test differently: the record names the gap and what was
-composed to reach it, and there is nothing dispatched to judge. A halt is a
-complete pass, not a failed one.
+composed to reach it, and there is nothing to judge. A halt is a complete pass,
+not a failed one.

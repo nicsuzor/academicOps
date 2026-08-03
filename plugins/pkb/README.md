@@ -22,15 +22,13 @@ flowchart TD
         hydrate --> capture["commands/q<br/>record one inbox node<br/>and stop"]
         capture --> situate["skills/situate<br/>placed, valued, wired;<br/>assumptions tested vs hopes,<br/>forks and their probes, decision list<br/>promotes to ready"]
         situate --> gate{{"human sets status queued<br/>resolves the decision list<br/>agents pull only from here<br/>and never promote into it"}}
-        gate --> brief["skills/brief<br/>size at the forks, compose the process,<br/>emit review and sign-off nodes,<br/>write the brief, dispatch by task id"]
-        brief --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
+        gate --> brief["skills/brief<br/>size at the forks · compose the process<br/>emit review and sign-off nodes<br/>write the brief onto the task — then stop"]
 
-        pauli --> composer["skills/workflow<br/>compose the process into a checklist<br/>three layers, loaded every time"]
+        pauli --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
         pauli --> plan["skills/plan<br/>on-demand lens — fix the altitude,<br/>route to the stage that owns it"]
 
-        brief --> composer
         learn -. knowledge scope .-> remember
         learn -. project scope .-> addrule(["rbg — skills/add-rule<br/>write the project rule"])
         learn -. task scope .-> pull
@@ -40,16 +38,18 @@ flowchart TD
     pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
     reconcile -- "re-plan when the wave lands" --> situate
 
-    composer --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
-    composer --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
-    composer --> wftemplates[["PKB documents tagged wf-template"]]
+    brief --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
+    brief --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
+    brief --> wftemplates[["PKB documents tagged wf-template"]]
+    agent -- "routes its own ask" --> library
 
     pkbwrite -- "every read and write" --> mcp
     agent -- "the three hook searches" --> mcp
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    brief --> dispatch(["orchestrate:james — skills/dispatch<br/>route the briefed unit to a worker surface,<br/>by task id"])
+    brief -. "task is now briefed" .-> dispatch(["orchestrate:james — skills/dispatch<br/>reads the task by id and routes it<br/>to a worker surface"])
+    dispatch --> pull
 ```
 
 ### The hook asks; nothing checks
@@ -141,19 +141,27 @@ scores nothing, and certifies nothing. Where a fact it wrote changes what should
 happen next, it hands the affected tasks to `situate` rather than re-planning
 them.
 
-### Composing a workflow
+### Routing and composing are different jobs
 
-`workflow` runs inside pauli — read and composed in context, every time, never
-carried in pauli's own text. Its three template layers sit outside the box
+**Routing** is picking which template a class of work follows, and the tree that
+does it lives in `workflows/INDEX.md`. Any agent reads it directly; no skill
+stands between them and it. Most of what it routes never gets a process composed
+at all — a simple question is answered and halted, a follow-up continues the
+session, an email is triaged.
+
+**Composition** is assembling a full process for work that has been released for
+dispatch, and it happens in `brief` §3 — read in context, every time, never
+carried in pauli's own text. The three template layers sit outside the box
 because they are sources, not stages: the shipped library, the user's
 `$ACA_DATA/.agents/workflows/`, and PKB documents tagged `wf-template`. They form
 one namespace; a PKB template composes exactly like a shipped one.
 
-The output lands on the task as its checklist, not as a file or a document:
-the composed steps, in order, plus one pointer bullet naming the templates and
-the proportionality call. An empty review set is a library gap the composing
-skill names rather than silently passing, and `brief` halts on it: it records
-the gap, leaves the task `blocked`, and dispatches nothing.
+The output lands on the task as its checklist: the composed steps, in order,
+plus one pointer bullet naming the templates and the proportionality call. The
+checklist is not the gate, though — obligations that must block acceptance also
+become real nodes, and where a step is both, the node wins. An empty review set
+is a library gap `brief` halts on: it records the gap, leaves the task
+`blocked`, and writes no brief.
 
 ### Remembering
 
@@ -175,8 +183,7 @@ not collection. The standard for what that means is
 | ----------- | ----------------------------------------------------------------------------------------------------------------- |
 | `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                 |
 | `situate`   | Place, value, and wire one task; sort its assumptions, name its forks and probes; promote to `ready`.             |
-| `brief`     | At dispatch time: size at the forks, compose the process, emit the review nodes, write the brief, dispatch by id. |
-| `workflow`  | Compose the process this work runs under, from the shipped library, the user layer, and the PKB.                  |
+| `brief`     | Size at the forks, compose the process from the three layers, emit the review nodes, write the brief. Stops.      |
 | `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                    |
 | `reconcile` | Establish what is true about in-flight and finished work, write it back, hand the affected tasks to `situate`.    |
 | `plan`      | On-demand lens — fix the altitude, check the effectual commitments, route each piece to the stage that owns it.   |

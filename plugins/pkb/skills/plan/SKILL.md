@@ -50,8 +50,7 @@ that owns it, and stop there:
 | ------------------------------------------------------- | ------------------------------------ |
 | Needs grounding in what is already known                | [`hydrate`](../hydrate/SKILL.md)     |
 | Is a captured ask not yet placed, valued, or worked out | [`situate`](../situate/SKILL.md)     |
-| Is a released task about to be dispatched               | [`brief`](../brief/SKILL.md)         |
-| Needs a process assembled around it                     | [`workflow`](../workflow/SKILL.md)   |
+| Is a released task needing a process and a brief        | [`brief`](../brief/SKILL.md)         |
 | Is in flight but the graph's claims about it look stale | [`reconcile`](../reconcile/SKILL.md) |
 
 **The assumption map, the fork ranking, and the probe design are `situate`'s.**

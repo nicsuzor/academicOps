@@ -59,7 +59,7 @@ plugin's files.
 academicOps is structured around **4 core pillars**:
 
 1. **Prompt Situation (`pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
-2. **Workflow Composition (`pkb`):** Select task-appropriate assurance and review levels (`workflow`) matching risk and blast radius.
+2. **Workflow Composition (`pkb`):** Select task-appropriate assurance and review levels (`brief`) matching risk and blast radius. Routing an ask to its template is a separate job — a direct read of [`plugins/pkb/workflows/INDEX.md`](../plugins/pkb/workflows/INDEX.md) by whichever agent holds the ask.
 3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `orchestrate`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), plus a stop gate that blocks once per stop-chain and directs the agent to run the RBG rule compliance check (`axioms/` + project + local rules) before stopping (`Stop` / `SubagentStop`).
 
@@ -87,8 +87,11 @@ reading what is there, integrating the new fact, and leaving one correct
 document.
 
 Workflow composition: the plugin ships a process-template library under
-`workflows/`. Pauli composes a workflow for the work in front of it by reading
-templates, matching the required QA assurance level to the task.
+`workflows/`. Pauli composes a workflow for the unit in front of it by reading
+templates, matching the required QA assurance level to the task. That happens
+inside `brief`, which is the only composer;
+[`plugins/pkb/workflows/INDEX.md`](../plugins/pkb/workflows/INDEX.md) carries
+the routing tree, which any agent reads directly without a skill in between.
 
 The plugin hooks `UserPromptSubmit` and nothing else. A stop gate is intended
 here — while the session still holds an `in_progress` task, block once per

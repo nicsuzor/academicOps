@@ -28,16 +28,18 @@ situate (inline when cheap, or the consolidation sweep) ──► status: ready
 ===================================================================
 BREAKPOINT 1 — the user promotes ready ──► queued, resolving the decision list
 ===================================================================
-brief (fires at dispatch time, on a queued unit)
+brief (composes only, on a queued unit — never dispatches)
    ├─► sizing: default no cut; cut only at an unresolved fork or a
    │   responsibility boundary
-   ├─► a fork blocked on information dispatches the probe instead
+   ├─► a fork blocked on information makes the probe the unit
    ├─► process composed from the three template layers, risk-proportionate
-   ├─► review nodes emitted as blocking dependencies
-   │   · empty review set ──► halt, task blocked, nothing dispatched
+   │   · the composed steps land as the task checklist
+   ├─► review nodes emitted as blocking dependencies (these are the gate)
+   │   · empty review set ──► halt, task blocked, no brief written
    │   · one-way or ambiguous door ──► sign-off node, uncomposed
-   └─► brief written to the task body ──► dispatch BY TASK ID
+   └─► brief written to the task body ──► STOP
 ===================================================================
+orchestrate's dispatch reads the task BY ID and routes it
 the unit executes ──► PR lands, or closes
 ===================================================================
 reconcile (return channel, facts only)
@@ -52,11 +54,15 @@ BREAKPOINT 2 — the user: PR review and merge, plus the one-way-door sign-offs
 ## Why the stages are cut here
 
 **Capture is hydrate plus one write, and nothing else.** `/q` gets the shortlist
-and records one `inbox` node. It makes no judgment — not the parent, not the
-value, not a single edge — because every judgment made there is made on the
-thinnest context anyone will ever have about the ask, and because a fragment
-that costs more than a few seconds to capture is a fragment that stops being
-captured.
+and records one `inbox` node under the parent it belongs to — the task or epic
+the shortlist already surfaced, else the task this session holds, else one
+question. Placement is the only judgment it makes, because `create_task` places
+the node whether you choose a parent or not: an unparented node is an orphan,
+and a catch-all parent is an orphan that does not show up as one. Everything
+else — value, edges, assumptions, forks, decisions — waits, because every
+judgment made at capture is made on the thinnest context anyone will ever have
+about the ask, and a fragment that costs more than a few seconds to capture is a
+fragment that stops being captured.
 
 **Hydrate points; it does not read.** It runs on every ask, which is the widest
 point in the funnel, so it does the cheap half: a few differently-worded
@@ -87,11 +93,21 @@ maintenance. Where a fork is blocked on missing information, the cheapest
 experiment that discriminates between the branches is what gets dispatched; the
 work behind it stays a placeholder.
 
-**The composer is not the executor.** An agent that has just reasoned its way to
-a plan acts on the reasoning trace rather than on the brief, so the brief does
-not bind the identity that wrote it. `brief` persists to the task body and
-dispatches by task id; the executor reads it cold. This is why brief-writing
-sits in `pkb` and `orchestrate`'s `dispatch` composes nothing.
+**The composer is not the executor, and does not become one.** An agent that has
+just reasoned its way to a plan acts on the reasoning trace rather than on the
+brief, so the brief does not bind the identity that wrote it. `brief` persists
+everything to the task body and the graph, then stops; `orchestrate`'s
+`dispatch` reads the task by id later and routes it, and the executor reads the
+brief cold. Three identities, and the separation is structural rather than a
+rule anyone has to remember: the composer holds no dispatch surface at all.
+
+**Composition lives with the brief, routing does not.** Assembling a process
+from the three template layers only ever served the unit about to be worked, so
+it belongs in `brief` rather than in a skill of its own. Routing — which
+template a class of work follows — is a different job serving a much wider set
+of asks, most of which never reach dispatch, so its tree stays in
+[`plugins/pkb/workflows/INDEX.md`](../../plugins/pkb/workflows/INDEX.md) where
+any agent reads it directly.
 
 **The return channel writes facts and re-plans nothing.** `reconcile` has
 exactly the authority of what it observed. Letting it close on its own judgment
@@ -132,14 +148,14 @@ the target the work serves.
 
 ## Stage ownership
 
-| Stage       | Owns                                                                                    |
-| ----------- | --------------------------------------------------------------------------------------- |
-| `hydrate`   | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.             |
-| `/q`        | One `inbox` node carrying the ask and that shortlist. No judgment of any kind.          |
-| `situate`   | Placement, valuation, wiring, assumptions, forks, probes, decisions. To `ready`.        |
-| `brief`     | Sizing, process composition, review and sign-off nodes, the brief, dispatch by task id. |
-| `pull`      | Claim, execute, record, hand over.                                                      |
-| `reconcile` | What is true about in-flight and finished work. Facts only; hands re-planning back.     |
-| `plan`      | An on-demand lens: fix the altitude, route each piece to the stage that owns it.        |
+| Stage       | Owns                                                                                           |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| `hydrate`   | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                    |
+| `/q`        | One `inbox` node carrying the ask and that shortlist. No judgment of any kind.                 |
+| `situate`   | Placement, valuation, wiring, assumptions, forks, probes, decisions. To `ready`.               |
+| `brief`     | Sizing, process composition, review and sign-off nodes, the brief. Composes; never dispatches. |
+| `pull`      | Claim, execute, record, hand over.                                                             |
+| `reconcile` | What is true about in-flight and finished work. Facts only; hands re-planning back.            |
+| `plan`      | An on-demand lens: fix the altitude, route each piece to the stage that owns it.               |
 
 Each runs, then stops. No stage fires the next.
