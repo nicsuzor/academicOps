@@ -4,7 +4,19 @@
 three-layer rule set (rules.py) and asks a Reflexes evaluator — a small language
 model, remote or locally hosted (evaluator.py) — whether the tool call matches
 each live rule. The judgment is the model's; rbg only composes the question and
-reports what came back.
+reports what came back. Nothing about a rule's meaning is decided by matching
+text against a pattern.
+
+``inject_ruleset`` is the ``UserPromptSubmit`` (agy ``PreInvocation``) advisory.
+That surface carries a prompt, not a tool call, so there is nothing for the
+evaluator to judge there. What it can do is state the rule set that is live for
+the turn. It is scoped to agy because Claude Code fires both events and is
+already covered by ``evaluate``, and because the pkb plugin owns Claude's
+``UserPromptSubmit`` injection.
+
+Both of those are advisory only, permanently. They return an advisory ``Result``
+— context injected for the agent to read — and never a disposition. A rule
+verdict from a small model is not something to enforce with.
 
 ``rule_check`` is layer 2, at the session's stop. It is the one handler here
 that carries a disposition, and what it asks to withhold is the stop, not a tool
@@ -35,6 +47,23 @@ import rules
 from dispatch import HookContext, Result, block, load_message_pair, warn
 
 _rules_cache: dict[str, rules.Rule] | None = None
+
+
+def only_on(*client_names: str):
+    """Declare the clients a handler runs for.
+
+    dispatch.py reads the ``only_on_clients`` attribute this sets and skips the
+    handler for every other client. An undeclared handler runs for all of them,
+    so this is opt-in: it exists to state a scope out loud, at the point of
+    definition, rather than leaving it as an ``if ctx.client`` buried in a
+    handler body that still costs a process to reach.
+    """
+
+    def declare(handler):
+        handler.only_on_clients = frozenset(client_names)
+        return handler
+
+    return declare
 
 
 def _loaded_rules(ctx: HookContext) -> dict[str, rules.Rule]:
@@ -213,6 +242,16 @@ def _digest(loaded: dict[str, rules.Rule]) -> str:
     return "\n".join(lines)
 
 
+@only_on("agy")
+def inject_ruleset(ctx: HookContext) -> Result | None:
+    """State the live rule set for the turn, on the surface where the evaluator
+    has no tool call to judge. Nothing loaded is nothing to say."""
+    loaded = _loaded_rules(ctx)
+    if not loaded:
+        return None
+    return warn(load_message_pair(ctx.hooks_dir, "ruleset")[0].replace("{rules}", _digest(loaded)))
+
+
 def rule_check(ctx: HookContext) -> Result | None:
     """Withhold the stop until the session's rule compliance has been checked
     and its evidence presented.
@@ -250,6 +289,7 @@ def rule_check(ctx: HookContext) -> Result | None:
 
 HANDLERS = {
     "PreToolUse": [evaluate],
-    # "Stop": [rule_check],
+    "UserPromptSubmit": [inject_ruleset],
+    "Stop": [rule_check],
     "SubagentStop": [rule_check],
 }

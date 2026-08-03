@@ -38,5 +38,5 @@ def strip_the_reply(ctx: HookContext) -> Result | None:
 
 
 HANDLERS: dict[str, list] = {
-    # "Stop": [strip_the_reply],
+    "Stop": [strip_the_reply],
 }
