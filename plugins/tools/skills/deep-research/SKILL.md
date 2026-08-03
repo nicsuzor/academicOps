@@ -16,7 +16,7 @@ If the user gives you a URL and asks to "capture", go straight to capture — no
 
 ## The deep-research loop (overview)
 
-1. **Frame the question** as an affordable-loss spike task in the PKB with a well-written prompt in the body (`/pkb:plan` or direct task creation).
+1. **Frame the question** as an affordable-loss spike task in the PKB with a well-written prompt in the body (`/ida:strategize` or direct task creation).
 2. **Run the prompt** in the external tool (Gemini Deep Research, ChatGPT Pro, Perplexity Deep Research). The tool returns a Google Doc or similar.
 3. **Capture** the output back into the PKB as a `knowledge` note — raw content preserved, figures transcribed, wikilinks back to the sourcing task.
 4. **Mark the spike done** with `completion_evidence` pointing at the knowledge note; downstream design tasks can now consume it.

@@ -99,7 +99,7 @@ These failure modes are well-documented in research methods pedagogy. They motiv
 
 ### Effectual Planning
 
-The effectual framework — fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning — lives in one stage. `plugins/pkb/skills/situate/SKILL.md` places the fragment, values it, sorts the assumptions into tested and hopes, ranks the open forks by information value across the network, and designs the probe for each; `plugins/pkb/skills/plan/SKILL.md` is the on-demand lens over it.
+The effectual framework — fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning — lives in one stage. `plugins/pkb/skills/situate/SKILL.md` places the fragment, values it, sorts the assumptions into tested and hopes, ranks the open forks by information value across the network, and designs the probe for each; `plugins/ida/skills/strategize/SKILL.md` is the on-demand lens over it, run by ida.
 
 This spec does NOT replace that pipeline. Instead, it provides three things the pipeline uses when the domain is research:
 

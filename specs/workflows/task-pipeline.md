@@ -12,7 +12,8 @@ related: [[work-management]], [[feedback-loops]]
 
 Design intent for the stages a piece of work passes through, and for why the
 boundaries between them sit where they do. The stages themselves are operative
-instructions and live in `plugins/pkb/skills/`; nothing here restates them.
+instructions and live in `plugins/pkb/skills/` — with the one lens that is not a
+stage, `strategize`, in `plugins/ida/skills/`. Nothing here restates them.
 
 ## The map
 
@@ -159,14 +160,14 @@ the target the work serves.
 
 ## Stage ownership
 
-| Stage       | Owns                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| `hydrate`   | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                    |
-| `/q`        | One `inbox` node carrying the ask and that shortlist. No judgment of any kind.                 |
-| `situate`   | Placement, valuation, wiring, assumptions, forks, probes, decisions. To `ready`.               |
-| `brief`     | Sizing, process composition, review and sign-off nodes, the brief. Composes; never dispatches. |
-| `pull`      | Claim, execute, record, hand over.                                                             |
-| `reconcile` | What is true about in-flight and finished work. Facts only; hands re-planning back.            |
-| `plan`      | An on-demand lens: fix the altitude, route each piece to the stage that owns it.               |
+| Stage            | Owns                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| `hydrate`        | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                    |
+| `/q`             | One `inbox` node carrying the ask and that shortlist. No judgment of any kind.                 |
+| `situate`        | Placement, valuation, wiring, assumptions, forks, probes, decisions. To `ready`.               |
+| `brief`          | Sizing, process composition, review and sign-off nodes, the brief. Composes; never dispatches. |
+| `pull`           | Claim, execute, record, hand over.                                                             |
+| `reconcile`      | What is true about in-flight and finished work. Facts only; hands re-planning back.            |
+| `ida:strategize` | An on-demand lens, ida's: fix the altitude, route each piece to the stage that owns it.        |
 
 Each runs, then stops. No stage fires the next.

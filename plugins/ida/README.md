@@ -76,13 +76,16 @@ What crosses between them is the evidence contract, defined once in `specs/enfor
 | Agent | `ida`              | The interactive face. Coordinates research work, delegates to james, filters returns.                                                                 |
 | Agent | `james`            | The orchestrator. Commissions review, synthesises one verdict, dispatches work.                                                                       |
 | Agent | `marsha`           | QA. Judges whether an artifact is outstanding, and runs it to find out.                                                                               |
+| Skill | `strategize`       | ida's own thinking pass: fix the altitude, test the plan against the effectual commitments, route each piece. Commissions pauli for every graph read. |
 | Skill | `dispatch`         | Routes a briefed unit to its worker surface and holds the epic until every unit lands.                                                                |
 | Skill | `strategic-review` | Deploys the review lenses in parallel and reconciles their findings into one verdict.                                                                 |
 | Skill | `verify`           | marsha's QA pass: assume it is broken, then prove otherwise. Commissioned, never invoked directly.                                                    |
 | Hook  | `handlers.py`      | The quiet gate on `Stop` — strips ida's reply to load-bearing content before it speaks to the person — and the rule against hearsay on `PostToolUse`. |
 | CLI   | polecat            | The container launcher `dispatch` invokes at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.                                                                  |
 
-No commands. The skills the other plugins ship reach ida only as work she delegates to james or to pauli.
+No commands. `strategize` is the one skill ida runs herself; every other plugin's skills reach her only as work she delegates to james or to pauli.
+
+`strategize` holds no PKB tools, because ida holds none — her declared `tools` are `Read`, `Skill`, `Agent`, `AskUserQuestion` and `Dispatch`. Every look at the graph inside it is a whole question commissioned from `pkb:pauli`, never a tool call ida makes. That is the point rather than a workaround: ida is the only agent holding the user's intent and the standard the work is held to, and context spent on retrieval is context taken from the one job nobody else can do.
 
 ## Configuration
 

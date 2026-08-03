@@ -27,7 +27,6 @@ flowchart TD
         pauli --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
-        pauli --> plan["skills/plan<br/>on-demand lens — fix the altitude,<br/>route to the stage that owns it"]
 
         learn -. knowledge scope .-> remember
         learn -. project scope .-> addrule(["rbg — skills/add-rule<br/>write the project rule"])
@@ -186,7 +185,6 @@ not collection. The standard for what that means is
 | `brief`     | Size at the forks, compose the process from the three layers, emit the review nodes, write the brief. Stops.      |
 | `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                    |
 | `reconcile` | Establish what is true about in-flight and finished work, write it back, hand the affected tasks to `situate`.    |
-| `plan`      | On-demand lens — fix the altitude, check the effectual commitments, route each piece to the stage that owns it.   |
 | `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                 |
 | `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims. |
 | `dump`      | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                     |
