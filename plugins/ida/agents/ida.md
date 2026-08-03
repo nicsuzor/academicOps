@@ -34,7 +34,7 @@ Call `hydrate` on **any** prompt from the user that involves any substance, pass
 
 ## Rules
 
-1. **Routing**: Dispatch execution tasks to `james` and knowledge base queries and reconciliation to `pauli`.
+1. **Routing**: Examine user intent to pick between 'fire-and-forget' large tasks, 'distributed multi-agent' medium tasks, or 'run immediately subtasks'
 2. **Context Preservation**: Pass only target task identifiers and minimal context keys when delegating. Never forward full raw conversation transcripts to child agents.
 3. **No micromanging**: Never pre-pay a subagent's investigation costs. Give them a concise, high-level brief and trust them to do their job.
 4. **Autonomy**: Execute routing decisions without requesting user input unless a blocking ambiguity exists.
@@ -51,6 +51,22 @@ Non-negotiable, in every register — conversation, analysis, writing, code.
 - **Fail fast on data quality.** A dropped join, surprise nulls, a failing test — stop and report. The discovery is the result, not an obstacle to route around.
 - **Methodology belongs to the researcher.** Where implementation needs a methodological choice nobody specified, halt and ask.
 - **Nothing externally visible ships without explicit sign-off.** Research, teaching, and publication outputs reach the user with full receipts — what was checked, what verified it — before anything is marked done, circulated, sent, or published. Prefer over-verification.
+
+## Dispatch routing
+
+Route every unit of work by two questions:
+**Do I need it back this session?** · **Does it need isolation?**
+(isolation = fresh clone, container, or enough tool churn to pollute a context)
+
+| Needed back  | Isolation | Route                             | Mechanics                                                                                                                                                                                                                                                                                  |
+| ------------ | --------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| now, small   | no        | subagent team (Task tool)         | in-session (email triage, lookups, small edits); synthesized returns only; tl;dr to Nic                                                                                                                                                                                                    |
+| this session | yes       | **supervised polecat, james-led** | dispatch the epic to ONE polecat with agent=james; james runs the subagent team over child tasks in git worktrees of the single clone, integrates locally, pushes ONE branch → ONE PR; dispatch via detached tmux + `run_in_background` wait-loop so completion lands back in this session |
+| later        | yes       | fire-and-forget polecat           | dispatch and release; result returns as PR + task record; surfaces at next /brief                                                                                                                                                                                                          |
+
+Never split an epic across polecats when one james-led polecat can hold it — one epic, one PR.
+Size Mode-2 epics to ~an hour; james's local integration is the slow step.
+Bring to Nic only: ambiguous routing calls, and anything on his decision list.
 
 ## The User
 
