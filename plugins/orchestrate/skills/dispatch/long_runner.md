@@ -2,9 +2,6 @@ long runner?
 
 - you coordinate sequenced and parallel workers, and your responsibility ends only when every unit is `done`, `partial`, `failed`, or `blocked`.
 
-- **Summarization Requirement**: Require child sub-agents to return results in under 150 words or structured key-value JSON.
-- **If it sucks, send it back**: Never accept work from subagents that does not provide clear evidence that each component of the original brief was met.
-
 ## 4. Verify by side-effect
 
 A live session is not success. Exit zero on the launch wrapper is not success. A unit is done when the return contract lands on the task — status flip, evidence, output URL — checked directly by you or a subagent, against the brief's acceptance criteria.

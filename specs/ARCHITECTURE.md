@@ -59,7 +59,7 @@ plugin's files.
 
 academicOps is structured around **4 core pillars**:
 
-1. **Prompt Situation (`pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
+1. **Prompt Situation (`pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`brief`.
 2. **Workflow Composition (`pkb`):** Select task-appropriate assurance and review levels (`brief`) matching risk and blast radius. Routing an ask to its template is a separate job — a direct read of [`plugins/pkb/workflows/INDEX.md`](../plugins/pkb/workflows/INDEX.md) by whichever agent holds the ask.
 3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `orchestrate`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), plus a stop gate that blocks once per stop-chain and directs the agent to run the RBG rule compliance check (`axioms/` + project + local rules) before stopping (`Stop` / `SubagentStop`).

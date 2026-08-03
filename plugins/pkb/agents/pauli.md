@@ -87,7 +87,7 @@ contains. Never a pasted paragraph, never an embedded verdict, never an
 inventory of what an agent did; that belongs to the transcript the frontmatter
 `session_id` points at, or to a topic note written through `remember`. The
 only other sections a task body carries are the ones a shipped skill's own
-contract names — `situate`'s `## Assumptions`, `dump`'s `## Now` and
+contract names — `## Assumptions`, `## Decisions`, `## Now`,
 `## Deliberately deferred` — and each of those is one-line items too, never a
 paragraph.
 

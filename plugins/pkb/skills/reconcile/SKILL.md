@@ -1,6 +1,6 @@
 ---
 name: reconcile
-description: The return channel. Establish what is actually true about work the graph still claims is in flight and about work that finished while nobody was watching, write those facts back, and hand the tasks a landed wave touched to `situate` for re-planning. Truth maintenance only — it never closes work on its own judgment, never prunes, and never scores. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
+description: The return channel. Establish what is actually true about work the graph still claims is in flight and about work that finished while nobody was watching, write those facts back, and return the tasks a landed wave touched to `inbox` for re-planning. Truth maintenance only — it never closes work on its own judgment, never prunes, and never scores. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
 agent: "pauli"
 ---
 
@@ -31,7 +31,7 @@ exists, a person wrote a close reason. That is the whole of your authority.
   signals already on the nodes. You do not write it, and you do not write
   `priority` or `severity` to move it.
 - You **never certify**, and you never re-plan. When facts you wrote change what
-  should happen next, you hand the affected tasks to `situate` (§7) rather than
+  should happen next, you return the affected tasks to `inbox` (§7) rather than
   deciding it yourself.
 
 ## Contexts
@@ -169,8 +169,8 @@ environment, skip the verification and flag the candidates.
 **Artifact rot.** For `ready` and `queued` tasks aged past about a fortnight,
 verify that the files and symbols the task's criteria name still exist where they
 claim to. Where they have rotted, demote the task to `inbox` with an annotation
-saying exactly what no longer exists, and hand it to `situate` (§7). Rot triggers
-demotion; age alone does not.
+saying exactly what no longer exists (§7). Rot triggers demotion; age alone does
+not.
 
 ## 6 — Route the completed-but-uncertified
 
@@ -186,7 +186,7 @@ You certify none of them yourself. You did not do the work and you are not the
 reviewer, and a worker's own "confirmed" on a task record is a claim, not a
 verdict — read it as one more thing needing certification.
 
-## 7 — Hand the affected tasks to `situate`
+## 7 — Return the affected tasks to `inbox`
 
 **Re-plan when the wave lands.** A merged pull request settles assumptions that
 other tasks were built on; a rotted artifact invalidates the criteria that named
@@ -201,11 +201,10 @@ Collect the tasks a fact you wrote actually touched:
 - everything §5 demoted for rot;
 - the investigation tasks §4 filed.
 
-Hand that set to [`situate`](../situate/SKILL.md), inline where the set is small
-and to the consolidation sweep where it is not. You pass the tasks and the facts
-you established. You do not re-sort their assumptions, re-rank their forks,
-re-cut them, or promote them — `situate` does that, and the user's gate is what
-releases the result.
+Set that whole set back to `inbox`, annotated with the fact that moved it.
+`inbox` is the signal that a task needs working out again; re-planning is a
+separate act, on the user's call, and none of it is yours. You do not re-sort
+their assumptions, re-rank their forks, re-cut them, or promote them.
 
 ## 8 — Emit one result
 
@@ -214,7 +213,7 @@ a per-task feed: a caller who has to read twenty rows to find the two that matte
 has been handed your sweep instead of its outcome.
 
 Lead with what needs a person's decision, then what you changed, then what you
-found and deliberately left alone, then what you handed to `situate`. Name ids
+found and deliberately left alone, then what you returned to `inbox`. Name ids
 for everything completed, requeued, demoted, routed, surfaced, or handed on — a
 bare count is not checkable. Close with the one thing the next sweep should pick
 up, and with the window you covered — a result that does not say where you
@@ -242,5 +241,5 @@ stopped leaves the next sweep no way to start.
 
 From your result alone — without opening the graph — the caller can say which
 in-flight claims are still live and why, what you changed and on which ids, what
-is now waiting on a person, and which tasks went back to `situate` and on what
+is now waiting on a person, and which tasks went back to `inbox` and on what
 fact. If any of those needs re-deriving, the sweep is not done.

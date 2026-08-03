@@ -45,10 +45,9 @@ as one — which is worse.
 ## Stop there
 
 Placement is the only judgment you make. Do not value it, wire `contributes_to`
-or any other edge, sort its assumptions, name its forks, or decide anything.
-`situate` does all of that later — inline if it is cheap, in the consolidation
-sweep otherwise. Capture that costs more than a few seconds is capture that
-stops happening.
+or any other edge, sort its assumptions, name its forks, or decide anything. All
+of that happens later, when the user calls for it. Capture that costs more than a
+few seconds is capture that stops happening.
 
 If hydrate answered the ask outright — a pure information request, no work in it
 — say the answer and write no node.

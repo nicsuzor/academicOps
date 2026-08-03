@@ -20,9 +20,8 @@ flowchart TD
         pauli --> hydrate["skills/hydrate<br/>a few reworded searches →<br/>shortlist of ids, one line each<br/>always first, six-call budget"]
 
         hydrate --> capture["commands/q<br/>record one inbox node<br/>and stop"]
-        capture --> situate["skills/situate<br/>placed, valued, wired;<br/>assumptions tested vs hopes,<br/>forks and their probes, decision list<br/>promotes to ready"]
-        situate --> gate{{"human sets status queued<br/>resolves the decision list<br/>agents pull only from here<br/>and never promote into it"}}
-        gate --> brief["skills/brief<br/>size at the forks · compose the process<br/>emit review and sign-off nodes<br/>write the brief onto the task — then stop"]
+        capture --> gate{{"the user calls brief<br/>on an inbox node<br/>— being called is the gate"}}
+        gate --> brief["skills/brief<br/>placed, valued, wired; assumptions tested vs hopes,<br/>forks and their probes, decision list ·<br/>size at the forks · compose the process ·<br/>emit review and sign-off nodes ·<br/>write the brief — inbox to queued, then stop"]
 
         pauli --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
@@ -35,7 +34,7 @@ flowchart TD
 
     pull --> dump["skills/dump<br/>session exit — bail, close,<br/>hand back, or pause"]
     pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
-    reconcile -- "re-plan when the wave lands" --> situate
+    reconcile -- "re-plan when the wave lands:<br/>back to inbox" --> capture
 
     brief --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
     brief --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
@@ -76,8 +75,8 @@ shortlist. There, it is always first and never skipped.
 What it returns is **pointers, not prose**: ids with a line each, saying what
 the thing is and why it might bear on the ask. It does not open them. The
 searching is close to mechanical — the judgment it adds is cutting the returned
-lines down to the handful worth a read. Reading them is `situate`'s job, once,
-on the asks that turn out to be worth it.
+lines down to the handful worth a read. Reading them is `brief`'s job, once, on
+the asks that turn out to be worth it.
 
 ### Mutation is a convention, not a boundary
 
@@ -92,14 +91,14 @@ fixed.
 
 ### Stages advance by invocation, not by trigger
 
-Each skill runs, then stops; no stage fires the next. `inbox` is the signal
-`situate` consumes — there is no second flag beside the status — and whether it
-runs inline or in the consolidation sweep is a cost call, not a trigger.
+Each skill runs, then stops; no stage fires the next. `inbox` is the signal that
+an ask has been captured but not yet worked out — there is no second flag beside
+the status.
 
 Two breakpoints are the user's, and no agent crosses either. The first is
-promotion: `situate` leaves a task at `ready` with a decision list on its body,
-and the user resolves that list and sets `queued`. The second is the pull
-request and the one-way-door sign-offs `brief` wired into the graph.
+promotion: `brief` runs only when the user calls it, so being called _is_ the
+gate, and it is the only thing that moves a task to `queued`. The second is the
+pull request and the one-way-door sign-offs `brief` wired into the graph.
 
 ### Capture is hydrate plus one write
 
@@ -108,14 +107,15 @@ shortlist. That is the whole of capture: no parent judgment, no valuation, no
 edges, no decisions.
 Every judgment made at capture time is one made on the thinnest context anyone
 will ever have about the ask, and capture that costs more than a few seconds is
-capture that stops happening. `situate` does all of it afterwards, on a node
-that already exists.
+capture that stops happening. `brief` does all of it afterwards, on a node that
+already exists.
 
 ### The composer is not the executor
 
-`brief` fires at dispatch time, on a unit the user has already released. It
-sizes the unit, composes its process, emits its review nodes, writes the brief
-into the task body, and then dispatches **by task id** — never by handing the
+`brief` fires when the user calls it, on a captured ask. It places and values the
+unit, sorts its assumptions, names its forks, sizes it, composes its process,
+emits its review nodes, and writes the brief into the task body — then stops at
+`queued`. Dispatch happens later and **by task id**, never by handing the
 freshly-composed text to a worker as a prompt. The executor's first act is to
 read the brief cold from the task, which is what makes the brief bind rather
 than merely restate the reasoning that produced it.
@@ -128,8 +128,8 @@ nothing.
 A dispatchable unit is the largest chunk containing no unresolved fork. `brief`
 cuts only at an unresolved fork or a responsibility boundary, and defaults to no
 cut — one container-sized unit. Where a fork is blocked on missing information,
-what gets dispatched is the probe `situate` designed: the cheapest experiment
-that discriminates between the branches.
+what gets dispatched is the probe `brief` designed: the cheapest experiment that
+discriminates between the branches.
 
 ### The return channel writes facts, and nothing else
 
@@ -137,7 +137,7 @@ that discriminates between the branches.
 flight — merged and closed pull requests, abandoned claims, rotted criteria —
 and writes that back. It closes nothing on its own judgment, prunes nothing,
 scores nothing, and certifies nothing. Where a fact it wrote changes what should
-happen next, it hands the affected tasks to `situate` rather than re-planning
+happen next, it returns the affected tasks to `inbox` rather than re-planning
 them.
 
 ### Routing and composing are different jobs
@@ -178,16 +178,15 @@ not collection. The standard for what that means is
 
 ### Skills
 
-| Skill       | Does                                                                                                              |
-| ----------- | ----------------------------------------------------------------------------------------------------------------- |
-| `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                 |
-| `situate`   | Place, value, and wire one task; sort its assumptions, name its forks and probes; promote to `ready`.             |
-| `brief`     | Size at the forks, compose the process from the three layers, emit the review nodes, write the brief. Stops.      |
-| `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                    |
-| `reconcile` | Establish what is true about in-flight and finished work, write it back, hand the affected tasks to `situate`.    |
-| `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                 |
-| `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims. |
-| `dump`      | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                     |
+| Skill       | Does                                                                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                                                                                                                        |
+| `brief`     | Place, value, and wire one task; sort its assumptions, name its forks and probes; size at the forks, compose the process from the three layers, emit the review nodes, write the brief. `inbox` to `queued`, then stops. |
+| `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                                                                                                                           |
+| `reconcile` | Establish what is true about in-flight and finished work, write it back, return the affected tasks to `inbox`.                                                                                                           |
+| `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                                                                                                                        |
+| `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims.                                                                                                        |
+| `dump`      | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                                                                                                                            |
 
 ### Command
 

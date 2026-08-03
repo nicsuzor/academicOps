@@ -45,11 +45,11 @@ validation) — the assembled workflow is the only differentiator; there is no
 separate research path.
 
 1. **Contract** — the unit's premise, worth, and acceptance criteria are
-   settled _before compute is spent executing it_, across pauli's two pre-hoc
-   passes: `situate` establishes premise and worth on the graph (assumptions
-   sorted, open forks named, the decision list the user resolves at the
-   promotion gate), and `brief` settles shape and acceptance criteria at
-   dispatch time. `brief` emits the contract as a standing, early-blocking node
+   settled _before compute is spent executing it_, in pauli's one pre-hoc pass:
+   `brief` establishes premise and worth on the graph (assumptions sorted, open
+   forks named, the decision list the user reads), then settles shape and
+   acceptance criteria. The user invoking `brief` is the promotion gate.
+   `brief` emits the contract as a standing, early-blocking node
    in the epic's DAG, so the rest of the epic's work depends on it clearing. The
    previously separate standalone premise-gate concept — a two-judge
    hard-refuse ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is

@@ -36,7 +36,7 @@ Request
   +-- Explicit skill named? -----------------------------------> [[simple-question]] + invoke the skill
   +-- Simple question only? -----------------------------------> [[simple-question]]
   +-- Continuation of active session work? --------------------> [[interactive-followup]]
-  +-- New idea, fragment, or constraint? ----------------------> the situate skill
+  +-- New idea, fragment, or constraint? ----------------------> capture it; the brief skill works it out
   +-- Break down a goal or epic? ------------------------------> no shipped skill (library gap)
   +-- Multiple similar items? ---------------------------------> [[batch]], or [[burst]] across sessions
   +-- Email or communications? --------------------------------> [[email-triage]]

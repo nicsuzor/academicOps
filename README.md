@@ -67,7 +67,7 @@ academicOps uses Claude Code's native OpenTelemetry export forwarded through a l
   - `CLAUDE_CODE_ENABLE_TELEMETRY=true`
   - `OTEL_EXPORTER_OTLP_ENDPOINT=http://<tailnet-collector-ip>:4318`
   - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
-  - `OTEL_RESOURCE_ATTRIBUTES=service.name=academicOps,service.version=0.6.0`
+  - `OTEL_RESOURCE_ATTRIBUTES=service.name=academicOps,service.version=<your installed version>`
 
 ---
 
@@ -101,35 +101,21 @@ Requirements: Claude Code (or Antigravity), and Docker if you want polecat's con
 
 ---
 
-## Build and Test
+## Where work runs
 
-```bash
-git clone git@github.com:nicsuzor/academicOps.git && cd academicOps
-uv sync
+When `orchestrate` dispatches a unit, it picks one of three surfaces by the size and cost of the work:
 
-make build          # assemble dist/<plugin>-<client> for every plugin
-make install-dev    # build, then install dist/ as the local 'aops' marketplace
-make test           # uv run pytest tests/
-make lint           # ruff check
-make format         # ruff format + dprint fmt
-make docker         # build the crew worker image
-make clean          # remove dist/
-```
+| Surface                  | When it is picked            | What it does                                                              |
+| :----------------------- | :--------------------------- | :------------------------------------------------------------------------ |
+| **In-session subagent**  | Small units                  | Runs in this session, cheapest model per effort type; commits and pushes. |
+| **Isolated async agent** | Substantial, or has subtasks | Own branch or worktree; pushes before reclaim. No return path by design.  |
+| **Polecat container**    | Cost-sensitive               | Docker container running `agy`, seeded with the task id, headless.        |
 
-`make help` lists every target.
+Asynchronous work writes its result to the task record and pushes its branch; nothing waits on it.
 
 ---
 
-## Repository Layout
+## Developing academicOps itself
 
-```
-lib/        Shared source, injected into plugins at build time. Never shipped as-is.
-build/      The build system.
-plugins/    Plugin sources. Only what a client loads.
-specs/      Design intent.
-tests/      Test suite.
-.agents/    Rules for agents working on this repository.
-```
-
-[`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) is authoritative for the layout, plugin boundaries, build stages, and constraints.
-Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Setup, checks, and the pull-request process are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+[`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) is authoritative for the repository layout, plugin boundaries, build stages, and the constraints on all of them.

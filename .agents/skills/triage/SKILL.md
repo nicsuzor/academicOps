@@ -177,7 +177,7 @@ Fetch open issues, focusing on the focal issue first if a directed focus is prov
 | `aggregate`             | Multiple issues sharing one root cause/fix surface.   | Fold into one `fix-epic` task (leave queued); close source issues with pointer comments. | `triaged-aggregate`     |
 | `evidence-bump`         | Accumulates evidence for a related open issue/epic.   | Leave open; add comment citing canonical issue (`#N`).                                   | `triaged-evidence-bump` |
 | `single-task`           | Atomic task (AC clear, ≤3 files, obvious fix).        | File polecat task with `Closes #N`.                                                      | `triaged-single`        |
-| `fix-epic`              | Multi-step, multi-file, or design-required work.      | Create epic task and situate it, leave queued.                                           | `triaged-epic`          |
+| `fix-epic`              | Multi-step, multi-file, or design-required work.      | Create epic task, leave at `inbox` for the user to brief.                                | `triaged-epic`          |
 | `defer`                 | Real but blocked or low-criticality.                  | Apply defer label and revisit-by date.                                                   | `triaged-defer`         |
 
 - **Execution**: Apply low blast-radius dispositions autonomously. Gate ONLY on:

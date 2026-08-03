@@ -24,7 +24,7 @@ Do the work normally. When the framework helps or hurts — an instruction that 
 Give a contextless agent the instruction under test and the task _only_ — no coaching, no fixes mid-run; redirect a running agent rather than restarting it. Before reading the output, write down your hypothesis of where it will fail. Score the outcome against the instruction's own acceptance criteria, then have an independent agent score from scratch without seeing your read. If you edit the instruction, re-run blind: **≥2 runs per condition**, or you are measuring agent variance, not your edit.
 
 **3. mechanism-trial** (new runtime mechanism: gate, hook, evaluator, classifier).
-No mechanism is enabled without a pre-registration: hypothesis, promote criteria, kill criteria, review date. Use [references/experiment.md](references/experiment.md). A mechanism whose experiment record has passed its review date without evidence is presumed dead — file the removal.
+No mechanism is enabled without a pre-registration on the task record: hypothesis, promote criteria, kill criteria, review date. A mechanism whose experiment record has passed its review date without evidence is presumed dead — file the removal.
 
 **4. planning-eval** (decomposition/planning quality).
 Method and epistemics rubric: [references/decomposition-eval.md](references/decomposition-eval.md). Gold-standard pairs are single-use — once written anywhere the test agent can search, they are contaminated.

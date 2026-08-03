@@ -21,15 +21,14 @@ stage, `strategize`, in `plugins/ida/skills/`. Nothing here restates them.
 /q capture ──► hydrate ──► one inbox node, and stop
                               │
                               ▼
-situate (inline when cheap, or the consolidation sweep) ──► status: ready
+===================================================================
+BREAKPOINT 1 — the user calls brief on an inbox node. Being called is the gate.
+===================================================================
+brief (composes only — never dispatches) ──► status: queued
    ├─► placed under the right parent, valued, densely wired
    ├─► assumptions sorted: tested vs hopes
    ├─► forks named, each with the probe that would settle it
-   └─► decision list for the user
-===================================================================
-BREAKPOINT 1 — the user promotes ready ──► queued, resolving the decision list
-===================================================================
-brief (composes only, on a queued unit — never dispatches)
+   ├─► decision list for the user
    ├─► sizing: default no cut; cut only at an unresolved fork or a
    │   responsibility boundary
    ├─► a fork blocked on information makes the probe the unit
@@ -47,7 +46,7 @@ the unit executes ──► PR lands, or closes
 reconcile (return channel, facts only)
    ├─► folds merged and closed PRs, probes stale claims, routes the
    │   completed-but-uncertified
-   └─► hands the tasks a landed wave touched back to situate
+   └─► returns the tasks a landed wave touched to inbox
 ===================================================================
 BREAKPOINT 2 — the user: PR review and merge, plus the one-way-door sign-offs
 ===================================================================
@@ -78,9 +77,7 @@ persist the shortlist onto the node.
 shortlist points at, placement, valuation, wiring, the assumption sort, the fork
 map, and the decision list all work over the same neighbourhood; splitting them
 across two stages meant two passes loading the same context to write to the same
-node. So `situate` does all of it, inline when the shortlist is short and
-batched in the consolidation sweep otherwise. Cost decides which; the pass is
-identical either way.
+node. So `brief` does all of it, in the one pass the user calls for.
 
 **Sizing happens at dispatch, not at intake.** Cutting a tree at intake spends
 budget on information that does not exist yet and produces structure that is
@@ -125,17 +122,18 @@ any agent reads it directly.
 exactly the authority of what it observed. Letting it close on its own judgment
 would make a sweep that runs unattended into a surface that deletes work, and
 letting it re-plan would put planning somewhere no one reads. So it writes what
-happened and hands the affected tasks to `situate` — re-plan when the wave
-lands, in the stage that owns planning.
+happened and returns the affected tasks to `inbox` — re-plan when the wave
+lands, on the user's call, in the stage that owns planning.
 
 ## The two breakpoints
 
 Both are the user's, and no agent crosses either.
 
-1. **Promotion.** `situate` leaves the task at `ready` with a decision list on
-   its body. The user resolves that list and sets `queued`. Agents pull only
-   from `queued` and never promote into it — which is what makes writing the
-   decision list a surface rather than a drop: the gate is where it is read.
+1. **Promotion.** `brief` runs only when the user calls it, so being called _is_
+   the gate, and `brief` is the only thing that writes `queued`. Agents pull
+   only from `queued` and never promote into it — which is what makes writing
+   the decision list a surface rather than a drop: the user reads it on the body
+   of the task they just released.
 2. **The pull request, and the sign-offs.** PR review and merge, plus every
    one-way-door sign-off node `brief` wired into the graph. The
    [`one-way-door`](../../lib/axioms/one-way-door.md) axiom binds the agent that
@@ -144,15 +142,15 @@ Both are the user's, and no agent crosses either.
 
 ## One status vocabulary
 
-The pipeline carries no status vocabulary of its own. `inbox`, `ready`, and
-`queued` mean what the PKB MCP tool schemas declare they mean, and every stage
-writes in those terms. A parallel vocabulary — "situated", "briefed",
-"dispatchable" — would need its own transitions, its own sweep, and its own
-reconciliation against the real one.
+The pipeline carries no status vocabulary of its own. `inbox` and `queued` mean
+what the PKB MCP tool schemas declare they mean, and every stage writes in those
+terms. A parallel vocabulary — "situated", "briefed", "dispatchable" — would
+need its own transitions, its own sweep, and its own reconciliation against the
+real one.
 
-There is no flag beside the status, either. `inbox` is what marks a node as
-not yet situated and `ready` is what marks it as done; a second field saying the
-same thing is a second thing to keep true.
+There is no flag beside the status, either. `inbox` is what marks a node as not
+yet worked out and `queued` is what marks it as ready to dispatch; a second
+field saying the same thing is a second thing to keep true.
 
 `focus_score` is computed by the graph engine from the signals on the nodes. No
 stage writes it; a stage moves it by wiring edges and by putting `severity` on
@@ -160,14 +158,13 @@ the target the work serves.
 
 ## Stage ownership
 
-| Stage            | Owns                                                                                           |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| `hydrate`        | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                    |
-| `/q`             | One `inbox` node carrying the ask and that shortlist. No judgment of any kind.                 |
-| `situate`        | Placement, valuation, wiring, assumptions, forks, probes, decisions. To `ready`.               |
-| `brief`          | Sizing, process composition, review and sign-off nodes, the brief. Composes; never dispatches. |
-| `pull`           | Claim, execute, record, hand over.                                                             |
-| `reconcile`      | What is true about in-flight and finished work. Facts only; hands re-planning back.            |
-| `ida:strategize` | An on-demand lens, ida's: fix the altitude, route each piece to the stage that owns it.        |
+| Stage            | Owns                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hydrate`        | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                                                                                                                   |
+| `/q`             | One `inbox` node carrying the ask and that shortlist. No judgment of any kind.                                                                                                                |
+| `brief`          | Placement, valuation, wiring, assumptions, forks, probes, decisions; then sizing, process composition, review and sign-off nodes, the brief. `inbox` to `queued`. Composes; never dispatches. |
+| `pull`           | Claim, execute, record, hand over.                                                                                                                                                            |
+| `reconcile`      | What is true about in-flight and finished work. Facts only; returns re-planning to `inbox`.                                                                                                   |
+| `ida:strategize` | An on-demand lens, ida's: fix the altitude, route each piece to the stage that owns it.                                                                                                       |
 
 Each runs, then stops. No stage fires the next.

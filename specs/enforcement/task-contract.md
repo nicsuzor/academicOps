@@ -43,10 +43,9 @@ work.
 ### Mechanisms
 
 - **Premise judgment** — no longer a standalone gate at `claim_task`. The
-  assessment happens earlier and in two places, both pauli's: premise and worth
-  at intake (`situate` places and values it, sorts its assumptions, and names
-  its open forks), shape and acceptance criteria at dispatch time in the
-  `brief` skill — see
+  assessment happens earlier, in pauli's `brief` skill: it places and values the
+  work, sorts its assumptions, names its open forks, then settles shape and
+  acceptance criteria — see
   [enforcement.md § Task-boundary review](enforcement.md#5-task-boundary-review--three-lenses-reviewer--executor).
   Dispatch surfaces (`/pull`, `/dispatch`) trust that rather than re-judging the
   premise themselves.

@@ -16,11 +16,6 @@ Design intent for anything else: [`specs/README.md`](../specs/README.md).
 The axioms in [`lib/axioms/`](../lib/axioms/) apply here as they do everywhere.
 On top of them:
 
-- **Single Source of Truth**: Follow project conventions in `specs/ARCHITECTURE.md`. Do not duplicate shared rules.
-- **Context Economy**:
-  - Keep responses concise and focused on requested deliverables.
-  - Do not repeat full file contents, raw build logs, or unchanged code blocks unless explicitly requested.
-  - Summarize sub-task outputs into concise bullet points or structured fields.
 - **No duplication.** Anything two plugins need lives in `lib/` and is injected
   at build time. A second copy is a build failure.
 - **No defaults.** No endpoint, URL, host, path, token, or credential appears in

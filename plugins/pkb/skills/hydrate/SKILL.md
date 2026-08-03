@@ -105,14 +105,10 @@ pointers and leaves every write to the stages downstream.
 - Open, read, or quote beyond the snippet the search returned. If a line needs
   explaining to be useful, list it and let the caller ask.
 - Synthesize. No prose summary, no "here is what has been tried" narrative, no
-  restating the ask back. `situate` opens what matters and writes it onto the
-  task; `brief` carries it to the executor.
-- List standards, obligations, review gates, or workflow templates. `brief`
-  loads the three template layers itself, at composition time, every time.
-- Judge value, priority, effort, or whether the work is worth doing. That is
-  `situate`.
-- Touch status or any other frontmatter. `/q` writes the `inbox` node from your
-  shortlist; `situate` owns everything after that.
+  restating the ask back. You point; whoever called you opens what matters.
+- List standards, obligations, review gates, or workflow templates.
+- Judge value, priority, effort, or whether the work is worth doing.
+- Touch status or any other frontmatter.
 - Pad the shortlist to look thorough, or rank by similarity score — the score
   got the line in front of you, and your judgment is what keeps it.
 

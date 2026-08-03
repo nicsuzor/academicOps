@@ -7,14 +7,7 @@ description: Streamlit implementation of the analyst presentation layer. Use whe
 
 Streamlit is one **swappable** implementation of the presentation layer. The `analyst`
 skill owns the principle — display only, never transform — which holds whichever
-dashboard tool you use; this skill owns the Streamlit how-to.
-
-## Contents
-
-- [[streamlit-workflow]] — single-step collaborative workflow for building Streamlit
-  dashboards (load → STOP → chart → STOP → interactivity → STOP).
-- [[streamlit-patterns]] — design patterns and best practices for research dashboards.
-- [[streamlit]] — standard app structure and additional Streamlit patterns.
+dashboard tool you use.
 
 ## When to use
 
@@ -28,3 +21,6 @@ Streamlit may read (`SELECT * FROM mart`), filter on existing columns, format fo
 display, and render charts. It must NEVER `GROUP BY`/aggregate, `JOIN`, apply `CASE`
 business logic, or compute derived metrics inline. If tempted to transform: STOP and
 add a model in the transformation layer (see the dbt skill) instead.
+
+This boundary is the whole of what this skill contributes. Fetch current Streamlit API
+documentation at the point of use.
