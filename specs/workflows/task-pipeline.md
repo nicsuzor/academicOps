@@ -33,8 +33,9 @@ brief (composes only, on a queued unit — never dispatches)
    │   responsibility boundary
    ├─► a fork blocked on information makes the probe the unit
    ├─► process composed from the three template layers, risk-proportionate
-   │   · the composed steps land as the task checklist
-   ├─► review nodes emitted as blocking dependencies (these are the gate)
+   │   · steps this worker takes in this session ──► the task checklist
+   ├─► anything a different owner does ──► its own child node on the graph
+   │   · review obligations are nodes: reviewer ≠ executor
    │   · empty review set ──► halt, task blocked, no brief written
    │   · one-way or ambiguous door ──► sign-off node, uncomposed
    └─► brief written to the task body ──► STOP
@@ -87,11 +88,21 @@ whatever the last wave established already folded in.
 
 **A unit is cut at forks, never at size.** The largest chunk containing no
 unresolved fork is one dispatchable unit — usually the whole task. Every cut
-obliges some surface to maintain subtask tracking, review nodes, and dependency
-edges, so a cut made because a unit "feels large" buys process theatre with real
+obliges some surface to maintain a node, its review, and its dependency edges,
+so a cut made because a unit "feels large" buys process theatre with real
 maintenance. Where a fork is blocked on missing information, the cheapest
 experiment that discriminates between the branches is what gets dispatched; the
 work behind it stays a placeholder.
+
+**Children and subtasks are different objects, and the difference is who does
+the work.** A subtask travels with its parent, is hidden from the ready set, and
+is how one worker tracks its own steps inside one session. A child is a real
+node with its own owner, its own return contract, and its own visibility to a
+dispatcher. So the question a cut answers is never "does this block?" but "does
+the same worker do this, in the same sitting?" — sequenced steps stay inside the
+unit as checklist lines, and anything belonging to another owner becomes a
+child. Review obligations are children for exactly this reason: reviewer ≠
+executor means a different identity, so review was never the unit's own work.
 
 **The composer is not the executor, and does not become one.** An agent that has
 just reasoned its way to a plan acts on the reasoning trace rather than on the

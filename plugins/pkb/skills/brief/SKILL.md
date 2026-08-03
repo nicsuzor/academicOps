@@ -103,9 +103,19 @@ dependency. Re-cut before persisting. One owner means one accountable identity
 for that contract; that owner may run its own internal team without making the
 cut wrong.
 
-Persist any cut with `decompose_task`, and record in the body which of the two
-cases forced it. No cut is the expected outcome and needs one line, not a
-defence.
+**A cut produces a child node, never a subtask.** The two are different objects.
+A **subtask** travels with its parent, is hidden from the ready set by default,
+and is how one worker tracks its own steps inside one session — sequencing that
+belongs to the owner, not to you. A **child** is a real node with its own id,
+its own owner, and its own return contract, and it is what a dispatcher can
+see. Every cut you make is a cut at a responsibility boundary or an unresolved
+fork, so every cut is different work with a different owner: it needs a child.
+
+Create them with `create_task` under the same parent, and record in the body
+which of the two cases forced each one. A boundary cut minted as a subtask is
+work no dispatcher will ever find.
+
+No cut is the expected outcome, and it needs one line, not a defence.
 
 ## 3 — Compose the process
 
@@ -221,9 +231,20 @@ template for has nothing to audit against. State it once, as the current
 checklist. When the process changes, rewrite the checklist in place — do not
 leave the superseded version beside the new one.
 
-**The checklist is not the gate.** Steps that must block acceptance become nodes
-in §4; the checklist carries the rest. Where a step appears in both, the node is
-authoritative — a tick is a claim, an unmet blocking dependency is a fact.
+**The checklist is for steps one worker takes in one sitting.** Sequenced work
+inside the unit — its own ordering, its own intermediate deliverables — is the
+owner's to track, and the checklist is where it lands. It is not a gate and
+nothing outside the session reads it.
+
+**Anything that is genuinely different work becomes a node instead.** A step
+belonging to a different owner, a different evaluator identity, or work this
+unit blocks on but does not itself do, is not a checklist line — it is its own
+task, placed on the graph where a dispatcher can find it and an owner can be
+held to it. That is exactly why the review obligations in §4 are nodes: reviewer
+≠ executor means a different identity, so review was never this unit's work.
+
+The test is not whether a step blocks. It is whether the same worker does it in
+the same session. If yes, it is a checklist line. If no, it is a node.
 
 ## 4 — Emit the review and sign-off nodes
 
