@@ -464,7 +464,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     claude_ida = dist_root / "ida-claude" / "agents" / "ida.md"
     assert claude_ida.is_file()
     claude_fm = yaml.safe_load(claude_ida.read_text().split("---")[1])
-    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion"]
+    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
 
     # Check agy dist converts agents/ida.md to agents/ida/agent.md with translated tools
     agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
@@ -476,7 +476,16 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     assert agy_fm["name"] == "ida"
     assert "interactive face" in agy_fm["description"]
     assert agy_fm["hidden"] is False
-    assert agy_fm["tools"] == ["read_file", "Skill", "invoke_subagent", "ask_question"]
+    # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
+    # untranslated — the map renames what agy calls by another name and leaves
+    # everything else alone.
+    assert agy_fm["tools"] == [
+        "read_file",
+        "Skill",
+        "invoke_subagent",
+        "ask_question",
+        "Dispatch",
+    ]
 
     body = parts[2]
     assert "# Agent System Instructions" in body

@@ -4,7 +4,7 @@ kind: process
 category: fragment
 description: Hypothesis-probe-conclude cycle for debugging and exploratory work with an unknown cause
 requires: []
-pairs-with: [memory-capture]
+pairs-with: []
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-investigation
@@ -21,8 +21,8 @@ exploratory work where the cause isn't known yet.
 2. **Probe** — design the cheapest test that could confirm or refute it.
 3. **Execute** — run the probe, capture evidence.
 4. **Conclude** — confirmed | refuted | needs more data.
-5. **Document** — record the finding (compose [[memory-capture]] if it's worth
-   preserving beyond this task).
+5. **Document** — record the finding; where it is worth preserving beyond this
+   task, invoke the `remember` skill.
 
 ## Key Principle
 

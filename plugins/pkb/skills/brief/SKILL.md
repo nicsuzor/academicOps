@@ -247,14 +247,9 @@ Load them at composition time, every time. Do not carry a process in your own
 text, assume the shipped library is the whole of it, or reach for a familiar
 template without reading the layers that may have replaced it.
 
-**Resolving a bare name against the `wf-` convention.** A shipped template names
-what it needs bare — `[[verification]]`, `[[human-approval]]` — while the PKB
-carries the same template under its prefixed permalink, `wf-verification`. So a
-name with no file in `process/` is not yet a gap: try it prefixed with `wf-` in
-the PKB layer before you conclude anything. Every review obligation the shipped
-library names resolves this way and no other, so an agent that skips the
-prefixed lookup finds nothing, obliges no review, and reports a clean pass. Only
-a name that resolves neither bare nor prefixed, in any layer, is a gap.
+Every name in the shipped library is written as it resolves: a `process/`
+template by its bare filename, a PKB obligation by its `wf-` permalink. A name
+that resolves in no layer is a gap.
 
 Reconcile the PKB layer once per composition: `list_documents(tag="wf-template")`
 against the index's entries. A template tagged but unlisted, or listed but
@@ -373,62 +368,36 @@ each review being independently dispatched later, not something you construct
 here. Any deviation from what the process obliged is a recorded decision in the
 body — what you specified and why — never a silent skip.
 
-## 7 — Write the seven elements
+## 7 — Write the brief
 
-Prose, not a form. Write each the way you would explain the assignment to a
+Prose, not a form. Write it the way you would explain the assignment to a
 capable colleague walking in cold who will not get to ask a follow-up. Append
 under the existing body; build on the scope and door type already there rather
 than repeating them.
 
-**1. Intent, and why.** The end state in a sentence or two, and how it serves
-the parent. The _why_ is what lets the executor improvise correctly when they
-hit a fact you did not anticipate. "Fix the login bug" is not intent. "Users on
-mobile cannot authenticate at all, which blocks the onboarding funnel this epic
-exists to unblock" is.
+@include doctrine/delegation-brief.md
 
-**2. Scoped context.** The specific things to open to start cold — task ids,
-spec sections, prior decisions, the two or three files most likely relevant. A
-short list, not a literature review. Deliberately leave out the epic's broader
-strategy, the options considered and rejected, and organisational context: none
-of it sharpens tactical judgment on this piece of work, and including it invites
-re-litigation of settled decisions.
+Three things that doctrine leaves to you, and that this stage owes:
 
-**3. Constraints.** What must not change and what is out of bounds — the
-boundary of the sandbox, not the path through it.
+- **Lead acceptance with the outcome to verify, not the edit you imagine
+  produces it.** Name the concrete check run against the real surface — a test, a
+  screenshot, a before-and-after diff — so "done" means observed-changed, not
+  merely edited. For a probe, "done" is the fork settled and the discriminating
+  result recorded, whichever way it came out; a probe that returns "the hope did
+  not hold" has succeeded.
+- **Emit for evaluation.** Beyond the evidence bar itself, name the **quality
+  rubric** for this deliverable sized to the door type, the **claim-provenance
+  rule** — observed kept separate from inferred, a claim without a citable check
+  is not evidence — and the **procedural record**, which steps of the composed
+  process were actually followed. Thin evidence here is itself a fail condition.
+- **Effort and door type.** Carry the classification forward from §4 and §5.
+  Reclassify only if something you learned while composing changed the
+  reversibility call, and say what changed if you do.
 
-**4. Autonomy and non-goals.** What the executor decides on their own authority
-— implementation approach, which of several reasonable fixes, how to structure
-the change — and what is explicitly not theirs. Include permission to follow the
-worker contract: attempt everything derivable, refuse choices you cannot
-confidently make, hand back `partial`.
-
-**5. Done, and observable acceptance criteria.** Set now, at design time, not
-left for the executor to infer at hand-in. **Lead with the outcome to verify,
-not the edit you imagine produces it.** Name the concrete check run against the
-real surface — a test, a screenshot, a before-and-after diff — so "done" means
-observed-changed, not merely edited. For a probe, "done" is the fork settled and
-the discriminating result recorded, whichever way it came out; a probe that
-returns "the hope did not hold" has succeeded.
-
-**6. Emit for evaluation.** Three things handed back so a separate evaluator
-reaches a verdict without re-investigating: the **quality rubric** for this
-deliverable beyond bare AC compliance, sized to the door type; the
-**claim-provenance rule** — observed this session kept separate from inferred, a
-claim without a citable check is not evidence; and the **procedural record** —
-which steps of the composed process were actually followed. Thin evidence here
-is itself a fail condition; say so where the stakes warrant it.
-
-**7. Effort and door type.** Carry the classification forward from §4 and §5.
-Reclassify only if something you learned while composing changed the
-reversibility call, and say what changed if you do. Give a rough size so the
-executor calibrates ambition.
+Give the executor permission to follow the worker contract: attempt everything
+derivable, refuse choices they cannot confidently make, hand back `partial`.
 
 ## Never prescribe the implementation
-
-Workers are smart agents, not mechanical drones. If you find yourself listing
-files to edit, functions to change, things to look for, or checks to run, you
-are anchoring the recipient on your mental model and reducing their judgment to
-transcription. Stop and cut back to outcome and limits.
 
 **If you must name a file, mark it unverified**: "confirm this is actually the
 code path that runs before editing it." A brief once said "change the exponent

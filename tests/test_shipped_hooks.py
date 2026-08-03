@@ -106,6 +106,16 @@ _PAYLOADS: dict[str, dict] = {
         "tool_name": "Bash",
         "tool_input": {"command": "git commit --no-verify -m x"},
     },
+    # A resolved batch that dispatched a subagent alongside an ordinary call —
+    # the shape orchestrate's receiver-side handback reminder exists to catch.
+    "PostToolBatch": {
+        "hook_event_name": "PostToolBatch",
+        "session_id": "test-session",
+        "tool_calls": [
+            {"tool_name": "Read", "tool_use_id": "a", "tool_input": {}, "tool_response": {}},
+            {"tool_name": "Agent", "tool_use_id": "b", "tool_input": {}, "tool_response": {}},
+        ],
+    },
     "Stop": {"hook_event_name": "Stop", "session_id": "test-session"},
     "SubagentStop": {"hook_event_name": "SubagentStop", "session_id": "test-session"},
     "SessionEnd": {

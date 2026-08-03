@@ -4,7 +4,7 @@ kind: process
 category: fragment
 description: Red-green-refactor cycle for any testable code change
 requires: []
-pairs-with: [verification]
+pairs-with: [wf-verification]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-tdd

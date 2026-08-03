@@ -4,7 +4,7 @@ kind: process
 category: development
 description: Test-first feature development from idea to ship — "add feature X", "build Y", "fix bug Z" with a known cause
 requires: [task-tracking, tdd]
-pairs-with: [verification, handover]
+pairs-with: [wf-verification, wf-handover]
 conflicts: []
 recommends: []
 version: 1.1.0
@@ -26,9 +26,9 @@ bug with a known cause and a clear fix. Unknown-cause bugs route to
    observation, not your interpretation of it, to the user.
 3. **Draft tests** — compose [[tdd]], first behavior before implementation.
 4. **Implement** — red-green-refactor.
-5. **Verify** — compose [[verification]] against the original request, not
+5. **Verify** — compose [[wf-verification]] against the original request, not
    just the tests.
-6. **Submit PR** — compose [[handover]].
+6. **Submit PR** — compose [[wf-handover]].
 
 ## Critical Rules
 

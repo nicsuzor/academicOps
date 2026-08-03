@@ -90,7 +90,7 @@ When invoked, analyze the input and route to the appropriate workflow:
 - User mentions "convert", "convert to markdown", "docx to markdown", "pdf to markdown"
 - Goal is format conversion, not structured extraction
 
-**Route to**: `workflows/docs-to-md.md`
+**Route to**: `scripts/pdf2md.py` for PDFs; pandoc for everything else. Use the tool's own documentation for flags.
 
 **Storage**: Converted `.md` files replace originals in the same directory
 
@@ -143,7 +143,7 @@ See `procedures/review-inline-comments.md` for detailed procedure.
 
 **Generalized patterns** → Framework (public repo):
 
-- `plugins/pkb/workflows/process/peer-review.md` (update with principles)
+- `plugins/tools/skills/peer-review/references/` (update with principles)
 - A skill's own `references/` directory (depersonalized examples)
 - No names, no specific unpublished content, no identifying details
 

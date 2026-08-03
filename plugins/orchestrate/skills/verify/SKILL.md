@@ -21,7 +21,7 @@ For a content or instruction artifact — a skill, agent body, prompt, doc, spec
 
 Write an explicit answer to each in the report. A `PASS` verdict is unavailable until all four are written.
 
-0. **Premise test, before you read the diff.** From the task and diffstat alone, write the sharp principal's one-sentence reaction: _was this a good idea, in this shape?_ One open sentence, never a checklist. A bad premise is a `FAIL` regardless of test coverage — green tests are the expected surface of a bad premise, not a mitigant. Full discipline: the `strategic-review` skill, §2.
+0. **Premise test, before you read the diff.** Apply the `strategic-review` skill's §2 as written and record its one-sentence verdict here. A bad premise is a `FAIL`.
 1. **Sentinel and empty-state audit.** Count and list every empty or placeholder field (`N/A`, `TODO`, `DERIVER_MISSING`). Missing primary value-signals are a `FAIL`.
 2. **Principal's-eye top-line read.** Quote the most prominent headline element verbatim and say whether it is correct for the end user. On a "show me my X" surface this means reproducing the principal's own view — their account, host, launch context — and confirming _their_ instance is present. A generic instance is a `FAIL`.
 3. **Floor versus ceiling.** State verbatim: "exceptional, or merely working?" Merely working is not a `PASS` on a fitness task.

@@ -4,7 +4,7 @@ kind: process
 category: email
 description: Extract action items from emails into "ready for action" tasks with summaries, downloaded documents, and clear response requirements
 requires: [task-tracking]
-pairs-with: [handover]
+pairs-with: [wf-handover]
 conflicts: []
 recommends: [email-triage]
 version: 2.1.0
