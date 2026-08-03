@@ -58,10 +58,9 @@ in flight reports itself complete while skipping whole classes of work.
 Then read the **claim** on each. A status by itself is not a claim; the assignee
 and the session are what make it one, and they are what you check.
 
-Filter the slice before you pull it. An unfiltered `list_tasks` on a mature graph
-spills to a temp file, and then you have lost the turn rather than gained the
-data. Narrow by status or project, take the default markdown format, and repeat
-until the whole set is covered — many narrow calls, never one wide one.
+Filter the slice before you pull it. Narrow by status or project, take the
+default markdown format, and repeat until the whole set is covered — many narrow
+calls, never one wide one.
 
 ## 2 — Probe every suspect claim, then confirm it or requeue it
 

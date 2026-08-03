@@ -65,10 +65,8 @@ One task, under the right parent.
 | One verifiable unit, one session             | Task, parented to the epic it belongs to       |
 | High uncertainty, information needed first   | Task with `classification: spike`, same parent |
 
-Get the `project` slug right — it is baked into the task id at creation and
-cannot be renamed afterwards. Inherit it from the parent; if the ancestor chain
-gives nothing, ask. A node captured under the wrong slug needs recreating, not
-updating.
+`project` comes from the parent. Where re-parenting moves the node to a
+different project, move the slug with it.
 
 If the right parent is genuinely ambiguous between two live candidates — not
 merely unclear at a glance — that is a SURFACE case (§7). Do not flip a coin.
@@ -104,10 +102,8 @@ revised, not commitments, and none of them touches `priority`.
 | Estimated effort        | `effort`                                                                |
 
 Populate what you actually established. Do not fabricate precision the ask does
-not support. `voi_value` is graph-computed and currently over-rewards
-deliverables wired to busy targets rather than genuine uncertainty-resolving
-work — trust it for spikes, discount it for deliverables, and record your own
-honest estimate where the two disagree.
+not support. Where your own reading of the work's value differs from what the
+graph computed, record yours and say what it rests on.
 
 ## 5 — Sort the assumptions
 
