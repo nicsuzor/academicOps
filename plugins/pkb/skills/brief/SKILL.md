@@ -284,8 +284,8 @@ its stakes warrant is process theatre; under a lighter one, it ships unreviewed.
 Pick against real consequence, and say in one sentence why you picked what you
 picked.
 
-- **Wide blast radius, hard to reverse** — per-chunk instances of each lens,
-  each blocking at its own juncture.
+- **Wide blast radius, hard to reverse** — per-chunk instances of each review
+  obligation, each blocking at its own juncture.
 - **Narrow blast radius, cheap to undo** — the worker self-assesses, plus one
   consolidated pass at the final deliverable.
 
@@ -334,13 +334,20 @@ layers winning. A review set carried in from memory is one the user can never
 override, and a review the composed process obliges but no layer defines is a
 library gap: name it and stop.
 
-**An empty review set is that same gap, however it came to be empty.** Nothing
-surfaces, because nothing was obliged, and the record reads complete — so this
-is the one branch you have to look for rather than notice. Where the composed
-set names no lens, name _that_ as the gap and **halt**: record it on the task
-body, leave the task `blocked`, and write no brief. Templates that named
-nothing, a layer that would not load, a composition that never ran — the cause
-changes what you report, never whether you halt.
+**Which obligations become nodes.** Sort each one the composed process named by
+**who discharges it**, using §5's test: an obligation the executor satisfies
+inside its own session is a checklist line, and one that needs a different
+evaluator identity is a node. Only the second kind blocks acceptance, because
+only the second kind is something the executor cannot mark done itself.
+
+**A review set with no node in it is a gap, however it came to be empty.**
+Nothing surfaces, because nothing blocks, and the record reads complete — so
+this is the one branch you have to look for rather than notice. Where the
+composed process named no obligation that a separate identity discharges, name
+_that_ as the gap and **halt**: record it on the task body, leave the task
+`blocked`, and write no brief. Templates that named nothing, a layer that would
+not load, a composition that never ran, or a set that turned out to be entirely
+self-check — the cause changes what you report, never whether you halt.
 
 **Human sign-off is the one node you emit uncomposed.** Where the unit's door is
 one-way — the `one-way-door` axiom's list governs, and you need no second list
@@ -351,14 +358,15 @@ it was owed and whether it was met. An obligation with no node behind it is one
 that fails silently.
 
 **The review-task body points; it does not prescribe.** Each carries the subject
-and an instruction to invoke that lens's review skill and apply its standard as
-written. Do not restate, narrow, expand, or invent criteria, and do not design a
-bespoke review cycle — the standard lives in the review skill, and the node's
-whole job is to send the reviewer to it. Use this shape:
+and the name of the obligation it discharges — nothing else. Do not restate,
+narrow, expand, or invent criteria, and do not design a bespoke review cycle:
+the standard lives in the obligation's own template, and the node's whole job is
+to send the reviewer to it. You do not need to know what that standard says, and
+you must not summarise it here; naming it is the entire contract. Use this shape:
 
 ```markdown
-Review <unit id — one line on what it is> against the <lens the composed process
-named> lens by invoking that lens's review skill. Apply the skill's standard as
+Review <unit id — one line on what it is> against <the obligation the composed
+process named, by the name it resolves under>. Apply that template's standard as
 written; add no criteria here.
 ```
 
