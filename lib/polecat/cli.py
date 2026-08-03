@@ -926,6 +926,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=staging_base))
     os.chmod(staging_dir, 0o700)
 
+    preserve_workspace = False
     try:
         setup_staging(staging_dir, mcp_url, os.environ.get("GEMINI_CONFIG_DIR"), agent_cmd)
 
@@ -990,6 +991,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             verify_seed=agent_cmd == "agy" and seeded_from_task,
         )
         if returncode != 0:
+            preserve_workspace = True
+            click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
             sys.exit(returncode)
 
         delivery_ok, delivery_err = _verify_workspace_delivery(
@@ -1000,18 +1003,22 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             # the graph this task lives in (dispatch/SKILL.md section 6). A
             # launcher carrying its own client for the knowledge base would be a
             # second copy of that plugin's job, so the exit code and this message
-            # are the whole of the handoff.
+            # are the whole of the handoff. The workspace is the only copy of
+            # whatever the failed run left uncommitted, so it outlives the exit.
+            preserve_workspace = True
             fail(
                 f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
                 "Refusing to report success. If this task is in a terminal status, "
                 "the dispatcher must reopen it (via pauli) before filing a fix "
-                "subtask or re-dispatching."
+                "subtask or re-dispatching.\n"
+                f"Workspace preserved for inspection: {workspace_dir}"
             )
 
     finally:
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
-        cleanup_isolated_workspace(clone_cleanup)
+        if not preserve_workspace:
+            cleanup_isolated_workspace(clone_cleanup)
 
 
 if __name__ == "__main__":
