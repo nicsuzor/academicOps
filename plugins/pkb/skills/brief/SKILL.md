@@ -1,6 +1,6 @@
 ---
 name: brief
-description: Turn a captured ask into one unit a cold agent can be dispatched onto and judged against — placed, valued, wired, its assumptions sorted into tested and hopes, its forks named with the probe that settles each; then sized, given the process it runs under, its review and sign-off nodes, and the delegation brief itself. Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
+description: Turn an ask — a captured node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against — placed, valued, wired, its assumptions sorted into tested and hopes, its forks named with the probe that settles each; then sized, given the process it runs under, its review and sign-off nodes, and the delegation brief itself. Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
 agent: "pauli"
 ---
 
@@ -43,15 +43,24 @@ behind it: it may be reshaped by what this wave returns, and paying the cost
 early is the waste rolling-wave elaboration exists to avoid. More than one ask?
 Brief each independently. Never bundle.
 
-You produce no new nodes beyond the one you are briefing and the review nodes it
+The nodes you may create are the unit itself — captured in §1 where the ask
+arrived as prose — the children a cut in §4 forces, and the review nodes §6
 obliges. Everything else you produce is body content and edges.
 
 ## 1 — Read what is there
 
-`get_task` the unit and its parent, then **open what matters**. Capture recorded
-the ask and stopped; the reading happens here, once, on the ask that turned out
-to be worth it — prior attempts, decisions, known confounds, each with its node
-id. Open what looks load-bearing and skip what does not.
+**An ask reaches you as a node id or as prose.** Given an id, `get_task` the unit
+and its parent. Given prose with no node behind it — a pasted note, a finding, a
+fragment — there is nothing to read yet: run the searches below first, then
+either merge the ask into the node that already covers it or `create_task` it at
+`inbox` in the ask's own words, under the parent §2 places it beneath. You brief
+a node either way, because the executor reads the body and never sees the
+invocation that produced it.
+
+Then **open what matters**. Capture, where it ran, recorded the ask and stopped;
+the reading happens here, once, on the ask that turned out to be worth it — prior
+attempts, decisions, known confounds, each with its node id. Open what looks
+load-bearing and skip what does not.
 
 `search`, `pkb_context`, and `task_search` before changing anything. If another
 node already covers this ask, merge into it (`update_task` / `update_body`) —
@@ -254,8 +263,10 @@ that resolves in no layer is a gap.
 Reconcile the PKB layer once per composition: `list_documents(tag="wf-template")`
 against the index's entries. A template tagged but unlisted, or listed but
 unresolvable, is an index defect — **report it, do not repair it here and do not
-route around it.** If the index document itself does not exist, compose from the
-tag enumeration and report the missing index.
+route around it.** The index carries its own standing instruction to correct
+drift on sight; that binds an agent maintaining the store, not a composing pass.
+Report what you found and compose on. If the index document itself does not
+exist, compose from the tag enumeration and report the missing index.
 
 If a template you need exists in none of the three, that is a library gap.
 **Name it. Do not freelance a process to fill it.**
