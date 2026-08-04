@@ -96,6 +96,12 @@ the container.
    the guarantee is that a caught delivery loss never leaves a terminal status
    standing, and it takes both halves to hold.
 
+### Docker Socket Access (`docker.enable_socket`)
+
+When config `docker.enable_socket` is `true` (default: `false` or absent), polecat mounts `/var/run/docker.sock` into the worker container and adds the socket group via `--group-add`.
+
+The host Docker socket is a container escape (root-equivalent on the host). Enable `docker.enable_socket` only where the container must legitimately spawn sibling containers, and record why where you enable it.
+
 ## Guarantees
 
 1. **Isolation.** Every `run` without `--repo-dir` works on its own throwaway
