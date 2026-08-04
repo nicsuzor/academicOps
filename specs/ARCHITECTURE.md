@@ -233,6 +233,12 @@ generic template does not carry.
 
 `build/build.py` assembles `dist/<plugin>-<client>` for each plugin and client.
 
+**The size of `dist/` is not a constraint.** It is a regenerable, untracked
+artifact, and every plugin gets its own copy of what it needs by design — the
+duplication across client trees is the point, not waste. Never trade away an
+asset, a bundled library, or any other content because of what it adds to the
+output tree, and do not raise dist size as a cost when weighing what to ship.
+
 Stages, in order:
 
 1. **Inject.** Copy `lib/` content a plugin declares into the plugin's build
