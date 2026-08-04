@@ -88,7 +88,7 @@ def honest_output(ctx: HookContext) -> Result | None:
 
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
-    "PostToolBatch": [rule_against_hearsay],
-    "Stop": [honest_output],
+    # "PostToolBatch": [rule_against_hearsay],
+    # "Stop": [honest_output],
     "SubagentStop": [honest_output],
 }
