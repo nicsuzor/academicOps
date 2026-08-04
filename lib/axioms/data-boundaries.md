@@ -1,6 +1,6 @@
 ---
 description: All data is private; emit nothing to an external surface without authorisation for that specific surface.
-trigger: always_on
+trigger: off
 ---
 
 ## Data Boundaries — private by default

@@ -1,6 +1,6 @@
 ---
 description: Instruction context must earn its injection tier; demote anything that can be looked up.
-trigger: always_on
+trigger: off
 ---
 
 ## Pull over Push — injection-tier discipline

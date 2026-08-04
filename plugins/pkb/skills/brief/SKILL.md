@@ -1,7 +1,6 @@
 ---
 name: brief
 description: Turn an ask — a captured node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against — placed, valued, wired, its assumptions sorted into tested and hopes, its forks named with the probe that settles each; then sized, given the process it runs under, its review and sign-off nodes, and the delegation brief itself. Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
-agent: "pauli"
 ---
 
 # Brief

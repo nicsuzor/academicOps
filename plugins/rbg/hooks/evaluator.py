@@ -38,9 +38,10 @@ A misconfiguration (``_note``) is reported on stderr on every occurrence — it
 is a mistake someone made and is rare enough that repetition costs little. An
 evaluator that was configured correctly but could not be reached is different:
 it can recur on every single tool call for a session's whole duration, so
-``claim_outage_once`` rate-limits that specific case to one hook response per
-session; see ``handlers.evaluate``. A session with nothing configured is not a
-degraded one, and stays silent either way — see ``resolve``.
+``claim_once`` rate-limits that case — and the dark-roster notice beside it — to
+one hook response per session per kind; see ``handlers.evaluate``. A session
+with nothing configured is not a degraded one, and stays silent either way —
+see ``resolve``.
 
 The whole check runs inside one deadline. Two things enforce it, because either
 alone leaks: the remaining budget is passed down as the socket timeout, so no
@@ -65,9 +66,11 @@ from pathlib import Path
 
 from dispatch import load_message_pair
 
-#: Where the once-per-session outage marker lives, under
-#: ``tempfile.gettempdir()``. Plugin-local by design — see ``claim_outage_once``.
-_OUTAGE_MARKER_DIR = "aops-rbg-evaluator-outage"
+#: Where the once-per-session markers live, under ``tempfile.gettempdir()``.
+#: Plugin-local by design — see ``claim_once``. Each ``kind`` gets its own
+#: subdirectory, so two notices that both recur every tool call cannot silence
+#: one another by racing for the same marker.
+_ONCE_MARKER_ROOT = "aops-rbg-once"
 
 #: Wire protocols ``COPE_EVALUATOR_PROTOCOL`` accepts.
 PROTOCOLS = ("cope", "openai")
@@ -81,29 +84,33 @@ DEGRADED_CONFIG = "cope-config"
 DEGRADED_EVALUATOR = "cope-evaluator"
 
 
-def claim_outage_once(session_id: str) -> bool:
-    """True for exactly one hook process in this session; every other call
-    for the same session gets ``False``.
+def claim_once(session_id: str, kind: str) -> bool:
+    """True for exactly one hook process in this session and ``kind``; every
+    other call for the same pair gets ``False``.
 
-    An unreachable evaluator can recur on every tool call for a session's
-    whole duration, so the outage is worth naming to the agent and the person
-    watching exactly once — see ``handlers.evaluate``, the only caller. One
-    hook invocation is one process, so the gate cannot live in memory; it is a
-    zero-length marker file per session, claimed with ``O_CREAT | O_EXCL``
-    under the directory the OS names for temporary files. No path is compiled
-    in, and the marker name is a digest so a session id read from the payload
-    can never name a path of its own.
+    Two conditions recur on every tool call for a session's whole duration and
+    are each worth naming to the agent and the person watching exactly once: an
+    unreachable evaluator, and a rule set that loaded to nothing (see
+    ``handlers.evaluate``, the only caller of either). One hook invocation is
+    one process, so the gate cannot live in memory; it is a zero-length marker
+    file per session, claimed with ``O_CREAT | O_EXCL`` under the directory the
+    OS names for temporary files. No path is compiled in, and both the ``kind``
+    and the session id are reduced to digests, so neither a caller's label nor a
+    session id read from the payload can name a path of its own.
 
     A failure to claim and an already-claimed marker are the same answer on
-    purpose: both mean this process does not speak, and the stderr line
-    (``handlers.evaluate``) has already been written either way. A session id
-    that is empty or missing can never claim — an unbounded notice would be
-    worse than the stderr line by itself.
+    purpose: both mean this process does not speak. A session id that is empty
+    or missing can never claim — an unbounded notice would be worse than
+    silence.
     """
     if not session_id:
         return False
     try:
-        root = Path(tempfile.gettempdir()) / _OUTAGE_MARKER_DIR
+        root = (
+            Path(tempfile.gettempdir())
+            / _ONCE_MARKER_ROOT
+            / hashlib.sha256(kind.encode()).hexdigest()[:16]
+        )
         root.mkdir(parents=True, exist_ok=True)
         marker = root / hashlib.sha256(session_id.encode()).hexdigest()[:32]
         os.close(os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))

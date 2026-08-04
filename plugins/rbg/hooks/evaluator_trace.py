@@ -62,7 +62,7 @@ _ENV_PATH = "COPE_EVALUATOR_TRACE_PATH"
 
 #: Where the once-per-session "have we swept this session before" marker
 #: lives, under ``tempfile.gettempdir()`` — the same idiom
-#: ``evaluator.claim_outage_once`` uses, and for the same reason: one hook
+#: ``evaluator.claim_once`` uses, and for the same reason: one hook
 #: invocation is one process, so the fact "this session has swept before"
 #: cannot live in memory between calls.
 _WARM_MARKER_DIR = "aops-rbg-trace-warm"

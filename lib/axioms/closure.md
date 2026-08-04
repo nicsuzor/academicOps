@@ -1,6 +1,6 @@
 ---
 description: Decide nothing that is not derivable from the axioms, a framework instruction, or a user directive in this session.
-trigger: always_on
+trigger: off
 ---
 
 ## No Other Truths — closure

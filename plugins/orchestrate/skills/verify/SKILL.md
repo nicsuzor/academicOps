@@ -1,7 +1,6 @@
 ---
 name: verify
 description: Judgement-based QA pass. Does this artifact meet its goal and serve its user? Demands excellence, not compliance.
-agent: "marsha"
 ---
 
 # Verify

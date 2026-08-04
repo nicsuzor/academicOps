@@ -111,11 +111,17 @@ def evaluate(ctx: HookContext) -> Result | None:
 
     An evaluator that could not answer is printed to stderr on every
     occurrence, and named to the agent and the person watching once per
-    session (``evaluator.claim_outage_once``) — an outage that recurs on every
+    session (``evaluator.claim_once``) — an outage that recurs on every
     tool call for a session's whole duration is worth one notice, not silence
     and not a line per call. The call still proceeds either way: a rule that
     went unjudged is not a rule that passed, and it is not grounds to hold
     anything up.
+
+    A configured evaluator with an empty rule set gets the same treatment for
+    the same reason, and is the one branch that speaks before any tool is
+    looked at: see ``_dark_roster``. An evaluator that is *not* configured
+    stays silent — rbg has nothing to ask with, which is not a claim about
+    whether any rule is live.
 
     Every rule this sweep asks about — matched, clean, or failed — is durably
     traced when ``COPE_EVALUATOR_TRACE_PATH`` is set (``evaluator_trace.py``),
@@ -129,7 +135,9 @@ def evaluate(ctx: HookContext) -> Result | None:
     if config is None:
         return None
     loaded = _loaded_rules(ctx)
-    if not loaded or not ctx.tool:
+    if not loaded:
+        return _dark_roster(ctx)
+    if not ctx.tool:
         return None
 
     content = evaluator.render_content(ctx.tool, ctx.raw.get("tool_input"))
@@ -181,7 +189,7 @@ def evaluate(ctx: HookContext) -> Result | None:
             f"{len(policies)} rules, so those rules are not being checked"
         )
         print("DEGRADED: ", detail, "; ".join(failures), file=sys.stderr)
-        if evaluator.claim_outage_once(ctx.session_id):
+        if evaluator.claim_once(ctx.session_id, "evaluator-outage"):
             agent_o, user_o = load_message_pair(ctx.hooks_dir, "evaluator-outage")
             outage = warn(
                 agent_o.replace("{detail}", detail) if agent_o else detail,
@@ -199,6 +207,31 @@ def evaluate(ctx: HookContext) -> Result | None:
         return verdict
     combined_user = " ".join(t for t in (verdict.user_text, outage.user_text) if t) or None
     return warn(f"{verdict.inject_text}\n\n{outage.inject_text}", combined_user)
+
+
+def _dark_roster(ctx: HookContext) -> Result | None:
+    """Say once that an evaluator is configured and has nothing to ask about.
+
+    A roster that loads to nothing is neither an absence nor a fault. Every
+    rule is switched ``off``, or none was ever marked live, and either way the
+    honest report is that cope is running and checking nothing. Silence here
+    is the failure mode worth avoiding: it is indistinguishable from a check
+    that is passing, which is exactly the reading a dark channel must not get.
+
+    Once per session, not once per call — this fires on ``PreToolUse``, and a
+    line repeated on every tool call is one the agent learns to skip past.
+    Advisory only, like everything else this handler returns: nothing is
+    withheld, and the call proceeds either way.
+    """
+    detail = "rbg: 0 rules active — cope is running and checking nothing"
+    print("DEGRADED: ", rules.DEGRADED_RULES, detail, file=sys.stderr)
+    if not evaluator.claim_once(ctx.session_id, "dark-roster"):
+        return None
+    agent, user = load_message_pair(ctx.hooks_dir, "dark-roster")
+    return warn(
+        agent.replace("{detail}", detail) if agent else detail,
+        user.replace("{detail}", detail) if user else detail,
+    )
 
 
 def _flagged(matches: list[evaluator.Verdict]) -> str:

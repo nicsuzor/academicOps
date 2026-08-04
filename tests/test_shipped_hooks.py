@@ -128,9 +128,27 @@ _PAYLOADS: dict[str, dict] = {
 
 @pytest.fixture(scope="module")
 def dist_root(tmp_path_factory) -> Path:
-    """The real plugins, really built — every plugin, both clients."""
+    """The real plugins, really built — every plugin, both clients.
+
+    This is the tree the execution tests run hooks out of, and rbg's hook has
+    nothing to do unless at least one rule is live. Which axioms are switched on
+    is a deliberately movable fact — they are all parked today and are being
+    re-armed one at a time — so the marker is flipped on here rather than left
+    to whatever the roster happens to be. Otherwise every assertion about what
+    the shipped hook *does* would quietly become an assertion that it does
+    nothing, and still pass.
+
+    The axiom bodies are the real ones; only the marker is touched. Assertions
+    about what the build EMITS use `pristine_dist`, which is left exactly as
+    built.
+    """
     root = tmp_path_factory.mktemp("shipped-dist")
     build_all(_REPO_ROOT, root, marketplace_path=_MARKETPLACE, version=_VERSION)
+    for md in (root / "rbg-claude" / "axioms").glob("*.md"):
+        text = md.read_text(encoding="utf-8")
+        md.write_text(
+            text.replace("\ntrigger: off\n", "\ntrigger: always_on\n", 1), encoding="utf-8"
+        )
     return root
 
 

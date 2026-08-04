@@ -26,6 +26,36 @@ An **agent personality** (charter — Ida, pauli, rbg, marsha, james, …) defin
 - **Binding a skill to a personality is a deliberate, documented exception**, for exactly two reasons: **earmarking** (the skill genuinely depends on that personality's judgment register — e.g. `/verify` owned by marsha's broken-until-proven disposition) or **permission control** (tool grants deliberately restricted to force a workflow — e.g. a review role gated to keep authoring and verification separate).
 - The three review lenses in [workflow.md](workflow.md) — pauli / rbg / marsha — name **judgment registers a review must apply**, not exclusive executors: which agent carries a lens is a dispatch decision, provided reviewer ≠ executor holds.
 
+## Current state: the rule roster and the permission surface are dark
+
+Three of the layers below are switched off, deliberately and temporarily, so that
+each mechanism can be restored **one rule at a time** against observed failure
+rather than kept on as an undifferentiated block. What is off:
+
+- **Every rule.** All 22 axioms in [`lib/axioms/`](../../lib/axioms/) and this
+  repository's [`RULES.md`](../../.agents/rules/RULES.md) carry `trigger: off`.
+  The marker now has three states — `always_on`, `off`, and unmarked — because
+  a parked rule and a rule nobody remembered to mark are different facts and only
+  one of them is worth reporting.
+- **Agent grants.** The `tools`, `skills`, and `subagents` allowlists are removed
+  from `ida`, `james`, `pauli`, and `rbg`. Model pins are untouched: they are
+  structural prevention, not a permission grant.
+- **Skill-to-personality bindings.** The `agent:` key is removed from all nine
+  skills that carried one, which restores the default this spec already states
+  under [Personalities are not skills](#personalities-are-not-skills).
+
+`trigger:` is a **shared** switch, and the blackout is correspondingly wider than
+the hook channel: [`build/axioms.py`](../../build/axioms.py) reads the same marker
+to wire axioms into each client's native rule mechanism, so no `rules/` directory
+and no `axioms.jsonl` is emitted either. The axiom files still ship verbatim; what
+stopped is their automatic injection into every session.
+
+What is **not** off: structural prevention in full, the graph obligations `brief`
+emits, one-way-door sign-off, and the CI pipeline. The blackout is in-session only.
+
+Restoring a rule is one word in one file. The rest of this document describes each
+mechanism as designed, which is what it returns to.
+
 ## What actually enforces things today
 
 **Enforcement is risk-reduction**: compliance is not guaranteed. Mechanical hard blocks are often NOT the best option. We have four groups of levers:
@@ -52,7 +82,9 @@ build time (`ARCHITECTURE.md`, Hooks). Two rule layers run in-session. The first
 advises and can do nothing else; the second withholds a stop:
 
 - **Layer 1 (Turn-by-Turn Local Model COPE):** **`rbg`**, `PreToolUse` ([`plugins/rbg/hooks/handlers.py`](../../plugins/rbg/hooks/handlers.py), `evaluate`) — loads the three-layer rule set (`rules.py`) and asks a fast, lightweight local Reflexes LLM evaluator model ([`evaluator.py`](../../plugins/rbg/hooks/evaluator.py)) whether each tool call complies with active rules. Runs in parallel across rules inside one deadline to advise the agent on every tool call. **Advisory and overridable, permanently**: it returns injected context, never a disposition, and no confidence score promotes it to one. On agy the same plugin states the live rule roster at `PreInvocation` (`inject_ruleset`) instead, because agy maps no tool event for the evaluator to judge.
-- **Layer 2 (Session Stop RBG Check):** **`rbg`**, `Stop` and `SubagentStop` ([`plugins/rbg/hooks/handlers.py`](../../plugins/rbg/hooks/handlers.py), `rule_check`) — returns `decision: "block"` once per stop-chain, directing the agent that is stopping to run an explicit RBG rule check (`axioms/` + project-local + user rules) and present checkable evidence before handing over. What it withholds is the stop, not a tool call: the turn continues, and the agent uses it to run the check. The block is legal because the question is whether the check happened at all — a fact about the session — rather than a model's reading of a rule, which is why Layer 1 may never carry one.
+- **Layer 2 (Session Stop RBG Check):** **`rbg`**, `Stop` and `SubagentStop` ([`plugins/rbg/hooks/handlers.py`](../../plugins/rbg/hooks/handlers.py), `rule_check`) — returns `decision: "block"` once per stop-chain, directing the agent that is stopping to run an explicit RBG rule check (`axioms/` + project-local + user rules) and present checkable evidence before handing over. What it asks to withhold is the stop, not a tool call: the turn continues, and the agent uses it to run the check. The disposition is legal because the question is whether the check happened at all — a fact about the session — rather than a model's reading of a rule, which is why Layer 1 may never carry one.
+
+  **The disposition is not currently honoured, and has not been since `50176220` (31 Jul).** [`plugins/rbg/manifest/hooks.template.json`](../../plugins/rbg/manifest/hooks.template.json) declares both stop hooks `async`, and an async hook's response is not consumed for control flow — so this layer, and every other stop-time hook in the framework, is advisory in practice whatever it returns. Whether a disposition is honoured belongs to the runtime and the manifest, not to the handler (`ARCHITECTURE.md`, Hooks); the handler is written for the event it is registered on and stays correct if the manifest changes back. Read the paragraphs below as the design this layer returns to when a stop hook runs synchronously again, not as what a session gets today.
 
   The hook obliges the check and never performs it. Nothing hook-side reads the transcript or grades what the agent did with the turn it was given; a mechanical verdict on the substance of an agent's work is the thing the governing principle above forbids.
 

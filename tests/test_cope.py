@@ -41,6 +41,32 @@ _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _LIB_AXIOMS = _REPO_ROOT / "lib" / "axioms"
 _COPE_HOOKS = _REPO_ROOT / "plugins" / "rbg" / "hooks"
 
+
+def _copy_axioms(dest: Path, *, live: bool) -> Path:
+    """Copy the real lib/axioms/ to ``dest``, optionally marking every rule live.
+
+    Which axioms are switched on is a deliberately movable fact — the roster is
+    re-armed one rule at a time, and every rule can be parked at once. Tests that
+    exercise cope's *machinery* — loading, evaluating, tracing, the advisory it
+    builds — need a non-empty rule set to have anything to exercise, and would
+    otherwise go quiet the moment somebody parks a rule, passing while asserting
+    nothing. They pass ``live=True`` and get the real axiom text with the marker
+    flipped on, so the bodies under test stay real.
+
+    ``live=False`` copies the tree exactly as it ships. Only tests whose subject
+    *is* the roster's live/parked state use it.
+    """
+    shutil.copytree(_LIB_AXIOMS, dest)
+    if live:
+        for md in dest.glob("*.md"):
+            text = md.read_text(encoding="utf-8")
+            md.write_text(
+                text.replace(f"\ntrigger: {rules.TRIGGER_OFF}\n", "\ntrigger: always_on\n", 1),
+                encoding="utf-8",
+            )
+    return dest
+
+
 for _dir in (_LIB_HOOKS, _COPE_HOOKS):
     if str(_dir) not in sys.path:
         sys.path.insert(0, str(_dir))
@@ -194,7 +220,7 @@ def test_every_real_axiom_has_a_non_empty_body(tmp_path):
     """Against the real lib/axioms/: an axiom loaded with an empty body would
     be sent to the evaluator as an empty policy and silently classify nothing."""
     root = tmp_path / "plugin"
-    shutil.copytree(_LIB_AXIOMS, root / "axioms")
+    _copy_axioms(root / "axioms", live=True)
     loaded = rules.load(root, tmp_path / "project")
     assert loaded
     for rule in loaded.values():
@@ -271,12 +297,32 @@ def test_layer1_loads_only_always_on_from_the_real_axioms_dir(tmp_path, monkeypa
     layer 1 declares trigger: always_on, and the index docs are absent."""
     monkeypatch.delenv("ACA_DATA", raising=False)
     plugin_root = tmp_path / "plugin"
-    shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
+    _copy_axioms(plugin_root / "axioms", live=True)
     loaded = rules.load(plugin_root, tmp_path / "project")
     assert loaded
     assert all(rule.trigger == "always_on" for rule in loaded.values())
     assert "README" not in loaded
     assert "AXIOMS-REVIEW" not in loaded
+
+
+def test_the_real_axioms_ship_parked_and_load_to_nothing(tmp_path, monkeypatch, capsys):
+    """The shipped state, as it stands: every axiom carries `trigger: off`, so
+    layer 1 loads no rule at all.
+
+    This is a live decision, not an invariant — rules are being switched back
+    on one at a time, and this test is expected to change when the first one
+    goes live. It is here so that the switch is a thing somebody has to
+    deliberately change, rather than something the suite never notices.
+
+    The other half of the claim is that parking is silent: `off` is somebody
+    saying they meant it, and a report on every tool call would train the
+    reader to skip reports that matter.
+    """
+    monkeypatch.delenv("ACA_DATA", raising=False)
+    plugin_root = tmp_path / "plugin"
+    _copy_axioms(plugin_root / "axioms", live=False)
+    assert rules.load(plugin_root, tmp_path / "project") == {}
+    assert rules.DEGRADED_UNMARKED not in capsys.readouterr().err
 
 
 def test_layer2_requires_always_on_and_names_what_it_skipped(
@@ -1302,7 +1348,7 @@ def hooks_dir_with_axioms(tmp_path):
     hooks = plugin_root / "hooks"
     hooks.mkdir(parents=True)
     shutil.copytree(_COPE_HOOKS / "messages", hooks / "messages")
-    shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
+    _copy_axioms(plugin_root / "axioms", live=True)
     project_cwd = tmp_path / "project"
     project_cwd.mkdir()
     return hooks, project_cwd
@@ -1760,7 +1806,7 @@ def built_cope_plugin(tmp_path):
     # step this fixture is standing in for.
     if (_LIB_HOOKS / "messages").is_dir():
         shutil.copytree(_LIB_HOOKS / "messages", hooks / "messages", dirs_exist_ok=True)
-    shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
+    _copy_axioms(plugin_root / "axioms", live=True)
     return hooks
 
 

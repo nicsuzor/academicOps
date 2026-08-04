@@ -460,13 +460,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         version=VERSION,
     )
 
-    # Check claude dist retains original Claude Code canonical tool names in agents/ida.md
-    claude_ida = dist_root / "ida-claude" / "agents" / "ida.md"
-    assert claude_ida.is_file()
-    claude_fm = yaml.safe_load(claude_ida.read_text().split("---")[1])
-    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
-
-    # Check agy dist converts agents/ida.md to agents/ida/agent.md with translated tools
+    # Check agy dist converts agents/ida.md to agents/ida/agent.md
     agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
     assert agy_ida_md.is_file()
     assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
@@ -476,6 +470,29 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     assert agy_fm["name"] == "ida"
     assert "interactive face" in agy_fm["description"]
     assert agy_fm["hidden"] is False
+
+    body = parts[2]
+    assert "# Agent System Instructions" in body
+    assert "# Ida — The Interactive Face" in body
+
+
+def test_agy_agent_tool_names_are_translated(built):
+    """The tool-name map, against the fixture agent rather than a real one.
+
+    Which tools a shipped agent is granted is a permission decision that moves —
+    grants are currently cleared and are being restored one at a time — so a
+    production agent's `tools:` list is the wrong subject for a test about the
+    build's rename map. The fixture agent carries a list chosen to cover both
+    branches instead.
+    """
+    import yaml
+
+    claude_agent = built / "fixture-alpha-claude" / "agents" / "alpha-agent.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
+
+    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent" / "agent.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
     # untranslated — the map renames what agy calls by another name and leaves
     # everything else alone.
@@ -486,10 +503,6 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         "ask_question",
         "Dispatch",
     ]
-
-    body = parts[2]
-    assert "# Agent System Instructions" in body
-    assert "# Ida — The Interactive Face" in body
 
 
 def test_axioms_always_on_wired_per_client(built):

@@ -1,6 +1,6 @@
 ---
 description: Empirical, process-determined, or taste; cheapest discriminating experiment.
-trigger: always_on
+trigger: off
 ---
 
 ## Settle It

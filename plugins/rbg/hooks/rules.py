@@ -9,16 +9,28 @@ cope). ``$ACA_DATA`` has no default; its absence is a missing layer, not an
 error. A layer directory that is unreadable degrades to the layers that did
 load — cope must never block a session on its own failure.
 
-Every layer takes the same marker: only ``trigger: always_on`` files are live
-rules, the line build/axioms.py draws. Everything else in a rules directory is
-reference material — a path table, a naming convention, a stub — and reference
-material sent as a policy is a question the evaluator cannot answer.
+Every layer takes the same marker, and it has three states:
 
-A layer that thins out says so to the person whose rules they are, not only to
-the log: every report here goes through lib/hooks/degraded.py, which puts the
-first occurrence of each kind on the hook's response as well as on stderr. A
-rules directory nobody wrote and an ``$ACA_DATA`` nobody set are ordinary
-absences and stay silent — see ``_layers``.
+``always_on``  a live rule; the policy goes to the evaluator on every tool call.
+``off``        a real policy, deliberately parked. Silent — see below.
+anything else  reference material — a path table, a naming convention, a stub —
+               and reference material sent as a policy is a question the
+               evaluator cannot answer.
+
+``off`` is not the same as unmarked, which is why it is spelled out rather than
+left to fall through. An unmarked file in a layer the user owns is reported, on
+the assumption nobody meant to write a rule the evaluator never sees; ``off`` is
+somebody saying they meant it, so reporting it would train the reader to skip
+the report. Turning a rule off one file at a time, and back on the same way, is
+the whole point of the marker having a third state.
+
+A layer that thins out says so on stderr (``DEGRADED:``), which the client
+captures into the transcript. That is the only channel these reports have: they
+do not reach the agent's response and they do not reach the person. Nothing here
+is rate-limited, because nothing here is read live. A rules directory nobody
+wrote and an ``$ACA_DATA`` nobody set are ordinary absences and stay silent —
+see ``_layers``. A roster that loads to nothing is neither absence nor fault,
+and is named on the response once per session — see ``handlers.evaluate``.
 """
 
 from __future__ import annotations
@@ -32,9 +44,16 @@ from pathlib import Path
 #: relying on are not being checked.
 DEGRADED_RULES = "cope-rules"
 
-#: Rule files are present but carry no ``trigger: always_on`` marker, so they
-#: reach agents as reading material and the evaluator never sees them.
+#: Rule files are present but carry no ``trigger:`` marker this module knows, so
+#: they reach agents as reading material and the evaluator never sees them.
 DEGRADED_UNMARKED = "cope-rules-unmarked"
+
+#: The marker on a live rule: its policy is sent to the evaluator every call.
+TRIGGER_ON = "always_on"
+
+#: The marker on a rule deliberately parked. Skipped like an unmarked file, but
+#: never reported as one — the whole difference is that somebody chose it.
+TRIGGER_OFF = "off"
 
 
 @dataclass(frozen=True)
@@ -125,7 +144,9 @@ def _load_dir(layer: _Layer) -> dict[str, Rule]:
         rule = _parse(md_path, layer.number)
         if rule is None:
             continue
-        if rule.trigger != "always_on":
+        if rule.trigger == TRIGGER_OFF:
+            continue
+        if rule.trigger != TRIGGER_ON:
             skipped.append(md_path.name)
             continue
         rules[rule.slug] = rule

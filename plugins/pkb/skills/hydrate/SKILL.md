@@ -1,7 +1,6 @@
 ---
 name: hydrate
 description: Fast disambiguation index — take the ambiguous words in an ask, run a few differently-worded semantic searches, and hand back a shortlist of ids with one-line snippets the caller can then ask more about. Points at things; never explains them. Always first, never skipped.
-agent: "pauli"
 context: fork
 background: no
 allowed-tools:

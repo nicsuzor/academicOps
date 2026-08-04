@@ -1,6 +1,6 @@
 ---
 description: Claim only what you have observed; state an unverified claim as unverified.
-trigger: always_on
+trigger: off
 ---
 
 ## Honest Epistemics — don't make shit up

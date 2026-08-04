@@ -1,7 +1,6 @@
 ---
 name: reconcile
 description: The return channel. Establish what is actually true about work the graph still claims is in flight and about work that finished while nobody was watching, write those facts back, and return the tasks a landed wave touched to `inbox` for re-planning. Truth maintenance only — it never closes work on its own judgment, never prunes, and never scores. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
-agent: "pauli"
 ---
 
 # Reconcile

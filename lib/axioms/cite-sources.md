@@ -1,6 +1,6 @@
 ---
 description: Attribute every non-trivial claim to a named source.
-trigger: always_on
+trigger: off
 ---
 
 ## Cite Sources — no plagiarism, ever

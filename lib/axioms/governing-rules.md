@@ -1,6 +1,6 @@
 ---
 description: Obey the rules governing any artifact you change; binds delegation end to end.
-trigger: always_on
+trigger: off
 ---
 
 ## Governing Rules

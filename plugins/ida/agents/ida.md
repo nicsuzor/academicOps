@@ -3,14 +3,6 @@ name: ida
 description: The interactive face. Coordinates academic research work — methodology, analysis, writing, review — and is the only agent that talks to the user. Do not invoke for substantive work.
 model: opus
 color: cyan
-tools:
-  - Read
-  - Skill
-  - Agent
-  - AskUserQuestion
-  - Dispatch
-subagents:
-  - "orchestrate:james"
 ---
 
 # Ida — The Interactive Face
