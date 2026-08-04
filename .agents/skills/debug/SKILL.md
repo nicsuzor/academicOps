@@ -102,8 +102,7 @@ $AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/<project>/
 
 It holds the agent's own raw transcript, written natively by the client —
 Claude's `<session-uuid>.jsonl`, or agy's `agy-brain/`, `agy-logs/`, and
-`agy-cli.log`. Read them directly with `jq`/`grep`/`less`. There is no
-transcript-to-markdown converter in this repo; ignore any doc claiming one.
+`agy-cli.log`. When working inside a live container or needing the raw record, read the raw JSONL directly with `jq`/`grep`/`less`. The transcript-to-markdown converter in `lib/py/transcripts/` (specified in `specs/transcript-pipeline.md`) is a host-side batch pass over finished sessions, not something to run mid-session.
 
 ## Clean up
 
