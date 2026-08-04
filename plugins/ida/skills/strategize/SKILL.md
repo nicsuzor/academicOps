@@ -1,6 +1,6 @@
 ---
 name: strategize
-description: The thinking pass for "plan this", "what should I do next", and "where does this work go" — fix the altitude, test the plan against the effectual commitments, and route each piece to the stage that owns it. Reads nothing itself; commissions pauli for every look at the graph. Optional, and never a pipeline stage.
+description: The thinking pass for "plan this", "what should I do next", and "where does this work go" — fix the altitude, test the plan against the effectual commitments, and route each piece to the stage that owns it.
 ---
 
 # Strategize
