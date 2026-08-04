@@ -58,7 +58,14 @@ def _clean_val(v: Any) -> Any:
 
 
 def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
-    """Tolerantly parse an agy JSONL transcript into a NormalizedSession."""
+    """Tolerantly parse an agy JSONL transcript into a NormalizedSession.
+
+    Audit note (task aops_6d2abff5, criterion S6): agy JSONL log streams are event
+    logs emitted by the agy TUI and do not carry LLM API usage blocks (input_tokens,
+    cache_creation, etc.). Therefore, load_agy_transcript initializes NormalizedSession
+    with tokens_used=0 and cost_usd=0.0. Token and cost accounting applies only to
+    Claude Code transcripts.
+    """
     session_id = "unknown"
     for i, part in enumerate(jsonl_path.parts):
         if part == ".system_generated" and i > 0:
