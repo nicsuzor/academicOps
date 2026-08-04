@@ -1,6 +1,6 @@
 ---
 description: Capture knowledge not verdicts; update don't duplicate; only persistence surface.
-trigger: always_on
+trigger: off
 ---
 
 ## Durable Capture

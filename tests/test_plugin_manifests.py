@@ -148,3 +148,83 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
         f"{plugin_dir.name}: hooks.json declares hook script(s) that do not exist "
         f"in the built artifact:\n" + "\n".join(missing)
     )
+
+
+# ---------------------------------------------------------------------------
+# Stop/SubagentStop gate wiring, asserted against the *built* artifact rather
+# than the source manifest — a template can be right while the build drops it.
+# pkb ships neither: its stop gate is blocked server-side, and this pins that
+# it stays unwired rather than being swept in by accident.
+# ---------------------------------------------------------------------------
+
+
+def _claude_hook_events(plugin_dir_name: str) -> set[str]:
+    hooks_json = DIST_ROOT / plugin_dir_name / "hooks" / "hooks.json"
+    if not hooks_json.exists():
+        return set()
+    return set(json.loads(hooks_json.read_text())["hooks"].keys())
+
+
+def _agy_hook_events(plugin_dir_name: str) -> set[str]:
+    hooks_json = DIST_ROOT / plugin_dir_name / "hooks.json"
+    if not hooks_json.exists():
+        return set()
+    return set(
+        json.loads(hooks_json.read_text()).get(plugin_dir_name.removesuffix("-agy"), {}).keys()
+    )
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_rbg_ships_the_stop_gate_on_claude_and_agy():
+    assert {"Stop", "SubagentStop"} <= _claude_hook_events("rbg-claude")
+    # agy's wire name is PostInvocation; dispatch.py maps it onto canonical
+    # Stop, where it can only ever advise.
+    assert "PostInvocation" in _agy_hook_events("rbg-agy")
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_ida_ships_the_quiet_gate_on_claude_stop_only():
+    """ida's quiet gate directs the face to strip its own reply before it
+    speaks to the person. Registered on claude ``Stop`` and agy
+    ``PostInvocation`` (which dispatch.py maps onto canonical ``Stop``) only:
+    claude ``SubagentStop`` fires on the *stopping subagent's* own context, so
+    wiring it there would nag a worker about a reply it never sends to the
+    person — the fix for the defect the superseded gate-wiring-v07 branch
+    shipped."""
+    events = _claude_hook_events("ida-claude")
+    assert "Stop" in events
+    assert "SubagentStop" not in events
+    assert "PostInvocation" in _agy_hook_events("ida-agy")
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_ida_ships_no_posttooluse_hook():
+    """``plugins/ida/hooks/handlers.py`` registers ``Stop`` and nothing else, so
+    a ``PostToolUse`` entry here would spawn a hook process on every tool call
+    for a handler that does not exist. The hearsay reminder ida used to carry on
+    that event now ships from ``orchestrate``, beside the dispatch machinery it
+    binds."""
+    assert "PostToolUse" not in _claude_hook_events("ida-claude")
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_orchestrate_ships_the_handback_reminders():
+    """``PostToolBatch`` binds the *receiver* the instant a subagent's report
+    lands; ``Stop``/``SubagentStop`` bind the *worker* at the last moment its own
+    report can still carry the evidence. Both surfaces ship from orchestrate,
+    which owns dispatch and the handback doctrine.
+
+    The receiver-side reminder rides ``PostToolBatch`` rather than
+    ``PostToolUse``: the batch event fires once after every call in a batch has
+    resolved, so a turn that dispatched several subagents is reminded once
+    rather than once per report."""
+    assert {"PostToolBatch", "Stop", "SubagentStop"} <= _claude_hook_events("orchestrate-claude")
+    # agy's wire name is PostInvocation; dispatch.py maps it onto canonical Stop.
+    assert "PostInvocation" in _agy_hook_events("orchestrate-agy")
+
+
+@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
+def test_pkb_ships_no_stop_gate():
+    """pkb's stop gate is blocked on a server-side prerequisite, not merely
+    unbuilt. This pins that it stays unwired rather than being swept in."""
+    assert _claude_hook_events("pkb-claude") == {"UserPromptSubmit"}

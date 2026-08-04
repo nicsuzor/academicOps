@@ -14,17 +14,13 @@ These tests cover the two things that changed:
 """
 
 import subprocess
-import sys
 from pathlib import Path
 
 from click.testing import CliRunner
 
-repo_root = Path(__file__).resolve().parent.parent.parent
-_plugins_dir = str(repo_root / "plugins")
-if _plugins_dir not in sys.path:
-    sys.path.insert(0, _plugins_dir)
+from lib.polecat import cli
 
-from aops.polecat import cli  # noqa: E402
+repo_root = Path(__file__).resolve().parent.parent.parent
 
 # --------------------------------------------------------------------------
 # _seed_confirmed
@@ -93,9 +89,17 @@ def _base_mocks(monkeypatch, tmp_path):
     as a pure control-flow unit. Each test installs its own `subprocess.run`
     and `_seed_confirmed` fakes afterwards."""
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
-    monkeypatch.setattr(cli, "load_config", lambda: {})
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}
+        },
+    )
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
-    monkeypatch.setattr(cli, "setup_staging", lambda staging_dir, mcp_url, agent_home: None)
+    monkeypatch.setattr(
+        cli, "setup_staging", lambda staging_dir, mcp_url, agent_home, agent_cmd=None: None
+    )
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("AOPS", str(tmp_path / "repo"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))

@@ -19,18 +19,18 @@ the container.
 
 ## Giving Effect
 
-- [[plugins/aops/polecat/cli.py]] — the entire CLI: one Click command, `run`
-- [[plugins/aops/polecat/entrypoint.sh]] — container entrypoint: sets git identity,
+- [[lib/polecat/cli.py]] — the entire CLI: one Click command, `run`
+- [[lib/polecat/entrypoint.sh]] — container entrypoint: sets git identity,
   installs a token-based credential helper, merges staged per-session config over
   the image defaults, then execs the agent CLI
-- [[plugins/aops/polecat/defaults/]] — baked container defaults (`claude-settings.json`,
+- [[lib/polecat/defaults/]] — baked container defaults (`claude-settings.json`,
   `claude-config.json`, `ccstatusline-settings.json`, `agy-onboarding.json`,
   `docker_gemini_fixups.py`)
 - [[Dockerfile]] — the image `run` executes inside
-- [[plugins/aops/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
+- [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/aops/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
+- [[plugins/orchestrate/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
   pathway to a polecat container; a raw `polecat run` outside this skill bypasses
   the dispatch contract
 - [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
@@ -52,7 +52,7 @@ the container.
    real remote and nothing the container does is visible in the host checkout
    until pushed. This clone is deleted again when `run` exits, success or failure.
 4. Stages a per-session credential/settings directory (`pluginConfigs.pkb_mcp_url`,
-   an optional worker model override, and — when `POLECAT_AGENT_HOME` is set — a
+   an optional worker model override, and — when `GEMINI_CONFIG_DIR` is set — a
    secret-stripped copy of the agy/Gemini CLI's own auth files) and mounts it
    read-only at `/tmp/staging`; `entrypoint.sh` merges it into `$HOME` inside the
    container.
@@ -90,9 +90,27 @@ the container.
    if not, then a hard failure — a clean exit is not evidence the seed was ever
    delivered); the workspace must have no uncommitted changes, and if `HEAD`
    moved, the new commit must be present on the remote. A delivery-guard failure
-   on a task that the PKB now shows in a terminal status (`done`, `completed`,
-   `complete`, `merge_ready`) reverts it to `in_progress` rather than letting a
-   silent loss stand as a recorded success.
+   exits non-zero naming the task. Polecat detects; it does not repair. Writing
+   to the knowledge base belongs to its sole writer, so the task is reopened by
+   the dispatcher through pauli ([[plugins/orchestrate/skills/dispatch/SKILL.md]] §6) —
+   the guarantee is that a caught delivery loss never leaves a terminal status
+   standing, and it takes both halves to hold.
+
+## Seed delivery verification
+
+For a seeded `agy` dispatch (`--task <id>` with no explicit prompt), a clean
+container exit is not by itself accepted as success. After the container exits,
+`run` scans the session's transcript and log files for a trace of the task id;
+if none is found, it retries the whole dispatch once. If the retry still finds
+no trace, `run` fails loudly and refuses to report success, naming the task and
+the session directory to inspect.
+
+This exists because a dropped seed and a completed task look the same from
+outside the container: if the prompt never reached the agent, the container
+still exits zero and the workspace is left with no changes — exactly the shape
+the workspace delivery guard (§ Guarantees, item 3) would otherwise accept as a
+legitimate no-op pass. Checking the transcript for the task id is what tells
+the two cases apart.
 
 ## Guarantees
 
@@ -105,7 +123,13 @@ the container.
    settings.
 3. **No silent delivery loss.** `run` refuses to report success when the
    workspace has uncommitted or unpushed work, or when a seeded dispatch's
-   transcript shows no trace of the task it was given.
+   transcript shows no trace of the task it was given. Detection is only half
+   of it: a worker that already wrote `done` leaves that status behind, and
+   `run` cannot repair it without holding a client for another plugin's tool
+   namespace. The repair is the dispatcher's — it reopens the task through
+   pauli on a non-zero exit for a `done` or `partial` unit. Nothing enforces
+   that half; the obligation sits on the dispatcher, in
+   [`dispatch`](../../plugins/orchestrate/skills/dispatch/SKILL.md) §6.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
 5. **One plugin path.** Plugins load only from the image's own plugin cache. No
@@ -119,7 +143,7 @@ the container.
    certifying run therefore needs both a clean committed tree and a fresh
    `make docker-build`, which builds `dist/` from the working tree rather than
    from `HEAD`. Nothing enforces either; the obligation sits on the dispatcher,
-   in [`dispatch`](../../plugins/aops/skills/dispatch/SKILL.md) §3.
+   in [`dispatch`](../../plugins/orchestrate/skills/dispatch/SKILL.md) §3.
 
 ## What `run` does not do
 
@@ -139,8 +163,8 @@ container.
    any git operation not using the forwarded token fail; only the forwarded token
    authenticates.
 3. **Delivery guard** — Test: a `run` that leaves uncommitted changes, or commits
-   that never reach the remote, exits non-zero and (with `--task`) reverts a
-   terminal-status task back to `in_progress`.
+   that never reach the remote, exits non-zero and (with `--task`) names the task
+   in the failure.
 4. **No stale image** — Test: `run` against an image not present in the local
    Docker cache fails with an explicit message, never a silent registry pull.
 5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.

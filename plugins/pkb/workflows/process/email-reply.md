@@ -4,7 +4,7 @@ kind: process
 category: email
 description: Draft email replies in the user's voice, checking calendar availability for scheduling — agent drafts, user sends
 requires: [task-tracking]
-pairs-with: [handover]
+pairs-with: [wf-handover]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-email-reply

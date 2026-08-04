@@ -1,18 +1,22 @@
 {
-  "__base__": {
-    "name": "aops-ts",
-    "description": "AcademicOps Tailscale bring-up — opt-in SessionStart hook that joins the tailnet in remote/cloud sessions so tailnet services (e.g. the PKB MCP) resolve",
-    "author": {
-      "name": "Nicolas Suzor"
+  "manifestVersion": "1.0",
+  "name": "ts",
+  "clients": {
+    "__base__": {
+      "name": "ts",
+      "description": "AcademicOps Tailscale bring-up — opt-in SessionStart hook that joins the tailnet in remote/cloud sessions so tailnet services (e.g. the PKB MCP) resolve",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "tailscale",
+        "hooks",
+        "remote"
+      ]
     },
-    "license": "MIT",
-    "keywords": [
-      "academicOps",
-      "tailscale",
-      "hooks",
-      "remote"
-    ]
-  },
-  "claude": {},
-  "agy": {}
+    "claude": {},
+    "agy": {}
+  }
 }

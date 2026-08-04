@@ -1,31 +1,35 @@
 {
-  "__base__": {},
-  "claude": {
-    "hooks": {
-      "PreToolUse": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\""
-            }
-          ]
-        }
-      ]
-    }
-  },
-  "agy": {
-    "hooks": {
-      "PreToolUse": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "\"${AGY_PLUGIN_ROOT}/hooks/hook.py\""
-            }
-          ]
-        }
-      ]
+  "manifestVersion": "1.0",
+  "name": "fixture-alpha",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "agy": {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "\"${AGY_PLUGIN_ROOT}/hooks/hook.py\""
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 }

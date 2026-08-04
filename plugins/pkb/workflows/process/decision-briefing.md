@@ -4,7 +4,7 @@ kind: process
 category: general
 description: Generate a structured, user-facing briefing for tasks blocked on a human decision — consequence analysis, not recommendations
 requires: [task-tracking]
-pairs-with: [human-approval]
+pairs-with: [wf-human-approval]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-decision-briefing
@@ -43,5 +43,5 @@ shown per decision; actionable (user can respond "approve X, defer Y").
 Do one thing: generate the briefing and capture decisions. Do NOT implement
 approved changes in the same pass, and do NOT make subjective recommendations.
 When a decision authorises an irreversible action, hand off to
-[[human-approval]] rather than treating the briefing reply itself as that
+[[wf-human-approval]] rather than treating the briefing reply itself as that
 authorisation.

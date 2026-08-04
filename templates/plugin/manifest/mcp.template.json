@@ -1,16 +1,19 @@
 {
-  "__base__": {
-    "mcpServers": {
-      "example-server": {
-        "command": "uv",
-        "args": [
-          "run",
-          "--with",
-          "mcp-server-sqlite",
-          "mcp-server-sqlite",
-          "--db-path",
-          "${PLUGIN_ROOT}/test.db"
-        ]
+  "manifestVersion": "1.0",
+  "clients": {
+    "__base__": {
+      "mcpServers": {
+        "example-server": {
+          "command": "uv",
+          "args": [
+            "run",
+            "--with",
+            "mcp-server-sqlite",
+            "mcp-server-sqlite",
+            "--db-path",
+            "${PLUGIN_ROOT}/test.db"
+          ]
+        }
       }
     }
   }

@@ -4,7 +4,7 @@ kind: process
 category: operations
 description: Merge a worktree branch back into the main line once its task is verified and merge_ready
 requires: []
-pairs-with: [handover]
+pairs-with: [wf-handover]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-worktree-merge

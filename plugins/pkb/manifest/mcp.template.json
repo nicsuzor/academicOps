@@ -1,20 +1,24 @@
 {
-  "__base__": {
-    "mcpServers": {}
-  },
-  "claude": {
-    "mcpServers": {
-      "services": {
-        "type": "http",
-        "url": "${user_config.pkb_mcp_url}"
+  "manifestVersion": "1.0",
+  "name": "aops-pkb",
+  "clients": {
+    "__base__": {
+      "mcpServers": {}
+    },
+    "claude": {
+      "mcpServers": {
+        "services": {
+          "type": "http",
+          "url": "${user_config.pkb_mcp_url}"
+        }
       }
-    }
-  },
-  "agy": {
-    "mcpServers": {
-      "services": {
-        "command": "bash",
-        "args": ["${extensionPath}/scripts/run-mcp.sh"]
+    },
+    "agy": {
+      "mcpServers": {
+        "services": {
+          "command": "bash",
+          "args": ["${extensionPath}/scripts/run-mcp.sh"]
+        }
       }
     }
   }

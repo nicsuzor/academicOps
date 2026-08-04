@@ -1,8 +1,12 @@
 {
-  "__base__": {
-    "name": "fixture-beta",
-    "description": "Fixture plugin beta — minimal, no shared deps."
-  },
-  "claude": {},
-  "agy": {}
+  "manifestVersion": "1.0",
+  "name": "fixture-beta",
+  "clients": {
+    "__base__": {
+      "name": "fixture-beta",
+      "description": "Fixture plugin beta — minimal, no shared deps."
+    },
+    "claude": {},
+    "agy": {}
+  }
 }

@@ -5,8 +5,6 @@ description: Support academic research data analysis with technology-agnostic pr
 
 # Analyst
 
-This skill carries the tech-agnostic principles. Technology-specific how-to — dbt, Streamlit, Python plotting and stats — lives in the sibling **aops-tools** skills.
-
 ## Overview
 
 Support academic research data analysis through technology-agnostic principles: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation. The principles here hold regardless of which transformation engine or dashboard tool you use. When you have settled on specific tooling, pair this skill with the relevant aops-tools skill (`dbt`, `streamlit`, `python-viz`) for the concrete commands.
@@ -24,13 +22,11 @@ Support academic research data analysis through technology-agnostic principles: 
 - **Fail-fast on data quality** — stop and report quality problems rather than patching around them; the discovery IS the result.
 - **Report as argument** — structure research reports as cohesive arguments where every chapter, section, and visualization directly supports a specific claim. Ground all reported metrics in their practical and theoretical implications. Collaborate section-by-section with the user to refine narrative framing.
 
-(The interactive research head **Ida** carries this same disposition inline in her persona. This skill states it directly so it holds regardless of which agent invokes it.) The data-pipeline specifics below EXTEND this floor.
+The data-pipeline specifics below EXTEND this floor.
 
-## 🚨 CRITICAL: Research Data is Immutable
+## 🚨 CRITICAL: Data directory separation
 
-**Source data immutability** (stated in the disposition above: datasets, ground-truth labels, and research configs are sacred; HALT and report rather than reshaping data; violations are scholarly misconduct). The analyst-specific application:
-
-**Data directory separation**: Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
+Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
 
 ## 🚨 CRITICAL: Transformation Layer vs Presentation Layer
 
@@ -90,16 +86,12 @@ This takes more time. That's the point. Transformations deserve scrutiny.
 
 ### Instructions (_CHUNKS/)
 
-- **Investigation**: [[instructions/data-investigation.md]], [[instructions/exploratory-analysis.md]]
+- **Investigation**: [[instructions/exploratory-analysis.md]]
 - **Research docs**: [[instructions/research-documentation.md]] (REQUIRED), [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]]
 
 ### References
 
-[[references/context-discovery.md]], [[references/quick-reference-commands.md]]
-
-### Statistical Analysis (references/)
-
-Start with [[references/statistical-analysis.md]] (complete guide). Also: [[references/test_selection_guide.md]], [[references/assumptions_and_diagnostics.md]], [[references/effect_sizes_and_power.md]], [[references/bayesian_statistics.md]], [[references/reporting_standards.md]].
+[[references/context-discovery.md]]
 
 ### Technology-Specific Skills (aops-tools)
 
@@ -162,10 +154,7 @@ Task Execution
 │  ├─ Testing → Go to: Testing Workflow
 │  └─ Exploration → Go to: Exploratory Analysis
 │
-└─ After completing ONE step:
-   ├─ Report results to user
-   ├─ Explain what was done
-   └─ STOP and wait for user feedback
+└─ After completing ONE step: see "Collaborative Workflow Principles" below.
 ```
 
 ## Context Discovery
@@ -221,8 +210,6 @@ After context discovery, summarize findings to the user — research topic and q
 
 **🚨 CRITICAL RULE: ALL data access MUST go through the modelled transformation layer. NEVER query raw upstream sources directly.**
 
-**🚨 REMINDER: If you need to transform data, that transformation MUST live in the transformation layer with tests. See "Transformation Layer vs Presentation Layer" above.**
-
 ### Decision Tree
 
 ```
@@ -268,13 +255,6 @@ conn = duckdb.connect("data/warehouse.db")
 df = conn.execute("SELECT * FROM fct_case_decisions").df()  # fct_* = a tested mart
 ```
 
-### Why This Matters
-
-- **Reproducibility**: Queries are version-controlled in the transformation layer
-- **Data governance**: The modelled layer is the single source of truth
-- **Quality**: Data passes through a validated, tested transformation pipeline
-- **Consistency**: All analysts use the same transformations
-
 **See:** the aops-tools `dbt` skill for the dbt implementation of this policy.
 
 ## Follow Transformation Model Workflow
@@ -287,28 +267,13 @@ Create or modify transformation-layer models following academicOps layered archi
 2. **Intermediate (`int_*`)** - Business logic transformations (can be ephemeral)
 3. **Marts (`fct_*`, `dim_*`)** - Analysis-ready datasets (materialized)
 
-### Quick Reference: Workflow Pattern
-
-1. Create model file → STOP, show user
-2. Add documentation → STOP, show user
-3. Add tests → STOP, show user
-4. Run model and tests → STOP, report results
-
 **ALWAYS check for duplicate models before creating new ones.**
 
 **See:** the aops-tools `dbt` skill for complete workflow details and comprehensive patterns.
 
 ## Follow Visualization Workflow
 
-Create presentation-layer visualizations following the single-step collaborative pattern.
-
-**🚨 REMINDER: The presentation layer is DISPLAY ONLY. No transformations. See "Transformation Layer vs Presentation Layer" above.**
-
-**For the detailed engine-specific workflow (structure, single-step patterns, examples), see the aops-tools `streamlit` skill.**
-
-### Quick Reference: Presentation Pattern
-
-Load data → STOP → Create chart → STOP → Add interactivity → STOP. One change at a time. See the aops-tools `streamlit` skill for engine-specific tips (e.g. Streamlit hot-reload).
+Create presentation-layer visualizations following the single-step collaborative pattern. The presentation layer is display only — see the aops-tools `streamlit` skill for the engine-specific workflow.
 
 ## Follow Testing Workflow
 
@@ -349,9 +314,7 @@ When testing LLM pipelines or templated content, validate **substantive content*
 
 ## Follow Data Investigation Workflow
 
-When investigating data quality issues (missing values, unexpected patterns, join coverage), create REUSABLE investigation scripts in `analyses/` directory. Never use throwaway one-liners for data investigation.
-
-**For complete workflow, script templates, and when to create investigation scripts, see [[instructions/data-investigation.md]]**
+When investigating data quality issues (missing values, unexpected patterns, join coverage), create REUSABLE investigation scripts in `analyses/` directory. Never use throwaway one-liners for data investigation — the finding has to be re-runnable by someone else, which a shell history is not.
 
 ## Exploratory Analysis
 
@@ -365,18 +328,7 @@ When exploring data patterns and relationships, follow collaborative discovery p
 
 **Self-documenting work**: Do NOT create separate analysis reports or random documentation files.
 
-**🚨 CRITICAL: Research projects must follow STRICT documentation structure. See [[instructions/research-documentation.md]] for complete requirements.**
-
-### Required Documentation Structure
-
-Research projects MUST maintain:
-
-- **README.md** - Project overview and quick start
-- **METHODOLOGY.md** - Research design and approach (see [[instructions/methodology-files.md]])
-- **methods/*.md** - Technical implementation details (see [[instructions/methods-vs-methodology.md]])
-- **data/README.md** - Data sources and schema
-- **Transformation-layer schema/docs** - Model and column documentation (e.g. `dbt/schema.yml`)
-- **experiments/YYYYMMDD-description/** - Experimental work (see [[instructions/experiment-logging.md]])
+**🚨 CRITICAL: Research projects must follow the STRICT documentation structure in [[instructions/research-documentation.md]] — that file is the complete requirement, including which files are mandatory and which are forbidden.** Its per-file detail: [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]].
 
 ### Where Analysis Documentation Lives
 
@@ -388,39 +340,24 @@ Research projects MUST maintain:
 6. **Transformation-layer schema docs** - Document model purposes and column meanings (e.g. `dbt/schema.yml`)
 7. **methods/*.md** - Technical method specifications
 
-### Prohibited
+Documentation is updated in the SAME commit as the code it describes, and each fact has one home.
 
-- ❌ Create `analysis_report.md` or any random markdown files
-- ❌ Create `findings_summary.docx`
-- ❌ Proliferate documentation files without defined structure
-- ❌ Leave documentation stale when code changes
+## Statistical Methodology
 
-- ✅ Follow strict structure defined in [[instructions/research-documentation.md]]
-- ✅ Update documentation in SAME commit as code changes
-- ✅ One source of truth for each piece of information
+The formulas, test-selection trees, and APA reporting shapes are public knowledge and are not restated here. What binds is the methodology, and it is the researcher's call before it is yours:
+
+- **The question picks the test, not the data.** Choosing a test after seeing which one gives a significant result is p-hacking whatever else it is called. Where the analysis plan was not fixed in advance, say so in the write-up.
+- **State and check the assumptions the test rests on** — independence, distributional form, homogeneity of variance, whatever the specific test requires — and report what you found, including when an assumption fails and you proceeded anyway with a justification.
+- **Effect sizes and intervals, always.** A p-value alone is not a result. Report the magnitude and its uncertainty, and interpret both in the units the research question is asked in.
+- **Every exploratory pass is exploratory in the write-up.** Multiple comparisons, subgroup hunts, and post-hoc contrasts are labelled as such and corrected or flagged; they never migrate into the confirmatory frame.
+- **Halt on a methodological choice nobody made.** Which model, which covariates, which exclusions, how to handle missing data — these are the researcher's, not conveniences to settle so the pipeline runs. Ask.
+
+Where you need a specific library's API, reach for the aops-tools `python-viz` skill rather than reconstructing it here.
 
 ## Collaborative Workflow Principles
 
-**One step at a time:**
-
-1. Perform ONE action (create chart, write model, run test)
-2. Show results to user
-3. Explain what was done and what it means
-4. STOP and wait for user feedback
-5. Proceed based on user direction
-
-**Never:**
-
-- Create multiple artifacts without checkpoints
-- Make assumptions about next steps
-- Implement complex workflows end-to-end without user input
-
-**Always:**
-
-- Explain options and ask for user preference
-- Show intermediate results
-- Yield control back to user frequently
+**One step at a time:** perform ONE action (create chart, write model, run test), show the result, explain what it means, then STOP and wait for the user's direction. Never run a complex workflow end to end without checkpoints, and never assume the next step — offer the options and ask.
 
 ## Quick Reference
 
-See [[references/quick-reference-commands.md]] for common data-pipeline and DuckDB commands. For engine-specific commands, see the aops-tools `dbt` and `streamlit` skills.
+For engine-specific commands, see the aops-tools `dbt` and `streamlit` skills.

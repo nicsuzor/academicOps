@@ -6,11 +6,10 @@ tags: [reference, peer-review, verification]
 
 # Verification
 
-This is the highest-value stage and the one a naive draft-then-submit flow lacks. Its power
-comes from **independence + re-derivation**: a cold reader who distrusts the draft and
-re-checks every claim against the source catches what a self-review never will. Every
-high-value catch in the evidence corpus came from here — and specifically from an
-independent cold re-read, not from ticking off the draft's own claim list.
+This is the highest-value stage. Its power comes from **independence + re-derivation**: a
+cold reader who distrusts the draft and re-checks every claim against the source catches
+what a self-review never will. The catches come from the independent cold re-read, not from
+ticking off the draft's own claim list.
 
 **Stance.** _The draft's authors are not to be trusted. Distrust any prior PASS — re-grep
 from scratch. Demand proof for every claim._ Run VERIFY as a separate contextless sub-agent

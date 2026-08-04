@@ -23,18 +23,39 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
 _LIB_HOOKS = str(_REPO_ROOT / "lib" / "hooks")
-for _path in (_PLUGINS_DIR, _LIB_HOOKS):
-    if _path not in sys.path:
-        sys.path.insert(0, _path)
+if _LIB_HOOKS not in sys.path:
+    sys.path.insert(0, _LIB_HOOKS)
 
-import credentials  # noqa: E402
-from aops.polecat import cli  # noqa: E402
+# `credentials` was one of eight modules the hook-layer rewrite deleted from
+# lib/hooks/. Only the env-file test below needs it. Importing it at module
+# scope took the whole file down with it, so every other assertion here — the
+# ones pinning the agent-facing message against the mechanism — silently never
+# ran. Import it defensively so the rest execute and the gap is one named skip.
+try:
+    import credentials
+except ModuleNotFoundError:  # pragma: no cover - depends on the hook layer's state
+    credentials = None
 
-_MESSAGE = _REPO_ROOT / "plugins" / "aops" / "hooks" / "messages" / "session-start-isolated.md"
+from lib.polecat import cli  # noqa: E402
+
+# The message shipped from the aops hooks plugin, which is now retired and
+# removed from the tree entirely (was `plugins.disabled/aops/`). Session-start
+# credential isolation lives on in `plugins/orchestrate/hooks/handlers.py`, but
+# builds its text from Python literals rather than a message file, so there is
+# no longer a file to pin.
+_MESSAGE = (
+    _REPO_ROOT / "plugins.disabled" / "aops" / "hooks" / "messages" / "session-start-isolated.md"
+)
 _USER_MESSAGE = _MESSAGE.with_suffix(".user.md")
+_MESSAGE_RETIRED = pytest.mark.skipif(
+    not _MESSAGE.is_file(),
+    reason="the aops plugin and its session-start-isolated.md message are retired "
+    "and removed from the tree; nothing left to pin",
+)
 
 # Wordings that assert an exclusivity the mechanism does not provide.
 _FALSE_CLAIMS = (
@@ -48,14 +69,20 @@ _FALSE_CLAIMS = (
 def test_tokens_reach_the_container_as_plain_environment(monkeypatch):
     """The fact the message has to be consistent with."""
     monkeypatch.setenv("AOPS_BOT_GH_TOKEN", "mock-bot-token")
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
 
-    env = cli.get_env_forwards()
+    env = cli.get_env_forwards(config)
 
     assert env["AOPS_BOT_GH_TOKEN"] == "mock-bot-token"
     assert env["GH_TOKEN"] == "mock-bot-token"
     assert env["GITHUB_TOKEN"] == "mock-bot-token"
 
 
+@pytest.mark.skipif(
+    credentials is None,
+    reason="lib/hooks/credentials.py was removed by the hook-layer rewrite; "
+    "the SessionStart credential hook has no module to test against here",
+)
 def test_env_file_is_built_from_the_process_environment(tmp_path, monkeypatch):
     """The file is a copy of the environment, not a replacement for it, so it
     can never be the only place a credential lives."""
@@ -71,6 +98,7 @@ def test_env_file_is_built_from_the_process_environment(tmp_path, monkeypatch):
     assert "mock-bot-token" in env_file.read_text()
 
 
+@_MESSAGE_RETIRED
 def test_message_claims_no_scoping_it_cannot_deliver():
     text = _MESSAGE.read_text().lower() + _USER_MESSAGE.read_text().lower()
 
@@ -81,6 +109,7 @@ def test_message_claims_no_scoping_it_cannot_deliver():
         )
 
 
+@_MESSAGE_RETIRED
 def test_message_still_forbids_handling_credentials():
     """Correcting the false claim must not cost the operative instruction —
     that is the part with real effect on agent behaviour."""

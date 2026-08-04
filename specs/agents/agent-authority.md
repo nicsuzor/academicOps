@@ -103,26 +103,33 @@ confirmed to deliver the full tool pool, including MCP servers, is omitting
 `tools` entirely — the agent then inherits its parent's complete effective set
 instead of "no tool calls permitted."
 
-**The same inversion held for `subagents` until this was ruled on: all five
-agent files now declare it, each per its actual role.** `james`
-(`plugins/aops/agents/james.md`) and `pauli` (`plugins/pkb/agents/pauli.md`)
-are open-ended dispatchers that route to whatever worker type a task needs, and
-declare `subagents: ["*"]`. `rbg` (`plugins/aops/agents/rbg.md`) and `marsha`
-(`plugins/aops/agents/marsha.md`) declare `subagents: []` — neither's own
-description involves spawning: rbg returns a verdict, marsha verifies and never
-fixes. `ida` (`plugins/ida/agents/ida.md`) declares the explicit list
-`["aops:james", "aops-pkb:pauli"]`, matching the only two delegation targets
-named in its own file. The row now describes a real declaration on every agent
-file, not an absent gate — though nothing yet enforces membership against it
-(see Lint Rules below: the frontmatter lint that would check `subagents`
-membership does not exist, so this remains a declared commitment rather than a
-checked one). The claim at "No implicit orchestrator privilege" below — that
-each orchestrator lists its `subagents` explicitly — is now true of the tree.
+**The same inversion held for `subagents` until this was ruled on: four of the
+five agent files now declare it, each per its actual role.** `pauli`
+(`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
+whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
+(`plugins/orchestrate/agents/james.md`) declares the explicit list
+`["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
+three reviewers his own description names, plus the plain worker surface his
+dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
+`subagents: []`: its own description does not involve spawning, since it
+returns a verdict. `ida` (`plugins/ida/agents/ida.md`) declares the explicit
+list `["orchestrate:james", "pkb:pauli"]`, matching the only two delegation
+targets named in its own file. **`marsha`
+(`plugins/orchestrate/agents/marsha.md`) is the outstanding one** — her
+frontmatter carries neither `subagents` nor `tools`, so the grid row still
+describes an absent gate for her alone. Nothing enforces membership against
+any of the four either (see Lint Rules below: the frontmatter lint that would
+check `subagents` membership does not exist, so these remain declared
+commitments rather than checked ones). The claim at "No implicit orchestrator
+privilege" below — that each orchestrator lists its `subagents` explicitly —
+is true of every orchestrating agent in the tree; marsha orchestrates nothing.
 
-`plugins/pkb/agents/pauli.md`, `plugins/aops/agents/james.md`,
-`plugins/aops/agents/marsha.md`, and `plugins/aops/agents/rbg.md` omit `tools`
-for this reason: each needs `mcp__services__pkb__*` (or broader) to function
-at all, so an unenforced allowlist is preferable to a materialized set of six
+`plugins/orchestrate/agents/james.md` omits `tools` for the materialization
+reason above, as does `plugins/orchestrate/agents/marsha.md`;
+`plugins/pkb/agents/pauli.md` and `plugins/rbg/agents/rbg.md` declare the
+wildcard `tools: ["*"]` rather than an explicit allowlist, to the same end.
+Each of the four needs `mcp__services__pkb__*` (or broader) to function at
+all, so an unenforced grant is preferable to a materialized set of six
 built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
 restriction is deliberate, but see the runtime finding below: declaring it does
 not currently mean it is enforced. Consequence: RBG's ultra-vires review (L4
@@ -217,7 +224,7 @@ Portability here is the permission-control half of the personalities-are-not-ski
 
 **Nested delegation.** A skill may itself invoke further skills or spawn sub-agents — only if the enclosing agent's `skills`/`subagents` list permits it. Nested invocation never expands authority; at every level the controlling envelope is the agent's own declared allowlists.
 
-**No implicit orchestrator privilege.** Orchestrator agents (james, supervisor, planner) have no special spawning rights. Each lists its `subagents` explicitly. "Orchestrator" is a role description, not a permission class.
+**No implicit orchestrator privilege.** Orchestrator agents (ida, james, pauli) have no special spawning rights. Each must list its `subagents` explicitly — an obligation this spec states and no shipped agent file currently meets (see "Known exception" above). "Orchestrator" is a role description, not a permission class.
 
 ## Sub-agent Delegation (Agent tool)
 
@@ -262,7 +269,7 @@ Violations are reported as `error` (1–3, 6, 7 — schema, naming, referential,
 
 ## Derived Agents
 
-Some agents are thin wrappers over a canonical source persona rather than independent definitions. **`enforcer`** is the `rbg` persona reused on the PR pipeline: the workflow (`.github/workflows/agent-enforcer.yml`) concatenates `plugins/aops/agents/rbg.md` with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and runs it on Sonnet with `Bash,Read,Edit,Write` granted via `claude_args`.
+Some agents are thin wrappers over a canonical source persona rather than independent definitions. **`enforcer`** is the `rbg` persona reused on the PR pipeline: the workflow (`.github/workflows/agent-enforcer.yml`) concatenates `plugins/rbg/agents/rbg.md` with a PR-context framing wrapper (`.github/agents/enforcer.agent.md`) and runs it on Sonnet with `Bash,Read,Edit,Write` granted via `claude_args`.
 
 ## GitHub Action Agents
 
@@ -282,7 +289,7 @@ The enforcement layers, from softest to hardest:
 
 L5 is the hard edge — a declaration cannot re-open a path an L5 hook blocks. An agent operating outside its declaration is flagged even if no hook caught it; the declaration is a binding commitment, not a configuration hint. (L3/L4/L5 here is a _local_ scheme for this spec; the former framework-wide enforcement pyramid's L0–L7 numbering was retired along with `ENFORCEMENT-MAP.md`, so there is no longer a numbered scheme to cross-reference it against.)
 
-**Funnel/chokepoint pattern** (last resort only): deny a capability to all agents and grant it to exactly one that must invoke a specific skill (e.g. pauli via `/planner`). Architecturally unforgeable but imposes a coordination tax on every gated call — deploy only after cheaper rungs (instruction → deterministic gate → post-hoc enforcer) demonstrably fail.
+**Funnel/chokepoint pattern** (last resort only): deny a capability to all agents and grant it to exactly one that must invoke a specific skill (e.g. ida declares no PKB tools at all, so she reaches the graph only by commissioning `pkb:pauli`). Architecturally unforgeable but imposes a coordination tax on every gated call — deploy only after cheaper rungs (instruction → deterministic gate → post-hoc enforcer) demonstrably fail.
 
 Related: **`specs/enforcement/enforcement.md`** (frontmatter is L3, lint is L4, hooks are L5); **`specs/polecat/polecat-system.md`** (enforces `fileAccess`/`bashScopes` at the worktree boundary). Plugin agents (when they exist) conform to this same schema; plugin-scoped MCP names follow `mcp__plugin_<plugin>_<server>__<tool>`.
 

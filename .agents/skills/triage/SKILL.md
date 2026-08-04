@@ -40,16 +40,13 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 | `trend` | Many sessions / audit files         | Trend report + recommendations |
 | `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures |
 
-**Privacy Rule**: Anonymize all findings. Do not expose real names, emails, student details, or raw session dumps.
+**Privacy Rule**: the anonymisation clause in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md) binds every mode here, not only `retro`.
 
 ---
 
 ## Dispatch Model
 
-This skill delegates execution to keep the main context clean. Both dispatch targets below are **personality-bound to `pauli`**, for two distinct reasons — this is not merely "delegate somewhere to save context":
-
-- **`retro` / `trend` mode — earmarking.** §2a's bad-premise attribution ("was this a good idea, in this shape?") and the architectural-fit read of structural causes are pauli's premise-test / architectural-fit judgment register (`plugins/pkb/agents/pauli.md`), the same lens she applies in `/strategic-review`. A generic subagent could mechanically follow the output format without holding that disposition, which is exactly the failure mode §2a exists to catch — so the judgment, not just the context-hygiene delegation, is why this is pauli's.
-- **`sweep` mode — permission-control.** Issue consolidation, single-task filing, and fix-epic decomposition are graph-mutation work requiring the PKB tool surface only pauli's frontmatter grants (`plugins/pkb/agents/pauli.md`, "the sole writer to the PKB" — see also `plugins/pkb/skills/planner/SKILL.md`'s identical binding). Ambiguous classifications are flagged in the cycle report rather than blocking, matching pauli's flag-don't-resolve posture.
+Every mode dispatches to `pauli`: the premise test these reviews turn on, and the graph mutation `sweep` performs, are both hers (`plugins/pkb/agents/pauli.md`).
 
 ---
 
@@ -60,40 +57,25 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 ### 1. Transcript Selection & Quality Gate
 
 - **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
-- **Same-Session Review Allowed**: Reviewing the current active session (self-review) by a fresh reviewer subagent (like `pauli` dispatched within the session) is explicitly allowed and structurally sound because the subagent executes in a clean, detached context.
+- **Same-Session Review Allowed**: the current session may be reviewed by a fresh subagent, whose detached context is what makes the review honest. What is never allowed is the same agent grading its own work in the same context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
 - Resolve the target session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/`. Each session has a markdown, an HTML, and a JSON sidecar artifact — see [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#3-output-formats). Read the markdown.
 - **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
-- Read the entire transcript. Look for structural causes, architectural alignment, pattern recognition, and instruction-quality failures (e.g., `/craft` defects: compliance framing, missing artifact chain, etc.).
-- **Immediate Fixes Policy — retro fixes the reviewed session, never the framework's future behavior**:
-  - **In scope, fix immediately**: the concrete mistake or leftover bad state _this session_ produced — a wrong file it wrote, a task it left mis-filed, a broken reference or typo it introduced or tripped over, an actual code bug in a hook/gate/skill/tool. Fix these directly in the source files, without seeking permission.
-  - **Out of scope, always**: adding, editing, or strengthening any rule, axiom, persona instruction, gate, hook, or agent-definition text so that _future_ sessions behave differently — even one line, even when you're confident it's correct and well-scoped. That is a framework change, not a fix to the reviewed session (see §2b). One incident is never sufficient warrant for it, no matter how salient; it belongs to a separate, deliberate pass informed by recurrence across multiple filed issues, not to this one. File the gap in the RCA issue and stop there.
-  - **First-Class Invocation: `/learn that last task should have been xyz`**: When Nic invokes this style with a description of what _should_ have happened, treat it as a directive to perform a **dual action**:
-    1. **Fix the immediate problem now**: correct the reviewed session's own mistake or leftover state, per the in-scope/out-of-scope split above — never the instructions that govern future sessions.
-    2. **File the RCA issue in the background**: Run the standard retro analysis to file a forensic GitHub issue, including the "should have been xyz" framing as directive context.
-       Never pick one and drop the other; you must perform both actions. Never substitute a framework change for either.
-  - **Complex Fixes**: If an in-scope fix is too complex, large, or requires unavailable permissions/runtime setups, file a follow-up task instead of attempting a partial fix that degrades system reliability.
-  - **The "Fix AND File" Invariant**: An immediate fix NEVER replaces the GitHub issue. You must STILL file the issue carrying the root-cause analysis. Do both: **Fix AND File**. The systemic lesson must survive even if the local symptom is already patched.
-- **Issue Report Rigor**: Limit the contents of the _GitHub issue report_ to forensic facts (what failed, how the framework contributed, concrete impact). Do not write/propose speculative solutions in the issue description or body (keep them out of the report to keep the data clean). This formatting rule for the issue body must NOT be misread as a prohibition on fixing the reviewed session's own mistakes — nor, in the other direction, as license to fix the framework's future behavior; see the scope split above.
+- Read the entire transcript.
+- The forensic read, the in-scope/out-of-scope split between fixing the reviewed session and changing the framework, and the "fix and route" invariant are the shared doctrine in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md). Apply it as written. In retro, "route the lesson" means the destination chosen in §4, and the record it names is the filed GitHub issue.
 
 ### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
 
-When the transcript shows an artifact whose **premise** a sharp principal would have bounced — _"was this a good idea?"_ answered no; good, working, well-tested work done for a bad idea (canonical instance: a deterministic rig — regex/threshold/NLP/checklist — built for a call a smart agent should just make, `judgment-non-delegable`) — that nonetheless passed review, classify it as a **bad-premise approval** and score the miss **against the reviewer who approved it**, not only the author:
+Good, working, well-tested work done for a bad idea is a **bad-premise approval**, and the miss is scored against the reviewer who passed it, not only the author. Every review surface (arch-fit / `/verify` / rbg / pauli) carries a forced step-0 premise test — _was this worth building at all, in this shape?_ — so a PASS on a bad premise means that test was skipped or rationalised past, and test-passing is never the excuse.
 
-- Identify the review surface that emitted PASS / MERGE / APPROVE on the bad premise (arch-fit / `/verify` / rbg / pauli). Each of those carries a forced step-0 premise test — _was this worth building at all, in this shape?_ An approval means that forcing function was skipped or rationalised past — a reviewer failure, with test-passing as its expected surface, never an excuse.
-- The filed issue names the **approving reviewer/surface as the locus of the miss** (anonymised per the Privacy Rule) alongside the premise that should have been bounced — not just the authoring agent.
-- Generalised framing: this is "was this worth building at all, in this shape?", **not** an overengineering-only pattern. Overengineering (deterministic-rig-for-a-judgment-call) is one worked instance of the broader "dumb idea" class.
-
-This makes the reviewer's miss visible and attributed: a slipped-through bad premise becomes a logged, attributed miss instead of an invisible one, so the cost lands on the surface that should have caught it rather than compounding silently across future reviews.
+The filed issue names the approving surface as the locus of the miss, alongside the premise that should have been bounced. A deterministic rig — regex/threshold/NLP/checklist — built for a call a smart agent should just make (`judgment-non-delegable`) is one worked instance, not the whole class.
 
 ### 2b. Framework/behavioral changes are never a retro fix
 
-A fix that changes what an agent is directed to do — an instruction, persona edit, axiom, rule, hook, gate, or chokepoint — is a framework change, not a fix to the reviewed session. Retro does not apply these, at any tier, no matter how minor, obviously-correct, or narrowly-scoped to the one incident it looks from inside the review. This holds even under the `/learn that last task should have been xyz` invocation: "fix the immediate problem" there still means the reviewed session's own mistake, never the instructions that govern future sessions.
-
-Recurrence across multiple filed issues, not the salience of one transcript, is the evidence base for a framework change — and deciding on one — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro. Retro's job stops at naming the gap precisely in the filed issue.
+Retro's job stops at naming the gap precisely in the filed issue. Deciding on a framework change — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro.
 
 ### 3. Output Requirements
 
@@ -124,15 +106,6 @@ Produce a review in this exact format. Keep text concise:
 - **Execution & Validation**:
   - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
   - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
-
-### 5. Retro Anti-Patterns
-
-| Anti-pattern                                                                                                                                                                | What to do instead                                                                                                                                                                                                                    |
-| :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Same-context self-grading (the same agent reviewing their own work within the same conversation/turn context without a fresh reviewer boundary)                             | Review by a fresh subagent (like `pauli` dispatched within the same session) or a separate reviewer, ensuring a detached/clean review context. Same-session review by a fresh subagent is structurally sound and explicitly allowed.  |
-| Including remediation proposals in the report                                                                                                                               | Stop at facts, structural context, and impact — a detached cross-incident pass decides on rule changes. Fix the reviewed session's own mistake directly in the codebase if in scope (§2), but keep the filed issue strictly forensic. |
-| Citing a single session as justification for a new mechanism                                                                                                                | Recurrence is the evidence base for framework change, not the salience of a single transcript.                                                                                                                                        |
-| Editing an agent's instructions, persona, rules, hooks, or gates directly from retro because the fix looks small, obviously correct, or narrowly scoped to the one incident | Apply §2b: that is a framework change regardless of size. File it in the RCA issue and stop — closing it is a separate, deliberate, cross-incident pass, never this one.                                                              |
 
 ---
 
@@ -204,7 +177,7 @@ Fetch open issues, focusing on the focal issue first if a directed focus is prov
 | `aggregate`             | Multiple issues sharing one root cause/fix surface.   | Fold into one `fix-epic` task (leave queued); close source issues with pointer comments. | `triaged-aggregate`     |
 | `evidence-bump`         | Accumulates evidence for a related open issue/epic.   | Leave open; add comment citing canonical issue (`#N`).                                   | `triaged-evidence-bump` |
 | `single-task`           | Atomic task (AC clear, ≤3 files, obvious fix).        | File polecat task with `Closes #N`.                                                      | `triaged-single`        |
-| `fix-epic`              | Multi-step, multi-file, or design-required work.      | Create epic task and decompose, leave queued.                                            | `triaged-epic`          |
+| `fix-epic`              | Multi-step, multi-file, or design-required work.      | Create epic task, leave at `inbox` for the user to brief.                                | `triaged-epic`          |
 | `defer`                 | Real but blocked or low-criticality.                  | Apply defer label and revisit-by date.                                                   | `triaged-defer`         |
 
 - **Execution**: Apply low blast-radius dispositions autonomously. Gate ONLY on:

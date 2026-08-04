@@ -15,17 +15,13 @@ session came up with an unset PKB URL and no reachable knowledge base.
 """
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
-if _PLUGINS_DIR not in sys.path:
-    sys.path.insert(0, _PLUGINS_DIR)
+from lib.polecat.cli import setup_staging
 
-from aops.polecat.cli import setup_staging  # noqa: E402
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 MCP_URL = "https://pkb.example/mcp"
 
@@ -37,7 +33,7 @@ LEAKED_HOST_PROJECT_PATH = "/home/nic/src/some-other-private-project"
 
 @pytest.fixture
 def fake_gemini_home(tmp_path):
-    """A fake $POLECAT_AGENT_HOME containing exactly the shape that leaked live."""
+    """A fake $GEMINI_CONFIG_DIR containing exactly the shape that leaked live."""
     home = tmp_path / "fake_home"
     gemini = home / ".gemini"
     gemini.mkdir(parents=True)
@@ -119,9 +115,9 @@ def _plugin_declaring(option):
         for manifest in sorted(_REPO_ROOT.glob("plugins/*/manifest/plugin.template.json"))
     ]
     names = [
-        m["__base__"]["name"]
+        m["clients"]["__base__"]["name"]
         for m in declaring
-        if option in (m.get("claude", {}).get("userConfig") or {})
+        if option in (m["clients"].get("claude", {}).get("userConfig") or {})
     ]
     assert len(names) == 1, f"expected exactly one plugin to declare {option}, got {names}"
     return names[0]

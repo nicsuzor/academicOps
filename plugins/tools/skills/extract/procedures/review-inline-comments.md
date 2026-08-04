@@ -17,13 +17,13 @@ Document containing source text and inline comments/feedback (DOCX, Google Docs,
 
 ### Generalized Patterns → Framework (public repo)
 
-1. **Update `plugins/pkb/workflows/process/peer-review.md`**: Add depersonalized principles
+1. **Update `plugins/tools/skills/peer-review/references/`**: Add depersonalized principles
 2. **Constructed examples**: Create generic examples illustrating principles
 3. **No identifying information**: Remove names, titles, institutional details
 
 ## Process
 
-For detailed step-by-step procedures and patterns, see **[[review-extraction-details]]**.
+The phases below are the whole procedure.
 
 ### Phases
 
@@ -46,6 +46,7 @@ For detailed step-by-step procedures and patterns, see **[[review-extraction-det
 - [ ] No identifying information in public docs
 - [ ] Collection summary and extraction notes documented
 
-## Example: From Raw to Stored
-
-See **[[review-extraction-details#Example: From Raw to Stored]]** for full example of depersonalization.
+Depersonalisation means the stored pair carries the reviewer's _reasoning_ and
+none of the identifiers: no names, institutions, grant or manuscript titles, or
+dates that would re-identify the submission. Where the reasoning cannot survive
+that strip, the pair does not go to the public surface at all.

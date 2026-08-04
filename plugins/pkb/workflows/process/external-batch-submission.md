@@ -3,7 +3,7 @@ id: external-batch-submission
 kind: process
 category: operations
 description: Submit, monitor, and retrieve results from external batch prediction/inference APIs (LiteLLM, Boto3, custom)
-requires: [task-tracking, verification]
+requires: [task-tracking, wf-verification]
 pairs-with: []
 conflicts: []
 version: 1.1.0
@@ -23,7 +23,7 @@ permalink: workflows-process-external-batch-submission
 4. **Record status** — log the Job ID and current status in the task.
 5. **Monitor** — poll periodically until complete or failed.
 6. **Retrieve results** — download output after completion.
-7. **Final verification** — compose [[verification]]: results are complete and
+7. **Final verification** — compose [[wf-verification]]: results are complete and
    correctly formatted.
 
 ## Critical Rules

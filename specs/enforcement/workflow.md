@@ -21,9 +21,9 @@ trust-the-method.
 
 ### Mechanisms
 
-- **`decompose`-skill decomposition** (pauli's decomposition-time call),
+- **`brief`-skill sizing and composition** (pauli's dispatch-time call),
   task-template conventions, and proof-of-compliance tool fields — the
-  workflow is assembled compliant at task-creation time.
+  workflow is assembled compliant before the unit is dispatched.
 - **`cohesive-pr-epic`** — a coupled set of tasks shares one draft PR: the
   PR-surface instance of the general return contract — one claimed task, one
   deliverable, never a spray of per-child PRs — whose home is
@@ -34,28 +34,29 @@ trust-the-method.
 ## The five-step shape
 
 A workflow is not a bespoke pipeline invented per task. It is one recursive
-shape, applied at whatever granularity the `decompose` skill cuts to — a single
-subtask, an epic, or a multi-epic release all run the same five steps. Within
+shape, applied at whatever granularity the `brief` skill cuts to — a single
+unit, an epic, or a multi-epic release all run the same five steps. Within
 this skeleton, pauli assembles the concrete workflow — the review lenses, the
 required level of _independent_ review, the altitude — from composable rules
-at decomposition time. A literature review, a paper critique, and a code
+at brief time. A literature review, a paper critique, and a code
 change are the same contract with different assembled workflows (different
 lenses: citation verification, methodological soundness, container
 validation) — the assembled workflow is the only differentiator; there is no
 separate research path.
 
 1. **Contract** — the unit's premise, worth, and acceptance criteria are
-   settled _at decomposition time_, before compute is spent executing it.
-   This is pauli's pre-hoc lens (premise/worth/shape). The `decompose` skill
-   (see [`plugins/pkb/skills/decompose/SKILL.md`](../../plugins/pkb/skills/decompose/SKILL.md))
-   emits it as a standing, early-blocking task node in the epic's DAG — the
-   rest of the epic's work depends on it clearing. The previously
-   separate standalone premise-gate concept — a two-judge hard-refuse
-   ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is retired;
-   dispatch surfaces trust pauli's decomposition without re-judging
-   the premise themselves. The `decompose` skill plans only: it emits this
-   task (and the boundary-check/QA-around tasks below) into the graph, it
-   never dispatches or runs them itself.
+   settled _before compute is spent executing it_, in pauli's one pre-hoc pass:
+   `brief` establishes premise and worth on the graph (assumptions sorted, open
+   forks named, the decision list the user reads), then settles shape and
+   acceptance criteria. The user invoking `brief` is the promotion gate.
+   `brief` emits the contract as a standing, early-blocking node
+   in the epic's DAG, so the rest of the epic's work depends on it clearing. The
+   previously separate standalone premise-gate concept — a two-judge
+   hard-refuse ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is
+   retired; dispatch surfaces trust those passes without re-judging the premise
+   themselves. `brief` plans only: it emits this task (and the
+   boundary-check/QA-around tasks below) into the graph, it never dispatches or
+   runs them itself.
 2. **Execution** — the claimed agent does the work. This span is
    trust-the-method: no process-level enforcement, evidence-driven
    escalation only if something goes wrong.
@@ -85,7 +86,7 @@ filled in (see [Substance over form](evidence-contract.md#substance-over-form)).
 happen in this order.
 
 1. **Certification — the dispatcher's, at unit completion.** It commissions the
-   review machinery the graph already carries (the review nodes `decompose`
+   review machinery the graph already carries (the review nodes `brief`
    emitted, executed through the review skills), reads the verdict, and writes
    that verdict onto the task record. What it certifies is mechanics, quality,
    and compliance with the brief. The dispatcher never supplies that judgment
@@ -102,7 +103,7 @@ checked and cannot see.
 
 ### Review composition
 
-Steps 3–5 are assembled by pauli from composable rules at decomposition time. Review composition (the lenses, the depth, and whether reviewers are independent from authors) is one design consideration among several, and is structural rather than an agent-facing instruction. Base workflows (living as PKB templates) set the default standard for these choices and evolve over time. Any surface satisfying the assembled workflow's requirements qualifies as an executor — an independent polecat session that spins the container and validates with the marsha lens for code changes, or dispatch-layer subagents running the rbg lens for textual/rules compliance. Proof is ALWAYS written to the PKB, typically as a review task plus receipt. GitHub/GHA is merely one _optional_ executor of code review — currently manual and deferred — never the review system itself.
+Steps 3–5 are assembled by pauli from composable rules at brief time. Review composition (the lenses, the depth, and whether reviewers are independent from authors) is one design consideration among several, and is structural rather than an agent-facing instruction. Base workflows (living as PKB templates) set the default standard for these choices and evolve over time. Any surface satisfying the assembled workflow's requirements qualifies as an executor — an independent polecat session that spins the container and validates with the marsha lens for code changes, or dispatch-layer subagents running the rbg lens for textual/rules compliance. Proof is ALWAYS written to the PKB, typically as a review task plus receipt. GitHub/GHA is merely one _optional_ executor of code review — currently manual and deferred — never the review system itself.
 
 ### Recursion
 
@@ -118,9 +119,8 @@ itself one or more nested workflows. There is no separate contract for
 How much of steps 3–4 run as _standalone review subtasks_ versus how much
 the executing agent self-assesses (per Layer 1's exit-reflection discipline)
 and hands back for one consolidated review is not fixed by this spec — it is
-pauli's call, made via the `decompose` skill at decomposition time (step 1),
-based on the task's
-risk and blast radius. Two ends of the same shape, not two different
+pauli's call, made via the `brief` skill at dispatch time (step 1), based on
+the task's risk and blast radius. Two ends of the same shape, not two different
 contracts:
 
 - **High-risk / wide blast radius** — per-chunk review subtasks, wired with

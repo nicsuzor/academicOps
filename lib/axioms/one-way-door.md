@@ -1,6 +1,6 @@
 ---
 description: An irreversible action whose effect leaves this environment needs a human signature before it is taken.
-trigger: always_on
+trigger: off
 ---
 
 ## One-Way Doors Need a Human Signature

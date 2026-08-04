@@ -16,7 +16,7 @@ If the user gives you a URL and asks to "capture", go straight to capture — no
 
 ## The deep-research loop (overview)
 
-1. **Frame the question** as an affordable-loss spike task in the PKB with a well-written prompt in the body (`/planner` or direct task creation).
+1. **Frame the question** as an affordable-loss spike task in the PKB with a well-written prompt in the body (`/ida:strategize` or direct task creation).
 2. **Run the prompt** in the external tool (Gemini Deep Research, ChatGPT Pro, Perplexity Deep Research). The tool returns a Google Doc or similar.
 3. **Capture** the output back into the PKB as a `knowledge` note — raw content preserved, figures transcribed, wikilinks back to the sourcing task.
 4. **Mark the spike done** with `completion_evidence` pointing at the knowledge note; downstream design tasks can now consume it.
@@ -30,23 +30,11 @@ If the user gives you a URL and asks to "capture", go straight to capture — no
 
 ### Authoring a prompt
 
-Follow [[prompt-authoring]]. Short version:
-
-- Frame as a _comparison/synthesis_ across 4-6 named bodies of practice (not "tell me about X")
-- Require citations and flagging of thin-consensus areas
-- End with explicit context: who the user is, what the output must feed, what decisions hinge on it
+Follow [[prompt-authoring]].
 
 ### Capturing a deep-research document
 
-Follow [[pkb-capture]]. Short version:
-
-- Identify the sourcing task (no guessing — if ambiguous, ask)
-- `scripts/fetch.sh <url> <outdir>` — pulls markdown + docx, extracts images
-- For every image in the doc: load it, transcribe (LaTeX if math, prose if diagram), rewrite the image reference in the markdown with real alt-text AND keep the image file committed
-- Frontmatter with `source`, `gdoc_id`, `spike`, `parent_epic`, `feeds`
-- Filename convention: `<common-theme>-<task-id>-<slug>.md` when multiple briefs form a set (e.g. `pkb-weight-<task-id-1>-edge-elicitation.md`); a single standalone brief uses `<topic>-<task-id>-<slug>.md`
-- Store images under `knowledge/<topic>/figures/<note-id>/<imageN>.png`
-- Update the sourcing task: set `research_output: <note-id>`, add `**Captured**: <date> to [[<note-id>]]`, and mark `done` if acceptance criteria are met
+Follow [[pkb-capture]].
 
 ## Guardrails
 
@@ -54,8 +42,6 @@ Follow [[pkb-capture]]. Short version:
 - **Citations are load-bearing.** Preserve the Works Cited / footnote blocks verbatim.
 - **Images are not optional.** If the source uses figures, extract and transcribe them. An image without alt-text in the PKB is a broken reference.
 - **User verifies transcriptions.** Present each image + your transcription side-by-side. Do not commit transcriptions until the user confirms (or corrects).
-- **No third-party transcription services.** Vision + transcription is done by the agent running the skill. Never send images to Mathpix, OCR.space, Vertex, or any other external endpoint.
-- **Fail fast on auth.** If `rclone lsd gdrive:` errors, halt and tell the user to run `rclone config`. Do not paper over with gcloud ADC or API-key workarounds.
 
 ## How to verify
 

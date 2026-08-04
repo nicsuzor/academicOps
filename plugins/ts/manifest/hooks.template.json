@@ -1,29 +1,33 @@
 {
-  "__base__": {},
-  "claude": {
-    "hooks": {
-      "SessionStart": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" bash \"${CLAUDE_PLUGIN_ROOT}/hooks/tailscale-up.sh\"",
-              "timeout": 30
-            }
-          ]
-        }
-      ],
-      "SessionEnd": [
-        {
-          "hooks": [
-            {
-              "type": "command",
-              "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-sync.sh\"",
-              "timeout": 300
-            }
-          ]
-        }
-      ]
+  "manifestVersion": "1.0",
+  "name": "aops-ts",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "SessionStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" bash \"${CLAUDE_PLUGIN_ROOT}/hooks/tailscale-up.sh\"",
+                "timeout": 30
+              }
+            ]
+          }
+        ],
+        "SessionEnd": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-sync.sh\"",
+                "timeout": 300
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 }

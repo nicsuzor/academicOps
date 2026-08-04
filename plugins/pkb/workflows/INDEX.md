@@ -10,28 +10,20 @@ permalink: workflows-index
 
 Short markdown files describing how a class of work proceeds. They are read and
 composed **in context, by comprehension** — never parsed, never solved. The
-composition procedure is [`../skills/workflow/SKILL.md`](../skills/workflow/SKILL.md);
-this file is the catalogue and the routing tree.
+composition procedure is [`../skills/brief/SKILL.md`](../skills/brief/SKILL.md)
+§5; this file is the catalogue and the routing tree.
 
-Two kinds:
+**Routing and composition are different jobs.** The tree below routes an ask to
+the template for its class of work, and most of what it routes never reaches
+composition — a simple question is answered and halted, a follow-up continues
+the session, an email is triaged. Any agent reads the tree directly; no skill
+stands between them and it. Only work released for dispatch gets a full process
+assembled around it, and that is `brief`'s job.
 
-- **Process templates** — `process/`. How a class of work proceeds: routing
-  signals, NOT-this signals, the steps unique to it, and where it exits to.
-- **Workflow templates** — the `wf-*` obligations. These are **not files**. They
-  live in the PKB as documents tagged `wf-template`; enumerate them with
-  `list_documents(tag="wf-template")` and read one with `get_document(id)`. The
-  table below is a catalogue, not the source — the PKB is authoritative, and a
-  template must be read from it before it is composed in.
-
-Templates in `$ACA_DATA/.agents/workflows/` override a shipped template of the
-same filename and extend the library with any new one. `$ACA_DATA` comes from the
-environment; if it is unset the user layer simply does not exist.
-
-Four frontmatter hints are the entire vocabulary a composer reasons over:
-`requires` (always pulled in), `pairs-with` (composed proportionate to stakes),
-`recommends` (a soft suggestion), `conflicts` (mutually exclusive). Door type —
-one-way versus two-way — is expressed as which templates get composed in, not as
-a separate mechanism.
+Two kinds: **process templates** in `process/` — how a class of work proceeds —
+and the `wf-*` obligation templates, which are not files at all (see "Obligation
+templates" below). Every name in this library is written as it resolves: a
+`process/` template by its bare filename, an obligation by its `wf-` permalink.
 
 ## Routing
 
@@ -45,30 +37,28 @@ Request
   +-- Explicit skill named? -----------------------------------> [[simple-question]] + invoke the skill
   +-- Simple question only? -----------------------------------> [[simple-question]]
   +-- Continuation of active session work? --------------------> [[interactive-followup]]
-  +-- New idea, fragment, or constraint? ----------------------> the situate skill
-  +-- Break down a goal or epic? ------------------------------> the decompose skill
+  +-- New idea, fragment, or constraint? ----------------------> capture it; `brief` works it out
+  +-- Break down a goal or epic? ------------------------------> `brief` (it sizes and cuts)
   +-- Multiple similar items? ---------------------------------> [[batch]], or [[burst]] across sessions
   +-- Email or communications? --------------------------------> [[email-triage]]
   |       +-- Extracting a ready-to-work task from an email? --> [[email-capture]]
   |       +-- Drafting a reply? -------------------------------> [[email-reply]]
   +-- Academic or research task?
-  |       +-- Review a submission? ----------------------------> [[peer-review]]
+  |       +-- Review a submission? ----------------------------> the `peer-review` skill
   |       +-- Reference letter? -------------------------------> [[reference-letter]]
   |       +-- Finalise a report after feedback? ---------------> [[finalize-report]]
   |       +-- Reply to docx review comments? ------------------> [[review-response]]
   +-- Bug or issue?
-  |       +-- Cause unknown -----------------------------------> [[investigation]]
-  |       +-- Cause known, fix clear --------------------------> [[feature-dev]]
+  |       +-- Cause established by a read, not assumed --------> [[feature-dev]]
+  |       +-- Anything else (a trigger is not a cause) --------> [[investigation]]
   +-- Planning or designing known work? -----------------------> [[feature-dev]] or [[develop-specification]]
+  +-- Submitting an external batch API job? -------------------> [[external-batch-submission]]
   +-- Sharing, sending, or publishing externally? -------------> [[wf-outbound-review]]
   +-- Need QA verification? -----------------------------------> [[wf-qa]] or [[wf-verification]]
-  +-- Human corrected an agent assumption? --------------------> [[correction-capture]]
   +-- Decision needed to unblock work? ------------------------> [[decision-briefing]]
-  +-- Testing a new framework approach? -----------------------> [[experiment-design]]
-  +-- Checking for framework bloat or duplication? ------------> [[monitor-prevent-bloat]]
   +-- PRs need triage or review? ------------------------------> [[pr-review]] -> [[worktree-merge]]
-  +-- Framework self-improvement session? ---------------------> [[dogfooding]]
-  +-- Post-session transcript review? -------------------------> [[session-effectiveness]]
+  +-- Framework self-improvement, or a mid-session correction? -> the `dogfood` skill
+  +-- Post-session transcript review? -------------------------> the `triage` skill, retro mode
   +-- Framework governance or structure audit? ----------------> [[audit]]
   +-- Nothing matched? ----------------------------------------> ask the user to clarify
 ```
@@ -80,7 +70,7 @@ Request
 | Template          | Routes                                              | Requires           | Pairs with                           |
 | ----------------- | --------------------------------------------------- | ------------------ | ------------------------------------ |
 | [[feature-dev]]   | Test-first feature or known-cause bug, idea to ship | task-tracking, tdd | [[wf-verification]], [[wf-handover]] |
-| [[investigation]] | Hypothesis, probe, conclude — unknown cause         | —                  | memory-capture                       |
+| [[investigation]] | Hypothesis, probe, conclude — unknown cause         | —                  | [[wf-verification]]                  |
 
 ### Email and communications
 
@@ -94,10 +84,12 @@ Request
 
 | Template             | Routes                                                     | Requires      | Pairs with             |
 | -------------------- | ---------------------------------------------------------- | ------------- | ---------------------- |
-| [[peer-review]]      | Grant, fellowship, or paper review, read to submit         | task-tracking | [[wf-handover]]        |
 | [[reference-letter]] | Request, draft, review, send                               | task-tracking | [[wf-handover]]        |
 | [[finalize-report]]  | Revise a report after reviewer or stakeholder feedback     | task-tracking | [[wf-outbound-review]] |
 | [[review-response]]  | Threaded docx replies showing how each comment was handled | task-tracking | —                      |
+
+Reviewing a submission is the `peer-review` skill's job, not a template's — it
+owns the scheme criteria and the platform mechanics both.
 
 ### Operations and batch
 
@@ -122,35 +114,34 @@ Request
 | Template                  | Routes                                                 | Requires      | Pairs with            |
 | ------------------------- | ------------------------------------------------------ | ------------- | --------------------- |
 | [[decision-briefing]]     | Structured consequence briefing for a blocked decision | task-tracking | [[wf-human-approval]] |
-| [[experiment-design]]     | Design, run, evaluate a discrete experiment            | task-tracking | [[wf-verification]]   |
 | [[develop-specification]] | Spec a feature or automation before building it        | task-tracking | [[wf-human-approval]] |
 
 ### Framework governance
 
-| Template                  | Routes                                                  | Requires        | Pairs with            |
-| ------------------------- | ------------------------------------------------------- | --------------- | --------------------- |
-| [[monitor-prevent-bloat]] | Detect and remove doc and skill bloat                   | —               | [[wf-verification]]   |
-| [[session-effectiveness]] | Qualitative transcript assessment of performance        | —               | dogfooding            |
-| [[dogfooding]]            | Execute, reflect, codify — the self-improvement loop    | memory-capture  | session-effectiveness |
-| [[correction-capture]]    | Capture a mid-session human correction as a durable fix | memory-capture  | —                     |
-| [[audit]]                 | Governance audit — structure, indices, tests, report    | [[wf-handover]] | monitor-prevent-bloat |
+| Template  | Routes                                               | Requires        | Pairs with |
+| --------- | ---------------------------------------------------- | --------------- | ---------- |
+| [[audit]] | Governance audit — structure, indices, tests, report | [[wf-handover]] | —          |
+
+The self-improvement loop, mid-session correction capture, experiment
+pre-registration, and post-session transcript review are all owned by skills —
+`dogfood` and `triage` — not by templates. Route to the skill.
 
 ### Fragments
 
 Composed into other templates; never routed to directly.
 
-| Fragment           | Does                                                  |
-| ------------------ | ----------------------------------------------------- |
-| [[task-tracking]]  | Duplicate-check, resolve parent, claim, log, complete |
-| [[tdd]]            | Red, green, refactor                                  |
-| [[memory-capture]] | Store durable findings to the PKB                     |
+| Fragment          | Does                                                  |
+| ----------------- | ----------------------------------------------------- |
+| [[task-tracking]] | Duplicate-check, resolve parent, claim, log, complete |
+| [[tdd]]           | Red, green, refactor                                  |
 
-## Workflow templates
+## Obligation templates
 
-Read from the PKB, not from here: the current set is enumerated by the
-`pkb-workflow-index` MoC (`get_document("pkb-workflow-index")`), with
-`list_documents(tag="wf-template")` as the reconciliation sweep. This file
-does not list them — a second copy of that table drifts.
+The `wf-*` review and gate obligations are read from the PKB, not from here: the
+current set is enumerated by the `pkb-workflow-index` MoC
+(`get_document("pkb-workflow-index")`), with `list_documents(tag="wf-template")`
+as the reconciliation sweep. This file does not list them — a second copy of that
+table drifts.
 
-`wf-human-approval` is where [[framework-gate]], [[wf-outbound-review]],
+`wf-human-approval` is where [[framework-gate]], `wf-outbound-review`,
 [[pr-review]], and [[decision-briefing]] all hand off at their one-way crossing.

@@ -1,18 +1,23 @@
-"""Tests for the cope plugin (plugins/cope/).
+"""Tests for the CoPE rule check, which ships in the rbg plugin (plugins/rbg/).
 
-cope's PreToolUse hook is advisory-only rule enforcement — nothing in-session
-blocks on its verdict (specs/ARCHITECTURE.md, cope and Enforcement). The
-judgment itself is a small language model's, reached over the Reflexes
-evaluator contract: one rule in, one label back. cope composes the question and
-reports the answer; it never decides what a rule means by matching text against
-a pattern.
+The plugin directory was `plugins/cope/` until it was renamed to `plugins/rbg/`
+(e3a8bd39, 8edff6fa); the three modules under test — rules.py, evaluator.py,
+handlers.py — moved with it unchanged in name and surface. The environment
+variables, the `DEGRADED_*` kind strings, and the message files are still
+CoPE's, so the vocabulary below is unchanged.
+
+The `PreToolUse` hook is advisory-only rule enforcement — nothing in-session
+blocks on its verdict (specs/ARCHITECTURE.md, Enforcement). The judgment itself
+is a small language model's, reached over the Reflexes evaluator contract: one
+rule in, one label back. The plugin composes the question and reports the
+answer; it never decides what a rule means by matching text against a pattern.
 
 These tests exercise the real plugin source: rules.py's three-layer loading and
 its graceful degradation, evaluator.py's configuration gate and both wire
 protocols, handlers.py's advisory composition and its fail-open behaviour, and
 the whole thing end to end through lib/hooks/dispatch.py against a real
 loopback HTTP evaluator — simulating build stage 1's shared injection, where
-lib/hooks/*.py and plugins/cope/hooks/*.py land in one directory.
+lib/hooks/*.py and plugins/rbg/hooks/*.py land in one directory.
 """
 
 from __future__ import annotations
@@ -34,18 +39,44 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _LIB_AXIOMS = _REPO_ROOT / "lib" / "axioms"
-_COPE_HOOKS = _REPO_ROOT / "plugins" / "cope" / "hooks"
+_COPE_HOOKS = _REPO_ROOT / "plugins" / "rbg" / "hooks"
+
+
+def _copy_axioms(dest: Path, *, live: bool) -> Path:
+    """Copy the real lib/axioms/ to ``dest``, optionally marking every rule live.
+
+    Which axioms are switched on is a deliberately movable fact — the roster is
+    re-armed one rule at a time, and every rule can be parked at once. Tests that
+    exercise cope's *machinery* — loading, evaluating, tracing, the advisory it
+    builds — need a non-empty rule set to have anything to exercise, and would
+    otherwise go quiet the moment somebody parks a rule, passing while asserting
+    nothing. They pass ``live=True`` and get the real axiom text with the marker
+    flipped on, so the bodies under test stay real.
+
+    ``live=False`` copies the tree exactly as it ships. Only tests whose subject
+    *is* the roster's live/parked state use it.
+    """
+    shutil.copytree(_LIB_AXIOMS, dest)
+    if live:
+        for md in dest.glob("*.md"):
+            text = md.read_text(encoding="utf-8")
+            md.write_text(
+                text.replace(f"\ntrigger: {rules.TRIGGER_OFF}\n", "\ntrigger: always_on\n", 1),
+                encoding="utf-8",
+            )
+    return dest
+
 
 for _dir in (_LIB_HOOKS, _COPE_HOOKS):
     if str(_dir) not in sys.path:
         sys.path.insert(0, str(_dir))
 
-import degraded  # noqa: E402  (lib/hooks/degraded.py)
-import evaluator  # noqa: E402  (plugins/cope/hooks/evaluator.py)
-import handlers  # noqa: E402  (plugins/cope/hooks/handlers.py)
-import rules  # noqa: E402  (plugins/cope/hooks/rules.py)
-from context import HookContext  # noqa: E402
-from result import warn  # noqa: E402
+import evaluator  # noqa: E402  (plugins/rbg/hooks/evaluator.py)
+import evaluator_otel_trace  # noqa: E402  (plugins/rbg/hooks/evaluator_otel_trace.py)
+import evaluator_trace  # noqa: E402  (plugins/rbg/hooks/evaluator_trace.py)
+import handlers  # noqa: E402  (plugins/rbg/hooks/handlers.py)
+import rules  # noqa: E402  (plugins/rbg/hooks/rules.py)
+from dispatch import HookContext, Kind, warn  # noqa: E402
 
 # Every environment variable cope reads for its evaluator, named once because
 # both the isolation fixture and the README-truthfulness test need the set.
@@ -55,6 +86,8 @@ _COPE_ENV = (
     "COPE_EVALUATOR_MODEL",
     "COPE_EVALUATOR_API_KEY",
     "COPE_EVALUATOR_TIMEOUT",
+    "COPE_EVALUATOR_TRACE_PATH",
+    "COPE_EVALUATOR_OTEL_TRACE_PATH",
 )
 
 # A port nothing listens on. Every in-process test that uses it also replaces
@@ -77,16 +110,13 @@ def _isolate_cope_environment(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _isolate_degradation_state(monkeypatch, tmp_path):
-    """cope's stderr reports are also recorded for the user-facing channel
-    (lib/hooks/degraded.py), at module scope and behind a once-per-session
-    marker file under the OS temp directory. Neither may cross a test — nor
-    reach the hook subprocesses below, which read the environment for it."""
+def _isolate_temp_directory(monkeypatch, tmp_path):
+    """Nothing this plugin writes may land in the shared OS temp directory,
+    where it could cross into another test or another run. Kept as a floor even
+    though the current runtime keeps no on-disk state of its own: a subprocess
+    below that starts writing one must not do it in a shared location."""
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     monkeypatch.setenv("TMPDIR", str(tmp_path))
-    degraded.reset()
-    yield
-    degraded.reset()
 
 
 @pytest.fixture(autouse=True)
@@ -190,7 +220,7 @@ def test_every_real_axiom_has_a_non_empty_body(tmp_path):
     """Against the real lib/axioms/: an axiom loaded with an empty body would
     be sent to the evaluator as an empty policy and silently classify nothing."""
     root = tmp_path / "plugin"
-    shutil.copytree(_LIB_AXIOMS, root / "axioms")
+    _copy_axioms(root / "axioms", live=True)
     loaded = rules.load(root, tmp_path / "project")
     assert loaded
     for rule in loaded.values():
@@ -267,12 +297,32 @@ def test_layer1_loads_only_always_on_from_the_real_axioms_dir(tmp_path, monkeypa
     layer 1 declares trigger: always_on, and the index docs are absent."""
     monkeypatch.delenv("ACA_DATA", raising=False)
     plugin_root = tmp_path / "plugin"
-    shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
+    _copy_axioms(plugin_root / "axioms", live=True)
     loaded = rules.load(plugin_root, tmp_path / "project")
     assert loaded
     assert all(rule.trigger == "always_on" for rule in loaded.values())
     assert "README" not in loaded
     assert "AXIOMS-REVIEW" not in loaded
+
+
+def test_the_real_axioms_ship_parked_and_load_to_nothing(tmp_path, monkeypatch, capsys):
+    """The shipped state, as it stands: every axiom carries `trigger: off`, so
+    layer 1 loads no rule at all.
+
+    This is a live decision, not an invariant — rules are being switched back
+    on one at a time, and this test is expected to change when the first one
+    goes live. It is here so that the switch is a thing somebody has to
+    deliberately change, rather than something the suite never notices.
+
+    The other half of the claim is that parking is silent: `off` is somebody
+    saying they meant it, and a report on every tool call would train the
+    reader to skip reports that matter.
+    """
+    monkeypatch.delenv("ACA_DATA", raising=False)
+    plugin_root = tmp_path / "plugin"
+    _copy_axioms(plugin_root / "axioms", live=False)
+    assert rules.load(plugin_root, tmp_path / "project") == {}
+    assert rules.DEGRADED_UNMARKED not in capsys.readouterr().err
 
 
 def test_layer2_requires_always_on_and_names_what_it_skipped(
@@ -489,20 +539,33 @@ def test_a_blank_user_config_option_falls_through_rather_than_blanking_the_value
     assert config.model == "ambient-model"
 
 
-def test_the_manifest_declares_exactly_the_options_the_code_reads():
+def test_every_option_the_manifest_declares_is_one_the_code_reads():
     """The coupling that silently breaks: Claude Code derives the environment
     variable from the option KEY, so renaming one side leaves the other reading
     a variable nobody sets — and cope's failure mode for missing configuration
-    is a clean no-op, which would look exactly like working correctly."""
+    is a clean no-op, which would look exactly like working correctly.
+
+    The manifest currently declares no options at all, so every value travels
+    by plain environment variable. That is a supported configuration, not a
+    broken one — ``_setting`` reads the option first and the plain variable
+    second, and the second route alone is what agy and container sessions have
+    always used. What this pins is the coupling, in whichever direction it
+    exists: an option that is declared must name a variable the code reads, and
+    it must carry no default and no unmarked credential.
+    """
     manifest = json.loads(
-        (_REPO_ROOT / "plugins" / "cope" / "manifest" / "plugin.template.json").read_text()
+        (_REPO_ROOT / "plugins" / "rbg" / "manifest" / "plugin.template.json").read_text()
     )
-    declared = manifest["claude"]["userConfig"]
-    assert {key.upper() for key in declared} == set(_COPE_ENV)
-    assert declared["cope_evaluator_api_key"]["sensitive"] is True, (
-        "the API key must be marked sensitive so it goes to secure storage "
-        "rather than settings.json"
+    declared = manifest["clients"]["claude"].get("userConfig", {})
+    assert {key.upper() for key in declared} <= set(_COPE_ENV), (
+        "an option whose key does not uppercase to a variable evaluator.py reads "
+        "is a setting nobody can supply"
     )
+    if "cope_evaluator_api_key" in declared:
+        assert declared["cope_evaluator_api_key"]["sensitive"] is True, (
+            "the API key must be marked sensitive so it goes to secure storage "
+            "rather than settings.json"
+        )
     for key, option in declared.items():
         assert "default" not in option, f"{key} declares a default; cope may not have one"
         for field in ("type", "title", "description"):
@@ -724,6 +787,552 @@ def test_an_enormous_tool_input_is_truncated_before_it_is_sent():
 
 
 # ---------------------------------------------------------------------------
+# evaluator.py: on_outcome — the research trace's whole hook into check()
+# ---------------------------------------------------------------------------
+
+
+def test_on_outcome_fires_for_every_policy_matched_and_clean_alike(
+    monkeypatch, transport, hooks_dir
+):
+    """The tuning data check() itself never returns: a rule check() decided was
+    clean (label 0) never reaches `matches`, but a trace sink must still see
+    it — a false positive and a true negative are equally load-bearing."""
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {
+        "label": 1 if payload["criteria_text"] == "flag me" else 0,
+        "confidence": 0.7,
+    }
+    seen: list[evaluator.EvalOutcome] = []
+    matches, failures = evaluator.check(
+        evaluator.resolve(),
+        [("flagged", "flag me"), ("clean", "leave me")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=seen.append,
+    )
+    assert failures == []
+    assert {o.slug for o in seen} == {"flagged", "clean"}
+    by_slug = {o.slug: o for o in seen}
+    assert by_slug["flagged"].label == 1
+    assert by_slug["clean"].label == 0
+    assert by_slug["clean"].error is None
+    assert [m.slug for m in matches] == ["flagged"], (
+        "on_outcome must not change check()'s own return"
+    )
+
+
+def test_on_outcome_fires_with_the_error_for_a_failed_policy(monkeypatch, hooks_dir):
+    _configure(monkeypatch)
+
+    def explode(config, payload, timeout):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(evaluator, "_post", explode)
+    seen: list[evaluator.EvalOutcome] = []
+    evaluator.check(
+        evaluator.resolve(), [("closure", "body")], "Tool: Bash", hooks_dir, on_outcome=seen.append
+    )
+    assert len(seen) == 1
+    assert seen[0].label is None
+    assert seen[0].confidence is None
+    assert "connection refused" in seen[0].error
+
+
+def test_on_outcome_reports_a_positive_latency(monkeypatch, transport, hooks_dir):
+    _configure(monkeypatch)
+    seen: list[evaluator.EvalOutcome] = []
+    evaluator.check(
+        evaluator.resolve(),
+        [("closure", "body")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=seen.append,
+    )
+    assert seen[0].latency_s >= 0
+
+
+def test_on_outcome_fires_for_a_rule_that_never_got_a_slot_within_the_budget(
+    monkeypatch, hooks_dir
+):
+    """A rule cancelled before the budget ran out still needs a trace record —
+    otherwise a timed-out rule is simply missing from the tuning data rather
+    than present and marked as unanswered."""
+
+    def hang(config, payload, timeout):
+        time.sleep(10)
+        return {"label": 1}
+
+    _configure(monkeypatch, COPE_EVALUATOR_TIMEOUT="0.2")
+    monkeypatch.setattr(evaluator, "_post", hang)
+    seen: list[evaluator.EvalOutcome] = []
+    evaluator.check(
+        evaluator.resolve(),
+        [("a", "body a"), ("b", "body b")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=seen.append,
+    )
+    assert {o.slug for o in seen} == {"a", "b"}
+    assert all(o.label is None and o.error for o in seen)
+
+
+def test_a_broken_on_outcome_sink_does_not_break_the_sweep(monkeypatch, transport, hooks_dir):
+    """A trace sink is a side channel with its own module (evaluator_trace.py)
+    to fail in; check() itself must never let a broken sink turn a working
+    evaluation into a failed one."""
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 1, "confidence": 0.9}
+
+    def broken_sink(outcome):
+        raise RuntimeError("boom")
+
+    matches, failures = evaluator.check(
+        evaluator.resolve(),
+        [("closure", "body")],
+        "Tool: Bash",
+        hooks_dir,
+        on_outcome=broken_sink,
+    )
+    assert [m.slug for m in matches] == ["closure"]
+    assert failures == []
+
+
+# ---------------------------------------------------------------------------
+# evaluator_trace.py: the durable input/rule/verdict tuple
+# ---------------------------------------------------------------------------
+
+
+def test_trace_resolve_is_none_when_unset():
+    assert evaluator_trace.resolve() is None
+
+
+def test_trace_resolve_reads_the_plain_variable(monkeypatch, tmp_path):
+    path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(path))
+    config = evaluator_trace.resolve()
+    assert config is not None
+    assert config.path == path
+
+
+def test_trace_resolve_reads_the_plugin_option_over_the_plain_variable(monkeypatch, tmp_path):
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(tmp_path / "ambient.jsonl"))
+    monkeypatch.setenv(
+        "CLAUDE_PLUGIN_OPTION_COPE_EVALUATOR_TRACE_PATH", str(tmp_path / "opt.jsonl")
+    )
+    config = evaluator_trace.resolve()
+    assert config is not None
+    assert config.path == tmp_path / "opt.jsonl"
+
+
+def test_sweep_temperature_is_cold_then_warm_for_the_same_session():
+    session_id = "sweep-temp-session"
+    assert evaluator_trace.sweep_temperature(session_id) == "cold"
+    assert evaluator_trace.sweep_temperature(session_id) == "warm"
+    assert evaluator_trace.sweep_temperature(session_id) == "warm"
+
+
+def test_sweep_temperature_is_unknown_for_an_empty_session_id():
+    assert evaluator_trace.sweep_temperature("") == "unknown"
+
+
+def test_sink_for_is_none_when_tracing_is_unconfigured(hooks_dir_with_axioms):
+    hooks, cwd = hooks_dir_with_axioms
+    ctx = _bash_ctx(hooks, cwd)
+    assert evaluator_trace.sink_for(None, ctx, evaluator.resolve() or object(), {}) is None
+
+
+def test_sink_for_writes_one_record_per_rule_including_clean_ones(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch, COPE_EVALUATOR_API_KEY="super-secret")
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+        "explanation": "why",
+    }
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(trace_path))
+
+    ctx = _bash_ctx(hooks, cwd, "git commit --no-verify -m x")
+    result = handlers.evaluate(ctx)
+    assert result is not None  # sanity: this call really did flag something
+
+    lines = trace_path.read_text(encoding="utf-8").splitlines()
+    live = rules.load(hooks.parent, cwd)
+    assert len(lines) == len(live), "one trace record per live rule, not only the flagged ones"
+    records = [json.loads(line) for line in lines]
+    labels = {r["label"] for r in records}
+    assert 1 in labels and 0 in labels, "both matches and clean verdicts must be traced"
+
+    matched = next(r for r in records if r["rule_slug"] == "halt-on-failure")
+    assert matched["label"] == 1
+    assert matched["confidence"] == 0.8
+    assert matched["reason"] == "why"
+    assert matched["rule_layer"] == 1
+    assert matched["rule_text"] == live["halt-on-failure"].body
+    assert matched["model"] == "test-model"
+    assert matched["protocol"] == "cope"
+    assert matched["concurrency"] == evaluator.MAX_CONCURRENCY
+    assert matched["session_id"] == "test-session"
+    assert matched["tool"] == "Bash"
+    assert "git commit --no-verify -m x" in matched["content"]
+    assert matched["sweep_temperature"] == "cold"
+
+    dump = json.dumps(records)
+    assert "super-secret" not in dump
+    assert "api_key" not in dump.lower()
+
+    sweep_ids = {r["sweep_id"] for r in records}
+    assert len(sweep_ids) == 1, "every rule in one tool call shares one sweep_id"
+
+
+def test_sink_for_appends_across_sweeps_never_rewriting(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 0, "confidence": 0.1}
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(trace_path))
+
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+    first_count = len(trace_path.read_text(encoding="utf-8").splitlines())
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+    second_count = len(trace_path.read_text(encoding="utf-8").splitlines())
+
+    assert second_count == first_count * 2, (
+        "the second sweep appended, it did not replace the first"
+    )
+
+    records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
+    temperatures = {r["sweep_id"]: r["sweep_temperature"] for r in records}
+    assert set(temperatures.values()) == {"cold", "warm"}, "first sweep cold, second sweep warm"
+
+
+def test_trace_destination_that_cannot_be_written_does_not_break_the_tool_call(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    """A trace failure must never surface as a failed evaluation — the tool
+    call this sweep judges must proceed exactly as it would with no tracing
+    configured at all."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+    }
+    # A file where the trace's parent directory needs to be: mkdir(parents=True)
+    # on this path must fail, which is exactly what an unwritable destination
+    # looks like from evaluator_trace.py's side.
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(blocker / "sub" / "trace.jsonl"))
+
+    result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
+    assert result is not None
+    assert "halt-on-failure" in result.inject_text
+
+
+def test_no_evaluator_configured_means_no_trace_is_attempted(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    """Tracing rides on evaluate() already having a configured evaluator; an
+    unconfigured session must not write a trace file at all, mirroring the
+    no-network-call guarantee for the evaluator itself."""
+    hooks, cwd = hooks_dir_with_axioms
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(trace_path))
+    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    assert not trace_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# evaluator_otel_trace.py: the same records, as OTel spans in OTLP JSON
+# ---------------------------------------------------------------------------
+
+
+def _otlp_spans(path) -> list[dict]:
+    """Every span out of every ``resourceSpans``/``scopeSpans`` entry across
+    every appended OTLP JSON line, flattened for easy assertion."""
+    spans = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        record = json.loads(line)
+        for resource_spans in record.get("resourceSpans", []):
+            for scope_spans in resource_spans.get("scopeSpans", []):
+                spans.extend(scope_spans.get("spans", []))
+    return spans
+
+
+def _span_attrs(span: dict) -> dict:
+    """OTLP JSON's ``AnyValue`` is tagged by type (``stringValue``,
+    ``doubleValue``, ``intValue``, ``boolValue``). ``intValue`` is itself a
+    JSON *string* in the wire format — the OTLP JSON mapping avoids the
+    precision loss a 64-bit int would take as a bare JSON number — so it is
+    decoded back to ``int`` here rather than compared as a string."""
+    out = {}
+    for attr in span.get("attributes", []):
+        value = attr["value"]
+        if "intValue" in value:
+            out[attr["key"]] = int(value["intValue"])
+        else:
+            out[attr["key"]] = next(iter(value.values()))
+    return out
+
+
+def test_otel_trace_resolve_is_none_when_unset():
+    assert evaluator_otel_trace.resolve() is None
+
+
+def test_otel_trace_resolve_reads_the_plain_variable(monkeypatch, tmp_path):
+    path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(path))
+    config = evaluator_otel_trace.resolve()
+    assert config is not None
+    assert config.path == path
+
+
+def test_otel_trace_resolve_reads_the_plugin_option_over_the_plain_variable(monkeypatch, tmp_path):
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(tmp_path / "ambient.jsonl"))
+    monkeypatch.setenv(
+        "CLAUDE_PLUGIN_OPTION_COPE_EVALUATOR_OTEL_TRACE_PATH", str(tmp_path / "opt.jsonl")
+    )
+    config = evaluator_otel_trace.resolve()
+    assert config is not None
+    assert config.path == tmp_path / "opt.jsonl"
+
+
+def test_otel_sink_for_is_none_when_tracing_is_unconfigured(hooks_dir_with_axioms):
+    hooks, cwd = hooks_dir_with_axioms
+    ctx = _bash_ctx(hooks, cwd)
+    assert evaluator_otel_trace.sink_for(None, ctx, evaluator.resolve() or object(), {}) is None
+
+
+def test_otel_sink_for_writes_one_span_per_rule_including_clean_ones(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch, COPE_EVALUATOR_API_KEY="super-secret")
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+        "explanation": "why",
+    }
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+
+    ctx = _bash_ctx(hooks, cwd, "git commit --no-verify -m x")
+    result = handlers.evaluate(ctx)
+    assert result is not None  # sanity: this call really did flag something
+
+    spans = _otlp_spans(trace_path)
+    live = rules.load(hooks.parent, cwd)
+    assert len(spans) == len(live), "one span per live rule, not only the flagged ones"
+
+    by_slug = {_span_attrs(s)["rule_slug"]: (s, _span_attrs(s)) for s in spans}
+    span, attrs = by_slug["halt-on-failure"]
+    assert attrs["label"] == 1
+    assert attrs["confidence"] == 0.8
+    assert attrs["reason"] == "why"
+    assert attrs["rule_layer"] == 1
+    assert attrs["rule_text"] == live["halt-on-failure"].body
+    assert attrs["model"] == "test-model"
+    assert attrs["protocol"] == "cope"
+    assert attrs["concurrency"] == evaluator.MAX_CONCURRENCY
+    assert attrs["session_id"] == "test-session"
+    assert attrs["tool"] == "Bash"
+    assert "git commit --no-verify -m x" in attrs["content"]
+    assert attrs["sweep_temperature"] == "cold"
+    assert "latency_ms" in attrs
+    assert int(span["endTimeUnixNano"]) >= int(span["startTimeUnixNano"])
+    assert span["status"]["code"] == 1  # STATUS_CODE_OK
+
+    labels = {a["label"] for _, a in by_slug.values()}
+    assert 1 in labels and 0 in labels, "both matches and clean verdicts must be traced"
+
+    dump = json.dumps(spans)
+    assert "super-secret" not in dump
+    assert "api_key" not in dump.lower()
+
+    sweep_ids = {a["sweep_id"] for _, a in by_slug.values()}
+    assert len(sweep_ids) == 1, "every rule in one tool call shares one sweep_id"
+
+
+def test_otel_sink_for_sets_error_status_for_a_failed_rule(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    """``error`` maps onto the span's own status, not only an attribute —
+    the OTel-native way a reader would filter for failed evaluations."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    ctx = _bash_ctx(hooks, cwd)
+    loaded = rules.load(hooks.parent, cwd)
+    sink = evaluator_otel_trace.sink_for(
+        evaluator_otel_trace.resolve(), ctx, evaluator.resolve(), loaded
+    )
+    outcome = evaluator.EvalOutcome(
+        slug=next(iter(loaded)),
+        label=None,
+        confidence=None,
+        reason=None,
+        error="transport error",
+        latency_s=0.01,
+    )
+    sink(outcome)
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    assert spans[0]["status"]["code"] == 2  # STATUS_CODE_ERROR
+    assert _span_attrs(spans[0])["error"] == "transport error"
+
+
+def test_extract_parent_context_is_none_without_traceparent(monkeypatch):
+    """No ``TRACEPARENT`` in the hook subprocess's own environment — the
+    common case, and every case before Claude Code's native-export contract
+    is fully populated — means a span starts as a fresh root, exactly as
+    before this existed."""
+    monkeypatch.delenv("TRACEPARENT", raising=False)
+    monkeypatch.delenv("TRACESTATE", raising=False)
+    assert evaluator_otel_trace._extract_parent_context() is None
+
+
+def test_extract_parent_context_is_none_for_an_unparseable_traceparent(monkeypatch):
+    monkeypatch.setenv("TRACEPARENT", "not-a-w3c-traceparent")
+    assert evaluator_otel_trace._extract_parent_context() is None
+
+
+def test_otel_span_nests_under_the_traceparent_claude_code_exported(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    """When Claude Code has exported a W3C trace context into this hook
+    subprocess's own environment (``TRACEPARENT``), every span this sink
+    emits is parented to it — real linkage to the session's own trace rather
+    than an orphaned root (specs/ARCHITECTURE.md, "Observability & OTEL
+    Tracing"; verified empirically against a real headless ``claude`` session
+    with a diagnostic hook)."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    monkeypatch.setenv("TRACEPARENT", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+    ctx = _bash_ctx(hooks, cwd)
+    loaded = rules.load(hooks.parent, cwd)
+    sink = evaluator_otel_trace.sink_for(
+        evaluator_otel_trace.resolve(), ctx, evaluator.resolve(), loaded
+    )
+    outcome = evaluator.EvalOutcome(
+        slug=next(iter(loaded)), label=0, confidence=0.1, reason=None, error=None, latency_s=0.01
+    )
+    sink(outcome)
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    assert spans[0]["traceId"] == "4bf92f3577b34da6a3ce929d0e0e4736"
+    assert spans[0]["parentSpanId"] == "00f067aa0ba902b7"
+
+
+def test_otel_span_is_a_fresh_root_when_no_traceparent_is_exported(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    """The degrade path: an unconfigured or absent native-export contract
+    must not error, and must not fabricate a parent — the span still gets
+    written, just as a root."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    monkeypatch.delenv("TRACEPARENT", raising=False)
+    ctx = _bash_ctx(hooks, cwd)
+    loaded = rules.load(hooks.parent, cwd)
+    sink = evaluator_otel_trace.sink_for(
+        evaluator_otel_trace.resolve(), ctx, evaluator.resolve(), loaded
+    )
+    outcome = evaluator.EvalOutcome(
+        slug=next(iter(loaded)), label=0, confidence=0.1, reason=None, error=None, latency_s=0.01
+    )
+    sink(outcome)
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    assert "parentSpanId" not in spans[0] or spans[0]["parentSpanId"] == ""
+
+
+def test_both_sinks_share_the_same_sweep_id(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    """``handlers.evaluate`` is the only caller that wires both sinks together
+    for one real tool call, and it must hand both the identical ``sweep_id`` —
+    otherwise the JSON Lines trace and the OTel spans for the same evaluation
+    carry two unrelated ids and cannot be joined directly."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 0, "confidence": 0.1}
+    json_path = tmp_path / "trace.jsonl"
+    otel_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(json_path))
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(otel_path))
+
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+
+    json_records = [json.loads(line) for line in json_path.read_text(encoding="utf-8").splitlines()]
+    otel_spans = _otlp_spans(otel_path)
+    json_sweep_ids = {r["sweep_id"] for r in json_records}
+    otel_sweep_ids = {_span_attrs(s)["sweep_id"] for s in otel_spans}
+    assert len(json_sweep_ids) == 1
+    assert json_sweep_ids == otel_sweep_ids, (
+        "the JSON Lines trace and the OTel spans must share one sweep_id for the same tool call"
+    )
+
+
+def test_both_trace_sinks_write_independently_when_both_configured(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    """The JSON Lines trace and the OTel trace are additive, not exclusive —
+    configuring both must not disable, replace, or interfere with either."""
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {"label": 0, "confidence": 0.1}
+    json_path = tmp_path / "trace.jsonl"
+    otel_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_TRACE_PATH", str(json_path))
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(otel_path))
+
+    handlers.evaluate(_bash_ctx(hooks, cwd, "git status"))
+
+    live = rules.load(hooks.parent, cwd)
+    json_lines = json_path.read_text(encoding="utf-8").splitlines()
+    assert len(json_lines) == len(live)
+    assert len(_otlp_spans(otel_path)) == len(live)
+
+
+def test_otel_trace_destination_that_cannot_be_written_does_not_break_the_tool_call(
+    monkeypatch, transport, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    _configure(monkeypatch)
+    transport.respond = lambda payload: {
+        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "confidence": 0.8,
+    }
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(blocker / "sub" / "trace.jsonl"))
+
+    result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
+    assert result is not None
+    assert "halt-on-failure" in result.inject_text
+
+
+def test_no_evaluator_configured_means_no_otel_span_is_attempted(
+    monkeypatch, hooks_dir_with_axioms, tmp_path
+):
+    hooks, cwd = hooks_dir_with_axioms
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    assert not trace_path.exists()
+
+
+# ---------------------------------------------------------------------------
 # handlers.py: what the agent actually sees
 # ---------------------------------------------------------------------------
 
@@ -739,7 +1348,7 @@ def hooks_dir_with_axioms(tmp_path):
     hooks = plugin_root / "hooks"
     hooks.mkdir(parents=True)
     shutil.copytree(_COPE_HOOKS / "messages", hooks / "messages")
-    shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
+    _copy_axioms(plugin_root / "axioms", live=True)
     project_cwd = tmp_path / "project"
     project_cwd.mkdir()
     return hooks, project_cwd
@@ -826,8 +1435,11 @@ def test_nothing_flagged_is_a_clean_no_op(hooks_dir_with_axioms, transport, monk
 
 
 def test_evaluate_fails_open_when_the_evaluator_errors(hooks_dir_with_axioms, monkeypatch, capsys):
-    """A broken endpoint must cost the agent nothing but a stderr line. It must
-    never manufacture an advisory, and it must never raise into dispatch."""
+    """A broken endpoint must never manufacture a rule verdict and must never
+    raise into dispatch. It costs the agent a stderr line on every occurrence,
+    and — the first time in the session — a one-time outage notice on the
+    wire (`evaluator.claim_outage_once`); see the block comment above these
+    tests for the current contract."""
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
 
@@ -835,7 +1447,10 @@ def test_evaluate_fails_open_when_the_evaluator_errors(hooks_dir_with_axioms, mo
         raise OSError("connection refused")
 
     monkeypatch.setattr(evaluator, "_post", explode)
-    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    result = handlers.evaluate(_bash_ctx(hooks, cwd))
+    assert result is not None  # first outage this session: the one-time notice
+    assert result.kind is Kind.ADVISE
+    assert "rule evaluator is not answering" in result.inject_text
     assert "connection refused" in capsys.readouterr().err
 
 
@@ -843,7 +1458,10 @@ def test_evaluate_fails_open_on_a_malformed_response(hooks_dir_with_axioms, tran
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
     transport.respond = lambda payload: {"nothing": "useful"}
-    assert handlers.evaluate(_bash_ctx(hooks, cwd)) is None
+    result = handlers.evaluate(_bash_ctx(hooks, cwd))
+    assert result is not None  # first outage this session: the one-time notice
+    assert result.kind is Kind.ADVISE
+    assert "rule evaluator is not answering" in result.inject_text
 
 
 def test_evaluate_says_nothing_when_there_is_no_tool_call(
@@ -1021,14 +1639,19 @@ def test_the_verdict_message_file_carries_both_placeholders():
 
 
 # ---------------------------------------------------------------------------
-# Result shape: cope is advisory-only, and cannot reach the blocking outcome
+# Result shape: the rule check may never refuse a tool call
 # ---------------------------------------------------------------------------
 #
-# The shared runtime does carry one blocking outcome — a refusal, reserved for
-# structural impossibility and used by exactly one hook, aops's headless
-# interactive-prompt check (lib/hooks/result.py). cope is not that hook and
-# never will be: rule enforcement is advisory, permanently. So the guarantee is
-# asserted about cope rather than about the type.
+# The shared runtime carries three dispositions (lib/hooks/dispatch.py `Kind`).
+# `REFUSE` denies a tool call outright and is reserved for structural
+# impossibility — the session as configured cannot carry the call out. A rule
+# verdict from a small model is never that, permanently, so the guarantee is
+# asserted about this plugin's source rather than about the type.
+#
+# `BLOCK` is a different disposition and is deliberately NOT banned here: it
+# withholds a *stop*, not a tool call, and `rule_check` legitimately returns one
+# (plugins/rbg/hooks/handlers.py). What may never happen is a rule verdict
+# denying the call it was asked to judge.
 
 
 def test_warn_never_produces_a_refusal():
@@ -1036,30 +1659,32 @@ def test_warn_never_produces_a_refusal():
     assert {f.name for f in dataclasses.fields(result)} == {
         "inject_text",
         "user_text",
-        "is_refusal",
+        "kind",
     }
-    assert result.is_refusal is False
+    # `==`, not `is`: dispatch.py is loaded twice in a live hook, so a member
+    # built handler-side is never identical to the renderer's. See `Kind`.
+    assert result.kind == Kind.ADVISE
 
 
-# Every way cope's own source could reach the blocking outcome. `refuse` is the
-# obvious one; the other two are not, and matter more.
+# Every way this plugin's own source could reach the refusal outcome. `refuse`
+# is the obvious one; the other two are not, and matter more.
 #
-# `refuse` is NOT a substring of `is_refusal` — check it: "refuse" vs
-# "refusal", the fifth letter differs. So a grep for `refuse` alone sails past
-# `Result("blocked", is_refusal=True)`, which lib/hooks/clients.py renders as
-# `permissionDecision: deny` exactly like a refuse() call would. Constructing a
-# `Result` positionally, `Result(text, None, True)`, evades both. Banning
-# construction is what actually closes it: handlers.py legitimately imports
-# `Result` for its return annotation, and `Result | None` contains no `(`.
-_BLOCKING_TOKENS = ("refuse", "is_refusal", "Result(")
+# `refuse` (lowercase) does not match `Kind.REFUSE`, so a grep for the helper
+# alone sails past `Result("blocked", None, Kind.REFUSE)`, which dispatch.py
+# renders as `permissionDecision: deny` exactly like a refuse() call would.
+# Constructing a `Result` positionally evades both. Banning construction is what
+# actually closes it: handlers.py legitimately imports `Result` for its return
+# annotation, and `Result | None` contains no `(`.
+_BLOCKING_TOKENS = ("refuse", "Kind.REFUSE", "Result(")
 
 
 def test_cope_source_can_never_reach_the_blocking_outcome():
-    """cope may only ever call warn(). Checked at the source, so a future
-    handler cannot acquire a blocking path without this failing — a payload
-    that happens not to trigger one would not notice.
+    """The rule check may only ever advise or withhold a stop — never deny the
+    tool call. Checked at the source, so a future handler cannot acquire a
+    refusal path without this failing; a payload that happens not to trigger one
+    would not notice.
 
-    An LLM verdict is exactly the kind of thing that grows a "block on high
+    An LLM verdict is exactly the kind of thing that grows a "deny on high
     confidence" branch later. This is the test that has to fail when it does.
     """
     offenders = [
@@ -1078,8 +1703,8 @@ def test_the_blocking_token_list_would_actually_catch_a_violation(tmp_path):
     spelling that was checked."""
     for source in (
         "return refuse('no')",
-        "return Result('no', None, True)",
-        "return Result('no', is_refusal=True)",
+        "return Result('no', None, Kind.REFUSE)",
+        "return Result('no', kind=Kind.REFUSE)",
     ):
         assert any(token in source for token in _BLOCKING_TOKENS), (
             f"a handler could ship {source!r} without the guard noticing"
@@ -1114,7 +1739,7 @@ def test_every_cope_handler_returns_an_advisory_or_nothing(
             result = handler(ctx)
             if result is None:
                 continue
-            assert result.is_refusal is False, f"{handler.__name__} refused on {event}"
+            assert result.kind != Kind.REFUSE, f"{handler.__name__} refused on {event}"
             fired += 1
     assert fired > 0, "no cope handler produced a result; the assertion checked nothing"
 
@@ -1162,7 +1787,7 @@ def stub_evaluator():
 @pytest.fixture()
 def built_cope_plugin(tmp_path):
     """Assembles the plugin the way build stage 1 would: lib/hooks/*.py and
-    plugins/cope/hooks/*.py copied into one hooks/ dir, plus a sibling
+    plugins/rbg/hooks/*.py copied into one hooks/ dir, plus a sibling
     axioms/ dir carrying lib/axioms/ verbatim — index docs included, because
     that is what ships, and a fixture that filtered them would hide whether
     the loader distinguishes a rule from a reference doc."""
@@ -1174,10 +1799,14 @@ def built_cope_plugin(tmp_path):
     for py_file in _COPE_HOOKS.glob("*.py"):
         shutil.copy2(py_file, hooks / py_file.name)
     shutil.copytree(_COPE_HOOKS / "messages", hooks / "messages")
-    # The shared runtime ships wording of its own, merged into the same
-    # messages/ directory at build time (build/shared.py).
-    shutil.copytree(_LIB_HOOKS / "messages", hooks / "messages", dirs_exist_ok=True)
-    shutil.copytree(_LIB_AXIOMS, plugin_root / "axioms")
+    # Any wording the shared runtime ships of its own is merged into the same
+    # messages/ directory at build time (build/shared.py, `from = "hooks"`).
+    # It currently ships none — the condition tracks that rather than assuming
+    # it, so re-introducing shared wording does not silently bypass the build
+    # step this fixture is standing in for.
+    if (_LIB_HOOKS / "messages").is_dir():
+        shutil.copytree(_LIB_HOOKS / "messages", hooks / "messages", dirs_exist_ok=True)
+    _copy_axioms(plugin_root / "axioms", live=True)
     return hooks
 
 
@@ -1305,18 +1934,33 @@ def test_dispatch_end_to_end_unconfigured_is_a_silent_no_op(built_cope_plugin, p
     assert result.stderr.strip() == ""
 
 
+# A misconfiguration (evaluator.DEGRADED_CONFIG, via `_note`) is reported on
+# stderr only, on every occurrence — see plugins/rbg/hooks/evaluator.py's
+# module docstring. An unreachable evaluator (evaluator.DEGRADED_EVALUATOR) is
+# different: it can recur on every tool call for a session's whole duration,
+# so it additionally gets one hook-response notice per session
+# (`evaluator.claim_outage_once`, plugin-local — not the modular
+# lib/hooks/degraded.py that commit 89733bf8 removed repo-wide; this is a
+# smaller, single-plugin mechanism built for aops_b62f583d). The assertions
+# below read both channels accordingly: stderr on every call, the wire only
+# on the first call of a session.
+
+
 def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin, project_cwd):
     """A configured endpoint that is not listening must not take the session
-    down with it: exit 0, no verdict, no permission decision — and the person
-    whose rules stopped being checked is told, once, that they stopped."""
+    down with it: exit 0, no rule verdict — and the failure named on stderr,
+    naming the rules that went unchecked. It is the first call of this
+    session, so the one-time outage notice is on the wire too; that is not a
+    rule verdict either, and it carries no `decision`/`permissionDecision`."""
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
     raw = {**_PRETOOLUSE, "session_id": "unreachable-evaluator", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
-    assert "cope:" in result.stderr
+    assert "rule evaluator did not answer" in result.stderr
+    assert "not being checked" in result.stderr
 
     out = json.loads(result.stdout)
-    assert "rule evaluator did not answer" in out["systemMessage"]
+    assert "rule evaluator is not answering" in out["hookSpecificOutput"]["additionalContext"]
     assert "decision" not in out
     assert "permissionDecision" not in out["hookSpecificOutput"]
 
@@ -1324,20 +1968,24 @@ def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin,
 def test_dispatch_end_to_end_partial_configuration_says_so_and_stands_down(
     built_cope_plugin, project_cwd
 ):
+    """Half a configuration is a mistake someone made, and the report has to
+    name the variable they still have to set — not just that something is
+    wrong."""
     env = _dispatch_env(COPE_EVALUATOR_URL=_DEAD_URL)
     raw = {**_PRETOOLUSE, "session_id": "partial-configuration", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     assert result.returncode == 0
     assert "COPE_EVALUATOR_MODEL" in result.stderr
-    assert "COPE_EVALUATOR_MODEL" in json.loads(result.stdout)["systemMessage"]
+    assert "not evaluating" in result.stderr
+    assert result.stdout.strip() == ""
 
 
-def test_dispatch_end_to_end_tells_the_user_a_rule_file_could_not_be_read(
+def test_dispatch_end_to_end_reports_a_rule_file_that_could_not_be_read(
     built_cope_plugin, stub_evaluator, project_cwd
 ):
-    """The degradation the plugin's own README used to claim was visible. A
-    rule that cannot be read is a rule that is not being enforced, and the only
-    person who can fix the file is the one the response has to reach."""
+    """A rule that cannot be read is a rule that is not being enforced. The
+    report has to name the file — the only person who can fix it needs to know
+    which one — and the rest of the rule set has to keep working."""
     rules_dir = project_cwd / ".agents" / "rules"
     rules_dir.mkdir(parents=True)
     (rules_dir / "unreadable.md").mkdir()  # a rule file that is not a file
@@ -1353,22 +2001,25 @@ def test_dispatch_end_to_end_tells_the_user_a_rule_file_could_not_be_read(
     )
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
 
+    assert "unreadable.md" in result.stderr
+    assert "not being checked" in result.stderr
+    assert "IsADirectoryError" in result.stderr
+
+    # The flagged rule is still delivered — one unreadable file displaces
+    # nothing else, which is the fail-open guarantee this case exists for.
     out = json.loads(result.stdout)
-    assert "unreadable.md" in out["systemMessage"]
-    assert "not being checked" in out["systemMessage"]
-    assert "IsADirectoryError" in out["hookSpecificOutput"]["additionalContext"]
+    assert "halt-on-failure" in out["hookSpecificOutput"]["additionalContext"]
     assert "decision" not in out
     assert "permissionDecision" not in out["hookSpecificOutput"]
-    # the flagged rule is still delivered — a fault report displaces nothing
-    assert "halt-on-failure" in out["hookSpecificOutput"]["additionalContext"]
 
 
-def test_dispatch_end_to_end_tells_the_user_a_rule_file_is_never_evaluated(
+def test_dispatch_end_to_end_reports_a_rule_file_that_is_never_evaluated(
     built_cope_plugin, stub_evaluator, project_cwd
 ):
     """A project rule with no `trigger: always_on` marker is read by agents and
     never sent to the evaluator. Its author has no way to tell from inside the
-    session, which is how a rule quietly stops being enforced."""
+    session, which is how a rule quietly stops being enforced — so the report
+    names both the file and the frontmatter line that would fix it."""
     rules_dir = project_cwd / ".agents" / "rules"
     rules_dir.mkdir(parents=True)
     (rules_dir / "costly-ops-approval.md").write_text("---\ndescription: no marker\n---\n\nAsk.\n")
@@ -1384,25 +2035,31 @@ def test_dispatch_end_to_end_tells_the_user_a_rule_file_is_never_evaluated(
     )
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
 
-    system_message = json.loads(result.stdout)["systemMessage"]
-    assert "costly-ops-approval.md" in system_message
-    assert "trigger: always_on" in system_message
+    assert "costly-ops-approval.md" in result.stderr
+    assert "trigger: always_on" in result.stderr
 
 
-def test_dispatch_end_to_end_says_the_same_thing_once_not_once_per_tool_call(
+def test_dispatch_end_to_end_reports_the_same_fault_on_every_tool_call(
     built_cope_plugin, project_cwd
 ):
-    """cope's hook fires on every tool call. A notice repeated per call is one
-    the user stops reading, so the second call is silent while the log is
-    not."""
+    """One hook invocation is one process, so stderr carries the same fault
+    on every occurrence — never rate-limited or dropped, because the log is
+    not the channel a person is watching. The hook-response channel is
+    different on purpose: it is rate-limited to once per session
+    (`evaluator.claim_outage_once`), so the first call gets the notice and the
+    second — same session, same recurring fault — gets none. Pinned both
+    calls so a reader can see which contract each channel follows."""
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
-    raw = {**_PRETOOLUSE, "session_id": "repeat-suppressed", "cwd": str(project_cwd)}
+    raw = {**_PRETOOLUSE, "session_id": "repeated-fault", "cwd": str(project_cwd)}
     first = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
     second = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
 
-    assert "systemMessage" in json.loads(first.stdout)
+    assert "rule evaluator did not answer" in first.stderr
+    assert "rule evaluator did not answer" in second.stderr
+    # First call this session: the one-time notice is on the wire.
+    assert "rule evaluator is not answering" in first.stdout
+    # Second call, same session: already announced, so nothing on the wire.
     assert second.stdout.strip() == ""
-    assert "cope:" in second.stderr
 
 
 def test_dispatch_end_to_end_an_unconfigured_session_is_never_called_degraded(

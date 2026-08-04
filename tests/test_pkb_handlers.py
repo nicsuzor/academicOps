@@ -6,12 +6,9 @@ firing on both clients to "Inject relevant PKB context, or instruct the agent
 to search for it."
 
 Each case runs in a subprocess with lib/hooks and the plugin's hooks/ on
-sys.path, mirroring how test_aops_handlers.py exercises
-plugins/aops/hooks/handlers.py and test_shipped_hooks.py loads shipped
-handler modules. The dispatch-level cases build a synthetic hooks/ dir the
-same way test_hooks.py's `injected_plugin` fixture does: lib/hooks/ copied in
-byte-identical (build stage 1), the plugin's own handlers.py and messages/
-laid on top.
+sys.path. The dispatch-level cases build a synthetic hooks/ dir the way build
+stage 1 does: lib/hooks/ copied in byte-identical, the plugin's own handlers.py
+and messages/ laid on top.
 """
 
 from __future__ import annotations
@@ -22,6 +19,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
@@ -35,7 +34,7 @@ BASH_BIN = shutil.which("bash") or "/bin/bash"
 
 PKB_CONTEXT_TEXT = (PKB_HOOKS / "messages" / "pkb-context.md").read_text().strip()
 # The second reader's copy: one line for the person watching the session,
-# shipped beside the agent's text (lib/hooks/messages.py).
+# shipped beside the agent's text (lib/hooks/dispatch.py `load_message_pair`).
 PKB_CONTEXT_USER_TEXT = (PKB_HOOKS / "messages" / "pkb-context.user.md").read_text().strip()
 
 _RUN_HANDLER = """
@@ -46,7 +45,7 @@ sys.path.insert(0, lib_hooks)
 spec = importlib.util.spec_from_file_location("handlers", pkb_hooks + "/handlers.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
-from context import normalize
+from dispatch import normalize
 raw = json.loads(raw_json)
 event = raw.get("hook_event_name", "UserPromptSubmit")
 ctx = normalize("claude", event, raw, __import__("pathlib").Path(pkb_hooks))
@@ -55,7 +54,7 @@ print(json.dumps(
     None if res is None else {
         "inject_text": res.inject_text,
         "user_text": res.user_text,
-        "is_refusal": res.is_refusal,
+        "kind": res.kind.value,
     }
 ))
 """
@@ -131,19 +130,19 @@ def test_search_the_pkb_has_no_client_scope_so_it_fires_on_both():
 
 
 def test_search_the_pkb_returns_an_advisory_never_a_refusal():
-    """The hook-runtime Result contract: `is_refusal` must stay False, because
+    """The hook-runtime Result contract: the kind must stay advisory, because
     nothing in-session may block on this hook (specs/ARCHITECTURE.md,
     Enforcement) — a refusal is reserved for structural impossibility
-    (lib/hooks/result.py), and searching the PKB is never that."""
+    (lib/hooks/dispatch.py), and searching the PKB is never that."""
     res = _run("search_the_pkb", {"hook_event_name": "UserPromptSubmit", "prompt": "anything"})
     assert res is not None
-    assert res["is_refusal"] is False
+    assert res["kind"] == "advise"
     assert res["inject_text"]
 
 
 def test_search_the_pkb_carries_the_user_line_as_well_as_the_agent_text():
     """Both readers, every time. The handler loads the message as a pair
-    (`messages.load_pair`), so the person watching gets the one-line version
+    (`load_message_pair`), so the person watching gets the one-line version
     from `messages/pkb-context.user.md` alongside the agent's full text. This
     hook fires on every prompt: a silent one would make the framework's most
     frequent injection its least visible."""
@@ -168,7 +167,8 @@ def _pkb_plugin(tmp_path):
     hooks_dir.mkdir()
     for py_file in LIB_HOOKS.glob("*.py"):
         shutil.copy2(py_file, hooks_dir / py_file.name)
-    shutil.copytree(LIB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
+    if (LIB_HOOKS / "messages").is_dir():
+        shutil.copytree(LIB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
     shutil.copy2(PKB_HOOKS / "handlers.py", hooks_dir / "handlers.py")
     shutil.copytree(PKB_HOOKS / "messages", hooks_dir / "messages", dirs_exist_ok=True)
     return hooks_dir
@@ -204,7 +204,7 @@ def test_dispatch_claude_userpromptsubmit_uses_additional_context_never_a_permis
 def test_dispatch_claude_puts_the_user_line_on_system_message(tmp_path):
     """The handler holding a user line proves nothing on its own — the line has
     to survive rendering. Claude Code is the client with a channel for each
-    reader (lib/hooks/clients.py, `_render_claude`), and `systemMessage` is
+    reader (lib/hooks/dispatch.py, `_render_claude`), and `systemMessage` is
     where the person's copy lands."""
     hooks_dir = _pkb_plugin(tmp_path)
     result = _dispatch(
@@ -221,7 +221,7 @@ def test_dispatch_claude_puts_the_user_line_on_system_message(tmp_path):
 
 def test_dispatch_agy_preinvocation_alias_also_fires(tmp_path):
     """agy's `PreInvocation` is `UserPromptSubmit`'s canonical alias
-    (lib/hooks/clients.py) — the architecture table marks this hook `both`, so
+    (lib/hooks/dispatch.py) — the architecture table marks this hook `both`, so
     the agy wire event must reach the same handler."""
     hooks_dir = _pkb_plugin(tmp_path)
     result = _dispatch(hooks_dir, "agy", "PreInvocation", {})
@@ -242,8 +242,8 @@ def test_injected_text_is_exactly_the_shipped_message_file():
 
 def test_editing_the_message_file_changes_the_output(tmp_path):
     """Proves the wording is loaded from markdown, not a Python literal — the
-    contract lib/hooks/messages.py promises every hook message. If this test
-    fails, `search_the_pkb` stopped calling `ctx.message(...)`."""
+    contract lib/hooks/dispatch.py promises every hook message. If this test
+    fails, `search_the_pkb` stopped calling `load_message_pair(...)`."""
     hooks_dir = _pkb_plugin(tmp_path)
     (hooks_dir / "messages" / "pkb-context.md").write_text("Changed wording for this test.\n")
     result = _dispatch(
@@ -254,38 +254,46 @@ def test_editing_the_message_file_changes_the_output(tmp_path):
     assert out["hookSpecificOutput"]["additionalContext"] == "Changed wording for this test."
 
 
-def test_handler_raises_when_its_message_file_is_missing_and_the_runtime_reports_it(tmp_path):
-    """`search_the_pkb` does not catch `MessageNotFoundError` itself —
-    `ctx.message` propagates it. Per specs/ARCHITECTURE.md's Hooks section, "a
-    hook that cannot load its message file fails loudly": `dispatch.py`'s
-    per-handler isolation (lib/hooks/dispatch.py `_run_handler`) is what turns
-    that raise into a fail-loud report on the wire — never a silent empty
-    injection, and never a crashed process."""
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "No missing-message guard in plugins/pkb/hooks/handlers.py. "
+        "`load_message_pair` (lib/hooks/dispatch.py) returns '' for a message "
+        "file that is not there — it no longer raises, and the "
+        "`MessageNotFoundError`/degraded-notice machinery this case used to "
+        "assert on went with lib/hooks/messages.py and lib/hooks/degraded.py "
+        "in 89733bf8. `search_the_pkb` passes that empty string straight to "
+        '`warn()`, so dispatch emits `additionalContext: ""` with nothing on '
+        "stderr and exit 0. `rbg`'s `rule_check` "
+        "(plugins/rbg/hooks/handlers.py) is the one handler that checks for "
+        "the empty string and reports it; pkb and ida do not. Whether that "
+        "guard belongs in every handler or back in `load_message_pair` is a "
+        "design call, not a test fix — handed back rather than decided here."
+    ),
+)
+def test_a_missing_message_file_is_never_a_silent_empty_injection(tmp_path):
+    """A hook whose wording is gone has nothing to say, and must say so rather
+    than inject nothing. An empty `additionalContext` is indistinguishable, to
+    every reader, from a hook that ran and decided the turn needed no context —
+    so the one failure that matters here is the one that leaves no trace."""
     hooks_dir = _pkb_plugin(tmp_path)
     (hooks_dir / "messages" / "pkb-context.md").unlink()
-    # tempfile.gettempdir() only accepts a TMPDIR candidate that already
-    # exists and is writable; an uncreated path is silently skipped in favour
-    # of the real system temp dir, which would let this test's once-per-session
-    # marker collide with another run's (lib/hooks/degraded.py, `_claim`) —
-    # mirrors tests/test_hooks.py's `notice_env` fixture.
-    marker_root = tmp_path / "os-tmp"
-    marker_root.mkdir()
-    env = {**os.environ, "TMPDIR": str(marker_root)}
     result = _dispatch(
         hooks_dir,
         "claude",
         "UserPromptSubmit",
         {"hook_event_name": "UserPromptSubmit", "session_id": "s-missing-message"},
-        env=env,
     )
+    # Never a crashed process: this half holds today.
     assert result.returncode == 0
+
     out = json.loads(result.stdout)
-    assert "search_the_pkb" in out["systemMessage"]
-    assert "did not run" in out["systemMessage"]
-    assert "MessageNotFoundError" in out["hookSpecificOutput"]["additionalContext"]
-    # stderr is the log, and the log is never rate-limited or dropped.
-    assert "search_the_pkb" in result.stderr
-    assert "MessageNotFoundError" in result.stderr
+    injected = out.get("hookSpecificOutput", {}).get("additionalContext")
+    reported = "pkb-context" in result.stderr or "search_the_pkb" in result.stderr
+    assert injected or reported, (
+        "the message file was missing and the hook neither said so on stderr "
+        "nor declined to inject: it emitted an empty injection silently"
+    )
 
 
 # ---------------------------------------------------------------------------

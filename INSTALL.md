@@ -9,14 +9,13 @@
 
 ```bash
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install aops@academicOps
-claude plugin install aops-ida@academicOps
-claude plugin install aops-pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
+claude plugin install ida@academicOps
+claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
 
-`aops-cope`, `aops-tools`, and `aops-ts` install the same way. `--config` is
+`rbg`, `tools`, `ts`, and `aops-debug` install the same way. `--config` is
 valid only against the plugin that declares the key; `pkb_mcp_url` belongs to
-`aops-pkb` alone.
+`pkb` alone.
 
 Nothing has a default. Set the environment variables each plugin needs before
 first use — the full list is in [`README.md`](README.md#configure), and each
@@ -39,7 +38,7 @@ activates pre-commit.
 
 ## Polecat
 
-Polecat is the containerised worker runner, shipped inside the `aops` plugin. It
+Polecat is the containerised worker runner, shipped inside the `ida` plugin. It
 needs Docker, a `polecat.yaml` project registry, and the environment listed under
 [Polecat containers](README.md#polecat-containers-aops).
 

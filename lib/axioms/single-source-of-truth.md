@@ -1,6 +1,6 @@
 ---
 description: Exactly one authoritative copy of every fact, rule, or artifact; everything else points to it.
-trigger: always_on
+trigger: off
 ---
 
 ## Single Source of Truth — no parallel copies

@@ -1,70 +1,58 @@
 ---
 name: dogfood
-type: skill
-category: meta
-description: Delegated instruction testing — write instructions, commission contextless execution, observe friction, iterate, review quality, codify.
-triggers:
-  - "dogfood"
-  - "test these instructions"
-  - "instruction testing"
-  - "delegated execution test"
-modifies_files: true
-needs_task: true
-mode: execution
-domain:
-  - meta
-  - framework
-allowed-tools: Agent, Read, Grep, Glob, Bash, Edit, Write, Skill
-model: opus
-version: 0.1.0
-permalink: skills-dogfood
+description: Standing experiment protocol for the academicOps project — every piece of real work is also evidence about the framework. Use when starting framework work of any type, testing instructions blind, trialling a runtime mechanism, or reviewing how well the framework served a task just completed.
 ---
 
-# Delegated Instruction Testing Guidelines
+# Dogfood — learn how the framework performs by using it
 
-Test whether a set of instructions produces correct, complete, and verified outcomes when executed by a contextless agent. Do not perform the work yourself.
+## Orientation (read this so nobody has to explain it to you)
 
-## Core Directives
+academicOps exists so its user can **delegate execution without delegating judgment**. Its three goals: academic quality, strategic planning, ADHD accommodation. Its standing constraint: agent harnesses get smarter every day, so the framework must get _simpler_ over time — we do not patch agent behaviour, we evolve _processes_ (when skills fire, what contracts bind handoffs). Anything that reads like a crutch for a current-generation failure mode is a candidate for deletion, not refinement.
 
-### Phase 0: Verification & Data Landscape Mapping
+Because of this, **every piece of real work done with the framework is also an experiment on the framework**. This skill defines how that evidence gets captured and how it becomes change. You are always in exactly one mode below; know which.
 
-Before writing instructions or propagating subagent results:
+## The loop
 
-- **Verify verdicts**: Use `/verify` by citation to evaluate the subagent's actual output (freshness, completeness, limitations) against the original brief. Do not blindly accept or relay its self-reported status.
-- **Sample data sources**: Open and read sample files directly. Do not assume data formats or presence (e.g. verify if a file contains input vs. output).
-- **Map data channels**: Understand how data flows between main agents, subagents, and hooks/logs. Verify the exact delivery mechanism (e.g. tool result vs. system message).
-- **Glob safety**: Avoid globbing large directories (10K+ files) with commands like `ls *.md` (which fail silently). Use targeted list/find queries (`find` or `ls | head`).
+work → observe friction → **record evidence (never fix inline)** → detached review checks recurrence → change at the cheapest layer → re-test blind.
 
-### Phase 1: Research and Draft
+## Modes — pick by what you are starting
 
-- Write self-contained instructions detailing objectives, exact data paths, sampling parameters, expected output format, and saving locations.
-- Work directly in the target skill file for mature instructions. Avoid leaving stray scratch files in the repo.
-- Enforce `/craft` author mode review to check for shallow-execution vulnerabilities before delegating.
+**1. live-trial** (default — any real task).
+Do the work normally. When the framework helps or hurts — an instruction that misled you, a gate that fired uselessly, a contract that saved you, context you needed but couldn't find — file an evidence record (below) and keep working. Do not stop to fix the framework; that contaminates both the work and the evidence.
 
-### Phase 2: Commission Execution
+**2. instruction-test** (blind delegated execution — testing a skill, workflow, or task template).
+Give a contextless agent the instruction under test and the task _only_ — no coaching, no fixes mid-run; redirect a running agent rather than restarting it. Before reading the output, write down your hypothesis of where it will fail. Score the outcome against the instruction's own acceptance criteria, then have an independent agent score from scratch without seeing your read. If you edit the instruction, re-run blind: **≥2 runs per condition**, or you are measuring agent variance, not your edit.
 
-- **Scale incrementally**: Start with a small batch size (e.g. N=2 tasks) to verify the pipeline before scaling.
-- **Isolate context**: Launch the subagent with only the instruction file as context. Do not provide verbal coaching.
-- **Execution management**: Let the agent run. Do not abort/restart for scope changes; send a redirect message to the running agent instead. Interrupt only for active harm.
+**3. mechanism-trial** (new runtime mechanism: gate, hook, evaluator, classifier).
+No mechanism is enabled without a pre-registration on the task record: hypothesis, promote criteria, kill criteria, review date. A mechanism whose experiment record has passed its review date without evidence is presumed dead — file the removal.
 
-### Phase 3: Analyze Friction and Iterate
+**4. planning-eval** (decomposition/planning quality).
+Method and epistemics rubric: [references/decomposition-eval.md](references/decomposition-eval.md). Gold-standard pairs are single-use — once written anywhere the test agent can search, they are contaminated.
 
-- Analyze transcripts to classify friction (e.g. missing paths, ambiguous criteria, shallow analysis).
-- Update the instructions in-place to address root causes, avoiding over-fitting to the specific test instance.
-- Run at least 2 verification trials per condition when verifying that an edit closed a gap.
+## Invariants — what keeps the results honest
 
-### Phase 4: Independent Quality Review
+- **Hypothesis before observation.** Written down first, every time. This is what lets you discover you were wrong.
+- **Blind means blind.** The executing agent never sees the gold standard, your hypothesis, or verbal coaching.
+- **Recusal.** The session that experienced the failure reports facts and impact; it does not propose the remedy. A detached review — reading many records — is the only place rule changes are authored. The `learn` skill's forensic-scope doctrine is where this is stated canonically.
+- **Evidence is recurrence, not salience.** One painful incident is a data point. Three cited recurrences justify a mechanism; fewer justify at most a text change.
+- **Friction is filed, not fixed.** Inline fixes destroy the evidence trail and violate recusal.
 
-- Commission a separate review agent (e.g. `/strategic-review` or `/verify`) to evaluate depth, accuracy, and fitness of the subagent's deliverables.
-- Enforce qualitative assessment by agents rather than relying on deterministic script checks.
-- For decompose-mode instruction tests, use `references/decomposition-eval.md` (epistemics rubric + worked gold-standard pair).
+## The evidence record
 
-### Phase 5: Codify & Land
+File to the PKB (project: aops) or as a GitHub issue — one incident per record:
 
-- Promote tested instructions to canonical skills or commands.
-- Verify deliverables actually reached their target destinations (e.g., reviews posted, commits pushed, task tracker updated).
-- **Always leave a loose thread**: File follow-up tasks for any remaining friction items, promotion work, or subsequent phases before exiting.
+- **What happened** vs **what the instruction/contract promised** (cite the instruction in force, by path or slug — "no rule existed" is itself a finding)
+- **Classification**: instruction-gap · process-gap · harness-limit · genuine-bug · framework-win (successes are evidence too — they defend components at earn-their-keep review)
+- **Impact**: what it cost, or saved
+- **No proposed remedy.** Stop there.
 
-## Output Expectations
+## Turning evidence into change
 
-- Respond with structured, concise summaries of dogfooding outcomes, listing specific instruction defects found, edits made, and verification run verdicts.
+Detached review (issue-sweep or a human-directed session that did _not_ generate the records) works down the cost ladder — always the cheapest sufficient layer:
+
+1. rule / instruction text
+2. skill or process step
+3. workflow contract (task-record criteria, breakpoints)
+4. runtime mechanism (requires ≥3 recurrences + a pre-registration)
+
+Every instruction change passes `/craft` (author mode) before deployment, then a blind re-test (mode 2) confirms the gap actually closed. Promotion of a tested instruction to canonical location, and follow-up tasks for residual friction, happen before the session ends — leave a loose thread, never a dropped one.

@@ -88,10 +88,9 @@ When invoked, analyze the input and route to the appropriate workflow:
 
 - Input is a document file (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC, DOTX)
 - User mentions "convert", "convert to markdown", "docx to markdown", "pdf to markdown"
-- Invoked as `/convert-to-md` (alias preserved for backwards compatibility)
 - Goal is format conversion, not structured extraction
 
-**Route to**: `workflows/docs-to-md.md`
+**Route to**: `scripts/pdf2md.py` for PDFs; pandoc for everything else. Use the tool's own documentation for flags.
 
 **Storage**: Converted `.md` files replace originals in the same directory
 
@@ -144,7 +143,7 @@ See `procedures/review-inline-comments.md` for detailed procedure.
 
 **Generalized patterns** → Framework (public repo):
 
-- `plugins/pkb/workflows/process/peer-review.md` (update with principles)
+- `plugins/tools/skills/peer-review/references/` (update with principles)
 - A skill's own `references/` directory (depersonalized examples)
 - No names, no specific unpublished content, no identifying details
 
@@ -234,8 +233,6 @@ When adding examples to public framework docs:
 **Use specialized skill directly**:
 
 - `Skill(skill="remember")` - When you know you want to add to knowledge base
-
-**Note on `/convert-to-md`**: This trigger is now an alias for `/extract`. Invoking `/convert-to-md` routes to the `workflows/docs-to-md.md` workflow.
 
 ## Error Handling
 

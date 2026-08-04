@@ -1,6 +1,6 @@
 ---
 description: On any failure, halt, surface it in full, and wait — no workarounds, fallbacks, or bypasses.
-trigger: always_on
+trigger: off
 ---
 
 ## Halt on Failure — no workarounds, no fallbacks, ever

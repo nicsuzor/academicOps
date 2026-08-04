@@ -1,7 +1,8 @@
 # academicOps — build & install. Design: specs/ARCHITECTURE.md.
 
 .PHONY: help build install-dev uninstall-dev install clean test lint format \
-        docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test
+        docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test \
+        verify-docker
 
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
@@ -13,6 +14,7 @@ IMAGE ?= ghcr.io/nicsuzor/aops-crew
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
 PLUGIN_NAMES = $(shell uv run python -c "import tomllib, pathlib; d = tomllib.loads(pathlib.Path('build/marketplace.toml').read_text()); print(' '.join(p['name'] for p in d['plugins']))" 2>/dev/null)
+STALE_PLUGIN_NAMES = aops aops-cope aops-core aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts
 
 help:
 	@echo "make build          - assemble dist/ for every plugin, both clients (build/build.py)"
@@ -30,6 +32,9 @@ help:
 	@echo "                        actually reaches a throwaway collector"
 	@echo "make docker-smoke-test - build the image, then run its structural"
 	@echo "                        smoke test (plugin list, agy plugins, ACA_DATA)"
+	@echo "make verify-docker  - clean (--no-cache) image build; required before"
+	@echo "                        certifying a change, so no cached layer can"
+	@echo "                        produce a false-green result"
 
 # --- Build ---
 
@@ -58,23 +63,39 @@ endef
 install-dev: build
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@command claude plugin marketplace add $(DIST)
+	@for p in $(STALE_PLUGIN_NAMES); do \
+		command claude plugin uninstall $$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
+		command claude plugin uninstall $$p@academicOps >/dev/null 2>&1 || true; \
+		command -v agy >/dev/null 2>&1 && agy plugin uninstall $$p >/dev/null 2>&1 || true; \
+		rm -rf ~/.gemini/config/plugins/$$p; \
+	done
 	@for p in $(PLUGIN_NAMES); do \
 		command claude plugin uninstall $$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
+		command claude plugin uninstall $$p@academicOps >/dev/null 2>&1 || true; \
+		command claude plugin uninstall aops-$$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
+		command claude plugin uninstall aops-$$p@academicOps >/dev/null 2>&1 || true; \
 		$(call claude_install,$$p,$(LOCAL_MARKETPLACE)); \
 	done
-	@command -v agy >/dev/null 2>&1 && for p in $(PLUGIN_NAMES); do \
-		[ -d "$(DIST)/$$p-agy" ] && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin install "$(DIST)/$$p-agy" && echo "✓ agy $$p installed" || echo "x agy $$p install failed"); \
-	done || true
 	@mkdir -p ~/.gemini/config/plugins
 	@for p in $(PLUGIN_NAMES); do \
-		[ -d "$(DIST)/$$p-agy" ] && (rm -rf ~/.gemini/config/plugins/$$p; cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"); \
+		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall "$(DIST)/$$p-agy" && echo "✓ agy $$p installed" || echo "x agy $$p install failed"); \
+		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
+		if [ -d "$(DIST)/$$p-agy" ]; then \
+			cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"; \
+			command -v agy >/dev/null 2>&1 && (agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 && echo "✓ agy $$p installed" || true); \
+		fi; \
 	done || true
 	@uv run python -m build.install install --dist-root $(DIST)
 	@uv run pre-commit install >/dev/null 2>&1 || true
 	@echo "Local marketplace '$(LOCAL_MARKETPLACE)' -> $(DIST). Run 'make uninstall-dev' to restore the release channel."
 
 uninstall-dev:
-	@for p in $(PLUGIN_NAMES); do command claude plugin uninstall $$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; done
+	@for p in $(STALE_PLUGIN_NAMES) $(PLUGIN_NAMES); do \
+		command claude plugin uninstall $$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
+		command claude plugin uninstall aops-$$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
+		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall aops-$$p >/dev/null 2>&1 || true); \
+		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
+	done
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@uv run python -m build.install uninstall
 	@command claude plugin marketplace add $(DIST_REPO)
@@ -116,14 +137,25 @@ docker-build: build
 	@docker build --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
 	@echo "✓ built $(IMAGE)"
 
-# The environment contract is defined once, in plugins/aops/polecat/env_contract.py,
+# The environment contract is defined once, in lib/polecat/env_contract.py,
 # and shared with polecat's own `docker run` (specs/ARCHITECTURE.md "Observability").
 # `-e NAME` forwards the host's value and sets nothing: a variable unset on the
 # host stays unset in the container.
 docker-shell: docker-build
-	@env_args="$$(uv run python -m aops.polecat.env_contract --docker-args)" \
+	@env_args="$$(uv run python -m lib.polecat.env_contract --docker-args)" \
 		|| { echo "x could not read the container env contract" >&2; exit 1; }; \
 	docker run -it --rm $$env_args -v $(ROOT):/app -w /app $(IMAGE)
+
+# The build to certify a dev change against. `docker-build` reuses the layer
+# cache, so a layer whose inputs Docker judges unchanged is carried forward —
+# and an image that looks rebuilt while still holding the previous plugin set
+# reads as a pass that proves nothing. `--no-cache` rebuilds every layer from
+# source, which is the only form of this build whose green result is evidence.
+# Slow by construction; use `docker-build` for the edit loop and this before
+# certifying.
+verify-docker: build
+	@docker build --no-cache --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
+	@echo "✓ clean build: $(IMAGE) — every layer rebuilt from source"
 
 docker-push:
 	@docker push $(IMAGE)

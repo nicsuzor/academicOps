@@ -17,12 +17,14 @@ import pytest
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
 from build.includes import resolve_includes
-from build.manifest import merge_one_level
+from build.manifest import merge_one_level, render_template
 from build.marketplace import load_marketplace_toml
+from build.shared import load_shared_entries
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
 MARKETPLACE = TESTDATA / "marketplace.toml"
+REAL_MARKETPLACE = PROJECT_ROOT / "build" / "marketplace.toml"
 VERSION = "0.0.0-test"
 
 
@@ -31,6 +33,43 @@ def built(tmp_path_factory) -> Path:
     dist_root = tmp_path_factory.mktemp("build-dist")
     build_all(TESTDATA, dist_root, marketplace_path=MARKETPLACE, version=VERSION)
     return dist_root
+
+
+@pytest.fixture(scope="module")
+def built_orchestrate(tmp_path_factory) -> Path:
+    """The real orchestrate plugin, not a fixture — see
+    test_polecat_cli_ships_with_orchestrate."""
+    dist_root = tmp_path_factory.mktemp("build-dist-orchestrate")
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["orchestrate"],
+        version=VERSION,
+    )
+    return dist_root
+
+
+def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
+    """James invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` via
+    `skills/dispatch` (`plugins/orchestrate/agents/james.md`,
+    `plugins/orchestrate/skills/dispatch/SKILL.md`), and that path is true only
+    because `plugins/orchestrate/manifest/plugin.toml` injects it from
+    `lib/polecat/`.
+
+    Drop those `[[shared]]` stanzas and nothing fails at build time. Dispatch
+    fails at runtime, inside a container, with file-not-found. This is the check
+    that turns that into a build-time failure instead.
+    """
+    for client in ("claude", "agy"):
+        polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
+        assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
+        assert (polecat / "env_contract.py").is_file(), (
+            f"orchestrate-{client} ships cli.py without the env_contract it imports"
+        )
+        # Image-build inputs, not plugin content — they must NOT be shipped.
+        assert not (polecat / "defaults").exists()
+        assert not (polecat / "entrypoint.sh").exists()
 
 
 # --- stage 1/2: shared injection + include resolution -----------------------
@@ -72,7 +111,150 @@ def test_include_cycle_is_hard_error(tmp_path):
         resolve_includes("@include a.md\n", lib_dir, "origin.md")
 
 
+# --- stage 1: shared-injection declarations fail loudly, never silently ------
+
+
+def _plugin_toml(tmp_path: Path, body: str) -> Path:
+    path = tmp_path / "plugin.toml"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_scaffold_hint_shape_is_a_hard_error_not_a_silent_no_op(tmp_path):
+    """The exact shape `templates/plugin/manifest/plugin.toml` used to hint at.
+
+    `[build]` / `includes` is not the schema `load_shared_entries` consumes, and
+    a plain `data.get("shared", [])` read it as zero entries — no error, no
+    warning, no `lib/` injection. Anyone scaffolding a plugin and following the
+    template's own hint got a plugin silently missing its shared material, which
+    `.agents/CORE.md` makes the sole permitted route for shared content. This
+    pins that the unrecognised declaration fails the build by name instead.
+    """
+    path = _plugin_toml(tmp_path, '[build]\nincludes = [ "lib/my_module" ]\n')
+    with pytest.raises(BuildError, match=r"unrecognised top-level key\(s\) \['build'\]"):
+        load_shared_entries(path)
+
+
+def test_declaring_nothing_is_still_legal(tmp_path):
+    """Fail-loud must not fail plugins that legitimately declare nothing: an
+    absent file and a comment-only file both mean "declares nothing"."""
+    assert load_shared_entries(tmp_path / "absent.toml") == []
+    assert load_shared_entries(_plugin_toml(tmp_path, "# just a comment\n")) == []
+
+
+def test_misspelled_entry_key_is_a_hard_error(tmp_path):
+    path = _plugin_toml(tmp_path, '[[shared]]\nfrom = "hooks"\nto = "hooks"\nfrmo = "typo"\n')
+    with pytest.raises(BuildError, match=r"unrecognised key\(s\) \['frmo'\]"):
+        load_shared_entries(path)
+
+
+def test_shared_as_wrong_type_is_a_hard_error(tmp_path):
+    with pytest.raises(BuildError, match="must be an array of tables"):
+        load_shared_entries(_plugin_toml(tmp_path, 'shared = "hooks"\n'))
+
+
+def test_malformed_toml_names_the_file(tmp_path):
+    with pytest.raises(BuildError, match="malformed TOML"):
+        load_shared_entries(_plugin_toml(tmp_path, "[[shared]\nfrom = \n"))
+
+
+def test_well_formed_shared_still_loads(tmp_path):
+    path = _plugin_toml(tmp_path, '[[shared]]\nfrom = "hooks"\nto = "hooks"\n')
+    assert load_shared_entries(path) == [{"from": "hooks", "to": "hooks"}]
+
+
+def test_scaffold_template_hints_the_shape_the_build_consumes(tmp_path):
+    """The scaffold's own example must be something `load_shared_entries` accepts.
+
+    Uncommenting that example is the path a new plugin author takes; if the
+    shape it hints at is not the consumed one, the scaffold steers them into a
+    silent violation of the `lib/`-injection constraint. Asserting the text
+    alone would not catch a drift in the consumer, so this uncomments the
+    example and feeds it through the real loader.
+    """
+    text = (PROJECT_ROOT / "templates" / "plugin" / "manifest" / "plugin.toml").read_text(
+        encoding="utf-8"
+    )
+    assert "[build]" not in text, "scaffold still hints at the unconsumed [build] shape"
+
+    uncommented = "\n".join(
+        line.lstrip("#").strip() for line in text.splitlines() if line.lstrip().startswith("#")
+    )
+    assert "[[shared]]" in uncommented, "scaffold shows no [[shared]] example to copy"
+    # rindex, not index: the prose above the example names `[[shared]]` too, and
+    # the copyable example is the last thing in the file.
+    example = uncommented[uncommented.rindex("[[shared]]") :]
+    assert load_shared_entries(_plugin_toml(tmp_path, example)) == [
+        {"from": "my_module", "to": "my_module"}
+    ]
+
+
 # --- stage 3: manifest rendering --------------------------------------------
+
+
+def _template(tmp_path: Path, payload: dict) -> Path:
+    path = tmp_path / "hooks.template.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def test_template_renders_the_client_section(tmp_path):
+    """Client sections nest under `clients`, keeping the top level for plugin
+    identity. Reading the client key at the top level instead finds nothing and
+    renders every event away — the plugin builds clean and ships with no
+    hooks.json at all."""
+    path = _template(
+        tmp_path,
+        {
+            "manifestVersion": "1.0",
+            "name": "aops-debug",
+            "clients": {
+                "claude": {"hooks": {"SessionStart": [], "Stop": []}},
+                "agy": {"hooks": {"PreToolUse": []}},
+            },
+        },
+    )
+    assert sorted(render_template(path, "claude")["hooks"]) == ["SessionStart", "Stop"]
+    assert sorted(render_template(path, "agy")["hooks"]) == ["PreToolUse"]
+
+
+def test_base_section_merges_under_the_client_section(tmp_path):
+    """`__base__` carries what every client shares; the client's own section
+    merges on top of it."""
+    path = _template(
+        tmp_path,
+        {
+            "manifestVersion": "1.0",
+            "clients": {
+                "__base__": {"hooks": {"Stop": []}},
+                "claude": {"hooks": {"SessionStart": []}},
+            },
+        },
+    )
+    assert render_template(path, "claude") == {"hooks": {"Stop": [], "SessionStart": []}}
+
+
+def test_template_without_clients_is_a_hard_error(tmp_path):
+    """Rendering it empty would be indistinguishable from a plugin that
+    genuinely has no hooks on any client."""
+    path = _template(tmp_path, {"manifestVersion": "1.0", "name": "aops-debug"})
+    with pytest.raises(BuildError, match="clients"):
+        render_template(path, "claude")
+
+
+def test_template_without_a_manifest_version_is_a_hard_error(tmp_path):
+    """The pre-versioned shape keyed sections at the top level. Still reading
+    them there would render a versioned template's identity keys as clients, so
+    the absent version is refused rather than guessed at."""
+    path = _template(tmp_path, {"__base__": {}, "claude": {"hooks": {"Stop": []}}})
+    with pytest.raises(BuildError, match="manifestVersion"):
+        render_template(path, "claude")
+
+
+def test_unknown_manifest_version_is_a_hard_error(tmp_path):
+    path = _template(tmp_path, {"manifestVersion": "2.0", "clients": {"claude": {}}})
+    with pytest.raises(BuildError, match="manifestVersion"):
+        render_template(path, "claude")
 
 
 def test_plugin_json_version_stamped(built):
@@ -264,6 +446,63 @@ def test_agy_command_converted_to_skill(built):
     assert "type: skill" in content
     assert "type: command" not in content
     assert not (built / "fixture-alpha-agy" / "commands").exists()
+
+
+def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
+    import yaml
+
+    dist_root = tmp_path_factory.mktemp("build-dist-agents")
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["ida"],
+        version=VERSION,
+    )
+
+    # Check agy dist converts agents/ida.md to agents/ida/agent.md
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
+    assert agy_ida_md.is_file()
+    assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
+
+    parts = agy_ida_md.read_text().split("---")
+    agy_fm = yaml.safe_load(parts[1])
+    assert agy_fm["name"] == "ida"
+    assert "interactive face" in agy_fm["description"]
+    assert agy_fm["hidden"] is False
+
+    body = parts[2]
+    assert "# Agent System Instructions" in body
+    assert "# Ida — The Interactive Face" in body
+
+
+def test_agy_agent_tool_names_are_translated(built):
+    """The tool-name map, against the fixture agent rather than a real one.
+
+    Which tools a shipped agent is granted is a permission decision that moves —
+    grants are currently cleared and are being restored one at a time — so a
+    production agent's `tools:` list is the wrong subject for a test about the
+    build's rename map. The fixture agent carries a list chosen to cover both
+    branches instead.
+    """
+    import yaml
+
+    claude_agent = built / "fixture-alpha-claude" / "agents" / "alpha-agent.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
+
+    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent" / "agent.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
+    # untranslated — the map renames what agy calls by another name and leaves
+    # everything else alone.
+    assert agy_fm["tools"] == [
+        "read_file",
+        "Skill",
+        "invoke_subagent",
+        "ask_question",
+        "Dispatch",
+    ]
 
 
 def test_axioms_always_on_wired_per_client(built):

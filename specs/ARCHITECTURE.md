@@ -6,19 +6,28 @@ Everything here is current state. Nothing here is history.
 ## Repository layout
 
 ```
-lib/                    Shared source. Never shipped as-is; injected at build time.
+lib/                    Shared source, never shipped as-is. Most of it is injected
+                        into plugin build trees; the rest feeds the image build.
   axioms/               The axioms. Single source of truth.
   hooks/                Hook runtime shared by every plugin that hooks.
   py/                   Shared Python helpers.
   manifest/             Shared manifest fragments.
+  polecat/              The container launcher, its entrypoint and baked image
+                        defaults. Runtime modules inject into the plugin that
+                        dispatches containers; `defaults/` and `entrypoint.sh`
+                        are build-context inputs to the image, not plugin files.
 build/                  Build system.
 plugins/                Plugin sources. Only what a client needs.
-  aops/                 james, marsha, rbg, review + dispatch skills, polecat.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.
   ida/                  ida — the interactive face.
-  cope/                 Automatic rule enforcement hooks.
+  orchestrate/          james — dispatch; marsha — QA; the review skills; the
+                        handback hooks; the polecat container launcher.
+  rbg/                  rbg — rule enforcement: an advisory turn-by-turn evaluator plus a
+                        stop-side rule-check gate.
   ts/                   Tailscale bring-up.
   tools/                Domain research skills.
+  aops-debug/           Debug plugin that dumps raw hook payloads.
+plugins.disabled/       Retired plugin sources, excluded from the build.
 specs/                  Design intent.
 tests/                  Test suite.
 .agents/                Rules for agents working ON this repository.
@@ -50,41 +59,25 @@ plugin's files.
 
 academicOps is structured around **4 core pillars**:
 
-1. **Prompt Situation (`aops-pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`situate`.
-2. **Workflow Composition (`aops-pkb`):** Select task-appropriate assurance and review levels (`workflow`) matching risk and blast radius.
-3. **Containerized Execution & Dispatch (`aops`):** Dispatch tasks to isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
-4. **Dual-Layer Rule Enforcement (`aops-cope` + `aops`):** Turn-by-turn local model evaluation of tool calls (`aops-cope` / `PreToolUse`), plus mandatory RBG rule compliance check (`axioms/` + project + local rules) on session stop (`aops` / `Stop`, `SubagentStop`).
+1. **Prompt Situation (`pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`brief`.
+2. **Workflow Composition (`pkb`):** Select task-appropriate assurance and review levels (`brief`) matching risk and blast radius. Routing an ask to its template is a separate job — a direct read of [`plugins/pkb/workflows/INDEX.md`](../plugins/pkb/workflows/INDEX.md) by whichever agent holds the ask.
+3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `orchestrate`), writing results back to the PKB task record, committing changes, and pushing.
+4. **Dual-Layer Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), plus a stop gate that blocks once per stop-chain and directs the agent to run the RBG rule compliance check (`axioms/` + project + local rules) before stopping (`Stop` / `SubagentStop`).
 
 ## Plugins
 
-Directory names are short; marketplace names carry the `aops` prefix.
+Directory names are short. `build/marketplace.toml` maps directory →
+marketplace name and is the single source of truth for the built plugin set.
 
-| Directory       | Marketplace name | Owns                                                                            |
-| --------------- | ---------------- | ------------------------------------------------------------------------------- |
-| `plugins/aops`  | `aops`           | james, marsha, rbg. Review, QA, verification, dispatch, polecat containers.     |
-| `plugins/pkb`   | `aops-pkb`       | pauli. Memory, effectual planning, workflow composition, PKB MCP client config. |
-| `plugins/ida`   | `aops-ida`       | ida. The interactive face.                                                      |
-| `plugins/cope`  | `aops-cope`      | Automatic in-session rule enforcement via turn-by-turn local model.             |
-| `plugins/ts`    | `aops-ts`        | Tailscale bring-up for remote sessions.                                         |
-| `plugins/tools` | `aops-tools`     | Domain research skills.                                                         |
-
-### aops
-
-**james** synthesises and dispatches. He commissions review agents, interrogates
-their output, resolves conflicting verdicts into one judgment, and delegates
-substantive work — either to a supervised in-session agent team or to an
-asynchronous polecat container. Ida delegates to james; james never talks to the
-user.
-
-**marsha** judges whether an artifact is outstanding. She runs it.
-
-**rbg** judges rule compliance. She applies three rule sources in order:
-
-1. `axioms/` shipped in the plugin — the floor, inviolable
-2. `$CWD/.agents/rules/` — project-local rules
-3. `$ACA_DATA/.agents/rules/` — user-scoped rules from the PKB repo
-
-Later sources add obligations. They never weaken an axiom.
+| Directory             | Marketplace name | Owns                                                                                |
+| --------------------- | ---------------- | ----------------------------------------------------------------------------------- |
+| `plugins/pkb`         | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.     |
+| `plugins/ida`         | `ida`            | ida, the interactive face; `strategize`, her own thinking pass. Nothing else.       |
+| `plugins/orchestrate` | `orchestrate`    | james, dispatch; marsha, QA; the review skills; the handback hooks; polecat.        |
+| `plugins/rbg`         | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate. |
+| `plugins/ts`          | `ts`             | Tailscale bring-up for remote sessions.                                             |
+| `plugins/tools`       | `tools`          | Domain research skills.                                                             |
+| `plugins/aops-debug`  | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                          |
 
 ### pkb
 
@@ -95,8 +88,17 @@ reading what is there, integrating the new fact, and leaving one correct
 document.
 
 Workflow composition: the plugin ships a process-template library under
-`workflows/`. Pauli composes a workflow for the work in front of it by reading
-templates, matching the required QA assurance level to the task.
+`workflows/`. Pauli composes a workflow for the unit in front of it by reading
+templates, matching the required QA assurance level to the task. That happens
+inside `brief`, which is the only composer;
+[`plugins/pkb/workflows/INDEX.md`](../plugins/pkb/workflows/INDEX.md) carries
+the routing tree, which any agent reads directly without a skill in between.
+
+The plugin hooks `UserPromptSubmit` and nothing else. A stop gate is intended
+here — while the session still holds an `in_progress` task, block once per
+stop-chain and direct the agent to record its work and release it, fail-CLOSED —
+but it is not built, and cannot be until the task store can answer which tasks a
+given session holds.
 
 ### ida
 
@@ -105,25 +107,99 @@ integrity is non-negotiable. Ida holds between steps, answers what it can
 answer, delegates everything substantive to james, and filters what comes back so
 the user sees only what needs their judgment.
 
-### cope
+### orchestrate
 
-Enforces the same three rule sources as rbg, automatically, in-session, via a
-parallel turn-by-turn `PreToolUse` hook running a lightweight local Reflexes LLM evaluator model.
+Ships **james**, who dispatches. He briefs work — goal and why, constraints,
+evidence bar — and routes it to a supervised in-session agent team or to an
+asynchronous polecat container. He does not instruct method, and he does not
+re-do the work when it comes back. He commissions review agents, interrogates
+their output, and resolves conflicting verdicts into one judgment. Ida delegates
+to james; james never talks to the user.
+
+**marsha** judges whether an artifact is outstanding. She runs it. Her `verify`
+skill is bound to her and ships alongside her.
+
+She ships here rather than in a plugin of her own, and that is a deliberate
+call rather than a consequence of how she is reached. Co-location buys nothing
+at dispatch: james reaches `rbg:rbg` and `pkb:pauli` across plugin boundaries
+by namespace, and would reach marsha the same way from anywhere. What decides
+it is that `rbg` and `pkb` exist around infrastructure only their owner needs —
+rbg's `PreToolUse` and `Stop` hooks, pkb's MCP client config — while marsha
+carries none: an agent body and one bound skill, no hooks, no config, no
+`lib/` injection. A plugin of her own would be a namespace and nothing else, so
+she ships with the review machinery that commissions her.
+
+Her independence is unaffected, because it never rested on packaging. It comes
+from reviewing blind to the other reviewers and from james treating every
+verdict as input rather than truth (`plugins/orchestrate/skills/strategic-review/SKILL.md`).
+What packaging does decide is whether she resolves at all: a shipping
+instruction naming a reviewer who does not ship leaves the review short-handed
+while reading as complete.
+
+**The handback doctrine** — what a returning report must carry, and what its
+receiver does with one that carries nothing — is stated once in
+[`lib/doctrine/handback.md`](../lib/doctrine/handback.md) and `@include`d at
+every surface that needs it: this plugin's two hook messages and ida's own body.
+The split it encodes is that proof is attached by the **worker**, because a
+returning result cannot be amended afterwards, and that the **receiver's** only
+move on a report without proof is to send it back. Re-verifying, re-running, or
+completing the work on the worker's behalf is not the receiver's job at any
+tier. Brief composition is the same shape and lives in
+[`lib/doctrine/delegation-brief.md`](../lib/doctrine/delegation-brief.md),
+`@include`d by james.
+
+### rbg
+
+**rbg** judges rule compliance. She applies three rule sources in order:
+
+1. `axioms/` shipped in the plugin — the floor, inviolable
+2. `$CWD/.agents/rules/` — project-local rules
+3. `$ACA_DATA/.agents/rules/` — user-scoped rules from the PKB repo
+
+Later sources add obligations. They never weaken an axiom.
+
+The plugin advises on the same three sources automatically, in-session, on one
+surface: a parallel turn-by-turn `PreToolUse` hook running a lightweight local
+Reflexes LLM evaluator model. It returns `warn`, so a flagged call still
+proceeds.
+
+There is also a stop-side rule gate, and it ships. `plugins/rbg/hooks/handlers.py`
+registers `Stop` and `SubagentStop`, alongside `PreToolUse` and
+`UserPromptSubmit`. On both stop events it withholds the stop once per
+stop-chain (`block`, `lib/hooks/dispatch.py`), directing the agent to run the
+RBG rule-compliance check over the three sources above and present checkable
+evidence before it stops. See Hooks and Enforcement below for the full
+behaviour.
 
 ## Hooks
 
 Master Hook Lifecycle Matrix. Every hook is deterministic, lightweight, and single-purpose:
 
-| Plugin | Event                   | Target Client            | Required Context / Env                                                | Injected Payload / Action                                                                                                                                                                                                                   | WHY (Purpose & Rationale)                                                                                                        |
-| :----- | :---------------------- | :----------------------- | :-------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------- |
-| `pkb`  | `UserPromptSubmit`      | Both (Claude Code & AGY) | `PKB_MCP_URL`                                                         | Strategic context search instructions & relevant PKB history.                                                                                                                                                                               | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting.                    |
-| `cope` | `PreToolUse`            | Claude Code              | `COPE_EVALUATOR_*` (Local LLM model)                                  | Parallel rule compliance advisory with matched rule text & reasoning.                                                                                                                                                                       | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model.  |
-| `cope` | `UserPromptSubmit`      | AGY (`PreInvocation`)    | Live rule set files                                                   | Summary roster of active rules for the turn.                                                                                                                                                                                                | Provides rule visibility on surfaces that lack tool-call interception.                                                           |
-| `aops` | `SessionStart`          | Claude Code              | `CLAUDE_CODE_ENABLE_TELEMETRY`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` | 3-line session environment summary & credential isolation status. Only these two enablement vars are observable here — the `OTEL_*` export-config vars are set in a separate, settings-managed environment this hook subprocess cannot see. | Reports telemetry enablement and scopes session credentials before execution begins.                                             |
-| `aops` | `Stop` / `SubagentStop` | Both                     | `stop_hook_active` check                                              | Non-blocking reminder (`warn`) prompting the agent to invoke the RBG rule checker (`axioms` + project + local rules) and present checkable evidence before stopping.                                                                        | **Pillar 4 (Enforcement L2):** Advisory nudge toward evidence and rule-compliance review at session stop — not an enforced gate. |
-| `aops` | `PreToolUse`            | Claude Code              | `NONINTERACTIVE` or `CI=1`                                            | Refusal message blocking interactive prompt tools in headless runs.                                                                                                                                                                         | Prevents headless container sessions from hanging on unanswerable user prompts.                                                  |
-| `ts`   | `SessionStart`          | Claude Code              | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`                               | Launches background `tailscale up` for remote connectivity.                                                                                                                                                                                 | Enables remote session access over Tailnet.                                                                                      |
-| `ts`   | `SessionEnd`            | Claude Code              | `TS_SESSION_SYNC_HOST`                                                | Transmits session log bundle to remote sync host.                                                                                                                                                                                           | Secures session history after termination.                                                                                       |
+| Plugin        | Event                                   | Target Client            | Required Context / Env                                                 | Injected Payload / Action                                                                                                                                                                                                                                                                                                                                          | WHY (Purpose & Rationale)                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| :------------ | :-------------------------------------- | :----------------------- | :--------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkb`         | `UserPromptSubmit`                      | Both (Claude Code & AGY) | `PKB_MCP_URL`                                                          | Strategic context search instructions & relevant PKB history.                                                                                                                                                                                                                                                                                                      | **Pillar 1 (Situation):** Ground every user prompt in historical knowledge and prior decisions before acting.                                                                                                                                                                                                                                                                                                                                   |
+| `rbg`         | `PreToolUse`                            | Claude Code              | `COPE_EVALUATOR_*` (Local LLM model)                                   | Parallel rule compliance advisory with matched rule text & reasoning.                                                                                                                                                                                                                                                                                              | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model.                                                                                                                                                                                                                                                                                                                 |
+| `rbg`         | `UserPromptSubmit`                      | AGY (`PreInvocation`)    | Live rule set files                                                    | Summary roster of active rules for the turn.                                                                                                                                                                                                                                                                                                                       | Provides rule visibility on surfaces that lack tool-call interception.                                                                                                                                                                                                                                                                                                                                                                          |
+| `orchestrate` | `PostToolBatch`                         | Claude Code              | none                                                                   | Non-blocking reminder (`warn`) carrying `lib/doctrine/handback.md`: a subagent's report is second-hand; expect proof with it, and send back anything without proof. Registered without a matcher; the handler itself returns nothing unless some call in `ctx.tool_calls` names the `Agent` tool.                                                                  | Binds the **receiver** at the instant a synchronous report lands. `PostToolBatch` fires once after every call in a batch has resolved, so a turn that dispatched several subagents is reminded once rather than once per report. `SubagentStop` injects only into the worker, never its caller, so it cannot carry this. Async task notifications are not covered: `Notification` is not a canonical event and no handler is registered for it. |
+| `orchestrate` | `Stop` / `SubagentStop`                 | Both                     | none                                                                   | Advisory reminder (`warn`) carrying the same `handback.md` plus the worker-side register — name what you did not do, Observed vs Reported, "changed, unverified" until the originally-failing behaviour is observed passing. Declared `async` on Claude Code.                                                                                                      | Binds the **worker** at its own stop, which is the last moment its report can still carry the evidence: a returning result cannot be amended once it lands in the caller's context. Both stop events, because every agent — the face and a stopping worker alike — hands back.                                                                                                                                                                  |
+| `orchestrate` | `SessionStart`                          | Claude Code              | `CLAUDE_ENV_FILE`, `AOPS_BOT_GH_TOKEN`, `AOPS_SESSIONS`, `PKB_MCP_URL` | Appends the session's credential and path variables to `CLAUDE_ENV_FILE`, scoping git and GitHub auth to the bot token for the session.                                                                                                                                                                                                                            | Container and worktree sessions must not inherit the operator's own SSH identity or credential helper. Silent no-op when `CLAUDE_ENV_FILE` is unset.                                                                                                                                                                                                                                                                                            |
+| `ida`         | `Stop`                                  | Both                     | `stop_hook_active` checks                                              | Advisory quiet gate (`strip_the_reply`, `warn` on both clients): reminds ida to strip its own reply down to load-bearing content before it speaks to the person. Always the same reminder — the hook has no transcript to judge, only that a stop is about to happen. Silent on the continuation stop.                                                             | Registered on `Stop` only, deliberately not `SubagentStop`: `SubagentStop` fires on the _stopping subagent's_ own context, so wiring it there would direct a worker or james to strip a reply it never sends to the person — the defect the superseded `gate-wiring-v07` branch shipped (`plugins/ida/hooks/handlers.py`).                                                                                                                      |
+| `pkb`         | `Stop` / `SubagentStop` — **not built** | —                        | —                                                                      | Nothing today. `plugins/pkb/hooks/handlers.py` registers `UserPromptSubmit` alone and `plugins/pkb/manifest/hooks.template.json` declares no stop event. The intended gate blocks once per stop-chain while the session still holds an `in_progress` task, directing the agent to record its work and release it; the ruling for it is **fail-CLOSED**.            | Work counts only once it is recorded on the task. Blocked on a store-side prerequisite, not on effort: the task API offers no way to ask which tasks a given session holds, and reconstructing that per task is far too slow to run inside a stop hook. Until that exists the gate cannot read the fact it would gate on.                                                                                                                       |
+| `rbg`         | `Stop` / `SubagentStop`                 | Both                     | `stop_hook_active` / `background_tasks` checks                         | Blocks once per stop-chain (`decision: "block"`), directing the agent to invoke the RBG rule checker (`axioms` + project + local rules) and present checkable evidence before stopping. Silent on the continuation stop and while background work runs. Lets the stop through, reporting on stderr, if its message file is missing or empty. Advisory-only on AGY. | **Pillar 4 (Enforcement L2):** Every turn ends with a rule-compliance review; the `stop_hook_active` guard gives once-per-chain semantics with zero state and prevents stop loops. The chain allows one block, so it is not spent on a turn that is not the handback — nor on a block carrying no instruction, which would cost a turn to say nothing.                                                                                          |
+| `ts`          | `SessionStart`                          | Claude Code              | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`                                | Launches background `tailscale up` for remote connectivity.                                                                                                                                                                                                                                                                                                        | Enables remote session access over Tailnet.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `ts`          | `SessionEnd`                            | Claude Code              | `TS_SESSION_SYNC_HOST`                                                 | Transmits session log bundle to remote sync host.                                                                                                                                                                                                                                                                                                                  | Secures session history after termination.                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+`CANONICAL_EVENTS` in [`lib/hooks/dispatch.py`](../lib/hooks/dispatch.py) is exactly the event set this table uses; a client's own wire name is mapped onto it by `TO_CANONICAL`, which is why agy's `PreInvocation` and `PostInvocation` appear here as `UserPromptSubmit` and `Stop`. An event in neither is an event no handler can be registered for.
+
+A handler returns one of three dispositions, in descending order of force, and `_merge` resolves a plugin's handlers by taking the strongest:
+
+- **refusal** — denies a tool call. Reserved for structural impossibility: the session as configured cannot carry the call out, so letting it through produces a hang rather than an outcome. Never a rule verdict.
+- **block** — withholds a stop; the turn continues instead. Honoured only on the events in `BLOCKABLE_EVENTS` (`Stop`, `SubagentStop`), and only on Claude Code — agy has no blockable mapped event, and its response contract carries no disposition field, so a block reaches it as an advisory. Returned on any other event it degrades to an advisory and reports the misuse on stderr, so a handler cannot mistake an unhonoured field for enforcement.
+- **advisory** — injected context the agent reads and weighs. Everything else.
+
+**Stop hooks are guarded once per chain in the runtime, not in each handler.** A hook that injects on a stop gives the session another turn, which stops again and re-fires it; the client marks that re-entry with `stop_hook_active`. `dispatch.py` drops every handler on a marked `Stop`/`SubagentStop` before any of them load. So a stop hook gets once-per-chain semantics with no state of its own, and a new one cannot ship without the guard by forgetting to write it.
+
+**Two plugins can both register a block on the same client event** — each is a separate hook process, so `_merge`'s precedence is scoped to one plugin's own handler list and never adjudicates between them; the client fires both and each is honoured on its own. Today only `rbg`'s rule-check gate blocks on the face's `Stop`; `pkb`'s task-release gate (Hooks, above) would be the second once it ships.
 
 ## Observability & OTEL Tracing
 
@@ -139,9 +215,29 @@ Claude Code's native OpenTelemetry export is the primary tracing mechanism forwa
 
 The framework forwards this contract into containers and scheduled runs.
 
+Claude Code's native export carries no knowledge of any single plugin's own
+internal state — a tool invocation, not a rule evaluated inside `rbg`. Where a
+plugin needs its own OTel spans, it builds and exports them itself: `rbg`'s
+`evaluator_otel_trace.py` emits one span per rule evaluation (`COPE_EVALUATOR_OTEL_TRACE_PATH`,
+plugins/rbg/README.md, "As OTel spans, in OTLP JSON"), as an additional sink
+alongside its own JSON Lines trace, using `opentelemetry-sdk` and
+`opentelemetry-exporter-otlp-json-file`'s `FileSpanExporter` to write real
+OTLP JSON straight to a file path rather than a network endpoint. This
+dependency is declared in `plugins/rbg/pyproject.toml` — the first
+plugin-owned `pyproject.toml` in the tree, rather than the shared
+`templates/plugin/pyproject.template.toml` every other plugin still builds
+from — because it is the first plugin whose hooks need a dependency the
+generic template does not carry.
+
 ## Build
 
 `build/build.py` assembles `dist/<plugin>-<client>` for each plugin and client.
+
+**The size of `dist/` is not a constraint.** It is a regenerable, untracked
+artifact, and every plugin gets its own copy of what it needs by design — the
+duplication across client trees is the point, not waste. Never trade away an
+asset, a bundled library, or any other content because of what it adds to the
+output tree, and do not raise dist size as a cost when weighing what to ship.
 
 Stages, in order:
 
@@ -149,8 +245,12 @@ Stages, in order:
    tree. Declared in the plugin's `manifest/plugin.toml` under `[shared]`.
 2. **Resolve includes.** Replace each `@include <path>` line in a markdown file
    with the content of that file from `lib/`. Recursive.
-3. **Render manifests.** Merge `manifest/*.template.json` `__base__` with the
-   client's section, and write to the client's expected path.
+3. **Render manifests.** Merge a `manifest/*.template.json`'s
+   `clients.__base__` with its `clients.<client>` section, and write to the
+   client's expected path. Every template declares a `manifestVersion` and
+   holds its sections under `clients`, keeping the top level for plugin
+   identity. A template with no `manifestVersion`, an unrecognised one, or no
+   `clients` object fails the build.
 4. **Adapt to client.** Client adapters in `build/clients/` apply the
    client-specific transformations.
 5. **Package.** Tar per client, plus the marketplace manifests.
@@ -206,8 +306,26 @@ Two in-session mechanisms, both advisory, both live:
 They overlap deliberately. Which one works better is an open question, so both
 ship and neither is built as though it were the gate.
 
-Real enforcement is a separate merge-stage check. Nothing in-session blocks on a
-rule verdict.
+Real enforcement — a mechanical verdict on whether an agent complied — is a
+separate merge-stage check; nothing here reads the transcript or grades the
+substance of what an agent did. One mechanism now holds a stop open rather than
+merely advising: `rbg`'s rule-check gate (`Stop` / `SubagentStop`, both the face
+and a stopping worker) directs the agent to run an explicit rule check and
+present evidence before it can stop. `ida`'s quiet gate (`Stop` only,
+face-scoped — `SubagentStop` is deliberately not wired, since it fires on a
+_stopping subagent's_ own context rather than the face's) is advisory only:
+it reminds ida to strip its reply to load-bearing content before it speaks,
+but does not hold the stop open. Each is silent on what it finds.
+
+`lib/hooks/dispatch.py` carries a third result kind alongside `warn` and
+`refuse` — `block`, which renders as Claude Code's top-level
+`{"decision": "block", "reason": ...}` and degrades to the advisory shape on
+agy, which has no blockable event — and `is_continuation`, the once-per-stop-
+chain guard any such gate needs. One plugin wires it, above (`rbg`); a second
+gate on the same primitive, `pkb`'s task-release check, is specified and
+still unbuilt (`ARCHITECTURE.md`, Hooks). This section governs: a gate
+described anywhere else in this document but absent from a plugin's
+`HANDLERS` does not exist.
 
 ## Containers
 

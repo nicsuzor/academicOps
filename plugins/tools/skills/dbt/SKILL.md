@@ -8,22 +8,8 @@ description: dbt (data build tool) implementation of the analyst transformation 
 
 # dbt — Transformation Layer (academicOps)
 
-This skill is the **dbt-specific implementation** of the transformation layer described
-in the tech-agnostic `analyst` skill (aops-tools). The analyst skill owns the
-_principles_ (all transformation in a versioned/tested/reproducible layer; presentation
-displays pre-computed data only); this skill owns the _dbt how-to_.
-
-dbt is one **swappable** choice of transformation layer. The analyst principles hold
-regardless of which engine you use; only the commands and file layout below are
-dbt-specific.
-
-## Contents
-
-- [[dbt-workflow]] — single-step collaborative workflow for creating and modifying
-  dbt models in the staging / intermediate / mart layered architecture.
-- [[dbt-patterns]] — comprehensive reference: data-access policy, model organisation,
-  testing strategies (schema / singular / package tests), documentation, incremental
-  models, and performance.
+dbt is one **swappable** implementation of the transformation layer. The `analyst`
+skill owns the principles, which hold whichever engine you use.
 
 ## When to use
 
@@ -31,3 +17,11 @@ dbt-specific.
 - You need to add a metric, join, aggregation, or any business logic — it belongs in a
   dbt model with tests, never in the presentation layer.
 - You need to test or document a transformation so reviewers can re-run and audit it.
+
+## The boundary that matters
+
+Every metric, join, aggregation, and `CASE` business rule lives in a tested dbt model
+in the staging / intermediate / mart layering — never inline in the presentation
+layer. A transformation without a test is not one anyone can audit.
+
+Fetch current dbt documentation at the point of use.

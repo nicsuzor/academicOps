@@ -5,20 +5,9 @@ description: Streamlit implementation of the analyst presentation layer. Use whe
 
 # Streamlit — Presentation Layer (academicOps)
 
-This skill is the **Streamlit-specific implementation** of the presentation layer
-described in the tech-agnostic `analyst` skill (aops-tools). The analyst skill owns the
-_principle_ (display-only, never transform); this skill owns the _Streamlit how-to_ —
-see **Hard boundary** below for what that means in practice.
-
-Streamlit is one **swappable** choice of presentation layer. The display-only rule holds
-regardless of which dashboard tool you use; only the patterns below are Streamlit-specific.
-
-## Contents
-
-- [[streamlit-workflow]] — single-step collaborative workflow for building Streamlit
-  dashboards (load → STOP → chart → STOP → interactivity → STOP).
-- [[streamlit-patterns]] — design patterns and best practices for research dashboards.
-- [[streamlit]] — standard app structure and additional Streamlit patterns.
+Streamlit is one **swappable** implementation of the presentation layer. The `analyst`
+skill owns the principle — display only, never transform — which holds whichever
+dashboard tool you use.
 
 ## When to use
 
@@ -32,3 +21,6 @@ Streamlit may read (`SELECT * FROM mart`), filter on existing columns, format fo
 display, and render charts. It must NEVER `GROUP BY`/aggregate, `JOIN`, apply `CASE`
 business logic, or compute derived metrics inline. If tempted to transform: STOP and
 add a model in the transformation layer (see the dbt skill) instead.
+
+This boundary is the whole of what this skill contributes. Fetch current Streamlit API
+documentation at the point of use.

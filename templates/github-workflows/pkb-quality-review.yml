@@ -144,7 +144,7 @@ jobs:
               mcp__services__pkb__* tools.
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate the qualitative review to
-              an `aops-pkb:pauli` sub-agent, you MUST pass the explicit `tools`
+              a `pkb:pauli` sub-agent, you MUST pass the explicit `tools`
               list per the "Sub-Agent Dispatch" section in maintenance-phases.md. On CI the
               toolset is: `Bash, Glob, Grep, Read, Skill` (review is read-only,
               so omit Write/Edit and the PKB MCP tools). Without an explicit

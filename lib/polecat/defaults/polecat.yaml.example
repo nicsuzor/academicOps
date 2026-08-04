@@ -1,0 +1,62 @@
+# polecat operator config — EXAMPLE
+#
+# This file is an example and nothing more. Every line in it is commented out,
+# on purpose: it sets no defaults, and polecat has none. Copy it, uncomment
+# what you need, and fill in values that belong to your machine.
+#
+# Where polecat looks for the real file (lib/polecat/cli.py,
+# load_config): $AOPS_POLECAT_CONFIG if set, otherwise polecat.yaml under
+# $AOPS_SESSIONS. Having no config file at all is legal — every required value
+# can arrive from the environment instead.
+#
+# Two values are REQUIRED. `polecat run` exits non-zero naming the one that is
+# missing; it never guesses.
+#
+#   POLECAT_HOME  or  polecat_home below   (resolve_polecat_home)
+#   POLECAT_IMAGE or  docker.image below   (resolve_image)
+#
+# The environment variable wins over the file in both cases.
+
+# Local cache root for isolated clones, staging, and session logs. Must be on
+# the same filesystem as the repositories polecat clones — the clone hardlinks
+# objects. Shown here only to illustrate the shape.
+# polecat_home: /path/to/your/polecat-home
+
+# Container image reference. An image reference names a registry and an
+# account, which belong to your installation, so there is no value this file
+# could sensibly ship.
+# docker:
+#   image: your-registry/your-account/polecat:your-tag
+
+# Per-machine workspace paths are NOT read from this file. They live in
+# <polecat_home>/local.yaml (cli.py, load_local_overlay), which maps a
+# --project name to a checkout on this machine:
+#
+#   paths:
+#     your-project: /path/to/your/checkout
+#
+# Without a mapping, pass --repo-dir. Unresolvable means a loud failure; there
+# is no default workspace.
+
+# Host directory of user-scoped cope/rbg rules (the same shape as
+# $ACA_DATA/.agents/rules/ on a host session), mounted read-only into every
+# container at the path cope's layer 3 reads (resolve_rules_dir). Optional:
+# absent means the container simply has no layer 3, a clean no-op — exactly
+# like a host session with $ACA_DATA unset. Configured but unreadable is a
+# hard failure, never a silent skip, because setting this is a claim the
+# directory exists. $POLECAT_RULES_DIR overrides this at the environment.
+# rules_dir: /path/to/your/pkb-checkout/.agents/rules
+
+# cope's evaluator, forwarded into every container. Each field is the plain
+# COPE_EVALUATOR_* variable lower-cased and prefixed here; a host environment
+# variable of that name still wins over whatever is set below
+# (resolve_cope_evaluator). Leaving this whole block out is legitimate and
+# silent — cope's in-container rule checking is then simply switched off
+# (plugins/cope/hooks/evaluator.py). No endpoint, model, or key ships with
+# this file; every value below belongs to your installation.
+# cope:
+#   evaluator_url: https://your-evaluator.example/v1/label
+#   evaluator_protocol: cope   # or: openai
+#   evaluator_model: your-model-id
+#   evaluator_api_key: your-api-key
+#   evaluator_timeout: 5.0

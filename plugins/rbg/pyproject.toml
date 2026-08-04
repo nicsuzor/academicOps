@@ -1,0 +1,14 @@
+[project]
+name = "rbg"
+version = "0.1.0"
+description = "Automatic in-session rule enforcement."
+requires-python = ">=3.11"
+dependencies = [
+  # Framework core, unchanged from the generic plugin template.
+  "pydantic>=2.0",
+  "fastmcp>=2.13.1",
+  # OTel span emission for evaluator_otel_trace.py — this plugin's own
+  # additional trace path, alongside evaluator_trace.py's JSON Lines trace.
+  "opentelemetry-sdk>=1.40.0",
+  "opentelemetry-exporter-otlp-json-file>=0.65b0",
+]

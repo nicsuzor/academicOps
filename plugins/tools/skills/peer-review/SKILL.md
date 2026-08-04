@@ -12,16 +12,10 @@ the current round's scheme criteria and producing evidence-based, signable feedb
 agent prepares and verifies; **the academic owns the scores, the net call, and the final
 submitted text.**
 
-## What this skill is, in one paragraph
-
-A review is not a linear pipeline that ends in a self-check. It is an **adaptive loop of
-five stages** whose quality comes from two moves a naive draft-then-submit flow lacks:
-**adversarial independent verification** of every claim, and a **voice-match + whole-set
-de-template** pass that makes the prose signable and un-formulaic. Its failures happen at
-the **seams between stages** — a polish pass that quietly promotes a paraphrase into a
-fabricated quote; a voice rewrite that drops a verified correction. So the loop **gates
-its regeneration boundaries**: _"verified" attaches to a committed artifact, not an idea,
-and any regeneration re-enters verification._
+A review is not a linear pipeline that ends in a self-check. It is an adaptive loop of five
+stages, and its failures happen at the seams between them — a polish pass that quietly
+promotes a paraphrase into a fabricated quote, a voice rewrite that drops a verified
+correction.
 
 ## Core Rules
 
@@ -54,11 +48,11 @@ default; it needs no fleet infrastructure.
 When you have many reviews in a round **and** the infrastructure to fan out, two stages
 parallelise — in _opposite_ directions:
 
-- **VERIFY silos**: one independent, contextless verifier **per application** (isolation
-  prevents cross-contamination). Prefer a _fresh_ sub-agent for VERIFY even in serial mode —
-  a single agent verifying its own draft is a weaker adversary than a cold reader.
-- **DE-TEMPLATE is whole-set**: a single pass over the _entire round's_ drafts at once
-  (fingerprints only exist across documents).
+- **VERIFY silos** (guard F5): one independent, contextless verifier **per application** —
+  isolation prevents cross-contamination. Prefer a _fresh_ sub-agent for VERIFY even in
+  serial mode; an agent verifying its own draft is a weaker adversary than a cold reader.
+- **DE-TEMPLATE is whole-set** (guard F5): a single pass over the _entire round's_ drafts at
+  once — fingerprints only exist across documents.
 
 **Dispatch constraint.** Fan-out is a privilege of a top-level / lead session. If this
 skill is itself running inside a leaf sub-agent, it **cannot** fan out a verifier panel —
@@ -110,47 +104,19 @@ bands ([[review-guidance]]). **Scores left blank.**
 
 ### Stage 2 — VERIFY (adversarial, independent) — the highest-value stage
 
-Run as a **separate contextless pass** (fan-out) or an explicit, forceful hat-switch: _"You
-are now an adversarial verifier. The draft's authors are not to be trusted. Distrust any
-prior PASS. Demand proof."_ Full method in [[review-verification]]. The core:
-
-- **Claim-by-claim**: classify every claim CONFIRMED (line# + verbatim quote) / UNSUPPORTED
-  (say where you looked) / WRONG (contradicting quote + line). Absence-claims require a
-  **documented grep with synonyms**.
-- **Verbatim-quote-existence sweep** (the single highest-value check): every quoted string
-  in the draft must appear verbatim in source. A null grep on a quoted phrase is a
-  **presumptive BLOCKER**.
-- **Tool-backed arithmetic**: recompute every total from its components (`python3 -c …`,
-  not mental math). Quote no total you haven't re-derived.
-- **Read the PDF pages** for GANTT / budget / timeline; run an **internal-contradiction
-  sweep** across fields (FTE vs "retired"; dates vs funding window; refs vs in-text).
-- **Independent gap analysis**: read the application _cold_ and find strengths and
-  weaknesses the draft missed; check balance across criteria. (The highest-value catches
-  come from here, not from checking the draft's own claim list.)
-- **Verify your own corrections** before asserting them.
-- Classify findings on the severity ladder **BLOCKER / FIX / NIT** ([[review-verification]]).
+Run as a **separate contextless pass** (fan-out) or an explicit, forceful hat-switch, and
+run it as [[review-verification]] is written — the six techniques, the claim-by-claim
+classification, the independent gap analysis, and the BLOCKER / FIX / NIT ladder. Never
+degrade it to a citation-check of the draft's own claim list (guard F2).
 
 ### Stage 3 — VOICE & DE-TEMPLATE
 
-Convert the **verified** draft into clean, signable prose in the academic's voice
-([[voice-and-detemplating]]):
+Convert the **verified** draft into clean, signable prose in the academic's voice, as
+[[voice-and-detemplating]] is written — two registers, render boldly, the voice-onboarding
+loop, and the whole-set de-template pass when the round holds more than one review.
 
-- **Two registers**: prep is maximally specific; the final prose is **generally-assertable
-  from one careful reading without re-checking any number**. Everything cut is preserved in
-  **git history**, not a carried appendix.
-- **Render the academic's stated position boldly.** Raise register worries in conversation;
-  **never soften silently.** The systematic failure mode here is _under-assertion_, not
-  over-assertion.
-- Cut to roughly one reservation per criterion, framed constructively, anchored to the
-  application's own promises; aim support/resourcing critiques at _institutions_, never the
-  vulnerable researcher.
-- **Voice onboarding**: if the academic's voice file (`{academic}-style.md`) isn't trained
-  yet, run the **reflection-on-diff loop** (agent drafts → human edits → agent diffs and
-  codifies the delta) over the first few reviews. A static style guide alone is insufficient.
-- **Whole-set de-template** (only when >1 review in a round): census recurring pivot
-  formulas across the set → budget ≤1 use per formula → two-tier rewrite (re-mechanise the
-  load-bearing critique sentences; light synonym de-dup is fine only for low-stakes praise)
-  → re-scan for new fingerprints the fix introduced → machine-check pin-cite counts unchanged.
+Its one stage-level bound: cut to roughly one reservation per criterion, framed
+constructively and anchored to the application's own promises.
 
 ### Stage 4 — FINAL-CHECK & submit
 
@@ -174,19 +140,6 @@ covered, sharper? does its framing reverse a position we reached?), and a one-li
 justification per ADD / MODIFY / REJECT. Cross-model's proven value is **distillation** (of
 the academic's analytical signature) and corroboration of emphasis — not new content. A
 final cross-model truth-check is reasonable but optional, not the primary safety net.
-
-## Cross-cutting guards (F1–F8)
-
-| Guard | Rule                                                                                                                                                                                           |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F1    | Any regeneration re-enters verification; "verified" stamps a committed artifact. — [[review-verification]]                                                                                     |
-| F2    | VERIFY is always a full independent cold re-read + re-derivation — never a citation-checker. Includes the verbatim-quote-existence sweep and tool-backed arithmetic. — [[review-verification]] |
-| F3    | PREP self-reviews before writing (integrity material, un-recomputed numbers, paraphrase-as-paraphrase).                                                                                        |
-| F4    | Any integration/fix step re-reads the edited artifact and re-derives every number/quote it lands; uses the narrowest possible edit target. — [[review-verification]]                           |
-| F5    | Silo per-application for fact-checking; one whole-set pass for anything cross-document (fingerprints, conflicts, consistency).                                                                 |
-| F6    | Severity ladder with explicit BLOCKER / FIX / NIT definitions ([[review-verification]]).                                                                                                       |
-| F7    | Verification techniques live in a pre-"ready" gate, not only at the end. — [[review-verification]]                                                                                             |
-| F8    | On-disk drafts are mutable and get rewritten post-hoc — never treat a live draft as proof of a stage's output; the committed/verified artifact is the record. — [[review-verification]]        |
 
 ## Scribe Mode (collegial drafts)
 

@@ -2,6 +2,19 @@
 # See https://pre-commit.com for more info
 
 repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.6
+    hooks:
+      # Linter + auto-fix (isort, unused imports, etc.)
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+        exclude: \.(md|json|toml)$
+      # Code formatter
+      - id: ruff-format
+        types_or: [python, pyi]
+        exclude: \.(md|json|toml)$
+
   # Markdown/JSON/TOML formatting (dprint auto-fix, like ruff --fix)
   - repo: local
     hooks:

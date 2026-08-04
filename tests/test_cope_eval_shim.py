@@ -26,13 +26,16 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_COPE_HOOKS = _REPO_ROOT / "plugins" / "cope" / "hooks"
+# The CoPE client now ships in the rbg plugin — `plugins/cope/` was renamed to
+# `plugins/rbg/` in e3a8bd39/8edff6fa. The evaluator module, its `Config`, and
+# its `check()` are the same surface under the new directory.
+_RBG_HOOKS = _REPO_ROOT / "plugins" / "rbg" / "hooks"
 
-for _dir in (_REPO_ROOT / "scripts", _REPO_ROOT / "lib" / "hooks", _COPE_HOOKS):
+for _dir in (_REPO_ROOT / "scripts", _REPO_ROOT / "lib" / "hooks", _RBG_HOOKS):
     if str(_dir) not in sys.path:
         sys.path.insert(0, str(_dir))
 
-import evaluator  # noqa: E402  (plugins/cope/hooks/evaluator.py)
+import evaluator  # noqa: E402  (plugins/rbg/hooks/evaluator.py)
 from cope_eval_shim import NO_LOGPROB_CONFIDENCE, Config, build_server  # noqa: E402
 
 # The CoPE-B model card's prompt, written out here rather than imported: a
@@ -263,7 +266,7 @@ def test_no_logprobs_reports_the_sentinel_rather_than_inventing_a_number(upstrea
 
 def test_copes_own_client_accepts_what_the_shim_answers(upstream, shim):
     """The contract the shim exists to satisfy, proved against the real client
-    in plugins/cope/hooks/evaluator.py rather than against a reading of it: a
+    in plugins/rbg/hooks/evaluator.py rather than against a reading of it: a
     verdict comes back, with a confidence, and nothing is reported as failed."""
     config = evaluator.Config(
         url=shim() + "/v1/label",
@@ -272,7 +275,7 @@ def test_copes_own_client_accepts_what_the_shim_answers(upstream, shim):
         api_key=None,
         timeout=10.0,
     )
-    matches, failures = evaluator.check(config, [("no-verify", _POLICY)], _CONTENT, _COPE_HOOKS)
+    matches, failures = evaluator.check(config, [("no-verify", _POLICY)], _CONTENT, _RBG_HOOKS)
 
     assert failures == []
     assert [verdict.slug for verdict in matches] == ["no-verify"]
@@ -478,3 +481,37 @@ def test_sixteen_simultaneous_evaluations_are_all_answered_in_parallel(upstream,
     assert all(body["label"] == 1 for _, body in results)
     assert len(upstream.seen) == 16
     assert elapsed < 16 * upstream.delay / 2, f"served serially: {elapsed:.2f}s"
+
+
+def _raise_through_handle_error(server, exception: BaseException) -> None:
+    """Drive ``handle_error`` the way socketserver does — from inside an active
+    ``except`` block, since it reads the live exception off ``sys.exc_info()``."""
+    try:
+        raise exception
+    except BaseException:  # noqa: BLE001 - reproducing socketserver's own call site
+        server.handle_error(None, ("127.0.0.1", 0))
+
+
+def test_a_client_that_hung_up_mid_answer_is_not_logged_as_a_fault(capsys):
+    """Callers abandon whatever has not answered when their budget runs out, so
+    a broken pipe here is the ordinary case. A traceback per abandoned request
+    would bury the faults the log exists to show."""
+    server = build_server("127.0.0.1", 0, Config(upstream="http://127.0.0.1:1", timeout=1.0))
+    try:
+        _raise_through_handle_error(server, BrokenPipeError(32, "Broken pipe"))
+        _raise_through_handle_error(server, ConnectionResetError(104, "Connection reset by peer"))
+        assert capsys.readouterr().err == ""
+    finally:
+        server.server_close()
+
+
+def test_any_other_error_still_gets_its_traceback(capsys):
+    """The silence above is scoped to the two disconnect errors. A shim that
+    swallowed everything would fail open invisibly, which is the one thing it
+    is built not to do."""
+    server = build_server("127.0.0.1", 0, Config(upstream="http://127.0.0.1:1", timeout=1.0))
+    try:
+        _raise_through_handle_error(server, ValueError("something actually broke"))
+        assert "something actually broke" in capsys.readouterr().err
+    finally:
+        server.server_close()

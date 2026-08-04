@@ -111,9 +111,6 @@ more canonical notes and navigation would help. Skip it by default.
 Pacing, per cycle: roughly ten episodic sources, three canonical notes created or
 substantially restructured, at most one MOC.
 
-**Age alone never justifies cancellation.** Old episodic sources get surfaced for
-review, not retired.
-
 ## 4 — Reconcile data quality
 
 Before any structural work, fix the data. Three activities, bounded.
@@ -151,11 +148,11 @@ answered by reading.
 
 ### Staleness and closure
 
-Delegate to [`../../reconcile/SKILL.md`](../../reconcile/SKILL.md) in batch
-context: in-flight claims whose session has gone quiet, the pull requests closed
-since the last cycle, aged non-terminal tasks, and artifact rot. That skill owns
-the procedure and returns one result — fold it into this cycle's summary rather
-than restating it.
+This sweep covers, in batch context: in-flight claims whose session has gone
+quiet, the pull requests closed since the last cycle, aged non-terminal tasks,
+and artifact rot. No shipped skill currently owns that procedure. That is a
+library gap — name it in this cycle's summary rather than freelancing a check
+to fill it.
 
 ### Misclassification
 
@@ -170,7 +167,7 @@ about thirty a cycle.
 Orphans and under-specified work, as **signals** rather than verdicts. Run
 `pkb_orphans()` for the actionable layer and the knowledge-layer call from stage
 1 for the other. Read the flagged nodes and decide whether they genuinely need
-attention. Surface candidates; do not auto-cancel on age.
+attention, and surface candidates rather than retiring them.
 
 ## 6 — Process refiles
 
@@ -199,9 +196,10 @@ stage so the metrics reflect it.
 
 ## 7 — Maintain the graph
 
-Delegate to [`../../graph-maintenance/SKILL.md`](../../graph-maintenance/SKILL.md).
-Select the strategy from this cycle's baseline; that skill executes it and owns
-the triage rules.
+This stage selects a maintenance strategy from this cycle's baseline and applies
+the triage rules. No shipped skill currently owns that procedure. That is a
+library gap — name it in this cycle's summary rather than freelancing a strategy
+to fill it.
 
 **Convergence.** An unchanged `metrics_hash` means the _actionable_ graph has
 converged — skip the actionable strategies and log it. It says nothing about the

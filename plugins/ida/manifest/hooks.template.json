@@ -1,0 +1,36 @@
+{
+  "manifestVersion": "1.0",
+  "name": "aops-ida",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "async": true,
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude Stop"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "agy": {
+      "hooks": {
+        "PostInvocation": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

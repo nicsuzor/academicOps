@@ -1,4 +1,4 @@
-# aops-pkb
+# pkb
 
 Pauli — memory, effectual planning, workflow composition, and the client wiring
 for a Personal Knowledge Base.
@@ -17,36 +17,37 @@ flowchart TD
 
     subgraph pkbwrite["agents/pauli.md — one stage per invocation"]
         pauli(("pauli"))
-        pauli --> hydrate["skills/hydrate<br/>four-section context bundle<br/>always first, six-call budget"]
-        hydrate --> planner["skills/planner<br/>altitude · means · assumptions<br/>routes; runs no stage itself"]
-        planner -. routes to .-> situate
-        planner -. routes to .-> decompose
-        planner -. routes to .-> brief
-        planner -. routes to .-> composer
-        planner -. routes to .-> gardening
+        pauli --> hydrate["skills/hydrate<br/>a few reworded searches →<br/>shortlist of ids, one line each<br/>always first, six-call budget"]
 
-        situate["skills/situate<br/>one task, valued and wired<br/>sets needs_decomposition, stops"]
-        situate --> gate{{"human sets status queued<br/>agents pull only from here<br/>and never promote into it"}}
-        gate --> decompose["skills/decompose<br/>subtask DAG + review nodes<br/>when the task comes due<br/>no review set: halt, leave blocked"]
-        decompose --> composer["skills/workflow<br/>compose the process<br/>three layers, loaded every time"]
-        decompose --> brief["skills/brief<br/>durable brief onto the task body"]
+        hydrate --> capture["commands/q<br/>record one inbox node<br/>and stop"]
+        capture --> gate{{"the user calls brief<br/>on an inbox node<br/>— being called is the gate"}}
+        gate --> brief["skills/brief<br/>placed, valued, wired; assumptions tested vs hopes,<br/>forks and their probes, decision list ·<br/>size at the forks · compose the process ·<br/>emit review and sign-off nodes ·<br/>write the brief — inbox to queued, then stop"]
 
+        pauli --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
-        pauli --> gardening["skills/graph-maintenance<br/>wire · garden"]
-        pauli --> reconcile["skills/reconcile<br/>probe stale claims · fold in<br/>what landed unwatched"]
-        remember -.-> reconcile
+        pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
+
+        learn -. knowledge scope .-> remember
+        learn -. project scope .-> addrule(["rbg — skills/add-rule<br/>write the project rule"])
+        learn -. task scope .-> pull
     end
 
-    composer --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
-    composer --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
-    composer --> wftemplates[["PKB documents tagged wf-template"]]
+    pull --> dump["skills/dump<br/>session exit — bail, close,<br/>hand back, or pause"]
+    pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
+    reconcile -- "re-plan when the wave lands:<br/>back to inbox" --> capture
+
+    brief --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
+    brief --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
+    brief --> wftemplates[["PKB documents tagged wf-template"]]
+    agent -- "routes its own ask" --> library
 
     pkbwrite -- "every read and write" --> mcp
     agent -- "the three hook searches" --> mcp
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    brief --> dispatch(["aops:james — skills/dispatch<br/>refresh the brief, dispatch by task id"])
+    brief -. "task is now briefed" .-> dispatch(["orchestrate:james — skills/dispatch<br/>reads the task by id and routes it<br/>to a worker surface"])
+    dispatch --> pull
 ```
 
 ### The hook asks; nothing checks
@@ -66,10 +67,16 @@ exclude them, and the message covers that case: say the tools are unavailable
 and work from what is visible, rather than guessing at what the PKB would have
 said.
 
-The `hydrate` skill is a different mechanism with a similar name. It is pauli's,
-runs inside pauli's pipeline, spends a six-call budget, and appends a
-four-section bundle to a task. There, it is always first and never skipped. The
-hook's read is neither pauli's nor enforced.
+The `hydrate` skill is a different mechanism with a similar name, and the
+difference is that it runs. The hook asks the agent to search and never checks;
+the skill actually issues the searches, spends a six-call budget, and returns a
+shortlist. There, it is always first and never skipped.
+
+What it returns is **pointers, not prose**: ids with a line each, saying what
+the thing is and why it might bear on the ask. It does not open them. The
+searching is close to mechanical — the judgment it adds is cutting the returned
+lines down to the handful worth a read. Reading them is `brief`'s job, once, on
+the asks that turn out to be worth it.
 
 ### Mutation is a convention, not a boundary
 
@@ -84,53 +91,82 @@ fixed.
 
 ### Stages advance by invocation, not by trigger
 
-Each skill runs in its own invocation and stops. No stage fires the next one.
-`hydrate` emits a bundle. `situate` sets `needs_decomposition: true` and halts —
-nothing polls for that flag. `decompose` runs when the task comes due, `brief`
-just before dispatch. `planner` is a router: it fixes the altitude, names the
-means and assumptions, then sends the work to the stage that owns it.
+Each skill runs, then stops; no stage fires the next. `inbox` is the signal that
+an ask has been captured but not yet worked out — there is no second flag beside
+the status.
 
-The gate in the middle is a person. `queued` means the user has released the
-work for agent dispatch; agents pull only from there and never promote into it.
-Reconcile obeys the same gate — an abandoned claim goes back to `ready`, never
-`queued`. So the pipeline cannot run end to end unattended.
+Two breakpoints are the user's, and no agent crosses either. The first is
+promotion: `brief` runs only when the user calls it, so being called _is_ the
+gate, and it is the only thing that moves a task to `queued`. The second is the
+pull request and the one-way-door sign-offs `brief` wired into the graph.
 
-### Briefing and dispatching are two hands
+### Capture is hydrate plus one write
 
-`brief` composes the delegation brief and appends it to the subtask body, then
-dispatches by task id — the executor reads it fresh, so the composer is never
-the executor. James, running `skills/dispatch`, composes the brief immediately
-before dispatch and freshly each time, because context moves between passes. The
-two meet at the stable-artifact clause: a brief written in an earlier invocation
-and unchanged since may be dispatched directly. Pauli's `brief` writes the
-durable brief onto the task; james re-reads it at dispatch time and refreshes it
-if the context has moved.
+`/q` runs `hydrate` and records one `inbox` node carrying the ask and the
+shortlist. That is the whole of capture: no parent judgment, no valuation, no
+edges, no decisions.
+Every judgment made at capture time is one made on the thinnest context anyone
+will ever have about the ask, and capture that costs more than a few seconds is
+capture that stops happening. `brief` does all of it afterwards, on a node that
+already exists.
 
-### Composing a workflow
+### The composer is not the executor
 
-`workflow` runs inside pauli, called by `decompose` at composition time — every
-time, never carried in pauli's own text. Its three template layers sit outside
-the box because they are sources, not stages: the shipped library, the user's
+`brief` fires when the user calls it, on a captured ask. It places and values the
+unit, sorts its assumptions, names its forks, sizes it, composes its process,
+emits its review nodes, and writes the brief into the task body — then stops at
+`queued`. Dispatch happens later and **by task id**, never by handing the
+freshly-composed text to a worker as a prompt. The executor's first act is to
+read the brief cold from the task, which is what makes the brief bind rather
+than merely restate the reasoning that produced it.
+
+`orchestrate`'s `dispatch` routes that unit to a worker surface. It composes
+nothing.
+
+### Sizing is a fork question, not a size question
+
+A dispatchable unit is the largest chunk containing no unresolved fork. `brief`
+cuts only at an unresolved fork or a responsibility boundary, and defaults to no
+cut — one container-sized unit. Where a fork is blocked on missing information,
+what gets dispatched is the probe `brief` designed: the cheapest experiment that
+discriminates between the branches.
+
+### The return channel writes facts, and nothing else
+
+`reconcile` establishes what is true about work the graph still claims is in
+flight — merged and closed pull requests, abandoned claims, rotted criteria —
+and writes that back. It closes nothing on its own judgment, prunes nothing,
+scores nothing, and certifies nothing. Where a fact it wrote changes what should
+happen next, it returns the affected tasks to `inbox` rather than re-planning
+them.
+
+### Routing and composing are different jobs
+
+**Routing** is picking which template a class of work follows, and the tree that
+does it lives in `workflows/INDEX.md`. Any agent reads it directly; no skill
+stands between them and it. Most of what it routes never gets a process composed
+at all — a simple question is answered and halted, a follow-up continues the
+session, an email is triaged.
+
+**Composition** is assembling a full process for work that has been released for
+dispatch, and it happens in `brief` §3 — read in context, every time, never
+carried in pauli's own text. The three template layers sit outside the box
+because they are sources, not stages: the shipped library, the user's
 `$ACA_DATA/.agents/workflows/`, and PKB documents tagged `wf-template`. They form
 one namespace; a PKB template composes exactly like a shipped one.
 
-The output is prose named on the task: the templates by name, the order, and a
-one-sentence proportionality call. Not a file, not a document. `decompose`
-persists it as part of the record. An empty review set is a library gap —
-decompose records it, leaves the task `blocked`, and writes no DAG.
+The output lands on the task as its checklist: the composed steps, in order,
+plus one pointer bullet naming the templates and the proportionality call. The
+checklist is not the gate, though — obligations that must block acceptance also
+become real nodes, and where a step is both, the node wins. An empty review set
+is a library gap `brief` halts on: it records the gap, leaves the task
+`blocked`, and writes no brief.
 
 ### Remembering
 
-`remember` is not a command. It fires on a standing obligation inlined into
-pauli, ida, james and marsha at build time: write facts, decisions, and state to
-the knowledge base the moment they emerge, without waiting to be asked. Any
-agent under that obligation reaches for the skill; pauli holds the write.
-
-Consolidation is synthesis, not collection. Episodic records — daily notes,
-meeting notes, task bodies, transcripts — become canonical topic notes, and a
-topic area with five or more of those earns a Map of Content. Merging five
-memories into five bullets is not consolidation; if you cannot name the
-principle they are all instances of, the material is not ready.
+Consolidation turns episodic records into canonical topic notes — synthesis,
+not collection. The standard for what that means is
+[`skills/remember/references/quality.md`](skills/remember/references/quality.md).
 
 ## What it provides
 
@@ -142,23 +178,21 @@ principle they are all instances of, the material is not ready.
 
 ### Skills
 
-| Skill               | Does                                                                                                        |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `planner`           | Effectual planning: fix the altitude, start from means, surface assumptions, sequence by what teaches most. |
-| `hydrate`           | Emit a right-sized context bundle so nothing downstream starts cold.                                        |
-| `situate`           | Turn a hydrated ask into one valued, well-connected task, then stop.                                        |
-| `decompose`         | Cut a due task into a subtask DAG and emit its review steps as blocking nodes.                              |
-| `brief`             | Turn the subtask that is due into a brief a cold agent can execute and be judged on.                        |
-| `workflow`          | Compose the process this work runs under, from the shipped library, the user layer, and the PKB.            |
-| `remember`          | Capture knowledge as it emerges; consolidate episodic records into durable notes.                           |
-| `reconcile`         | Probe stale claims and requeue the dead ones; fold in work that finished while nobody was watching.         |
-| `graph-maintenance` | Wire weighted `contributes_to` edges; garden parentage, links, duplicates, and orphans.                     |
+| Skill       | Does                                                                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                                                                                                                        |
+| `brief`     | Place, value, and wire one task; sort its assumptions, name its forks and probes; size at the forks, compose the process from the three layers, emit the review nodes, write the brief. `inbox` to `queued`, then stops. |
+| `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                                                                                                                           |
+| `reconcile` | Establish what is true about in-flight and finished work, write it back, return the affected tasks to `inbox`.                                                                                                           |
+| `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                                                                                                                        |
+| `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims.                                                                                                        |
+| `dump`      | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                                                                                                                            |
 
 ### Command
 
-| Command | Does                                                          |
-| ------- | ------------------------------------------------------------- |
-| `/q`    | Quick-queue a thought onto the graph. Delegates to `situate`. |
+| Command | Does                                                                    |
+| ------- | ----------------------------------------------------------------------- |
+| `/q`    | Quick-queue a thought onto the graph: `hydrate`, then one `inbox` node. |
 
 ### Hook
 

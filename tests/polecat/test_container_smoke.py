@@ -26,7 +26,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tomllib
 import uuid
 from pathlib import Path
@@ -35,15 +34,11 @@ import pytest
 
 pytestmark = pytest.mark.e2e
 
+from lib.polecat import cli  # for CONTAINER_ACA_DATA — no duplicated literal
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _MARKETPLACE_TOML = _REPO_ROOT / "build" / "marketplace.toml"
-_CLI_PY = _REPO_ROOT / "plugins" / "aops" / "polecat" / "cli.py"
-
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
-if _PLUGINS_DIR not in sys.path:
-    sys.path.insert(0, _PLUGINS_DIR)
-
-from aops.polecat import cli  # noqa: E402  (for CONTAINER_ACA_DATA — no duplicated literal)
+_CLI_PY = _REPO_ROOT / "lib" / "polecat" / "cli.py"
 
 # `make docker-build`'s second tag (Makefile, `docker-build:`) — always this
 # name locally regardless of $IMAGE, so it is the one fixed point a smoke
@@ -53,11 +48,9 @@ _DEFAULT_IMAGE = "aops-crew:latest"
 
 _CONTAINER_TIMEOUT = 60
 
-# The agy session-state mount target `cli.py`'s `run()` hardcodes for
-# `agent_cmd == "agy"`. Not importable — it is a local inside `run()`, not a
-# module constant — so this is pinned by the companion contract test below
-# rather than silently drifting out of sync with the real source.
-_AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
+# The agy session-state mount target, imported from the source that uses it —
+# no duplicated literal, nothing to drift.
+_AGY_SESSION_PATH = cli.AGY_SESSION_PATH
 
 
 def _expected_plugin_names() -> set[str]:
@@ -175,7 +168,7 @@ def test_agy_plugins_directory_matches_the_marketplace(real_image):
 
 def test_aca_data_matches_what_polecat_mounts_layer_3_rules_into(real_image):
     """`$ACA_DATA` inside the image must be exactly the path
-    `plugins/aops/polecat/cli.py`'s `CONTAINER_ACA_DATA` mounts a configured
+    `lib/polecat/cli.py`'s `CONTAINER_ACA_DATA` mounts a configured
     `rules_dir` onto — a drift between the two would silently break cope's
     layer 3 in every container even though both sides looked correct alone."""
     result = _run_in_container(real_image, 'echo "$ACA_DATA"')
@@ -205,22 +198,13 @@ def test_agy_session_mount_target_is_writable_by_the_invoking_host_uid(real_imag
     assert (host_dir / "probe").exists()
 
 
-def test_the_agy_session_path_literal_is_pinned_to_the_real_source():
-    """The companion contract for the test above: `_AGY_SESSION_PATH` is a
-    copy of a local variable inside `cli.py`'s `run()`, not an import — this
-    is what stops that copy from silently drifting if the real path is ever
-    renamed there."""
-    source = _CLI_PY.read_text()
-    assert _AGY_SESSION_PATH in source, (
-        f"{_AGY_SESSION_PATH!r} no longer appears in cli.py — this test's mount "
-        "target has drifted from the real agy container_session_path"
-    )
-
-
 def test_every_declared_plugin_has_at_least_one_check_above():
     """A marketplace.toml edit that adds a plugin must be caught by both
     checks above without further wiring — this pins that the expected-name
     source really is the same file both tests read, not a stale copy."""
     expected = _expected_plugin_names()
     assert expected, "build/marketplace.toml declared no plugins — nothing to check"
-    assert "aops" in expected and "aops-cope" in expected
+    # Named rather than merely non-empty: a stale copy of the manifest would
+    # still parse and still yield names, so the pin has to be against plugins
+    # this repository actually declares (specs/ARCHITECTURE.md's plugin table).
+    assert {"ida", "pkb", "rbg"} <= expected

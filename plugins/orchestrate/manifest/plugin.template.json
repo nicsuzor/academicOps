@@ -1,0 +1,15 @@
+{
+  "manifestVersion": "1.0",
+  "clients": {
+    "__base__": {
+      "keywords": [
+        "academicOps",
+        "james",
+        "orchestrator",
+        "polecat"
+      ]
+    },
+    "claude": {},
+    "agy": {}
+  }
+}

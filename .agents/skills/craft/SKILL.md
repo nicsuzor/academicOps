@@ -48,9 +48,6 @@ Instances of the principles above, worth naming because they recur:
 - **Evidence laundering.** Accepting an agent's summary, a partial artifact-channel check (just stdout, not logs/exit-code/schema), or a green test suite as proof — without inspecting the actual output for silent failures, corruption, or placeholders. (Principle 4.)
 - **Deferred-read dispersion.** A rule the agent needs _at the moment of action_ lives one pointer away ("see X.md") instead of inline. An agent that already has the instructions in hand frequently won't make the follow-up read. Inline mandatory content; reserve pointers for genuinely optional depth — never fork required content across a summary and a linked file.
 - **Shape without source.** A step names what the output should _look like_ but not where it comes from or what operation produces it, so the agent satisfies the shape from whatever's cheapest — recycled material, an adjacent step's by-product, memory — silently dropping the real criterion. Name the source, mandate the read, prohibit substitution — without over-specifying the keystrokes (Principle 2's over-specification is the opposite failure).
-- **Cross-skill coupling.** See Principle 3.
-- **Mechanical HOW over judgment WHEN.** See Principle 2.
-- **Over-fitting and ballast.** See Principles 1 and 5.
 
 ## Agent Definition Files — Content Boundary
 

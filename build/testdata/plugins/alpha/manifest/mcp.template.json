@@ -1,20 +1,24 @@
 {
-  "__base__": {
-    "mcpServers": {}
-  },
-  "claude": {
-    "mcpServers": {
-      "alpha": {
-        "command": "bash",
-        "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run.sh"]
+  "manifestVersion": "1.0",
+  "name": "fixture-alpha",
+  "clients": {
+    "__base__": {
+      "mcpServers": {}
+    },
+    "claude": {
+      "mcpServers": {
+        "alpha": {
+          "command": "bash",
+          "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run.sh"]
+        }
       }
-    }
-  },
-  "agy": {
-    "mcpServers": {
-      "alpha": {
-        "command": "alpha-mcp-server",
-        "args": ["--stdio"]
+    },
+    "agy": {
+      "mcpServers": {
+        "alpha": {
+          "command": "alpha-mcp-server",
+          "args": ["--stdio"]
+        }
       }
     }
   }

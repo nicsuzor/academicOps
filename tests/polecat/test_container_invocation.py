@@ -29,22 +29,27 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PLUGINS_DIR = str(_REPO_ROOT / "plugins")
-if _PLUGINS_DIR not in sys.path:
-    sys.path.insert(0, _PLUGINS_DIR)
+from lib.polecat import cli
+from lib.polecat.env_contract import CONTAINER_SET_ENV, docker_env_args
 
-from aops.polecat import cli  # noqa: E402
-from aops.polecat.env_contract import CONTAINER_SET_ENV, docker_env_args  # noqa: E402
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _base_mocks(monkeypatch, tmp_path):
     """Everything docker- and filesystem-heavy stubbed out, so `run()` is
     exercised purely for the command it builds."""
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
-    monkeypatch.setattr(cli, "load_config", lambda: {})
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}
+        },
+    )
     monkeypatch.setattr(cli, "load_local_overlay", lambda home: {})
-    monkeypatch.setattr(cli, "setup_staging", lambda staging_dir, mcp_url, agent_home: None)
+    monkeypatch.setattr(
+        cli, "setup_staging", lambda staging_dir, mcp_url, agent_home, agent_cmd=None: None
+    )
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
@@ -208,8 +213,9 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 
 def test_env_file_is_set_for_the_container(monkeypatch):
     monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
 
-    env = cli.get_env_forwards()
+    env = cli.get_env_forwards(config)
 
     assert env["CLAUDE_ENV_FILE"] == CONTAINER_SET_ENV["CLAUDE_ENV_FILE"]
     assert env["CLAUDE_ENV_FILE"].startswith("/")
@@ -219,8 +225,9 @@ def test_host_env_file_path_never_reaches_the_container(monkeypatch):
     """A host path names a file the container cannot see; the credential hook
     would fail to write it and the session would run unscoped."""
     monkeypatch.setenv("CLAUDE_ENV_FILE", "/home/someone/host-only/session.env")
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
 
-    assert cli.get_env_forwards()["CLAUDE_ENV_FILE"] == CONTAINER_SET_ENV["CLAUDE_ENV_FILE"]
+    assert cli.get_env_forwards(config)["CLAUDE_ENV_FILE"] == CONTAINER_SET_ENV["CLAUDE_ENV_FILE"]
 
 
 def test_env_file_is_outside_every_bind_mount(tmp_path, monkeypatch):
@@ -268,9 +275,9 @@ def test_docker_args_cli_output_matches_the_makefile_contract():
     """The Makefile's docker targets splice this output straight into
     `docker run`, so the CLI surface must carry the name too."""
     result = subprocess.run(
-        [sys.executable, "-m", "aops.polecat.env_contract", "--docker-args"],
+        [sys.executable, "-m", "lib.polecat.env_contract", "--docker-args"],
         cwd=_REPO_ROOT,
-        env={"PYTHONPATH": _PLUGINS_DIR, "PATH": "/usr/bin:/bin"},
+        env={"PYTHONPATH": str(_REPO_ROOT), "PATH": "/usr/bin:/bin"},
         capture_output=True,
         text=True,
     )
@@ -288,7 +295,7 @@ def test_cli_runs_as_a_bare_script():
     """cli.py is documented as directly runnable (specs/polecat/), which takes
     the ImportError fallback rather than the package import."""
     result = subprocess.run(
-        [sys.executable, str(_REPO_ROOT / "plugins" / "aops" / "polecat" / "cli.py"), "--help"],
+        [sys.executable, str(_REPO_ROOT / "lib" / "polecat" / "cli.py"), "--help"],
         capture_output=True,
         text=True,
     )
@@ -303,7 +310,7 @@ def test_polecat_typechecks_clean():
     runtime: the fallback used to import a bare `env_contract` that no
     configured path could resolve."""
     result = subprocess.run(
-        ["basedpyright", "--outputjson", "plugins/aops/polecat/"],
+        ["basedpyright", "--outputjson", "lib/polecat/"],
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,
