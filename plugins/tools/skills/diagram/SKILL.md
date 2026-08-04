@@ -176,14 +176,15 @@ by default, medium (3–4px) for emphasis.
 - `simple-sticky-notes` — sticky notes in seven colours; the only bundled
   library whose text is already bound to its container
 - `banners`, `clouds` — section headers, and mind-map topic holders
-- `planning-canvases`, `gantt`, `calendar`, `organization-chart` — business
-  model and strategy canvases, project timelines, month templates, org charts
+- `calendar`, `organization-chart` — month templates, org charts
 - `flow-chart-symbols` — start/end, process, decision, document, manual input
 - `mathematical-symbols` — drawn to sit beside Virgil text
-- `charts`, `data-viz`, `data-processing` — chart forms and pipeline stages
-- `awesome-icons` — general-purpose icon set
+- `data-processing` — pipeline stages
 - `stick-figures`, `stick-figures-collaboration` — people, and group scenes
-- `hearts` — decorative
+
+**Only version-2 libraries ship here.** A v1 file stores bare element arrays
+under `library` with no item names, so nothing can ask it for anything by name.
+Do not add one: find a v2 equivalent, or go without.
 
 **Library text is usually unbound.** Only `simple-sticky-notes` ships text with
 a `containerId`; everywhere else the labels float, which is the desync this
