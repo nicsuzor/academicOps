@@ -96,6 +96,22 @@ the container.
    the guarantee is that a caught delivery loss never leaves a terminal status
    standing, and it takes both halves to hold.
 
+## Seed delivery verification
+
+For a seeded `agy` dispatch (`--task <id>` with no explicit prompt), a clean
+container exit is not by itself accepted as success. After the container exits,
+`run` scans the session's transcript and log files for a trace of the task id;
+if none is found, it retries the whole dispatch once. If the retry still finds
+no trace, `run` fails loudly and refuses to report success, naming the task and
+the session directory to inspect.
+
+This exists because a dropped seed and a completed task look the same from
+outside the container: if the prompt never reached the agent, the container
+still exits zero and the workspace is left with no changes — exactly the shape
+the workspace delivery guard (§ Guarantees, item 3) would otherwise accept as a
+legitimate no-op pass. Checking the transcript for the task id is what tells
+the two cases apart.
+
 ## Guarantees
 
 1. **Isolation.** Every `run` without `--repo-dir` works on its own throwaway
