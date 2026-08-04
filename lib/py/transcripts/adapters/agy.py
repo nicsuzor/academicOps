@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from transcripts.adapters.classifier import classify_user_prompt
 from transcripts.model import (
     NormalizedEvent,
     NormalizedRawEntry,
@@ -188,6 +189,10 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
                 "CHECKPOINT",
             }:
                 meta["tool_name"] = entry_type
+
+            if norm_source == "user":
+                classification = classify_user_prompt(content, meta)
+                meta.update(classification)
 
             events.append(
                 NormalizedEvent(

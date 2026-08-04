@@ -32,6 +32,7 @@ from claude_code_log.converter import load_transcript
 from claude_code_log.models import TranscriptEntry
 from claude_code_log.renderer import get_renderer
 
+from transcripts.adapters.classifier import classify_user_prompt
 from transcripts.model import (
     NormalizedEvent,
     NormalizedRawEntry,
@@ -367,6 +368,7 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
                         )
             content = "".join(content_parts).strip()
             if content:
+                classification = classify_user_prompt(content, {"user_type": entry.userType})
                 events.append(
                     NormalizedEvent(
                         event_id=entry.uuid,
@@ -374,7 +376,11 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
                         source="user",
                         type="message",
                         content=content,
-                        meta={"user_type": entry.userType, "cwd": entry.cwd},
+                        meta={
+                            "user_type": entry.userType,
+                            "cwd": entry.cwd,
+                            **classification,
+                        },
                     )
                 )
         elif entry_type == "assistant":
