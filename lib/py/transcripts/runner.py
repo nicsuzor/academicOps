@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger("transcripts.runner")
 
 
-def find_session_files() -> list[Path]:
+def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
     """Find all Claude Code and agy session log files.
 
     Claude Code writes one trunk log per session directly under the project
@@ -39,6 +39,11 @@ def find_session_files() -> list[Path]:
     and therefore the parent's slug and output filename, so whichever was
     written last would replace the real transcript.
     """
+    if sessions_dir is None and "AOPS_SESSIONS" in os.environ:
+        sessions_dir = Path(os.environ["AOPS_SESSIONS"])
+    elif sessions_dir is not None:
+        sessions_dir = Path(sessions_dir)
+
     files: list[Path] = []
 
     # 1. Claude session files: ~/.claude/projects/<project>/<session-id>.jsonl
@@ -60,13 +65,32 @@ def find_session_files() -> list[Path]:
                 if p.is_file():
                     files.append(p)
 
+    # 3. Polecat/container sessions under $AOPS_SESSIONS/logs/
+    if sessions_dir is not None:
+        logs_dir = sessions_dir / "logs"
+        if logs_dir.is_dir():
+            # Claude polecat sessions: logs/<YYYYMMDD>/<session-id>/<project>/<uuid>.jsonl
+            for p in logs_dir.glob("*/*/*/*.jsonl"):
+                if (
+                    p.is_file()
+                    and not p.name.endswith("-hooks.jsonl")
+                    and p.name != "transcript.jsonl"
+                    and "subagents" not in p.parts
+                ):
+                    files.append(p)
+
+            # agy polecat sessions under logs/
+            for p in logs_dir.glob("**/transcript.jsonl"):
+                if p.is_file():
+                    files.append(p)
+
     # De-duplicate files
     unique_files = list(set(files))
     return sorted(unique_files, key=lambda x: x.stat().st_mtime, reverse=True)
 
 
 def _is_agy_path(path: Path) -> bool:
-    return path.name == "transcript.jsonl" or "brain" in path.parts
+    return path.name == "transcript.jsonl" or any("brain" in part for part in path.parts)
 
 
 def load_session(path: Path) -> NormalizedSession | None:
@@ -232,7 +256,7 @@ def main() -> int:
         return 0
 
     # Batch processing mode
-    session_files = find_session_files()
+    session_files = find_session_files(sessions_dir)
     if not session_files:
         logger.info("No session files found to process")
         return 0
