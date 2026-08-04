@@ -183,6 +183,21 @@ to the palette below, use 1–3 icons per section, size them to the neighbouring
 text, and do not mix icon styles within one diagram. Material Symbols Outlined
 SVGs are a good source for anything the bundled libraries lack.
 
+To place a library item by script instead, list the items and emit one as an
+appendable element group:
+
+```bash
+python3 scripts/excalidraw-view.py libraries/stick-figures.excalidrawlib lib
+python3 scripts/excalidraw-view.py libraries/stick-figures.excalidrawlib \
+  item "Grandma" --after b3lh --at 400,3400 > /tmp/group.json
+```
+
+`item` mints fresh ids, seeds and indices and rewrites the group's internal
+references, so the output appends straight onto `elements`. Pass the target's
+current max `index` as `--after` (read it from `summary`) and validate with
+`check` afterwards. Older libraries store items unnamed — `lib` gives those a
+`#N` selector.
+
 ### Export
 
 White background, background enabled, 2–3× scale, "Embed scene" on so the file
