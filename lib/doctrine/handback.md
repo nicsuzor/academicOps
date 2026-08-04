@@ -23,3 +23,13 @@ report is written.
 it back**, naming the claim left unsupported. Do not verify it yourself, re-run
 the work, or fill the gap: that spends your context on what you already paid for
 and leaves the worker's standard exactly where it was.
+
+**The receiver checks logic, never substance.** Re-verifying facts and re-running
+the work stay out of bounds — but every returning claim gets a logic check before
+it is acted on: does the attached evidence, with the scope it actually has,
+entail the claim as stated? A non-sequitur is sent back exactly like a missing
+proof, naming which premise fails to reach which claim. The characteristic case
+is absence — "X does not exist" supported by a search that only proves "not found
+where I looked"; absence of proof is not proof of absence. The same defect wears
+other faces: a conclusion wider than its premises, a passing test offered for a
+claim the test never touches, one case's result claimed for the category.
