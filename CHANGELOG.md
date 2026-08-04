@@ -1,5 +1,158 @@
 # Changelog
 
+## [0.3.81](https://github.com/nicsuzor/academicOps/compare/v0.3.80...v0.3.81) (2026-08-04)
+
+
+### Features
+
+* Add unified ida-flat orchestrator ([bd74ab6](https://github.com/nicsuzor/academicOps/commit/bd74ab610d0d5b06f24c14695b3786d6501933c7))
+* add unified ida-flat orchestrator for testing flat delegation hierarchy ([8b847ba](https://github.com/nicsuzor/academicOps/commit/8b847ba714924545bebbf3d88e340da8cb075644))
+* **aops-jr:** restore exit_reflection gate and finalize face plugin extraction ([e9da3fc](https://github.com/nicsuzor/academicOps/commit/e9da3fc3217e23b03b2bbefce7fb40b72d0ae545))
+* **diagram:** address library items from the edit scripts ([1b6d4e2](https://github.com/nicsuzor/academicOps/commit/1b6d4e21703e72a96f90b67d2e434e5b1508f257))
+* **diagram:** bundle ten planning libraries ([00c9d95](https://github.com/nicsuzor/academicOps/commit/00c9d951f6a0f804d725872f263a0e9c4801ce7b))
+* **diagram:** efficient .excalidraw handling, library addressing, and ten planning libraries ([5131281](https://github.com/nicsuzor/academicOps/commit/51312812a69469a15a42c3e3a2831bc9dcfd8b09))
+* **diagram:** read/edit protocol + canned viewer for large .excalidraw files ([918877f](https://github.com/nicsuzor/academicOps/commit/918877f41be3598a2ab0bfb6b6bd25f0af5780f3))
+* **enforcement:** take the rule roster and permission surface dark ([9f4644e](https://github.com/nicsuzor/academicOps/commit/9f4644eeca3c70ac58f2c1df5d41b01078ae9bcf))
+* **hooks:** consolidate Stop-time reminders into the exit_reflection gate ([3a1efa5](https://github.com/nicsuzor/academicOps/commit/3a1efa51d45c2dc464bf3811aa3f89faf7762ba2))
+* **hooks:** consolidate Stop-time reminders into the exit_reflection gate ([622cb11](https://github.com/nicsuzor/academicOps/commit/622cb1198411bf79b74e3372f67ff0e7a635bf7d))
+* **hooks:** suppress verify-reminder PostToolUse hook for background Agent launches (aops_c6a13ad1) ([430e3b9](https://github.com/nicsuzor/academicOps/commit/430e3b9ca03e10ebc20d0507303a1624448d5325))
+* **hooks:** suppress verify-reminder PostToolUse hook for background Agent launches (aops_c6a13ad1) ([#2323](https://github.com/nicsuzor/academicOps/issues/2323)) ([06d3f9c](https://github.com/nicsuzor/academicOps/commit/06d3f9c334001c1068f443a7dfb7505ba52e4b5f))
+* **packaging:** package aops-pkb as standalone installable plugin (aops_de6e9b52) ([a0b3d4d](https://github.com/nicsuzor/academicOps/commit/a0b3d4daee0f0a4b5e5a17b9ea6857421f8d0d4f))
+* **pkb:** ship the task pipeline — capture, situate, brief, reconcile ([18eb80b](https://github.com/nicsuzor/academicOps/commit/18eb80b4afb71c265451141ec856d3a4c98cef80))
+* **polecat:** relocate polecat dispatch into core + rescope aops-jr ([abef6b4](https://github.com/nicsuzor/academicOps/commit/abef6b4a39fe1d3bc25920d194fd87d89d23b9c6))
+* **polecat:** relocate polecat dispatch into core + rescope aops-jr ([e2ec427](https://github.com/nicsuzor/academicOps/commit/e2ec427314e15c534c06894396b004244490eb4c))
+* **polecat:** require git identity in polecat.yaml with no host env fallback ([15f1bdc](https://github.com/nicsuzor/academicOps/commit/15f1bdcc5b3ca2e4d1df6d9bafd383d41a9cdd41))
+* **polecat:** resolve isolated workspace HEAD and origin from canonical_dir ([a5a02c6](https://github.com/nicsuzor/academicOps/commit/a5a02c6f40e4d9f5d23a9df8a0568c7e913919ae))
+* **polecat:** set push.autoSetupRemote=true on local clone ([c7dceb9](https://github.com/nicsuzor/academicOps/commit/c7dceb9cfe05309ea35d51c068dea2bdd1ed1d8c))
+* **pr-reviewer:** add enforcement-change doc-currency check ([749a2ee](https://github.com/nicsuzor/academicOps/commit/749a2ee5e30d34488dbf033bcfc4edfb94ec7978))
+* **pr-reviewer:** add enforcement-change doc-currency check ([8cb7d57](https://github.com/nicsuzor/academicOps/commit/8cb7d5753bd0d0e27c62a6b2007285630691669e))
+* **v0.5:** install ergonomics for aops-jr and reflexes-cope optional plugins (epic_9a866589) ([1de9abd](https://github.com/nicsuzor/academicOps/commit/1de9abd2526ac003be643b1bcd7e093524c00595))
+* **v0.5:** redirect PR [#2306](https://github.com/nicsuzor/academicOps/issues/2306) to reflexes-cope plugin and strip core quality gates (epic_7015bc7b, epic_2150b2b4) ([af17e3b](https://github.com/nicsuzor/academicOps/commit/af17e3bf14f29a973802d131ace3cbd4f3fbd870))
+* **v0.5:** redirect PR [#2306](https://github.com/nicsuzor/academicOps/issues/2306) to reflexes-cope plugin and strip core quality gates (epic_7015bc7b, epic_2150b2b4) ([a9e7e13](https://github.com/nicsuzor/academicOps/commit/a9e7e1350d2ad72d3e0bd8dd717d00ec9952f5a6))
+
+
+### Bug Fixes
+
+* address Copilot review comments on ida-flat PR ([9bcc99f](https://github.com/nicsuzor/academicOps/commit/9bcc99f49ce26ba7adef2fdfe489f70125728496))
+* **agents:** break agent/skill fork cycles and repair the hearsay handler ([b2de4b1](https://github.com/nicsuzor/academicOps/commit/b2de4b1f59511faf70f392567b9506b7832038c4))
+* **aops-jr:** configure hatchling build to allow empty package list ([#2324](https://github.com/nicsuzor/academicOps/issues/2324)) ([a7923ba](https://github.com/nicsuzor/academicOps/commit/a7923ba5bd8aced91ba2dc2fa74794104a6d6e11))
+* **aops-jr:** stop building aops-jr as a wheel — package = false ([2849438](https://github.com/nicsuzor/academicOps/commit/2849438efc026968c9fa60b792218d245f67dc36))
+* **aops-jr:** stop building aops-jr as a wheel — package = false ([d9e46c0](https://github.com/nicsuzor/academicOps/commit/d9e46c05b6ad66b3e3dc2e33d04efda6db39f92d))
+* **brief:** resolve the index-drift conflict and give brief a raw-note path ([12acf86](https://github.com/nicsuzor/academicOps/commit/12acf867a97b8eb18536f8da475f19fee514385d))
+* **build:** clean install-dev agy plugin handling and repoint specs to orchestrate ([01a9fca](https://github.com/nicsuzor/academicOps/commit/01a9fca7f739806db4572549df12a147a71a1b84))
+* **build:** clean install-dev agy plugin handling and repoint specs to orchestrate ([80baa8b](https://github.com/nicsuzor/academicOps/commit/80baa8b168745c0c1e56fbe44f4f1e43b8daff06))
+* **build:** dedupe orchestrate entry in marketplace.toml from merge ([e272642](https://github.com/nicsuzor/academicOps/commit/e27264267c3aadb60258842fe5c9977639eb6dae))
+* **build:** wire orchestrate into the build, fix agy hook regression, address review ([a262cf6](https://github.com/nicsuzor/academicOps/commit/a262cf611006f1495d3bfbbd4aa2355af0c4dd7c))
+* **build:** wire the PKB MCP server for agy via the resolvable placeholder ([fefcb21](https://github.com/nicsuzor/academicOps/commit/fefcb21b4eaa55fea8ed17374fda976b9de407b7))
+* **cloud-setup:** retry tailscale install, correct plugin install list ([463beee](https://github.com/nicsuzor/academicOps/commit/463beee523f5823c1ef414141706cd100b1eb47b))
+* correct PKB tool-permission name in james and rbg ([28b4103](https://github.com/nicsuzor/academicOps/commit/28b41031fe4251ee188d3d60f761b4a75f068a60))
+* **gates:** canonicalize gate_dispatch.py into aops/hooks/, remove plugin duplicates ([e25759f](https://github.com/nicsuzor/academicOps/commit/e25759fecc8e076a1eba1d3b840dc266cd8e6da6))
+* **gates:** remove reflexes-cope's hand-maintained gate primitives, use canonical fan-out ([6b70ee5](https://github.com/nicsuzor/academicOps/commit/6b70ee555f5a79894fcf8e7c4a2f02e3249c1714))
+* **harness:** headless non-interactive fail-fast + PEP420 hooks namespace (aops_87e42d7c, aops_bb21f24e) — recovered from undelivered worker run ([72781ce](https://github.com/nicsuzor/academicOps/commit/72781cee9d30ec47dcb9fe4db6918699516594e0))
+* **hooks:** restore the Stop registrations and rbg's ruleset advisory ([fd346e4](https://github.com/nicsuzor/academicOps/commit/fd346e4b3c1cfe190c3d144697dd1f8eda34f530))
+* **hooks:** use datetime.UTC alias in the hook-fire log timestamp ([f6c3de9](https://github.com/nicsuzor/academicOps/commit/f6c3de9c206893bd0416e97cfa664f5301396b10))
+* **hooks:** write polecat-session-hooks.jsonl on every hook fire ([e19c252](https://github.com/nicsuzor/academicOps/commit/e19c2523a5e9dd50f98804c2412e0067b85da8bd))
+* **lint:** widen refcheck to root-level docs; fix stale copilot-instructions claims ([9f6f840](https://github.com/nicsuzor/academicOps/commit/9f6f840355fbb43f0515f624503d921c4f79ef9d))
+* make the credential-isolation message truthful ([73529b0](https://github.com/nicsuzor/academicOps/commit/73529b0ee77aaa5e86a8a526a31a223530151a28))
+* narrow sessionId so basedpyright accepts it, and run it in make lint ([f9ef1c8](https://github.com/nicsuzor/academicOps/commit/f9ef1c88f3e53dd242203d4a7af1c4adb6fe667f))
+* **pkb:** /q places captured work properly; drop carried-forward scars ([20514f8](https://github.com/nicsuzor/academicOps/commit/20514f84d5281eb0421b4eddcdd8daff0f28451a))
+* **pkb:** cut on who does the work, not on whether it blocks ([5b11d74](https://github.com/nicsuzor/academicOps/commit/5b11d741c24d506c323ff8d8e333ba42cd89dc40))
+* **polecat:** a loopback service URL was unreachable from every container ([325c7e6](https://github.com/nicsuzor/academicOps/commit/325c7e63271dd416ab0d18c9efda82e7620f717c))
+* **polecat:** add harness delivery guard against uncommitted changes and unpushed commits (aops_651f7e5c) ([684ecb7](https://github.com/nicsuzor/academicOps/commit/684ecb78b4f9b1d1fc471bb9268b742045d79532))
+* **polecat:** interpolate resolved polecat_home in workspace error ([a2f238b](https://github.com/nicsuzor/academicOps/commit/a2f238b2b58a31cea0174940b009222badea5ddc))
+* **polecat:** interpolate resolved polecat_home in workspace error ([64dc3b0](https://github.com/nicsuzor/academicOps/commit/64dc3b041b44e891b7bbf667de643d8dac39063c))
+* **polecat:** isolate worker workspace via per-session git worktree ([ac8a6bb](https://github.com/nicsuzor/academicOps/commit/ac8a6bb29d0aa412a699da9b0c86d2959d8cfcf4))
+* **polecat:** isolate workspaces via standalone clone, not linked worktree ([eb39a0e](https://github.com/nicsuzor/academicOps/commit/eb39a0ee0f7a7015b0864028b1a176bb03e9f44f))
+* **polecat:** supply git_identity in test mocks and type annotations ([213ba83](https://github.com/nicsuzor/academicOps/commit/213ba83d88e34d83b5ce1e9dd82451e1a7dc1239))
+* **provenance:** widen _load_json's catch so a bad registry can't drop the handler ([e6e124a](https://github.com/nicsuzor/academicOps/commit/e6e124aadfe6def84bc5b76555b9ebee471d4b98))
+* reconstruct whole sessions, and let an empty session come back ([97138d6](https://github.com/nicsuzor/academicOps/commit/97138d6cf6d7c57483330f5e3e3b04fb3b2178b2))
+* redact the sidecar's values, not its serialised text ([0f0e4bb](https://github.com/nicsuzor/academicOps/commit/0f0e4bba51b956400a01ba9ebae9f63f45b66453))
+* repair live v0.6 defects found by self-test diagnosis and PR review ([b7eb711](https://github.com/nicsuzor/academicOps/commit/b7eb71153adc6e7c5fd3cf386d6ed8e15cf6258f))
+* satisfy ruff import ordering in orchestrate hooks ([dc916a2](https://github.com/nicsuzor/academicOps/commit/dc916a24abbfd13cc75b02aff322e488787025e2))
+* **telemetry:** stop reporting against a denominator a hook can't observe ([c925263](https://github.com/nicsuzor/academicOps/commit/c9252639277985b2f4d5106e952a611760d7a6a4))
+* **tests:** update aops-jr/polecat -&gt; aops/polecat import paths post-relocation ([65b1f96](https://github.com/nicsuzor/academicOps/commit/65b1f96e59dd956478fc1540f530d109c5f01d01))
+* **transcripts:** reinstate secret redaction and fail the aops-ts sync closed ([1e5ef49](https://github.com/nicsuzor/academicOps/commit/1e5ef491b3f32420fdc55cc6351d09f6225062c1))
+* **transcripts:** reinstate secret redaction, fail aops-ts sync closed ([48ed4f2](https://github.com/nicsuzor/academicOps/commit/48ed4f26e6de13376774bbafcb95e9138721afae))
+* **v0.5:** repoint core hooks to shipped files, dedupe PostToolUse, fix topology spec, add INSTALL.md ([82b1b34](https://github.com/nicsuzor/academicOps/commit/82b1b34ad54197d4c3c2913593cf05ba2f6f05c0))
+* **workflows:** investigation composed an empty review set and halted brief ([bb23d55](https://github.com/nicsuzor/academicOps/commit/bb23d5520db6bc74dd914628fdbea83fcab59d45))
+
+
+### Performance Improvements
+
+* **docker:** order polecat image layers by invalidation frequency ([6e13894](https://github.com/nicsuzor/academicOps/commit/6e138940589bb18f85f8554c0a9d0726183f51ca))
+
+
+### Code Refactoring
+
+* **diagram:** drop the v1 libraries ([b4ccbd8](https://github.com/nicsuzor/academicOps/commit/b4ccbd890d1d74751a829e0db060be9db9886f4c))
+* **gates:** establish single canonical source for gate primitives and strip build artifacts from plugins ([6243c4a](https://github.com/nicsuzor/academicOps/commit/6243c4ad52789ef713e8caa466069ab07def199b))
+* **ida:** plan becomes strategize and moves to ida ([08215b8](https://github.com/nicsuzor/academicOps/commit/08215b85fc100c907b6094b63d620e8fad6c9d42))
+* **instructions:** decouple brief's review gate and dispatch's own rules ([59301f8](https://github.com/nicsuzor/academicOps/commit/59301f831f4a16bc6f8ff5ee4884a136f4b0c373))
+* **instructions:** fold situate into brief, cut library cookbooks ([ced61e0](https://github.com/nicsuzor/academicOps/commit/ced61e026b631b719acbca7b1b2c62a108ec276a))
+* **instructions:** v0.7 instruction–design alignment audit ([d4aae7f](https://github.com/nicsuzor/academicOps/commit/d4aae7f61c8d6bf4608c3acbd7986adf75826620))
+* **instructions:** v0.7 instruction–design alignment audit (−6,908 lines, −38%) ([b60072b](https://github.com/nicsuzor/academicOps/commit/b60072b3754698130b8070da3258f3a314e95cc8))
+* Migrate doctrine to axioms and remove includes from agents ([e3b3666](https://github.com/nicsuzor/academicOps/commit/e3b3666241e572261eae50b5aaf28d64c15b848f))
+* **pkb:** merge workflow into brief; brief composes and stops ([98359b9](https://github.com/nicsuzor/academicOps/commit/98359b91d05d27c13699f14a1d71539d73e2e0fc))
+* **polecat:** drift cleanup — no dispatch exceptions, no settings-mirror tests ([ad922dc](https://github.com/nicsuzor/academicOps/commit/ad922dc41d673ffaaf651a4d255790cd54614168))
+* reorganise into a shared core with six plugins ([32695d9](https://github.com/nicsuzor/academicOps/commit/32695d9eff822ddfa31b04dc20d2ec01e1d0d17d))
+* v0.6 reorganise into a shared core with six plugins ([f3f44bf](https://github.com/nicsuzor/academicOps/commit/f3f44bfd0e4b5b97e0c01a47f6d8445bb49b94a5))
+
+
+### Documentation
+
+* **debug:** document double-dash flag separation and response assertions in debug skill ([f0b2748](https://github.com/nicsuzor/academicOps/commit/f0b2748439e101e8d0f9156636045a81bba8c85a))
+* **debug:** require verifying model response string in section 3 ([6277788](https://github.com/nicsuzor/academicOps/commit/627778861fa5b4d810f357fd188efb601a847f5f))
+* **doctrine:** named-teammate spawns cannot carry a return contract ([2855822](https://github.com/nicsuzor/academicOps/commit/2855822e668d16f576969fedc8f96390f3b6f68d))
+* **enforcement:** update enforcement.md currency for reflexes-cope advisory evaluator (epic_612a4efb, epic_c01c4dca) ([dcb29c7](https://github.com/nicsuzor/academicOps/commit/dcb29c71c13b04ec02fde081f67a70171db2d6ed))
+* **packaging:** resolve doctrine-source deferral in v0.5 topology spec ([1364edf](https://github.com/nicsuzor/academicOps/commit/1364edff4a72f2508cb99c18e2d2ee25f5a7ce37))
+* plugin-rename drift, rbg stop-gate contradiction, dangling refs ([9bc918e](https://github.com/nicsuzor/academicOps/commit/9bc918e4aa89005f9cd16ebac63ae2c9b26431fe))
+* **polecat:** document POLECAT_AGENT_HOME in the agy dev-loop ([6463d05](https://github.com/nicsuzor/academicOps/commit/6463d05281bcba51a2715566e6543d38f6e914af))
+* **polecat:** document seed-delivery verification guard ([6235dfc](https://github.com/nicsuzor/academicOps/commit/6235dfc140b7b0427abf6ea0edb0f5a8167c07b5))
+* **polecat:** document seed-delivery verification guard ([93df470](https://github.com/nicsuzor/academicOps/commit/93df470a528540f7fc33877367841124d0685ba8))
+* **polecat:** fix agy transcript path in tmux-interactive-driving spec ([c4788cf](https://github.com/nicsuzor/academicOps/commit/c4788cf9bffd11e338934f8b0444f90ad39cbfd7))
+* **readme:** repoint stale aops-jr/polecat + aops-pkb/agents paths to v0.5 layout ([475869e](https://github.com/nicsuzor/academicOps/commit/475869e34a7b48e1004c4d17bd36f411f124f2ba))
+* repoint references that moved, remove those with no successor ([1142b0a](https://github.com/nicsuzor/academicOps/commit/1142b0ad8c5c37ec2d09c2ef2b3d8ca6ddcb27ae))
+* **skills:** field-test — end-to-end validation guide as goals and checks ([370e25c](https://github.com/nicsuzor/academicOps/commit/370e25c6f305a5f9b636f6ecd4c7745433e2747d))
+* **skills:** field-test §11 — publish grades on the wired map ([3dffc3c](https://github.com/nicsuzor/academicOps/commit/3dffc3c3e24b3ea4c80c911382840e35bfd3ce77))
+* **specs:** add v0.5 modular topology + gate disposition spec ([fb42f21](https://github.com/nicsuzor/academicOps/commit/fb42f21e7d119563ec4d33eda07c3a2773a7b34e))
+* **specs:** apply strategic-review findings to v0.5 topology spec ([77cdeeb](https://github.com/nicsuzor/academicOps/commit/77cdeeb20507ad7a28c8478a839a00272f052dc1))
+* **specs:** correct stale findings in v0.5 topology spec ([d047c12](https://github.com/nicsuzor/academicOps/commit/d047c129e201137e00a399e742d6f52c97a0189c))
+* **specs:** correct stale findings in v0.5 topology spec ([154fd63](https://github.com/nicsuzor/academicOps/commit/154fd6375a51c5450eb5cf6b033594430325d811))
+* **specs:** dist size is not a constraint ([115000d](https://github.com/nicsuzor/academicOps/commit/115000dc86291458764c4e36e00b3144b0240eeb))
+* **specs:** fold plugin README pointer into the layout paragraph ([a8524ae](https://github.com/nicsuzor/academicOps/commit/a8524ae855a2dc472e72a2f550b53dbc9b764ac7))
+* **specs:** govern plugin READMEs from the doc taxonomy ([67f86e2](https://github.com/nicsuzor/academicOps/commit/67f86e29710f26337b670e5abd77cb985f3820f3))
+* **specs:** govern plugin READMEs from the doc taxonomy ([c4210c4](https://github.com/nicsuzor/academicOps/commit/c4210c49159b8ddd08358ae6e72319b6f7bb4196))
+* **specs:** v0.5 modular topology + gate-disposition spec ([48d04de](https://github.com/nicsuzor/academicOps/commit/48d04def34d947c598a619bf6d6aa0f773612182))
+* update ida's quiet gate docs to warn-shaped, not blocking ([9ae663e](https://github.com/nicsuzor/academicOps/commit/9ae663e694bdb7247e059036045db44a460eb836))
+* **v0.4:** reconcile hook/enforcement specs with shipped code ([103de19](https://github.com/nicsuzor/academicOps/commit/103de19c32ae721fada35fb25bda6f625266c6ad))
+* **v0.4:** reconcile hook/enforcement specs with shipped code ([6ad4580](https://github.com/nicsuzor/academicOps/commit/6ad458098bdcf66e372dab69fa068655cc136e44))
+* **v0.4:** redirect deleted ENFORCEMENT-MAP.md references to enforcement.md ([1857fb8](https://github.com/nicsuzor/academicOps/commit/1857fb812cb9accdda40651ef505afaa72a02fde))
+* worker proves, dispatcher bounces ([067a01f](https://github.com/nicsuzor/academicOps/commit/067a01f0a73c65aabf09fe6757b330bd8499d747))
+
+
+### CI/CD
+
+* build dist before pytest so shipped-artifact tests actually run ([c433d70](https://github.com/nicsuzor/academicOps/commit/c433d70ff9dc2092a6c7379713029a5c2b950346))
+
+
+### Build System
+
+* **agy:** reconcile the reapplied pkb MCP fix with the shipped-config sweep ([f41e191](https://github.com/nicsuzor/academicOps/commit/f41e191634defd7496e35042801f951f161c10fd))
+
+
+### Tests
+
+* restore ida Stop-gate message-fidelity coverage, warn-shaped ([00934dd](https://github.com/nicsuzor/academicOps/commit/00934dd03cb7145b941f2762a7cdd69dcbc6cc08))
+* restore suite to green after the lib/hooks consolidation ([35bd591](https://github.com/nicsuzor/academicOps/commit/35bd591307d391089457592bb192b96f98b01ea3))
+* skip manifest checks on an unbuilt tree instead of erroring at collection ([9330369](https://github.com/nicsuzor/academicOps/commit/9330369019fd1691e137a9b6367cb28fa83ace6d))
+* skip manifest checks on an unbuilt tree instead of erroring at collection ([798a79a](https://github.com/nicsuzor/academicOps/commit/798a79a7cec2054f9a183975725fe7a0987886e5))
+
+
+### Miscellaneous
+
+* **agents:** strip dangling Curia reference from qa.agent.md ([14582da](https://github.com/nicsuzor/academicOps/commit/14582da3289a20b410465a12f6b54d64d2bf908a))
+* **instructions:** revise all agent & skill instruction files to prompting best practices ([b7f3c6e](https://github.com/nicsuzor/academicOps/commit/b7f3c6e0ab7a55ae4ecfb4f6d700c06339eb53e7))
+
 ## [0.3.80](https://github.com/nicsuzor/academicOps/compare/v0.3.79...v0.3.80) (2026-07-21)
 
 ### Features
