@@ -171,12 +171,24 @@ by default, medium (3–4px) for emphasis.
 
 ### Bundled libraries
 
-Six `.excalidrawlib` files ship in `libraries/` beside this file:
+`.excalidrawlib` files ship in `libraries/` beside this file:
 
+- `simple-sticky-notes` — sticky notes in seven colours; the only bundled
+  library whose text is already bound to its container
+- `banners`, `clouds` — section headers, and mind-map topic holders
+- `planning-canvases`, `gantt`, `calendar`, `organization-chart` — business
+  model and strategy canvases, project timelines, month templates, org charts
+- `flow-chart-symbols` — start/end, process, decision, document, manual input
+- `mathematical-symbols` — drawn to sit beside Virgil text
+- `charts`, `data-viz`, `data-processing` — chart forms and pipeline stages
 - `awesome-icons` — general-purpose icon set
-- `data-processing`, `data-viz` — pipeline stages and chart elements
 - `stick-figures`, `stick-figures-collaboration` — people, and group scenes
 - `hearts` — decorative
+
+**Library text is usually unbound.** Only `simple-sticky-notes` ships text with
+a `containerId`; everywhere else the labels float, which is the desync this
+skill forbids. After pasting an item, either bind its text or treat the label as
+decoration you will replace.
 
 Load through the Excalidraw library panel → "Load library from file". Recolour
 to the palette below, use 1–3 icons per section, size them to the neighbouring
