@@ -59,8 +59,8 @@ make lint           # ruff check + documented-reference check + basedpyright
 make format         # ruff format + dprint fmt
 ```
 
-Run `make format` before committing; pre-commit runs `dprint fmt` on markdown,
-JSON, and TOML.
+Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
+JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for Python files.
 
 ## Pull requests
 
