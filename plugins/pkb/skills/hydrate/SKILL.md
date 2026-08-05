@@ -1,6 +1,6 @@
 ---
 name: hydrate
-description: Fast disambiguation index — take the ambiguous words in an ask, run a few differently-worded semantic searches, and hand back a shortlist of ids with one-line snippets the caller can then ask more about. Points at things; never explains them. Always first, never skipped.
+description: Fast disambiguation index — take the ambiguous words in an ask, run a few differently-worded semantic searches, and hand back a shortlist of ids with one-line snippets the caller can then ask more about, flagging any unfinished task that may already cover the ask. Points at things; never explains them. Always first, never skipped.
 context: fork
 background: no
 allowed-tools:
@@ -93,6 +93,32 @@ ran: "no prior task (`task_search`: 'graph dashboard', 'focus score UI', 0
 hits)". That rules out "did anyone check", which is exactly what the caller
 needs to know.
 
+### Unfinished work that may already cover the ask gets flagged, not filed
+
+An open task over the same ground is the one hit whose cost is asymmetric. Miss
+it and the ask becomes a second node racing the first, or work already under way
+gets commissioned again — and neither shows up until both have been paid for.
+
+Where a task that is **not yet complete** looks like it covers ground the ask
+also covers, lead with it under a `**Possible overlap**` heading, above the
+ordinary shortlist, carrying its status:
+
+```markdown
+**Possible overlap** — decide before creating anything new:
+
+- `<id>` [<status>] — <what it is> — overlaps on <the ground they share>
+```
+
+Name the shared ground and stop there. Whether this is the same ask, a
+near-duplicate to merge into, a sibling to wire an edge to, or genuinely
+separate work is the caller's call and needs the bodies opened — which is not
+yours to do. Flag it and let them look.
+
+Judge overlap on what the work touches, not on shared wording: two tasks naming
+the same file are a candidate, two tasks both saying "refactor" are not.
+Uncertain counts as a flag — the caller can dismiss it in one read, and the
+failure this catches is expensive in the other direction.
+
 **Deliver in-turn.** Hydrate writes nothing. A shortlist of ids stays true as
 the graph moves; a prose snapshot does not, which is why this stage hands back
 pointers and leaves every write to the stages downstream.
@@ -116,3 +142,6 @@ pointers and leaves every write to the stages downstream.
 The caller can decide what to open next **without opening anything to decide**.
 Every line names something real, addressable by id, with a reason attached. If
 a line's reason is "it came back in the search", it should not be there.
+
+And the caller cannot get to "create a new node" without having seen every open
+task that might already be doing the work.
