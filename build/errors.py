@@ -3,4 +3,4 @@
 
 class BuildError(Exception):
     """A hard build failure: missing plugin, missing manifest, unresolved
-    @include, unknown client, or a malformed plugin.toml / marketplace.toml."""
+    unknown client, or a malformed plugin.toml / marketplace.toml."""

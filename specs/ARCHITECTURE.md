@@ -138,7 +138,7 @@ while reading as complete.
 
 **The handback doctrine** — what a returning report must carry, and what its
 receiver does with one that carries nothing — is stated once in
-[`lib/doctrine/handback.md`](../lib/doctrine/handback.md) and `@include`d at
+[`lib/doctrine/handback.md`](../lib/doctrine/handback.md) and applied at
 every surface that needs it: this plugin's two hook messages and ida's own body.
 The split it encodes is that proof is attached by the **worker**, because a
 returning result cannot be amended afterwards, and that the **receiver's** only
@@ -146,7 +146,7 @@ move on a report without proof is to send it back. Re-verifying, re-running, or
 completing the work on the worker's behalf is not the receiver's job at any
 tier. Brief composition is the same shape and lives in
 [`lib/doctrine/delegation-brief.md`](../lib/doctrine/delegation-brief.md),
-`@include`d by james.
+applied by james.
 
 ### rbg
 
@@ -243,18 +243,16 @@ Stages, in order:
 
 1. **Inject.** Copy `lib/` content a plugin declares into the plugin's build
    tree. Declared in the plugin's `manifest/plugin.toml` under `[shared]`.
-2. **Resolve includes.** Replace each `@include <path>` line in a markdown file
-   with the content of that file from `lib/`. Recursive.
-3. **Render manifests.** Merge a `manifest/*.template.json`'s
+2. **Render manifests.** Merge a `manifest/*.template.json`'s
    `clients.__base__` with its `clients.<client>` section, and write to the
    client's expected path. Every template declares a `manifestVersion` and
    holds its sections under `clients`, keeping the top level for plugin
    identity. A template with no `manifestVersion`, an unrecognised one, or no
    `clients` object fails the build.
-4. **Adapt to client.** Client adapters in `build/clients/` apply the
+3. **Adapt to client.** Client adapters in `build/clients/` apply the
    client-specific transformations.
-5. **Package.** Tar per client, plus the marketplace manifests.
-6. **Cowork channel.** `dist/cowork/` — a directory marketplace assembled from
+4. **Package.** Tar per client, plus the marketplace manifests.
+5. **Cowork channel.** `dist/cowork/` — a directory marketplace assembled from
    the built claude dists: one directory per plugin, a
    `<plugin>-v<version>.zip` upload archive per plugin, and
    `.claude-plugin/marketplace.json` naming the marketplace

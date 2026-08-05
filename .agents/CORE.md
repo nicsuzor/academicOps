@@ -37,6 +37,14 @@ On top of them:
   and report. Do not substitute an adjacent action you can perform.
 - **Verify before asserting.** Every factual claim in a doc or instruction must be
   true of the tree as it is. A doc that lies is worse than no doc.
+- **Verbatim proof.** Any claim of success, state change, test pass, or task
+  completion must be accompanied by a verbatim extract of the output (stdout/stderr,
+  log snippet, or state query) that proves the claim. Do not assert success
+  without falsifiable evidence.
+- **Outcome-oriented delegation.** When delegating tasks to subagents, specify
+  _what_ needs to be done and the constraints, not _how_ to do it. Trust
+  specialized agents to use their tools and domain knowledge appropriately. Do
+  not micro-manage tool selection or execution paths.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md).
 

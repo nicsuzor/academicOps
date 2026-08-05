@@ -30,7 +30,6 @@ DOC_SUFFIXES = (".md", ".md.template")
 _MD_LINK = re.compile(r"\[[^\]]*\]\(\s*<?([^)>\s]+)>?(?:\s+[\"'][^\"']*[\"'])?\s*\)", re.S)
 _WIKILINK = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]*)?\]\]", re.S)
 _CODE_SPAN = re.compile(r"`([^`\n]+)`")
-_INCLUDE = re.compile(r"^@include\s+(\S+)\s*$", re.M)
 _FENCE = re.compile(r"^\s*(```|~~~)")
 
 # A URI scheme, a home/absolute/variable-rooted path, or a placeholder: each
@@ -95,14 +94,12 @@ def mask_fences(text: str) -> str:
 def candidates(text: str):
     """Yield ``(line, kind, raw, unconditional)`` for one document.
 
-    A link target and an ``@include`` path are checked whatever they look like;
+    A link target is checked whatever it looks like;
     a wikilink or a code span is checked only when it is repo-shaped, because
     both are also used for PKB notes and for paths in other repositories.
     """
     body = mask_fences(text)
     found = [
-        # Build stage 2 resolves @include against lib/.
-        *((m, "@include", "lib/" + m.group(1), True) for m in _INCLUDE.finditer(body)),
         *((m, "link", m.group(1), True) for m in _MD_LINK.finditer(body)),
         *((m, "wikilink", m.group(1), False) for m in _WIKILINK.finditer(body)),
         *((m, "path", m.group(1), False) for m in _CODE_SPAN.finditer(body)),
