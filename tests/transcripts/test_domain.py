@@ -11,7 +11,7 @@ from transcripts.domain.cache import SkipCache, source_fingerprint
 from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
-from transcripts.domain.renderer import render_session_to_all_formats
+from transcripts.domain.renderer import get_session_output_dir, render_session_to_all_formats
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.time import get_event_timestamps
 from transcripts.domain.view import select_recent_interactive
@@ -242,3 +242,50 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     assert "</html>" in html_claude
     data_claude = json.loads(json.dumps(sidecar_claude))
     assert data_claude["session_id"] == claude_session.session_id
+
+
+# --- Invariant 6: Session output directory path resolution -------------------
+
+
+def test_get_session_output_dir_task_id(tmp_path: Path) -> None:
+    started_at = "2026-08-05T12:00:00Z"
+    correlation = {"task_id": "aops_0f32bb37", "pr_number": "42", "project": "aops"}
+    out = get_session_output_dir(started_at, correlation, tmp_path)
+    assert out == tmp_path / "transcripts" / "tasks" / "aops_0f32bb37"
+
+
+def test_get_session_output_dir_pr_number(tmp_path: Path) -> None:
+    started_at = "2026-08-05T12:00:00Z"
+    correlation = {"task_id": None, "pr_number": "42", "project": "aops"}
+    out = get_session_output_dir(started_at, correlation, tmp_path)
+    assert out == tmp_path / "transcripts" / "prs" / "pr-42"
+
+
+def test_get_session_output_dir_fallback(tmp_path: Path) -> None:
+    started_at = "2026-08-05T12:00:00Z"
+    correlation = {"task_id": None, "pr_number": None, "project": "aops"}
+    out = get_session_output_dir(started_at, correlation, tmp_path)
+    assert out == tmp_path / "transcripts" / "2026-08"
+
+
+def test_get_session_output_dir_empty_strings_fallback(tmp_path: Path) -> None:
+    started_at = "2026-08-05T12:00:00Z"
+    correlation = {"task_id": "", "pr_number": "   ", "project": "aops"}
+    out = get_session_output_dir(started_at, correlation, tmp_path)
+    assert out == tmp_path / "transcripts" / "2026-08"
+
+
+def test_get_session_output_dir_none_output_dir() -> None:
+    started_at = "2026-08-05T12:00:00Z"
+    correlation = {"task_id": "task-123"}
+    out = get_session_output_dir(started_at, correlation, None)
+    assert out == Path("transcripts/tasks/task-123")
+
+
+def test_get_session_output_dir_invalid_started_at(tmp_path: Path) -> None:
+    started_at = "not-a-valid-date"
+    correlation = {"task_id": None, "pr_number": None}
+    out = get_session_output_dir(started_at, correlation, tmp_path)
+    assert out.parent == tmp_path / "transcripts"
+    assert len(out.name) == 7 and out.name[4] == "-"
+

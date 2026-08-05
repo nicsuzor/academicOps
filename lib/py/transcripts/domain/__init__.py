@@ -18,7 +18,11 @@ from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
 from transcripts.domain.ledger import generate_prompt_ledger
-from transcripts.domain.renderer import render_session_to_all_formats, render_to_full_markdown
+from transcripts.domain.renderer import (
+    get_session_output_dir,
+    render_session_to_all_formats,
+    render_to_full_markdown,
+)
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
 from transcripts.domain.time import get_event_timestamps
@@ -34,6 +38,7 @@ __all__ = [
     "select_recent_interactive",
     "infer_correlation",
     "infer_insights",
+    "get_session_output_dir",
     "render_session_to_all_formats",
     "render_to_full_markdown",
     "git_sync_sessions",

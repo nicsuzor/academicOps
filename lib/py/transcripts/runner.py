@@ -17,7 +17,11 @@ from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
 from transcripts.domain.ledger import generate_prompt_ledger
-from transcripts.domain.renderer import render_session_to_all_formats, render_to_full_markdown
+from transcripts.domain.renderer import (
+    get_session_output_dir,
+    render_session_to_all_formats,
+    render_to_full_markdown,
+)
 from transcripts.domain.secret_redaction import redact_obj, redact_secrets
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
@@ -163,9 +167,8 @@ def process_single_session(
     project = correlation.get("project") or "adhoc"
     filename_base = f"{date_str}-{hour_str}-{project}-{slug}"
 
-    # Determine YYYY-MM directory
-    year_month = dt.strftime("%Y-%m")
-    dest_dir = output_dir / "transcripts" / year_month
+    # Determine destination directory co-located by task_id, pr_number, or YYYY-MM fallback
+    dest_dir = get_session_output_dir(started_at, correlation, output_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     # Render all outputs

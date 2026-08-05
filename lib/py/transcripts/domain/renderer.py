@@ -2,11 +2,48 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import json
+from pathlib import Path
 from typing import Any
 
 from transcripts.domain.secret_redaction import redact_obj
 from transcripts.model import NormalizedEvent, NormalizedSession, SubagentTranscript
+
+
+def get_session_output_dir(
+    started_at: str,
+    correlation: dict[str, str | None],
+    output_dir: Path | None = None,
+) -> Path:
+    """Determine destination directory for session transcript artifacts.
+
+    Precedence:
+    1. task_id -> output_dir / "transcripts" / "tasks" / task_id
+    2. pr_number -> output_dir / "transcripts" / "prs" / f"pr-{pr_number}"
+    3. fallback -> output_dir / "transcripts" / year_month (YYYY-MM)
+    """
+    base = output_dir / "transcripts" if output_dir is not None else Path("transcripts")
+
+    task_id = correlation.get("task_id")
+    if task_id and task_id.strip():
+        return base / "tasks" / task_id.strip()
+
+    pr_number = correlation.get("pr_number")
+    if pr_number and pr_number.strip():
+        return base / "prs" / f"pr-{pr_number.strip()}"
+
+    if started_at:
+        try:
+            dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            dt = datetime.now(UTC)
+    else:
+        dt = datetime.now(UTC)
+
+    year_month = dt.strftime("%Y-%m")
+    return base / year_month
+
 
 # The summary .md is meant to stay comfortably readable (~25K tokens or
 # less) even for very large sessions — the full chronological detail
