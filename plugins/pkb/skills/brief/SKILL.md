@@ -457,8 +457,6 @@ capable colleague walking in cold who will not get to ask a follow-up. Append
 under the existing body; build on the scope and door type already there rather
 than repeating them.
 
-@include doctrine/delegation-brief.md
-
 Three things that doctrine leaves to you, and that this stage owes:
 
 - **Lead acceptance with the outcome to verify, not the edit you imagine

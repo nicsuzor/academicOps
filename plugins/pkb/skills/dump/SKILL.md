@@ -16,6 +16,8 @@ Every session exit runs through this skill. The first word after `/dump` picks t
 
 Do not guess. If the task is not actually finished, the path is bail, pause, or partial — never full.
 
+If a task does not yet exist for the work you just did, **create one**!
+
 **Every task write on every path is a rewrite, never an append** — the shape is
 [`../../agents/pauli.md`](../../agents/pauli.md)'s (goal, checklist, pointers). Dump's own instance is
 `## Now`: one section, replaced wholesale on every exit, never stacked beside an
