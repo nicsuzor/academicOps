@@ -97,13 +97,14 @@ def _render_front_matter(
     ended_at: str,
     has_user_context: bool,
     correlation: dict[str, str | None],
+    run_record: dict[str, Any] | None = None,
 ) -> list[str]:
     """YAML front-matter shared by both Markdown renders.
 
     `tokens_used` / `cost_usd` stay trunk-only so their meaning does not shift
     under existing consumers; the whole-session figures are additional keys.
     """
-    return [
+    front_matter = [
         "---",
         f"session_id: {session.session_id}",
         f"slug: {slug}",
@@ -114,15 +115,119 @@ def _render_front_matter(
         f"project: {correlation.get('project') or ''}",
         f"task_id: {correlation.get('task_id') or ''}",
         f"pr_number: {correlation.get('pr_number') or ''}",
-        f"tokens_used: {session.tokens_used}",
-        f"cost_usd: {session.cost_usd:.6f}",
-        f"subagent_count: {len(session.subagents)}",
-        f"total_event_count: {session.total_event_count}",
-        f"total_tokens_used: {session.total_tokens_used}",
-        f"total_cost_usd: {session.total_cost_usd:.6f}",
-        "---",
+    ]
+    if run_record:
+        for key in (
+            "status",
+            "exit_code",
+            "commit_start",
+            "commit_end",
+            "agent",
+            "worker_model",
+            "duration_seconds",
+            "container_name",
+        ):
+            if key in run_record and run_record[key] is not None:
+                front_matter.append(f"{key}: {run_record[key]}")
+
+    front_matter.extend(
+        [
+            f"tokens_used: {session.tokens_used}",
+            f"cost_usd: {session.cost_usd:.6f}",
+            f"subagent_count: {len(session.subagents)}",
+            f"total_event_count: {session.total_event_count}",
+            f"total_tokens_used: {session.total_tokens_used}",
+            f"total_cost_usd: {session.total_cost_usd:.6f}",
+            "---",
+            "",
+        ]
+    )
+    return front_matter
+
+
+def _render_run_record_markdown(run_record: dict[str, Any] | None) -> list[str]:
+    """Render structured outcome and identity chain section for Markdown transcripts.
+
+    Answers:
+    - "what was this": Agent/Worker name, model, container, seeded prompt
+    - "did it work": Execution status, exit code, duration, delivery guard error if any
+    - "at what commit": Git commit chain (commit_start -> commit_end)
+    """
+    if not run_record:
+        return []
+
+    lines = [
+        "## ⚡ Run Record & Identity Chain",
         "",
     ]
+
+    # "what was this": Worker/Agent name, model, container, seeded prompt.
+    agent = run_record.get("agent")
+    worker_model = run_record.get("worker_model")
+    container_name = run_record.get("container_name") or run_record.get("container_id")
+    seeded_prompt = run_record.get("seeded_prompt")
+
+    identity_parts = []
+    if agent is not None:
+        identity_parts.append(f"**Agent:** `{agent}`")
+    if worker_model is not None:
+        identity_parts.append(f"**Model:** `{worker_model}`")
+    if container_name is not None:
+        identity_parts.append(f"**Container:** `{container_name}`")
+
+    if identity_parts:
+        lines.append(f"- {' | '.join(identity_parts)}")
+
+    if seeded_prompt is not None:
+        prompt_str = str(seeded_prompt).strip()
+        if "\n" in prompt_str:
+            lines.append("- **Seeded Prompt:**")
+            lines.append("  ```")
+            lines.append(f"  {prompt_str}")
+            lines.append("  ```")
+        else:
+            lines.append(f"- **Seeded Prompt:** `{prompt_str}`")
+
+    # "did it work": Execution status, exit code, duration, delivery guard error if any.
+    status = run_record.get("status")
+    exit_code = run_record.get("exit_code")
+    duration = run_record.get("duration_seconds")
+    delivery_guard = run_record.get("delivery_guard")
+
+    outcome_parts = []
+    if status is not None:
+        outcome_parts.append(f"**Status:** `{status}`")
+    if exit_code is not None:
+        outcome_parts.append(f"**Exit Code:** `{exit_code}`")
+    if duration is not None:
+        outcome_parts.append(f"**Duration:** `{duration}s`")
+
+    if outcome_parts:
+        lines.append(f"- {' | '.join(outcome_parts)}")
+
+    if isinstance(delivery_guard, dict):
+        dg_ok = delivery_guard.get("ok")
+        dg_err = delivery_guard.get("error")
+        if dg_err or dg_ok is False:
+            err_msg = dg_err or "Delivery guard check failed"
+            lines.append(f"- **Delivery Guard Error:** {err_msg}")
+    elif isinstance(delivery_guard, str) and delivery_guard:
+        lines.append(f"- **Delivery Guard Error:** {delivery_guard}")
+
+    # "at what commit": Git commit chain (commit_start -> commit_end).
+    commit_start = run_record.get("commit_start")
+    commit_end = run_record.get("commit_end")
+
+    if commit_start is not None or commit_end is not None:
+        c_start = commit_start if commit_start is not None else "unknown"
+        c_end = commit_end if commit_end is not None else "unknown"
+        lines.append(f"- **Commit Chain:** `{c_start}` → `{c_end}`")
+
+    if len(lines) <= 2:
+        return []
+
+    lines.append("")
+    return lines
 
 
 def _subagent_time_range(subagent: SubagentTranscript) -> tuple[str, str]:
@@ -183,10 +288,22 @@ def render_to_markdown(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    run_record: dict[str, Any] | None = None,
 ) -> str:
     """Render a summary/index of NormalizedSession to Markdown with YAML front-matter."""
+    effective_run_record = (
+        run_record if run_record is not None else getattr(session, "run_record", None)
+    )
+
     yaml_lines = _render_front_matter(
-        session, slug, started_at, last_modified, ended_at, has_user_context, correlation
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user_context,
+        correlation,
+        effective_run_record,
     )
 
     filename_base = _get_filename_base(slug, started_at, correlation)
@@ -207,6 +324,7 @@ def render_to_markdown(
             ]
         )
 
+    content_lines.extend(_render_run_record_markdown(effective_run_record))
     content_lines.extend(_render_subagent_index(session, filename_base))
 
     content_lines.extend(
@@ -464,10 +582,22 @@ def render_to_full_markdown(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    run_record: dict[str, Any] | None = None,
 ) -> str:
     """Render a NormalizedSession to full chronological Markdown with YAML front-matter."""
+    effective_run_record = (
+        run_record if run_record is not None else getattr(session, "run_record", None)
+    )
+
     yaml_lines = _render_front_matter(
-        session, slug, started_at, last_modified, ended_at, has_user_context, correlation
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user_context,
+        correlation,
+        effective_run_record,
     )
 
     filename_base = _get_filename_base(slug, started_at, correlation)
@@ -487,6 +617,8 @@ def render_to_full_markdown(
                 "",
             ]
         )
+
+    content_lines.extend(_render_run_record_markdown(effective_run_record))
 
     content_lines.extend(
         [
@@ -550,8 +682,57 @@ def render_to_html(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    run_record: dict[str, Any] | None = None,
 ) -> str:
     """Render a NormalizedSession to a beautiful standalone HTML document."""
+    effective_run_record = (
+        run_record if run_record is not None else getattr(session, "run_record", None)
+    )
+    run_record_meta_items = []
+    if effective_run_record:
+        status = effective_run_record.get("status")
+        if status is not None:
+            status_css = _escape_html(str(status)).lower().replace(" ", "_")
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Status</strong><span class="badge status-badge status-{status_css}">{_escape_html(str(status))}</span></div>'
+            )
+        exit_code = effective_run_record.get("exit_code")
+        if exit_code is not None:
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Exit Code</strong>{exit_code}</div>'
+            )
+        commit_start = effective_run_record.get("commit_start")
+        commit_end = effective_run_record.get("commit_end")
+        if commit_start is not None or commit_end is not None:
+            c_start = commit_start if commit_start is not None else "unknown"
+            c_end = commit_end if commit_end is not None else "unknown"
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Commit Chain</strong><code>{_escape_html(str(c_start))}</code> &rarr; <code>{_escape_html(str(c_end))}</code></div>'
+            )
+        agent = effective_run_record.get("agent")
+        worker_model = effective_run_record.get("worker_model")
+        if agent is not None or worker_model is not None:
+            wm_parts = []
+            if agent is not None:
+                wm_parts.append(str(agent))
+            if worker_model is not None:
+                wm_parts.append(f"({worker_model})")
+            wm_str = " ".join(wm_parts)
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Worker / Model</strong>{_escape_html(wm_str)}</div>'
+            )
+        duration = effective_run_record.get("duration_seconds")
+        if duration is not None:
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Duration</strong>{duration}s</div>'
+            )
+
+    run_record_meta_html = (
+        ("\n            " + "\n            ".join(run_record_meta_items))
+        if run_record_meta_items
+        else ""
+    )
+
     events_html = []
     for event in session.events:
         source_class = event.source or "unknown"
@@ -728,6 +909,16 @@ def render_to_html(
             border-radius: 3px;
             font-weight: bold;
         }}
+        .status-badge {{
+            font-size: 0.8rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }}
+        .status-success {{ background-color: #059669; color: #ffffff; }}
+        .status-failed {{ background-color: #dc2626; color: #ffffff; }}
+        .status-delivery_guard_failed {{ background-color: #d97706; color: #ffffff; }}
         .human-badge {{ background-color: #1d4ed8; color: #ffffff; }}
         .injected-badge {{ background-color: #6d28d9; color: #ffffff; }}
         .assistant {{ border-left: 4px solid #10b981; }}
@@ -781,7 +972,7 @@ def render_to_html(
             <div class="meta-item"><strong>Task ID</strong>{correlation.get("task_id") or "N/A"}</div>
             <div class="meta-item"><strong>Tokens Used</strong>{session.total_tokens_used}</div>
             <div class="meta-item"><strong>Cost (USD)</strong>${session.total_cost_usd:.6f}</div>
-            <div class="meta-item"><strong>Subagents</strong>{len(session.subagents)}</div>
+            <div class="meta-item"><strong>Subagents</strong>{len(session.subagents)}</div>{run_record_meta_html}
         </div>
     </div>
 
@@ -808,6 +999,7 @@ def build_json_sidecar(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    run_record: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the metadata sidecar as data.
 
@@ -816,6 +1008,10 @@ def build_json_sidecar(
     this object only as a value, which is what makes a value-walking redaction
     sufficient for this artifact.
     """
+    effective_run_record = (
+        run_record if run_record is not None else getattr(session, "run_record", None)
+    )
+
     user_prompts = []
     injected_prompts = []
     for event in session.events:
@@ -859,6 +1055,7 @@ def build_json_sidecar(
         "task_id": correlation.get("task_id"),
         "pr_number": correlation.get("pr_number"),
         "insights": insights,
+        "run_record": effective_run_record,
         # `event_count` / `tokens_used` / `cost_usd` describe the trunk, as
         # they always have. The `total_*` keys and `subagents` describe the
         # whole session, delegated work included.
@@ -903,6 +1100,7 @@ def render_to_json(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    run_record: dict[str, Any] | None = None,
 ) -> str:
     """Serialise the metadata sidecar.
 
@@ -920,6 +1118,7 @@ def render_to_json(
             has_user_context,
             correlation,
             insights,
+            run_record=run_record,
         ),
         indent=2,
     )
@@ -934,6 +1133,7 @@ def render_session_to_all_formats(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    run_record: dict[str, Any] | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
     """Render a session into all three output formats.
 
@@ -943,12 +1143,36 @@ def render_session_to_all_formats(
     scanning.
     """
     md = render_to_markdown(
-        session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user_context,
+        correlation,
+        insights,
+        run_record=run_record,
     )
     html = render_to_html(
-        session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user_context,
+        correlation,
+        insights,
+        run_record=run_record,
     )
     json_sidecar = build_json_sidecar(
-        session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user_context,
+        correlation,
+        insights,
+        run_record=run_record,
     )
     return md, html, json_sidecar

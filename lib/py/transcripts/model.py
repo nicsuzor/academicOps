@@ -100,6 +100,7 @@ class NormalizedSession:
     cost_usd: float = 0.0
     subagents: list[SubagentTranscript] = field(default_factory=list)
     degraded: list[str] = field(default_factory=list)
+    run_record: dict[str, Any] | None = None
 
     @property
     def source_files(self) -> list[Path]:
