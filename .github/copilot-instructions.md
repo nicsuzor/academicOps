@@ -37,7 +37,6 @@ academicOps/
 │   └── workflows/    # GitHub Actions
 ├── lib/               # Shared source, injected into plugins at build time
 │   ├── axioms/       # The axioms (single source of truth)
-│   ├── doctrine/      # Composable agent-instruction fragments
 │   ├── hooks/         # Shared hook runtime
 │   └── py/            # Shared Python helpers
 ├── build/              # Build system (build.py, install.py, client adapters)
