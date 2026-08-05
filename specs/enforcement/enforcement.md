@@ -55,10 +55,17 @@ cooperation. The register lists every mechanism in each.
   isolation, the delivery and seed guards, no-defaults config, model pins.
 - **Instructions** — agent personas and skills. The largest band by far, and the
   one the design principles below say to reach for first.
-- **The rule channel** — axioms, project rules, and user rules, delivered
-  in-session by the cope hook and by each client's native rule mechanism. Two
-  overlapping deliveries by design: which works better is an open question, so
-  both ship and neither is built as though it were the gate.
+- **The rule channel** — axioms, project rules, and user rules, in three layers
+  where a later one may only add obligations and never weakens the floor. Three
+  independent delivery paths carry them, and any rule can be on one and off the
+  others: each client's **native rule mechanism**, fed at build time; the **cope**
+  hook, which asks a local evaluator about each tool call; and the **rbg stop
+  check**, which obliges the stopping agent to judge its own session against the
+  rules and produce checkable evidence. Overlapping by design — which works
+  better is an open question, so all three ship and none is built as though it
+  were the gate. They differ in when they fire, what they cost, and what they can
+  see: the first two judge an action before it happens and know nothing of the
+  work as a whole; the third sees a finished turn and nothing else.
 - **The task-graph boundary** — `claim_task` in, `release_task` out. The primary
   accountability point, because it binds to the claim act rather than to session
   mechanics. Contract: [task-contract.md](task-contract.md); the claim-evidence
@@ -149,12 +156,18 @@ mechanism returns one rule at a time against observed failure, rather than as an
 undifferentiated block. The register records what each was, which is what makes
 re-arming one thing possible.
 
-Two properties any restoration holds to:
+Three properties any restoration holds to:
 
 - **Off must be a stated state, not an unmarked one.** A parked rule and a rule
   nobody remembered to mark are different facts, and only one is worth reporting.
 - **Dark must stay distinguishable from degraded.** A channel with nothing in it
   says so; it does not go quiet.
+- **A rule comes back on one path at a time.** The three paths differ in cost and
+  in what they can see, so turning a rule on everywhere at once forfeits the only
+  question worth asking about it: which delivery was doing the work.
+
+Whether the paths need separate switches is a question the first few rules
+answer, not one to settle before them.
 
 ## Sibling documents
 
