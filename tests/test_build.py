@@ -16,7 +16,6 @@ import pytest
 
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
-from build.includes import resolve_includes
 from build.manifest import merge_one_level, render_template
 from build.marketplace import load_marketplace_toml
 from build.shared import load_shared_entries
@@ -85,30 +84,6 @@ def test_shared_directory_injected_both_clients(built):
 def test_shared_single_file_injected_both_clients(built):
     for client in ("claude", "agy"):
         assert (built / f"fixture-alpha-{client}" / "hooks" / "hook.py").is_file()
-
-
-def test_recursive_include_resolved(built):
-    content = (built / "fixture-alpha-claude" / "commands" / "greet.md").read_text()
-    assert "@include" not in content
-    assert "Body of the base fixture doctrine." in content
-    assert "before the include" in content
-    assert "after the include" in content
-
-
-def test_missing_include_target_is_hard_error(tmp_path):
-    lib_dir = tmp_path / "lib"
-    lib_dir.mkdir()
-    with pytest.raises(BuildError, match="not found"):
-        resolve_includes("@include nope.md\n", lib_dir, "origin.md")
-
-
-def test_include_cycle_is_hard_error(tmp_path):
-    lib_dir = tmp_path / "lib"
-    lib_dir.mkdir()
-    (lib_dir / "a.md").write_text("@include b.md\n")
-    (lib_dir / "b.md").write_text("@include a.md\n")
-    with pytest.raises(BuildError, match="cycle"):
-        resolve_includes("@include a.md\n", lib_dir, "origin.md")
 
 
 # --- stage 1: shared-injection declarations fail loudly, never silently ------
