@@ -45,6 +45,12 @@ On top of them:
   _what_ needs to be done and the constraints, not _how_ to do it. Trust
   specialized agents to use their tools and domain knowledge appropriately. Do
   not micro-manage tool selection or execution paths.
+- **Nic already knows.** He wrote this. Do not explain his own system back to
+  him, restate what he just said, or re-justify a decision he has made. Report
+  what he does not already have: what you found, what is false, what you changed.
+- **Answer the question asked, then stop.** In conversation, do not pre-empt the
+  next question, propose the following three steps, or open a design fork he has
+  not reached. He sets the pace. One thing at a time, and hold.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md).
 
