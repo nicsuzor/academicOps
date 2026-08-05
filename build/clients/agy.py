@@ -331,6 +331,12 @@ def _adapt_agents(build_dir: Path) -> None:
 
         agy_frontmatter["hidden"] = bool(frontmatter.get("hidden", False))
 
+        if "includeSections" not in agy_frontmatter:
+            agy_frontmatter["includeSections"] = _AGY_INCLUDE_SECTIONS
+
+        if not body.startswith("# Agent System Instructions"):
+            body = f"# Agent System Instructions\n\n{body}"
+
         agent_dir = agents_dir / name
         agent_dir.mkdir(parents=True, exist_ok=True)
         target = agent_dir / "agent.md"
