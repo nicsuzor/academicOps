@@ -9,8 +9,10 @@
 - commands/<name>.md    -> skills/cmd-<name>/SKILL.md, frontmatter
   `type: command` rewritten to `type: skill`; the commands/ dir itself is
   dropped (agy has no commands/ concept).
-- agents/<name>.md      -> agents/<name>/agent.json (agy customAgent schema
-  with inline prompt body, toolNames translated, and default includeSections).
+- agents/<name>.md      -> agents/<name>/agent.md (agy's own read format —
+  YAML frontmatter plus body, not agent.json; see `_adapt_agents` for why),
+  with `tools` translated where the source sets it, `model` dropped, and a
+  default `includeSections`.
 - axioms with `trigger: always_on` -> rules/<source_file>
 """
 
@@ -236,6 +238,17 @@ def _translate_tool_name(tool: str) -> str:
 
 
 def _adapt_agents(build_dir: Path) -> None:
+    """Rewrite each `agents/<name>.md` into agy's own `agents/<name>/agent.md`.
+
+    agy's runtime reads `agent.md` — YAML frontmatter plus a Markdown body —
+    the same shape Claude Code agents already ship in; it does not read
+    `agent.json`. (Confirmed by direct behavioral test: an `agent.json` placed
+    at the install path is invisible to `agy agents`; the identical content
+    written back out as `agent.md` at that path is picked up immediately.) So
+    this function is a frontmatter transform, not a format conversion —
+    `tools` gets translated, `model` and an absent `tools:` key get the
+    handling documented below, and the body is carried through unchanged.
+    """
     agents_dir = build_dir / "agents"
     if not agents_dir.is_dir():
         return
@@ -271,51 +284,76 @@ def _adapt_agents(build_dir: Path) -> None:
         if not description or not str(description).strip():
             raise BuildError(f"{md_file}: missing required frontmatter field 'description'")
 
-        hidden = bool(frontmatter.get("hidden", False))
         body = m.group(2).lstrip("\n")
 
-        raw_tools = frontmatter.get("tools", [])
-        if isinstance(raw_tools, str):
-            raw_tools = [t.strip() for t in raw_tools.split(",") if t.strip()]
-        elif not isinstance(raw_tools, list):
-            raw_tools = []
+        # Carry every source field through except the four handled
+        # explicitly below, so an agy-relevant addition (e.g. `color`)
+        # doesn't need this function's attention to reach the build.
+        agy_frontmatter: dict = {
+            k: v
+            for k, v in frontmatter.items()
+            if k not in ("name", "description", "tools", "hidden", "model")
+        }
+        agy_frontmatter = {
+            "name": name,
+            "description": str(description).strip(),
+            **agy_frontmatter,
+        }
 
-        tool_names: list[str] = []
-        seen: set[str] = set()
-        for t in raw_tools:
-            if not isinstance(t, str):
-                continue
-            mapped = _translate_tool_name(t)
-            if mapped and mapped not in seen:
-                seen.add(mapped)
-                tool_names.append(mapped)
+        # `model` names a Claude Code model ("opus", "sonnet", ...); agy's
+        # own model set is disjoint (`agy models`: gemini-*, claude-sonnet-4-6,
+        # claude-opus-4-6-thinking, gpt-oss-*). Forwarding the Claude name
+        # verbatim doesn't downgrade gracefully — agy silently drops the
+        # entire agent from `agy agents` when its frontmatter carries a model
+        # value it doesn't recognize. There is no reliable Claude-name ->
+        # agy-name mapping to substitute (the tiers don't line up and agy's
+        # own set moves independently), so the field is dropped rather than
+        # guessed; agy runs the agent on its own default model instead.
 
-        agent_json = dict(frontmatter)
-        agent_json.update(
-            {
-                "name": name,
-                "description": str(description).strip(),
-                "tools": tool_names,
-                "hidden": hidden,
-            }
-        )
+        if "tools" in frontmatter:
+            raw_tools = frontmatter["tools"]
+            if isinstance(raw_tools, str):
+                raw_tools = [t.strip() for t in raw_tools.split(",") if t.strip()]
+            elif not isinstance(raw_tools, list):
+                raw_tools = []
+
+            tool_names: list[str] = []
+            seen: set[str] = set()
+            for t in raw_tools:
+                if not isinstance(t, str):
+                    continue
+                mapped = _translate_tool_name(t)
+                if mapped and mapped not in seen:
+                    seen.add(mapped)
+                    tool_names.append(mapped)
+            agy_frontmatter["tools"] = tool_names
+        # else: no `tools:` key at all — in Claude Code this means
+        # unrestricted access, so the key is left unset here too. Always
+        # emitting `tools: []` for an agent whose source never restricted
+        # tools shipped every such agent to agy with zero tools, silently.
+
+        agy_frontmatter["hidden"] = bool(frontmatter.get("hidden", False))
+
+        if "includeSections" not in agy_frontmatter:
+            agy_frontmatter["includeSections"] = _AGY_INCLUDE_SECTIONS
 
         if not body.startswith("# Agent System Instructions"):
-            body_content = f"# Agent System Instructions\n\n{body}"
-        else:
-            body_content = body
-
-        agent_json["systemPrompt"] = body_content.strip()
-
-        if "includeSections" not in agent_json:
-            agent_json["includeSections"] = _AGY_INCLUDE_SECTIONS
+            body = f"# Agent System Instructions\n\n{body}"
 
         agent_dir = agents_dir / name
         agent_dir.mkdir(parents=True, exist_ok=True)
-        _write_json(agent_dir / "agent.json", agent_json)
-        md_file.unlink()
+        target = agent_dir / "agent.md"
+        _write_agent_md(target, agy_frontmatter, body.strip())
+        if md_file != target:
+            md_file.unlink()
 
 
 def _write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _write_agent_md(path: Path, frontmatter: dict, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fm_text = yaml.safe_dump(frontmatter, allow_unicode=True, sort_keys=False)
+    path.write_text(f"---\n{fm_text}---\n\n{body}\n", encoding="utf-8")

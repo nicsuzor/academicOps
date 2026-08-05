@@ -434,20 +434,28 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         version=VERSION,
     )
 
-    import json
+    import yaml
 
-    # Check agy dist converts agents/ida.md to agents/ida/agent.json
-    agy_ida_json = dist_root / "ida-agy" / "agents" / "ida" / "agent.json"
-    assert agy_ida_json.is_file()
+    # Check agy dist converts agents/ida.md to agents/ida/agent.md (agy's own
+    # read format — see build/clients/agy.py's _adapt_agents docstring).
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
+    assert agy_ida_md.is_file()
     assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
 
-    agy_agent = json.loads(agy_ida_json.read_text())
+    raw = agy_ida_md.read_text()
+    fm, _, body = raw.partition("---\n")[2].partition("---\n")
+    agy_agent = yaml.safe_load(fm)
     assert agy_agent["name"] == "ida"
     assert "interactive face" in agy_agent["description"]
     assert agy_agent["hidden"] is False
 
-    assert agy_agent["systemPrompt"].startswith("# Agent System Instructions")
-    assert "# Ida — The Interactive Face" in agy_agent["systemPrompt"]
+    # plugins/ida/agents/ida.md sets no `tools:` — Claude Code semantics is
+    # "unrestricted", and the agy output must not narrow that to zero tools.
+    assert "tools" not in agy_agent
+
+    body = body.lstrip("\n")
+    assert body.startswith("# Agent System Instructions")
+    assert "# Ida — The Interactive Face" in body
 
 
 def test_agy_agent_tool_names_are_translated(built):
@@ -465,20 +473,50 @@ def test_agy_agent_tool_names_are_translated(built):
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
 
-    import json
-
-    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent" / "agent.json"
-    agy_data = json.loads(agy_agent.read_text())
+    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent" / "agent.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
     # untranslated — the map renames what agy calls by another name and leaves
     # everything else alone.
-    assert agy_data["tools"] == [
+    assert agy_fm["tools"] == [
         "read_file",
         "Skill",
         "invoke_subagent",
         "ask_question",
         "Dispatch",
     ]
+
+
+def test_agy_agent_without_tools_key_ships_unrestricted(built_orchestrate):
+    """plugins/orchestrate/agents/james.md sets no `tools:` key at all — full,
+    unrestricted access in Claude Code. The agy build must not narrow that to
+    an empty list: `tools: []` reads to agy as "grant nothing", not "no
+    opinion", so a forced-empty default silently zeroed every such agent's
+    tool access on agy.
+    """
+    import yaml
+
+    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james" / "agent.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    assert "tools" not in agy_fm
+
+
+def test_agy_agent_drops_claude_model_name(built_orchestrate):
+    """plugins/orchestrate/agents/james.md pins `model: opus` — a Claude Code
+    model name absent from agy's own set (`agy models`). Forwarding it
+    verbatim doesn't degrade gracefully: agy silently drops an agent whose
+    frontmatter names a model it doesn't recognize, confirmed by direct
+    behavioral test. There is no reliable opus/sonnet -> agy-model mapping to
+    substitute, so the field must be absent, not translated.
+    """
+    import yaml
+
+    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james" / "agent.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    assert "model" not in agy_fm
+    # `color` has no such failure mode and is not agy-specific handling —
+    # it should still cross untouched.
+    assert agy_fm["color"] == "orange"
 
 
 def test_axioms_always_on_wired_per_client(built):
