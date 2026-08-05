@@ -19,6 +19,18 @@ hazards syntax knowledge does not cover.
 If the user has not said which, ask before drawing. Converting after the fact
 loses the layout work.
 
+## Working live with the user
+
+A diagram file the user has open is a two-way conversation surface, not a
+one-shot deliverable — their edits in the app are messages to you, made in the
+diagram's own visual language instead of prose. Before writing, check whether
+the file changed since you last saved it (mtime, or diff against what you last
+wrote); if so, read what moved, what was deleted, what was relabelled, and
+treat that as their reply before doing anything else. Never overwrite a live
+file blind. Fold what you learn into whatever else it implies — a task in the
+PKB, a spec, code — then bring your own response back as a change to the same
+diagram, not as an explanation of it.
+
 ## Craft rules (both styles)
 
 - **One message per chart.** State the purpose in one line first ("how a session
@@ -29,6 +41,10 @@ loses the layout work.
   Minimise backward arrows and edge crossings.
 - **Verb-first labels, 3–9 words.** Detail goes in a note or legend, never inside
   the box. Big blocks of text in boxes are the most common failure.
+- **State the fact, not its history.** A node or tag says what is true now
+  (`[DARK]`, `[PROPOSED]`) — never why, when, or what it used to be. No dates,
+  no "removed 2026-08", no "was: X, Y, Z" audit trails. That belongs in git or
+  a spec; a diagram that narrates change is a log wearing a diagram's shape.
 - **Distinct shapes carry distinct semantics** — process, decision, terminal,
   data/IO. Never reuse one shape for two meanings in the same chart.
 - **Same hierarchy level, same size and weight.** Uniform everything is chaos;

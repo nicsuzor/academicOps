@@ -28,6 +28,10 @@ On top of them:
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
 - **Never modify files outside this repository.** Found a bug upstream? Report it.
+- **Commit immediately, and push.** After any change, commit with a short,
+  descriptive message — this container is ephemeral and uncommitted work
+  disappears with it. Never write `.bak`/`.orig`/copy-suffixed files; git
+  already keeps every version.
 - **Fail fast.** A documented path that does not exist, a tool that does not
   behave as documented, an acceptance criterion you cannot meet as written — stop
   and report. Do not substitute an adjacent action you can perform.
