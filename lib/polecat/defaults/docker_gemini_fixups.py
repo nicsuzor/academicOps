@@ -132,8 +132,8 @@ def main() -> None:
         if not args.marketplace_name:
             parser.error("fixup-local-marketplace-name requires --marketplace-name")
         fixup_local_marketplace_name(args.marketplace_root, args.marketplace_name)
-    else:
-        fixup_mcp_config_paths()
+    # else:
+    #     fixup_mcp_config_paths()
 
 
 if __name__ == "__main__":
