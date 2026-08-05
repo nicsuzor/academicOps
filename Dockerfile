@@ -280,13 +280,12 @@ RUN umask 000 \
     && chmod -R a+rwX /home/worker/.claude \
     && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
     && jq -n --arg plugins "$PLUGINS" \
-        '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/antigravity-cli/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
+        '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/config/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
         > /home/worker/.gemini/trustedFolders.json \
     && for p in $PLUGINS; do \
         src="$MP_ROOT/$p-agy"; \
         { [ -d "$src" ] || { echo "FATAL: $p is declared in the marketplace but has no agy build at $src" >&2; exit 1; }; } \
-        && cp -r "$src" "/home/worker/.gemini/antigravity-cli/plugins/$p" \
-        && agy plugin install "/home/worker/.gemini/antigravity-cli/plugins/$p" \
+        && agy plugin install "$src" \
         || exit 1; \
     done \
     && chmod -R a+rwX /home/worker/.gemini \
