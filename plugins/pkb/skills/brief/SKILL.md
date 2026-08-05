@@ -48,10 +48,13 @@ obliges. Everything else you produce is body content and edges.
 
 ## 1 — Read what is there, and check it is still true
 
-**An ask reaches you as a node id or as prose.** Given an id, `get_task` the unit
+> [!NOTE]
+> PKB MCP tools may live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g., `pkb__search`, `pkb__get_task`, `pkb__create_task`).
+
+**An ask reaches you as a node id or as prose.** Given an id, `pkb__get_task` the unit
 and its parent. Given prose with no node behind it — a pasted note, a finding, a
 fragment — there is nothing to read yet: run the searches below first, then
-either merge the ask into the node that already covers it or `create_task` it at
+either merge the ask into the node that already covers it or `pkb__create_task` it at
 `inbox` in the ask's own words, under the parent §2 places it beneath. You brief
 a node either way, because the executor reads the body and never sees the
 invocation that produced it.
@@ -61,15 +64,15 @@ the reading happens here, once, on the ask that turned out to be worth it — pr
 attempts, decisions, known confounds, each with its node id. Open what looks
 load-bearing and skip what does not.
 
-`search`, `pkb_context`, and `task_search` before changing anything. If another
-node already covers this ask, merge into it (`update_task` / `update_body`) —
+`pkb__search`, `pkb__pkb_context`, and `pkb__task_search` before changing anything. If another
+node already covers this ask, merge into it (`pkb__update_task` / `pkb__update_body`) —
 integrating into the body it already has, never stacking a new section under old
 content — and retire the duplicate. Never leave a sibling of a node that already
 exists. Once you have a candidate parent or a near-duplicate, check its
-neighbourhood with `get_semantic_neighbors` before committing.
+neighbourhood with `pkb__get_semantic_neighbors` before committing.
 
 Node types, edges, weights, and the priority and severity rules are the ones the
-PKB MCP tool schemas declare. Read the schema of the tool you are about to call
+PKB MCP tool schemas declare (hosted under the `services` MCP server as `pkb__<tool_name>`, e.g. `mcp__services__pkb__*`). Read the schema of the tool you are about to call
 and write in its terms.
 
 ### The record is a claim, not a fact

@@ -13,9 +13,12 @@ knowledge note carries synthesised prose instead, never accreted history in any
 form.
 
 The vocabulary you write in — node types, edges, status, weights — is the one
-the PKB MCP tool schemas declare (`create`, `create_task`, `update_task`). Read
+the PKB MCP tool schemas declare (`pkb__create`, `pkb__create_task`, `pkb__update_task` hosted under the `services` MCP server, e.g. `mcp__services__pkb__*`). Read
 the schema of the tool you are about to call and write in its terms.
 What a good note looks like is [`references/quality.md`](references/quality.md).
+
+> [!NOTE]
+> PKB MCP tools may be hosted on the **`services`** MCP server under the `pkb__` tool name prefix.
 
 ## Invariants
 
@@ -42,18 +45,18 @@ that generalise to nothing.
 
 **The sequence is mandatory.**
 
-1. **Search** — `search(query="<topic>")`.
+1. **Search** — `pkb__search(query="<topic>")` (`ServerName: "services"`, `ToolName: "pkb__search"`).
 2. **Check for the canonical note.** Exactly one note per first-class topic —
    tool, project, skill, agent, concept. If one exists for this topic area, you
    **must** augment it. A broader canonical note covering the area means no new
    note gets created.
 3. **Augment** — integrate the new observation into the existing structure and
-   rewrite the section it belongs in (`update_body`). `append` only where the
+   rewrite the section it belongs in (`pkb__update_body`). `pkb__append` only where the
    content is genuinely additive and supersedes nothing. Never a new dated
    section bolted on the end. A note reads as current state, never as a
    changelog.
-4. **Or create**, only when nothing matches — `create` for a document,
-   `create_memory` for an atomic memory. Topical, never a session or date file.
+4. **Or create**, only when nothing matches — `pkb__create` for a document,
+   `pkb__create_memory` for an atomic memory. Topical, never a session or date file.
 
 Scale the write to the work: one decision is a bullet on an existing note; a few
 outcomes are observations on an existing topical note; a genuinely new topic

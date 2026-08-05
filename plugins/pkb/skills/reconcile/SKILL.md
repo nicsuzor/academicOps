@@ -49,7 +49,7 @@ than acting on it.
 
 ## 1 — Read the graph, claims included
 
-`list_tasks` over **every non-terminal status** the PKB MCP schema declares —
+`pkb__list_tasks` (maybe hosted under the `services` MCP server: `mcp__services__pkb__list_tasks`) over **every non-terminal status** the PKB MCP schema declares —
 that schema is the source, never a list inlined here. Later steps read and write
 across the whole of that set, so a sweep that loads only the statuses which look
 in flight reports itself complete while skipping whole classes of work.
