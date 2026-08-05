@@ -688,6 +688,22 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
+#: The persona a dispatched worker boots as when the caller names none. Both
+#: agent CLIs take `--agent <name>`, so one constant serves both branches — a
+#: second literal would be a second place to change it.
+DEFAULT_AGENT = "james"
+
+
+def _default_agent_args(extra_args):
+    """`--agent <DEFAULT_AGENT>`, or nothing when the caller already named one.
+
+    Precedence is caller-wins: `--agent` takes a value, so contributing a second
+    one leaves the container holding two conflicting personas. Polecat only
+    fills the gap when extra_args carries no `--agent` in either spelling.
+    """
+    caller_chose_agent = any(arg == "--agent" or arg.startswith("--agent=") for arg in extra_args)
+    return [] if caller_chose_agent else ["--agent", DEFAULT_AGENT]
+
 
 def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headless, task):
     """The command run inside the container, and the container path that agent
@@ -699,7 +715,12 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
 
     if agent_cmd == "claude":
         container_session_path = claude_session_path
-        inner_cmd = ["claude", "--permission-mode=auto", "--setting-sources=user,project"]
+        inner_cmd = [
+            "claude",
+            "--permission-mode=auto",
+            "--setting-sources=user,project",
+            *_default_agent_args(extra_args),
+        ]
         if not is_interactive and not explicit_headless:
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
@@ -713,6 +734,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             "--dangerously-skip-permissions",
             "--log-file",
             "/home/worker/.gemini/antigravity-cli/cli.log",
+            *_default_agent_args(extra_args),
         ]
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
