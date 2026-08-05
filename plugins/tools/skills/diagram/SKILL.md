@@ -29,6 +29,10 @@ loses the layout work.
   Minimise backward arrows and edge crossings.
 - **Verb-first labels, 3–9 words.** Detail goes in a note or legend, never inside
   the box. Big blocks of text in boxes are the most common failure.
+- **State the fact, not its history.** A node or tag says what is true now
+  (`[DARK]`, `[PROPOSED]`) — never why, when, or what it used to be. No dates,
+  no "removed 2026-08", no "was: X, Y, Z" audit trails. That belongs in git or
+  a spec; a diagram that narrates change is a log wearing a diagram's shape.
 - **Distinct shapes carry distinct semantics** — process, decision, terminal,
   data/IO. Never reuse one shape for two meanings in the same chart.
 - **Same hierarchy level, same size and weight.** Uniform everything is chaos;
