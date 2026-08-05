@@ -2,10 +2,9 @@
 
 ## [0.3.82](https://github.com/nicsuzor/academicOps/compare/v0.3.81...v0.3.82) (2026-08-05)
 
-
 ### Miscellaneous
 
-* update version to v0.7.0 ([544b151](https://github.com/nicsuzor/academicOps/commit/544b15113af96dae008594276ad470021bb0829a))
+- update version to v0.7.0 ([544b151](https://github.com/nicsuzor/academicOps/commit/544b15113af96dae008594276ad470021bb0829a))
 
 ## [0.3.81](https://github.com/nicsuzor/academicOps/compare/v0.3.80...v0.3.81) (2026-08-04)
 
