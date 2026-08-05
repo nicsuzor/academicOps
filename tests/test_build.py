@@ -449,7 +449,6 @@ def test_agy_command_converted_to_skill(built):
 
 
 def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
-    import yaml
 
     dist_root = tmp_path_factory.mktemp("build-dist-agents")
     build_all(
@@ -460,20 +459,20 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         version=VERSION,
     )
 
-    # Check agy dist converts agents/ida.md to agents/ida/agent.md
-    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
-    assert agy_ida_md.is_file()
+    import json
+
+    # Check agy dist converts agents/ida.md to agents/ida/agent.json
+    agy_ida_json = dist_root / "ida-agy" / "agents" / "ida" / "agent.json"
+    assert agy_ida_json.is_file()
     assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
 
-    parts = agy_ida_md.read_text().split("---")
-    agy_fm = yaml.safe_load(parts[1])
-    assert agy_fm["name"] == "ida"
-    assert "interactive face" in agy_fm["description"]
-    assert agy_fm["hidden"] is False
+    agy_agent = json.loads(agy_ida_json.read_text())
+    assert agy_agent["name"] == "ida"
+    assert "interactive face" in agy_agent["description"]
+    assert agy_agent["hidden"] is False
 
-    body = parts[2]
-    assert "# Agent System Instructions" in body
-    assert "# Ida — The Interactive Face" in body
+    assert agy_agent["systemPrompt"].startswith("# Agent System Instructions")
+    assert "# Ida — The Interactive Face" in agy_agent["systemPrompt"]
 
 
 def test_agy_agent_tool_names_are_translated(built):
@@ -491,12 +490,14 @@ def test_agy_agent_tool_names_are_translated(built):
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
 
-    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent" / "agent.md"
-    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    import json
+
+    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent" / "agent.json"
+    agy_data = json.loads(agy_agent.read_text())
     # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
     # untranslated — the map renames what agy calls by another name and leaves
     # everything else alone.
-    assert agy_fm["tools"] == [
+    assert agy_data["tools"] == [
         "read_file",
         "Skill",
         "invoke_subagent",
@@ -531,17 +532,16 @@ def test_axioms_raw_dir_shipped_both_clients(built):
 # --- stage 5: packaging ------------------------------------------------------
 
 
-def test_claude_tarball_contains_directory_prefix(built):
-    with tarfile.open(built / "fixture-alpha-claude.tar.gz") as tar:
-        names = tar.getnames()
-    assert all(n == "fixture-alpha-claude" or n.startswith("fixture-alpha-claude/") for n in names)
-
-
-def test_agy_tarball_flattens_to_root(built):
-    with tarfile.open(built / "fixture-alpha-agy.tar.gz") as tar:
-        names = tar.getnames()
-    assert all(n == "." or n.startswith("./") for n in names)
-    assert "./plugin.json" in names
+def test_tarballs_contain_directory_prefix(built):
+    for client in ("claude", "agy"):
+        with tarfile.open(built / f"fixture-alpha-{client}.tar.gz") as tar:
+            names = tar.getnames()
+        prefix = f"fixture-alpha-{client}"
+        assert all(n == prefix or n.startswith(f"{prefix}/") for n in names)
+        if client == "claude":
+            assert f"{prefix}/.claude-plugin/plugin.json" in names
+        else:
+            assert f"{prefix}/plugin.json" in names
 
 
 def test_no_stage_directory_left_behind(built):

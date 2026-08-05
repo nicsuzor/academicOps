@@ -240,7 +240,7 @@ def _adapt_agents(build_dir: Path) -> None:
     if not agents_dir.is_dir():
         return
 
-    md_files = sorted(agents_dir.glob("*.md"))
+    md_files = sorted(agents_dir.rglob("*.md"))
     if not md_files:
         return
 
@@ -258,7 +258,10 @@ def _adapt_agents(build_dir: Path) -> None:
         if not isinstance(frontmatter, dict):
             continue
 
-        name = frontmatter.get("name") or md_file.stem
+        name = frontmatter.get("name")
+        if not name:
+            name = md_file.parent.name if md_file.stem == "agent" else md_file.stem
+
         if not re.match(r"^[a-z0-9_-]+$", name):
             raise BuildError(
                 f"{md_file}: invalid agy agent name {name!r} — must be lowercase letters, numbers, hyphens, or underscores"
@@ -287,24 +290,29 @@ def _adapt_agents(build_dir: Path) -> None:
                 seen.add(mapped)
                 tool_names.append(mapped)
 
-        new_fm = {
-            "name": name,
-            "description": str(description).strip(),
-            "tools": tool_names,
-            "hidden": hidden,
-        }
+        agent_json = dict(frontmatter)
+        agent_json.update(
+            {
+                "name": name,
+                "description": str(description).strip(),
+                "tools": tool_names,
+                "hidden": hidden,
+            }
+        )
 
         if not body.startswith("# Agent System Instructions"):
             body_content = f"# Agent System Instructions\n\n{body}"
         else:
             body_content = body
 
-        fm_yaml = yaml.dump(new_fm, sort_keys=False).strip()
-        new_md_content = f"---\n{fm_yaml}\n---\n\n{body_content}\n"
+        agent_json["systemPrompt"] = body_content.strip()
+
+        if "includeSections" not in agent_json:
+            agent_json["includeSections"] = _AGY_INCLUDE_SECTIONS
 
         agent_dir = agents_dir / name
         agent_dir.mkdir(parents=True, exist_ok=True)
-        (agent_dir / "agent.md").write_text(new_md_content, encoding="utf-8")
+        _write_json(agent_dir / "agent.json", agent_json)
         md_file.unlink()
 
 

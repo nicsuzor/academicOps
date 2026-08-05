@@ -148,11 +148,11 @@ def _prune_empty_dirs(build_dir: Path) -> None:
 
 
 def _package(build_dir: Path, client: str, dist_root: Path) -> Path:
-    """Stage 5: tar per client. Claude tarballs contain the directory itself;
-    agy tarballs contain the directory's contents at the archive root."""
+    """Stage 5: tar per client. Both claude and agy tarballs contain the
+    directory itself at the archive root."""
     archive_path = dist_root / f"{build_dir.name}.tar.gz"
     with tarfile.open(archive_path, "w:gz") as tar:
-        tar.add(build_dir, arcname=build_dir.name if client == "claude" else ".")
+        tar.add(build_dir, arcname=build_dir.name)
     return archive_path
 
 
