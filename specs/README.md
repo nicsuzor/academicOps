@@ -13,7 +13,8 @@
 
 ## Enforcement
 
-- [enforcement/enforcement.md](enforcement/enforcement.md) — governing principle and the seven enforcement mechanisms.
+- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) — current-state register: every mechanism, what it obliges, and whether it is on.
+- [enforcement/enforcement.md](enforcement/enforcement.md) — governing principle, the four levers, and the five bands.
 - [enforcement/task-contract.md](enforcement/task-contract.md) — the work-unit contract (claim → release).
 - [enforcement/workflow.md](enforcement/workflow.md) — the five-step workflow shape and review-depth call.
 - [enforcement/sign-off.md](enforcement/sign-off.md) — release-unit-scale sign-off.
