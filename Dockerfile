@@ -278,7 +278,6 @@ RUN umask 000 \
         /home/worker/.claude/settings.json > /tmp/settings.json \
     && mv /tmp/settings.json /home/worker/.claude/settings.json \
     && chmod -R a+rwX /home/worker/.claude \
-    && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
     && jq -n --arg plugins "$PLUGINS" \
         '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/config/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
         > /home/worker/.gemini/trustedFolders.json \

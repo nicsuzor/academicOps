@@ -9,10 +9,7 @@
 - commands/<name>.md    -> skills/cmd-<name>/SKILL.md, frontmatter
   `type: command` rewritten to `type: skill`; the commands/ dir itself is
   dropped (agy has no commands/ concept).
-- agents/<name>.md      -> agents/<name>/agent.md (agy's own read format —
-  YAML frontmatter plus body, not agent.json; see `_adapt_agents` for why),
-  with `tools` translated where the source sets it, `model` dropped, and a
-  default `includeSections`.
+- agents/<name>.md      -> agents/<name>/agent.md (agy's own read format)
 - axioms with `trigger: always_on` -> rules/<source_file>
 """
 
@@ -152,7 +149,7 @@ def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
 
     `${extensionPath}` and `${CLAUDE_PLUGIN_ROOT}` are the one exception:
     `agy plugin install` copies this plugin to its own on-disk directory
-    inside `~/.gemini/antigravity-cli/plugins/`, and the aops-crew image's
+    inside `~/.gemini/config/plugins/`, and the aops-crew image's
     `docker_gemini_fixups.py fixup-mcp-config-paths` (run from the Dockerfile,
     after install) rewrites either token, wherever it appears in any installed
     plugin's `mcp_config.json`, to that plugin's actual install directory —
@@ -333,12 +330,6 @@ def _adapt_agents(build_dir: Path) -> None:
         # tools shipped every such agent to agy with zero tools, silently.
 
         agy_frontmatter["hidden"] = bool(frontmatter.get("hidden", False))
-
-        if "includeSections" not in agy_frontmatter:
-            agy_frontmatter["includeSections"] = _AGY_INCLUDE_SECTIONS
-
-        if not body.startswith("# Agent System Instructions"):
-            body = f"# Agent System Instructions\n\n{body}"
 
         agent_dir = agents_dir / name
         agent_dir.mkdir(parents=True, exist_ok=True)

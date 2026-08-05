@@ -3,31 +3,6 @@ name: triage
 type: skill
 category: instruction
 description: "Triage a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
-triggers:
-  - "triage"
-  - "survey"
-  - "retro"
-  - "transcript review"
-  - "session review"
-  - "trend review"
-  - "performance trends"
-  - "issue sweep"
-  - "triage issues"
-modifies_files: true
-needs_task: false
-mode: orchestration
-domain:
-  - framework
-  - quality-assurance
-  - operations
-allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__services__pkb__list_tasks, mcp__services__pkb__get_task, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__append, mcp__services__pkb__task_search
-version: 1.0.0
-tags:
-  - retro
-  - trend
-  - sweep
-  - quality
-  - consolidation
 ---
 
 # /triage — Unified Triage Skill
