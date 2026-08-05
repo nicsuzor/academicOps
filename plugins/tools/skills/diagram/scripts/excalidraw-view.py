@@ -2,6 +2,7 @@
 """Token-cheap projections of an .excalidraw file. Stdlib only.
 
 Usage: excalidraw-view.py FILE [summary|map|style|check]
+       excalidraw-view.py FILE1 diff FILE2
        excalidraw-view.py FILE.excalidrawlib lib
        excalidraw-view.py FILE.excalidrawlib item SELECTOR --after INDEX [--at X,Y]
 
@@ -14,6 +15,8 @@ Usage: excalidraw-view.py FILE [summary|map|style|check]
            to copy into new elements so they match the house look
   check    structural validation — run before and after every write;
            exit 1 on any failure
+  diff     summary before/after diff comparing FILE1 to FILE2: element counts,
+           type/color histograms, disappeared/added/modified elements & topology
   lib      list the items in a .excalidrawlib: selector, name, element
            count, size
   item     emit one library item as a JSON array of elements ready to
@@ -131,6 +134,129 @@ def cmd_check(doc):
     print(f"OK: {len(els)} elements, ids unique, index-sorted, all bindings resolve")
 
 
+def cmd_diff(doc1, args):
+    if not args:
+        sys.exit("diff mode requires a second file: excalidraw-view.py FILE1 diff FILE2")
+    file2_path = args[0]
+    with open(file2_path, encoding="utf-8") as f:
+        doc2 = json.load(f)
+
+    els1 = live(doc1)
+    els2 = live(doc2)
+
+    by_id1 = {e["id"]: e for e in els1}
+    by_id2 = {e["id"]: e for e in els2}
+
+    texts1 = {e["id"]: e for e in els1 if e["type"] == "text"}
+    texts2 = {e["id"]: e for e in els2 if e["type"] == "text"}
+
+    ids1 = set(by_id1.keys())
+    ids2 = set(by_id2.keys())
+
+    removed_ids = ids1 - ids2
+    added_ids = ids2 - ids1
+    common_ids = ids1 & ids2
+
+    print(
+        f"Summary Diff: {len(els1)} elements -> {len(els2)} elements (delta: {len(els2) - len(els1):+d})"
+    )
+
+    # Type histogram diff
+    t1 = Counter(e["type"] for e in els1)
+    t2 = Counter(e["type"] for e in els2)
+    all_types = sorted(set(t1.keys()) | set(t2.keys()))
+    type_diffs = []
+    for t in all_types:
+        c1, c2 = t1[t], t2[t]
+        if c1 != c2:
+            type_diffs.append(f"  {t}: {c1} -> {c2} ({c2 - c1:+d})")
+    if type_diffs:
+        print("Type histogram changes:")
+        for td in type_diffs:
+            print(td)
+
+    # Color histogram diff
+    bg1 = Counter(e.get("backgroundColor") for e in els1 if e.get("backgroundColor"))
+    bg2 = Counter(e.get("backgroundColor") for e in els2 if e.get("backgroundColor"))
+    all_bgs = sorted(set(bg1.keys()) | set(bg2.keys()))
+    bg_diffs = []
+    for bg in all_bgs:
+        c1, c2 = bg1[bg], bg2[bg]
+        if c1 != c2:
+            bg_diffs.append(f"  {bg}: {c1} -> {c2} ({c2 - c1:+d})")
+    if bg_diffs:
+        print("Color histogram changes:")
+        for bd in bg_diffs:
+            print(bd)
+
+    # Disappeared elements
+    if removed_ids:
+        print(f"\nDisappeared elements ({len(removed_ids)}):")
+        for rid in sorted(removed_ids):
+            e = by_id1[rid]
+            lbl = label_of(e, texts1) or e.get("text", "").replace("\n", " / ")
+            lbl_str = f" label={lbl!r}" if lbl else ""
+            print(f"  - [{e['type']} {rid}]{lbl_str} pos=({e.get('x', 0):.0f},{e.get('y', 0):.0f})")
+
+    # Added elements
+    if added_ids:
+        print(f"\nAdded elements ({len(added_ids)}):")
+        for aid in sorted(added_ids):
+            e = by_id2[aid]
+            lbl = label_of(e, texts2) or e.get("text", "").replace("\n", " / ")
+            lbl_str = f" label={lbl!r}" if lbl else ""
+            print(f"  - [{e['type']} {aid}]{lbl_str} pos=({e.get('x', 0):.0f},{e.get('y', 0):.0f})")
+
+    # Modified elements
+    mods = []
+    for cid in sorted(common_ids):
+        e1, e2 = by_id1[cid], by_id2[cid]
+        changes = []
+        if e1.get("text") != e2.get("text"):
+            changes.append(f"text: {e1.get('text', '')!r} -> {e2.get('text', '')!r}")
+        dx = abs(e1.get("x", 0) - e2.get("x", 0))
+        dy = abs(e1.get("y", 0) - e2.get("y", 0))
+        if dx > 1 or dy > 1:
+            changes.append(
+                f"position shifted by ({e2.get('x', 0) - e1.get('x', 0):+.0f},{e2.get('y', 0) - e1.get('y', 0):+.0f})"
+            )
+        dw = abs(e1.get("width", 0) - e2.get("width", 0))
+        dh = abs(e1.get("height", 0) - e2.get("height", 0))
+        if dw > 1 or dh > 1:
+            changes.append(
+                f"size: {e1.get('width', 0):.0f}x{e1.get('height', 0):.0f} -> {e2.get('width', 0):.0f}x{e2.get('height', 0):.0f}"
+            )
+        if e1.get("backgroundColor") != e2.get("backgroundColor"):
+            changes.append(f"bg: {e1.get('backgroundColor')} -> {e2.get('backgroundColor')}")
+        if changes:
+            lbl = label_of(e1, texts1) or e1.get("text", "").replace("\n", " / ") or cid
+            mods.append(f"  - [{e1['type']} {cid}] ({lbl!r}): " + "; ".join(changes))
+
+    if mods:
+        print(f"\nModified elements ({len(mods)}):")
+        for m in mods:
+            print(m)
+
+    # Topology / Binding changes
+    topology_changes = []
+    for cid in sorted(common_ids):
+        e1, e2 = by_id1[cid], by_id2[cid]
+        if e1.get("type") == "arrow":
+            sb1 = (e1.get("startBinding") or {}).get("elementId")
+            sb2 = (e2.get("startBinding") or {}).get("elementId")
+            eb1 = (e1.get("endBinding") or {}).get("elementId")
+            eb2 = (e2.get("endBinding") or {}).get("elementId")
+            if sb1 != sb2 or eb1 != eb2:
+                topology_changes.append(
+                    f"  - [arrow {cid}] start: {sb1} -> {sb2}, end: {eb1} -> {eb2}"
+                )
+
+    if topology_changes:
+        print(f"\nTopology / Arrow binding changes ({len(topology_changes)}):")
+        for tc in topology_changes:
+            print(tc)
+
+
 def lib_items(doc):
     """Library items as (name, elements), across both file formats.
 
@@ -239,6 +365,7 @@ MODES = {
     "map": cmd_map,
     "style": cmd_style,
     "check": cmd_check,
+    "diff": cmd_diff,
     "lib": cmd_lib,
     "item": cmd_item,
 }
@@ -251,7 +378,7 @@ def main():
     mode = sys.argv[2] if len(sys.argv) > 2 else "summary"
     if mode not in MODES:
         sys.exit(f"unknown mode {mode!r}; expected one of: {', '.join(MODES)}")
-    if mode in ("lib", "item"):
+    if mode in ("lib", "item", "diff"):
         MODES[mode](doc, sys.argv[3:])
     else:
         MODES[mode](doc)
