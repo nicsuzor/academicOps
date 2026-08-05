@@ -19,6 +19,18 @@ hazards syntax knowledge does not cover.
 If the user has not said which, ask before drawing. Converting after the fact
 loses the layout work.
 
+## Working live with the user
+
+A diagram file the user has open is a two-way conversation surface, not a
+one-shot deliverable — their edits in the app are messages to you, made in the
+diagram's own visual language instead of prose. Before writing, check whether
+the file changed since you last saved it (mtime, or diff against what you last
+wrote); if so, read what moved, what was deleted, what was relabelled, and
+treat that as their reply before doing anything else. Never overwrite a live
+file blind. Fold what you learn into whatever else it implies — a task in the
+PKB, a spec, code — then bring your own response back as a change to the same
+diagram, not as an explanation of it.
+
 ## Craft rules (both styles)
 
 - **One message per chart.** State the purpose in one line first ("how a session
