@@ -89,6 +89,21 @@ def _get_filename_base(slug: str, started_at: str, correlation: dict[str, str | 
     return f"{date_str}-{hour_str}-{project}-{slug}"
 
 
+def _sanitize_yaml_val(val: Any) -> str:
+    """Sanitize values for YAML front-matter to prevent header breaking or key injection via newlines."""
+    if val is None:
+        return ""
+    val_str = str(val)
+    cleaned = val_str.replace("\r\n", " ").replace("\n", " ").replace("\r", " ").strip()
+    needs_quoting = any(
+        char in cleaned
+        for char in (":", '"', "'", "#", "{", "}", "[", "]", ",", "&", "*", "?", "|", ">", "!", "%", "@", "`")
+    )
+    if needs_quoting or cleaned != val_str:
+        return json.dumps(cleaned)
+    return cleaned
+
+
 def _render_front_matter(
     session: NormalizedSession,
     slug: str,
@@ -106,15 +121,15 @@ def _render_front_matter(
     """
     front_matter = [
         "---",
-        f"session_id: {session.session_id}",
-        f"slug: {slug}",
-        f"started_at: {started_at}",
-        f"last_modified: {last_modified}",
-        f"ended_at: {ended_at}",
+        f"session_id: {_sanitize_yaml_val(session.session_id)}",
+        f"slug: {_sanitize_yaml_val(slug)}",
+        f"started_at: {_sanitize_yaml_val(started_at)}",
+        f"last_modified: {_sanitize_yaml_val(last_modified)}",
+        f"ended_at: {_sanitize_yaml_val(ended_at)}",
         f"has_user_context: {str(has_user_context).lower()}",
-        f"project: {correlation.get('project') or ''}",
-        f"task_id: {correlation.get('task_id') or ''}",
-        f"pr_number: {correlation.get('pr_number') or ''}",
+        f"project: {_sanitize_yaml_val(correlation.get('project') or '')}",
+        f"task_id: {_sanitize_yaml_val(correlation.get('task_id') or '')}",
+        f"pr_number: {_sanitize_yaml_val(correlation.get('pr_number') or '')}",
     ]
     if run_record:
         for key in (
@@ -128,7 +143,7 @@ def _render_front_matter(
             "container_name",
         ):
             if key in run_record and run_record[key] is not None:
-                front_matter.append(f"{key}: {run_record[key]}")
+                front_matter.append(f"{key}: {_sanitize_yaml_val(run_record[key])}")
 
     front_matter.extend(
         [
@@ -181,10 +196,11 @@ def _render_run_record_markdown(run_record: dict[str, Any] | None) -> list[str]:
     if seeded_prompt is not None:
         prompt_str = str(seeded_prompt).strip()
         if "\n" in prompt_str:
+            fence = "````" if "```" in prompt_str else "```"
             lines.append("- **Seeded Prompt:**")
-            lines.append("  ```")
+            lines.append(f"  {fence}")
             lines.append(f"  {prompt_str}")
-            lines.append("  ```")
+            lines.append(f"  {fence}")
         else:
             lines.append(f"- **Seeded Prompt:** `{prompt_str}`")
 
@@ -208,7 +224,7 @@ def _render_run_record_markdown(run_record: dict[str, Any] | None) -> list[str]:
     if isinstance(delivery_guard, dict):
         dg_ok = delivery_guard.get("ok")
         dg_err = delivery_guard.get("error")
-        if dg_err or dg_ok is False:
+        if dg_ok is False or (dg_ok is not True and dg_err):
             err_msg = dg_err or "Delivery guard check failed"
             lines.append(f"- **Delivery Guard Error:** {err_msg}")
     elif isinstance(delivery_guard, str) and delivery_guard:
@@ -699,7 +715,7 @@ def render_to_html(
         exit_code = effective_run_record.get("exit_code")
         if exit_code is not None:
             run_record_meta_items.append(
-                f'<div class="meta-item"><strong>Exit Code</strong>{exit_code}</div>'
+                f'<div class="meta-item"><strong>Exit Code</strong>{_escape_html(str(exit_code))}</div>'
             )
         commit_start = effective_run_record.get("commit_start")
         commit_end = effective_run_record.get("commit_end")
@@ -721,10 +737,33 @@ def render_to_html(
             run_record_meta_items.append(
                 f'<div class="meta-item"><strong>Worker / Model</strong>{_escape_html(wm_str)}</div>'
             )
+        container_name = effective_run_record.get("container_name") or effective_run_record.get("container_id")
+        if container_name is not None:
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Container</strong><code>{_escape_html(str(container_name))}</code></div>'
+            )
+        seeded_prompt = effective_run_record.get("seeded_prompt")
+        if seeded_prompt is not None:
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Seeded Prompt</strong><code>{_escape_html(str(seeded_prompt))}</code></div>'
+            )
         duration = effective_run_record.get("duration_seconds")
         if duration is not None:
             run_record_meta_items.append(
-                f'<div class="meta-item"><strong>Duration</strong>{duration}s</div>'
+                f'<div class="meta-item"><strong>Duration</strong>{_escape_html(str(duration))}s</div>'
+            )
+        delivery_guard = effective_run_record.get("delivery_guard")
+        dg_err_msg = None
+        if isinstance(delivery_guard, dict):
+            dg_ok = delivery_guard.get("ok")
+            dg_err = delivery_guard.get("error")
+            if dg_ok is False or (dg_ok is not True and dg_err):
+                dg_err_msg = dg_err or "Delivery guard check failed"
+        elif isinstance(delivery_guard, str) and delivery_guard:
+            dg_err_msg = delivery_guard
+        if dg_err_msg:
+            run_record_meta_items.append(
+                f'<div class="meta-item"><strong>Delivery Guard Error</strong>{_escape_html(str(dg_err_msg))}</div>'
             )
 
     run_record_meta_html = (
@@ -960,16 +999,16 @@ def render_to_html(
     </style>
 </head>
 <body>
-    <h1>Session {session.session_id}</h1>
+    <h1>Session {_escape_html(str(session.session_id))}</h1>
     
     <div class="meta-box">
         <div class="meta-grid">
-            <div class="meta-item"><strong>Slug</strong>{slug}</div>
-            <div class="meta-item"><strong>Started At</strong>{started_at}</div>
-            <div class="meta-item"><strong>Ended At</strong>{ended_at}</div>
-            <div class="meta-item"><strong>User Context</strong>{str(has_user_context)}</div>
-            <div class="meta-item"><strong>Project</strong>{correlation.get("project") or "N/A"}</div>
-            <div class="meta-item"><strong>Task ID</strong>{correlation.get("task_id") or "N/A"}</div>
+            <div class="meta-item"><strong>Slug</strong>{_escape_html(str(slug))}</div>
+            <div class="meta-item"><strong>Started At</strong>{_escape_html(str(started_at))}</div>
+            <div class="meta-item"><strong>Ended At</strong>{_escape_html(str(ended_at))}</div>
+            <div class="meta-item"><strong>User Context</strong>{_escape_html(str(has_user_context))}</div>
+            <div class="meta-item"><strong>Project</strong>{_escape_html(str(correlation.get("project") or "N/A"))}</div>
+            <div class="meta-item"><strong>Task ID</strong>{_escape_html(str(correlation.get("task_id") or "N/A"))}</div>
             <div class="meta-item"><strong>Tokens Used</strong>{session.total_tokens_used}</div>
             <div class="meta-item"><strong>Cost (USD)</strong>${session.total_cost_usd:.6f}</div>
             <div class="meta-item"><strong>Subagents</strong>{len(session.subagents)}</div>{run_record_meta_html}
