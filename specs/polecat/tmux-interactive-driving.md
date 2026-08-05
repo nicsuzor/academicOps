@@ -136,8 +136,7 @@ unset. This directory is designed to contain:
   back from exactly that host path as its primary evidence a seeded task was
   actually seen.
 
-Read the raw transcript directly (`jq`, `grep`, `less`) — there is currently
-no transcript-to-markdown conversion tool in this repo.
+Read the raw JSONL transcript directly (`jq`, `grep`, `less`) when working inside a live container. The transcript-to-markdown converter in `lib/py/transcripts/` (specified in `specs/transcript-pipeline.md`) runs as a host-side batch process over completed sessions rather than in-session.
 
 **`docker logs` is not a reliable source for agy.** agy redirects its own
 stdout/stderr to its internal log file rather than the container's actual

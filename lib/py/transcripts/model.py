@@ -75,6 +75,8 @@ class SubagentTranscript:
     # spawn (inherits the parent's context) rather than a fresh subagent.
     spawn_depth: int | None = None
     is_fork: bool = False
+    model: str | None = None
+    degraded: list[str] = field(default_factory=list)
 
     @property
     def label(self) -> str:
@@ -97,6 +99,7 @@ class NormalizedSession:
     tokens_used: int = 0
     cost_usd: float = 0.0
     subagents: list[SubagentTranscript] = field(default_factory=list)
+    degraded: list[str] = field(default_factory=list)
 
     @property
     def source_files(self) -> list[Path]:

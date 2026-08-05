@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn
 from urllib.parse import urlsplit, urlunsplit
@@ -728,6 +728,10 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
     if seeded_from_task:
         extra_args = (f"/pull {task}",)
 
+    seeded_prompt = (
+        f"/pull {task}" if seeded_from_task else (" ".join(extra_args) if extra_args else None)
+    )
+
     if extra_args:
         agy_prompt_flags = {
             "-p",
@@ -753,7 +757,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
         else:
             inner_cmd.extend(extra_args)
 
-    return inner_cmd, container_session_path, seeded_from_task
+    return inner_cmd, container_session_path, seeded_from_task, seeded_prompt
 
 
 def _build_docker_argv(
@@ -768,6 +772,7 @@ def _build_docker_argv(
     rules_dir,
     config,
     docker_args,
+    session_id=None,
 ):
     """The full `docker run` argv. Also pre-creates the bind-mount targets
     under `session_dir` — see below for why that cannot wait until launch."""
@@ -778,30 +783,50 @@ def _build_docker_argv(
     (session_dir / "agy-cli.log").touch(exist_ok=True)
     (session_dir / "agy-logs").mkdir(parents=True, exist_ok=True)
 
+    cidfile = session_dir / "container.cid"
+    if cidfile.exists():
+        try:
+            cidfile.unlink()
+        except OSError:
+            pass
+
+    # We use --cidfile to capture the container ID because docker writes the container ID
+    # to the cidfile immediately upon creation, ensuring it is preserved even when --rm
+    # reaps the container on exit or if the container fails. We also set --name derived
+    # from session_id so the container is easily identifiable in `docker ps` while live.
     cmd = [
         "docker",
         "run",
         "--rm",
-        "--pull=never",
-        "-u",
-        f"{os.getuid()}:{os.getgid()}",
-        "-v",
-        f"{workspace_dir}:/workspace",
-        "-w",
-        "/workspace",
-        "-v",
-        f"{staging_dir}:/tmp/staging:ro",
-        "-v",
-        f"{session_dir}:{container_session_path}",
-        "-v",
-        f"{session_dir}/agy-brain:/home/worker/.gemini/antigravity-cli/brain",
-        "-v",
-        f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
-        "-v",
-        f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
-        "--add-host",
-        "host.docker.internal:host-gateway",
+        "--cidfile",
+        str(cidfile),
     ]
+    if session_id:
+        cmd.extend(["--name", f"polecat-{session_id}"])
+
+    cmd.extend(
+        [
+            "--pull=never",
+            "-u",
+            f"{os.getuid()}:{os.getgid()}",
+            "-v",
+            f"{workspace_dir}:/workspace",
+            "-w",
+            "/workspace",
+            "-v",
+            f"{staging_dir}:/tmp/staging:ro",
+            "-v",
+            f"{session_dir}:{container_session_path}",
+            "-v",
+            f"{session_dir}/agy-brain:/home/worker/.gemini/antigravity-cli/brain",
+            "-v",
+            f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
+            "-v",
+            f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
+            "--add-host",
+            "host.docker.internal:host-gateway",
+        ]
+    )
 
     # Layer 3 of cope/rbg's rule set, read-only: absent when the operator
     # configured no rules_dir (resolve_rules_dir already failed loudly if one
@@ -824,6 +849,112 @@ def _build_docker_argv(
     cmd.append(image)
     cmd.extend(inner_cmd)
     return cmd
+
+
+def _get_image_digest(image: str) -> str | None:
+    """Retrieve sha256 digest for local or repo docker image.
+
+    Tries repo digest first, falling back to image ID (.Id) for local builds.
+    """
+    try:
+        res = subprocess.run(
+            ["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}", image],
+            capture_output=True,
+            text=True,
+        )
+        digest = res.stdout.strip() if res.returncode == 0 else ""
+        if digest and digest.startswith("sha256:"):
+            return digest
+
+        res = subprocess.run(
+            ["docker", "image", "inspect", "--format", "{{.Id}}", image],
+            capture_output=True,
+            text=True,
+        )
+        digest = res.stdout.strip() if res.returncode == 0 else ""
+        if digest and digest.startswith("sha256:"):
+            return digest
+    except Exception:
+        pass
+    return None
+
+
+def write_run_record(
+    *,
+    session_dir: Path,
+    session_id: str,
+    container_id: str | None,
+    container_name: str,
+    agent: str,
+    task_id: str | None,
+    seeded_prompt: str | None,
+    image_ref: str,
+    image_digest: str | None,
+    workspace_dir: Path,
+    commit_start: str | None,
+    commit_end: str | None,
+    exit_code: int | None,
+    delivery_guard: dict,
+    started_at: datetime,
+    ended_at: datetime,
+    worker_model: str | None = None,
+    degraded: list | None = None,
+) -> Path:
+    """Persist run.json at the root of session_dir.
+
+    All schema keys are always present; unobtainable values are recorded as null.
+    `status` is derived from exit_code and delivery_guard.
+    `degraded[]` is always present and records missing observable state.
+    """
+    duration_seconds = int(round((ended_at - started_at).total_seconds()))
+
+    degraded_list = list(degraded) if degraded is not None else []
+    # If worker_model is unobtainable from host launcher, record it as null and flag in degraded[] per Criterion 8
+    if worker_model is None:
+        if not any(isinstance(d, dict) and d.get("what") == "worker_model" for d in degraded_list):
+            degraded_list.append(
+                {
+                    "what": "worker_model",
+                    "why": "not selectable or observable from the host launcher",
+                }
+            )
+
+    if exit_code is None or exit_code in (130, 137, -9, -15):
+        status = "killed"
+    elif exit_code != 0:
+        status = "failed"
+    elif not delivery_guard.get("ok", True):
+        status = "delivery_guard_failed"
+    else:
+        status = "success"
+
+    record = {
+        "schema_version": 1,
+        "session_id": session_id,
+        "container_id": container_id,
+        "container_name": container_name,
+        "agent": agent,
+        "task_id": task_id,
+        "seeded_prompt": seeded_prompt,
+        "image_ref": image_ref,
+        "image_digest": image_digest,
+        "workspace_dir": str(Path(workspace_dir).resolve()),
+        "session_dir": str(Path(session_dir).resolve()),
+        "commit_start": commit_start,
+        "commit_end": commit_end,
+        "exit_code": exit_code,
+        "status": status,
+        "delivery_guard": delivery_guard,
+        "started_at": started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ended_at": ended_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "duration_seconds": duration_seconds,
+        "worker_model": worker_model,
+        "degraded": degraded_list,
+    }
+
+    out_path = Path(session_dir) / "run.json"
+    out_path.write_text(json.dumps(record, indent=2) + "\n")
+    return out_path
 
 
 def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task, verify_seed):
@@ -926,6 +1057,16 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=staging_base))
     os.chmod(staging_dir, 0o700)
 
+    started_at = datetime.now(UTC)
+    returncode = None
+    delivery_ok = True
+    delivery_err = None
+    container_id = None
+    container_name = f"polecat-{session_id}"
+    seeded_prompt = None
+    worker_model = os.environ.get("POLECAT_WORKER_MODEL")
+    degraded = []
+
     try:
         setup_staging(staging_dir, mcp_url, os.environ.get("GEMINI_CONFIG_DIR"), agent_cmd)
 
@@ -956,7 +1097,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             env["CLAUDE_CODE_NON_INTERACTIVE"] = "1"
             env["CLAUDE_NON_INTERACTIVE"] = "1"
 
-        inner_cmd, container_session_path, seeded_from_task = _build_inner_command(
+        inner_cmd, container_session_path, seeded_from_task, seeded_prompt = _build_inner_command(
             agent_cmd, extra_args, is_interactive, explicit_headless, task
         )
 
@@ -976,6 +1117,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             rules_dir=rules_dir,
             config=config,
             docker_args=docker_args,
+            session_id=session_id,
         )
 
         click.echo(f"Workspace: {workspace_dir}")
@@ -989,29 +1131,79 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             task=task,
             verify_seed=agent_cmd == "agy" and seeded_from_task,
         )
-        if returncode != 0:
-            sys.exit(returncode)
 
-        delivery_ok, delivery_err = _verify_workspace_delivery(
-            workspace_dir, initial_head=initial_head
-        )
-        if not delivery_ok:
-            # Detection ends here; repair belongs to the dispatcher, which owns
-            # the graph this task lives in (dispatch/SKILL.md section 6). A
-            # launcher carrying its own client for the knowledge base would be a
-            # second copy of that plugin's job, so the exit code and this message
-            # are the whole of the handoff.
-            fail(
-                f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
-                "Refusing to report success. If this task is in a terminal status, "
-                "the dispatcher must reopen it (via pauli) before filing a fix "
-                "subtask or re-dispatching."
+        cidfile = session_dir / "container.cid"
+        if cidfile.exists():
+            try:
+                cid_content = cidfile.read_text().strip()
+                if cid_content:
+                    container_id = cid_content
+            except OSError:
+                pass
+
+        if returncode == 0:
+            delivery_ok, delivery_err = _verify_workspace_delivery(
+                workspace_dir, initial_head=initial_head
             )
 
     finally:
+        cidfile = session_dir / "container.cid"
+        if cidfile.exists() and not container_id:
+            try:
+                cid_content = cidfile.read_text().strip()
+                if cid_content:
+                    container_id = cid_content
+            except OSError:
+                pass
+
+        ended_at = datetime.now(UTC)
+        commit_end = _get_git_head(workspace_dir)
+        image_digest = _get_image_digest(image)
+
+        delivery_guard = {"ok": delivery_ok, "error": delivery_err}
+        if returncode != 0 and delivery_ok and delivery_err is None:
+            delivery_guard = {
+                "ok": False,
+                "error": f"container exited with code {returncode}"
+                if returncode is not None
+                else "container execution failed",
+            }
+
+        write_run_record(
+            session_dir=session_dir,
+            session_id=session_id,
+            container_id=container_id,
+            container_name=container_name,
+            agent=agent_cmd,
+            task_id=task if task else None,
+            seeded_prompt=seeded_prompt,
+            image_ref=image,
+            image_digest=image_digest,
+            workspace_dir=workspace_dir,
+            commit_start=initial_head,
+            commit_end=commit_end,
+            exit_code=returncode,
+            delivery_guard=delivery_guard,
+            started_at=started_at,
+            ended_at=ended_at,
+            worker_model=worker_model,
+            degraded=degraded,
+        )
+
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
         cleanup_isolated_workspace(clone_cleanup)
+
+    if returncode != 0:
+        sys.exit(returncode)
+
+    if not delivery_ok:
+        fail(
+            f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
+            "Refusing to report success. If this task is in a terminal status, "
+            "the dispatcher must reopen it (via pauli) before filing a fix "
+            "subtask or re-dispatching."
+        )
 
 
 if __name__ == "__main__":

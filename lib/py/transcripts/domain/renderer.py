@@ -253,7 +253,12 @@ def _render_events_markdown(
     for event in events:
         emoji = "📋"
         if event.source == "user":
-            emoji = "🤷 User"
+            is_human = event.meta.get("is_human", True)
+            prompt_kind = event.meta.get("prompt_kind", "user")
+            if not is_human:
+                emoji = f"📌 Injected Context (`{prompt_kind}`)"
+            else:
+                emoji = "🤷 User"
         elif event.source == "model":
             emoji = "🤖 Assistant"
         elif event.source == "tool":
@@ -293,8 +298,35 @@ def _render_events_markdown(
                 content = str(content)
 
         if content:
-            lines.append(content)
-            lines.append("")
+            if event.source == "user":
+                is_human = event.meta.get("is_human", True)
+                prompt_kind = event.meta.get("prompt_kind", "user")
+                human_text = (
+                    event.meta.get("human_content")
+                    if "human_content" in event.meta
+                    else (content if is_human else "")
+                )
+                injected_text = (
+                    event.meta.get("injected_content")
+                    if "injected_content" in event.meta
+                    else (content if not is_human else "")
+                )
+
+                if is_human and human_text:
+                    lines.append(human_text)
+                    lines.append("")
+                if injected_text:
+                    lines.extend(
+                        [
+                            "> [!NOTE]",
+                            f"> **Injected Context (`{prompt_kind}`):**",
+                            *(f"> {line}" for line in injected_text.splitlines()),
+                            "",
+                        ]
+                    )
+            else:
+                lines.append(content)
+                lines.append("")
 
         if event.tool_calls:
             lines.append("**Tool Calls:**")
@@ -486,6 +518,19 @@ def render_to_html(
     events_html = []
     for event in session.events:
         source_class = event.source or "unknown"
+        is_human = event.meta.get("is_human", True) if event.source == "user" else True
+        prompt_kind = event.meta.get("prompt_kind", "user") if event.source == "user" else ""
+
+        if event.source == "user":
+            if not is_human:
+                source_class = "user injected"
+                header_title = f"INJECTED CONTEXT ({prompt_kind.upper()})"
+            else:
+                source_class = "user human"
+                header_title = "USER (HUMAN)"
+        else:
+            header_title = source_class.upper()
+
         ts_str = f'<span class="timestamp">({event.timestamp})</span>' if event.timestamp else ""
 
         # Format thinking
@@ -507,13 +552,33 @@ def render_to_html(
             else:
                 content = str(content)
 
-        # Format content (simple HTML escaping/newlines)
-        content_escaped = (
-            content.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\n", "<br>")
-        )
+        if event.source == "user":
+            human_text = (
+                event.meta.get("human_content")
+                if "human_content" in event.meta
+                else (content if is_human else "")
+            )
+            injected_text = (
+                event.meta.get("injected_content")
+                if "injected_content" in event.meta
+                else (content if not is_human else "")
+            )
+
+            content_parts_html = []
+            if is_human and human_text:
+                h_esc = _escape_html(human_text).replace("\n", "<br>")
+                content_parts_html.append(
+                    f'<div class="content"><span class="badge human-badge">Human Prompt</span><br>{h_esc}</div>'
+                )
+            if injected_text:
+                inj_esc = _escape_html(injected_text).replace("\n", "<br>")
+                content_parts_html.append(
+                    f'<div class="injected-box"><span class="badge injected-badge">Injected Context ({_escape_html(prompt_kind)})</span><br>{inj_esc}</div>'
+                )
+            content_html_rendered = "".join(content_parts_html)
+        else:
+            content_escaped = _escape_html(content).replace("\n", "<br>")
+            content_html_rendered = f'<div class="content">{content_escaped}</div>'
 
         # Format tool calls
         tc_html = ""
@@ -529,10 +594,10 @@ def render_to_html(
         events_html.append(f"""
         <div class="event {source_class}">
             <div class="event-header">
-                <strong>{source_class.upper()}</strong> {ts_str}
+                <strong>{header_title}</strong> {ts_str}
             </div>
             {thinking_html}
-            <div class="content">{content_escaped}</div>
+            {content_html_rendered}
             {tc_html}
         </div>
         """)
@@ -609,7 +674,25 @@ def render_to_html(
             border-bottom: 1px solid #27272a;
             padding-bottom: 0.25rem;
         }}
-        .user {{ border-left: 4px solid #3b82f6; }}
+        .user.human {{ border-left: 4px solid #3b82f6; }}
+        .user.injected {{ border-left: 4px solid #8b5cf6; background-color: #1a1625; }}
+        .injected-box {{
+            background-color: #12101d;
+            border: 1px dashed #6366f1;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #c7d2fe;
+        }}
+        .badge {{
+            font-size: 0.75rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-weight: bold;
+        }}
+        .human-badge {{ background-color: #1d4ed8; color: #ffffff; }}
+        .injected-badge {{ background-color: #6d28d9; color: #ffffff; }}
         .assistant {{ border-left: 4px solid #10b981; }}
         .tool {{ border-left: 4px solid #eab308; }}
         .system {{ border-left: 4px solid #71717a; }}
@@ -697,14 +780,36 @@ def build_json_sidecar(
     sufficient for this artifact.
     """
     user_prompts = []
+    injected_prompts = []
     for event in session.events:
-        if event.source == "user" and event.type == "message" and event.content:
-            user_prompts.append(
-                {
-                    "text": event.content,
-                    "timestamp": event.timestamp,
-                }
+        if event.source == "user" and event.type == "message":
+            is_human = event.meta.get("is_human", True)
+            human_text = (
+                event.meta.get("human_content")
+                if "human_content" in event.meta
+                else (event.content if is_human else "")
             )
+            injected_text = (
+                event.meta.get("injected_content")
+                if "injected_content" in event.meta
+                else (event.content if not is_human else "")
+            )
+
+            if human_text and human_text.strip():
+                user_prompts.append(
+                    {
+                        "text": human_text.strip(),
+                        "timestamp": event.timestamp,
+                    }
+                )
+            if injected_text and injected_text.strip():
+                injected_prompts.append(
+                    {
+                        "text": injected_text.strip(),
+                        "timestamp": event.timestamp,
+                        "kind": event.meta.get("prompt_kind", "injected"),
+                    }
+                )
 
     data: dict[str, Any] = {
         "session_id": session.session_id,
@@ -743,6 +848,7 @@ def build_json_sidecar(
             for subagent in session.subagents
         ],
         "user_prompts": user_prompts,
+        "injected_prompts": injected_prompts,
         # For compatibility with ledger checks:
         "surface": correlation.get("project") or "cli",
         "date": started_at,

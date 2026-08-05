@@ -32,6 +32,7 @@ from claude_code_log.converter import load_transcript
 from claude_code_log.models import TranscriptEntry
 from claude_code_log.renderer import get_renderer
 
+from transcripts.adapters.classifier import classify_user_prompt
 from transcripts.model import (
     NormalizedEvent,
     NormalizedRawEntry,
@@ -194,35 +195,122 @@ def find_subagent_files(jsonl_path: Path) -> list[Path]:
     )
 
 
-def _accumulate_usage(entries: list[TranscriptEntry]) -> tuple[int, float]:
-    """Total tokens and estimated USD cost across every entry carrying usage data."""
+@dataclass(frozen=True)
+class ModelRates:
+    input_usd_per_m: float
+    cache_creation_usd_per_m: float
+    cache_read_usd_per_m: float
+    output_usd_per_m: float
+
+
+# Anthropic API rate card as of August 2026 (USD per 1,000,000 tokens).
+# Rates are kept in one place as static data per .agents/CORE.md (no defaults, no fetches).
+MODEL_RATE_CARD: dict[str, ModelRates] = {
+    # Claude 3.5 Sonnet / 3.7 Sonnet
+    "claude-3-5-sonnet-20241022": ModelRates(3.00, 3.75, 0.30, 15.00),
+    "claude-3-5-sonnet-20240620": ModelRates(3.00, 3.75, 0.30, 15.00),
+    "claude-3-7-sonnet-20250219": ModelRates(3.00, 3.75, 0.30, 15.00),
+    "claude-3-5-sonnet": ModelRates(3.00, 3.75, 0.30, 15.00),
+    "claude-3-7-sonnet": ModelRates(3.00, 3.75, 0.30, 15.00),
+    # Claude 3 Opus
+    "claude-3-opus-20240229": ModelRates(15.00, 18.75, 1.50, 75.00),
+    "claude-3-opus": ModelRates(15.00, 18.75, 1.50, 75.00),
+    # Claude 3.5 Haiku
+    "claude-3-5-haiku-20241022": ModelRates(0.80, 1.00, 0.08, 4.00),
+    "claude-3-5-haiku": ModelRates(0.80, 1.00, 0.08, 4.00),
+    # Claude 3 Haiku
+    "claude-3-haiku-20240307": ModelRates(0.25, 0.30, 0.03, 1.25),
+    "claude-3-haiku": ModelRates(0.25, 0.30, 0.03, 1.25),
+}
+
+
+def get_model_rates(model_name: str | None) -> ModelRates | None:
+    """Look up pricing rates for a given model name string."""
+    if not model_name:
+        # Default to standard Claude 3.5 Sonnet rate if model is unstated
+        return MODEL_RATE_CARD["claude-3-5-sonnet-20241022"]
+
+    model_lower = model_name.lower()
+    if model_lower in MODEL_RATE_CARD:
+        return MODEL_RATE_CARD[model_lower]
+
+    if "3-5-sonnet" in model_lower or "3-7-sonnet" in model_lower or "sonnet" in model_lower:
+        return MODEL_RATE_CARD["claude-3-5-sonnet-20241022"]
+    if "3-opus" in model_lower or "opus" in model_lower:
+        return MODEL_RATE_CARD["claude-3-opus-20240229"]
+    if "3-5-haiku" in model_lower:
+        return MODEL_RATE_CARD["claude-3-5-haiku-20241022"]
+    if "3-haiku" in model_lower or "haiku" in model_lower:
+        return MODEL_RATE_CARD["claude-3-haiku-20240307"]
+
+    return None
+
+
+def _accumulate_usage(
+    entries: list[TranscriptEntry], default_model: str | None = None
+) -> tuple[int, float, list[str]]:
+    """Total tokens, estimated USD cost, and degraded notices across entries carrying usage data."""
     total_input = 0
     total_cache_creation = 0
     total_cache_read = 0
     total_output = 0
+    total_cost_usd = 0.0
+    degraded: list[str] = []
+
+    prev_cache_creation = 0
+    seen_message_ids: set[str] = set()
 
     for entry in entries:
-        if (
-            hasattr(entry, "message")
-            and entry.message
-            and hasattr(entry.message, "usage")
-            and entry.message.usage
-        ):
-            u = entry.message.usage
-            total_input += getattr(u, "input_tokens", 0) or 0
-            total_cache_creation += getattr(u, "cache_creation_input_tokens", 0) or 0
-            total_cache_read += getattr(u, "cache_read_input_tokens", 0) or 0
-            total_output += getattr(u, "output_tokens", 0) or 0
+        if not (hasattr(entry, "message") and entry.message):
+            continue
+
+        msg = entry.message
+        if not (hasattr(msg, "usage") and msg.usage):
+            continue
+
+        msg_id = getattr(msg, "id", None)
+        if msg_id:
+            if msg_id in seen_message_ids:
+                continue
+            seen_message_ids.add(msg_id)
+
+        u = msg.usage
+        inp = getattr(u, "input_tokens", 0) or 0
+        cc = getattr(u, "cache_creation_input_tokens", 0) or 0
+        cr = getattr(u, "cache_read_input_tokens", 0) or 0
+        outp = getattr(u, "output_tokens", 0) or 0
+
+        # Bug 1 fix: cache_creation_input_tokens is not additive across requests
+        # hitting the same prefix. Only sum distinct non-zero increments.
+        cc_inc = 0
+        if cc > 0 and cc != prev_cache_creation:
+            cc_inc = cc
+        prev_cache_creation = cc
+
+        total_input += inp
+        total_cache_creation += cc_inc
+        total_cache_read += cr
+        total_output += outp
+
+        # Bug 2 fix: per-model rate card pricing
+        entry_model = getattr(msg, "model", None) or getattr(entry, "model", None) or default_model
+        rates = get_model_rates(entry_model)
+
+        if rates is None:
+            notice = f"unknown_model: {entry_model}"
+            if notice not in degraded:
+                degraded.append(notice)
+        else:
+            cost = (
+                inp * rates.input_usd_per_m
+                + cc_inc * rates.cache_creation_usd_per_m
+                + cr * rates.cache_read_usd_per_m
+                + outp * rates.output_usd_per_m
+            ) / 1_000_000
+            total_cost_usd += cost
 
     tokens_used = total_input + total_cache_creation + total_cache_read + total_output
-    cost_usd = (
-        total_input * 3.0
-        + total_cache_creation * 3.75
-        + total_cache_read * 0.3
-        + total_output * 15.0
-    ) / 1_000_000
-
-    return tokens_used, cost_usd
+    return tokens_used, total_cost_usd, degraded
 
 
 def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
@@ -280,6 +368,7 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
                         )
             content = "".join(content_parts).strip()
             if content:
+                classification = classify_user_prompt(content, {"user_type": entry.userType})
                 events.append(
                     NormalizedEvent(
                         event_id=entry.uuid,
@@ -287,7 +376,11 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
                         source="user",
                         type="message",
                         content=content,
-                        meta={"user_type": entry.userType, "cwd": entry.cwd},
+                        meta={
+                            "user_type": entry.userType,
+                            "cwd": entry.cwd,
+                            **classification,
+                        },
                     )
                 )
         elif entry_type == "assistant":
@@ -427,7 +520,7 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
             break
 
     trunk_entries = [entry for entry in transcript.entries if not _is_sidechain_entry(entry)]
-    tokens_used, cost_usd = _accumulate_usage(trunk_entries)
+    tokens_used, cost_usd, degraded = _accumulate_usage(trunk_entries)
 
     raw_events = [
         NormalizedRawEntry(line_no=raw.line_no, type=raw.type, raw=raw.raw)
@@ -441,6 +534,7 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
         raw_events=raw_events,
         tokens_used=tokens_used,
         cost_usd=cost_usd,
+        degraded=degraded,
     )
 
 
@@ -488,7 +582,9 @@ def _build_subagent(
     parent_events: list[NormalizedEvent],
 ) -> SubagentTranscript:
     meta = _read_subagent_meta(source_file)
-    tokens_used, cost_usd = _accumulate_usage(entries)
+    model = meta.get("model")
+    default_model = model if isinstance(model, str) else None
+    tokens_used, cost_usd, degraded = _accumulate_usage(entries, default_model=default_model)
     tool_use_id = meta.get("toolUseId")
     spawn_depth = meta.get("spawnDepth")
     return SubagentTranscript(
@@ -504,6 +600,8 @@ def _build_subagent(
         cost_usd=cost_usd,
         spawn_depth=spawn_depth if isinstance(spawn_depth, int) else None,
         is_fork=bool(meta.get("isFork", False)),
+        model=default_model,
+        degraded=degraded,
     )
 
 
@@ -584,6 +682,10 @@ def load_claude_session(jsonl_path: Path) -> NormalizedSession | None:
         [entry for entry in transcript.entries if _is_sidechain_entry(entry)],
     )
     if session.subagents:
+        for sub in session.subagents:
+            for item in sub.degraded:
+                if item not in session.degraded:
+                    session.degraded.append(item)
         logger.info(
             "session %s: attached %d subagent transcript(s), %d extra events",
             session.session_id,
