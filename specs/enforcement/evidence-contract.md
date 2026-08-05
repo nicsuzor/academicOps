@@ -171,8 +171,7 @@ handback _content_** — that would be a mechanical quality verdict, which the
 framework forbids. The obligation is carried two ways: (1) **agentically** —
 `orchestrate`'s `Stop`/`SubagentStop` reminder instructs every stopping agent to
 hand back with checkable evidence or a stated failure reason
-(`plugins/orchestrate/hooks/messages/honesty.md`, which `@include`s
-[`lib/doctrine/handback.md`](../../lib/doctrine/handback.md)); its receiver-side
+(`plugins/orchestrate/hooks/messages/honesty.md`); its receiver-side
 half fires on `PostToolBatch` and tells the caller to send back a report that
 arrived without proof (`plugins/orchestrate/hooks/messages/hearsay.md`). Both are
 advisory. `rbg`'s stop-side rule-check gate (`Stop`/`SubagentStop`) is the one

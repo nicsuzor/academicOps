@@ -15,7 +15,7 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 | `trend` | Many sessions / audit files         | Trend report + recommendations |
 | `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures |
 
-**Privacy Rule**: the anonymisation clause in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md) binds every mode here, not only `retro`.
+**Privacy Rule**: the anonymisation clause in [`.agents/skills/debug/forensic-scope.md`](../debug/forensic-scope.md) binds every mode here, not only `retro`.
 
 ---
 
@@ -40,7 +40,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
 - Read the entire transcript.
-- The forensic read, the in-scope/out-of-scope split between fixing the reviewed session and changing the framework, and the "fix and route" invariant are the shared doctrine in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md). Apply it as written. In retro, "route the lesson" means the destination chosen in §4, and the record it names is the filed GitHub issue.
+- The forensic read, the in-scope/out-of-scope split between fixing the reviewed session and changing the framework, and the "fix and route" invariant are stated in [`.agents/skills/debug/forensic-scope.md`](../debug/forensic-scope.md). Apply it as written. In retro, "route the lesson" means the destination chosen in §4, and the record it names is the filed GitHub issue.
 
 ### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
 
