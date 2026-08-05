@@ -33,6 +33,7 @@ loses the layout work.
   data/IO. Never reuse one shape for two meanings in the same chart.
 - **Same hierarchy level, same size and weight.** Uniform everything is chaos;
   so is arbitrary variation.
+- **No prose or investigation notes.** Diagrams depict system state and architecture, not investigation history. If something needs a dated log or investigation notes, put it in git commits, specs, or memory (`remember`). Never append investigation notes to an existing diagram file.
 
 ## Style: mermaid
 
@@ -100,10 +101,11 @@ semantics fit in ~6% of that. Project them with the bundled viewer
 (`scripts/excalidraw-view.py` beside this file, stdlib only):
 
 ```bash
-python3 scripts/excalidraw-view.py FILE summary  # counts, extents, max index, order sanity
-python3 scripts/excalidraw-view.py FILE map      # shapes with labels, free text, arrow topology
-python3 scripts/excalidraw-view.py FILE style    # modal style values to copy for new elements
-python3 scripts/excalidraw-view.py FILE check    # structural validation — exit 1 on any fault
+python3 scripts/excalidraw-view.py FILE summary        # counts, extents, max index, order sanity
+python3 scripts/excalidraw-view.py FILE map            # shapes with labels, free text, arrow topology
+python3 scripts/excalidraw-view.py FILE style          # modal style values to copy for new elements
+python3 scripts/excalidraw-view.py FILE check          # structural validation — exit 1 on any fault
+python3 scripts/excalidraw-view.py FILE1 diff FILE2    # summary before/after diff (counts, removals, topology)
 ```
 
 `summary` then `map` is full situational awareness; add `style` before creating
@@ -116,7 +118,7 @@ decode JSON, so `\n` and unicode escapes no longer match the bytes on disk.
 ### Editing an existing file
 
 Mutate through a short python script — load, modify, dump — never by
-string-matching Edits against the JSON. In the script:
+string-matching Edits against the JSON. In the script or using `scripts/excal-edit.py`:
 
 - **Back up first** (`cp FILE FILE.bak-<date>`). Fix a bad result by editing the
   script and re-running it against the backup — never by patching its output.
@@ -132,12 +134,16 @@ string-matching Edits against the JSON. In the script:
   you started from a well-formed file; `check` plus a fresh-interpreter re-parse
   after proves you left one. A file can pass every referential check and still
   be unopenable — that is exactly what `check`'s order test catches.
+- **Use helper utilities** (`scripts/excal-edit.py`):
+  - `python3 scripts/excal-edit.py FILE fit <id> "<new text>"`: Recomputes text bounding box and grows container centered to prevent text overflow.
+  - `python3 scripts/excal-edit.py FILE overlap`: Flags AABB collisions between non-nested sibling elements (exits 1 if overlap exists).
+  - `python3 scripts/excal-edit.py FILE render [OUT.png]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates).
+- **Never append investigation notes to a diagram file.** Put investigation notes in git commits, specs, or memory (`remember`).
 
 If a targeted Edit is genuinely simpler (one text swap), extract the exact
 `old_string` with `grep -o` from the raw file so the escaping matches.
 
-To see layout rather than structure, render the changed region to PNG with
-matplotlib (`uv run --with matplotlib`, not system python) and read the image.
+To see layout rather than structure, render with `scripts/excal-edit.py FILE render` or matplotlib (`uv run --with matplotlib`, not system python) and read the image.
 Say what that proves: geometry and collisions, not Excalidraw's true rendering —
 bound-text wrapping can still differ.
 
