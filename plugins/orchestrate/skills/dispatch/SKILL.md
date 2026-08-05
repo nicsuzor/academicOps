@@ -46,98 +46,73 @@ Compare against the last build of the tree the work targets. If the image
 predates changes the task depends on, say so in your report and dispatch anyway
 only if the task does not touch the drifted surface. Never rebuild here.
 
-## 3. Choose a mode, then launch under tmux either way
+## 3. Choose a mode, as long as it is isolated in a container!
 
-Every launch runs inside a **named detached tmux session**, whichever mode you
-pick. The session name and `-s` must match, so the tmux session, the host log
-directory and the workspace all carry one identifier and you interact with a
-worker the same way in both modes.
+### Local subagent team
 
-`polecat run` is a **foreground** command — `docker run --rm`, no detach flag.
-It does not return a container ID, and its exit code is the run's outcome, not a
-launch receipt. tmux, not polecat, is what makes a dispatch asynchronous.
+**If you are already running inside an isolated container**, do not start a new container for your workers. Instead, you may:
+
+- dispatch using your native tools to a 'subagent team' or `/teamwork-preview`, where you will play an active role as the coordinator of work, delegate verification and iterative development loops, and be responsible for its final delivery stage.
+- dispatch background agents directly within your container by calling `agy` or `claude` with a headless prompt (`-p`). You may like to make sure they use their own worktree if you will be running multiple agents in parallel, but you will have to reconcile the changes when they return.
+
+### Polecat (worker containers)
+
+If you are not running within a container, you should use the 'polecat run' command to dispatch a team of workers in an isolated environment.
+
+All dispatches use a standard `polecat run` command wrapped in a detached `tmux` session.
+
+#### 1. Command Template
+
+Define the session identifier and build the launch command:
 
 ```bash
 NAME="dispatch-<task-id>"
-tmux new-session -d -s "$NAME" \
-  "uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME"
+CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME"
 ```
 
-- `-t <task-id>` seeds `/pull <task-id>` and runs headless, so the worker
-  executes the task and exits. **Never add an interactive prompt flag to an
-  autonomous dispatch** — that leaves a container idling at a ready prompt
-  forever, which looks like progress and finishes nothing.
-- `-p <project>` is the task's own target repo. Read it off the task, not the
-  parent; they differ more often than you would expect.
-- Use `-p <project>`, never `-d` with a linked git worktree — `-d` mounts the
-  path as given, and a worktree's `.git` points outside the mount, so every git
-  command in the container fails.
-- Every path, image, endpoint, and the committing git identity comes from the
-  environment. If one is missing polecat fails loudly — supply nothing yourself.
+#### 2. Launch (Local vs Remote)
 
-To dispatch to a remote docker host, run the whole tmux invocation there — the
-tmux session must live beside the docker daemon, not on your side of the link:
+Run the session locally or remotely depending on where the target Docker daemon lives:
+
+- **Local:**
 
 ```bash
-ssh "$POLECAT_HOST" "tmux new-session -d -s $NAME '<the launch command above>'"
+tmux new-session -d -s "$NAME" "$CMD"
 ```
 
-Interaction is identical in both modes; the mechanics and their gotchas are in
-[`specs/polecat/tmux-interactive-driving.md`](../../../../specs/polecat/tmux-interactive-driving.md).
+- **Remote:**
 
-### Fire-and-forget
+```bash
+ssh "$POLECAT_HOST" "tmux new-session -d -s $NAME '$CMD'"
+```
 
-The default for a queue you are working through. Launch, confirm the tmux
-session exists, and move to the next task.
+#### 3. Post-Launch Workflow
+
+Choose **one** monitoring approach based on whether you need the result immediately:
+
+- **Fire-and-Forget (Default for task queues):** Confirm dispatch and move on immediately.
 
 ```bash
 tmux has-session -t "$NAME" && echo "dispatched: $NAME"
 ```
 
-That check is the whole of your launch evidence. **Do not wait, do not poll, do
-not attach.** The result arrives on the task record.
-
-**What this mode gives up.** For a seeded `agy` dispatch, polecat runs a
-delivery guard: after the container exits it confirms the agent's transcript
-actually shows the task id, retries once if not, and refuses to report success
-on an unverified seed. That verdict is written to a tmux pane nobody reads. A
-fire-and-forget dispatch is therefore **not evidence the task was worked** —
-only that a container started. Reap it later (§4) or let the task record speak.
-
-### Synchronous
-
-Use when you must know the outcome before your next decision — a single task, a
-dependency the rest of the pass hangs on, or a run you intend to record a status
-for. Launch as above, then wait on the session rather than on a fixed timer:
+- **Synchronous (Single task/blocking dependency):** Poll until the session finishes.
 
 ```bash
 while tmux has-session -t "$NAME" 2>/dev/null; do sleep 30; done
 ```
 
-**Never cap the wait with a timeout you are willing to enforce.** Killing the
-command kills a healthy worker mid-edit, orphans its uncommitted work in the
-host workspace, and can leave a claimed task with no one working it. If you
-cannot afford to wait, you wanted fire-and-forget.
+#### Critical Rules
 
-On completion you have a real verdict — the delivery guard has run — so you may
-record status on the task record. Record what the run evidences and nothing
-more: a clean exit with a confirmed seed is not a claim the work is correct or
-complete.
+- **Match session identifiers:** The `-s` flag must always match the `tmux` session name (`$NAME`).
+- **Use `-p <project>` for target repos:** Never use `-d` with a linked git worktree, only full checkouts (worktree `.git` files point outside container mounts and break git commands).
+- **No interactive flags:** Never add interactive flags to autonomous dispatches; doing so causes workers to idle at prompts indefinitely.
+- **Environment defaults:** Do not pass paths, images, or git credentials manually—Polecat loads these directly from the host environment.
+- **Never force-kill synchronous waits:** Killing the wait script can orphan uncommitted work in the host workspace and leave tasks permanently claimed.
 
-## 4. Reap and report
+## 4. Report
 
-For every fire-and-forget dispatch you are asked to account for, read the
-durable state — never the pane, which dies with the session:
-
-```
-$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/<project>/
-```
-
-A dispatch that ended without reaching a terminal state leaves uncommitted work
-on `polecat/<session-id>` in its host workspace. Name it on the task record so
-the next pass does not silently redo it. Never integrate it here.
-
-Return immediately:
+Return:
 
 - Each task dispatched: task ID, title, session name, and **which mode** — a
   fire-and-forget report claims a launch, a synchronous one claims an outcome.
