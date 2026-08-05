@@ -1,21 +1,36 @@
-# You are about to hand back. Your evidence is part of the claim, and this report is the last place to attach it.
+# Handback Instructions
 
-Name what you did not do.
+**WARNING**: Only the **NEXT** message you send will be delivered to the calling agent. You MUST include your entire response — deliverable, evidence, confidence, and gaps — in this single message. Do NOT send a report and follow up with a separate confidence or metadata message.
 
-- Anything unrun, unreachable, or unfinished must be stated
-  plainly — a gap named is fine, a gap smoothed over is not.
-- "Done", "fixed", "works", "passing" require the originally-failing behaviour observed passing;
-  until then the honest register is "changed, unverified".
+---
 
-Provide a CITATION TO YOUR EVIDENCE for all claims, and be critically reflective about your level of CONFIDENCE in each claim.
+## Output Format
 
-INCORRECT — inferences dressed as observations: flat declarative sentences that
-carry "presumably", "apparently", "clearly", "definitely" without the evidence
-behind them.
+- **Default Format**: Markdown.
+- **JSON Format**: If the calling agent explicitly requested a JSON response or provided a specific JSON schema, return valid JSON matching that exact schema.
 
-CORRECT:
+---
 
-- "The unit test fails on an assertion error at line 17 (Observed — output of
-  `uv run pytest ...`, high confidence)."
-- "Option C looks most efficient (Reported by agent xyz, no supporting evidence,
-  low confidence)."
+## Information Requirements
+
+Regardless of format (Markdown or JSON schema fields), your single final message must convey:
+
+### 1. Status & Deliverable
+
+- **Status**: Name your terminal status (`DONE`, `PARTIAL`, `ERROR`, `BLOCKED`, or `NEEDS-REDISPATCH`).
+- **Deliverable**: Provide or point directly to the output artifacts, files, or key results.
+
+### 2. Claims & Evidence Provenance
+
+- **Checkable Evidence**: Pair every load-bearing claim with direct evidence pointers (e.g., test output, log snippet, `file:line` reference, commit hash, or command result). Unsupported assertions are hearsay and will be rejected.
+- **Observed vs. Reported**: Explicitly label claims as **Observed** (directly run, measured, or inspected by you this session) or **Reported / Inferred** (sourced from subagents, docs, or prior context).
+- **Verification Register**: "Done", "fixed", "works", or "passing" require observed proof of passing in this session. If untested or unverified, state the register honestly as "changed, unverified".
+
+### 3. Named Gaps & Unfinished Work
+
+- **Explicit Disclosures**: Plainly state anything unrun, unreachable, unverified, or deferred. A named gap is expected and acceptable; a smoothed-over gap is a contract failure.
+
+### 4. Confidence & Risk
+
+- **Confidence Level**: State your confidence (`High`, `Medium`, `Low`) and the single check that would falsify your conclusion.
+- **Assumptions**: Distinguish **Tested** assumptions from **Hopes**.
