@@ -82,7 +82,7 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
     # Same rule as hooks: no servers means no file, not an empty one.
     servers = (manifests.get("mcp") or {}).get("mcpServers") or {}
     if servers:
-        mcp_str = json.dumps(servers).replace("${PLUGIN_ROOT}", "${extensionPath}")
+        mcp_str = json.dumps(servers).replace("${PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}")
         servers = json.loads(mcp_str)
         _write_json(build_dir / "mcp_config.json", _checked_mcp(servers, ctx))
 
