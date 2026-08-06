@@ -8,6 +8,7 @@ a missing required value is a loud failure, never a guess.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -116,6 +117,30 @@ def resolve_image(config):
             "in the polecat config file. There is no default."
         )
     return image
+
+
+def resolve_sessions_root():
+    """Root of the sessions repository every run's session directory lands under.
+
+    From $AOPS_SESSIONS. No default, and deliberately no config-file key:
+    `load_config` finds the config file *at* `$AOPS_SESSIONS/polecat.yaml`, so a
+    key inside that file could only be read once the value it defines is already
+    known. A key that works only when `$AOPS_POLECAT_CONFIG` also happens to be
+    set is a half-working surface, so this value comes from the environment
+    alone.
+
+    A fallback is worse than the missing value: a cron or detached-tmux dispatch
+    would write a complete transcript into a directory the export pipeline never
+    scans, exit zero, and report success with nothing to contradict it.
+    """
+    raw = os.environ.get("AOPS_SESSIONS")
+    if not raw:
+        fail(
+            "no sessions root configured. Set AOPS_SESSIONS to the sessions "
+            "repository this host records into. There is no default: a guessed "
+            "path would collect transcripts nothing ever reads."
+        )
+    return expand(raw)
 
 
 def resolve_rules_dir(config):
@@ -312,18 +337,92 @@ def _rehost_loopback_urls(env):
     return env
 
 
+#: Claude Code names each conversation transcript `<session-uuid>.jsonl`. Matched
+#: by shape so the session dir's other `.jsonl` files — polecat's own hook log
+#: above all — can never be mistaken for the agent's conversation.
+_CLAUDE_TRANSCRIPT_NAME = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$"
+)
+
+
+def _transcript_paths(session_dir):
+    """Every conversation transcript this run persisted into `session_dir`.
+
+    The two agent CLIs write to different places, and both are decided here by
+    the mounts `_build_docker_argv` makes:
+
+    - `claude`: `session_dir` *is* the container's own project-state directory
+      for `cwd=/workspace` (`CLAUDE_SESSION_PATH`, mounted as
+      `container_session_path`), so claude's native `<session-uuid>.jsonl` lands
+      at the root of `session_dir`. Confirmed against live session dirs under
+      `$AOPS_SESSIONS/logs/` for both `entrypoint=cli` (interactive) and
+      `entrypoint=sdk-cli` (the `--print` dispatch path), each recording
+      `cwd=/workspace`.
+    - `agy`: `session_dir/agy-brain` is mounted at the CLI's brain directory, and
+      the conversation lands under
+      `<uuid>/.system_generated/logs/transcript*.jsonl`.
+
+    A `shell`/`sleep`/other container runs no agent CLI and legitimately
+    persists neither.
+    """
+    session_dir = Path(session_dir)
+    paths = []
+    if session_dir.is_dir():
+        paths.extend(
+            sorted(p for p in session_dir.glob("*.jsonl") if _CLAUDE_TRANSCRIPT_NAME.match(p.name))
+        )
+    brain_dir = session_dir / "agy-brain"
+    if brain_dir.is_dir():
+        paths.extend(sorted(brain_dir.glob("*/.system_generated/logs/transcript*.jsonl")))
+    return paths
+
+
+def transcript_evidence(session_dir):
+    """What the run actually persisted, as recorded in run.json.
+
+    `run.json` names the session directory but said nothing about its contents,
+    so a run that wrote zero bytes was indistinguishable from one that wrote a
+    full conversation: both exited 0 and both recorded `"status": "success"`.
+    This is what makes that claim falsifiable — which transcript, how big, and
+    how many.
+
+    It does not decide `status`: a `shell` or `sleep` container has no
+    conversation to persist, so an absent transcript is a fact to record, not a
+    failure to declare. The `degraded[]` entry is what makes an unexpected
+    absence legible.
+    """
+    largest = None
+    largest_size = -1
+    count = 0
+    for path in _transcript_paths(session_dir):
+        try:
+            size = path.stat().st_size
+        except OSError:
+            continue
+        count += 1
+        if size > largest_size:
+            largest, largest_size = path, size
+
+    if largest is None:
+        return {"found": False, "path": None, "bytes": None, "count": 0}
+    return {
+        "found": True,
+        "path": str(largest),
+        "bytes": largest_size,
+        "count": count,
+    }
+
+
 def _seed_confirmed(session_dir, task_id):
     """Best-effort check that the agent actually saw the seeded task.
 
     A clean exit is not evidence the task was worked: a seed can be dropped
     before delivery while the process still exits zero. The conversation
-    transcript under the brain mount is the primary evidence; the CLI logs
-    are diagnostic only and are checked as a fallback.
+    transcript is the primary evidence, and it is read the same way whichever
+    agent CLI ran the dispatch (`_transcript_paths`); agy's CLI logs are
+    diagnostic only and are checked as a fallback.
     """
-    candidates = []
-    brain_dir = Path(session_dir) / "agy-brain"
-    if brain_dir.is_dir():
-        candidates.extend(sorted(brain_dir.glob("*/.system_generated/logs/transcript*.jsonl")))
+    candidates = list(_transcript_paths(session_dir))
     agy_logs = Path(session_dir) / "agy-logs"
     if agy_logs.is_dir():
         candidates.extend(sorted(agy_logs.glob("cli-*.log")))
@@ -927,10 +1026,26 @@ def write_run_record(
     All schema keys are always present; unobtainable values are recorded as null.
     `status` is derived from exit_code and delivery_guard.
     `degraded[]` is always present and records missing observable state.
+    `transcript` is read off the session directory here rather than passed in,
+    so no call path can write a record that says nothing about whether the run
+    persisted a conversation.
     """
     duration_seconds = int(round((ended_at - started_at).total_seconds()))
 
     degraded_list = list(degraded) if degraded is not None else []
+
+    transcript = transcript_evidence(session_dir)
+    if not transcript["found"] and not any(
+        isinstance(d, dict) and d.get("what") == "transcript" for d in degraded_list
+    ):
+        degraded_list.append(
+            {
+                "what": "transcript",
+                "why": (
+                    "no agent conversation transcript was persisted under the session directory"
+                ),
+            }
+        )
     # If worker_model is unobtainable from host launcher, record it as null and flag in degraded[] per Criterion 8
     if worker_model is None:
         if not any(isinstance(d, dict) and d.get("what") == "worker_model" for d in degraded_list):
@@ -967,6 +1082,7 @@ def write_run_record(
         "exit_code": exit_code,
         "status": status,
         "delivery_guard": delivery_guard,
+        "transcript": transcript,
         "started_at": started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "ended_at": ended_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "duration_seconds": duration_seconds,
@@ -1052,12 +1168,11 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
+    sessions_base = resolve_sessions_root()
     rules_dir = resolve_rules_dir(config)
     workspace_dir = _resolve_workspace(repo_dir, project, polecat_home)
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
-    sessions_base = os.environ.get("AOPS_SESSIONS")
-    sessions_base = Path(sessions_base) if sessions_base else polecat_home / "sessions"
 
     session_date = datetime.now().strftime("%Y%m%d")
     session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")
@@ -1151,7 +1266,11 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             inner_cmd=inner_cmd,
             session_dir=session_dir,
             task=task,
-            verify_seed=agent_cmd == "agy" and seeded_from_task,
+            # Both agent CLIs persist a conversation transcript into the session
+            # dir (`_transcript_paths`), so a seeded dispatch is verified the
+            # same way whichever one ran it. `shell`/`sleep`/other run no agent
+            # CLI and have no conversation to check.
+            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
         )
 
         cidfile = session_dir / "container.cid"
