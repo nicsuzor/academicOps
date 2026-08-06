@@ -284,7 +284,7 @@ RUN umask 000 \
     && echo "Installing plugins: $(echo $PLUGINS)" \
     && claude plugin marketplace add "$MP_ROOT" \
     && claude plugin marketplace update "$MP_NAME" \
-    && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME" || exit 1; done \
+    && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME"; done \
     && jq --arg mp "$MP_NAME" --arg plugins "$PLUGINS" \
         '.enabledPlugins = ($plugins | split("\n") | map(select(length > 0)) | map({key: (. + "@" + $mp), value: true}) | from_entries) | del(.extraKnownMarketplaces)' \
         /home/worker/.claude/settings.json > /tmp/settings.json \
@@ -293,11 +293,11 @@ RUN umask 000 \
     && jq -n --arg plugins "$PLUGINS" \
         '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/config/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
         > /home/worker/.gemini/trustedFolders.json \
+    && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
     && for p in $PLUGINS; do \
         src="$MP_ROOT/$p-agy"; \
         { [ -d "$src" ] || { echo "FATAL: $p is declared in the marketplace but has no agy build at $src" >&2; exit 1; }; } \
-        && agy plugin install "$src" \
-        || exit 1; \
+        && agy plugin install "$src"; \
     done \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
