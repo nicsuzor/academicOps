@@ -19,6 +19,8 @@
 
 You must format your response exactly as follows.
 
+_DO NOT present your report in prose; be CONCISE and PRECISE._
+
 - **Note**: if the task instructions provide an explicit JSON schema for your results, you must comply with it.
 
 > **STATUS**: [Must be exactly: DONE, PARTIAL, ERROR, BLOCKED, or NEEDS-REDISPATCH]
@@ -29,11 +31,16 @@ You must format your response exactly as follows.
 >
 > **DELIVERABLE REFERENCE(S)**: [URL or other pointer directly to the output deliverables]
 
-_The body of your report MUST be decomposed into a series of discrete, verificable nodes. DO NOT present your report in prose; be CONCISE and PRECISE._
+#### A. TRIVIAL FACT EXEMPTION (For Obvious Statements)
 
-To ensure zero-context auditability, every independent conclusion in your report MUST adhere to the following strict structural standard. You must loop through this exact format for every claim you generate:
+If you need to state a universally accepted fact, basic connective logic, or a self-evident truth, you may write it as a simple bullet point outside the strict structure below.
+Boundary Check: If a reviewing supervisor could reasonably ask "How do you know that?" or "Where did you find that in the system?", the statement is NOT a trivial fact and MUST be treated as a load-bearing claim.
 
-> ##### [CLAIM {Number}]: [Headline finding, conclusion, or outcome in one sentence].
+#### B. LOAD-BEARING CLAIMS (Requires Strict Structure)
+
+To ensure zero-context auditability, every load-bearing independent conclusion, task finding, empirical result, or synthesized analysis in your report MUST adhere to the following strict structural standard. You must loop through this exact format for every substantive claim you generate:
+
+> ##### [CLAIM {Number}]: [Headline finding, conclusion, or outcome in one sentence]
 >
 > [EVIDENCE]: [ Concisely present the data that grounds this claim.
 >
