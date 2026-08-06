@@ -15,7 +15,12 @@ Two things ride with the goal:
 - **Scoped context** — what the worker needs to find its way and no more: where
   the relevant code, records, and prior decisions are, and which of them are
   already settled. What you leave out it rediscovers at your cost or invents.
-  What you pile in it reads instead of thinking.
+  What you pile in it reads instead of thinking. Where the work lands on a surface
+  that already exists — a dashboard, a skill, a report, a document — name what is
+  already there and make **extend, do not duplicate** a stated constraint.
+  "Follow existing conventions" is too soft, and yields a parallel implementation
+  standing beside the real one. Where you do not know what is there, the brief's
+  first mandated step is an inventory.
 - **Effort type** — mechanical, exploratory, or judgment-heavy. This is what tells
   a worker whether to execute or to decide, and it picks the surface.
 
