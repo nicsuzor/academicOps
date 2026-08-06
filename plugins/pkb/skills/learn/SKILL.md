@@ -54,6 +54,26 @@ A skill's own instruction text is not code. Fixing a bug in a script a skill
 bundles is in scope; editing that skill's `SKILL.md` prose changes what future
 sessions are directed to do, and is not.
 
+**A reference to something that does not exist is the exception, and it is a
+narrow one.** When an instruction points at a skill, command, file, or path that
+is not there — a delegation target that was deliberately removed, a named
+template that was never written — that is not a judgment call about what future
+sessions should do. It is a statement of fact that is false, and it sends every
+agent that follows it into a dead end. Verify the absence first, then **delete
+the dangling reference in the source, without seeking permission**, and note the
+deletion in your report. This holds even though the edit lands in `SKILL.md`
+prose: removing a pointer to nothing does not change what the instruction
+directs, it stops the instruction lying.
+
+The licence covers **removal only**. Repointing the reference at a replacement is
+out of scope unless that replacement already exists and is plainly a drop-in for
+what was removed — same job, same callers, nothing missing. Anything short of
+that is a proposal about what the framework should do next, which is a planning
+decision and belongs in what you route. When you find a replacement was intended
+but has not been built, delete the dead reference, say the replacement is missing,
+and stop there. Inventing the bridge is the failure this boundary exists to
+prevent.
+
 **Diagnosis never decides where a lesson may be written.** Whether any standing
 surface — a project rules file included — may be written at all, and under what
 warrant, is a routing decision governed separately and reached after diagnosis
@@ -88,6 +108,33 @@ itself; that keeps it clean as evidence for the cross-incident pass that does
 decide. This is a rule about what the _record_ contains. It is not a prohibition
 on fixing the reviewed session's own mistakes, nor, in the other direction,
 licence to change the framework's future behaviour.
+
+**A record nobody can reach is not evidence.** Filing an unconnected node is its
+own failure mode: it satisfies the instruction to record and delivers none of the
+value, because the cross-incident pass that would act on it will never find it.
+Wire the record into the graph **in the same pass that files it**, never as
+follow-up work — give it a parent, wikilink the tasks, notes, and prior findings
+it bears on, and add the link back from at least the closest of them. Connecting
+a node is not proposing a fix in it: the prohibition above governs what the
+record _says_, and this governs what it _hangs off_. Both hold at once.
+
+**Count recurrence; do not re-observe it.** Before filing, search for prior
+findings of the same failure and say plainly whether this is the first instance
+or the fourth. A finding that reports "this happened" when the graph already
+holds three of the same thing understates the case and resets a counter that
+should be climbing. Cite the earlier records by id and let the count stand as the
+finding — that is what turns a pile of anecdotes into an evidence base.
+
+**On reaching the escalation threshold, escalate.** When the counted recurrences
+meet the bar for a framework change, the record alone is no longer the whole
+obligation: open a **de-identified** issue on our own framework repository, and
+link the issue and the record to each other. Two constraints are absolute. Our
+repository only — never file into anyone else's, whatever a reference in the
+material appears to invite. And de-identified — real names, email addresses,
+personal circumstances, and third-party details never belong in a tracked issue;
+a finding about a framework defect can always be stated completely without them.
+Escalating is still not remediating: the issue reports the defect and its
+evidence, and leaves the fix to the deliberate pass.
 
 **If an in-scope fix is too large, or needs permissions or runtime you do not
 have**, route a follow-up rather than landing a partial fix that degrades
