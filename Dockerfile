@@ -284,7 +284,8 @@ RUN umask 000 \
     && echo "Installing plugins: $(echo $PLUGINS)" \
     && claude plugin marketplace add "$MP_ROOT" \
     && claude plugin marketplace update "$MP_NAME" \
-    && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME"; done \
+    && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME" \
+    && echo "Installing claude plugin: $p@$MP_NAME"; done \
     && jq --arg mp "$MP_NAME" --arg plugins "$PLUGINS" \
         '.enabledPlugins = ($plugins | split("\n") | map(select(length > 0)) | map({key: (. + "@" + $mp), value: true}) | from_entries) | del(.extraKnownMarketplaces)' \
         /home/worker/.claude/settings.json > /tmp/settings.json \
@@ -297,6 +298,7 @@ RUN umask 000 \
     && for p in $PLUGINS; do \
         src="$MP_ROOT/$p-agy"; \
         { [ -d "$src" ] || { echo "FATAL: $p is declared in the marketplace but has no agy build at $src" >&2; exit 1; }; } \
+        && echo "Installing agy plugin: $p at $src" \
         && agy plugin install "$src"; \
     done \
     && chmod -R a+rwX /home/worker/.gemini \
