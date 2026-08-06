@@ -332,3 +332,29 @@ def test_get_env_forwards_does_not_fallback_to_user_env(monkeypatch):
     env = cli.get_env_forwards(config)
     assert env["GIT_AUTHOR_NAME"] == "botnicbot"
     assert env["GIT_AUTHOR_EMAIL"] == "botnicbot@users.noreply.github.com"
+
+
+# ---------------------------------------------------------------------------
+# resolve_telemetry: standard OTEL configuration
+# ---------------------------------------------------------------------------
+
+
+def test_unconfigured_telemetry_forwards_nothing():
+    assert cli.resolve_telemetry({}) == {}
+
+
+def test_config_file_supplies_telemetry_endpoint_and_resource_attributes():
+    env = cli.resolve_telemetry(
+        {
+            "telemetry": {
+                "endpoint": "TEST_ENDPOINT",
+                "resource_attributes": "deployment.environment=workstation,host.name=nicwin",
+            }
+        }
+    )
+    assert env == {
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "TEST_ENDPOINT",
+        "OTEL_RESOURCE_ATTRIBUTES": "deployment.environment=workstation,host.name=nicwin",
+    }
+
+    assert "BETA_TRACING_ENDPOINT" not in env

@@ -64,7 +64,6 @@ FORWARDED_ENV = (
     "TZ",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
     "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP",
-    *TELEMETRY_ENV,
 )
 
 # Credentials the container's entrypoint requires to reach GitHub and the agent

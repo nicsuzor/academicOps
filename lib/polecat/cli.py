@@ -199,6 +199,23 @@ def resolve_cope_evaluator(config):
     return env
 
 
+def resolve_telemetry(config):
+    """Resolve OpenTelemetry config from polecat.yaml `telemetry:` block.
+
+    Variables defined here (endpoints, resource attributes) are the only runtime
+    telemetry configuration passed to the container. All other standard tracing
+    options are built into the Dockerfile itself. No fallback to host environment.
+    """
+    telemetry = config.get("telemetry") or {}
+    env = {}
+    if telemetry.get("endpoint"):
+        env["BETA_TRACING_ENDPOINT"] = str(telemetry["endpoint"])
+        env["OTEL_EXPORTER_OTLP_ENDPOINT"] = str(telemetry["endpoint"])
+    if telemetry.get("resource_attributes"):
+        env["OTEL_RESOURCE_ATTRIBUTES"] = str(telemetry["resource_attributes"])
+    return env
+
+
 def resolve_git_identity(config):
     """Resolve git author/committer identity from polecat config (polecat.yaml).
 
@@ -268,6 +285,9 @@ def get_env_forwards(config=None):
     # host environment left unset above, so an ambient export still wins.
     for key, value in resolve_cope_evaluator(config).items():
         env.setdefault(key, value)
+
+    # Telemetry configuration (strictly from config, no host env fallback)
+    env.update(resolve_telemetry(config))
 
     # Deny every interactive and agent-backed git credential path inside the
     # container: auth resolves from the forwarded token or not at all.

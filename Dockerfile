@@ -137,7 +137,19 @@ USER worker
 
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
-    PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH"
+    PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
+    ANTIGRAVITY_ENABLE_TELEMETRY=1 \
+    CLAUDE_CODE_ENABLE_TELEMETRY=1 \
+    CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 \
+    ENABLE_BETA_TRACING_DETAILED=1 \
+    OTEL_METRICS_EXPORTER=otlp \
+    OTEL_LOGS_EXPORTER=otlp \
+    OTEL_TRACES_EXPORTER=otlp \
+    OTEL_EXPORTER_OTLP_PROTOCOL=grpc \
+    OTEL_LOG_USER_PROMPTS=1 \
+    OTEL_LOG_ASSISTANT_RESPONSES=1 \
+    OTEL_LOG_TOOL_DETAILS=1 \
+    OTEL_LOG_TOOL_CONTENT=1
 
 # Install Claude Code via native installer — npm package lacks the full binary
 # and causes .claude.json config migration issues on startup.
