@@ -309,6 +309,7 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
 def _get_evaluator_otel_trace():
     try:
         import evaluator_otel_trace
+
         return evaluator_otel_trace
     except ImportError:
         rbg_hooks = Path(__file__).resolve().parent.parent.parent / "plugins" / "rbg" / "hooks"
@@ -316,6 +317,7 @@ def _get_evaluator_otel_trace():
             sys.path.insert(0, str(rbg_hooks))
             try:
                 import evaluator_otel_trace
+
                 return evaluator_otel_trace
             except ImportError:
                 return None

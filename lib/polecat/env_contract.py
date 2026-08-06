@@ -166,7 +166,6 @@ def format_otel_resource_attributes(
     return ",".join(result_pairs)
 
 
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

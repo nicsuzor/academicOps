@@ -250,14 +250,19 @@ def detect_tool_plumbing_error(ctx: HookContext) -> tuple[str, str] | None:
             if c_tool in ("unknown_tool", "missing_mcp"):
                 return str(c_tool), str(c_msg or c_tool)
 
-            c_err_str = str(call.get("error") or call.get("tool_error") or call.get("error_message") or "").lower()
+            c_err_str = str(
+                call.get("error") or call.get("tool_error") or call.get("error_message") or ""
+            ).lower()
             if "unknown_tool" in c_err_str or "unknown tool" in c_err_str:
                 return "unknown_tool", str(c_msg or "unknown_tool")
-            if "missing_mcp" in c_err_str or "missing mcp" in c_err_str or "mcp tool missing" in c_err_str:
+            if (
+                "missing_mcp" in c_err_str
+                or "missing mcp" in c_err_str
+                or "mcp tool missing" in c_err_str
+            ):
                 return "missing_mcp", str(c_msg or "missing_mcp")
 
     return None
-
 
 
 def record_tool_plumbing_error(
@@ -507,9 +512,9 @@ def sink_for(
     if config is None:
         return None
 
-
     try:
         from opentelemetry.trace import Status, StatusCode
+
         tracer = _get_tracer(config)
     except Exception as exc:
         print(f"rbg otel trace: error initializing tracer: {exc!r}", file=sys.stderr)

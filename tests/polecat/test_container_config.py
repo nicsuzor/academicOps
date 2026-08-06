@@ -398,7 +398,10 @@ def test_format_otel_resource_attributes_merges_session_project_task():
         project="proj-abc",
         task_id="task-123",
     )
-    assert res == "service.name=my-service,deployment.env=prod,polecat.session_id=session-xyz,polecat.project=proj-abc,polecat.task_id=task-123"
+    assert (
+        res
+        == "service.name=my-service,deployment.env=prod,polecat.session_id=session-xyz,polecat.project=proj-abc,polecat.task_id=task-123"
+    )
 
 
 def test_format_otel_resource_attributes_handles_empty_existing_and_optional_fields():
@@ -428,7 +431,18 @@ def test_run_injects_polecat_otel_resource_attributes(tmp_path, monkeypatch):
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
-        ["run", "claude", "-p", "myproj", "-t", "mytask", "-s", "mysess", "-d", str(tmp_path / "repo")],
+        [
+            "run",
+            "claude",
+            "-p",
+            "myproj",
+            "-t",
+            "mytask",
+            "-s",
+            "mysess",
+            "-d",
+            str(tmp_path / "repo"),
+        ],
         {},
     )
     otel_env_arg = [arg for arg in cmd if arg.startswith("OTEL_RESOURCE_ATTRIBUTES=")]
@@ -437,5 +451,3 @@ def test_run_injects_polecat_otel_resource_attributes(tmp_path, monkeypatch):
     assert "polecat.session_id=mysess" in val
     assert "polecat.project=myproj" in val
     assert "polecat.task_id=mytask" in val
-
-

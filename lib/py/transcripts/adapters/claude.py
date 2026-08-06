@@ -690,7 +690,6 @@ def load_subagent_transcripts(
     return subagents
 
 
-
 def load_claude_session(jsonl_path: Path) -> NormalizedSession | None:
     """Load a Claude Code trunk transcript together with its subagent sidechains.
 

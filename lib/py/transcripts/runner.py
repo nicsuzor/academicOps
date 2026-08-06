@@ -207,7 +207,6 @@ def process_single_session(
         json.dumps(redact_obj(json_sidecar), indent=2), encoding="utf-8"
     )
 
-
     logger.info(
         "Processed session %s -> %s (%d trunk events, %d subagents, %d total events)",
         session_id,

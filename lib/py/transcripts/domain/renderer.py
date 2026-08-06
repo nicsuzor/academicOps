@@ -601,7 +601,7 @@ def render_to_html(
             thinking_html = (
                 '<details class="thinking-details"><summary><strong>Thinking Process</strong></summary>'
                 '<div class="thinking">not recoverable — Claude Code returned this block empty (signature only).</div>'
-                '</details>'
+                "</details>"
             )
 
         content = event.content or ""
@@ -642,12 +642,14 @@ def render_to_html(
             if is_large:
                 content_html_rendered = (
                     f'<details class="tool-output-details">'
-                    f'<summary>Tool Output ({byte_count} bytes)</summary>'
-                    f'<pre><code>{content_escaped}</code></pre>'
-                    f'</details>'
+                    f"<summary>Tool Output ({byte_count} bytes)</summary>"
+                    f"<pre><code>{content_escaped}</code></pre>"
+                    f"</details>"
                 )
             else:
-                content_html_rendered = f'<div class="content"><pre><code>{content_escaped}</code></pre></div>'
+                content_html_rendered = (
+                    f'<div class="content"><pre><code>{content_escaped}</code></pre></div>'
+                )
         else:
             content_escaped = _escape_html(content).replace("\n", "<br>")
             content_html_rendered = f'<div class="content">{content_escaped}</div>'
@@ -992,4 +994,3 @@ def render_session_to_all_formats(
         session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
     )
     return controller_md, full_md, md, html, json_sidecar
-

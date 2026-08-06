@@ -228,15 +228,17 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     corr_claude = infer_correlation(claude_session)
     insights_claude = infer_insights(claude_session)
 
-    controller_claude, full_md_claude, md_claude, html_claude, sidecar_claude = render_session_to_all_formats(
-        claude_session,
-        slug_claude,
-        start_claude,
-        mod_claude,
-        end_claude,
-        has_user_claude,
-        corr_claude,
-        insights_claude,
+    controller_claude, full_md_claude, md_claude, html_claude, sidecar_claude = (
+        render_session_to_all_formats(
+            claude_session,
+            slug_claude,
+            start_claude,
+            mod_claude,
+            end_claude,
+            has_user_claude,
+            corr_claude,
+            insights_claude,
+        )
     )
 
     assert controller_claude.startswith("---")
@@ -246,4 +248,3 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     assert "</html>" in html_claude
     data_claude = json.loads(json.dumps(sidecar_claude))
     assert data_claude["session_id"] == claude_session.session_id
-

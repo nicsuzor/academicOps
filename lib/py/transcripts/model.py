@@ -140,4 +140,3 @@ class NormalizedSession:
     def total_cost_usd(self) -> float:
         """Trunk cost plus every subagent's cost — the session's real spend."""
         return self.controller_cost_usd + self.subagent_cost_usd
-

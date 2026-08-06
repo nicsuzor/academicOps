@@ -175,5 +175,3 @@ def test_claude_projects_under_subagents_home_directory(
 
     assert session_file in found
     assert subagent_file not in found
-
-

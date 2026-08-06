@@ -45,4 +45,3 @@ def get_subagent_summaries(session: NormalizedSession) -> list[dict[str, Any]]:
             }
         )
     return summaries
-

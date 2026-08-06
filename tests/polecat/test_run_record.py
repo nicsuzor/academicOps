@@ -421,4 +421,3 @@ def test_transcript_metadata_structure(tmp_path):
     assert t["transcript_path"] == str(t_file)
     assert t["transcript_bytes"] == t_file.stat().st_size
     assert t["event_count"] == 3
-

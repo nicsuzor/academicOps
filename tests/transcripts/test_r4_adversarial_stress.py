@@ -25,13 +25,16 @@ class TestEscapeHtmlAdversarial:
     """Direct unit tests for _escape_html with adversarial payloads."""
 
     def test_basic_quote_and_xml_escaping(self):
-        raw = '<script>alert("XSS & \'breakout\'")</script>'
+        raw = "<script>alert(\"XSS & 'breakout'\")</script>"
         escaped = _escape_html(raw)
         assert "<" not in escaped
         assert ">" not in escaped
         assert '"' not in escaped
         assert "'" not in escaped
-        assert escaped == '&lt;script&gt;alert(&quot;XSS &amp; &#x27;breakout&#x27;&quot;)&lt;/script&gt;'
+        assert (
+            escaped
+            == "&lt;script&gt;alert(&quot;XSS &amp; &#x27;breakout&#x27;&quot;)&lt;/script&gt;"
+        )
 
     def test_double_quotes(self):
         raw = 'attr="value" title="hello"'
@@ -46,13 +49,13 @@ class TestEscapeHtmlAdversarial:
         assert "&#x27;" in escaped
 
     def test_mixed_quotes_and_ampersands(self):
-        raw = 'a="1" & b=\'2\' & c=<3>'
+        raw = "a=\"1\" & b='2' & c=<3>"
         escaped = _escape_html(raw)
         assert '"' not in escaped
         assert "'" not in escaped
         assert "<" not in escaped
         assert ">" not in escaped
-        assert escaped == 'a=&quot;1&quot; &amp; b=&#x27;2&#x27; &amp; c=&lt;3&gt;'
+        assert escaped == "a=&quot;1&quot; &amp; b=&#x27;2&#x27; &amp; c=&lt;3&gt;"
 
     def test_backticks(self):
         raw = "`backticks` standard HTML attribute string"
@@ -70,9 +73,9 @@ class TestEscapeHtmlAdversarial:
 
     def test_unicode_quotes(self):
         # Curly/smart quotes
-        raw = '“smart double” ‘smart single’'
+        raw = "“smart double” ‘smart single’"
         escaped = _escape_html(raw)
-        assert escaped == '“smart double” ‘smart single’'
+        assert escaped == "“smart double” ‘smart single’"
 
     def test_multiline_quote_breakouts(self):
         raw = "\"\n> <script>alert('breakout')</script>\n\""
@@ -124,7 +127,10 @@ class TestHTMLAttributeContexts:
         )
 
         # Check href attribute context: double quotes are &quot;, so no breakout occurs
-        assert 'href="./20260806-00-proj&quot;name-session&quot; onclick=&quot;alert(1)&quot; id=&quot;hacked.full.md"' in html_out
+        assert (
+            'href="./20260806-00-proj&quot;name-session&quot; onclick=&quot;alert(1)&quot; id=&quot;hacked.full.md"'
+            in html_out
+        )
         assert 'onclick="alert(1)"' not in html_out
         assert 'id="hacked' not in html_out
 
@@ -146,16 +152,21 @@ class TestHTMLAttributeContexts:
             insights=None,
         )
 
-        assert '<title>Session sess_&lt;script&gt;alert(&quot;id&quot;)&lt;/script&gt;</title>' in html_out
-        assert '<h1>Session sess_&lt;script&gt;alert(&quot;id&quot;)&lt;/script&gt;</h1>' in html_out
-        assert '<strong>Slug</strong>slug_&quot;quoted&quot;' in html_out
-        assert 'proj&quot;&lt;script&gt;' in html_out
+        assert (
+            "<title>Session sess_&lt;script&gt;alert(&quot;id&quot;)&lt;/script&gt;</title>"
+            in html_out
+        )
+        assert (
+            "<h1>Session sess_&lt;script&gt;alert(&quot;id&quot;)&lt;/script&gt;</h1>" in html_out
+        )
+        assert "<strong>Slug</strong>slug_&quot;quoted&quot;" in html_out
+        assert "proj&quot;&lt;script&gt;" in html_out
 
     def test_event_prompt_kind_and_source_escaping(self):
         """Stress-test prompt_kind, source, and timestamp in events."""
         event_injected = NormalizedEvent(
             event_id="e1",
-            timestamp='2026-08-06',
+            timestamp="2026-08-06",
             source="user",
             type="message",
             content="Injected content",
@@ -183,7 +194,10 @@ class TestHTMLAttributeContexts:
         )
 
         # Check prompt_kind escaping in badge:
-        assert 'Injected Context (system&quot;&lt;script&gt;alert(1)&lt;/script&gt;)' in html_out or 'system&quot;&lt;script&gt;' in html_out
+        assert (
+            "Injected Context (system&quot;&lt;script&gt;alert(1)&lt;/script&gt;)" in html_out
+            or "system&quot;&lt;script&gt;" in html_out
+        )
 
     def test_tool_call_args_and_names_escaping(self):
         """Test tool call names and JSON args escaping in HTML."""
@@ -218,8 +232,8 @@ class TestHTMLAttributeContexts:
             insights=None,
         )
 
-        assert 'tool_&lt;script&gt;alert(&quot;name&quot;)&lt;/script&gt;' in html_out
-        assert r'val\&quot;&lt;script&gt;alert(\&quot;arg\&quot;)&lt;/script&gt;' in html_out
+        assert "tool_&lt;script&gt;alert(&quot;name&quot;)&lt;/script&gt;" in html_out
+        assert r"val\&quot;&lt;script&gt;alert(\&quot;arg\&quot;)&lt;/script&gt;" in html_out
         assert '<script>alert("name")</script>' not in html_out
 
     def test_untrusted_header_title_and_source_class_vulnerability(self):
@@ -253,4 +267,6 @@ class TestHTMLAttributeContexts:
         has_ts_xss = '<script>alert("ts")</script>' in html_out
 
         # Store finding: event.source and event.timestamp are currently NOT escaped in event headers!
-        assert has_source_xss is True or has_ts_xss is True, "Expected to detect unescaped HTML vulnerability in event header/source"
+        assert has_source_xss is True or has_ts_xss is True, (
+            "Expected to detect unescaped HTML vulnerability in event header/source"
+        )

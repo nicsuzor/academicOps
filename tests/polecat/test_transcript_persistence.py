@@ -273,7 +273,9 @@ def test_run_record_names_the_transcript_a_run_persisted(tmp_path, monkeypatch):
     assert record["transcript"]["transcript_path"] == str(transcript)
     assert record["transcript"]["transcript_bytes"] == transcript.stat().st_size
     assert record["transcript"]["event_count"] == 2
-    assert not any(d.get("what") in ("transcript", "transcript_missing") for d in record["degraded"])
+    assert not any(
+        d.get("what") in ("transcript", "transcript_missing") for d in record["degraded"]
+    )
 
 
 def test_a_run_that_persisted_nothing_is_not_indistinguishable_from_one_that_did(

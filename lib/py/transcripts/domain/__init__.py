@@ -54,4 +54,3 @@ __all__ = [
     "git_sync_sessions",
     "generate_prompt_ledger",
 ]
-
