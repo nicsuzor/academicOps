@@ -62,7 +62,15 @@ _TOOL_MAP = {
 # "Hook Spec Fields" and "Supported Event Types" sections define them.
 _GROUPED_EVENTS = ("PreToolUse", "PostToolUse")
 _FLAT_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
-_AGY_INCLUDE_SECTIONS = ["user_information", "skills", "messaging", "mcp_servers"]
+_AGY_INCLUDE_SECTIONS = [
+    "user_information",
+    "skills",
+    "messaging",
+    "mcp_servers",
+    "subagent_reminder",
+    "artifacts",
+    "user_rules",
+]
 
 
 def adapt(build_dir: Path, ctx: BuildContext) -> None:
