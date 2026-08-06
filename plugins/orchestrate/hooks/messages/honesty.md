@@ -33,15 +33,18 @@ _The body of your report MUST be decomposed into a series of discrete, verificab
 
 To ensure zero-context auditability, every independent conclusion in your report MUST adhere to the following strict structural standard. You must loop through this exact format for every claim you generate:
 
-> ##### [CLAIM {Number}]: [Headline finding or conclusion in one sentence].
+> ##### [CLAIM {Number}]: [Headline finding, conclusion, or outcome in one sentence].
 >
-> [EVIDENCE {CITATION}]: [ Provide the curated, raw data or facts that ground this claim.
+> [EVIDENCE]: [ Concisely present the data that grounds this claim.
 >
-> - Do not summarize; present **verbatim** extracts of relevant artifacts.
-> - Provide a pinpoint citation to the specific source you examined.
-> - If you did not personally examine the source, you MUST state that clearly.]
->   [WARRANT]: [Explicitly state why this specific evidence proves your claim. Do not leave underlying assumptions unstated.]
->   [QUALIFIER]: [Define the boundaries of this claim. State your exact confidence level and the specific conditions under which this claim holds true.]
+> - State the exact tool names, literal query strings, and search limits used to prove comprehensiveness.
+> - Provide exact pinpoint references to any external sources you relied on.
+> - Do not paraphrase; present **verbatim** extracts of relevant artifacts.
+> - You should carefully curate the presented evidence; trim quotes and only keep relevant extracts.
+> - If you did not personally examine the source, you MUST state that clearly.
+> - If asserting the _absence_ of data, explicitly list the exact queries that returned zero hits.]
+>   [WARRANT]: [Explicitly state why this specific evidence proves your claim.]
+>   [QUALIFIER]: [Define the boundaries of this claim. State your blind spots. Present your level of confidence for every inference.]
 >   [NEXT-BEST ALTERNATIVE]: [Identify the strongest rebuttal or alternative hypothesis.]
 
 Constraint: A reviewing supervisor must be able to independently evaluate the soundness of your logic—and the limits of your certainty—from premise to conclusion for every single claim without ever needing to consult external sources or read the underlying reference materials.
