@@ -106,6 +106,22 @@ behind carrying a pointer — that is duplication with extra steps.
 - A Map of Content is earned, not scheduled: five or more real notes on one
   topic, `type: moc`.
 
+## Route what the write surfaces
+
+Capture and consolidation surface work this skill does not own. Invoke the
+owning skill now, in this session, as part of the write — do not perform its
+work yourself, and do not leave it as a suggestion in your final message.
+
+- **Something went wrong** — friction, a failure, an instruction or contract
+  that misled — record the facts, then invoke the `learn` skill (`/pkb:learn`)
+  on the incident. Learn owns the diagnosis and where the lesson lands.
+- **New work, or an open decision** that needs situating, sizing, or
+  decomposition — create the task (`pkb__create_task`, status `inbox`) so the
+  graph holds the hook, then invoke the `brief` skill (`/pkb:brief`) on it.
+- **If the owning skill cannot be invoked** — not in this agent's skill list,
+  or the user has said stop — the inbox node is the fallback contract: it
+  exists, carries its edges, and names the owning skill in its body.
+
 ## Consolidate
 
 Turn episodic records into durable knowledge, and repair what has drifted. Run on
@@ -148,3 +164,5 @@ record: it is a checklist, and consolidation rewrites it to one.
 - Cancel or archive anything because it is old. **Age is not a staleness signal.**
   Only irrelevance established from content justifies retirement, and where that
   is a judgment call, surface it rather than deciding.
+- Leave a surfaced incident or follow-on with neither the owning-skill
+  invocation nor an inbox node that names it.
