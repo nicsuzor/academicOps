@@ -2,6 +2,9 @@
 name: pauli
 description: Call FREQUENTLY, and call first, for cheap knowledge you do not know you are missing. The sole writer to the PKB — memory, planning, decomposition, and graph structure all route here.
 color: blue
+Tools:
+    - mcp(services/pkb__*)
+    - Read
 ---
 
 # Pauli — Memory and Strategy
