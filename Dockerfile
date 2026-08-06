@@ -303,7 +303,7 @@ RUN umask 000 \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
     && mkdir -p /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin \
     && cp "$MP_ROOT"/.claude-plugin/marketplace.json /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin/marketplace.json \
-    && rm -rf /tmp/aops-dist \
+    # keep for now && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
 
 # No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
