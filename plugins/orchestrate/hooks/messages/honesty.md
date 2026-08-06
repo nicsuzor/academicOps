@@ -1,6 +1,12 @@
 ## REPORTING PROTOCOL & EVIDENCE CONTRACT
 
-**WARNING**: Only the NEXT message you send will be delivered to the calling agent. You MUST include your entire response—deliverable, evidence, confidence, and gaps—in this single message. Do NOT send a report and follow up with a separate confidence or metadata message.
+**WARNING**: Your LAST message was NOT COMPLIANT and will be SILENTLY DROPPED.
+
+- You MUST send your final report in the following format.
+- You MUST include your entire response (deliverable, evidence, confidence, and gaps) in a SINGLE message or response call.
+- Do NOT send a report and follow up with a separate confidence or metadata message.
+- Your report will be INVALIDATED if you send any additional messages after the final report.
+- You MUST use the report channel specified in your system instructions to reach your calling agent if provided.
 
 ### 1. STRICT NEGATIVE CONSTRAINTS (DO NOT DO THESE)
 
@@ -19,21 +25,23 @@ You must format your response exactly as follows.
 >
 > **REQUEST**: [A one-sentence summary of the task you were given]
 >
-> **DELIVERABLE**: [Provide or point directly to the output artifacts, files, or key results]
+> **RESPONSE**: [A concise summary of your overall response, answer, or work produced]
 >
-> ### Evidenced Claims
+> **DELIVERABLE REFERENCE(S)**: [URL or other pointer directly to the output deliverables]
+
+_The body of your report MUST be decomposed into a series of discrete, verificable nodes. DO NOT present your report in prose; be CONCISE and PRECISE._
+
+To ensure zero-context auditability, every independent conclusion in your report MUST adhere to the following strict structural standard. You must loop through this exact format for every claim you generate:
+
+> ##### [CLAIM {Number}]: [Headline finding or conclusion in one sentence].
 >
-> _All claims must be logically consistent and sufficient to address the task_.
+> [EVIDENCE {CITATION}]: [ Provide the curated, raw data or facts that ground this claim.
 >
-> 1. **[Core Conclusion]**: [Brief description]. `[Observed: file:line or command output]`
-> 2. **[Architecture/State]**: [Brief description]. `[Reported/Inferred: source]`
->
-> ### Named Gaps & Unfinished Work
->
-> - **[Explicit Disclosure]**: [Plainly state anything unrun, unreachable, unverified, or deferred].
->
-> ### Confidence & Risk
->
-> - **Confidence Level**: [State High, Medium, or Low].
-> - **Falsification Check**: [State the single check that would falsify your conclusion].
-> - **Assumptions**: [Explicitly distinguish Tested assumptions from Hopes].
+> - Do not summarize; present **verbatim** extracts of relevant artifacts.
+> - Provide a pinpoint citation to the specific source you examined.
+> - If you did not personally examine the source, you MUST state that clearly.]
+>   [WARRANT]: [Explicitly state why this specific evidence proves your claim. Do not leave underlying assumptions unstated.]
+>   [QUALIFIER]: [Define the boundaries of this claim. State your exact confidence level and the specific conditions under which this claim holds true.]
+>   [NEXT-BEST ALTERNATIVE]: [Identify the strongest rebuttal or alternative hypothesis.]
+
+Constraint: A reviewing supervisor must be able to independently evaluate the soundness of your logic—and the limits of your certainty—from premise to conclusion for every single claim without ever needing to consult external sources or read the underlying reference materials.
