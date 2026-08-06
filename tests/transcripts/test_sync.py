@@ -251,3 +251,95 @@ def test_git_sync_recovers_from_interrupted_merge(tmp_path: Path) -> None:
     tree = _remote_main_tree(remote)
     assert "new_transcript.md" in tree
     assert "from_other_host.md" in tree
+
+
+def test_git_sync_retries_when_remote_advances_between_pull_and_push(tmp_path: Path) -> None:
+    """Two hosts share the sessions repo on the same 5-minute cron cadence.
+
+    A single pull-then-push is not enough: the remote can advance again in the
+    gap between our pull and our push (a second host winning the race), which
+    rejects the push exactly as if we had never pulled. This drives that race
+    directly with a `pre-push` hook that lands a competing commit on the bare
+    remote the first time (and only the first time) our push is attempted --
+    forcing that push to be rejected -- then gets out of the way, so the retry
+    must re-pull and push again to succeed.
+    """
+    sessions_dir, remote = _init_repo_with_remote(tmp_path, set_upstream=False)
+
+    # A third clone the hook uses to land the competing commit -- distinct from
+    # sessions_dir (the host under test), simulating the other host.
+    racer_clone = tmp_path / "racer_clone"
+    _run(["git", "clone", "-q", str(remote), str(racer_clone)], cwd=tmp_path)
+
+    race_landed_marker = tmp_path / "race_landed"
+    hook_path = sessions_dir / ".git" / "hooks" / "pre-push"
+    hook_path.write_text(
+        f"""#!/bin/sh
+# Fires on every `git push` from sessions_dir. The first time, land a commit
+# on the remote out from under the push that is about to happen (simulating
+# the other host), so this push is rejected non-fast-forward. Every time
+# after, do nothing, so the retried push can succeed.
+if [ ! -f "{race_landed_marker}" ]; then
+    touch "{race_landed_marker}"
+    cd "{racer_clone}" || exit 0
+    git pull -q --no-rebase --no-edit origin main
+    echo "raced in" > from_other_host_midflight.md
+    git add -A
+    git {" ".join(_TEST_IDENTITY)} commit -q -m "other host wins the race"
+    git push -q origin main
+fi
+exit 0
+"""
+    )
+    hook_path.chmod(0o755)
+
+    (sessions_dir / "new_transcript.md").write_text("hi\n")
+
+    assert git_sync_sessions(sessions_dir) is True, "the retry must recover from the raced push"
+    assert race_landed_marker.exists(), "the hook must have actually fired to prove a race happened"
+
+    git_dir = Path(_out(["git", "rev-parse", "--absolute-git-dir"], cwd=sessions_dir))
+    assert not (git_dir / "MERGE_HEAD").exists(), "repo left mid-merge after the retry"
+
+    tree = _remote_main_tree(remote)
+    assert "new_transcript.md" in tree, "our transcript must still reach the remote"
+    assert "from_other_host_midflight.md" in tree, "the mid-flight racer commit must be preserved"
+
+    remote_head = _out(["git", "rev-parse", "main"], cwd=remote)
+    local_head = _out(["git", "rev-parse", "HEAD"], cwd=sessions_dir)
+    assert remote_head == local_head
+
+
+def test_git_sync_gives_up_after_max_attempts_if_push_always_loses_the_race(
+    tmp_path: Path,
+) -> None:
+    """If the push is rejected on every attempt, sync fails cleanly -- not forever."""
+    sessions_dir, remote = _init_repo_with_remote(tmp_path, set_upstream=False)
+
+    racer_clone = tmp_path / "racer_clone"
+    _run(["git", "clone", "-q", str(remote), str(racer_clone)], cwd=tmp_path)
+
+    hook_path = sessions_dir / ".git" / "hooks" / "pre-push"
+    hook_path.write_text(
+        f"""#!/bin/sh
+# Fires on every `git push` from sessions_dir, and lands a competing commit on
+# the remote every single time -- the push can never win this race.
+cd "{racer_clone}" || exit 0
+git pull -q --no-rebase --no-edit origin main
+echo "raced in" >> from_other_host_always.md
+git add -A
+git {" ".join(_TEST_IDENTITY)} commit -q -m "other host always wins"
+git push -q origin main
+exit 0
+"""
+    )
+    hook_path.chmod(0o755)
+
+    (sessions_dir / "new_transcript.md").write_text("hi\n")
+
+    assert git_sync_sessions(sessions_dir) is False
+
+    git_dir = Path(_out(["git", "rev-parse", "--absolute-git-dir"], cwd=sessions_dir))
+    assert not (git_dir / "MERGE_HEAD").exists(), "repo left mid-merge; next cycle would be trapped"
+    status = _out(["git", "status", "--porcelain"], cwd=sessions_dir)
+    assert "UU" not in status

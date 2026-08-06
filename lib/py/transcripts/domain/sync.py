@@ -10,6 +10,16 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Both the Mac and the WSL host run this same function against the same
+# sessions repo on the same 5-minute cron cadence. A single pull-then-push is
+# not enough: host A can pull cleanly, then host B pushes into the gap before
+# A's push lands, and A's push is rejected non-fast-forward exactly as if it
+# had never pulled at all. Bounded retry closes that window. Kept small and
+# fixed (no backoff/sleep) so a contested cycle still finishes well inside the
+# 5-minute window the flock single-instance guard in repo-sync-cron.sh allows
+# before a slow run costs the next cycle entirely.
+_MAX_PUSH_ATTEMPTS = 3
+
 # Commit identity for *every* commit this function creates. That includes the
 # merge commit `git pull --no-rebase` writes: cron has no user.name/user.email
 # configured, so git refuses to build a merge commit without an identity in the
@@ -104,6 +114,76 @@ def _recover_interrupted_state(sessions_dir: Path, git_dir: Path) -> None:
         _abort_merge(sessions_dir, git_dir)
 
 
+def _pull_then_push(sessions_dir: Path, git_dir: Path, branch: str) -> bool:
+    """Integrate the remote and push, retrying the push across a bounded window.
+
+    Integrate whatever else has landed on the remote before pushing. Without
+    this, any commit made from another host since this host last synced makes
+    the push a non-fast-forward, git rejects it, and every subsequent cycle
+    drops its transcripts on the floor.
+
+    A single pull-then-push is not enough on its own: two hosts share this
+    repo on the same 5-minute cron cadence, so the remote can advance again in
+    the gap between our pull and our push, rejecting the push exactly as if we
+    had never pulled. Each retry re-pulls before pushing again, so it always
+    integrates the latest remote state first.
+
+    Merge rather than rebase: a killed merge is cleanly recoverable by the
+    interrupted-state preflight, whereas partial-rebase replay state is not,
+    and `ort` auto-resolves cleanly between mechanical auto-sync snapshots.
+
+    The pull refspec is explicit (`origin <branch>`), not implicit upstream
+    tracking config, which cron must not depend on ever having been set. The
+    env on both the pull and the push-adjacent commands carries the bot
+    identity because the merge commit the pull may create needs a committer
+    and cron has none.
+
+    A genuine conflict (pull itself fails) is not retried -- it is
+    deterministic and retrying would just fail the same way again -- and is
+    reported exactly as today: logged, merge aborted so the repo is not left
+    wedged, and False returned.
+    """
+    for attempt in range(1, _MAX_PUSH_ATTEMPTS + 1):
+        pull_result = subprocess.run(
+            ["git", "pull", "--no-rebase", "--no-edit", "origin", branch],
+            cwd=sessions_dir,
+            capture_output=True,
+            text=True,
+            env=_bot_env(),
+        )
+        if pull_result.returncode != 0:
+            logger.error(
+                "Git sync failed: git pull origin %s returned %d\nStdout: %s\nStderr: %s",
+                branch,
+                pull_result.returncode,
+                pull_result.stdout,
+                pull_result.stderr,
+            )
+            _abort_merge(sessions_dir, git_dir)
+            return False
+
+        push_result = subprocess.run(
+            ["git", "push", "origin", "HEAD"],
+            cwd=sessions_dir,
+            capture_output=True,
+            text=True,
+        )
+        if push_result.returncode == 0:
+            return True
+
+        logger.warning(
+            "git push rejected (attempt %d/%d), another host likely pushed in the gap; "
+            "re-pulling and retrying\nStdout: %s\nStderr: %s",
+            attempt,
+            _MAX_PUSH_ATTEMPTS,
+            push_result.stdout,
+            push_result.stderr,
+        )
+
+    logger.error("Git sync failed: push still rejected after %d attempts", _MAX_PUSH_ATTEMPTS)
+    return False
+
+
 def git_sync_sessions(sessions_dir: Path) -> bool:
     """Git commit and push any new/updated transcripts in the sessions directory."""
     if not sessions_dir.exists():
@@ -183,43 +263,14 @@ def git_sync_sessions(sessions_dir: Path) -> bool:
             env=_bot_env(),
         )
 
-        # Integrate whatever else has landed on the remote before pushing.
-        # Without this, any commit made from another host since this host last
-        # synced makes the push a non-fast-forward, git rejects it, and every
-        # subsequent cycle drops its transcripts on the floor.
-        #
-        # Merge rather than rebase: a killed merge is cleanly recoverable by the
-        # preflight above, whereas partial-rebase replay state is not, and `ort`
-        # auto-resolves cleanly between mechanical auto-sync snapshots.
-        #
-        # The refspec is explicit: cron must not depend on branch tracking
-        # config that may never have been set. The env carries the bot identity
-        # because the merge commit needs a committer and cron has none.
+        # Pull, then push, retrying the push across a bounded window to survive
+        # a second host winning the race in the gap between our pull and our
+        # push (see _pull_then_push). In cron, GH_TOKEN is set and the git
+        # push credential helper is configured.
         branch = _current_branch(sessions_dir)
-        pull_result = subprocess.run(
-            ["git", "pull", "--no-rebase", "--no-edit", "origin", branch],
-            cwd=sessions_dir,
-            capture_output=True,
-            text=True,
-            env=_bot_env(),
-        )
-        if pull_result.returncode != 0:
-            logger.error(
-                "Git sync failed: git pull origin %s returned %d\nStdout: %s\nStderr: %s",
-                branch,
-                pull_result.returncode,
-                pull_result.stdout,
-                pull_result.stderr,
-            )
-            # A genuine conflict is a log-and-return-False, same as before — but
-            # the repo must not be left mid-merge, or the next cycle inherits
-            # the wedge instead of getting a clean shot at syncing.
-            _abort_merge(sessions_dir, git_dir)
+        if not _pull_then_push(sessions_dir, git_dir, branch):
             return False
 
-        # Git push
-        # In cron, GH_TOKEN is set, and git helper configuration is done.
-        subprocess.run(["git", "push", "origin", "HEAD"], cwd=sessions_dir, check=True)
         logger.info("Successfully synced transcripts sessions repo")
         return True
     except subprocess.CalledProcessError as e:
