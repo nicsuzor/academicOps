@@ -64,7 +64,7 @@ No `userConfig` field. The `SessionStart` hook reads five environment variables 
 - `AOPS_BOT_GH_TOKEN` — when present, becomes `GH_TOKEN` and `GITHUB_TOKEN` for the session, and pins `GIT_SSH_COMMAND` and a git credential helper so the session cannot reach GitHub through the operator's own SSH identity.
 - `AOPS_SESSIONS`, `PKB_MCP_URL`, `PKB_MCP_TOOL_PREFIX` — forwarded verbatim.
 
-The polecat CLI reads its own set, also with no defaults: `POLECAT_HOME` and `POLECAT_IMAGE` are required, and `AOPS_POLECAT_CONFIG`, `AOPS_SESSIONS`, `POLECAT_RULES_DIR`, `POLECAT_AGENT_HOME`, `POLECAT_WORKER_MODEL`, `POLECAT_PRINT_TIMEOUT` and `PKB_MCP_URL` are optional. A missing required value is a loud failure, never a guess.
+The polecat CLI reads its own set, also with no defaults: `POLECAT_HOME`, `POLECAT_IMAGE` and `AOPS_SESSIONS` are required, and `AOPS_POLECAT_CONFIG`, `POLECAT_RULES_DIR`, `POLECAT_AGENT_HOME`, `POLECAT_WORKER_MODEL`, `POLECAT_PRINT_TIMEOUT` and `PKB_MCP_URL` are optional. A missing required value is a loud failure, never a guess.
 
 No endpoint, host, registry, account or credential is written into anything this plugin ships.
 

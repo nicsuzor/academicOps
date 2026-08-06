@@ -118,6 +118,30 @@ def resolve_image(config):
     return image
 
 
+def resolve_sessions_root():
+    """Root of the sessions repository every run's session directory lands under.
+
+    From $AOPS_SESSIONS. No default, and deliberately no config-file key:
+    `load_config` finds the config file *at* `$AOPS_SESSIONS/polecat.yaml`, so a
+    key inside that file could only be read once the value it defines is already
+    known. A key that works only when `$AOPS_POLECAT_CONFIG` also happens to be
+    set is a half-working surface, so this value comes from the environment
+    alone.
+
+    A fallback is worse than the missing value: a cron or detached-tmux dispatch
+    would write a complete transcript into a directory the export pipeline never
+    scans, exit zero, and report success with nothing to contradict it.
+    """
+    raw = os.environ.get("AOPS_SESSIONS")
+    if not raw:
+        fail(
+            "no sessions root configured. Set AOPS_SESSIONS to the sessions "
+            "repository this host records into. There is no default: a guessed "
+            "path would collect transcripts nothing ever reads."
+        )
+    return expand(raw)
+
+
 def resolve_rules_dir(config):
     """Host directory of user-scoped cope/rbg rules to mount read-only into the
     container's layer 3 (`$ACA_DATA/.agents/rules/`, see CONTAINER_ACA_DATA).
@@ -1052,12 +1076,11 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
+    sessions_base = resolve_sessions_root()
     rules_dir = resolve_rules_dir(config)
     workspace_dir = _resolve_workspace(repo_dir, project, polecat_home)
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
-    sessions_base = os.environ.get("AOPS_SESSIONS")
-    sessions_base = Path(sessions_base) if sessions_base else polecat_home / "sessions"
 
     session_date = datetime.now().strftime("%Y%m%d")
     session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")

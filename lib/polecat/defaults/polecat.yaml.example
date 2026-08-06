@@ -9,13 +9,16 @@
 # $AOPS_SESSIONS. Having no config file at all is legal — every required value
 # can arrive from the environment instead.
 #
-# Two values are REQUIRED. `polecat run` exits non-zero naming the one that is
+# Three values are REQUIRED. `polecat run` exits non-zero naming the one that is
 # missing; it never guesses.
 #
 #   POLECAT_HOME  or  polecat_home below   (resolve_polecat_home)
 #   POLECAT_IMAGE or  docker.image below   (resolve_image)
+#   AOPS_SESSIONS — environment only       (resolve_sessions_root)
 #
-# The environment variable wins over the file in both cases.
+# The environment variable wins over the file for the first two. The third has
+# no key here at all: this file is found *at* $AOPS_SESSIONS/polecat.yaml, so a
+# key inside it could only be read once the value it defines is already known.
 
 # Local cache root for isolated clones, staging, and session logs. Must be on
 # the same filesystem as the repositories polecat clones — the clone hardlinks
