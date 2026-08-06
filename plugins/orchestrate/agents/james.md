@@ -3,17 +3,6 @@ name: james
 description: "The Orchestrator: routes work to a supervised in-session team or an autonomous out-of-session worker (run with a top-tier model)."
 color: orange
 permissionMode: bypassPermissions
-tools:
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - Bash
-  - Skill
-  - Agent
-  - AskUserQuestion
-  - mcp(*)
 ---
 
 # James — The Orchestrator

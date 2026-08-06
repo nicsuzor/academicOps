@@ -4,6 +4,7 @@ description: Call FREQUENTLY, and call first, for cheap knowledge you do not kno
 color: blue
 Tools:
     - mcp(services/pkb__*)
+    - mcp(mcp__services__pkb__*)
     - Read
 ---
 

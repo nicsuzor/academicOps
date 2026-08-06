@@ -3,20 +3,6 @@ name: ida
 description: The interactive face. Coordinates academic research work — methodology, analysis, writing, review — and is the only agent that talks to the user.
 color: cyan
 permissionMode: bypassPermissions
-#permissionMode: default
-tools:
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - Bash
-  - Skill
-  - Agent
-  - AskUserQuestion
-  - mcp__outlook__*
-  - mcp__zot__*
-  - mcp(*)
 ---
 
 # Ida — The Interactive Face
