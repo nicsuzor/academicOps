@@ -18,11 +18,21 @@ from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
 from transcripts.domain.ledger import generate_prompt_ledger
-from transcripts.domain.renderer import render_session_to_all_formats, render_to_full_markdown
+from transcripts.domain.renderer import (
+    render_session_to_all_formats,
+    render_to_controller_markdown,
+    render_to_full_markdown,
+    render_to_html,
+    render_to_markdown,
+)
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
 from transcripts.domain.time import get_event_timestamps
-from transcripts.domain.view import select_recent_interactive
+from transcripts.domain.view import (
+    filter_controller_events,
+    get_subagent_summaries,
+    select_recent_interactive,
+)
 
 __all__ = [
     "get_stable_slug",
@@ -32,10 +42,16 @@ __all__ = [
     "is_session_empty",
     "source_fingerprint",
     "select_recent_interactive",
+    "filter_controller_events",
+    "get_subagent_summaries",
     "infer_correlation",
     "infer_insights",
     "render_session_to_all_formats",
+    "render_to_controller_markdown",
     "render_to_full_markdown",
+    "render_to_markdown",
+    "render_to_html",
     "git_sync_sessions",
     "generate_prompt_ledger",
 ]
+

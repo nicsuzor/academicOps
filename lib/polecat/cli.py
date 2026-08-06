@@ -26,12 +26,16 @@ import yaml
 # specs/ARCHITECTURE.md plus the rest. One definition, shared with the `docker*`
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
-    from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV
+    from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV, format_otel_resource_attributes
 except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from polecat.env_contract import CONTAINER_SET_ENV, FORWARDED_ENV
+    from polecat.env_contract import (
+        CONTAINER_SET_ENV,
+        FORWARDED_ENV,
+        format_otel_resource_attributes,
+    )
 
 
 # A trailing flag that means the caller has already asked for headless, so
@@ -397,6 +401,61 @@ def _transcript_paths(session_dir):
     return paths
 
 
+def _verify_transcript_created(session_dir: Path) -> dict:
+    """Check `.jsonl` transcript existence and count line events (`event_count`).
+
+    Inspects `session_dir` for conversation transcripts persisted by agent CLIs,
+    calculates size and line event counts, and returns a dictionary of
+    transcript metadata.
+    """
+    session_dir = Path(session_dir)
+    paths = _transcript_paths(session_dir)
+
+    largest = None
+    largest_size = -1
+    count = 0
+    total_event_count = 0
+
+    for path in paths:
+        try:
+            size = path.stat().st_size
+        except OSError:
+            continue
+        count += 1
+        if size > largest_size:
+            largest, largest_size = path, size
+
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if line.strip():
+                        total_event_count += 1
+        except OSError:
+            pass
+
+    if largest is None or largest_size <= 0 or total_event_count == 0:
+        return {
+            "found": False,
+            "path": None,
+            "bytes": None,
+            "count": count,
+            "transcript_path": None,
+            "transcript_bytes": None,
+            "event_count": 0,
+        }
+
+    path_str = str(largest)
+    return {
+        "found": True,
+        "path": path_str,
+        "bytes": largest_size,
+        "count": count,
+        "transcript_path": path_str,
+        "transcript_bytes": largest_size,
+        "event_count": total_event_count,
+    }
+
+
 def transcript_evidence(session_dir):
     """What the run actually persisted, as recorded in run.json.
 
@@ -411,26 +470,7 @@ def transcript_evidence(session_dir):
     failure to declare. The `degraded[]` entry is what makes an unexpected
     absence legible.
     """
-    largest = None
-    largest_size = -1
-    count = 0
-    for path in _transcript_paths(session_dir):
-        try:
-            size = path.stat().st_size
-        except OSError:
-            continue
-        count += 1
-        if size > largest_size:
-            largest, largest_size = path, size
-
-    if largest is None:
-        return {"found": False, "path": None, "bytes": None, "count": 0}
-    return {
-        "found": True,
-        "path": str(largest),
-        "bytes": largest_size,
-        "count": count,
-    }
+    return _verify_transcript_created(session_dir)
 
 
 def _seed_confirmed(session_dir, task_id):
@@ -776,6 +816,20 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args):
         )
 
 
+def _sanitize_path_component(val: str | None, default: str | None = None) -> str | None:
+    """Sanitize a path component (e.g. project or session_name) to prevent
+    directory hierarchy corruption, path traversal ('..', '/', '\\'), or
+    invalid container name characters.
+    """
+    if not val:
+        return default
+    cleaned = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(val))
+    cleaned = cleaned.strip("._-")
+    if not cleaned:
+        return default
+    return cleaned
+
+
 def _resolve_workspace(repo_dir, project, polecat_home):
     """The host directory to mount at /workspace. No default: an unresolvable
     workspace is a hard failure, never a guess at the current directory."""
@@ -1048,18 +1102,27 @@ def write_run_record(
 
     degraded_list = list(degraded) if degraded is not None else []
 
-    transcript = transcript_evidence(session_dir)
-    if not transcript["found"] and not any(
-        isinstance(d, dict) and d.get("what") == "transcript" for d in degraded_list
-    ):
-        degraded_list.append(
-            {
-                "what": "transcript",
-                "why": (
-                    "no agent conversation transcript was persisted under the session directory"
-                ),
-            }
-        )
+    transcript = _verify_transcript_created(session_dir)
+    is_agent_cmd = agent and agent.lower() in ("claude", "agy")
+    transcript_missing = (
+        not transcript["found"]
+        or not transcript.get("transcript_bytes")
+        or not transcript.get("event_count")
+    )
+
+    if is_agent_cmd and transcript_missing:
+        if not any(
+            isinstance(d, dict) and d.get("what") in ("transcript", "transcript_missing")
+            for d in degraded_list
+        ):
+            degraded_list.append(
+                {
+                    "what": "transcript_missing",
+                    "why": (
+                        "no non-empty agent conversation transcript was persisted under the session directory"
+                    ),
+                }
+            )
     # If worker_model is unobtainable from host launcher, record it as null and flag in degraded[] per Criterion 8
     if worker_model is None:
         if not any(isinstance(d, dict) and d.get("what") == "worker_model" for d in degraded_list):
@@ -1076,6 +1139,8 @@ def write_run_record(
         status = "failed"
     elif not delivery_guard.get("ok", True):
         status = "delivery_guard_failed"
+    elif is_agent_cmd and transcript_missing:
+        status = "degraded"
     else:
         status = "success"
 
@@ -1179,6 +1244,11 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     """
     _reject_bad_agent_cmd(agent_cmd, extra_args)
 
+    if project:
+        project = _sanitize_path_component(project)
+    if session_name:
+        session_name = _sanitize_path_component(session_name)
+
     config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
@@ -1256,6 +1326,12 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         env["POLECAT_CREW_NAME"] = session_id
         env["AOPS_SESSION_STATE_DIR"] = container_session_path
         env["AOPS_HOOK_LOG_PATH"] = f"{container_session_path}/polecat-session-hooks.jsonl"
+        env["OTEL_RESOURCE_ATTRIBUTES"] = format_otel_resource_attributes(
+            existing=env.get("OTEL_RESOURCE_ATTRIBUTES"),
+            session_id=session_id,
+            project=project,
+            task_id=task,
+        )
 
         cmd = _build_docker_argv(
             image=image,

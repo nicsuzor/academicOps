@@ -202,6 +202,275 @@ def _extract_parent_context() -> Any | None:
     return ctx
 
 
+def _get_tracer(config: Config):
+    from opentelemetry.exporter.otlp.json.file import FileSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+
+    config.path.parent.mkdir(parents=True, exist_ok=True)
+    resource = Resource.create({"service.name": _RESOURCE_SERVICE_NAME})
+    provider = TracerProvider(resource=resource)
+    provider.add_span_processor(SimpleSpanProcessor(FileSpanExporter(str(config.path))))
+    return provider.get_tracer(_TRACER_NAME)
+
+
+def detect_tool_plumbing_error(ctx: HookContext) -> tuple[str, str] | None:
+    """Detect tool plumbing errors (unknown_tool or missing_mcp) in HookContext.
+
+    Returns (error_type, error_message) or None.
+    """
+    raw = ctx.raw or {}
+    err_type = raw.get("error_type") or raw.get("error_code")
+    err_msg = raw.get("error_message") or raw.get("error") or ""
+
+    if err_type in ("unknown_tool", "missing_mcp"):
+        return str(err_type), str(err_msg or err_type)
+
+    if ctx.tool in ("unknown_tool", "missing_mcp"):
+        return ctx.tool, str(err_msg or ctx.tool)
+
+    err_str = str(raw.get("error") or raw.get("tool_error") or "").lower()
+    if "unknown_tool" in err_str or "unknown tool" in err_str:
+        return "unknown_tool", str(raw.get("error") or raw.get("tool_error"))
+    if "missing_mcp" in err_str or "missing mcp" in err_str or "mcp tool missing" in err_str:
+        return "missing_mcp", str(raw.get("error") or raw.get("tool_error"))
+
+    tool_calls = ctx.tool_calls or raw.get("tool_calls") or ()
+    if ctx.event == "PostToolBatch" or not ctx.tool or tool_calls:
+        for call in tool_calls:
+            if not isinstance(call, dict):
+                continue
+            c_type = call.get("error_type") or call.get("error_code")
+            c_msg = call.get("error_message") or call.get("error") or call.get("tool_error") or ""
+            c_tool = call.get("tool_name") or call.get("tool") or ""
+
+            if c_type in ("unknown_tool", "missing_mcp"):
+                return str(c_type), str(c_msg or c_type)
+            if c_tool in ("unknown_tool", "missing_mcp"):
+                return str(c_tool), str(c_msg or c_tool)
+
+            c_err_str = str(call.get("error") or call.get("tool_error") or call.get("error_message") or "").lower()
+            if "unknown_tool" in c_err_str or "unknown tool" in c_err_str:
+                return "unknown_tool", str(c_msg or "unknown_tool")
+            if "missing_mcp" in c_err_str or "missing mcp" in c_err_str or "mcp tool missing" in c_err_str:
+                return "missing_mcp", str(c_msg or "missing_mcp")
+
+    return None
+
+
+
+def record_tool_plumbing_error(
+    ctx: HookContext,
+    error_type: str = "unknown_tool",
+    error_message: str | None = None,
+    config: Config | None = None,
+) -> None:
+    """Instrument tool plumbing errors with OTEL exception events and StatusCode.ERROR."""
+    if config is None:
+        config = resolve()
+    if config is None:
+        return
+    try:
+        from opentelemetry.trace import Status, StatusCode
+
+        tracer = _get_tracer(config)
+        parent_ctx = _extract_parent_context()
+        attrs = _attributes(
+            {
+                "session_id": ctx.session_id,
+                "client": ctx.client,
+                "event": ctx.event,
+                "tool": ctx.tool or error_type,
+                "error_type": error_type,
+                "error_message": error_message,
+            }
+        )
+        msg = error_message or f"Tool plumbing error: {error_type}"
+        start_ns = time.time_ns()
+        span = tracer.start_span(
+            f"tool.error.{error_type}",
+            context=parent_ctx,
+            start_time=start_ns,
+            attributes=attrs,
+        )
+        span.record_exception(Exception(msg))
+        span.set_status(Status(StatusCode.ERROR, description=msg))
+        span.end(end_time=time.time_ns())
+    except Exception as exc:
+        print(f"rbg otel trace: error recording tool plumbing error: {exc!r}", file=sys.stderr)
+
+
+def detect_agent_idle_timeout(ctx: HookContext) -> str | None:
+    """Detect agent idle or timeout status on Stop / SubagentStop events."""
+    if ctx.event not in ("Stop", "SubagentStop"):
+        return None
+    raw = ctx.raw or {}
+    reason = str(raw.get("reason") or raw.get("stop_reason") or raw.get("status") or "").lower()
+    if "timeout" in reason or raw.get("timeout"):
+        return "timeout"
+    if "idle" in reason or raw.get("idle"):
+        return "idle"
+    return None
+
+
+def record_agent_idle_timeout(
+    ctx: HookContext,
+    event_type: str = "idle",
+    details: dict | None = None,
+    config: Config | None = None,
+) -> None:
+    """Instrument agent idle/timeout events on Stop / SubagentStop."""
+    if config is None:
+        config = resolve()
+    if config is None:
+        return
+    try:
+        from opentelemetry.trace import Status, StatusCode
+
+        tracer = _get_tracer(config)
+        parent_ctx = _extract_parent_context()
+        attrs = {
+            "session_id": ctx.session_id,
+            "client": ctx.client,
+            "event": ctx.event,
+            "reason": event_type,
+            "idle": event_type == "idle",
+            "timeout": event_type == "timeout",
+        }
+        if details:
+            attrs.update(details)
+        attrs = _attributes(attrs)
+
+        start_ns = time.time_ns()
+        span = tracer.start_span(
+            f"agent.{event_type}",
+            context=parent_ctx,
+            start_time=start_ns,
+            attributes=attrs,
+        )
+        if event_type == "timeout":
+            msg = f"Agent operation timed out on {ctx.event}"
+            span.record_exception(TimeoutError(msg))
+            span.set_status(Status(StatusCode.ERROR, description=msg))
+        else:
+            span.set_status(Status(StatusCode.OK))
+        span.end(end_time=time.time_ns())
+    except Exception as exc:
+        print(f"rbg otel trace: error recording agent idle/timeout: {exc!r}", file=sys.stderr)
+
+
+def record_send_message(
+    ctx: HookContext,
+    target_agent: str | None = None,
+    parent_agent: str | None = None,
+    config: Config | None = None,
+) -> str | None:
+    """Instrument SendMessage tool call with parent/target span linkage and traceparent propagation."""
+    if config is None:
+        config = resolve()
+    if config is None:
+        return None
+    try:
+        from opentelemetry.trace import Status, StatusCode
+
+        tracer = _get_tracer(config)
+        parent_ctx = _extract_parent_context()
+        raw_input = ctx.raw.get("tool_input") or {}
+        if not target_agent and isinstance(raw_input, dict):
+            target_agent = (
+                raw_input.get("recipient")
+                or raw_input.get("target")
+                or raw_input.get("recipient_id")
+                or raw_input.get("target_agent")
+            )
+        if not parent_agent:
+            parent_agent = ctx.session_id or "parent"
+
+        attrs = _attributes(
+            {
+                "session_id": ctx.session_id,
+                "client": ctx.client,
+                "event": ctx.event,
+                "tool": "SendMessage",
+                "parent_agent": parent_agent,
+                "target_agent": target_agent,
+            }
+        )
+        start_ns = time.time_ns()
+        span = tracer.start_span(
+            "agent.send_message",
+            context=parent_ctx,
+            start_time=start_ns,
+            attributes=attrs,
+        )
+        span_ctx = span.get_span_context()
+        new_traceparent = f"00-{span_ctx.trace_id:032x}-{span_ctx.span_id:016x}-01"
+        span.set_attribute("propagated_traceparent", new_traceparent)
+        span.set_status(Status(StatusCode.OK))
+        span.end(end_time=time.time_ns())
+        return new_traceparent
+    except Exception as exc:
+        print(f"rbg otel trace: error recording SendMessage: {exc!r}", file=sys.stderr)
+        return None
+
+
+def record_subagent_stop(
+    ctx: HookContext,
+    has_unsent_output: bool | None = None,
+    unsent_content: str | None = None,
+    config: Config | None = None,
+) -> None:
+    """Instrument SubagentStop event handling to inspect for unsent output and record status/warning spans."""
+    if config is None:
+        config = resolve()
+    if config is None:
+        return
+    try:
+        from opentelemetry.trace import Status, StatusCode
+
+        tracer = _get_tracer(config)
+        parent_ctx = _extract_parent_context()
+        if has_unsent_output is None:
+            raw = ctx.raw or {}
+            has_unsent_output = bool(
+                raw.get("unsent_output")
+                or raw.get("has_unsent_output")
+                or raw.get("unreported_output")
+                or raw.get("output_unsent")
+            )
+            if not unsent_content and isinstance(raw.get("unsent_output"), str):
+                unsent_content = raw.get("unsent_output")
+
+        attrs = {
+            "session_id": ctx.session_id,
+            "client": ctx.client,
+            "event": "SubagentStop",
+            "has_unsent_output": has_unsent_output,
+        }
+        if unsent_content:
+            attrs["unsent_content"] = str(unsent_content)
+        attrs = _attributes(attrs)
+
+        start_ns = time.time_ns()
+        span = tracer.start_span(
+            "agent.subagent_stop",
+            context=parent_ctx,
+            start_time=start_ns,
+            attributes=attrs,
+        )
+        if has_unsent_output:
+            msg = "Subagent stopped with unsent output"
+            span.set_attribute("warning", "unsent_output_detected")
+            span.record_exception(Exception(msg))
+            span.set_status(Status(StatusCode.ERROR, description=msg))
+        else:
+            span.set_status(Status(StatusCode.OK))
+        span.end(end_time=time.time_ns())
+    except Exception as exc:
+        print(f"rbg otel trace: error recording SubagentStop: {exc!r}", file=sys.stderr)
+
+
 def sink_for(
     config: Config | None,
     ctx: HookContext,
@@ -238,24 +507,12 @@ def sink_for(
     if config is None:
         return None
 
-    try:
-        from opentelemetry.exporter.otlp.json.file import FileSpanExporter
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.trace import Status, StatusCode
-    except ImportError as exc:
-        print(f"rbg otel trace: opentelemetry not importable: {exc!r}", file=sys.stderr)
-        return None
 
     try:
-        config.path.parent.mkdir(parents=True, exist_ok=True)
-        resource = Resource.create({"service.name": _RESOURCE_SERVICE_NAME})
-        provider = TracerProvider(resource=resource)
-        provider.add_span_processor(SimpleSpanProcessor(FileSpanExporter(str(config.path))))
-        tracer = provider.get_tracer(_TRACER_NAME)
-    except OSError as exc:
-        print(f"rbg otel trace: could not open {config.path}: {exc!r}", file=sys.stderr)
+        from opentelemetry.trace import Status, StatusCode
+        tracer = _get_tracer(config)
+    except Exception as exc:
+        print(f"rbg otel trace: error initializing tracer: {exc!r}", file=sys.stderr)
         return None
 
     if sweep_id is None:
