@@ -77,8 +77,7 @@ def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
 def test_shared_directory_injected_both_clients(built):
     for client in ("claude", "agy"):
         base = built / f"fixture-alpha-{client}"
-        assert (base / "doctrine" / "base.md").is_file()
-        assert (base / "doctrine" / "greeting.md").is_file()
+        assert (base / "shared-dir" / "foo.md").is_file()
 
 
 def test_shared_single_file_injected_both_clients(built):
@@ -436,11 +435,11 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     import yaml
 
-    # Check agy dist converts agents/ida.md to agents/ida/agent.md (agy's own
+    # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
     # read format — see build/clients/agy.py's _adapt_agents docstring).
-    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
+    assert not (dist_root / "ida-agy" / "agents" / "ida" / "agent.md").exists()
 
     raw = agy_ida_md.read_text()
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
@@ -473,7 +472,7 @@ def test_agy_agent_tool_names_are_translated(built):
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
 
-    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent" / "agent.md"
+    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
     # untranslated — the map renames what agy calls by another name and leaves
@@ -496,7 +495,7 @@ def test_agy_agent_without_tools_key_ships_unrestricted(built_orchestrate):
     """
     import yaml
 
-    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james" / "agent.md"
+    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "tools" not in agy_fm
 
@@ -511,7 +510,7 @@ def test_agy_agent_drops_claude_model_name(built_orchestrate):
     """
     import yaml
 
-    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james" / "agent.md"
+    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
     # `color` has no such failure mode and is not agy-specific handling —

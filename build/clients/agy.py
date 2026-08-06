@@ -9,7 +9,7 @@
 - commands/<name>.md    -> skills/cmd-<name>/SKILL.md, frontmatter
   `type: command` rewritten to `type: skill`; the commands/ dir itself is
   dropped (agy has no commands/ concept).
-- agents/<name>.md      -> agents/<name>/agent.md (agy's own read format)
+- agents/<name>.md      -> agents/<name>.md (agy's own read format)
 - axioms with `trigger: always_on` -> rules/<source_file>
 """
 
@@ -243,16 +243,14 @@ def _translate_tool_name(tool: str) -> str:
 
 
 def _adapt_agents(build_dir: Path) -> None:
-    """Rewrite each `agents/<name>.md` into agy's own `agents/<name>/agent.md`.
+    """Rewrite each agent under `agents/` into agy's `agents/<name>.md`.
 
-    agy's runtime reads `agent.md` — YAML frontmatter plus a Markdown body —
+    agy's runtime reads `<name>.md` — YAML frontmatter plus a Markdown body —
     the same shape Claude Code agents already ship in; it does not read
-    `agent.json`. (Confirmed by direct behavioral test: an `agent.json` placed
-    at the install path is invisible to `agy agents`; the identical content
-    written back out as `agent.md` at that path is picked up immediately.) So
-    this function is a frontmatter transform, not a format conversion —
-    `tools` gets translated, `model` and an absent `tools:` key get the
-    handling documented below, and the body is carried through unchanged.
+    `agent.json` or subdirectories. So this function is a frontmatter transform,
+    not a format conversion — `tools` gets translated, `model` and an absent
+    `tools:` key get the handling documented below, and the body is carried
+    through unchanged.
     """
     agents_dir = build_dir / "agents"
     if not agents_dir.is_dir():
@@ -345,12 +343,16 @@ def _adapt_agents(build_dir: Path) -> None:
         if not body.startswith("# Agent System Instructions"):
             body = f"# Agent System Instructions\n\n{body}"
 
-        agent_dir = agents_dir / name
-        agent_dir.mkdir(parents=True, exist_ok=True)
-        target = agent_dir / "agent.md"
+        target = agents_dir / f"{name}.md"
         _write_agent_md(target, agy_frontmatter, body.strip())
         if md_file != target:
             md_file.unlink()
+            if (
+                md_file.parent != agents_dir
+                and md_file.parent.is_dir()
+                and not any(md_file.parent.iterdir())
+            ):
+                md_file.parent.rmdir()
 
 
 def _write_json(path: Path, data: dict) -> None:
