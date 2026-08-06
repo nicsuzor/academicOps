@@ -13,7 +13,7 @@
         }
       }
     },
-    "agy": { 
+    "agy": {
       "mcpServers": {
         "services": {
           "command": "bash",
