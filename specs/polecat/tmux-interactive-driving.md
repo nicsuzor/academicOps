@@ -133,10 +133,14 @@ to contain:
   directory for `cwd=/workspace` (`/home/worker/.claude/projects/-workspace`),
   so its native `<session-uuid>.jsonl` lands here directly. For `agy`, it is
   `agy-brain/<uuid>/.system_generated/logs/transcript.jsonl`: `run()` mounts
-  `$SESSDIR/agy-brain` to `/home/worker/.gemini/antigravity-cli/brain`, and
-  `_seed_confirmed()` (`lib/polecat/cli.py`) reads the transcript
-  back from exactly that host path as its primary evidence a seeded task was
-  actually seen.
+  `$SESSDIR/agy-brain` to `/home/worker/.gemini/antigravity-cli/brain`.
+  `_transcript_paths()` (`lib/polecat/cli.py`) reads both shapes, so
+  `_seed_confirmed()` takes the same primary evidence that a seeded task was
+  actually seen whichever CLI ran the dispatch.
+- **`run.json`** — the run record, including a `transcript` block naming which
+  transcript the run persisted, its size, and how many landed. `found: false`
+  also files a `degraded[]` entry: a run that recorded nothing must not read
+  the same as one that recorded a full conversation.
 
 Read the raw JSONL transcript directly (`jq`, `grep`, `less`) when working inside a live container. The transcript-to-markdown converter in `lib/py/transcripts/` (specified in `specs/transcript-pipeline.md`) runs as a host-side batch process over completed sessions rather than in-session.
 

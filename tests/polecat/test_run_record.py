@@ -2,9 +2,12 @@
 
 Covers acceptance criteria M1/M2 for task aops_9b03ee22:
 - Persistence of run.json on success, non-zero exit, and delivery guard failure.
-- Complete 21-key schema validation.
+- Complete schema validation.
 - Capture of container_id, commit_start/commit_end, image_digest, exit_code,
-  delivery_guard, seeded_prompt, worker_model, and degraded ledger.
+  delivery_guard, seeded_prompt, transcript, worker_model, and degraded ledger.
+
+What the `transcript` key must record is asserted in
+`test_transcript_persistence.py`; here it is only part of the schema.
 """
 
 import json
@@ -33,6 +36,7 @@ REQUIRED_SCHEMA_KEYS = {
     "exit_code",
     "status",
     "delivery_guard",
+    "transcript",
     "started_at",
     "ended_at",
     "duration_seconds",
