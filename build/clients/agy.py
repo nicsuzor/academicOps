@@ -70,6 +70,7 @@ _AGY_INCLUDE_SECTIONS = [
     "subagent_reminder",
     "artifacts",
     "user_rules",
+    "tools",
 ]
 
 
