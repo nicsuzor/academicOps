@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp(services/pkb__status)"
+    ]
+  },
+  "trustedWorkspaces": [
+    "/workspace"
+  ]
+}

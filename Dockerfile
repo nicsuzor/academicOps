@@ -337,6 +337,7 @@ COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-config.json /
 # agy analog of the Claude `hasCompletedOnboarding` seed above. Its cache dir
 # is pre-created in the batched mkdir further up.
 COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
+COPY --chown=worker:worker --chmod=666 build/docker/antigravity-cli-settings.json /home/worker/.gemini/antigravity-cli/settings.json
 
 # Copy entrypoint script
 COPY --chown=worker:worker --chmod=777 lib/polecat/entrypoint.sh /home/worker/entrypoint.sh

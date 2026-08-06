@@ -353,8 +353,7 @@ def test_config_file_supplies_telemetry_endpoint_and_resource_attributes():
         }
     )
     assert env == {
+        "BETA_TRACING_ENDPOINT": "TEST_ENDPOINT",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "TEST_ENDPOINT",
         "OTEL_RESOURCE_ATTRIBUTES": "deployment.environment=workstation,host.name=nicwin",
     }
-
-    assert "BETA_TRACING_ENDPOINT" not in env

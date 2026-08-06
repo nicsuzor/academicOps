@@ -13,11 +13,14 @@
         }
       }
     },
-    "agy": {
+    "agy": { 
       "mcpServers": {
         "services": {
           "command": "bash",
-          "args": ["${extensionPath}/scripts/run-mcp.sh"]
+          "args": [
+            "-c",
+            "uvx --from fastmcp-slim[server] fastmcp run \"$PKB_MCP_URL\""
+          ]
         }
       }
     }

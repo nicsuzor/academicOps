@@ -746,12 +746,6 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
                 "interactively on this host at least once to create it."
             )
 
-        # The container's only workspace must be pre-trusted, or the trust
-        # dialog swallows the seeded prompt. Host project paths and MCP
-        # blocks are never copied.
-        (agy_dst / "settings.json").write_text(
-            json.dumps({"trustedWorkspaces": ["/workspace"]}, indent=2)
-        )
     elif agent_cmd == "agy":
         fail(
             f"{agy_src} does not exist, so no Antigravity OAuth token can be "
