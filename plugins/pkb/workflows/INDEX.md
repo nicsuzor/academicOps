@@ -40,7 +40,7 @@ Request
   +-- New idea, fragment, or constraint? ----------------------> capture it; `brief` works it out
   +-- Break down a goal or epic? ------------------------------> `brief` (it sizes and cuts)
   +-- Multiple similar items? ---------------------------------> [[batch]], or [[burst]] across sessions
-  +-- Email or communications? --------------------------------> [[email-triage]]
+  +-- Email or communications? --------------------------------> [[wf-email-triage]]
   |       +-- Extracting a ready-to-work task from an email? --> [[email-capture]]
   |       +-- Drafting a reply? -------------------------------> [[email-reply]]
   +-- Academic or research task?
@@ -74,11 +74,12 @@ Request
 
 ### Email and communications
 
-| Template          | Routes                                           | Requires      | Pairs with      |
-| ----------------- | ------------------------------------------------ | ------------- | --------------- |
-| [[email-triage]]  | Classify an inbox into task, FYI, skip, unsure   | task-tracking | [[wf-handover]] |
-| [[email-capture]] | Extract a ready-to-work task with attachments    | task-tracking | [[wf-handover]] |
-| [[email-reply]]   | Draft — never send — a reply in the user's voice | task-tracking | [[wf-handover]] |
+| Template            | Routes                                           | Requires      | Pairs with      |
+| ------------------- | ------------------------------------------------ | ------------- | --------------- |
+| [[wf-email-triage]] | Classify an inbox into task, FYI, skip, unsure   | task-tracking | [[wf-handover]] |
+| [[email-triage]]    | Classify an inbox into task, FYI, skip, unsure   | task-tracking | [[wf-handover]] |
+| [[email-capture]]   | Extract a ready-to-work task with attachments    | task-tracking | [[wf-handover]] |
+| [[email-reply]]     | Draft — never send — a reply in the user's voice | task-tracking | [[wf-handover]] |
 
 ### Academic
 
@@ -137,11 +138,9 @@ Composed into other templates; never routed to directly.
 
 ## Obligation templates
 
-The `wf-*` review and gate obligations are read from the PKB, not from here: the
-current set is enumerated by the `pkb-workflow-index` MoC
-(`get_document("pkb-workflow-index")`), with `list_documents(tag="wf-template")`
-as the reconciliation sweep. This file does not list them — a second copy of that
-table drifts.
+The `wf-*` review, gate, and triage obligations are read from the PKB:
 
-`wf-human-approval` is where [[framework-gate]], `wf-outbound-review`,
-[[pr-review]], and [[decision-briefing]] all hand off at their one-way crossing.
+- [[wf-email-triage]]: Reusable email triage obligation component for inbox classification and task tracking.
+- `wf-human-approval`: Where [[framework-gate]], `wf-outbound-review`, [[pr-review]], and [[decision-briefing]] hand off.
+
+The full obligation set is enumerated by the `pkb-workflow-index` MoC (`get_document("pkb-workflow-index")`), with `list_documents(tag="wf-template")` as the reconciliation sweep.
