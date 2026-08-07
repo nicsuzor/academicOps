@@ -306,21 +306,37 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
     )
 
 
+# The operator-visible switch for OTel emission. Read here only to decide
+# whether a missing module is worth complaining about; `resolve()` in the
+# module itself remains the authority on the destination.
+_OTEL_TRACE_ENV = "COPE_EVALUATOR_OTEL_TRACE_PATH"
+
+
 def _get_evaluator_otel_trace():
+    """The OTel emitter, when the plugin this dispatch ships inside provides it.
+
+    `evaluator_otel_trace` lives in rbg. This file is shared into every
+    plugin's `hooks/` directory, so the import below resolves as a sibling in
+    rbg's build and nowhere else — which is correct: a plugin never reads
+    another plugin's files, and the traversal to `plugins/rbg/hooks` that used
+    to sit here resolved to nothing in every built artifact anyway, leaving the
+    instrumentation a silent no-op.
+
+    Silence is right when nobody asked for OTel. It is wrong when someone did,
+    so that case says so on stderr instead of disappearing.
+    """
     try:
         import evaluator_otel_trace
 
         return evaluator_otel_trace
     except ImportError:
-        rbg_hooks = Path(__file__).resolve().parent.parent.parent / "plugins" / "rbg" / "hooks"
-        if rbg_hooks.exists() and str(rbg_hooks) not in sys.path:
-            sys.path.insert(0, str(rbg_hooks))
-            try:
-                import evaluator_otel_trace
-
-                return evaluator_otel_trace
-            except ImportError:
-                return None
+        if os.environ.get(_OTEL_TRACE_ENV):
+            print(
+                f"aops hooks: {_OTEL_TRACE_ENV} is set but evaluator_otel_trace is not "
+                "importable here — OTel instrumentation ships with rbg, and this "
+                "dispatch is running inside a plugin that does not carry it.",
+                file=sys.stderr,
+            )
         return None
 
 
