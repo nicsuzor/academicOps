@@ -65,6 +65,11 @@ make lint           # ruff check + documented-reference check + basedpyright
 make format         # ruff format + dprint fmt
 ```
 
+Headless agy runs use `agy --output-format stream-json -p "<prompt>"`. Passing
+`--agent <name>` currently breaks the MCP tool surface: the named agent can
+reach neither `call_mcp_tool` nor a subagent recipient, and the run still exits
+0. Drop the flag until that is fixed.
+
 Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
 JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for Python files.
 
