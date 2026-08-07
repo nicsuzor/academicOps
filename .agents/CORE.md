@@ -67,12 +67,17 @@ make format         # ruff format + dprint fmt
 
 Headless agy runs use `agy --output-format stream-json -p "<prompt>"`.
 
-A headless agy worker that has to change anything needs
-`--dangerously-skip-permissions`. Without it agy is granted no write tool at
-all — not a refusal it can report, but an absent capability, so it reads and
-greps until it needs to edit and then dies with `trajectory converted to zero
-chat messages` and exit 0. Treat that error as "the worker had no write tool",
-not as a crash to retry verbatim.
+**Do not pass `--agent` to agy.** A named agy agent is handed a fixed toolset —
+`find_by_name`, `generate_image`, `grep_search`, `list_dir`,
+`read_url_content`, `schedule`, `search_web`, `send_message`, `view_file` — with
+no `call_mcp_tool`, no write and no shell. It reaches no MCP server and can
+change nothing, whatever its own definition or its plugin's `mcp_config.json`
+says. agy's default agent gets the full set. A worker that reads and greps and
+then dies with `trajectory converted to zero chat messages` at exit 0 had no
+write tool; read that as agent scoping, not as a crash to retry verbatim.
+
+A worker that has to change anything also wants
+`--dangerously-skip-permissions`.
 
 Give a worker its brief in a file and pass a one-line pointer. Long `-p`
 prompts are also a way to lose a run, and a brief on disk is the one the next
