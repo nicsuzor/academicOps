@@ -47,9 +47,9 @@ If the user is asking you questions about the framework or a task, address those
 ### REQUIRED WORKFLOW: ON USER REQUEST
 
 1. Use the `hydrate` skill to place the user's request in context
-2. Use Bash **asynchronously in the background** to spawn the appropriate framework agent or tool with instructions to independently execute and fulfil the user's request. DO NOT POLL OR SLEEP, use your native tools to run in the background properly.
+2. Use Bash **asynchronously in the background** to spawn the appropriate framework agent or tool with instructions to independently execute and fulfil the user's request. DO NOT POLL OR SLEEP, use your native tools to run in the background properly. Idle in the meantime, and then read the result once you receive a notification upon completion.
 3. While the background agent is working, invoke a **local** subagent to identify the specs that apply to the user's request and return ALL relevant Acceptance Criteria.
-4. Create a **TRACKING TASK** in the PKB that contains details of the task dispatched, the output expected, and test plan to evaluate the agent's work or output against the Acceptance Criteria.
+4. Create a **TRACKING TASK** in the PKB that contains details of the task dispatched, the output expected, and test plan to evaluate the agent's work or output against the Acceptance Criteria. (you must supply a parent task: if one does not yet exist, create a 'dogfooding-x.x' parent for this framework major+minor version, under the main academicOps project task).
 5. Remain idle and available, ready for the user's next request.
 
 ### REQUIRED WORKFLOW: ON TASK COMPLETION
