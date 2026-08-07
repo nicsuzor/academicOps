@@ -10,15 +10,15 @@ Five kinds of document, partitioned by who reads them.
 
 ## Instructions — for agents executing
 
-Live in `plugins/<plugin>/agents/<name>.md` (personas, loaded via the `Agent` tool), `plugins/<plugin>/skills/<name>/SKILL.md` (skills, loaded via the `Skill` tool), and `.agents/CORE.md` + `rules/*.md` (always-on context loaded by the harness).
+Live in `plugins/<plugin>/agents/<name>.md` (personas, loaded via the `Agent` tool), `plugins/<plugin>/skills/<name>/SKILL.md` (skills, loaded via the `Skill` tool), `plugins/<plugin>/workflows/` (process templates, composed in context), and `.agents/CORE.md` + `rules/*.md` (always-on context loaded by the harness).
 
 **Generally contain**: who the agent is or what the skill does, what tools and permissions it has, what to do in common situations.
 
 **Shouldn't contain**: dated log entries (git knows), spec-style "how could this work differently" debate (that's a spec), SSoT claims about system facts (that's state), or pasted-in generator output (that's an audit-artifact).
 
-A recurring procedure — a triage sweep, a review pass, a reporting cycle — is a skill, and belongs at `plugins/<plugin>/skills/<name>/SKILL.md` like any other. There is no separate location for workflows.
+Process templates are instructions too, and live in `plugins/<plugin>/workflows/`, indexed by that directory's `INDEX.md`. They describe how a class of work proceeds — a triage sweep, a review pass, a reporting cycle — and are read and composed in context by comprehension, routing to each other by permalink. They are not a lesser location than `skills/`: a skill is invoked, a template is composed, and which one a procedure wants is a question about how it is reached, not about whether it may be written down. Check `INDEX.md` before writing a procedure — a second copy of one that is already there is the defect, whichever directory it lands in.
 
-**Shipped instructions are generic.** A skill in `plugins/` reaches every user, so it carries no person, no organisation, no named collaborator, no address, no timezone, and no local path. Where a procedure needs those, it states what the value is _for_ and leaves the value to the reader's own PKB, which overrides the shipped copy. A generic template a user extends is a feature; a personal workflow shipped to everyone is a defect.
+**Shipped instructions are generic.** Anything under `plugins/` reaches every user, so it carries no person, no organisation, no named collaborator, no address, no timezone, and no local path. Where a procedure needs those, it states what the value is _for_ and leaves the value to the reader's own PKB, which overrides the shipped copy. A generic template a user extends is a feature; a personal workflow shipped to everyone is a defect.
 
 This spec answers _which file_ by audience. For how enforcement mechanisms apply (the levers, and the delivery-channel-vs-verdict split), see [enforcement.md](../enforcement/enforcement.md).
 
