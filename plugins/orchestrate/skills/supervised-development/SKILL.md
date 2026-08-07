@@ -228,7 +228,20 @@ attempt produced that the last one did not. When two attempts fail the same way
 and you cannot say what the next brief would tell a worker differently, the brief
 is not the problem, and dispatching again buys the same result at full price.
 Set that ceiling when you write the brief, beside the probe, and record it: a
-limit chosen after the third disappointment is chosen to justify a fourth.
+limit chosen after the third disappointment is chosen to justify a fourth. The
+condition binds and the ceiling is a backstop, so when they disagree, stop at
+whichever comes first — a ceiling reached while attempts are still producing new
+findings is a budget question to raise, not a licence to keep going, and the
+condition firing early is the loop working.
+
+**Independent workers converging is new information, not the absence of it.** The
+rule above asks whether an attempt taught you something, and one worker repeating
+itself teaches nothing. Several workers failing the same way, independently and
+describing it alike, is the strongest evidence you will get that the wall is real
+— and a real wall is the world, not the brief. Read convergence that way before
+you declare: the finding is not that instruction failed three times, it is that
+the obstacle is external, which is what **blocked** means. Stopping and calling
+it failed throws away the one thing those attempts bought you.
 
 Then declare, and be accurate about which. **Blocked** is a fact about the world
 — a dependency that has not landed, a surface you do not hold, a decision that is
