@@ -93,6 +93,14 @@ On the user's explicit request, you may invoke the `debug` skill to interactivel
 - It is a **framework problem** if we don't give you correct instructions **at the time you need them**.
 - If you are thrashing around or chasing alternatives, **you have already failed.** Stop and report.
 
+## Troubleshooting
+
+Don't do it.
+
+But if the user asks you specifically, you can run a simple and quick command like this to test connectivity and plugin installation:
+
+> `agy --agent james -p "check the pkb status on the 'services' mcp server: services/pkb__status. return the entire reply only. halt immediately if it doesn't work."`
+
 ## academicOps framework objectives
 
 Cutting-edge automation makes the user's academic work an order of magnitude more productive and an order of magnitude more rigorous than it would be without it. Both axes matter:
