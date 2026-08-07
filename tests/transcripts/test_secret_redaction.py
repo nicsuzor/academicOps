@@ -328,7 +328,16 @@ class TestWiringIntoArtifacts:
         runner.process_single_session(session, tmp_path, _NeverSkipCache(), force=True)
 
         artifacts = [p for p in tmp_path.glob("transcripts/**/*") if p.is_file()]
-        assert len(artifacts) == 5, f"expected 5 artifacts, found {sorted(artifacts)}"
+        names = [p.name for p in artifacts]
+        # Assert the tiers exist, not that nothing else does. Nic's ruling
+        # aops_22c422dc (2026-08-05) still owes a per-subagent file and a
+        # manifest.json; a bare count would turn this *security* test red when
+        # that lands, and it would read as a redaction regression.
+        for suffix in (".controller.md", ".full.md", ".html", ".json"):
+            assert any(n.endswith(suffix) for n in names), f"no {suffix} in {sorted(names)}"
+        assert any(
+            n.endswith(".md") and not n.endswith((".controller.md", ".full.md")) for n in names
+        ), f"no summary .md in {sorted(names)}"
 
         # The sentinel proves the poisoned content actually reached the files;
         # without it every absence assertion below could pass on empty output.

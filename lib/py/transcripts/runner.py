@@ -191,12 +191,24 @@ def process_single_session(
         session, slug, started_at, last_modified, ended_at, has_user, correlation, insights
     )
 
-    # Write files. Redaction is applied here, at the single write chokepoint,
-    # rather than inside each renderer: these 5 artifacts are the only
-    # things that leave the machine, so scrubbing here means a new renderer
-    # cannot accidentally ship an unredacted format. The Markdown renders
-    # and the HTML are final text and get the text pass; the sidecar is still
-    # data at this point and gets the structural pass, then is serialised.
+    # Write files. Redaction is applied here, at the write chokepoint, rather
+    # than inside each renderer: these artifacts are the only things that
+    # leave the machine, so a renderer added later inherits a scrub without
+    # having to remember one. It is a backstop, not a guarantee — it sees only
+    # what the renderers hand it, so a renderer that re-encodes text before
+    # this point can put a credential beyond its reach. The contract that
+    # keeps that from happening is "Escaping and redaction" in
+    # specs/transcript-pipeline.md; a renderer that transforms bytes the
+    # patterns match must redact before it transforms.
+    #
+    # 2026-08-07: this was previously claimed to mean "a new renderer cannot
+    # accidentally ship an unredacted format". PR #2373 disproved it — HTML
+    # escaping rewrote `"` as `&quot;` upstream of here and key-named secrets
+    # rode through this pass into all four text tiers.
+    #
+    # The Markdown renders and the HTML are final text and get the text pass;
+    # the sidecar is still data at this point and gets the structural pass,
+    # then is serialised.
     (dest_dir / f"{filename_base}.controller.md").write_text(
         redact_secrets(controller_md), encoding="utf-8"
     )

@@ -527,24 +527,20 @@ def render_to_full_markdown(
 def _md_text(text: str) -> str:
     """Carry text into a Markdown tier verbatim.
 
-    Markdown is not HTML. Escaping `<`, `>` and `&` here turns the body of a
-    fenced code block into `&lt;`-noise, and escaping `"` breaks the
-    `"KEY": "value"` shape that `redact_secrets` matches at the write
-    chokepoint — a key-named credential then survives into the shipped file.
-    Sanitising is owed by whatever renders this Markdown into HTML, which is
-    the layer that knows it is producing a DOM.
+    Markdown is not HTML, and an escaped corpus cannot be rescanned for
+    secrets. See "Escaping and redaction" in `specs/transcript-pipeline.md`,
+    which owns this contract.
     """
     return str(text)
 
 
 def _escape_html(text: str) -> str:
-    """Escape a fragment for embedding in the HTML tier.
+    """Redact, then escape, a fragment for embedding in the HTML tier.
 
-    Redaction runs first. The write chokepoint in `runner.py` redacts final
-    text, but by then this function has already rewritten `"` as `&quot;`,
-    which breaks the `\\s*:\\s*` match on `"KEY": "value"` and lets a
-    key-named credential through. Scrubbing before escaping keeps the
-    chokepoint's pass as defence in depth rather than the only line.
+    The redaction is not incidental to the escaping: escaping re-encodes the
+    very bytes the secret patterns match, so it has to happen second. See
+    "Escaping and redaction" in `specs/transcript-pipeline.md`, which owns
+    this contract and states the general rule this is one instance of.
     """
     return html.escape(redact_secrets(str(text)), quote=True)
 

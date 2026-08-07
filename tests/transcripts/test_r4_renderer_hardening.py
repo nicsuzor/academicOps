@@ -173,9 +173,8 @@ def test_xml_html_tag_escaping(sample_session_with_subagents: NormalizedSession)
     assert "&lt;thinking_tag&gt;" in html
     assert "<script>" not in html
 
-    # Markdown is not HTML: the tiers carry the author's text byte for byte.
-    # Escaping here is what turned fenced code blocks into &lt;-noise, and it
-    # is also what broke credential redaction at the write chokepoint.
+    # The Markdown tiers carry the author's text byte for byte — see
+    # "Escaping and redaction" in specs/transcript-pipeline.md.
     assert "<thinking_tag>" in controller_md
     assert "<USER_REQUEST>" in controller_md
 

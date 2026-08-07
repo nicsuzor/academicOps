@@ -167,13 +167,28 @@ Every processed session produces five outputs in the sessions repository under t
 4. **HTML:** A responsive, standalone dark-mode document containing styled blocks for user prompts, thinking processes, assistant messages, and tool outputs.
 5. **JSON Sidecar:** A machine-readable metadata file containing the front-matter attributes, event counts, extracted insights, and the list of user prompts (enabling rapid search indexing).
 
+Five is the count today, not a closed design. Nic's ruling `aops_22c422dc` (2026-08-05) additionally requires a separate file per subagent, linked from the parent transcript and recorded in a `manifest.json`; neither ships yet. Anything asserting the number of artifacts — tests included — should assert that the tiers above exist, not that nothing else does, so that landing the owed work does not read as a regression.
+
 ### Escaping and redaction
 
-Redaction runs at a single chokepoint, where `runner.py` writes each artifact, so a renderer added later cannot ship an unredacted format by forgetting to call it.
+This section is the single source of truth for the escaping contract. The renderer and its tests carry a pointer here, not a second copy.
 
-That places one constraint on the renderers: **the Markdown tiers carry text verbatim.** Markdown is not HTML, and escaping it there does two kinds of damage — it turns the body of a fenced code block into `&lt;`-noise, and, once `"` becomes `&quot;`, the redactor no longer recognises `"KEY": "value"`, so a key-named credential with no distinctive token shape survives into the shipped file. Sanitising is owed by whatever renders this Markdown into HTML, which is the layer that knows it is building a DOM.
+Redaction runs at a chokepoint, where `runner.py` writes each artifact, so a renderer added later inherits a scrub without having to remember one. It is a backstop, not a guarantee: it sees only what the renderers hand it, so a renderer that transforms text before the chokepoint reads it can put a credential beyond its reach.
 
-The HTML tier is the exception and escapes everything it interpolates, attributes included. Because escaping there would hide the same `"KEY": "value"` shape from the chokepoint, the HTML path redacts _before_ it escapes; the chokepoint's pass then stands as defence in depth rather than as the only line.
+That gives the general rule:
+
+> **Any renderer that re-encodes bytes the redaction patterns match must redact before it re-encodes.**
+
+HTML escaping is one instance. URL-encoding, base64, JSON embedding and a future Markdown→HTML converter all behave identically: they preserve the credential while destroying the shape the patterns look for. The chokepoint holds only over text no renderer has transformed.
+
+**The Markdown tiers therefore carry text verbatim.** Two reasons, both independent of any redactor:
+
+1. **Markdown is not HTML.** Escaping turns the body of a fenced code block into `&lt;`-noise — the content is corrupted for every reader, forever.
+2. **An escaped corpus is permanently unauditable.** The recorded design (`aops-00c0fa10`) puts three layers over secrets — a pre-tool guard, this write-time scrub, and a pre-commit backstop — all sharing **one** pattern definition. That presupposes the committed corpus stays scannable by those patterns after the fact. `_SENSITIVE_NAME` is a character class admitting no `&` or `;`, so entity-escaped text is structurally invisible to it, and to any future scanner sharing the definition. Escaping a tier makes it permanently un-rescannable, not merely awkward.
+
+Escaping Markdown was never a security control in any case: `html.escape` leaves `[click](javascript:alert(1))` byte-identical, so it blocked one injection vector while leaving a co-located one open. Sanitising is owed by whatever renders this Markdown into a DOM — in this repository that renderer already exists and already escapes: it is the `.html` tier.
+
+The HTML tier escapes everything it interpolates, attributes included, and redacts first, per the general rule above.
 
 ### Where delegated work lands
 

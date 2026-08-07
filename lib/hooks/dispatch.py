@@ -315,12 +315,17 @@ _OTEL_TRACE_ENV = "COPE_EVALUATOR_OTEL_TRACE_PATH"
 def _get_evaluator_otel_trace():
     """The OTel emitter, when the plugin this dispatch ships inside provides it.
 
-    `evaluator_otel_trace` lives in rbg. This file is shared into every
-    plugin's `hooks/` directory, so the import below resolves as a sibling in
-    rbg's build and nowhere else — which is correct: a plugin never reads
-    another plugin's files, and the traversal to `plugins/rbg/hooks` that used
-    to sit here resolved to nothing in every built artifact anyway, leaving the
-    instrumentation a silent no-op.
+    `evaluator_otel_trace` ships in rbg. This file is shared into every
+    plugin's `hooks/` directory, and the entry point puts this module's own
+    directory on `sys.path`, so the import below resolves against whichever
+    plugin this copy is shipping inside — rbg's, in the builds checked. That
+    is a file reading its own plugin's directory, not another plugin's. The
+    traversal to `plugins/rbg/hooks` that used to sit here named another
+    plugin by path, and in the `dist/<name>-<client>/` layout resolved to
+    nothing, leaving the instrumentation a silent no-op.
+
+    Tests may resolve this import by injecting a path instead; the sibling
+    rule describes the shipped layout, not every possible one.
 
     Silence is right when nobody asked for OTel. It is wrong when someone did,
     so that case says so on stderr instead of disappearing.
