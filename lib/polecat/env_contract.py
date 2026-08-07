@@ -62,7 +62,6 @@ FORWARDED_ENV = (
     "CI",
     "NONINTERACTIVE",
     "TZ",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
     "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP",
 )
 
@@ -76,7 +75,7 @@ CONTAINER_AUTH_ENV = (
     "CLAUDE_CODE_OAUTH_TOKEN",
 )
 
-# Container-internal paths, given a value rather than forwarded.
+# Container-internal paths and default flags, given a value rather than forwarded.
 #
 # CLAUDE_ENV_FILE is where the SessionStart credential hook appends git/gh auth
 # config; the hook does nothing at all when the name is unset. Claude Code
@@ -85,6 +84,7 @@ CONTAINER_AUTH_ENV = (
 # so what it holds dies with the container instead of persisting on the host.
 CONTAINER_SET_ENV = {
     "CLAUDE_ENV_FILE": "/tmp/aops-session.env",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 }
 
 
@@ -104,6 +104,66 @@ def docker_env_args(names=None):
         else:
             args.extend(["-e", name])
     return args
+
+
+def format_otel_resource_attributes(
+    existing: str | None = None,
+    session_id: str | None = None,
+    project: str | None = None,
+    task_id: str | None = None,
+) -> str:
+    """Format OTEL_RESOURCE_ATTRIBUTES string by merging/injecting polecat attributes.
+
+    Parses any existing comma-separated key=value attribute string, and merges/injects:
+    - polecat.session_id=session_id (if session_id is set)
+    - polecat.project=project (if project is set)
+    - polecat.task_id=task_id (if task_id is set)
+    """
+    pairs = []
+    if existing:
+        for item in str(existing).split(","):
+            item = item.strip()
+            if not item:
+                continue
+            if "=" in item:
+                k, v = item.split("=", 1)
+                k = k.strip()
+                v = v.strip()
+            else:
+                k = item.strip()
+                v = ""
+            if not k:
+                continue
+            pairs.append((k, v))
+
+    updates = {}
+    if session_id is not None and str(session_id).strip() != "":
+        updates["polecat.session_id"] = str(session_id)
+    if project is not None and str(project).strip() != "":
+        updates["polecat.project"] = str(project)
+    if task_id is not None and str(task_id).strip() != "":
+        updates["polecat.task_id"] = str(task_id)
+
+    result_pairs = []
+    seen_keys = set()
+    for k, v in pairs:
+        if k in seen_keys:
+            continue
+        seen_keys.add(k)
+        if k in updates:
+            result_pairs.append(f"{k}={updates[k]}")
+        else:
+            if v != "":
+                result_pairs.append(f"{k}={v}")
+            else:
+                result_pairs.append(k)
+
+    for k, v in updates.items():
+        if k not in seen_keys:
+            seen_keys.add(k)
+            result_pairs.append(f"{k}={v}")
+
+    return ",".join(result_pairs)
 
 
 def main():

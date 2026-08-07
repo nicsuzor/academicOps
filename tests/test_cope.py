@@ -2153,3 +2153,134 @@ def test_dispatch_falls_back_to_process_cwd_when_payload_omits_it(
     assert result.returncode == 0, f"stderr: {result.stderr!r}"
     out = json.loads(result.stdout)
     assert "halt-on-failure" in out["hookSpecificOutput"]["additionalContext"]
+
+
+# ---------------------------------------------------------------------------
+# OTEL Instrumentation: tool plumbing errors, SendMessage, SubagentStop, idle/timeout
+# ---------------------------------------------------------------------------
+
+
+def test_otel_tool_plumbing_error_recording(monkeypatch, tmp_path):
+    """Tool plumbing errors (unknown_tool, missing_mcp) generate OTEL exception events and StatusCode.ERROR."""
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    ctx = HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="unknown_tool",
+        session_id="session-err-1",
+        raw={"error": "unknown_tool: invalid tool requested", "error_type": "unknown_tool"},
+    )
+
+    evaluator_otel_trace.record_tool_plumbing_error(
+        ctx, error_type="unknown_tool", error_message="unknown_tool: invalid tool requested"
+    )
+
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    span = spans[0]
+    assert span["name"] == "tool.error.unknown_tool"
+    assert span["status"]["code"] == 2  # STATUS_CODE_ERROR
+    attrs = _span_attrs(span)
+    assert attrs["session_id"] == "session-err-1"
+    assert attrs["error_type"] == "unknown_tool"
+
+    # Check exception event on span
+    events = span.get("events", [])
+    assert len(events) >= 1
+    assert events[0]["name"] == "exception"
+    evt_attrs = {a["key"]: next(iter(a["value"].values())) for a in events[0]["attributes"]}
+    assert "unknown_tool: invalid tool requested" in evt_attrs.get("exception.message", "")
+
+
+def test_otel_send_message_span_linkage(monkeypatch, tmp_path):
+    """SendMessage tool call creates OTEL span linking parent context and target agent with traceparent propagation."""
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+    monkeypatch.setenv("TRACEPARENT", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+
+    ctx = HookContext(
+        client="claude",
+        event="PreToolUse",
+        tool="SendMessage",
+        session_id="parent-session-123",
+        raw={"tool_input": {"recipient": "worker-4", "message": "hello worker"}},
+    )
+
+    new_tp = evaluator_otel_trace.record_send_message(
+        ctx, target_agent="worker-4", parent_agent="parent-session-123"
+    )
+
+    assert new_tp is not None
+    assert new_tp.startswith("00-4bf92f3577b34da6a3ce929d0e0e4736-")
+
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    span = spans[0]
+    assert span["name"] == "agent.send_message"
+    assert span["traceId"] == "4bf92f3577b34da6a3ce929d0e0e4736"
+    assert span["parentSpanId"] == "00f067aa0ba902b7"
+    attrs = _span_attrs(span)
+    assert attrs["target_agent"] == "worker-4"
+    assert attrs["parent_agent"] == "parent-session-123"
+    assert attrs["propagated_traceparent"] == new_tp
+
+
+def test_otel_subagent_stop_unsent_output_check(monkeypatch, tmp_path):
+    """SubagentStop event with unsent output records warning attribute, exception event, and StatusCode.ERROR."""
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+
+    ctx = HookContext(
+        client="claude",
+        event="SubagentStop",
+        session_id="subagent-session-999",
+        raw={"unsent_output": "unreported results in buffer"},
+    )
+
+    evaluator_otel_trace.record_subagent_stop(
+        ctx, has_unsent_output=True, unsent_content="unreported results in buffer"
+    )
+
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 1
+    span = spans[0]
+    assert span["name"] == "agent.subagent_stop"
+    assert span["status"]["code"] == 2  # STATUS_CODE_ERROR
+    attrs = _span_attrs(span)
+    assert attrs["has_unsent_output"] is True
+    assert attrs["warning"] == "unsent_output_detected"
+    assert attrs["unsent_content"] == "unreported results in buffer"
+
+
+def test_otel_agent_idle_timeout_recording(monkeypatch, tmp_path):
+    """Agent idle/timeout events on Stop/SubagentStop record appropriate OTEL spans."""
+    trace_path = tmp_path / "trace.otel.jsonl"
+    monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(trace_path))
+
+    ctx_idle = HookContext(
+        client="claude",
+        event="Stop",
+        session_id="sess-idle",
+        raw={"status": "idle"},
+    )
+    evaluator_otel_trace.record_agent_idle_timeout(ctx_idle, event_type="idle")
+
+    ctx_timeout = HookContext(
+        client="claude",
+        event="SubagentStop",
+        session_id="sess-timeout",
+        raw={"status": "timeout"},
+    )
+    evaluator_otel_trace.record_agent_idle_timeout(ctx_timeout, event_type="timeout")
+
+    spans = _otlp_spans(trace_path)
+    assert len(spans) == 2
+    span_idle = [s for s in spans if s["name"] == "agent.idle"][0]
+    span_timeout = [s for s in spans if s["name"] == "agent.timeout"][0]
+
+    assert span_idle["status"]["code"] == 1  # OK
+    assert _span_attrs(span_idle)["idle"] is True
+
+    assert span_timeout["status"]["code"] == 2  # ERROR
+    assert _span_attrs(span_timeout)["timeout"] is True

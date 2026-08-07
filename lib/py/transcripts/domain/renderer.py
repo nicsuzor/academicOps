@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 from typing import Any
 
@@ -61,7 +62,7 @@ def _render_front_matter(
     has_user_context: bool,
     correlation: dict[str, str | None],
 ) -> list[str]:
-    """YAML front-matter shared by both Markdown renders.
+    """YAML front-matter shared by Markdown renders.
 
     `tokens_used` / `cost_usd` stay trunk-only so their meaning does not shift
     under existing consumers; the whole-session figures are additional keys.
@@ -79,6 +80,10 @@ def _render_front_matter(
         f"pr_number: {correlation.get('pr_number') or ''}",
         f"tokens_used: {session.tokens_used}",
         f"cost_usd: {session.cost_usd:.6f}",
+        f"controller_tokens: {session.controller_tokens}",
+        f"subagent_tokens: {session.subagent_tokens}",
+        f"controller_cost_usd: {session.controller_cost_usd:.6f}",
+        f"subagent_cost_usd: {session.subagent_cost_usd:.6f}",
         f"subagent_count: {len(session.subagents)}",
         f"total_event_count: {session.total_event_count}",
         f"total_tokens_used: {session.total_tokens_used}",
@@ -97,12 +102,7 @@ def _subagent_time_range(subagent: SubagentTranscript) -> tuple[str, str]:
 
 
 def _depth_label(subagent: SubagentTranscript) -> str:
-    """`spawn_depth` rendered for a reader, with its own honesty caveat.
-
-    Not reliably parent+1 for a team-mode (named/mailbox) spawn — a fork or
-    named agent can report a depth that does not match `parent_agent_id`'s
-    actual chain. Shown as a hint, never treated as authoritative structure.
-    """
+    """`spawn_depth` rendered for a reader, with its own honesty caveat."""
     depth = "?" if subagent.spawn_depth is None else str(subagent.spawn_depth)
     return f"{depth} (fork)" if subagent.is_fork else depth
 
@@ -117,21 +117,21 @@ def _render_subagent_index(session: NormalizedSession, filename_base: str) -> li
         "",
         f"{len(session.subagents)} subagent conversation(s) ran under this session. "
         f"Their full transcripts are in the "
-        f"[Full Markdown Details](./{filename_base}.full.md).",
+        f"[Full Markdown Details](./{_escape_html(filename_base)}.full.md).",
         "",
         "| # | Agent | Type | Depth | Events | Tokens | Started | Task |",
         "|---|-------|------|-------|--------|--------|---------|------|",
     ]
     for idx, subagent in enumerate(session.subagents, start=1):
         started, _ = _subagent_time_range(subagent)
-        description = (subagent.description or "").strip().replace("\n", " ")
-        if len(description) > 80:
-            description = description[:77] + "..."
-        description = description.replace("|", "\\|")
+        raw_desc = (subagent.description or "").strip().replace("\n", " ")
+        if len(raw_desc) > 80:
+            raw_desc = raw_desc[:77] + "..."
+        description = _escape_html(raw_desc).replace("|", "\\|")
         lines.append(
-            f"| {idx} | `{subagent.label}` | {subagent.agent_type or ''} | "
+            f"| {idx} | `{subagent.label}` | {_escape_html(subagent.agent_type or '')} | "
             f"{_depth_label(subagent)} | {len(subagent.events)} | {subagent.tokens_used} | "
-            f"{started} | {description} |"
+            f"{_escape_html(started)} | {description} |"
         )
     lines.append("")
     return lines
@@ -156,7 +156,7 @@ def render_to_markdown(
     content_lines = [
         f"# Session {session.session_id} Summary",
         "",
-        f"For the complete chronological details, see the [Full Markdown Details](./{filename_base}.full.md) or the [HTML View](./{filename_base}.html).",
+        f"For the complete chronological details, see the [Controlling Agent Details](./{filename_base}.controller.md), [Full Markdown Details](./{filename_base}.full.md), or the [HTML View](./{filename_base}.html).",
         "",
     ]
 
@@ -202,8 +202,7 @@ def render_to_markdown(
             content_snippet = content_str.strip().replace("\n", " ")
             if len(content_snippet) > 80:
                 content_snippet = content_snippet[:77] + "..."
-        # Escape any pipe symbols in markdown table cell
-        content_snippet = content_snippet.replace("|", "\\|")
+        content_snippet = _escape_html(content_snippet).replace("|", "\\|")
 
         content_lines.append(
             f"| {idx} | `{event_type}` | **{source_name}** | {ts} | {content_snippet} |"
@@ -223,14 +222,7 @@ def render_to_markdown(
 def _build_subagent_lookup(
     session: NormalizedSession,
 ) -> dict[str, tuple[int, SubagentTranscript]]:
-    """Map a spawning `tool_use_id` to `(index, subagent)`, 1-indexed to match
-    the `### 🧵 Subagent N` headers `_render_subagent_transcripts` writes.
-
-    Lets `_render_events_markdown` mark, at the exact tool-call site, where a
-    subagent was spawned and where its result returned — the interleaving a
-    cold reader needs and a flat "all subagents after the trunk" layout does
-    not give them.
-    """
+    """Map a spawning `tool_use_id` to `(index, subagent)`, 1-indexed."""
     return {
         subagent.parent_tool_use_id: (idx, subagent)
         for idx, subagent in enumerate(session.subagents, start=1)
@@ -238,16 +230,44 @@ def _build_subagent_lookup(
     }
 
 
+def _get_code_fence(content: str) -> str:
+    import re
+
+    matches = re.findall(r"`+", content)
+    max_len = max((len(m) for m in matches), default=0)
+    fence_len = max(3, max_len + 1)
+    return "`" * fence_len
+
+
+def _format_tool_output_markdown(content: str) -> list[str]:
+    """Format tool output in Markdown with escaping or collapsible details blocks."""
+    byte_count = len(content.encode("utf-8"))
+    is_large = len(content) > 500 or len(content.splitlines()) > 10
+    fence = _get_code_fence(content)
+    if is_large:
+        return [
+            f"<details><summary>Tool Output ({byte_count} bytes)</summary>",
+            "",
+            fence,
+            content,
+            fence,
+            "",
+            "</details>",
+            "",
+        ]
+    return [
+        fence,
+        content,
+        fence,
+        "",
+    ]
+
+
 def _render_events_markdown(
     events: list[NormalizedEvent],
     subagent_lookup: dict[str, tuple[int, SubagentTranscript]] | None = None,
 ) -> list[str]:
-    """Render a conversation event by event, in order.
-
-    `subagent_lookup`, when given, adds an inline "spawned here" note at the
-    tool call that launched a subagent and a "returned here" note at the
-    tool_output event carrying its result — see `_build_subagent_lookup`.
-    """
+    """Render a conversation event by event, in order."""
     lookup = subagent_lookup or {}
     lines: list[str] = []
     for event in events:
@@ -275,7 +295,7 @@ def _render_events_markdown(
                 [
                     "> [!NOTE]",
                     "> **Thinking Process:**",
-                    *(f"> {line}" for line in event.thinking.splitlines()),
+                    *(f"> {_escape_html(line)}" for line in event.thinking.splitlines()),
                     "",
                 ]
             )
@@ -313,19 +333,21 @@ def _render_events_markdown(
                 )
 
                 if is_human and human_text:
-                    lines.append(human_text)
+                    lines.append(_escape_html(human_text))
                     lines.append("")
                 if injected_text:
                     lines.extend(
                         [
                             "> [!NOTE]",
                             f"> **Injected Context (`{prompt_kind}`):**",
-                            *(f"> {line}" for line in injected_text.splitlines()),
+                            *(f"> {_escape_html(line)}" for line in injected_text.splitlines()),
                             "",
                         ]
                     )
+            elif event.source == "tool" or event.type == "tool_output":
+                lines.extend(_format_tool_output_markdown(content))
             else:
-                lines.append(content)
+                lines.append(_escape_html(content))
                 lines.append("")
 
         if event.tool_calls:
@@ -354,13 +376,7 @@ def _render_events_markdown(
 
 
 def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
-    """Render every subagent conversation in full, up to the size budget.
-
-    Heading depth follows `spawn_depth` (capped so a bad value cannot produce
-    an invalid Markdown heading) — a rendering hint, not authoritative tree
-    structure; see `_depth_label`. `parent_agent_id`, printed alongside it, is
-    the field that stays correct for a team-mode spawn.
-    """
+    """Render every subagent conversation in full, up to the size budget."""
     if not session.subagents:
         return []
 
@@ -392,7 +408,7 @@ def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
         if subagent.parent_agent_id:
             header.append(f"- spawned_by: `{subagent.parent_agent_id}`")
         if subagent.description:
-            header.extend(["", f"> {subagent.description.strip()}"])
+            header.extend(["", f"> {_escape_html(subagent.description.strip())}"])
         header.append("")
 
         body = _render_events_markdown(subagent.events, lookup)
@@ -418,6 +434,51 @@ def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
     return lines
 
 
+def render_to_controller_markdown(
+    session: NormalizedSession,
+    slug: str,
+    started_at: str,
+    last_modified: str,
+    ended_at: str,
+    has_user_context: bool,
+    correlation: dict[str, str | None],
+    insights: str | None,
+) -> str:
+    """Render controlling agent full timeline to Markdown with YAML front-matter."""
+    yaml_lines = _render_front_matter(
+        session, slug, started_at, last_modified, ended_at, has_user_context, correlation
+    )
+
+    filename_base = _get_filename_base(slug, started_at, correlation)
+    content_lines = [
+        f"# Session {session.session_id} Controlling Agent Transcript",
+        "",
+        f"Back to [Summary View](./{filename_base}.md) or see the [Full Markdown Details](./{filename_base}.full.md) or the [HTML View](./{filename_base}.html).",
+        "",
+    ]
+
+    if insights:
+        content_lines.extend(
+            [
+                "## 📝 Insights & Reflections",
+                "",
+                insights,
+                "",
+            ]
+        )
+
+    content_lines.extend(_render_subagent_index(session, filename_base))
+    content_lines.extend(
+        [
+            "## 📜 Chronological Events",
+            "",
+        ]
+    )
+    content_lines.extend(_render_events_markdown(session.events, _build_subagent_lookup(session)))
+
+    return "\n".join(yaml_lines) + "\n".join(content_lines)
+
+
 def render_to_full_markdown(
     session: NormalizedSession,
     slug: str,
@@ -437,7 +498,7 @@ def render_to_full_markdown(
     content_lines = [
         f"# Session {session.session_id} Full Transcript",
         "",
-        f"Back to [Summary View](./{filename_base}.md) or see the [HTML View](./{filename_base}.html).",
+        f"Back to [Summary View](./{filename_base}.md) or see the [Controlling Agent View](./{filename_base}.controller.md) or the [HTML View](./{filename_base}.html).",
         "",
     ]
 
@@ -464,16 +525,11 @@ def render_to_full_markdown(
 
 
 def _escape_html(text: str) -> str:
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return html.escape(str(text), quote=True)
 
 
 def _render_subagent_html(session: NormalizedSession, filename_base: str) -> str:
-    """A card per subagent.
-
-    The standalone HTML stays a document a browser can actually open, so it
-    names and costs each sidechain and points at the `.full.md` for the
-    conversation itself.
-    """
+    """A card per subagent."""
     if not session.subagents:
         return ""
 
@@ -495,7 +551,7 @@ def _render_subagent_html(session: NormalizedSession, filename_base: str) -> str
         <h2>Subagents</h2>
         <p>{len(session.subagents)} subagent conversation(s) ran under this session,
         carrying {session.total_event_count - len(session.events)} events. Their full
-        transcripts are in <a href="./{filename_base}.full.md">{filename_base}.full.md</a>.</p>
+        transcripts are in <a href="./{_escape_html(filename_base)}.full.md">{_escape_html(filename_base)}.full.md</a>.</p>
         <table class="subagents">
             <thead><tr><th>#</th><th>Agent</th><th>Type</th><th>Events</th>
             <th>Tokens</th><th>Window</th><th>Task</th></tr></thead>
@@ -536,13 +592,16 @@ def render_to_html(
         # Format thinking
         thinking_html = ""
         if event.thinking:
+            esc_thinking = _escape_html(event.thinking)
             thinking_html = (
-                f'<div class="thinking"><strong>Thinking:</strong><br>{event.thinking}</div>'
+                f'<details class="thinking-details" open><summary><strong>Thinking Process</strong></summary>'
+                f'<div class="thinking">{esc_thinking}</div></details>'
             )
         elif event.thinking_opaque:
             thinking_html = (
-                '<div class="thinking"><strong>Thinking:</strong> not recoverable — '
-                "Claude Code returned this block empty (signature only).</div>"
+                '<details class="thinking-details"><summary><strong>Thinking Process</strong></summary>'
+                '<div class="thinking">not recoverable — Claude Code returned this block empty (signature only).</div>'
+                "</details>"
             )
 
         content = event.content or ""
@@ -576,6 +635,21 @@ def render_to_html(
                     f'<div class="injected-box"><span class="badge injected-badge">Injected Context ({_escape_html(prompt_kind)})</span><br>{inj_esc}</div>'
                 )
             content_html_rendered = "".join(content_parts_html)
+        elif event.source == "tool" or event.type == "tool_output":
+            byte_count = len(content.encode("utf-8"))
+            is_large = len(content) > 500 or len(content.splitlines()) > 10
+            content_escaped = _escape_html(content)
+            if is_large:
+                content_html_rendered = (
+                    f'<details class="tool-output-details">'
+                    f"<summary>Tool Output ({byte_count} bytes)</summary>"
+                    f"<pre><code>{content_escaped}</code></pre>"
+                    f"</details>"
+                )
+            else:
+                content_html_rendered = (
+                    f'<div class="content"><pre><code>{content_escaped}</code></pre></div>'
+                )
         else:
             content_escaped = _escape_html(content).replace("\n", "<br>")
             content_html_rendered = f'<div class="content">{content_escaped}</div>'
@@ -587,7 +661,7 @@ def render_to_html(
             for tc in event.tool_calls:
                 args_json = _dump_tool_args(tc.args, indent=2)
                 tc_html_parts.append(
-                    f"<li>Call <code>{tc.name}</code> with:<pre><code>{args_json}</code></pre></li>"
+                    f"<li>Call <code>{_escape_html(tc.name)}</code> with:<pre><code>{_escape_html(args_json)}</code></pre></li>"
                 )
             tc_html = f'<div class="tool-calls"><strong>Tool Calls:</strong><ul>{"".join(tc_html_parts)}</ul></div>'
 
@@ -607,7 +681,7 @@ def render_to_html(
         insights_section = f"""
         <div class="insights">
             <h2>Insights & Reflections</h2>
-            <p>{insights.replace(chr(10), "<br>")}</p>
+            <p>{_escape_html(insights).replace(chr(10), "<br>")}</p>
         </div>
         """
 
@@ -619,7 +693,7 @@ def render_to_html(
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Session {session.session_id}</title>
+    <title>Session {_escape_html(session.session_id)}</title>
     <style>
         body {{
             background-color: #0f0f11;
@@ -712,6 +786,19 @@ def render_to_html(
             border-radius: 4px;
             border: 1px solid #27272a;
         }}
+        details.tool-output-details summary, details.thinking-details summary {{
+            cursor: pointer;
+            color: #a1a1aa;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }}
+        details.tool-output-details pre {{
+            background-color: #121214;
+            padding: 0.75rem;
+            border-radius: 4px;
+            border: 1px solid #27272a;
+            overflow-x: auto;
+        }}
         .timestamp {{
             float: right;
             font-size: 0.8rem;
@@ -732,16 +819,16 @@ def render_to_html(
     </style>
 </head>
 <body>
-    <h1>Session {session.session_id}</h1>
+    <h1>Session {_escape_html(session.session_id)}</h1>
     
     <div class="meta-box">
         <div class="meta-grid">
-            <div class="meta-item"><strong>Slug</strong>{slug}</div>
-            <div class="meta-item"><strong>Started At</strong>{started_at}</div>
-            <div class="meta-item"><strong>Ended At</strong>{ended_at}</div>
+            <div class="meta-item"><strong>Slug</strong>{_escape_html(slug)}</div>
+            <div class="meta-item"><strong>Started At</strong>{_escape_html(started_at)}</div>
+            <div class="meta-item"><strong>Ended At</strong>{_escape_html(ended_at)}</div>
             <div class="meta-item"><strong>User Context</strong>{str(has_user_context)}</div>
-            <div class="meta-item"><strong>Project</strong>{correlation.get("project") or "N/A"}</div>
-            <div class="meta-item"><strong>Task ID</strong>{correlation.get("task_id") or "N/A"}</div>
+            <div class="meta-item"><strong>Project</strong>{_escape_html(correlation.get("project") or "N/A")}</div>
+            <div class="meta-item"><strong>Task ID</strong>{_escape_html(correlation.get("task_id") or "N/A")}</div>
             <div class="meta-item"><strong>Tokens Used</strong>{session.total_tokens_used}</div>
             <div class="meta-item"><strong>Cost (USD)</strong>${session.total_cost_usd:.6f}</div>
             <div class="meta-item"><strong>Subagents</strong>{len(session.subagents)}</div>
@@ -772,13 +859,7 @@ def build_json_sidecar(
     correlation: dict[str, str | None],
     insights: str | None,
 ) -> dict[str, Any]:
-    """Build the metadata sidecar as data.
-
-    Returned unserialised so redaction runs over the values, where it cannot
-    damage the structure. Every key here is a literal: a credential can reach
-    this object only as a value, which is what makes a value-walking redaction
-    sufficient for this artifact.
-    """
+    """Build the metadata sidecar as data."""
     user_prompts = []
     injected_prompts = []
     for event in session.events:
@@ -822,12 +903,13 @@ def build_json_sidecar(
         "task_id": correlation.get("task_id"),
         "pr_number": correlation.get("pr_number"),
         "insights": insights,
-        # `event_count` / `tokens_used` / `cost_usd` describe the trunk, as
-        # they always have. The `total_*` keys and `subagents` describe the
-        # whole session, delegated work included.
         "event_count": len(session.events),
         "tokens_used": session.tokens_used,
         "cost_usd": session.cost_usd,
+        "controller_tokens": session.controller_tokens,
+        "subagent_tokens": session.subagent_tokens,
+        "controller_cost_usd": session.controller_cost_usd,
+        "subagent_cost_usd": session.subagent_cost_usd,
         "total_event_count": session.total_event_count,
         "total_tokens_used": session.total_tokens_used,
         "total_cost_usd": session.total_cost_usd,
@@ -849,7 +931,6 @@ def build_json_sidecar(
         ],
         "user_prompts": user_prompts,
         "injected_prompts": injected_prompts,
-        # For compatibility with ledger checks:
         "surface": correlation.get("project") or "cli",
         "date": started_at,
     }
@@ -867,12 +948,7 @@ def render_to_json(
     correlation: dict[str, str | None],
     insights: str | None,
 ) -> str:
-    """Serialise the metadata sidecar.
-
-    Callers that write the sidecar to disk take :func:`build_json_sidecar` and
-    redact the data before serialising; this is for callers that only want to
-    read the rendered shape.
-    """
+    """Serialise the metadata sidecar."""
     return json.dumps(
         build_json_sidecar(
             session,
@@ -897,14 +973,17 @@ def render_session_to_all_formats(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
-) -> tuple[str, str, dict[str, Any]]:
-    """Render a session into all three output formats.
+) -> tuple[str, str, str, str, dict[str, Any]]:
+    """Render a session into all 4 output tiers plus JSON sidecar.
 
-    Markdown and HTML come back as their final text. The JSON sidecar comes
-    back as data, because redaction has to run over its values before anything
-    serialises them — a regex over serialised JSON breaks the structure it is
-    scanning.
+    Returns (controller_md, full_md, md, html, json_sidecar).
     """
+    controller_md = render_to_controller_markdown(
+        session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
+    )
+    full_md = render_to_full_markdown(
+        session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
+    )
     md = render_to_markdown(
         session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
     )
@@ -914,4 +993,4 @@ def render_session_to_all_formats(
     json_sidecar = build_json_sidecar(
         session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
     )
-    return md, html, json_sidecar
+    return controller_md, full_md, md, html, json_sidecar

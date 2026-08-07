@@ -112,11 +112,31 @@ class NormalizedSession:
         return len(self.events) + sum(len(sub.events) for sub in self.subagents)
 
     @property
+    def controller_tokens(self) -> int:
+        """Tokens used strictly by the controlling agent (trunk)."""
+        return self.tokens_used
+
+    @property
+    def subagent_tokens(self) -> int:
+        """Tokens used by all subagents combined."""
+        return sum(sub.tokens_used for sub in self.subagents)
+
+    @property
+    def controller_cost_usd(self) -> float:
+        """Estimated USD cost strictly for the controlling agent (trunk)."""
+        return self.cost_usd
+
+    @property
+    def subagent_cost_usd(self) -> float:
+        """Estimated USD cost for all subagents combined."""
+        return sum(sub.cost_usd for sub in self.subagents)
+
+    @property
     def total_tokens_used(self) -> int:
         """Trunk tokens plus every subagent's tokens — the session's real spend."""
-        return self.tokens_used + sum(sub.tokens_used for sub in self.subagents)
+        return self.controller_tokens + self.subagent_tokens
 
     @property
     def total_cost_usd(self) -> float:
         """Trunk cost plus every subagent's cost — the session's real spend."""
-        return self.cost_usd + sum(sub.cost_usd for sub in self.subagents)
+        return self.controller_cost_usd + self.subagent_cost_usd

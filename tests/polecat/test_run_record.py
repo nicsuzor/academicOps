@@ -82,6 +82,8 @@ def _init_git_repo(repo_dir):
 def test_write_run_record_schema_and_keys(tmp_path):
     session_dir = tmp_path / "session"
     session_dir.mkdir(parents=True)
+    t_file = session_dir / "6912ac2b-781f-4515-94d5-d883e2b94a54.jsonl"
+    t_file.write_text('{"type": "user", "message": "hello"}\n')
     start_time = datetime.now(UTC)
     end_time = datetime.now(UTC)
 
@@ -114,6 +116,10 @@ def test_write_run_record_schema_and_keys(tmp_path):
     assert data["container_id"] == "c1234567890a"
     assert data["status"] == "success"
     assert data["worker_model"] is None
+    assert data["transcript"]["found"] is True
+    assert data["transcript"]["transcript_path"] == str(t_file)
+    assert data["transcript"]["transcript_bytes"] == t_file.stat().st_size
+    assert data["transcript"]["event_count"] == 1
     assert any(d.get("what") == "worker_model" for d in data["degraded"])
 
 
@@ -130,6 +136,10 @@ def test_run_command_creates_run_json_on_clean_run(tmp_path, monkeypatch):
             cidfile_idx = cmd.index("--cidfile") + 1
             cidfile_path = Path(cmd[cidfile_idx])
             cidfile_path.write_text("fake-container-id-12345\n")
+            session_dir = cidfile_path.parent
+            (session_dir / "6912ac2b-781f-4515-94d5-d883e2b94a54.jsonl").write_text(
+                '{"type": "user", "message": "hello"}\n'
+            )
             return subprocess.CompletedProcess(cmd, 0)
         return real_run(cmd, *a, **kw)
 
@@ -289,3 +299,125 @@ def test_worker_model_env_var_populated(tmp_path, monkeypatch):
     data = json.loads(run_jsons[0].read_text())
     assert data["worker_model"] == "claude-3-5-sonnet"
     assert not any(d.get("what") == "worker_model" for d in data["degraded"])
+
+
+def test_write_run_record_degraded_status_when_transcript_missing(tmp_path):
+    session_dir = tmp_path / "session_missing"
+    session_dir.mkdir(parents=True)
+    out_file = cli.write_run_record(
+        session_dir=session_dir,
+        session_id="session-missing-1",
+        container_id="c12345",
+        container_name="polecat-session-missing-1",
+        agent="claude",
+        task_id=None,
+        seeded_prompt=None,
+        image_ref="test-image:latest",
+        image_digest="sha256:12345",
+        workspace_dir=tmp_path / "workspace",
+        commit_start=None,
+        commit_end=None,
+        exit_code=0,
+        delivery_guard={"ok": True, "error": None},
+        started_at=datetime.now(UTC),
+        ended_at=datetime.now(UTC),
+    )
+    data = json.loads(out_file.read_text())
+    assert data["status"] == "degraded"
+    assert data["transcript"]["found"] is False
+    assert data["transcript"]["transcript_path"] is None
+    assert data["transcript"]["transcript_bytes"] is None
+    assert data["transcript"]["event_count"] == 0
+    assert any(d.get("what") == "transcript_missing" for d in data["degraded"])
+
+
+def test_write_run_record_degraded_status_when_transcript_zero_bytes(tmp_path):
+    session_dir = tmp_path / "session_zero"
+    session_dir.mkdir(parents=True)
+    t_file = session_dir / "6912ac2b-781f-4515-94d5-d883e2b94a54.jsonl"
+    t_file.write_text("")
+    out_file = cli.write_run_record(
+        session_dir=session_dir,
+        session_id="session-zero-1",
+        container_id="c12345",
+        container_name="polecat-session-zero-1",
+        agent="agy",
+        task_id=None,
+        seeded_prompt=None,
+        image_ref="test-image:latest",
+        image_digest="sha256:12345",
+        workspace_dir=tmp_path / "workspace",
+        commit_start=None,
+        commit_end=None,
+        exit_code=0,
+        delivery_guard={"ok": True, "error": None},
+        started_at=datetime.now(UTC),
+        ended_at=datetime.now(UTC),
+    )
+    data = json.loads(out_file.read_text())
+    assert data["status"] == "degraded"
+    assert data["transcript"]["found"] is False
+    assert data["transcript"]["transcript_path"] is None
+    assert data["transcript"]["transcript_bytes"] is None
+    assert data["transcript"]["event_count"] == 0
+    assert any(d.get("what") == "transcript_missing" for d in data["degraded"])
+
+
+def test_write_run_record_non_agent_no_degradation(tmp_path):
+    session_dir = tmp_path / "session_shell"
+    session_dir.mkdir(parents=True)
+    out_file = cli.write_run_record(
+        session_dir=session_dir,
+        session_id="session-shell-1",
+        container_id="c12345",
+        container_name="polecat-session-shell-1",
+        agent="shell",
+        task_id=None,
+        seeded_prompt=None,
+        image_ref="test-image:latest",
+        image_digest="sha256:12345",
+        workspace_dir=tmp_path / "workspace",
+        commit_start=None,
+        commit_end=None,
+        exit_code=0,
+        delivery_guard={"ok": True, "error": None},
+        started_at=datetime.now(UTC),
+        ended_at=datetime.now(UTC),
+    )
+    data = json.loads(out_file.read_text())
+    assert data["status"] == "success"
+    assert not any(d.get("what") in ("transcript", "transcript_missing") for d in data["degraded"])
+
+
+def test_transcript_metadata_structure(tmp_path):
+    session_dir = tmp_path / "session_meta"
+    session_dir.mkdir(parents=True)
+    t_file = session_dir / "6912ac2b-781f-4515-94d5-d883e2b94a54.jsonl"
+    t_file.write_text('{"line": 1}\n{"line": 2}\n{"line": 3}\n')
+    out_file = cli.write_run_record(
+        session_dir=session_dir,
+        session_id="session-meta-1",
+        container_id="c12345",
+        container_name="polecat-session-meta-1",
+        agent="claude",
+        task_id=None,
+        seeded_prompt=None,
+        image_ref="test-image:latest",
+        image_digest="sha256:12345",
+        workspace_dir=tmp_path / "workspace",
+        commit_start=None,
+        commit_end=None,
+        exit_code=0,
+        delivery_guard={"ok": True, "error": None},
+        started_at=datetime.now(UTC),
+        ended_at=datetime.now(UTC),
+    )
+    data = json.loads(out_file.read_text())
+    t = data["transcript"]
+    assert t["found"] is True
+    assert t["path"] == str(t_file)
+    assert t["bytes"] == t_file.stat().st_size
+    assert t["count"] == 1
+    assert t["transcript_path"] == str(t_file)
+    assert t["transcript_bytes"] == t_file.stat().st_size
+    assert t["event_count"] == 3

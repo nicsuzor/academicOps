@@ -587,13 +587,45 @@ def _build_subagent(
     tokens_used, cost_usd, degraded = _accumulate_usage(entries, default_model=default_model)
     tool_use_id = meta.get("toolUseId")
     spawn_depth = meta.get("spawnDepth")
+    events = _entries_to_events(entries)
+
+    # Deduplicate inter-agent message echoes against parent events
+    parent_event_ids = {e.event_id for e in parent_events if e.event_id}
+    deduped_events = []
+    for ev in events:
+        if ev.event_id and ev.event_id in parent_event_ids:
+            continue
+        deduped_events.append(ev)
+
+    # Description resolution with unlinked subagent fallback
+    desc = meta.get("description") or _describe_from_parent(parent_events, tool_use_id)
+    if not desc:
+        agent_type = meta.get("agentType")
+        for ev in parent_events:
+            for call in ev.tool_calls or ():
+                args = call.args or {}
+                call_agent = args.get("subagent_type") or args.get("name") or call.name
+                if call_agent and (call_agent == agent_type or call_agent == agent_id):
+                    d = args.get("description") or args.get("prompt")
+                    if d:
+                        desc = str(d)
+                        break
+            if desc:
+                break
+    if not desc and deduped_events:
+        for ev in deduped_events:
+            if ev.content and ev.content.strip():
+                first_line = ev.content.strip().splitlines()[0]
+                desc = first_line[:77] + "..." if len(first_line) > 80 else first_line
+                break
+
     return SubagentTranscript(
         agent_id=agent_id,
         source_file=source_file,
-        events=_entries_to_events(entries),
+        events=deduped_events,
         agent_type=meta.get("agentType"),
         name=meta.get("name"),
-        description=meta.get("description") or _describe_from_parent(parent_events, tool_use_id),
+        description=desc,
         parent_tool_use_id=tool_use_id,
         parent_agent_id=meta.get("parentAgentId"),
         tokens_used=tokens_used,
@@ -649,6 +681,8 @@ def load_subagent_transcripts(
             for entry in transcript.entries
             if str(getattr(entry, "agentId", "") or agent_id) == agent_id
         ]
+        if not own and transcript.entries:
+            own = transcript.entries
         subagents.append(_build_subagent(agent_id, path, own, parent_events))
         seen.add(agent_id)
 

@@ -321,8 +321,8 @@ def rule_check(ctx: HookContext) -> Result | None:
 
 
 HANDLERS = {
-    # "PreToolUse": [evaluate],
-    # "UserPromptSubmit": [inject_ruleset],
-    # "Stop": [rule_check],
-    # "SubagentStop": [rule_check],
+    "PreToolUse": [evaluate],
+    "UserPromptSubmit": [inject_ruleset],
+    "Stop": [rule_check],
+    "SubagentStop": [rule_check],
 }

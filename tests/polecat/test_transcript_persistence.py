@@ -103,6 +103,9 @@ def test_polecats_own_jsonl_files_are_not_mistaken_for_a_transcript(tmp_path):
         "path": None,
         "bytes": None,
         "count": 0,
+        "transcript_path": None,
+        "transcript_bytes": None,
+        "event_count": 0,
     }
 
 
@@ -120,6 +123,9 @@ def test_transcript_evidence_names_the_substantive_transcript(tmp_path):
     assert evidence["path"] == str(big)
     assert evidence["bytes"] == big.stat().st_size > 0
     assert evidence["count"] == 2
+    assert evidence["transcript_path"] == str(big)
+    assert evidence["transcript_bytes"] == big.stat().st_size
+    assert evidence["event_count"] > 0
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +270,12 @@ def test_run_record_names_the_transcript_a_run_persisted(tmp_path, monkeypatch):
     transcript = Path(record["transcript"]["path"])
     assert transcript.is_file(), f"run.json names a transcript that does not exist: {transcript}"
     assert record["transcript"]["bytes"] == transcript.stat().st_size > 0
-    assert not any(d.get("what") == "transcript" for d in record["degraded"])
+    assert record["transcript"]["transcript_path"] == str(transcript)
+    assert record["transcript"]["transcript_bytes"] == transcript.stat().st_size
+    assert record["transcript"]["event_count"] == 2
+    assert not any(
+        d.get("what") in ("transcript", "transcript_missing") for d in record["degraded"]
+    )
 
 
 def test_a_run_that_persisted_nothing_is_not_indistinguishable_from_one_that_did(
@@ -281,8 +292,17 @@ def test_a_run_that_persisted_nothing_is_not_indistinguishable_from_one_that_did
     assert result.exit_code == 0, result.output
 
     record = _the_run_record(tmp_path)
-    assert record["transcript"] == {"found": False, "path": None, "bytes": None, "count": 0}
-    assert any(d.get("what") == "transcript" for d in record["degraded"])
+    assert record["transcript"] == {
+        "found": False,
+        "path": None,
+        "bytes": None,
+        "count": 0,
+        "transcript_path": None,
+        "transcript_bytes": None,
+        "event_count": 0,
+    }
+    assert record["status"] == "degraded"
+    assert any(d.get("what") == "transcript_missing" for d in record["degraded"])
 
 
 def test_transcript_is_recorded_even_when_the_container_failed(tmp_path, monkeypatch):
@@ -428,10 +448,15 @@ def test_a_real_claude_container_persists_a_transcript_to_the_host(live_claude_d
     )
     transcript = Path(record["transcript"]["path"])
     assert transcript.is_file()
+    assert record["transcript"]["transcript_path"] == str(transcript)
+    assert record["transcript"]["transcript_bytes"] == transcript.stat().st_size
     # Fat, not a stub — a truncated or placeholder write must fail loudly.
     assert transcript.stat().st_size >= 1_000, f"{transcript} is only {transcript.stat().st_size}B"
+    assert record["transcript"]["transcript_bytes"] >= 1_000
     lines = [line for line in transcript.read_text().splitlines() if line.strip()]
     assert lines, f"{transcript} is empty"
+    assert record["transcript"]["event_count"] == len(lines)
+    assert record["transcript"]["event_count"] > 0
     assert isinstance(json.loads(lines[-1]), dict), (
         f"last line of {transcript} is not a JSON object"
     )
