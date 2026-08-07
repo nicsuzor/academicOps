@@ -23,12 +23,25 @@ def live_elements(doc):
     return [e for e in doc.get("elements", []) if not e.get("isDeleted")]
 
 
+def element_text(e):
+    """What a text element actually says.
+
+    `text` is the wrapped copy Excalidraw paints; `originalText` is the
+    unwrapped source it re-wraps `text` from on the next layout pass, which
+    makes `originalText` the one that survives. On a file damaged by a writer
+    that set `text` alone, `text` holds a label that is already doomed — so
+    read `originalText` and report what will still be there. `excalidraw-view.py
+    check` fails the file when the two disagree.
+    """
+    return e.get("originalText") or e.get("text", "") or ""
+
+
 def get_label(e, by_id):
     if e.get("type") == "text":
-        return e.get("text", "").replace("\n", " / ")
+        return element_text(e).replace("\n", " / ")
     for b in e.get("boundElements") or []:
         if b.get("type") == "text" and b["id"] in by_id:
-            return by_id[b["id"]].get("text", "").replace("\n", " / ")
+            return element_text(by_id[b["id"]]).replace("\n", " / ")
     return ""
 
 
@@ -247,7 +260,7 @@ def cmd_render(doc_path, args):
             )
             ax.add_patch(rect)
         elif etype == "text":
-            txt = e.get("text", "")
+            txt = element_text(e)
             ax.text(x, y, txt, fontsize=8, verticalalignment="top", color="#1a1a1a", wrap=True)
         elif etype == "arrow":
             points = e.get("points", [])
