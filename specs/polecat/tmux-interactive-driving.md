@@ -94,8 +94,10 @@ trust this folder") before sending any real prompt.
 
 ## Log & artifact locations
 
-There are two distinct places to look, and they answer different questions.
-See [[polecat-system]] for what the CLI is doing when it writes to either.
+There are three distinct places to look, and they answer different questions.
+The first two are host views; the third is the only one a process running inside
+the container can reach. See [[polecat-system]] for what the CLI is doing when it
+writes to any of them.
 
 ### 1. User-facing: the live pane (what the agent/human sees)
 
