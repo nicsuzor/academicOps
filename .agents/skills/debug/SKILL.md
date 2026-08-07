@@ -23,14 +23,14 @@ Spawn independent agents from `Bash` in the background. Do not poll and do not s
 
 - **A dispatchable task is yours to produce.** `dispatch` takes tasks that are fully specified and `queued`. A task you left at `inbox` is not dispatchable, and that is a defect in how you created it, not in the skill. Set the status and properties correctly, then dispatch. Amend `dispatch`'s own instructions only when the task record genuinely cannot carry the fix.
 - **Build the image before you dispatch, never inside it.** `dispatch` forbids rebuilding because its job is to _detect_ staleness, not to repair it. That is a bar on rebuilding _there_, not a bar on rebuilding. The loop is `make docker-build`, then dispatch against the fresh image.
-- **Never create a git worktree to sidestep a collision.** Delegate into the worktree you are already in, or into a container.
+- **Never create a git worktree.** Delegate into the worktree you are already in, or into a container. Spawning a worktree to sidestep a collision is a workaround, and you do not have authority to invent one.
 - **`git status` is not a cleanliness check.** The framework runs from `dist/`, which is gitignored. A worker that reverts tracked source and reports a clean tree can still have left its probe in every built artifact and in the image. Verify the surface that actually executes.
 
 ## Hold the run's acceptance criteria on a tracking record
 
 Before the worker returns, create a tracking task in the PKB naming what was dispatched, the output expected, and how you will test it against the acceptance criteria that apply. Give it a parent. Find those criteria while the worker runs — a spec you cannot locate in `specs/` or the PKB within a few calls is itself a framework failure, and that is the finding.
 
-On completion: claim the record, review the output against those criteria, and write your assessment onto it. Check that the worker updated its own task honestly and correct the record where it did not. Where the run produced a significant failure or an unexpected success, `learn` is what turns it into a lesson.
+On completion: claim the record, review the output against those criteria, and write your assessment onto it. Check that the worker updated its own task honestly, and correct the record where it did not — or reassign the work where the record cannot be corrected into a true one. Where the run produced a significant failure or an unexpected success, `learn` is what turns it into a lesson.
 
 ## Before you drive anything, find out what is already known
 
@@ -51,6 +51,14 @@ state note is worse than none, because it reads as current.
 — MCP, skills, subagent dispatch, permissions — and prints PASS/FAIL per cell.
 Both take the client as their first argument, so the same command covers both
 surfaces. Run them once per client; a pass on one is no evidence for the other.
+They cover MCP reachability, skill resolution, subagent dispatch and
+permissions; whether the plugins are installed at all is `make docker-smoke-test`.
+
+**Re-run an agy failure without `--agent` before you believe it.** If a probe
+fails under `--agent <name>` and passes without it, the agent definition is what
+is broken, not the surface — that difference is the signature of open defect
+[#2387](https://github.com/nicsuzor/academicOps/issues/2387), and it is the only
+cheap way to recognise it.
 
 **Never score a capability on what the agent says.** Ask an agent for a
 server's output and it will grep that output out of any file lying around —

@@ -62,6 +62,25 @@ Each was already stated at an equal or higher authority:
 Rex's manual connectivity probe was likewise dropped in favour of `debug`'s
 scripted probes, which test the same thing and score it from the tool-call record.
 
+Three further drops, recorded because a deletion missing from this section is
+attrition rather than a decision:
+
+- **`learn` running asynchronously in the background.** The obligation to turn a
+  significant failure or unexpected success into a lesson survives in `debug`;
+  the instruction to run it in the background did not. Reason: `.agents/CORE.md`'s
+  "Outcome-oriented delegation" — specify what needs doing and the constraints,
+  not the execution path.
+- **The "search blindly or work around errors and you have already failed"
+  block.** Covered twice over: `.agents/CORE.md`'s "Fail fast" carries
+  stop-and-report, and `dogfood`'s "A halt is a result" carries the harder half —
+  that not having correct instructions at the moment they were needed is the
+  defect class the protocol exists to catch.
+- **The explicit-request gate on driving a session interactively.** Rex's charter
+  admitted interactive observation only on the user's explicit request, and
+  nothing in the merged text reinstates that gate. **No reason is recorded for
+  this one.** It was lost in condensation rather than decided, and it is named
+  here so the next reader can decide it deliberately rather than inherit it.
+
 ## Two tensions this resolves, and one it does not
 
 **Resolved — halt versus repair.** Rex's charter told the reader both to halt on
@@ -69,6 +88,11 @@ all errors without searching for a solution, and that a blocked route is work
 rather than an excuse. In `dogfood` these are separated by whose run is blocked:
 a halt in the _subject_ under test is the finding and is left blocked; a
 sanctioned path that will not carry _your own_ job is a repair you owe.
+
+This separates the two rules; it does not lower the halt. Halt-and-report remains
+rex's default on hitting an error, stated in its own charter, and the repair
+doctrine is the narrow exception to it — a route that will not carry the job at
+all — never a licence to debug every failure encountered.
 
 **Resolved — supervision versus mode 1.** "Do none of the work yourself" would
 break `dogfood` mode 1, where doing the work is the trial. The supervision

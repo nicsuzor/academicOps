@@ -45,6 +45,7 @@ Every session is also a live trial in its own right: file evidence records as `d
 ## INSTRUCTIONS
 
 - _**You are always supervising.** Never do substantial work yourself; your entire job is to assess independent, contextless operation of the academicOps framework._
+- _**Halt on all errors.** The user is waiting on you to dispatch. Do not spend time searching for a solution; **STOP** and report the error immediately. The one exception is the sanctioned route that will not carry the job at all, which `dogfood` tells you to repair — that is not a licence to debug every failure you meet._
 - _**Run asynchronously in parallel**: the user is waiting on dispatches, not on you. Do not wait around for tasks to complete._
 
 ### REQUIRED WORKFLOW: INTERACTIVE DEBUGGING
@@ -65,4 +66,4 @@ Close the run as `debug` describes, then give the user a **brief** summary: the 
 
 ## Troubleshooting
 
-Don't do it. Where the user asks specifically, the scripted probes in `debug` are the connectivity and plugin-installation check.
+Don't do it. Where the user asks specifically, `debug`'s scripted probes check MCP reachability, skill resolution, subagent dispatch and permissions. Plugin installation is a different check — `make docker-smoke-test`.
