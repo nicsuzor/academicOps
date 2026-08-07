@@ -39,10 +39,23 @@ def live(doc):
     return [e for e in doc["elements"] if not e.get("isDeleted")]
 
 
+def element_text(e):
+    """What a text element actually says.
+
+    `text` is the wrapped copy Excalidraw paints; `originalText` is the
+    unwrapped source it re-wraps `text` from on the next layout pass, which
+    makes `originalText` the one that survives. On a file damaged by a writer
+    that set `text` alone, `text` holds a label that is already doomed — so
+    read `originalText` and report what will still be there. `check` fails the
+    file when the two disagree, so a caller that ran it is not choosing blind.
+    """
+    return e.get("originalText") or e.get("text", "") or ""
+
+
 def label_of(e, texts):
     for b in e.get("boundElements") or []:
         if b.get("type") == "text" and b["id"] in texts:
-            return texts[b["id"]].get("text", "").replace("\n", " / ")
+            return element_text(texts[b["id"]]).replace("\n", " / ")
     return ""
 
 
@@ -69,7 +82,7 @@ def cmd_map(doc):
             t = (e.get("endBinding") or {}).get("elementId", "-")
             print(f"{e['id']}\tarrow\t{s} -> {t}")
         elif e["type"] == "text":
-            body = e.get("text", "").replace("\n", " / ")
+            body = element_text(e).replace("\n", " / ")
             print(f"{e['id']}\ttext\t{e['x']:.0f},{e['y']:.0f}\t{body}")
         else:
             geo = f"{e['x']:.0f},{e['y']:.0f}\t{e['width']:.0f}x{e['height']:.0f}"
@@ -126,6 +139,19 @@ def cmd_check(doc):
         for b in e.get("boundElements") or []:
             if b["id"] not in by_id:
                 fails.append(f"{e['id']}.boundElements -> missing element {b['id']}")
+        # `text` is the wrapped copy Excalidraw paints; `originalText` is the
+        # unwrapped source it re-wraps from. They may differ in line breaks, never
+        # in words. When they differ in content, a writer set one layer only: the
+        # element now holds two readings, one of them invisible, and the next
+        # editor layout silently reinstates `originalText` over whatever `text`
+        # says. Compared on whitespace-normalised words so wrapping alone is fine.
+        t, o = e.get("text"), e.get("originalText")
+        if t is not None and o is not None and t.split() != o.split():
+            fails.append(
+                f"{e['id']}: text and originalText disagree in content, not just wrapping — "
+                f"one layer is invisible and will be overwritten by the other on next layout "
+                f"(text={t[:60]!r} originalText={o[:60]!r})"
+            )
     if fails:
         print("FAIL")
         for f in fails:
@@ -194,7 +220,7 @@ def cmd_diff(doc1, args):
         print(f"\nDisappeared elements ({len(removed_ids)}):")
         for rid in sorted(removed_ids):
             e = by_id1[rid]
-            lbl = label_of(e, texts1) or e.get("text", "").replace("\n", " / ")
+            lbl = label_of(e, texts1) or element_text(e).replace("\n", " / ")
             lbl_str = f" label={lbl!r}" if lbl else ""
             print(f"  - [{e['type']} {rid}]{lbl_str} pos=({e.get('x', 0):.0f},{e.get('y', 0):.0f})")
 
@@ -203,7 +229,7 @@ def cmd_diff(doc1, args):
         print(f"\nAdded elements ({len(added_ids)}):")
         for aid in sorted(added_ids):
             e = by_id2[aid]
-            lbl = label_of(e, texts2) or e.get("text", "").replace("\n", " / ")
+            lbl = label_of(e, texts2) or element_text(e).replace("\n", " / ")
             lbl_str = f" label={lbl!r}" if lbl else ""
             print(f"  - [{e['type']} {aid}]{lbl_str} pos=({e.get('x', 0):.0f},{e.get('y', 0):.0f})")
 
@@ -212,8 +238,8 @@ def cmd_diff(doc1, args):
     for cid in sorted(common_ids):
         e1, e2 = by_id1[cid], by_id2[cid]
         changes = []
-        if e1.get("text") != e2.get("text"):
-            changes.append(f"text: {e1.get('text', '')!r} -> {e2.get('text', '')!r}")
+        if element_text(e1) != element_text(e2):
+            changes.append(f"text: {element_text(e1)!r} -> {element_text(e2)!r}")
         dx = abs(e1.get("x", 0) - e2.get("x", 0))
         dy = abs(e1.get("y", 0) - e2.get("y", 0))
         if dx > 1 or dy > 1:
@@ -229,7 +255,7 @@ def cmd_diff(doc1, args):
         if e1.get("backgroundColor") != e2.get("backgroundColor"):
             changes.append(f"bg: {e1.get('backgroundColor')} -> {e2.get('backgroundColor')}")
         if changes:
-            lbl = label_of(e1, texts1) or e1.get("text", "").replace("\n", " / ") or cid
+            lbl = label_of(e1, texts1) or element_text(e1).replace("\n", " / ") or cid
             mods.append(f"  - [{e1['type']} {cid}] ({lbl!r}): " + "; ".join(changes))
 
     if mods:
