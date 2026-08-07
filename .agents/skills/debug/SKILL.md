@@ -8,6 +8,33 @@ description: Use when asked to "debug a polecat", "run a polecat container inter
 Spin up a real `polecat run` container under `tmux` and interact with it live.
 Mechanics and gotchas: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
 
+## Before you drive anything, find out what is already known
+
+Search the PKB for a current-state note on the surfaces you are about to test —
+which ones were last observed working, which were failing, and against which
+build. Someone has usually already spent a session establishing that, and a
+matrix you re-derive by hand is a matrix you pay for twice.
+
+Read what you find as an observation with a date on it, not as fact: it was true
+of the build it names. Re-run the cells you are about to rely on, and when you
+finish, rewrite that note rather than adding a second one beside it. A stale
+state note is worse than none, because it reads as current.
+
+## Scripted probes
+
+[`scripts/probe.sh`](scripts/probe.sh) drives one question;
+[`scripts/matrix-probe.sh`](scripts/matrix-probe.sh) drives a capability matrix
+— MCP, skills, subagent dispatch, permissions — and prints PASS/FAIL per cell.
+Both take the client as their first argument, so the same command covers both
+surfaces. Run them once per client; a pass on one is no evidence for the other.
+
+They exist because a hand-driven walk is slow enough that it gets run once and
+believed thereafter. Read their environment contract before the first run: tmux
+does not inherit a fresh environment, so every variable a plugin's MCP server
+command interpolates has to be written into the launch script. A server that
+never starts because its endpoint variable arrived empty looks exactly like a
+server that is refusing you.
+
 ## Spin up
 
 Resolve the checkout under test first, and spell it out in every command. Never
