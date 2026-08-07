@@ -868,13 +868,19 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             # A dispatched worker is supposed to boot as DEFAULT_AGENT on every
             # client; that is what claude does two branches up, and it is what
             # gives a worker this framework's doctrine instead of a stock
-            # assistant. agy currently cannot honour it: under `--agent <name>`
-            # it hands the agent a fixed toolset — `find_by_name`,
+            # assistant. It does not hold on agy today: every agent this repo
+            # builds — james, rbg and pauli were tested — comes up under
+            # `--agent <name>` with a fixed toolset (`find_by_name`,
             # `generate_image`, `grep_search`, `list_dir`, `read_url_content`,
-            # `schedule`, `search_web`, `send_message`, `view_file` — with no
-            # `call_mcp_tool`, no write and no shell, whatever the agent's own
-            # definition says. Defaulting agy to james therefore shipped a
-            # worker that could reach no MCP server and change nothing.
+            # `schedule`, `search_web`, `send_message`, `view_file`) and no
+            # `call_mcp_tool`, no write, no shell. Defaulting agy to james
+            # therefore shipped a worker that reached no MCP server and changed
+            # nothing.
+            #
+            # Whether the cause is agy's `--agent` handling or our own build
+            # adapter is NOT established: no agy-native agent definition was
+            # tested, and the `includeSections` whitelist injected by
+            # `build/clients/agy.py` is an untested suspect.
             #
             # So agy is left on its own default agent, which has the full tool
             # set but none of our persona. That is a downgrade we are carrying,

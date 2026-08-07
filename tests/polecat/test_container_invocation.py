@@ -229,11 +229,13 @@ def test_agy_carries_the_no_default_agent_mitigation_for_issue_2387(tmp_path, mo
     """Pins a TEMPORARY MITIGATION, not the intended contract (#2387).
 
     Every dispatched worker should boot as `DEFAULT_AGENT`, on every client.
-    agy cannot honour that yet: under `--agent <name>` it hands the agent a
-    fixed toolset with no `call_mcp_tool`, no write and no shell, so defaulting
-    agy to james shipped a worker that reached no MCP server and changed
-    nothing. Until #2387 closes, agy runs on its own default agent — full
-    tools, none of our persona.
+    That does not hold on agy today: every agent this repo builds — james, rbg
+    and pauli were tested — comes up under `--agent <name>` with a fixed
+    toolset and no `call_mcp_tool`, no write, no shell, so defaulting agy to
+    james shipped a worker that reached no MCP server and changed nothing.
+    Whether the cause is agy or our own build adapter is not established.
+    Until #2387 closes, agy runs on its own default agent — full tools, none of
+    our persona.
 
     When #2387 closes, delete this test and add `agy` back to
     `test_claude_boots_as_the_default_agent`. Do not extend or entrench it.

@@ -85,15 +85,22 @@ make format         # ruff format + dprint fmt
 
 Headless agy runs use `agy --output-format stream-json -p "<prompt>"`.
 
-**Open defect, 2026-08-07 — agy has no agent parity with claude ([#2387]).**
-Under `--agent <name>`, agy hands the agent a fixed toolset — `find_by_name`,
-`generate_image`, `grep_search`, `list_dir`, `read_url_content`, `schedule`,
-`search_web`, `send_message`, `view_file` — with no `call_mcp_tool`, no write
-and no shell, whatever the agent's own definition says. So the personas that
-carry this framework's doctrine cannot currently run work on agy at all. That
-is the bug to fix, not a shape to design around: until it closes, an agy run
-that drops `--agent` is a **temporary mitigation** and the persona it should
-have had is still owed. A worker that reads and greps and then dies with
+**Open defect, 2026-08-07 — no agent parity on agy ([#2387]).** Every agent
+_this repo builds_ — james, rbg and pauli were tested — comes up under
+`--agent <name>` with a fixed toolset (`find_by_name`, `generate_image`,
+`grep_search`, `list_dir`, `read_url_content`, `schedule`, `search_web`,
+`send_message`, `view_file`): no `call_mcp_tool`, no write, no shell. An
+unnamed agy run gets the full set. So the personas that carry this framework's
+doctrine cannot currently run work on agy.
+
+**The cause is not isolated.** It has not been shown to be agy's `--agent`
+mechanism: no agy-native or hand-written agent definition was tested, so our
+own build adapter is an equally live suspect — in particular the
+`includeSections` whitelist injected at `build/clients/agy.py`. That
+hypothesis was dismissed earlier on evidence since shown worthless and has
+**not** been re-tested. Until the cause is isolated, an agy run that drops
+`--agent` is a **temporary mitigation** and the persona it should have had is
+still owed. A worker that reads and greps and then dies with
 `trajectory converted to zero chat messages` at exit 0 had no write tool — read
 that as this defect, not as a crash to retry verbatim.
 
