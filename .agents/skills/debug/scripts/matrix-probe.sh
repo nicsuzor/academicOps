@@ -87,9 +87,12 @@ PY
 
 mcp_cell() {
   echo "--- MCP ---"
-  send "call a read-only tool on your pkb mcp server and report one fact from its reply."
-  wait_for 'build_profile|version|●|⎿' 24 >/dev/null
-  sleep 5
+  # Name the tool and forbid file reads. Asked vaguely for "one fact", the
+  # model satisfies the request by grepping — which scores as a refusal to call
+  # rather than as an inability to, and the two are not the same finding.
+  send "call get_stats on the services mcp server and report the total node count. do not read any file."
+  wait_for 'node count|Node Count|Orphan|●|⎿' 24 >/dev/null
+  sleep 8
   if calls=$(mcp_called); then
     echo "MCP: PASS ($calls tool-call records)"
   else

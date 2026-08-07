@@ -847,7 +847,14 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             "--dangerously-skip-permissions",
             "--log-file",
             "/home/worker/.gemini/antigravity-cli/cli.log",
-            *_default_agent_args(extra_args),
+            # No default agent for agy. Naming an agent with `--agent` hands it
+            # a fixed, restricted toolset — `find_by_name`, `generate_image`,
+            # `grep_search`, `list_dir`, `read_url_content`, `schedule`,
+            # `search_web`, `send_message`, `view_file` — with no
+            # `call_mcp_tool`, so a named agy agent reaches no MCP server at
+            # all, whatever its plugin declares. agy's own default agent gets
+            # the full set. A caller who passes `--agent` still wins and takes
+            # that restriction on knowingly.
         ]
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
