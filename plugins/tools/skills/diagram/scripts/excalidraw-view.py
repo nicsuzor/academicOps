@@ -126,6 +126,19 @@ def cmd_check(doc):
         for b in e.get("boundElements") or []:
             if b["id"] not in by_id:
                 fails.append(f"{e['id']}.boundElements -> missing element {b['id']}")
+        # `text` is the wrapped copy Excalidraw paints; `originalText` is the
+        # unwrapped source it re-wraps from. They may differ in line breaks, never
+        # in words. When they differ in content, a writer set one layer only: the
+        # element now holds two readings, one of them invisible, and the next
+        # editor layout silently reinstates `originalText` over whatever `text`
+        # says. Compared on whitespace-normalised words so wrapping alone is fine.
+        t, o = e.get("text"), e.get("originalText")
+        if t is not None and o is not None and t.split() != o.split():
+            fails.append(
+                f"{e['id']}: text and originalText disagree in content, not just wrapping — "
+                f"one layer is invisible and will be overwritten by the other on next layout "
+                f"(text={t[:60]!r} originalText={o[:60]!r})"
+            )
     if fails:
         print("FAIL")
         for f in fails:

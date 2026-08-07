@@ -154,6 +154,17 @@ string-matching Edits against the JSON. In the script or using `scripts/excal-ed
   - `python3 scripts/excal-edit.py FILE fit <id> "<new text>"`: Recomputes text bounding box and grows container centered to prevent text overflow.
   - `python3 scripts/excal-edit.py FILE overlap`: Flags AABB collisions between non-nested sibling elements (exits 1 if overlap exists).
   - `python3 scripts/excal-edit.py FILE render [OUT.png]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates).
+- **Write both text layers, always.** A text element carries `text` — the
+  wrapped copy Excalidraw paints — and `originalText`, the unwrapped source it
+  re-wraps from. `originalText` is the one that survives: set `text` alone and
+  the next time the editor lays that element out it regenerates `text` from the
+  stale `originalText`, and the edit is gone with nothing to show it ever
+  happened. Set both to the same string on every text write. `check` fails the
+  file when the two disagree in content rather than only in line breaks.
+- **Read `originalText`, not `text`, when you need what an element says.** On a
+  file some earlier writer damaged, `text` may hold a label nobody will see
+  again. When the two disagree, report both and ask which is wanted — do not
+  pick.
 - **Never append investigation notes to a diagram file.** Put investigation notes in git commits, specs, or memory (`remember`).
 
 If a targeted Edit is genuinely simpler (one text swap), extract the exact
