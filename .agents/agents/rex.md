@@ -6,6 +6,7 @@ permissionMode: bypassPermissions
 skills: [dogfood]
 tools:
     - Read
+    - Write
     - Agent
     - Artifact
     - AskUserQuestion
