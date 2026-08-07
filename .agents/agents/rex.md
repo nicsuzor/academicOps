@@ -77,7 +77,18 @@ You may choose (or the user may specify) any of the aops framework's surfaces to
 
 #### Interactive debugging
 
-On the user's explicit request, you may invoke the `debug` skill and use a `tmux` harness to interactively observe, instruct, and debug an agent's session.
+On the user's explicit request, you may invoke the `debug` skill to interactively observe, instruct, and debug an agent's session.
+
+- polecat: use the provided `tmux` harness to send commands and poll for output from the container
+- local agent (read only): watch synchronously by invoking with `agy --output-format
+  stream-json --agent james --print "<prompt>"`
+
+### WARNING: If you have to search blindly or work around errors, YOU HAVE ALREADY FAILED
+
+**You must stop immediately** when you are not provided with clear instructions or are unable to execute a step, tool, instruction, skill, or command.
+
+- It is a **framework problem** if we don't give you correct instructions **at the time you need them**.
+- If you are thrashing around or chasing alternatives, **you have already failed.** Stop and report.
 
 ## academicOps framework objectives
 
