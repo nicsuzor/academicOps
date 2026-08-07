@@ -9,7 +9,7 @@ The transcript pipeline is responsible for:
 - Ingesting raw JSONL session logs from Claude Code and agy clients.
 - Normalizing them into a single, unified data model.
 - Performing domain analysis (slugs, context classification, event timestamps, correlation, insights).
-- Generating three structured output artifacts per session.
+- Generating five structured output artifacts per session.
 - Committing and pushing session transcripts to the central sessions repository named by `AOPS_SESSIONS`. There is no default: the repository is site-specific, so an unset variable is a hard error rather than a guessed path.
 
 ### Excluded Scope
@@ -159,11 +159,21 @@ touches.
 
 ## 4. Output Formats
 
-Every processed session produces three outputs in the sessions repository under the `transcripts/YYYY-MM/` directory:
+Every processed session produces five outputs in the sessions repository under the `transcripts/YYYY-MM/` directory — three Markdown tiers that differ in what they carry, plus the HTML and the sidecar:
 
-1. **Markdown (+ YAML Front-matter):** A clean document showing the chronological conversation timeline, prefixed with metadata front-matter (session ID, slug, timestamps, user context, correlation targets).
-2. **HTML:** A beautiful, responsive, standalone dark-mode formatted document containing styled blocks for user prompts, thinking processes, assistant messages, and tool outputs.
-3. **JSON Sidecar:** A complete machine-readable metadata file containing the front-matter attributes, event counts, extracted insights, and list of user prompts (enabling rapid search indexing).
+1. **`.md` — summary (+ YAML Front-matter):** An index of the session. Front-matter (session ID, slug, timestamps, user context, correlation targets), the insights block, a subagent index, and a capped event table that points at the fuller tiers for anything it elides.
+2. **`.controller.md` — the controlling agent:** The trunk conversation event by event, without the sidechains. What the session's own agent said and did.
+3. **`.full.md` — everything:** The trunk plus every subagent conversation expanded event by event. The only artifact that claims to be complete.
+4. **HTML:** A responsive, standalone dark-mode document containing styled blocks for user prompts, thinking processes, assistant messages, and tool outputs.
+5. **JSON Sidecar:** A machine-readable metadata file containing the front-matter attributes, event counts, extracted insights, and the list of user prompts (enabling rapid search indexing).
+
+### Escaping and redaction
+
+Redaction runs at a single chokepoint, where `runner.py` writes each artifact, so a renderer added later cannot ship an unredacted format by forgetting to call it.
+
+That places one constraint on the renderers: **the Markdown tiers carry text verbatim.** Markdown is not HTML, and escaping it there does two kinds of damage — it turns the body of a fenced code block into `&lt;`-noise, and, once `"` becomes `&quot;`, the redactor no longer recognises `"KEY": "value"`, so a key-named credential with no distinctive token shape survives into the shipped file. Sanitising is owed by whatever renders this Markdown into HTML, which is the layer that knows it is building a DOM.
+
+The HTML tier is the exception and escapes everything it interpolates, attributes included. Because escaping there would hide the same `"KEY": "value"` shape from the chokepoint, the HTML path redacts _before_ it escapes; the chokepoint's pass then stands as defence in depth rather than as the only line.
 
 ### Where delegated work lands
 
