@@ -137,7 +137,19 @@ USER worker
 
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
-    PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH"
+    PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
+    ANTIGRAVITY_ENABLE_TELEMETRY=1 \
+    CLAUDE_CODE_ENABLE_TELEMETRY=1 \
+    CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 \
+    ENABLE_BETA_TRACING_DETAILED=1 \
+    OTEL_METRICS_EXPORTER=otlp \
+    OTEL_LOGS_EXPORTER=otlp \
+    OTEL_TRACES_EXPORTER=otlp \
+    OTEL_EXPORTER_OTLP_PROTOCOL=grpc \
+    OTEL_LOG_USER_PROMPTS=1 \
+    OTEL_LOG_ASSISTANT_RESPONSES=1 \
+    OTEL_LOG_TOOL_DETAILS=1 \
+    OTEL_LOG_TOOL_CONTENT=1
 
 # Install Claude Code via native installer — npm package lacks the full binary
 # and causes .claude.json config migration issues on startup.
@@ -272,33 +284,39 @@ RUN umask 000 \
     && echo "Installing plugins: $(echo $PLUGINS)" \
     && claude plugin marketplace add "$MP_ROOT" \
     && claude plugin marketplace update "$MP_NAME" \
-    && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME" || exit 1; done \
+    && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME"; done \
     && jq --arg mp "$MP_NAME" --arg plugins "$PLUGINS" \
         '.enabledPlugins = ($plugins | split("\n") | map(select(length > 0)) | map({key: (. + "@" + $mp), value: true}) | from_entries) | del(.extraKnownMarketplaces)' \
         /home/worker/.claude/settings.json > /tmp/settings.json \
     && mv /tmp/settings.json /home/worker/.claude/settings.json \
     && chmod -R a+rwX /home/worker/.claude \
-    && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
     && jq -n --arg plugins "$PLUGINS" \
-        '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/antigravity-cli/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
+        '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/config/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
         > /home/worker/.gemini/trustedFolders.json \
+    && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
     && for p in $PLUGINS; do \
         src="$MP_ROOT/$p-agy"; \
         { [ -d "$src" ] || { echo "FATAL: $p is declared in the marketplace but has no agy build at $src" >&2; exit 1; }; } \
-        && cp -r "$src" "/home/worker/.gemini/antigravity-cli/plugins/$p" \
-        && agy plugin install "/home/worker/.gemini/antigravity-cli/plugins/$p" \
-        || exit 1; \
+        && agy plugin install "$src"; \
     done \
     && chmod -R a+rwX /home/worker/.gemini \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
     && mkdir -p /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin \
     && cp "$MP_ROOT"/.claude-plugin/marketplace.json /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin/marketplace.json \
-    && rm -rf /tmp/aops-dist \
+    # keep for now && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
 
 # No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
 # scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
 # `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
+#
+# Warm uv's cache with that command's dependencies. Cold, `uvx --from
+# fastmcp-slim[server]` resolves and downloads 67 packages on first use, which
+# runs past the window a client waits for an MCP server to hand back its tool
+# list — the server is left starting, no tools are declared, and the agent
+# reports the MCP server as unavailable rather than as slow. Resolving them at
+# build time makes the runtime start a cache hit. No URL is involved.
+RUN uvx --from 'fastmcp-slim[server]' fastmcp --version >/dev/null 2>&1 || true
 
 # Install the default ccstatusline config. Claude Code's own settings.json is
 # installed before the plugin install above, which then writes the generated
@@ -325,6 +343,7 @@ COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-config.json /
 # agy analog of the Claude `hasCompletedOnboarding` seed above. Its cache dir
 # is pre-created in the batched mkdir further up.
 COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
+COPY --chown=worker:worker --chmod=666 build/docker/antigravity-cli-settings.json /home/worker/.gemini/antigravity-cli/settings.json
 
 # Copy entrypoint script
 COPY --chown=worker:worker --chmod=777 lib/polecat/entrypoint.sh /home/worker/entrypoint.sh

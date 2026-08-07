@@ -202,10 +202,12 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     corr_agy = infer_correlation(agy_session)
     insights_agy = infer_insights(agy_session)
 
-    md_agy, html_agy, sidecar_agy = render_session_to_all_formats(
+    controller_agy, full_md_agy, md_agy, html_agy, sidecar_agy = render_session_to_all_formats(
         agy_session, slug_agy, start_agy, mod_agy, end_agy, has_user_agy, corr_agy, insights_agy
     )
 
+    assert controller_agy.startswith("---")
+    assert full_md_agy.startswith("---")
     assert md_agy.startswith("---")
     assert "slug: " in md_agy
     assert "</html>" in html_agy
@@ -226,17 +228,21 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     corr_claude = infer_correlation(claude_session)
     insights_claude = infer_insights(claude_session)
 
-    md_claude, html_claude, sidecar_claude = render_session_to_all_formats(
-        claude_session,
-        slug_claude,
-        start_claude,
-        mod_claude,
-        end_claude,
-        has_user_claude,
-        corr_claude,
-        insights_claude,
+    controller_claude, full_md_claude, md_claude, html_claude, sidecar_claude = (
+        render_session_to_all_formats(
+            claude_session,
+            slug_claude,
+            start_claude,
+            mod_claude,
+            end_claude,
+            has_user_claude,
+            corr_claude,
+            insights_claude,
+        )
     )
 
+    assert controller_claude.startswith("---")
+    assert full_md_claude.startswith("---")
     assert md_claude.startswith("---")
     assert "slug: " in md_claude
     assert "</html>" in html_claude

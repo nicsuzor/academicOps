@@ -207,6 +207,119 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 
 
 # --------------------------------------------------------------------------
+# Default agent
+# --------------------------------------------------------------------------
+
+
+def test_claude_boots_as_the_default_agent(tmp_path, monkeypatch):
+    """A dispatched claude worker with no agent named must boot as the
+    orchestrator, not the generic assistant."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == cli.DEFAULT_AGENT
+
+
+def test_agy_carries_the_no_default_agent_mitigation_for_issue_2387(tmp_path, monkeypatch):
+    """Pins a TEMPORARY MITIGATION, not the intended contract (#2387).
+
+    Every dispatched worker should boot as `DEFAULT_AGENT`, on every client.
+    That does not hold on agy today: every agent this repo builds — james, rbg
+    and pauli were tested — comes up under `--agent <name>` with a fixed
+    toolset and no `call_mcp_tool`, no write, no shell, so defaulting agy to
+    james shipped a worker that reached no MCP server and changed nothing.
+    Whether the cause is agy or our own build adapter is not established.
+    Until #2387 closes, agy runs on its own default agent — full tools, none of
+    our persona.
+
+    When #2387 closes, delete this test and add `agy` back to
+    `test_claude_boots_as_the_default_agent`. Do not extend or entrench it.
+    """
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "agy", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+    )
+
+    assert "--agent" not in _inner_cmd(cmd)
+
+    chosen = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "agy", "-d", str(tmp_path / "repo"), "--", "--agent", "pauli"],
+    )
+    inner = _inner_cmd(chosen)
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "pauli"
+
+
+@pytest.mark.parametrize("agent_cmd", ["shell", "bash", "sleep", "some-other-tool"])
+def test_non_agent_commands_never_get_the_agent_flag(agent_cmd, tmp_path, monkeypatch):
+    """`--agent` means nothing to bash or sleep; a stray flag would break them."""
+    cmd = _capture_docker_cmd(
+        monkeypatch, tmp_path, ["run", agent_cmd, "-d", str(tmp_path / "repo")]
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--agent" not in inner
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_wins_over_the_default_for_claude(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--agent", "rbg", "hello"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_wins_over_the_default_for_agy(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "agy", "-d", str(tmp_path / "repo"), "--print", "hello", "--agent", "rbg"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_in_equals_form_is_not_duplicated(tmp_path, monkeypatch):
+    """`--agent=rbg` is one token, so a naive equality check would miss it and
+    the container would end up holding two conflicting personas."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--agent=rbg", "hello"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--agent" not in inner
+    assert inner.count("--agent=rbg") == 1
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_the_default_agent_name_appears_once_in_the_source():
+    """One constant, two branches. A second literal is a second place to change
+    it and a chance for the two clients to drift apart."""
+    source = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
+
+    assert source.count(f'"{cli.DEFAULT_AGENT}"') == 1
+
+
+# --------------------------------------------------------------------------
 # Credential isolation
 # --------------------------------------------------------------------------
 

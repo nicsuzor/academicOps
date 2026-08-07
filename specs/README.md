@@ -10,10 +10,12 @@
 ## Agents
 
 - [agents/agent-authority.md](agents/agent-authority.md) — permissions schema, tool naming, skill/sub-agent delegation.
+- [agents/supervision-split.md](agents/supervision-split.md) — where rex's supervision doctrine and execution material live, and why.
 
 ## Enforcement
 
-- [enforcement/enforcement.md](enforcement/enforcement.md) — governing principle and the seven enforcement mechanisms.
+- [ENFORCEMENT-MAP.md](ENFORCEMENT-MAP.md) — current-state register: every mechanism, what it obliges, and whether it is on.
+- [enforcement/enforcement.md](enforcement/enforcement.md) — governing principle, the four levers, and the five bands.
 - [enforcement/task-contract.md](enforcement/task-contract.md) — the work-unit contract (claim → release).
 - [enforcement/workflow.md](enforcement/workflow.md) — the five-step workflow shape and review-depth call.
 - [enforcement/sign-off.md](enforcement/sign-off.md) — release-unit-scale sign-off.

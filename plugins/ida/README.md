@@ -55,7 +55,7 @@ The sweep stays hers to commission for a reason that is not about tooling. Re-en
 
 Two floors, and they are different questions.
 
-**Is this a handback at all?** The evidence rule is `lib/doctrine/handback.md`, `@include`d into her body and written nowhere else in this plugin. A return that does not clear it is not a thin handback to be summarised charitably; it goes back to james rather than to the user — and she does not verify the claim, re-run the work, or fill the gap herself.
+**Is this a handback at all?** The evidence rule is written into her body, in `agents/ida.md` under "The rule against hearsay" and "You must evaluate logical completeness of reports": every load-bearing claim carries checkable evidence or a stated failure reason, and a report is judged for logical completeness against the question it was meant to answer. A return that does not clear it is not a thin handback to be summarised charitably; it goes back to james rather than to the user — and she does not verify the claim, re-run the work, or fill the gap herself.
 
 **Is this what was actually wanted?** She is the only layer holding the user's intent, and a brief carries the ask, never the ambition behind it. So she judges every delivered artifact against the intent, not against the brief it was written from — and blocks work that is correct-but-wrong, which is a planning failure and goes back to be replanned rather than into another fix loop. A worker's self-reported success is never rubber-stamped, and "fixed" means the originally-failing behaviour was observed passing, not that a diff exists.
 
@@ -87,8 +87,7 @@ No `userConfig` field. The agent, the skill and the hook read no environment var
 
 ## Depends on
 
-- `lib/doctrine/handback.md`, resolved by `@include` at build time — the doctrine is not copied into this plugin.
 - `lib/hooks/` for the hook runtime, injected at build time (`manifest/plugin.toml`).
 - The `orchestrate` plugin at runtime, for **james**, to whom she delegates everything substantive.
 - The `pkb` plugin at runtime, for **pauli**, who runs her engagement sweep and performs every write to the task graph.
-- The axioms in `lib/axioms/`, applied globally as rule context rather than inlined via `@include`.
+- The axioms in `lib/axioms/`, applied globally as rule context rather than copied into this plugin.

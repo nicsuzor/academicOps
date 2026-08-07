@@ -28,7 +28,7 @@ flowchart TD
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
 
         learn -. knowledge scope .-> remember
-        learn -. project scope .-> addrule(["rbg — skills/add-rule<br/>write the project rule"])
+        learn -. project scope .-> rules[["$CWD/.agents/rules/RULES.md<br/>the rule, written parked at trigger: off"]]
         learn -. task scope .-> pull
     end
 
@@ -56,13 +56,13 @@ The hook fires on every prompt and never calls the PKB itself. Establishing an
 MCP session on the critical path of every turn is not affordable, and a slow
 server would stall the turn. It emits one advisory message
 (`hooks/messages/pkb-context.md`, editable without touching code) naming three
-MCP tool calls to issue before answering — `search`, `task_search`,
-`retrieve_memory`. It names no skill and does not invoke `hydrate`.
+MCP tool calls to issue before answering — `pkb__search`, `pkb__task_search`,
+`pkb__retrieve_memory` (hosted under the `services` MCP server as `mcp__services__pkb__*`). It names no skill and does not invoke `hydrate`.
 
 Compliance is voluntary. The handler returns an advisory, which is context
 injection only; nothing reads back whether the agent searched. Agents can act on
 it because they hold the PKB tools directly — james, marsha, rbg and pauli all
-inherit the full MCP namespace. `ida` is the one agent whose declared `tools`
+inherit the full MCP namespace (including `services` / `mcp__services__pkb__*`). `ida` is the one agent whose declared `tools`
 exclude them, and the message covers that case: say the tools are unavailable
 and work from what is visible, rather than guessing at what the PKB would have
 said.

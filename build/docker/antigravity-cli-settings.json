@@ -1,0 +1,15 @@
+{
+  "trustedWorkspaces": [
+    "/workspace"
+  ],
+  "permissions": {
+    "allow": [
+      "mcp(services/*)",
+      "read_file(/workspace/*)",
+      "write_file(/workspace/*)",
+      "command(git *)",
+      "command(make *)",
+      "command(*)"
+    ]
+  }
+}

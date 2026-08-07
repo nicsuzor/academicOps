@@ -14,7 +14,7 @@ Two steps, and no third.
    argument, run `Skill(skill="hydrate")` and let it read the current turn for
    what to capture.
 
-2. Record **one** node at `status: inbox` with `create_task`, under the parent
+2. Record **one** node at `status: inbox` with `pkb__create_task` (or `mcp__services__pkb__create_task` under the `services` MCP server), under the parent
    it belongs to. Title it in the user's own words, and carry the ask verbatim
    plus hydrate's shortlist in the body. The shortlist is a list of ids, so it
    stays true as the graph moves — do not expand it into prose.

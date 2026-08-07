@@ -22,6 +22,7 @@
 !/specs/**
 !/tests/**
 !/templates/**
+!/build/**
 
 # Re-ignore unnecessary files in allowed directories
 **/__pycache__
