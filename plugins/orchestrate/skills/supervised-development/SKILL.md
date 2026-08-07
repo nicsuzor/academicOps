@@ -43,9 +43,11 @@ edited between attempts loses what the first attempt was actually told.
 
 Do not dispatch a brief missing any of goal, criteria, evidence accepted, or
 what already exists. On top of those, this loop's brief carries the probe
-verbatim and names the handback it will be judged against —
-[`honesty.md`](../../hooks/messages/honesty.md) is the shape this plugin already
-puts in front of every stopping worker.
+verbatim and states the handback shape it will be judged against —
+[`honesty.md`](../../hooks/messages/honesty.md) is the shape to require. State it
+in the brief rather than assuming the worker will be told: what a worker is
+handed at its own turn boundary depends on its client and its surface, and a
+shape you did not state is one you cannot bounce a report against.
 
 Where the unit will be judged on fitness rather than mechanics alone, the brief
 also carries the rubric that says what good looks like for it. Certification
@@ -117,7 +119,9 @@ second one fails on its own.** The signal tells you the worker stopped. It tells
 you nothing about what it produced, and it does not carry the work. Wait on the
 signal; go and read the evidence. Never wait on the report itself — a return
 message that never arrives is indistinguishable, from where you sit, from a
-worker still thinking.
+worker still thinking. And a worker's own account of having reported is not
+evidence that it did: that claim is checkable in the same place as every other
+claim it makes, which is its tool-call record and not its say-so.
 
 **Bound the wait when you dispatch, not when you start worrying.** Decide before
 launch what elapsed time or observable makes further waiting unreasonable for
