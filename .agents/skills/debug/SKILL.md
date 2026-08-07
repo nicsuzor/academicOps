@@ -1,12 +1,36 @@
 ---
 name: debug
-description: Use when asked to "debug a polecat", "run a polecat container interactively", "attach to a polecat session", "check polecat logs", or to verify that a change to plugins, hooks, lib/, skills, or the Dockerfile actually works inside a real container. Spins up a `polecat run` container under tmux for live interaction, says where the durable host-side session state lands, and walks the layered check that separates "installed in the image" from "actually fires".
+description: Use when driving a framework run you intend to score — choosing a surface, dispatching a worker, or when asked to "debug a polecat", "run a polecat container interactively", "attach to a polecat session", "check polecat logs", or to verify that a change to plugins, hooks, lib/, skills, or the Dockerfile actually works inside a real container. Spins up a `polecat run` container under tmux for live interaction, says where the durable host-side session state lands, and walks the layered check that separates "installed in the image" from "actually fires".
 ---
 
-# Interactive polecat debugging
+# Driving a framework run — surfaces, dispatch, and interactive debugging
 
-Spin up a real `polecat run` container under `tmux` and interact with it live.
-Mechanics and gotchas: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
+The standard you hold while scoring a run is the [`dogfood`](../dogfood/SKILL.md) skill's "Supervising a trial". This file is how you drive one.
+
+Mechanics and gotchas for the container surface: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
+
+## Choose a surface
+
+Pick the cheapest surface that answers the question, and name it in your report — a result is only interpretable against the surface that produced it.
+
+- **Headless `claude` or `agy`** for simple, low-risk work, with results returned to your own shell. To watch a local agent read-only: `agy --output-format stream-json --agent james --print "<prompt>"`.
+- **A polecat container** when the work needs isolation. Driving one interactively is the rest of this file.
+- **`dispatch` with a task id** for complex work you will not supervise. It is fire-and-forget: results do not come back to you and you get no notification of completion, successful or otherwise.
+
+Spawn independent agents from `Bash` in the background. Do not poll and do not sleep — go idle, and read the result when the completion notification arrives.
+
+## Dispatching so the run is worth scoring
+
+- **A dispatchable task is yours to produce.** `dispatch` takes tasks that are fully specified and `queued`. A task you left at `inbox` is not dispatchable, and that is a defect in how you created it, not in the skill. Set the status and properties correctly, then dispatch. Amend `dispatch`'s own instructions only when the task record genuinely cannot carry the fix.
+- **Build the image before you dispatch, never inside it.** `dispatch` forbids rebuilding because its job is to _detect_ staleness, not to repair it. That is a bar on rebuilding _there_, not a bar on rebuilding. The loop is `make docker-build`, then dispatch against the fresh image.
+- **Never create a git worktree to sidestep a collision.** Delegate into the worktree you are already in, or into a container.
+- **`git status` is not a cleanliness check.** The framework runs from `dist/`, which is gitignored. A worker that reverts tracked source and reports a clean tree can still have left its probe in every built artifact and in the image. Verify the surface that actually executes.
+
+## Hold the run's acceptance criteria on a tracking record
+
+Before the worker returns, create a tracking task in the PKB naming what was dispatched, the output expected, and how you will test it against the acceptance criteria that apply. Give it a parent. Find those criteria while the worker runs — a spec you cannot locate in `specs/` or the PKB within a few calls is itself a framework failure, and that is the finding.
+
+On completion: claim the record, review the output against those criteria, and write your assessment onto it. Check that the worker updated its own task honestly and correct the record where it did not. Where the run produced a significant failure or an unexpected success, `learn` is what turns it into a lesson.
 
 ## Before you drive anything, find out what is already known
 

@@ -29,6 +29,18 @@ No mechanism is enabled without a pre-registration on the task record: hypothesi
 **4. planning-eval** (decomposition/planning quality).
 Method and epistemics rubric: [references/decomposition-eval.md](references/decomposition-eval.md). Gold-standard pairs are single-use — once written anywhere the test agent can search, they are contaminated.
 
+## Supervising a trial — when the run under test is someone else's
+
+Modes 2–4 put you above the work rather than in it. That inverts several defaults, and only inside this section — mode 1 is the opposite case and stays that way, because there, doing the work _is_ the trial.
+
+- **Do none of the work yourself.** What you are measuring is independent, contextless operation. Every hint you supply and every step you take on the subject's behalf is a variable you added to your own experiment.
+- **A halt is a result.** The fail-fast rule in [`.agents/CORE.md`](../../CORE.md) tells you to stop; here it also tells you what you have got. The subject being unable to proceed **is** the finding — record it and leave it blocked rather than solving it on the subject's behalf. An agent that thrashes its way past a gap converts a recordable framework defect into an unrecordable one, and not having correct instructions at the moment they were needed is exactly the defect class this protocol exists to catch.
+- **A blocked route is work, not an excuse.** That rule governs the subject's run. It does not govern _your_ route: when the sanctioned path you were told to use will not carry the job, repairing it is the deliverable. Reporting the blockage and taking another road is the failure mode even when the other road works. Repair at the cheapest layer that closes the gap — the inputs you control first (a task created with the right status and properties), the instruction text last — and route it through **Turning evidence into change** below, where the record still comes first and express approval still binds.
+- **Never trade away an ambition to make something pass.** Reduced scope, a disabled surface, one client working instead of both, a capability dropped because it was hard — these are not results, and presenting them as results is the failure. Say what is unreached and what it would take. You do not get to lower the bar by shipping the lowered version of it.
+- **There is no binary done.** The minimum standard is world-class, not "working" and not "acceptable"; every outcome is assessed qualitatively and critically, and the bar rises as model capability and tooling improve.
+
+Driving the run itself — choosing a surface, spawning the agent, and the tracking record that carries its acceptance criteria — is the [`debug`](../debug/SKILL.md) skill.
+
 ## Invariants — what keeps the results honest
 
 - **Hypothesis before observation.** Written down first, every time. This is what lets you discover you were wrong.

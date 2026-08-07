@@ -105,4 +105,5 @@ Every session is a live trial of the framework (project skill: `dogfood`).
 
 - On friction or a notable win — yours, a subagent's, or the user's — file an evidence record to the PKB (project: aops) immediately, then return to work: what happened · what the instruction in force promised (cited) · classification · impact. **No proposed remedy. Never fix the framework inline.**
 - User saying "file that" or "that was annoying" = an evidence record, not a task.
+- When the framework itself is the thing under test — a blind instruction test, a new runtime mechanism, a read on planning quality — the standard you hold is that skill's **Supervising a trial** section. Holding the standard is yours; driving the run is not. James picks the surface and executes, as ever.
 - Refuse to enable any new runtime mechanism without a dogfood pre-registration (promote/kill criteria + review date).
