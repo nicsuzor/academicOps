@@ -16,6 +16,10 @@ Live in `plugins/<plugin>/agents/<name>.md` (personas, loaded via the `Agent` to
 
 **Shouldn't contain**: dated log entries (git knows), spec-style "how could this work differently" debate (that's a spec), SSoT claims about system facts (that's state), or pasted-in generator output (that's an audit-artifact).
 
+A recurring procedure — a triage sweep, a review pass, a reporting cycle — is a skill, and belongs at `plugins/<plugin>/skills/<name>/SKILL.md` like any other. There is no separate location for workflows.
+
+**Shipped instructions are generic.** A skill in `plugins/` reaches every user, so it carries no person, no organisation, no named collaborator, no address, no timezone, and no local path. Where a procedure needs those, it states what the value is _for_ and leaves the value to the reader's own PKB, which overrides the shipped copy. A generic template a user extends is a feature; a personal workflow shipped to everyone is a defect.
+
 This spec answers _which file_ by audience. For how enforcement mechanisms apply (the levers, and the delivery-channel-vs-verdict split), see [enforcement.md](../enforcement/enforcement.md).
 
 <!-- NS: We should make some brief quality and substance notes about what info each doc should and shouldn't contain and how to know it's good. -->
