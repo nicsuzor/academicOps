@@ -23,12 +23,25 @@ def live_elements(doc):
     return [e for e in doc.get("elements", []) if not e.get("isDeleted")]
 
 
+def element_text(e):
+    """What a text element actually says.
+
+    `text` is the wrapped copy Excalidraw paints; `originalText` is the
+    unwrapped source it re-wraps `text` from on the next layout pass, which
+    makes `originalText` the one that survives. On a file damaged by a writer
+    that set `text` alone, `text` holds a label that is already doomed — so
+    read `originalText` and report what will still be there. `excalidraw-view.py
+    check` fails the file when the two disagree.
+    """
+    return e.get("originalText") or e.get("text", "") or ""
+
+
 def get_label(e, by_id):
     if e.get("type") == "text":
-        return e.get("text", "").replace("\n", " / ")
+        return element_text(e).replace("\n", " / ")
     for b in e.get("boundElements") or []:
         if b.get("type") == "text" and b["id"] in by_id:
-            return by_id[b["id"]].get("text", "").replace("\n", " / ")
+            return element_text(by_id[b["id"]]).replace("\n", " / ")
     return ""
 
 
@@ -76,6 +89,21 @@ def cmd_fit(doc_path, args):
     if not text_elem:
         sys.exit(f"no text element associated with id {target_id!r}")
 
+    # A divergence here means an earlier writer set one layer only, so this
+    # element currently holds two different readings and the one on screen is
+    # not necessarily the one that will survive. Say so before overwriting both.
+    if "originalText" in text_elem:
+        old_t = text_elem.get("text", "")
+        old_o = text_elem.get("originalText", "")
+        if old_t.split() != old_o.split():
+            print(
+                f"WARNING: {text_elem['id']!r} carried two different text layers before this "
+                f"edit; both are being replaced.\n"
+                f"  text (was):         {old_t!r}\n"
+                f"  originalText (was): {old_o!r}",
+                file=sys.stderr,
+            )
+
     lines = new_text.split("\n")
     font_size = text_elem.get("fontSize", 20)
     max_len = max((len(line) for line in lines), default=0)
@@ -85,7 +113,13 @@ def cmd_fit(doc_path, args):
     text_width = max(10.0, max_len * font_size * 0.56)
     text_height = max(10.0, num_lines * font_size * 1.25)
 
+    # Both layers, always. `text` is the wrapped copy Excalidraw paints;
+    # `originalText` is the unwrapped source it re-wraps from. Write `text`
+    # alone and the next time the editor lays the element out it regenerates
+    # `text` from the stale `originalText` and the edit is silently gone.
     text_elem["text"] = new_text
+    if "originalText" in text_elem or text_elem.get("containerId"):
+        text_elem["originalText"] = new_text
 
     if container_elem:
         cx = container_elem["x"] + container_elem["width"] / 2.0
@@ -226,7 +260,7 @@ def cmd_render(doc_path, args):
             )
             ax.add_patch(rect)
         elif etype == "text":
-            txt = e.get("text", "")
+            txt = element_text(e)
             ax.text(x, y, txt, fontsize=8, verticalalignment="top", color="#1a1a1a", wrap=True)
         elif etype == "arrow":
             points = e.get("points", [])
