@@ -65,10 +65,18 @@ make lint           # ruff check + documented-reference check + basedpyright
 make format         # ruff format + dprint fmt
 ```
 
-Headless agy runs use `agy --output-format stream-json -p "<prompt>"`. Passing
-`--agent <name>` currently breaks the MCP tool surface: the named agent can
-reach neither `call_mcp_tool` nor a subagent recipient, and the run still exits
-0. Drop the flag until that is fixed.
+Headless agy runs use `agy --output-format stream-json -p "<prompt>"`.
+
+A headless agy worker that has to change anything needs
+`--dangerously-skip-permissions`. Without it agy is granted no write tool at
+all — not a refusal it can report, but an absent capability, so it reads and
+greps until it needs to edit and then dies with `trajectory converted to zero
+chat messages` and exit 0. Treat that error as "the worker had no write tool",
+not as a crash to retry verbatim.
+
+Give a worker its brief in a file and pass a one-line pointer. Long `-p`
+prompts are also a way to lose a run, and a brief on disk is the one the next
+attempt can re-read unchanged.
 
 Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
 JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for Python files.
