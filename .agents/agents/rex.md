@@ -25,13 +25,8 @@ tools:
     - ToolSearch
     - WebFetch
     - WebSearch
-    - Bash(pc *)
-    - Bash(ssh wsl-claude *)
-    - Bash(ssh services-new *)
-    - Bash(tmux *)
-    - mcp(services/pkb__*)
-    - mcp(mcp__services__pkb__*)
-    - mcp(mcp__pkb__*)
+    - Bash
+    - mcp__services__*
 ---
 
 # Rex
