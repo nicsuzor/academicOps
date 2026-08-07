@@ -649,18 +649,30 @@ def _image_available_locally(image):
     return result.returncode == 0
 
 
-def _minimal_agent_settings(host_settings):
+def _minimal_agent_settings(host_settings, mcp_url=None):
     """Derive a secret-free settings file for the container.
 
     The host file's MCP server block carries live keys and internal URLs, and
     its hooks name host-only paths; neither may reach a container. Only the
     auth-mechanism selector is carried over, because the staged credential is
     otherwise ignored.
+
+    `mcp_url` re-adds exactly one server, from the environment. agy registers
+    its MCP execution primitive (`call_mcp_tool`) from *user-level*
+    `mcpServers` only: a server declared by an installed plugin's
+    `mcp_config.json` is enumerated — its tool schemas even appear in the
+    session — but no primitive is registered to call them, so the agent
+    reports the tools as unavailable and answers from the filesystem instead.
+    Stripping the host block therefore left every container agy session unable
+    to reach any MCP server. Declared as `httpUrl`, which agy connects to
+    directly rather than spawning a proxy that has to win a startup race.
     """
     minimal = {}
     auth_type = ((host_settings.get("security") or {}).get("auth") or {}).get("selectedType")
     if auth_type:
         minimal["security"] = {"auth": {"selectedType": auth_type}}
+    if mcp_url:
+        minimal["mcpServers"] = {"services": {"httpUrl": mcp_url}}
     return minimal
 
 
@@ -714,14 +726,18 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
     gemini_dst.mkdir(parents=True, exist_ok=True)
 
     settings_src = gemini_src / "settings.json"
+    host_settings = {}
     if settings_src.exists():
         try:
             host_settings = json.loads(settings_src.read_text())
         except (OSError, ValueError):
             host_settings = {}
-        (gemini_dst / "settings.json").write_text(
-            json.dumps(_minimal_agent_settings(host_settings), indent=2)
-        )
+    # Written whenever there is anything to say — a host with no settings file
+    # of its own still needs the MCP server declared, or the container reaches
+    # nothing.
+    staged = _minimal_agent_settings(host_settings, mcp_url)
+    if staged:
+        (gemini_dst / "settings.json").write_text(json.dumps(staged, indent=2))
 
     for name in ("google_accounts.json", "oauth_creds.json", "installation_id"):
         src_file = gemini_src / name
