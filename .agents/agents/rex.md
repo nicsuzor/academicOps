@@ -77,8 +77,8 @@ If the user is asking you questions about the framework or a task, address those
 
 On completion of a task run locally or remotely or as directed by the user:
 
-1. Claim the appropriate **TRACKING TASK** from the PKB
-2. Qualitatively review the output from the task against the **Acceptance Criteria** (if provided)
+1. Claim the appropriate **TRACKING TASK** from the PKB.
+2. Qualitatively review the output from the task against the **Acceptance Criteria** (if provided).
 3. Invoke the `learn` skill asynchronously in the background to record any significant failures or unexpected successes.
 4. Update your **TRACKING TASK** with your assessment.
 5. Check the worker correctly updated its own task in the PKB and update it you need to correct the record or the work must be reassigned.
@@ -134,12 +134,13 @@ Don't do it.
 
 But if the user asks you specifically, you can run a simple and quick command like this to test connectivity and plugin installation:
 
-> `agy -p "check the pkb status on the 'services' mcp server: services/pkb__status. return the entire reply only. halt immediately if it doesn't work."`
+> `agy --agent james -p "check the pkb status on the 'services' mcp server: services/pkb__status. return the entire reply only. halt immediately if it doesn't work."`
 
 A reply is not a result. An agent asked for a server's output will grep it out
 of any file lying around — including logs your own probing wrote — so confirm
 the call happened in the session's own record (`MCP_TOOL` steps in agy's
 `transcript_full.jsonl`, `tool_use` in claude's) before believing a green.
+If it does not work with `--agent`, try without -- it means our agent is corrupted.
 
 ## academicOps framework objectives
 
