@@ -13,6 +13,7 @@ from pathlib import Path
 
 from transcripts.adapters.agy import load_agy_transcript
 from transcripts.adapters.claude import find_subagent_files, load_claude_session
+from transcripts.discovery import agy_brain_roots, claude_projects_root
 from transcripts.domain.cache import SkipCache, is_session_empty, source_fingerprint
 from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
@@ -43,8 +44,9 @@ def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
 
     files: list[Path] = []
 
-    # 1. Claude session files: ~/.claude/projects/**/*.jsonl
-    claude_dir = Path.home() / ".claude" / "projects"
+    # 1. Claude session files, under the client's own state root
+    # (`transcripts.discovery`, one definition shared with the container view).
+    claude_dir = claude_projects_root(dict(os.environ))
     if claude_dir.is_dir():
         for p in claude_dir.rglob("*.jsonl"):
             rel = p.relative_to(claude_dir)
@@ -56,13 +58,8 @@ def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
             ):
                 files.append(p)
 
-    # 2. agy session files: ~/.gemini/antigravity-cli/brain/**/transcript.jsonl
-    # and ~/.gemini/tmp/workspace/agy-brain/**/transcript.jsonl
-    agy_dirs = [
-        Path.home() / ".gemini" / "antigravity-cli" / "brain",
-        Path.home() / ".gemini" / "tmp" / "workspace" / "agy-brain",
-    ]
-    for d in agy_dirs:
+    # 2. agy session files, under the same brain roots the container view reads.
+    for d in agy_brain_roots(dict(os.environ)):
         if d.is_dir():
             for p in d.rglob("transcript.jsonl"):
                 rel = p.relative_to(d)

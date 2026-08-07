@@ -150,6 +150,36 @@ to contain:
 
 Read the raw JSONL transcript directly (`jq`, `grep`, `less`) when working inside a live container. The transcript-to-markdown converter in `lib/py/transcripts/` (specified in `specs/transcript-pipeline.md`) runs as a host-side batch process over completed sessions rather than in-session.
 
+### 3. Container-local: the client state roots (what a supervisor inside can see)
+
+The section above is a host view. A supervisor running _inside_ a
+single-repository container — spawning workers and judging their claims against
+the record — has none of it: `AOPS_SESSIONS` appears in neither `FORWARDED_ENV`
+nor `CONTAINER_SET_ENV` (`lib/polecat/env_contract.py`), so it is unset in every
+container, and the session root it names is not mounted under any other name.
+
+What is reachable is each client's own state root, which inside a container holds
+exactly what that container's run wrote:
+
+- **`claude`** — `$CLAUDE_CONFIG_DIR/projects/<slugified-cwd>/`, or
+  `~/.claude/projects/<slugified-cwd>/` when the client was left at its default.
+  For `cwd=/workspace` this is the same directory the host mounts as the session
+  directory. The supervisor's own conversation is `<session-uuid>.jsonl`; each
+  worker it spawned through the `Agent` tool is a sidechain at
+  `<session-uuid>/subagents/agent-<name>-<hash>.jsonl`, with a `.meta.json`
+  sibling naming the agent that ran.
+- **`agy`** — `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/`,
+  holding `transcript.jsonl` and `transcript_full.jsonl`. Each `agy` invocation
+  from inside the container is its own conversation directory there.
+
+`lib/py/transcripts/discovery.py` is the one definition of these roots, shared
+with the batch pipeline's own discovery, and resolves them from the environment
+rather than from a literal. It is what the [`debug`](../../.agents/skills/debug/SKILL.md)
+skill points a container-bound supervisor at, and it deliberately returns the
+subagent sidechains that `transcripts.runner` drops: those sidechains are the
+worker record, and dropping them is what makes a supervisor take a worker at its
+word.
+
 **`docker logs` is not a reliable source for agy.** agy redirects its own
 stdout/stderr to its internal log file rather than the container's actual
 stdout/stderr streams, so `docker logs <container>` reads empty even while
