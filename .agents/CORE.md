@@ -87,22 +87,21 @@ Headless agy runs use `agy --output-format stream-json -p "<prompt>"`.
 
 **Open defect, 2026-08-07 — no agent parity on agy ([#2387]).** Every agent
 _this repo builds_ — james, rbg and pauli were tested — comes up under
-`--agent <name>` with a fixed toolset (`find_by_name`, `generate_image`,
-`grep_search`, `list_dir`, `read_url_content`, `schedule`, `search_web`,
-`send_message`, `view_file`): no `call_mcp_tool`, no write, no shell. An
-unnamed agy run gets the full set. So the personas that carry this framework's
-doctrine cannot currently run work on agy.
+`--agent <name>` with a fixed read-only toolset (`find_by_name`,
+`generate_image`, `grep_search`, `list_dir`, `read_url_content`, `schedule`,
+`search_web`, `send_message`, `view_file`): no `call_mcp_tool`, no write, no
+shell. An unnamed agy run gets the full set. So the personas that carry this
+framework's doctrine cannot currently run work on agy.
 
-**The cause is not isolated.** It has not been shown to be agy's `--agent`
-mechanism: no agy-native or hand-written agent definition was tested, so our
-own build adapter is an equally live suspect — in particular the
-`includeSections` whitelist injected at `build/clients/agy.py`. That
-hypothesis was dismissed earlier on evidence since shown worthless and has
-**not** been re-tested. Until the cause is isolated, an agy run that drops
-`--agent` is a **temporary mitigation** and the persona it should have had is
-still owed. A worker that reads and greps and then dies with
-`trajectory converted to zero chat messages` at exit 0 had no write tool — read
-that as this defect, not as a crash to retry verbatim.
+**Cause isolated:** agy's persona mechanism downstream restricts tool schemas
+presented to the model to the read-only subset, dropping shell, write, and MCP
+tools, even though all 56 tools are registered at init. The build adapter (and
+its `includeSections` injection) is cleared: a hand-written agent definition
+untouched by our build comes up identically crippled. Dropping `--agent` remains
+a **temporary mitigation** and client parity stands owed. A worker that reads
+and greps and then dies with `trajectory converted to zero chat messages` at
+exit 0 had no write tool — read that as this defect, not as a crash to retry
+verbatim.
 
 A worker that has to change anything also wants
 `--dangerously-skip-permissions`.
