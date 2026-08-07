@@ -158,7 +158,7 @@ def test_agy_plugins_directory_matches_the_marketplace(real_image):
     under agy's plugin directory — the two clients ship from the same
     marketplace list (Dockerfile's plugin-install RUN block)."""
     expected = _expected_plugin_names()
-    result = _run_in_container(real_image, "ls /home/worker/.gemini/antigravity-cli/plugins/")
+    result = _run_in_container(real_image, "ls /home/worker/.gemini/config/plugins/")
     assert result.returncode == 0, result.stderr
 
     present = set(result.stdout.split())

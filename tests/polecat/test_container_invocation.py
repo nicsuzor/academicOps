@@ -200,10 +200,93 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        cli.DEFAULT_AGENT,
         "--print",
         "/pull task_abc123",
     ]
     assert "--non-interactive" not in inner
+
+
+# --------------------------------------------------------------------------
+# Default agent
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("agent_cmd", ["claude", "agy"])
+def test_both_agent_clis_boot_as_the_default_agent(agent_cmd, tmp_path, monkeypatch):
+    """A dispatched worker with no agent named must boot as the orchestrator,
+    not the generic assistant. `--agent` is the flag both CLIs share."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", agent_cmd, "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == cli.DEFAULT_AGENT
+
+
+@pytest.mark.parametrize("agent_cmd", ["shell", "bash", "sleep", "some-other-tool"])
+def test_non_agent_commands_never_get_the_agent_flag(agent_cmd, tmp_path, monkeypatch):
+    """`--agent` means nothing to bash or sleep; a stray flag would break them."""
+    cmd = _capture_docker_cmd(
+        monkeypatch, tmp_path, ["run", agent_cmd, "-d", str(tmp_path / "repo")]
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--agent" not in inner
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_wins_over_the_default_for_claude(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--agent", "rbg", "hello"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_wins_over_the_default_for_agy(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "agy", "-d", str(tmp_path / "repo"), "--print", "hello", "--agent", "rbg"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_in_equals_form_is_not_duplicated(tmp_path, monkeypatch):
+    """`--agent=rbg` is one token, so a naive equality check would miss it and
+    the container would end up holding two conflicting personas."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--agent=rbg", "hello"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--agent" not in inner
+    assert inner.count("--agent=rbg") == 1
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_the_default_agent_name_appears_once_in_the_source():
+    """One constant, two branches. A second literal is a second place to change
+    it and a chance for the two clients to drift apart."""
+    source = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
+
+    assert source.count(f'"{cli.DEFAULT_AGENT}"') == 1
 
 
 # --------------------------------------------------------------------------

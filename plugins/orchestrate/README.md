@@ -5,7 +5,7 @@ Dispatch, review, and the contract that binds what comes back. James briefs work
 ```mermaid
 flowchart TD
     IN(["substantive work arrives<br/>(from ida, or directly)"]) --> J["james<br/>agents/james.md"]
-    J --> B["compose the brief:<br/>goal + why · constraints · evidence bar<br/>(lib/doctrine/delegation-brief.md, @included)"]
+    J --> B["compose the brief:<br/>goal + why · criteria · evidence accepted<br/>(agents/james.md, 'Delegate, don't dictate')"]
     B --> S{"size the unit"}
 
     S -->|small| SUB["in-session subagents,<br/>cheapest model per effort type;<br/>commit to the branch and push"]
@@ -17,7 +17,7 @@ flowchart TD
 
     SUB --> RET(["report lands in james's context"])
     RET --> H1["Claude Code fires PostToolUse<br/>→ handlers.py: rule_against_hearsay<br/>(only when tool == Agent)"]
-    H1 --> MSG1["messages/hearsay.md<br/>+ doctrine/handback.md"]
+    H1 --> MSG1["messages/hearsay.md"]
     MSG1 --> D{"does every load-bearing claim carry<br/>checkable evidence, or a stated<br/>failure reason?"}
     D -->|no| BACK["send it back, naming the<br/>unsupported claim.<br/>Never verify it yourself."]
     D -->|yes| FWD["forward the evidence verbatim"]
@@ -30,12 +30,12 @@ flowchart TD
     MAR --> OUT
 
     ANY(["any agent about to stop"]) --> H2["Stop / SubagentStop<br/>→ handlers.py: honest_output"]
-    H2 --> MSG2["messages/honesty.md<br/>+ doctrine/handback.md<br/>advisory, declared async"]
+    H2 --> MSG2["messages/honesty.md<br/>advisory, declared async"]
 
     SS(["session start"]) --> H3["handlers.py: session_start<br/>→ appends credentials and paths<br/>to CLAUDE_ENV_FILE"]
 ```
 
-The two hooks are the same doctrine aimed at opposite ends of one exchange. `honest_output` fires at a stopping agent's own turn boundary, which is the last moment its report can still carry its evidence — a returned result cannot be amended once it reaches the caller. `rule_against_hearsay` fires in the caller's context the instant a report lands, and tells it what to do with one that arrived without proof: send it back. Not verify it, not re-run it, not fill the gap. Both `@include lib/doctrine/handback.md`, which is where the rule is actually written; neither restates it.
+The two hooks are the same doctrine aimed at opposite ends of one exchange. `honest_output` fires at a stopping agent's own turn boundary, which is the last moment its report can still carry its evidence — a returned result cannot be amended once it reaches the caller. `rule_against_hearsay` fires in the caller's context the instant a report lands, and tells it what to do with one that arrived without proof: send it back. Not verify it, not re-run it, not fill the gap. Each half is written in its own message file — `hooks/messages/honesty.md` for the worker, `hooks/messages/hearsay.md` for the receiver — and nowhere else in this plugin's hook code.
 
 `SubagentStop` cannot carry the receiver's half, because it fires on the stopping subagent's own context and its injection is never visible to the session that dispatched it. `PostToolUse` cannot carry the worker's half, because a worker's own tool calls are not its handback. Hence two hooks.
 
@@ -64,13 +64,12 @@ No `userConfig` field. The `SessionStart` hook reads five environment variables 
 - `AOPS_BOT_GH_TOKEN` — when present, becomes `GH_TOKEN` and `GITHUB_TOKEN` for the session, and pins `GIT_SSH_COMMAND` and a git credential helper so the session cannot reach GitHub through the operator's own SSH identity.
 - `AOPS_SESSIONS`, `PKB_MCP_URL`, `PKB_MCP_TOOL_PREFIX` — forwarded verbatim.
 
-The polecat CLI reads its own set, also with no defaults: `POLECAT_HOME` and `POLECAT_IMAGE` are required, and `AOPS_POLECAT_CONFIG`, `AOPS_SESSIONS`, `POLECAT_RULES_DIR`, `POLECAT_AGENT_HOME`, `POLECAT_WORKER_MODEL`, `POLECAT_PRINT_TIMEOUT` and `PKB_MCP_URL` are optional. A missing required value is a loud failure, never a guess.
+The polecat CLI reads its own set, also with no defaults: `POLECAT_HOME`, `POLECAT_IMAGE` and `AOPS_SESSIONS` are required, and `AOPS_POLECAT_CONFIG`, `POLECAT_RULES_DIR`, `POLECAT_AGENT_HOME`, `POLECAT_WORKER_MODEL`, `POLECAT_PRINT_TIMEOUT` and `PKB_MCP_URL` are optional. A missing required value is a loud failure, never a guess.
 
 No endpoint, host, registry, account or credential is written into anything this plugin ships.
 
 ## Depends on
 
-- `lib/doctrine/handback.md` and `lib/doctrine/delegation-brief.md`, resolved by `@include` at build time — the doctrine is not copied into this plugin.
 - `lib/hooks/` for the hook runtime, and `lib/polecat/` for the container launcher, both injected at build time (`manifest/plugin.toml`).
 - The `rbg` and `pkb` plugins at runtime, for `rbg:rbg` and `pkb:pauli`, whom `strategic-review` always deploys.
 - Docker, and an image built from this repository, for the polecat containers.

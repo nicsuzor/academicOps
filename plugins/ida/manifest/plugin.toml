@@ -1,5 +1,3 @@
-# Doctrine `@include`s resolve against lib/ directly — injecting doctrine/
-# into the plugin tree would ship a second copy of it.
 [[shared]]
 from = "hooks"
 to = "hooks"

@@ -5,14 +5,32 @@ commits exits non-zero rather than reporting a success it cannot evidence.
 The guard reports; it does not reach into a knowledge base to reopen the task.
 """
 
+import json
 import subprocess
 from pathlib import Path
 
 from click.testing import CliRunner
 
+from lib.polecat import cli
 from lib.polecat.cli import _get_git_head, _verify_workspace_delivery, main
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _write_transcript(docker_argv, task_id):
+    """Persist a claude transcript into the session dir `docker_argv` mounts,
+    exactly as a container that received the seed would."""
+    mount = next(
+        value
+        for flag, value in zip(docker_argv, docker_argv[1:], strict=False)
+        if flag == "-v" and value.endswith(f":{cli.CLAUDE_SESSION_PATH}")
+    )
+    session_dir = Path(mount[: -len(cli.CLAUDE_SESSION_PATH) - 1])
+    session_dir.mkdir(parents=True, exist_ok=True)
+    (session_dir / "5e2f9c11-0000-4000-8000-000000000001.jsonl").write_text(
+        json.dumps({"type": "user", "message": {"role": "user", "content": f"/pull {task_id}"}})
+        + "\n"
+    )
 
 
 def _init_repo(path):
@@ -111,6 +129,10 @@ def test_run_fails_loudly_on_uncommitted_changes(tmp_path, monkeypatch):
 
     def fake_subprocess_run(cmd, *a, **kw):
         if cmd[0] == "docker" and cmd[1] == "run":
+            # The container did see the seeded task — it just left the work
+            # uncommitted. Seed verification runs first and would otherwise be
+            # the failure this test catches, which is a different guard.
+            _write_transcript(cmd, "task-dirty")
             (_repo / "dirty.txt").write_text("dirty\n")
             return subprocess.CompletedProcess(cmd, 0)
         return real_run(cmd, *a, **kw)

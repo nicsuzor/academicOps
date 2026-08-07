@@ -38,5 +38,6 @@ def strip_the_reply(ctx: HookContext) -> Result | None:
 
 
 HANDLERS: dict[str, list] = {
-    "Stop": [strip_the_reply],
+    # Disabled, see if this helps supervisors not feel the need to do stuff all the time.
+    # "Stop": [strip_the_reply],
 }

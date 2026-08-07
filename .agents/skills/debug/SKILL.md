@@ -102,8 +102,7 @@ $AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/<project>/
 
 It holds the agent's own raw transcript, written natively by the client —
 Claude's `<session-uuid>.jsonl`, or agy's `agy-brain/`, `agy-logs/`, and
-`agy-cli.log`. Read them directly with `jq`/`grep`/`less`. There is no
-transcript-to-markdown converter in this repo; ignore any doc claiming one.
+`agy-cli.log`. When working inside a live container or needing the raw record, read the raw JSONL directly with `jq`/`grep`/`less`. The transcript-to-markdown converter in `lib/py/transcripts/` (specified in `specs/transcript-pipeline.md`) is a host-side batch pass over finished sessions, not something to run mid-session.
 
 ## Clean up
 
@@ -126,7 +125,7 @@ nothing is the failure this catches.
 Before §0, write down the one thing your change was supposed to make happen
 inside a container — the specific hook, skill, agent, command or CLI behaviour
 it touched. §3 and §4 are scored against that sentence, not against "the
-session looked fine".
+session looked fine". **You must include verbatim excerpts from `tmux capture-pane` or the session logs in your final report to prove your claims of success. Do not just assert that it worked.**
 
 **Run the whole walk once per client.** §0 and the pre-flight are shared; §2
 through §6 are per-client and run twice — once with `claude`, once with `agy`.
@@ -177,7 +176,7 @@ starting, so neither tells you it is ready. Read the input box, not the footer.
 
 **§3 First prompt.** Send a trivial prompt (e.g. "what is 2 + 2?") and capture again.
 You MUST verify that the agent actually produced the expected model response (e.g. the literal string `4`) in the captured pane or session log.
-Do not treat the mere rendering of the CLI prompt box or container boot as a response — poll or re-capture the pane until the model's actual answer is visible in the output transcript, and assert that exact response in your test report. A hook-blocked error is also a pass for this layer if the hook fired and reported error text.
+Do not treat the mere rendering of the CLI prompt box or container boot as a response — poll or re-capture the pane until the model's actual answer is visible in the output transcript, and **include the verbatim transcript extract** in your test report to prove it. A hook-blocked error is also a pass for this layer if the hook fired and reported error text, provided you capture that text verbatim.
 
 **§4 Exercise the path you changed.** Invoke a skill and dispatch a subagent
 from inside the session — and choose ones that run through the code your change
@@ -187,7 +186,7 @@ that is the failure this layer exists to catch. Where no shipped skill or
 subagent reaches your change, drive it directly (the command, the tool call,
 the hook's trigger) and say in your report that you did so. Verify visible
 output in the pane, not merely that the call returned: a skill that resolves
-and produces nothing passes a structural check and fails here.
+and produces nothing passes a structural check and fails here. **You must capture and present the verbatim visible output that proves the skill resolved successfully.**
 
 **§5 Observability.** Confirm `polecat-session-hooks.jsonl` is present and
 populated in the session directory, and that the PKB MCP answers rather than

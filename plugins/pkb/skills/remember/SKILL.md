@@ -13,9 +13,12 @@ knowledge note carries synthesised prose instead, never accreted history in any
 form.
 
 The vocabulary you write in — node types, edges, status, weights — is the one
-the PKB MCP tool schemas declare (`create`, `create_task`, `update_task`). Read
+the PKB MCP tool schemas declare (`pkb__create`, `pkb__create_task`, `pkb__update_task` hosted under the `services` MCP server, e.g. `mcp__services__pkb__*`). Read
 the schema of the tool you are about to call and write in its terms.
 What a good note looks like is [`references/quality.md`](references/quality.md).
+
+> [!NOTE]
+> PKB MCP tools may be hosted on the **`services`** MCP server under the `pkb__` tool name prefix.
 
 ## Invariants
 
@@ -42,18 +45,18 @@ that generalise to nothing.
 
 **The sequence is mandatory.**
 
-1. **Search** — `search(query="<topic>")`.
+1. **Search** — `pkb__search(query="<topic>")` (`ServerName: "services"`, `ToolName: "pkb__search"`).
 2. **Check for the canonical note.** Exactly one note per first-class topic —
    tool, project, skill, agent, concept. If one exists for this topic area, you
    **must** augment it. A broader canonical note covering the area means no new
    note gets created.
 3. **Augment** — integrate the new observation into the existing structure and
-   rewrite the section it belongs in (`update_body`). `append` only where the
+   rewrite the section it belongs in (`pkb__update_body`). `pkb__append` only where the
    content is genuinely additive and supersedes nothing. Never a new dated
    section bolted on the end. A note reads as current state, never as a
    changelog.
-4. **Or create**, only when nothing matches — `create` for a document,
-   `create_memory` for an atomic memory. Topical, never a session or date file.
+4. **Or create**, only when nothing matches — `pkb__create` for a document,
+   `pkb__create_memory` for an atomic memory. Topical, never a session or date file.
 
 Scale the write to the work: one decision is a bullet on an existing note; a few
 outcomes are observations on an existing topical note; a genuinely new topic
@@ -103,6 +106,22 @@ behind carrying a pointer — that is duplication with extra steps.
 - A Map of Content is earned, not scheduled: five or more real notes on one
   topic, `type: moc`.
 
+## Route what the write surfaces
+
+Capture and consolidation surface work this skill does not own. Invoke the
+owning skill now, in this session, as part of the write — do not perform its
+work yourself, and do not leave it as a suggestion in your final message.
+
+- **Something went wrong** — friction, a failure, an instruction or contract
+  that misled — record the facts, then invoke the `learn` skill (`/pkb:learn`)
+  on the incident. Learn owns the diagnosis and where the lesson lands.
+- **New work, or an open decision** that needs situating, sizing, or
+  decomposition — create the task (`pkb__create_task`, status `inbox`) so the
+  graph holds the hook, then invoke the `brief` skill (`/pkb:brief`) on it.
+- **If the owning skill cannot be invoked** — not in this agent's skill list,
+  or the user has said stop — the inbox node is the fallback contract: it
+  exists, carries its edges, and names the owning skill in its body.
+
 ## Consolidate
 
 Turn episodic records into durable knowledge, and repair what has drifted. Run on
@@ -145,3 +164,5 @@ record: it is a checklist, and consolidation rewrites it to one.
 - Cancel or archive anything because it is old. **Age is not a staleness signal.**
   Only irrelevance established from content justifies retirement, and where that
   is a judgment call, surface it rather than deciding.
+- Leave a surfaced incident or follow-on with neither the owning-skill
+  invocation nor an inbox node that names it.

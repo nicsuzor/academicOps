@@ -29,7 +29,7 @@ make docker   # build the crew worker image
 ```
 
 Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
-JSON, and TOML.
+JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for Python files.
 
 ## Pull requests
 

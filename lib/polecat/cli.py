@@ -8,12 +8,13 @@ a missing required value is a loud failure, never a guess.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn
 from urllib.parse import urlsplit, urlunsplit
@@ -118,6 +119,30 @@ def resolve_image(config):
     return image
 
 
+def resolve_sessions_root():
+    """Root of the sessions repository every run's session directory lands under.
+
+    From $AOPS_SESSIONS. No default, and deliberately no config-file key:
+    `load_config` finds the config file *at* `$AOPS_SESSIONS/polecat.yaml`, so a
+    key inside that file could only be read once the value it defines is already
+    known. A key that works only when `$AOPS_POLECAT_CONFIG` also happens to be
+    set is a half-working surface, so this value comes from the environment
+    alone.
+
+    A fallback is worse than the missing value: a cron or detached-tmux dispatch
+    would write a complete transcript into a directory the export pipeline never
+    scans, exit zero, and report success with nothing to contradict it.
+    """
+    raw = os.environ.get("AOPS_SESSIONS")
+    if not raw:
+        fail(
+            "no sessions root configured. Set AOPS_SESSIONS to the sessions "
+            "repository this host records into. There is no default: a guessed "
+            "path would collect transcripts nothing ever reads."
+        )
+    return expand(raw)
+
+
 def resolve_rules_dir(config):
     """Host directory of user-scoped cope/rbg rules to mount read-only into the
     container's layer 3 (`$ACA_DATA/.agents/rules/`, see CONTAINER_ACA_DATA).
@@ -171,6 +196,23 @@ def resolve_cope_evaluator(config):
         value = cope_cfg.get(cfg_key)
         if value not in (None, ""):
             env[env_key] = str(value)
+    return env
+
+
+def resolve_telemetry(config):
+    """Resolve OpenTelemetry config from polecat.yaml `telemetry:` block.
+
+    Variables defined here (endpoints, resource attributes) are the only runtime
+    telemetry configuration passed to the container. All other standard tracing
+    options are built into the Dockerfile itself. No fallback to host environment.
+    """
+    telemetry = config.get("telemetry") or {}
+    env = {}
+    if telemetry.get("endpoint"):
+        env["BETA_TRACING_ENDPOINT"] = str(telemetry["endpoint"])
+        env["OTEL_EXPORTER_OTLP_ENDPOINT"] = str(telemetry["endpoint"])
+    if telemetry.get("resource_attributes"):
+        env["OTEL_RESOURCE_ATTRIBUTES"] = str(telemetry["resource_attributes"])
     return env
 
 
@@ -244,6 +286,9 @@ def get_env_forwards(config=None):
     for key, value in resolve_cope_evaluator(config).items():
         env.setdefault(key, value)
 
+    # Telemetry configuration (strictly from config, no host env fallback)
+    env.update(resolve_telemetry(config))
+
     # Deny every interactive and agent-backed git credential path inside the
     # container: auth resolves from the forwarded token or not at all.
     env["GIT_ASKPASS"] = "true"
@@ -312,18 +357,92 @@ def _rehost_loopback_urls(env):
     return env
 
 
+#: Claude Code names each conversation transcript `<session-uuid>.jsonl`. Matched
+#: by shape so the session dir's other `.jsonl` files — polecat's own hook log
+#: above all — can never be mistaken for the agent's conversation.
+_CLAUDE_TRANSCRIPT_NAME = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$"
+)
+
+
+def _transcript_paths(session_dir):
+    """Every conversation transcript this run persisted into `session_dir`.
+
+    The two agent CLIs write to different places, and both are decided here by
+    the mounts `_build_docker_argv` makes:
+
+    - `claude`: `session_dir` *is* the container's own project-state directory
+      for `cwd=/workspace` (`CLAUDE_SESSION_PATH`, mounted as
+      `container_session_path`), so claude's native `<session-uuid>.jsonl` lands
+      at the root of `session_dir`. Confirmed against live session dirs under
+      `$AOPS_SESSIONS/logs/` for both `entrypoint=cli` (interactive) and
+      `entrypoint=sdk-cli` (the `--print` dispatch path), each recording
+      `cwd=/workspace`.
+    - `agy`: `session_dir/agy-brain` is mounted at the CLI's brain directory, and
+      the conversation lands under
+      `<uuid>/.system_generated/logs/transcript*.jsonl`.
+
+    A `shell`/`sleep`/other container runs no agent CLI and legitimately
+    persists neither.
+    """
+    session_dir = Path(session_dir)
+    paths = []
+    if session_dir.is_dir():
+        paths.extend(
+            sorted(p for p in session_dir.glob("*.jsonl") if _CLAUDE_TRANSCRIPT_NAME.match(p.name))
+        )
+    brain_dir = session_dir / "agy-brain"
+    if brain_dir.is_dir():
+        paths.extend(sorted(brain_dir.glob("*/.system_generated/logs/transcript*.jsonl")))
+    return paths
+
+
+def transcript_evidence(session_dir):
+    """What the run actually persisted, as recorded in run.json.
+
+    `run.json` names the session directory but said nothing about its contents,
+    so a run that wrote zero bytes was indistinguishable from one that wrote a
+    full conversation: both exited 0 and both recorded `"status": "success"`.
+    This is what makes that claim falsifiable — which transcript, how big, and
+    how many.
+
+    It does not decide `status`: a `shell` or `sleep` container has no
+    conversation to persist, so an absent transcript is a fact to record, not a
+    failure to declare. The `degraded[]` entry is what makes an unexpected
+    absence legible.
+    """
+    largest = None
+    largest_size = -1
+    count = 0
+    for path in _transcript_paths(session_dir):
+        try:
+            size = path.stat().st_size
+        except OSError:
+            continue
+        count += 1
+        if size > largest_size:
+            largest, largest_size = path, size
+
+    if largest is None:
+        return {"found": False, "path": None, "bytes": None, "count": 0}
+    return {
+        "found": True,
+        "path": str(largest),
+        "bytes": largest_size,
+        "count": count,
+    }
+
+
 def _seed_confirmed(session_dir, task_id):
     """Best-effort check that the agent actually saw the seeded task.
 
     A clean exit is not evidence the task was worked: a seed can be dropped
     before delivery while the process still exits zero. The conversation
-    transcript under the brain mount is the primary evidence; the CLI logs
-    are diagnostic only and are checked as a fallback.
+    transcript is the primary evidence, and it is read the same way whichever
+    agent CLI ran the dispatch (`_transcript_paths`); agy's CLI logs are
+    diagnostic only and are checked as a fallback.
     """
-    candidates = []
-    brain_dir = Path(session_dir) / "agy-brain"
-    if brain_dir.is_dir():
-        candidates.extend(sorted(brain_dir.glob("*/.system_generated/logs/transcript*.jsonl")))
+    candidates = list(_transcript_paths(session_dir))
     agy_logs = Path(session_dir) / "agy-logs"
     if agy_logs.is_dir():
         candidates.extend(sorted(agy_logs.glob("cli-*.log")))
@@ -627,12 +746,6 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
                 "interactively on this host at least once to create it."
             )
 
-        # The container's only workspace must be pre-trusted, or the trust
-        # dialog swallows the seeded prompt. Host project paths and MCP
-        # blocks are never copied.
-        (agy_dst / "settings.json").write_text(
-            json.dumps({"trustedWorkspaces": ["/workspace"]}, indent=2)
-        )
     elif agent_cmd == "agy":
         fail(
             f"{agy_src} does not exist, so no Antigravity OAuth token can be "
@@ -688,6 +801,22 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
+#: The persona a dispatched worker boots as when the caller names none. Both
+#: agent CLIs take `--agent <name>`, so one constant serves both branches — a
+#: second literal would be a second place to change it.
+DEFAULT_AGENT = "james"
+
+
+def _default_agent_args(extra_args):
+    """`--agent <DEFAULT_AGENT>`, or nothing when the caller already named one.
+
+    Precedence is caller-wins: `--agent` takes a value, so contributing a second
+    one leaves the container holding two conflicting personas. Polecat only
+    fills the gap when extra_args carries no `--agent` in either spelling.
+    """
+    caller_chose_agent = any(arg == "--agent" or arg.startswith("--agent=") for arg in extra_args)
+    return [] if caller_chose_agent else ["--agent", DEFAULT_AGENT]
+
 
 def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headless, task):
     """The command run inside the container, and the container path that agent
@@ -699,7 +828,12 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
 
     if agent_cmd == "claude":
         container_session_path = claude_session_path
-        inner_cmd = ["claude", "--permission-mode=auto", "--setting-sources=user,project"]
+        inner_cmd = [
+            "claude",
+            "--permission-mode=auto",
+            "--setting-sources=user,project",
+            *_default_agent_args(extra_args),
+        ]
         if not is_interactive and not explicit_headless:
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
@@ -713,6 +847,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             "--dangerously-skip-permissions",
             "--log-file",
             "/home/worker/.gemini/antigravity-cli/cli.log",
+            *_default_agent_args(extra_args),
         ]
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
@@ -727,6 +862,10 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
     seeded_from_task = bool(task) and not extra_args
     if seeded_from_task:
         extra_args = (f"/pull {task}",)
+
+    seeded_prompt = (
+        f"/pull {task}" if seeded_from_task else (" ".join(extra_args) if extra_args else None)
+    )
 
     if extra_args:
         agy_prompt_flags = {
@@ -753,7 +892,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
         else:
             inner_cmd.extend(extra_args)
 
-    return inner_cmd, container_session_path, seeded_from_task
+    return inner_cmd, container_session_path, seeded_from_task, seeded_prompt
 
 
 def _build_docker_argv(
@@ -768,6 +907,7 @@ def _build_docker_argv(
     rules_dir,
     config,
     docker_args,
+    session_id=None,
 ):
     """The full `docker run` argv. Also pre-creates the bind-mount targets
     under `session_dir` — see below for why that cannot wait until launch."""
@@ -778,30 +918,50 @@ def _build_docker_argv(
     (session_dir / "agy-cli.log").touch(exist_ok=True)
     (session_dir / "agy-logs").mkdir(parents=True, exist_ok=True)
 
+    cidfile = session_dir / "container.cid"
+    if cidfile.exists():
+        try:
+            cidfile.unlink()
+        except OSError:
+            pass
+
+    # We use --cidfile to capture the container ID because docker writes the container ID
+    # to the cidfile immediately upon creation, ensuring it is preserved even when --rm
+    # reaps the container on exit or if the container fails. We also set --name derived
+    # from session_id so the container is easily identifiable in `docker ps` while live.
     cmd = [
         "docker",
         "run",
         "--rm",
-        "--pull=never",
-        "-u",
-        f"{os.getuid()}:{os.getgid()}",
-        "-v",
-        f"{workspace_dir}:/workspace",
-        "-w",
-        "/workspace",
-        "-v",
-        f"{staging_dir}:/tmp/staging:ro",
-        "-v",
-        f"{session_dir}:{container_session_path}",
-        "-v",
-        f"{session_dir}/agy-brain:/home/worker/.gemini/antigravity-cli/brain",
-        "-v",
-        f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
-        "-v",
-        f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
-        "--add-host",
-        "host.docker.internal:host-gateway",
+        "--cidfile",
+        str(cidfile),
     ]
+    if session_id:
+        cmd.extend(["--name", f"polecat-{session_id}"])
+
+    cmd.extend(
+        [
+            "--pull=never",
+            "-u",
+            f"{os.getuid()}:{os.getgid()}",
+            "-v",
+            f"{workspace_dir}:/workspace",
+            "-w",
+            "/workspace",
+            "-v",
+            f"{staging_dir}:/tmp/staging:ro",
+            "-v",
+            f"{session_dir}:{container_session_path}",
+            "-v",
+            f"{session_dir}/agy-brain:/home/worker/.gemini/antigravity-cli/brain",
+            "-v",
+            f"{session_dir}/agy-cli.log:/home/worker/.gemini/antigravity-cli/cli.log",
+            "-v",
+            f"{session_dir}/agy-logs:/home/worker/.gemini/antigravity-cli/log",
+            "--add-host",
+            "host.docker.internal:host-gateway",
+        ]
+    )
 
     # Layer 3 of cope/rbg's rule set, read-only: absent when the operator
     # configured no rules_dir (resolve_rules_dir already failed loudly if one
@@ -824,6 +984,129 @@ def _build_docker_argv(
     cmd.append(image)
     cmd.extend(inner_cmd)
     return cmd
+
+
+def _get_image_digest(image: str) -> str | None:
+    """Retrieve sha256 digest for local or repo docker image.
+
+    Tries repo digest first, falling back to image ID (.Id) for local builds.
+    """
+    try:
+        res = subprocess.run(
+            ["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}", image],
+            capture_output=True,
+            text=True,
+        )
+        digest = res.stdout.strip() if res.returncode == 0 else ""
+        if digest and digest.startswith("sha256:"):
+            return digest
+
+        res = subprocess.run(
+            ["docker", "image", "inspect", "--format", "{{.Id}}", image],
+            capture_output=True,
+            text=True,
+        )
+        digest = res.stdout.strip() if res.returncode == 0 else ""
+        if digest and digest.startswith("sha256:"):
+            return digest
+    except Exception:
+        pass
+    return None
+
+
+def write_run_record(
+    *,
+    session_dir: Path,
+    session_id: str,
+    container_id: str | None,
+    container_name: str,
+    agent: str,
+    task_id: str | None,
+    seeded_prompt: str | None,
+    image_ref: str,
+    image_digest: str | None,
+    workspace_dir: Path,
+    commit_start: str | None,
+    commit_end: str | None,
+    exit_code: int | None,
+    delivery_guard: dict,
+    started_at: datetime,
+    ended_at: datetime,
+    worker_model: str | None = None,
+    degraded: list | None = None,
+) -> Path:
+    """Persist run.json at the root of session_dir.
+
+    All schema keys are always present; unobtainable values are recorded as null.
+    `status` is derived from exit_code and delivery_guard.
+    `degraded[]` is always present and records missing observable state.
+    `transcript` is read off the session directory here rather than passed in,
+    so no call path can write a record that says nothing about whether the run
+    persisted a conversation.
+    """
+    duration_seconds = int(round((ended_at - started_at).total_seconds()))
+
+    degraded_list = list(degraded) if degraded is not None else []
+
+    transcript = transcript_evidence(session_dir)
+    if not transcript["found"] and not any(
+        isinstance(d, dict) and d.get("what") == "transcript" for d in degraded_list
+    ):
+        degraded_list.append(
+            {
+                "what": "transcript",
+                "why": (
+                    "no agent conversation transcript was persisted under the session directory"
+                ),
+            }
+        )
+    # If worker_model is unobtainable from host launcher, record it as null and flag in degraded[] per Criterion 8
+    if worker_model is None:
+        if not any(isinstance(d, dict) and d.get("what") == "worker_model" for d in degraded_list):
+            degraded_list.append(
+                {
+                    "what": "worker_model",
+                    "why": "not selectable or observable from the host launcher",
+                }
+            )
+
+    if exit_code is None or exit_code in (130, 137, -9, -15):
+        status = "killed"
+    elif exit_code != 0:
+        status = "failed"
+    elif not delivery_guard.get("ok", True):
+        status = "delivery_guard_failed"
+    else:
+        status = "success"
+
+    record = {
+        "schema_version": 1,
+        "session_id": session_id,
+        "container_id": container_id,
+        "container_name": container_name,
+        "agent": agent,
+        "task_id": task_id,
+        "seeded_prompt": seeded_prompt,
+        "image_ref": image_ref,
+        "image_digest": image_digest,
+        "workspace_dir": str(Path(workspace_dir).resolve()),
+        "session_dir": str(Path(session_dir).resolve()),
+        "commit_start": commit_start,
+        "commit_end": commit_end,
+        "exit_code": exit_code,
+        "status": status,
+        "delivery_guard": delivery_guard,
+        "transcript": transcript,
+        "started_at": started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ended_at": ended_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "duration_seconds": duration_seconds,
+        "worker_model": worker_model,
+        "degraded": degraded_list,
+    }
+
+    out_path = Path(session_dir) / "run.json"
+    out_path.write_text(json.dumps(record, indent=2) + "\n")
+    return out_path
 
 
 def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task, verify_seed):
@@ -899,12 +1182,11 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
+    sessions_base = resolve_sessions_root()
     rules_dir = resolve_rules_dir(config)
     workspace_dir = _resolve_workspace(repo_dir, project, polecat_home)
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
-    sessions_base = os.environ.get("AOPS_SESSIONS")
-    sessions_base = Path(sessions_base) if sessions_base else polecat_home / "sessions"
 
     session_date = datetime.now().strftime("%Y%m%d")
     session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")
@@ -925,6 +1207,16 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     Path(staging_base).mkdir(parents=True, exist_ok=True)
     staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=staging_base))
     os.chmod(staging_dir, 0o700)
+
+    started_at = datetime.now(UTC)
+    returncode = None
+    delivery_ok = True
+    delivery_err = None
+    container_id = None
+    container_name = f"polecat-{session_id}"
+    seeded_prompt = None
+    worker_model = os.environ.get("POLECAT_WORKER_MODEL")
+    degraded = []
 
     try:
         setup_staging(staging_dir, mcp_url, os.environ.get("GEMINI_CONFIG_DIR"), agent_cmd)
@@ -956,7 +1248,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             env["CLAUDE_CODE_NON_INTERACTIVE"] = "1"
             env["CLAUDE_NON_INTERACTIVE"] = "1"
 
-        inner_cmd, container_session_path, seeded_from_task = _build_inner_command(
+        inner_cmd, container_session_path, seeded_from_task, seeded_prompt = _build_inner_command(
             agent_cmd, extra_args, is_interactive, explicit_headless, task
         )
 
@@ -976,6 +1268,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             rules_dir=rules_dir,
             config=config,
             docker_args=docker_args,
+            session_id=session_id,
         )
 
         click.echo(f"Workspace: {workspace_dir}")
@@ -987,31 +1280,85 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             inner_cmd=inner_cmd,
             session_dir=session_dir,
             task=task,
-            verify_seed=agent_cmd == "agy" and seeded_from_task,
+            # Both agent CLIs persist a conversation transcript into the session
+            # dir (`_transcript_paths`), so a seeded dispatch is verified the
+            # same way whichever one ran it. `shell`/`sleep`/other run no agent
+            # CLI and have no conversation to check.
+            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
         )
-        if returncode != 0:
-            sys.exit(returncode)
 
-        delivery_ok, delivery_err = _verify_workspace_delivery(
-            workspace_dir, initial_head=initial_head
-        )
-        if not delivery_ok:
-            # Detection ends here; repair belongs to the dispatcher, which owns
-            # the graph this task lives in (dispatch/SKILL.md section 6). A
-            # launcher carrying its own client for the knowledge base would be a
-            # second copy of that plugin's job, so the exit code and this message
-            # are the whole of the handoff.
-            fail(
-                f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
-                "Refusing to report success. If this task is in a terminal status, "
-                "the dispatcher must reopen it (via pauli) before filing a fix "
-                "subtask or re-dispatching."
+        cidfile = session_dir / "container.cid"
+        if cidfile.exists():
+            try:
+                cid_content = cidfile.read_text().strip()
+                if cid_content:
+                    container_id = cid_content
+            except OSError:
+                pass
+
+        if returncode == 0:
+            delivery_ok, delivery_err = _verify_workspace_delivery(
+                workspace_dir, initial_head=initial_head
             )
 
     finally:
+        cidfile = session_dir / "container.cid"
+        if cidfile.exists() and not container_id:
+            try:
+                cid_content = cidfile.read_text().strip()
+                if cid_content:
+                    container_id = cid_content
+            except OSError:
+                pass
+
+        ended_at = datetime.now(UTC)
+        commit_end = _get_git_head(workspace_dir)
+        image_digest = _get_image_digest(image)
+
+        delivery_guard = {"ok": delivery_ok, "error": delivery_err}
+        if returncode != 0 and delivery_ok and delivery_err is None:
+            delivery_guard = {
+                "ok": False,
+                "error": f"container exited with code {returncode}"
+                if returncode is not None
+                else "container execution failed",
+            }
+
+        write_run_record(
+            session_dir=session_dir,
+            session_id=session_id,
+            container_id=container_id,
+            container_name=container_name,
+            agent=agent_cmd,
+            task_id=task if task else None,
+            seeded_prompt=seeded_prompt,
+            image_ref=image,
+            image_digest=image_digest,
+            workspace_dir=workspace_dir,
+            commit_start=initial_head,
+            commit_end=commit_end,
+            exit_code=returncode,
+            delivery_guard=delivery_guard,
+            started_at=started_at,
+            ended_at=ended_at,
+            worker_model=worker_model,
+            degraded=degraded,
+        )
+
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
         cleanup_isolated_workspace(clone_cleanup)
+
+    if returncode != 0:
+        sys.exit(returncode)
+
+    if not delivery_ok:
+        fail(
+            f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
+            "Refusing to report success. If this task is in a terminal status, "
+            "the dispatcher must reopen it (via pauli) before filing a fix "
+            "subtask or re-dispatching."
+        )
 
 
 if __name__ == "__main__":

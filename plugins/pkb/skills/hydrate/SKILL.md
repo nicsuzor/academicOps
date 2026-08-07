@@ -42,17 +42,20 @@ prompt as one string.
 
 ## 2 — Search wide, cheap, and more than once
 
-- **`search`** — the PKB at large. **Pass `detail: "snippet"`.** The default is
+> [!NOTE]
+> PKB MCP tools may be hosted on the **`services`** MCP server using the `pkb__` prefix (e.g., `pkb__search`, `pkb__task_search`, `pkb__retrieve_memory`).
+
+- **`pkb__search`** (or `mcp__services__pkb__search`) — the PKB at large. **Pass `detail: "snippet"`.** The default is
   `chunk`, which returns the whole matching chunk; that default is most of what
   makes hydration expensive.
-- **`task_search`** — actionable tasks, returned with status and dependencies.
+- **`pkb__task_search`** (or `mcp__services__pkb__task_search`) — actionable tasks, returned with status and dependencies.
   This is the highest-value call for "has this been asked before".
-- **`retrieve_memory`** — only when the ask turns on a standing preference or a
+- **`pkb__retrieve_memory`** (or `mcp__services__pkb__retrieve_memory`) — only when the ask turns on a standing preference or a
   past correction. It returns full content with no snippet mode, so keep `limit`
   small.
 
 **PKB search only. No filesystem access is authorized** — no `Grep`, no `Glob`,
-and nothing at all over `$ACA_DATA`. That is what `search` is for.
+and nothing at all over `$ACA_DATA`. That is what PKB search tools (`pkb__search`, `pkb__task_search`) are for.
 
 **Vary the wording, always.** The index is semantic, so the same idea phrased
 the way the PKB would say it surfaces what the user's phrasing missed. Two or

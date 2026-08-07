@@ -2,7 +2,7 @@
 """Assembles dist/<marketplace-name>-<client>/ for every plugin and client.
 
 specs/ARCHITECTURE.md: "build/build.py assembles dist/<plugin>-<client> for
-each plugin and client." Stages, in order: inject, resolve includes, render
+each plugin and client." Stages, in order: inject, render
 manifests, adapt to client, package. Then generate the marketplace manifests.
 
 Usage (always as a module — `python build/build.py` breaks the `build.*`
@@ -23,7 +23,6 @@ from build.clients import agy as agy_client
 from build.clients import claude as claude_client
 from build.context import BuildContext, Plugin
 from build.errors import BuildError
-from build.includes import resolve_includes
 from build.manifest import merge_one_level, render_template, template_stem
 from build.marketplace import (
     generate_cowork_dist,
@@ -73,25 +72,15 @@ def discover_plugins(
     return plugins
 
 
-def _resolve_includes_in_tree(stage_dir: Path, lib_dir: Path) -> None:
-    for md_file in sorted(stage_dir.rglob("*.md")):
-        origin = str(md_file.relative_to(stage_dir))
-        text = md_file.read_text(encoding="utf-8")
-        resolved = resolve_includes(text, lib_dir, origin)
-        if resolved != text:
-            md_file.write_text(resolved, encoding="utf-8")
-
-
 def _stage_plugin(plugin: Plugin, lib_dir: Path, stage_dir: Path, version: str) -> None:
     """Stages 1-2: a client-agnostic copy with shared content injected and
-    includes resolved — built once, then reused for every client."""
+    built once, then reused for every client."""
     if stage_dir.exists():
         shutil.rmtree(stage_dir)
     stage_dir.mkdir(parents=True)
 
     copytree_filtered(plugin.source_dir, stage_dir, exclude_top=_STAGE_EXCLUDE_TOP)
     inject_shared(plugin.source_dir / "manifest" / "plugin.toml", lib_dir, stage_dir)
-    _resolve_includes_in_tree(stage_dir, lib_dir)
 
     repo_root = plugin.source_dir.parent.parent
     plugin_pyproject = plugin.source_dir / "pyproject.toml"
@@ -148,11 +137,11 @@ def _prune_empty_dirs(build_dir: Path) -> None:
 
 
 def _package(build_dir: Path, client: str, dist_root: Path) -> Path:
-    """Stage 5: tar per client. Claude tarballs contain the directory itself;
-    agy tarballs contain the directory's contents at the archive root."""
+    """Stage 5: tar per client. Both claude and agy tarballs contain the
+    directory itself at the archive root."""
     archive_path = dist_root / f"{build_dir.name}.tar.gz"
     with tarfile.open(archive_path, "w:gz") as tar:
-        tar.add(build_dir, arcname=build_dir.name if client == "claude" else ".")
+        tar.add(build_dir, arcname=build_dir.name)
     return archive_path
 
 

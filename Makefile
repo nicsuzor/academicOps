@@ -1,6 +1,6 @@
 # academicOps — build & install. Design: specs/ARCHITECTURE.md.
 
-.PHONY: help build install-dev uninstall-dev install clean test lint format \
+.PHONY: help build build-test install-dev uninstall-dev install clean test lint format \
         docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test \
         verify-docker
 
@@ -18,6 +18,8 @@ STALE_PLUGIN_NAMES = aops aops-cope aops-core aops-extras aops-ida aops-jr aops-
 
 help:
 	@echo "make build          - assemble dist/ for every plugin, both clients (build/build.py)"
+	@echo "make build-test     - build, then validate every dist/ plugin dir with"
+	@echo "                      'claude plugin validate' and 'agy plugin validate'"
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
 	@echo "make uninstall-dev  - remove the local marketplace, restore the released one"
 	@echo "make install        - install the released plugins from the dist branch"
@@ -40,6 +42,25 @@ help:
 
 build:
 	@uv run python -m build.build
+
+# Each client ships its own manifest schema (.claude-plugin/plugin.json vs
+# plugin.json, agent.md's frontmatter shape, hooks.json's shape) and only
+# that client's own CLI can validate against it — build.py has no
+# independent checker for either. Not part of `make build`: this runs each
+# dist plugin dir through the client that will actually load it, so a
+# manifest error surfaces here instead of at install or first use.
+build-test: build
+	@for p in $(PLUGIN_NAMES); do \
+		command claude plugin validate "$(DIST)/$$p-claude" \
+			&& echo "✓ claude $$p validated" \
+			|| { echo "x claude $$p validate failed" >&2; exit 1; }; \
+		if command -v agy >/dev/null 2>&1; then \
+			agy plugin validate "$(DIST)/$$p-agy" \
+				&& echo "✓ agy $$p validated" \
+				|| { echo "x agy $$p validate failed" >&2; exit 1; }; \
+		fi; \
+	done
+	@echo "✓ dist/ validated for every plugin, both clients"
 
 # --- Install ---
 

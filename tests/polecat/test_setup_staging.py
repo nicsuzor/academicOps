@@ -93,19 +93,13 @@ def test_gemini_settings_regenerated_without_secrets(fake_gemini_home, tmp_path)
     assert staged["security"]["auth"]["selectedType"] == "oauth-personal"
 
 
-def test_antigravity_settings_regenerated_without_secrets(fake_gemini_home, tmp_path):
+def test_antigravity_settings_not_created_in_staging(fake_gemini_home, tmp_path):
     staging_dir = tmp_path / "staging"
     staging_dir.mkdir()
 
     setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
-    staged_raw = (staging_dir / ".gemini" / "antigravity-cli" / "settings.json").read_text()
-    assert LEAKED_INTERNAL_URL not in staged_raw
-    assert LEAKED_HOST_PROJECT_PATH not in staged_raw
-
-    staged = json.loads(staged_raw)
-    assert "mcpServers" not in staged
-    assert staged["trustedWorkspaces"] == ["/workspace"]
+    assert not (staging_dir / ".gemini" / "antigravity-cli" / "settings.json").exists()
 
 
 def _plugin_declaring(option):

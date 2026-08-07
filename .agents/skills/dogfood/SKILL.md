@@ -18,7 +18,7 @@ work → observe friction → **record evidence (never fix inline)** → detache
 ## Modes — pick by what you are starting
 
 **1. live-trial** (default — any real task).
-Do the work normally. When the framework helps or hurts — an instruction that misled you, a gate that fired uselessly, a contract that saved you, context you needed but couldn't find — file an evidence record (below) and keep working. Do not stop to fix the framework; that contaminates both the work and the evidence.
+Do the work normally. When the framework helps or hurts — an instruction that misled you, a gate that fired uselessly, a contract that saved you, context you needed but couldn't find — file an evidence record (below) and keep working. Do not fix the framework mid-task on your own initiative; finish the work, then propose. If the user expressly approves a remedy, make the minimum, most general change and say what you changed.
 
 **2. instruction-test** (blind delegated execution — testing a skill, workflow, or task template).
 Give a contextless agent the instruction under test and the task _only_ — no coaching, no fixes mid-run; redirect a running agent rather than restarting it. Before reading the output, write down your hypothesis of where it will fail. Score the outcome against the instruction's own acceptance criteria, then have an independent agent score from scratch without seeing your read. If you edit the instruction, re-run blind: **≥2 runs per condition**, or you are measuring agent variance, not your edit.
@@ -33,9 +33,9 @@ Method and epistemics rubric: [references/decomposition-eval.md](references/deco
 
 - **Hypothesis before observation.** Written down first, every time. This is what lets you discover you were wrong.
 - **Blind means blind.** The executing agent never sees the gold standard, your hypothesis, or verbal coaching.
-- **Recusal.** The session that experienced the failure reports facts and impact; it does not propose the remedy. A detached review — reading many records — is the only place rule changes are authored. The `learn` skill's forensic-scope doctrine is where this is stated canonically.
+- **Minimum, most general change — with express approval.** The session that hit the failure may author the remedy, but only the smallest change that closes the gap, pitched at the most general level that fixes the class rather than the instance. Nothing ships without the user expressly approving that change. No approval, no edit: file the record and stop.
 - **Evidence is recurrence, not salience.** One painful incident is a data point. Three cited recurrences justify a mechanism; fewer justify at most a text change.
-- **Friction is filed, not fixed.** Inline fixes destroy the evidence trail and violate recusal.
+- **Record before you remedy.** File the evidence first, unedited, then propose. A fix written before the record contaminates the record.
 
 ## The evidence record
 
@@ -44,11 +44,11 @@ File to the PKB (project: aops) or as a GitHub issue — one incident per record
 - **What happened** vs **what the instruction/contract promised** (cite the instruction in force, by path or slug — "no rule existed" is itself a finding)
 - **Classification**: instruction-gap · process-gap · harness-limit · genuine-bug · framework-win (successes are evidence too — they defend components at earn-their-keep review)
 - **Impact**: what it cost, or saved
-- **No proposed remedy.** Stop there.
+- **Remedy, if any, kept separate from the facts** — and never applied without express approval.
 
 ## Turning evidence into change
 
-Detached review (issue-sweep or a human-directed session that did _not_ generate the records) works down the cost ladder — always the cheapest sufficient layer:
+Any session may propose; only express approval authorises the edit. Work down the cost ladder — always the cheapest sufficient layer:
 
 1. rule / instruction text
 2. skill or process step

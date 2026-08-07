@@ -28,11 +28,29 @@ On top of them:
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
 - **Never modify files outside this repository.** Found a bug upstream? Report it.
+- **Commit immediately, and push.** After any change, commit with a short,
+  descriptive message — this container is ephemeral and uncommitted work
+  disappears with it. Never write `.bak`/`.orig`/copy-suffixed files; git
+  already keeps every version.
 - **Fail fast.** A documented path that does not exist, a tool that does not
   behave as documented, an acceptance criterion you cannot meet as written — stop
   and report. Do not substitute an adjacent action you can perform.
 - **Verify before asserting.** Every factual claim in a doc or instruction must be
   true of the tree as it is. A doc that lies is worse than no doc.
+- **Verbatim proof.** Any claim of success, state change, test pass, or task
+  completion must be accompanied by a verbatim extract of the output (stdout/stderr,
+  log snippet, or state query) that proves the claim. Do not assert success
+  without falsifiable evidence.
+- **Outcome-oriented delegation.** When delegating tasks to subagents, specify
+  _what_ needs to be done and the constraints, not _how_ to do it. Trust
+  specialized agents to use their tools and domain knowledge appropriately. Do
+  not micro-manage tool selection or execution paths.
+- **Nic already knows.** He wrote this. Do not explain his own system back to
+  him, restate what he just said, or re-justify a decision he has made. Report
+  what he does not already have: what you found, what is false, what you changed.
+- **Answer the question asked, then stop.** In conversation, do not pre-empt the
+  next question, propose the following three steps, or open a design fork he has
+  not reached. He sets the pace. One thing at a time, and hold.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md).
 
@@ -47,8 +65,21 @@ make lint           # ruff check + documented-reference check + basedpyright
 make format         # ruff format + dprint fmt
 ```
 
-Run `make format` before committing; pre-commit runs `dprint fmt` on markdown,
-JSON, and TOML.
+Headless agy runs use `agy --output-format stream-json -p "<prompt>"`.
+
+A headless agy worker that has to change anything needs
+`--dangerously-skip-permissions`. Without it agy is granted no write tool at
+all — not a refusal it can report, but an absent capability, so it reads and
+greps until it needs to edit and then dies with `trajectory converted to zero
+chat messages` and exit 0. Treat that error as "the worker had no write tool",
+not as a crash to retry verbatim.
+
+Give a worker its brief in a file and pass a one-line pointer. Long `-p`
+prompts are also a way to lose a run, and a brief on disk is the one the next
+attempt can re-read unchanged.
+
+Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
+JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for Python files.
 
 ## Pull requests
 
