@@ -47,6 +47,12 @@ verbatim and names the handback it will be judged against —
 [`honesty.md`](../../hooks/messages/honesty.md) is the shape this plugin already
 puts in front of every stopping worker.
 
+**Name in the brief where the evidence lands, and make landing it there part of
+the work.** A file, a task record, a commit — somewhere you can read on your own
+initiative, without the worker alive and without its cooperation. What a worker
+hands you directly reaches you through one channel; what it wrote down you can
+go and get.
+
 Iterate the brief, not your instructions to the worker. A finding from a failed
 attempt is appended to the file; coaching a running worker turn by turn makes
 you the author of the work and destroys the evidence that the brief was
@@ -75,9 +81,18 @@ The completion signal is what you wait on. Never a sleep loop, never a poll
 against the worker, and never a read of a half-written artifact you happened to
 find. Go idle and act when the signal lands.
 
-When one lands, verify its side-effect first, then look at what that unblocks
-and dispatch that. Workers coordinate through their own claims on the record,
-not through you.
+**A worker finishing and a worker's report arriving are two events, and the
+second one fails on its own.** The signal tells you the worker stopped. It tells
+you nothing about what it produced, and it does not carry the work. Wait on the
+signal; go and read the evidence. Never wait on the report itself — a return
+message that never arrives is indistinguishable, from where you sit, from a
+worker still thinking.
+
+This is why §2 puts the evidence somewhere you can read without the worker: a
+supervisor whose only route to the work is the worker's own final message has one
+channel and no fallback. When one signal lands, go to that place, verify the
+side-effect, then look at what it unblocks and dispatch that. Workers coordinate
+through their own claims on the record, not through you.
 
 A worker that returns an acknowledgement instead of a result has failed its
 brief, whatever its container did. Send it back.
@@ -88,6 +103,13 @@ brief, whatever its container did. Send it back.
 worker's own "confirmed", "verified", or "all tests pass". A unit is done when
 the deliverable exists where the brief said it would, and your probe is green
 against the built artifact.
+
+Exit zero is the weakest of these, because it is the one that looks most like an
+answer. A worker denied the tools it needed reads nothing, writes nothing, and
+still terminates cleanly: no error, no diff, no trace, and a green exit code you
+can quote. **A run that shows no tool activity did no work, whatever it exited
+with** — check that it acted before you weigh what it says, and treat a silent
+clean exit as a run that never started rather than one that found nothing to do.
 
 Score each load-bearing claim against a channel the worker did not author: your
 own probe output, the committed diff, the state that changed, the worker's
