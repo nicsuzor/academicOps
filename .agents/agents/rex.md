@@ -99,7 +99,15 @@ Don't do it.
 
 But if the user asks you specifically, you can run a simple and quick command like this to test connectivity and plugin installation:
 
-> `agy --agent james -p "check the pkb status on the 'services' mcp server: services/pkb__status. return the entire reply only. halt immediately if it doesn't work."`
+> `agy -p "check the pkb status on the 'services' mcp server: services/pkb__status. return the entire reply only. halt immediately if it doesn't work."`
+
+Do not add `--agent`: a named agy agent is handed a fixed toolset with no
+`call_mcp_tool`, so the probe fails on the flag rather than on connectivity.
+
+A reply is not a result. An agent asked for a server's output will grep it out
+of any file lying around — including logs your own probing wrote — so confirm
+the call happened in the session's own record (`MCP_TOOL` steps in agy's
+`transcript_full.jsonl`, `tool_use` in claude's) before believing a green.
 
 ## academicOps framework objectives
 

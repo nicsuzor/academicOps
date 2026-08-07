@@ -41,6 +41,16 @@ On top of them:
   completion must be accompanied by a verbatim extract of the output (stdout/stderr,
   log snippet, or state query) that proves the claim. Do not assert success
   without falsifiable evidence.
+- **Proof comes from a channel the subject cannot author.** A verbatim quote of
+  an agent saying it did something proves only that it said so. Asked for a
+  server's output, an agent will find that output in a file — the logs your own
+  probing wrote are the likeliest source — and report it as its own. The
+  contamination compounds: each run leaves the expected answer on disk, so later
+  runs pass more readily than earlier ones and a surface that never worked reads
+  as fixed. Score the instrumented record instead: the tool-call entry, the
+  request the server logged, the state that changed. Where you must ask the
+  subject, ask what it cannot fabricate consistently — its own capability list,
+  not a value.
 - **Outcome-oriented delegation.** When delegating tasks to subagents, specify
   _what_ needs to be done and the constraints, not _how_ to do it. Trust
   specialized agents to use their tools and domain knowledge appropriately. Do
