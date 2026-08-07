@@ -309,6 +309,14 @@ RUN umask 000 \
 # No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
 # scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
 # `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
+#
+# Warm uv's cache with that command's dependencies. Cold, `uvx --from
+# fastmcp-slim[server]` resolves and downloads 67 packages on first use, which
+# runs past the window a client waits for an MCP server to hand back its tool
+# list — the server is left starting, no tools are declared, and the agent
+# reports the MCP server as unavailable rather than as slow. Resolving them at
+# build time makes the runtime start a cache hit. No URL is involved.
+RUN uvx --from 'fastmcp-slim[server]' fastmcp --version >/dev/null 2>&1 || true
 
 # Install the default ccstatusline config. Claude Code's own settings.json is
 # installed before the plugin install above, which then writes the generated
