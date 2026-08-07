@@ -5,10 +5,10 @@ description: Drive a delegated change to a green probe — brief a worker from a
 
 # Supervised development
 
-You supervise a change into existence through workers. You write none of it
-yourself, and your responsibility ends only when every unit has reached a
-terminal state — delivered, partial, failed, or blocked — never when a worker
-says it has finished.
+You supervise a change into existence through workers, sequenced and parallel.
+You write none of it yourself, and your responsibility ends only when every unit
+has reached a terminal state — delivered, partial, failed, or blocked — never
+when a worker says it has finished.
 
 Getting a worker onto a surface is the [`dispatch`](../dispatch/SKILL.md)
 skill's job: mode, image freshness, launch, session naming. This skill is
@@ -53,6 +53,12 @@ initiative, without the worker alive and without its cooperation. What a worker
 hands you directly reaches you through one channel; what it wrote down you can
 go and get.
 
+Then confirm the worker can actually write there, as its first act rather than
+its last. A return channel is only a fallback if it works, and the run that
+discovers it does not is the run whose evidence you have already lost. A
+destination a worker cannot reach is a brief defect, and it is cheap now and
+unrecoverable later.
+
 Iterate the brief, not your instructions to the worker. A finding from a failed
 attempt is appended to the file; coaching a running worker turn by turn makes
 you the author of the work and destroys the evidence that the brief was
@@ -75,11 +81,29 @@ the work in front of you, not a reason to route around. Never accept a
 workaround that leaves the sanctioned path broken; reporting the blockage and
 taking another road is the failure mode even when the other road works.
 
-## 4. Wait for exits; never poll
+**A result taken while another writer was active is not a result.** Running
+workers in parallel is a decision about the surface, not only about the queue:
+give each its own working copy, or serialise them and say which you did. A tree
+that changed under your build describes a state that no longer exists, and the
+run you take inside that window is the most convincing wrong answer available —
+it is clean, it is reproducible-looking, and it is about nothing. If you cannot
+establish that you were the only writer, re-run the cycle when you can, and treat
+the earlier output as void rather than as weak evidence.
 
-The completion signal is what you wait on. Never a sleep loop, never a poll
-against the worker, and never a read of a half-written artifact you happened to
-find. Go idle and act when the signal lands.
+## 4. Wait on the worker's exit; never poll it for progress
+
+Asking a running worker how it is going costs you and tells you nothing it will
+not tell you anyway: alive is not progress, and busy is not a verdict. Go idle,
+and act when the worker's termination reaches you. Where the surface emits a
+completion signal of its own, that is what you wait on; where it emits none, the
+worker's exit is the signal, and waiting on a process to end is not polling it
+for progress.
+
+**Reading the evidence is not polling.** Going to the place §2 named and looking
+at what is actually there needs no permission and no signal — it is a durable
+channel, it is yours, and you may go to it whenever you like. What you must not
+do is bank what you find mid-flight: an artifact still being written is a
+snapshot, not a deliverable, and the probe still decides.
 
 **A worker finishing and a worker's report arriving are two events, and the
 second one fails on its own.** The signal tells you the worker stopped. It tells
@@ -88,11 +112,18 @@ signal; go and read the evidence. Never wait on the report itself — a return
 message that never arrives is indistinguishable, from where you sit, from a
 worker still thinking.
 
-This is why §2 puts the evidence somewhere you can read without the worker: a
-supervisor whose only route to the work is the worker's own final message has one
-channel and no fallback. When one signal lands, go to that place, verify the
-side-effect, then look at what it unblocks and dispatch that. Workers coordinate
-through their own claims on the record, not through you.
+**Bound the wait when you dispatch, not when you start worrying.** Decide before
+launch what elapsed time or observable makes further waiting unreasonable for
+this unit; the probe's own runtime and any previous attempt are what you size it
+against. When the bound passes with nothing, stop waiting and go to the evidence:
+either the deliverable is there and complete, or it is partial, or nothing was
+written — and all three are outcomes you can act on. A worker that died in
+silence produces exactly the silence of one still thinking, so an unbounded wait
+is not patience, it is a decision you declined to make.
+
+When a signal lands, verify the side-effect, then look at what it unblocks and
+dispatch that. Workers coordinate through their own claims on the record, not
+through you.
 
 A worker that returns an acknowledgement instead of a result has failed its
 brief, whatever its container did. Send it back.
@@ -110,6 +141,9 @@ still terminates cleanly: no error, no diff, no trace, and a green exit code you
 can quote. **A run that shows no tool activity did no work, whatever it exited
 with** — check that it acted before you weigh what it says, and treat a silent
 clean exit as a run that never started rather than one that found nothing to do.
+Where you cannot obtain that record at all, that is your answer for this unit:
+say the run was unobservable and leave it unbanked. An exit code is not the
+fallback for a missing record — it is the thing the record exists to overrule.
 
 Score each load-bearing claim against a channel the worker did not author: your
 own probe output, the committed diff, the state that changed, the worker's
@@ -124,10 +158,40 @@ A claim carrying neither checkable evidence nor a stated failure reason is
 hearsay. Send it back naming the unsupported claim, or commission the evidence.
 Never fill the gap yourself and never relay it onward as established.
 
-**Certification is commissioned, not performed.** Where the unit's acceptance
-turns on judgment rather than the probe, commission `verify` from marsha and
-record the verdict she returns. Reading the artifact yourself and pronouncing on
-it is the one thing this step must not produce.
+**A deliverable with no argument attached is not banked either.** Work arrives
+this way more often than it arrives with a bad argument: the diff is present, the
+probe is green, and nothing anywhere says what was done or why. That is an
+unexamined change, not a passing one, and it is the shape most likely to be waved
+through — there is no false claim in front of you to object to. Do not supply the
+missing reasoning: the artifact you would reconstruct it from is the artifact
+under judgment. Go back to the worker while it lives, or commission the review
+once it does not, and hold the unit open until one of them returns something you
+can read.
+
+**A green probe is evidence about what the probe runs, and silence about
+everything else.** Silence is not a pass. Prose that misdescribes the tree, a
+second copy of a value that already existed, an assertion that cannot fail — each
+survives a full green suite untouched, because no command you chose in §1
+executes them. The stronger your probe, the more confident the wrong answer.
+
+**Certification is commissioned, not performed.** Commission it on every unit
+whose deliverable carries anything the probe does not execute — prose, structure,
+configuration, a test's own assertions — which is nearly all of them. Do not read
+the exemption the other way round: a green probe is the reason to commission
+review, not the reason to skip it.
+
+Match the lens to what could be wrong. `verify` is marsha's "is this actually any
+good, and does it work" pass, commissioned from her rather than invoked. Where a
+rule, an axiom, or a project standard governs the deliverable, that is a
+different register: `strategic-review` runs the rule, premise and quality lenses
+together and reconciles them into one verdict. Record what comes back.
+
+**You cannot certify from a context that cannot spawn.** Commissioning a review
+means deploying reviewers, so establish you hold that surface before you take the
+unit on. If you do not, hand it to a context that does and say so. Reading the
+artifact yourself and pronouncing on it is the one thing this step must not
+produce, and a gate that returns neither a verdict nor a failure is the one
+outcome it must never end in.
 
 ## 6. Reopen before you decide anything else
 
@@ -165,6 +229,10 @@ Return:
 - The probe, verbatim, and its final output.
 - Each unit: terminal state, the deliverable's location, and the channel you
   judged it from.
+- The certification each unit got, and from whom — or why none was owed.
+- Whether workers ran in parallel on one surface, and how you kept the cycle's
+  results clean if they did.
 - Each iteration that failed, and what the next brief said differently.
 - What you reopened, and why.
+- Anything you could not observe, named as unobserved rather than passed over.
 - What remains unreached, stated plainly.

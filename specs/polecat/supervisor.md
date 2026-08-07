@@ -107,7 +107,9 @@ feedback), or **Fail** (fundamental issues or retry budget exhausted, escalate t
 a human).
 
 The supervisor stays responsible for the work until it reaches a terminal state — it
-checks progress on every tick, it does not fire-and-forget.
+does not fire-and-forget. Responsibility is not polling: a tick is woken by a worker
+terminating or by a bound the supervisor set at dispatch, and it establishes state by
+reading durable evidence, never by asking a running worker how it is going.
 
 ## Relationship to `/pull` and `/dispatch`
 
