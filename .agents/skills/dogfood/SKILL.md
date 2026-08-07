@@ -33,7 +33,7 @@ Method and epistemics rubric: [references/decomposition-eval.md](references/deco
 
 - **Hypothesis before observation.** Written down first, every time. This is what lets you discover you were wrong.
 - **Blind means blind.** The executing agent never sees the gold standard, your hypothesis, or verbal coaching.
-- **Minimum, most general change — with express approval.** The session that hit the failure may author the remedy, but only the smallest change that closes the gap, pitched at the most general level that fixes the class rather than the instance. Nothing ships without the user expressly approving that change. No approval, no edit: file the record and stop.
+- **Minimum, most general change — with express approval.** The session that hit the failure may author the remedy, but only the smallest change that closes the gap, pitched at the most general level that fixes the class rather than the instance. Nothing ships without the user expressly approving that change. No approval, no edit: file the record and stop. The gate is on remedies: any edit that would change what a future reader is told to do, however obviously right and however narrow it looks. Repair is not gated — undoing this session's own damage, or deleting a pointer to something that is not there. When you cannot tell which you have, it is a remedy.
 - **Evidence is recurrence, not salience.** One painful incident is a data point. Three cited recurrences justify a mechanism; fewer justify at most a text change.
 - **Record before you remedy.** File the evidence first, unedited, then propose. A fix written before the record contaminates the record.
 
