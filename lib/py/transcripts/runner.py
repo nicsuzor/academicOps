@@ -34,8 +34,10 @@ logger = logging.getLogger("transcripts.runner")
 def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
     """Find all Claude Code and agy session log files recursively.
 
-    Searches across $AOPS_SESSIONS/logs/, ~/.claude/projects/, and agy directories.
-    Strictly filters out subagents/ subdirectories and -hooks.jsonl files.
+    Searches across $AOPS_SESSIONS/logs/ and the client state roots
+    `transcripts.discovery` resolves — Claude Code's under $CLAUDE_CONFIG_DIR
+    when set, agy's under home. Strictly filters out subagents/ subdirectories
+    and -hooks.jsonl files.
     """
     if sessions_dir is None and "AOPS_SESSIONS" in os.environ:
         sessions_dir = Path(os.environ["AOPS_SESSIONS"])

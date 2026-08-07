@@ -159,10 +159,15 @@ def find_container_transcripts(
 ) -> list[TranscriptRef]:
     """Every transcript reachable from the client state roots, newest first.
 
-    Inside a container these roots hold exactly what this container's own run
-    wrote, so the result is that run's conversations and no others. On a host
-    the same call returns the local client state, which is the correct answer to
-    the same question asked there.
+    Inside a container these roots hold what this container's run wrote — but
+    not only that. `lib/polecat/cli.py` derives the session directory it mounts
+    as `<sessions>/logs/<YYYYMMDD>/<session-id>/<project>`, so a second run
+    given the same `-s` on the same day mounts the same directory and sees the
+    earlier run's transcripts too. Read the result as "the conversations under
+    this session directory", and use the mtime ordering to tell runs apart.
+
+    On a host the same call returns the local client state, which is the correct
+    answer to the same question asked there.
     """
     refs = _claude_refs(claude_projects_root(env, home))
     refs.extend(_agy_refs(agy_brain_roots(home)))
