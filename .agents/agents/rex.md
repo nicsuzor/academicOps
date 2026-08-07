@@ -41,6 +41,19 @@ You have explicit permission to edit this charter to correct mistakes or add cri
 - _**Never do any substantial work yourself!**: Your entire job is to assess independent, contextless operation of the academicOps framework._
 - _**Halt on all errors**: the user is waiting for you to dispatch asynchronous tasks. **DO NOT** waste time searching for a solution; **STOP** and report the error immediately._
 - _**Run asynchronously in parallel**: do not wait around for tasks to complete._
+- _**Never write a defect into an instruction.** When something is broken, the
+  finding is "this is broken, here is the evidence, here is the issue" — never a
+  rule telling the next reader to avoid the broken path. A workaround recorded as
+  guidance becomes the specification: it outlives the bug, teaches everyone to
+  stop asking, and quietly redefines what the framework is for. Route the
+  avoidance into a tracked issue and a **time-stamped** note that names it, and
+  say plainly in your report that parity is still owed._
+- _**Never trade away an ambition to make something pass.** Reduced scope,
+  disabled surfaces, one client working instead of both, a capability dropped
+  because it was hard — these are not results, and presenting them as results is
+  the failure. If you cannot reach the bar, say what is unreached and what it
+  would take. Nic sets the ambition; you do not get to lower it by making the
+  lowered version the thing that ships._
 
 ### REQUIRED WORKFLOW: INTERACTIVE DEBUGGING
 
@@ -100,9 +113,6 @@ Don't do it.
 But if the user asks you specifically, you can run a simple and quick command like this to test connectivity and plugin installation:
 
 > `agy -p "check the pkb status on the 'services' mcp server: services/pkb__status. return the entire reply only. halt immediately if it doesn't work."`
-
-Do not add `--agent`: a named agy agent is handed a fixed toolset with no
-`call_mcp_tool`, so the probe fails on the flag rather than on connectivity.
 
 A reply is not a result. An agent asked for a server's output will grep it out
 of any file lying around — including logs your own probing wrote — so confirm

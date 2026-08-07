@@ -225,11 +225,19 @@ def test_claude_boots_as_the_default_agent(tmp_path, monkeypatch):
     assert inner[inner.index("--agent") + 1] == cli.DEFAULT_AGENT
 
 
-def test_agy_is_never_given_a_default_agent(tmp_path, monkeypatch):
-    """agy hands a named agent a fixed toolset — no `call_mcp_tool`, no write,
-    no shell — so a defaulted `--agent` leaves the worker unable to reach any
-    MCP server or change anything. agy's own default agent gets the full set.
-    A caller who names an agent still wins and takes that restriction on."""
+def test_agy_carries_the_no_default_agent_mitigation_for_issue_2387(tmp_path, monkeypatch):
+    """Pins a TEMPORARY MITIGATION, not the intended contract (#2387).
+
+    Every dispatched worker should boot as `DEFAULT_AGENT`, on every client.
+    agy cannot honour that yet: under `--agent <name>` it hands the agent a
+    fixed toolset with no `call_mcp_tool`, no write and no shell, so defaulting
+    agy to james shipped a worker that reached no MCP server and changed
+    nothing. Until #2387 closes, agy runs on its own default agent — full
+    tools, none of our persona.
+
+    When #2387 closes, delete this test and add `agy` back to
+    `test_claude_boots_as_the_default_agent`. Do not extend or entrench it.
+    """
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,

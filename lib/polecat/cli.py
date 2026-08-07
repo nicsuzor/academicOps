@@ -863,14 +863,23 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             "--dangerously-skip-permissions",
             "--log-file",
             "/home/worker/.gemini/antigravity-cli/cli.log",
-            # No default agent for agy. Naming an agent with `--agent` hands it
-            # a fixed, restricted toolset — `find_by_name`, `generate_image`,
-            # `grep_search`, `list_dir`, `read_url_content`, `schedule`,
-            # `search_web`, `send_message`, `view_file` — with no
-            # `call_mcp_tool`, so a named agy agent reaches no MCP server at
-            # all, whatever its plugin declares. agy's own default agent gets
-            # the full set. A caller who passes `--agent` still wins and takes
-            # that restriction on knowingly.
+            # TEMPORARY MITIGATION for #2387 — remove when it closes.
+            #
+            # A dispatched worker is supposed to boot as DEFAULT_AGENT on every
+            # client; that is what claude does two branches up, and it is what
+            # gives a worker this framework's doctrine instead of a stock
+            # assistant. agy currently cannot honour it: under `--agent <name>`
+            # it hands the agent a fixed toolset — `find_by_name`,
+            # `generate_image`, `grep_search`, `list_dir`, `read_url_content`,
+            # `schedule`, `search_web`, `send_message`, `view_file` — with no
+            # `call_mcp_tool`, no write and no shell, whatever the agent's own
+            # definition says. Defaulting agy to james therefore shipped a
+            # worker that could reach no MCP server and change nothing.
+            #
+            # So agy is left on its own default agent, which has the full tool
+            # set but none of our persona. That is a downgrade we are carrying,
+            # not the intended contract. When #2387 closes this branch takes
+            # `*_default_agent_args(extra_args)` like claude's.
         ]
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path

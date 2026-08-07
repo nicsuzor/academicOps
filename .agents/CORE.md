@@ -35,6 +35,14 @@ On top of them:
 - **Fail fast.** A documented path that does not exist, a tool that does not
   behave as documented, an acceptance criterion you cannot meet as written — stop
   and report. Do not substitute an adjacent action you can perform.
+- **A defect is never a rule.** Do not write "avoid X" into any instruction,
+  comment, contract or test because X is currently broken. Guidance outlives the
+  bug it was written for: the next reader takes the detour as the design, stops
+  asking why, and the capability is gone without anyone deciding to drop it.
+  Broken things get an issue, a dated note that names it, and a mitigation
+  labelled as temporary at the point of the mitigation. Parity between clients is
+  owed until it is met — a surface that works on one client and not the other is
+  an open defect, never the shape of the system.
 - **Verify before asserting.** Every factual claim in a doc or instruction must be
   true of the tree as it is. A doc that lies is worse than no doc.
 - **Verbatim proof.** Any claim of success, state change, test pass, or task
@@ -77,17 +85,22 @@ make format         # ruff format + dprint fmt
 
 Headless agy runs use `agy --output-format stream-json -p "<prompt>"`.
 
-**Do not pass `--agent` to agy.** A named agy agent is handed a fixed toolset —
-`find_by_name`, `generate_image`, `grep_search`, `list_dir`,
-`read_url_content`, `schedule`, `search_web`, `send_message`, `view_file` — with
-no `call_mcp_tool`, no write and no shell. It reaches no MCP server and can
-change nothing, whatever its own definition or its plugin's `mcp_config.json`
-says. agy's default agent gets the full set. A worker that reads and greps and
-then dies with `trajectory converted to zero chat messages` at exit 0 had no
-write tool; read that as agent scoping, not as a crash to retry verbatim.
+**Open defect, 2026-08-07 — agy has no agent parity with claude ([#2387]).**
+Under `--agent <name>`, agy hands the agent a fixed toolset — `find_by_name`,
+`generate_image`, `grep_search`, `list_dir`, `read_url_content`, `schedule`,
+`search_web`, `send_message`, `view_file` — with no `call_mcp_tool`, no write
+and no shell, whatever the agent's own definition says. So the personas that
+carry this framework's doctrine cannot currently run work on agy at all. That
+is the bug to fix, not a shape to design around: until it closes, an agy run
+that drops `--agent` is a **temporary mitigation** and the persona it should
+have had is still owed. A worker that reads and greps and then dies with
+`trajectory converted to zero chat messages` at exit 0 had no write tool — read
+that as this defect, not as a crash to retry verbatim.
 
 A worker that has to change anything also wants
 `--dangerously-skip-permissions`.
+
+[#2387]: https://github.com/nicsuzor/academicOps/issues/2387
 
 Give a worker its brief in a file and pass a one-line pointer. Long `-p`
 prompts are also a way to lose a run, and a brief on disk is the one the next
