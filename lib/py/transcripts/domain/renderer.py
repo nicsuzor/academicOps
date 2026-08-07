@@ -6,7 +6,7 @@ import html
 import json
 from typing import Any
 
-from transcripts.domain.secret_redaction import redact_obj
+from transcripts.domain.secret_redaction import redact_obj, redact_secrets
 from transcripts.model import NormalizedEvent, NormalizedSession, SubagentTranscript
 
 # The summary .md is meant to stay comfortably readable (~25K tokens or
@@ -117,7 +117,7 @@ def _render_subagent_index(session: NormalizedSession, filename_base: str) -> li
         "",
         f"{len(session.subagents)} subagent conversation(s) ran under this session. "
         f"Their full transcripts are in the "
-        f"[Full Markdown Details](./{_escape_html(filename_base)}.full.md).",
+        f"[Full Markdown Details](./{_md_text(filename_base)}.full.md).",
         "",
         "| # | Agent | Type | Depth | Events | Tokens | Started | Task |",
         "|---|-------|------|-------|--------|--------|---------|------|",
@@ -127,11 +127,11 @@ def _render_subagent_index(session: NormalizedSession, filename_base: str) -> li
         raw_desc = (subagent.description or "").strip().replace("\n", " ")
         if len(raw_desc) > 80:
             raw_desc = raw_desc[:77] + "..."
-        description = _escape_html(raw_desc).replace("|", "\\|")
+        description = _md_text(raw_desc).replace("|", "\\|")
         lines.append(
-            f"| {idx} | `{subagent.label}` | {_escape_html(subagent.agent_type or '')} | "
+            f"| {idx} | `{subagent.label}` | {_md_text(subagent.agent_type or '')} | "
             f"{_depth_label(subagent)} | {len(subagent.events)} | {subagent.tokens_used} | "
-            f"{_escape_html(started)} | {description} |"
+            f"{_md_text(started)} | {description} |"
         )
     lines.append("")
     return lines
@@ -202,7 +202,7 @@ def render_to_markdown(
             content_snippet = content_str.strip().replace("\n", " ")
             if len(content_snippet) > 80:
                 content_snippet = content_snippet[:77] + "..."
-        content_snippet = _escape_html(content_snippet).replace("|", "\\|")
+        content_snippet = _md_text(content_snippet).replace("|", "\\|")
 
         content_lines.append(
             f"| {idx} | `{event_type}` | **{source_name}** | {ts} | {content_snippet} |"
@@ -295,7 +295,7 @@ def _render_events_markdown(
                 [
                     "> [!NOTE]",
                     "> **Thinking Process:**",
-                    *(f"> {_escape_html(line)}" for line in event.thinking.splitlines()),
+                    *(f"> {_md_text(line)}" for line in event.thinking.splitlines()),
                     "",
                 ]
             )
@@ -333,21 +333,21 @@ def _render_events_markdown(
                 )
 
                 if is_human and human_text:
-                    lines.append(_escape_html(human_text))
+                    lines.append(_md_text(human_text))
                     lines.append("")
                 if injected_text:
                     lines.extend(
                         [
                             "> [!NOTE]",
                             f"> **Injected Context (`{prompt_kind}`):**",
-                            *(f"> {_escape_html(line)}" for line in injected_text.splitlines()),
+                            *(f"> {_md_text(line)}" for line in injected_text.splitlines()),
                             "",
                         ]
                     )
             elif event.source == "tool" or event.type == "tool_output":
                 lines.extend(_format_tool_output_markdown(content))
             else:
-                lines.append(_escape_html(content))
+                lines.append(_md_text(content))
                 lines.append("")
 
         if event.tool_calls:
@@ -408,7 +408,7 @@ def _render_subagent_transcripts(session: NormalizedSession) -> list[str]:
         if subagent.parent_agent_id:
             header.append(f"- spawned_by: `{subagent.parent_agent_id}`")
         if subagent.description:
-            header.extend(["", f"> {_escape_html(subagent.description.strip())}"])
+            header.extend(["", f"> {_md_text(subagent.description.strip())}"])
         header.append("")
 
         body = _render_events_markdown(subagent.events, lookup)
@@ -524,8 +524,29 @@ def render_to_full_markdown(
     return "\n".join(yaml_lines) + "\n".join(content_lines)
 
 
+def _md_text(text: str) -> str:
+    """Carry text into a Markdown tier verbatim.
+
+    Markdown is not HTML. Escaping `<`, `>` and `&` here turns the body of a
+    fenced code block into `&lt;`-noise, and escaping `"` breaks the
+    `"KEY": "value"` shape that `redact_secrets` matches at the write
+    chokepoint — a key-named credential then survives into the shipped file.
+    Sanitising is owed by whatever renders this Markdown into HTML, which is
+    the layer that knows it is producing a DOM.
+    """
+    return str(text)
+
+
 def _escape_html(text: str) -> str:
-    return html.escape(str(text), quote=True)
+    """Escape a fragment for embedding in the HTML tier.
+
+    Redaction runs first. The write chokepoint in `runner.py` redacts final
+    text, but by then this function has already rewritten `"` as `&quot;`,
+    which breaks the `\\s*:\\s*` match on `"KEY": "value"` and lets a
+    key-named credential through. Scrubbing before escaping keeps the
+    chokepoint's pass as defence in depth rather than the only line.
+    """
+    return html.escape(redact_secrets(str(text)), quote=True)
 
 
 def _render_subagent_html(session: NormalizedSession, filename_base: str) -> str:
@@ -587,7 +608,16 @@ def render_to_html(
         else:
             header_title = source_class.upper()
 
-        ts_str = f'<span class="timestamp">({event.timestamp})</span>' if event.timestamp else ""
+        # `event.source` and `event.timestamp` are transcript data, so they are
+        # attacker-controlled: both land in the DOM below, one inside a class
+        # attribute. Escape at the point of emission.
+        source_class = _escape_html(source_class)
+        header_title = _escape_html(header_title)
+        ts_str = (
+            f'<span class="timestamp">({_escape_html(event.timestamp)})</span>'
+            if event.timestamp
+            else ""
+        )
 
         # Format thinking
         thinking_html = ""
