@@ -28,6 +28,17 @@ state note is worse than none, because it reads as current.
 Both take the client as their first argument, so the same command covers both
 surfaces. Run them once per client; a pass on one is no evidence for the other.
 
+**Never score a capability on what the agent says.** Ask an agent for a
+server's output and it will grep that output out of any file lying around —
+including the logs, task outputs and transcripts your own probing leaves behind
+— and report it as though it had made the call. The contamination compounds:
+each run writes the expected answer to disk, so later runs pass more readily
+than earlier ones, and a surface that never worked reads as fixed. Score the
+tool-call record instead — `MCP_TOOL` steps in agy's `transcript_full.jsonl`,
+`tool_use` records in claude's session jsonl — which is what
+`matrix-probe.sh`'s MCP cell does. The same caution applies to any cell whose
+expected answer could exist on disk.
+
 They exist because a hand-driven walk is slow enough that it gets run once and
 believed thereafter. Read their environment contract before the first run: tmux
 does not inherit a fresh environment, so every variable a plugin's MCP server

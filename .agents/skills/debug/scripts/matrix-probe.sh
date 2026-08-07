@@ -18,6 +18,7 @@ shift
 
 : "${POLECAT_HOME:?set POLECAT_HOME}"
 : "${POLECAT_IMAGE:?set POLECAT_IMAGE}"
+: "${AOPS_SESSIONS:?set AOPS_SESSIONS — the MCP cell is scored from the session transcript}"
 
 REPO="$(git rev-parse --show-toplevel)"
 SESS="matrix-${CLIENT}-$$"
@@ -56,8 +57,55 @@ cell() {  # name, prompt, success-regex, ticks
   wait_for "$3" "$4" && echo "$1: PASS" || echo "$1: FAIL"
 }
 
+# Did the agent actually call an MCP tool? Judged from the session's own
+# transcript, never from what it said. Returns 0 only on a real tool-call
+# record.
+mcp_called() {
+  # The log directory is dated in local time, as polecat names it.
+  local dir="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$SESS/workspace"
+  python3 - "$dir" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+n = 0
+for f in root.rglob("transcript_full.jsonl"):          # agy
+    for line in f.open(errors="ignore"):
+        try:
+            if json.loads(line).get("type") == "MCP_TOOL":
+                n += 1
+        except ValueError:
+            pass
+for f in root.glob("*.jsonl"):                          # claude
+    if "hooks" in f.name:
+        continue
+    for line in f.open(errors="ignore"):
+        if '"tool_use"' in line and "mcp__" in line:
+            n += 1
+print(n)
+sys.exit(0 if n else 1)
+PY
+}
+
+mcp_cell() {
+  echo "--- MCP ---"
+  send "call a read-only tool on your pkb mcp server and report one fact from its reply."
+  wait_for 'build_profile|version|●|⎿' 24 >/dev/null
+  sleep 5
+  if calls=$(mcp_called); then
+    echo "MCP: PASS ($calls tool-call records)"
+  else
+    echo "MCP: FAIL (0 tool-call records — any answer in the pane was fabricated from disk)"
+  fi
+}
+
 echo "##### $CLIENT $* #####"
-cell MCP     "ask the pkb mcp server for its status and return the entire reply only." 'build_profile|version' 24
+# The MCP cell is NOT scored on the pane. An agent asked for a server's output
+# will happily grep that output out of any file lying around — including the
+# logs and transcripts a probe run leaves behind — and report it as if it had
+# called the server. Scoring reply text turns a broken surface green, and the
+# contamination grows with every run. Score the tool-call record instead:
+# `MCP_TOOL` steps in agy's transcript_full.jsonl, `tool_use` records in
+# claude's session jsonl. See mcp_cell().
+mcp_cell
 cell SKILLS  "list the names of the skills available to you. just the names, one line." 'dogfood|dispatch|verify|brief|hydrate|remember' 18
 cell SUBAGENT "dispatch a subagent to reply with exactly the word PONGWORKED and report what it said." 'PONGWORKED' 30
 cell PERMS   "run a shell command to write the word OKWRITE into /tmp/permcheck.txt then read it back and show the contents." 'OKWRITE' 24
