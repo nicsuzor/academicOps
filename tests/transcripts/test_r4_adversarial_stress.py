@@ -236,8 +236,8 @@ class TestHTMLAttributeContexts:
         assert r"val\&quot;&lt;script&gt;alert(\&quot;arg\&quot;)&lt;/script&gt;" in html_out
         assert '<script>alert("name")</script>' not in html_out
 
-    def test_untrusted_header_title_and_source_class_vulnerability(self):
-        """Stress-test event.source and event.timestamp for raw unescaped injection in HTML DOM."""
+    def test_untrusted_header_title_and_source_class_are_escaped(self):
+        """event.source and event.timestamp reach the HTML DOM escaped."""
         event_custom = NormalizedEvent(
             event_id="e3",
             timestamp='2026-08-06<script>alert("ts")</script>',
@@ -262,11 +262,10 @@ class TestHTMLAttributeContexts:
             insights=None,
         )
 
-        # Demonstrate whether event.source and event.timestamp allow raw HTML injection
-        has_source_xss = '<script>alert("source")</script>' in html_out
-        has_ts_xss = '<script>alert("ts")</script>' in html_out
-
-        # Store finding: event.source and event.timestamp are currently NOT escaped in event headers!
-        assert has_source_xss is True or has_ts_xss is True, (
-            "Expected to detect unescaped HTML vulnerability in event header/source"
-        )
+        # Neither field may reach the DOM unescaped. `source` also lands inside
+        # a class attribute, so the payload below closes the quote as well as
+        # the tag — `quote=True` is what stops it.
+        assert '<script>alert("source")</script>' not in html_out
+        assert '<script>alert("ts")</script>' not in html_out
+        assert "&lt;script&gt;alert(&quot;source&quot;)&lt;/script&gt;" in html_out
+        assert "&lt;script&gt;alert(&quot;ts&quot;)&lt;/script&gt;" in html_out

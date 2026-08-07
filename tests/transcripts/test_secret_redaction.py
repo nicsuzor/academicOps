@@ -306,6 +306,52 @@ class TestWiringIntoArtifacts:
                 assert leaked not in content, f"{leaked!r} leaked into {name}"
             assert REDACTED in content, f"{name} was written without any redaction"
 
+    def test_key_named_secret_scrubbed_through_the_real_renderer(self, tmp_path: Path):
+        """A key-named secret survives no tier, with the real renderer in the path.
+
+        The sibling test above stubs `render_session_to_all_formats`, so it
+        cannot see anything the renderer does to the text before the chokepoint
+        reads it. That blind spot is the whole bug: HTML-escaping the render
+        rewrites `"` as `&quot;`, the `"KEY": "value"` shape stops matching
+        `\\s*:\\s*`, and a key-named credential rides into every artifact. The
+        value here is deliberately shapeless — no `ghp_`/`sk-ant-` prefix — so
+        only the name-based rule can catch it and the token-shape patterns
+        cannot mask a regression.
+        """
+        from transcripts import runner
+
+        unshaped = "plainvalue123notatokenshape"
+        sentinel = "SENTINEL_CONTENT_MARKER"
+        session = _stub_session(
+            content=f'{sentinel}\n{{"MY_API_KEY": "{unshaped}", "note": "config"}}'
+        )
+        runner.process_single_session(session, tmp_path, _NeverSkipCache(), force=True)
+
+        artifacts = [p for p in tmp_path.glob("transcripts/**/*") if p.is_file()]
+        names = [p.name for p in artifacts]
+        # Assert the tiers exist, not that nothing else does. Nic's ruling
+        # aops_22c422dc (2026-08-05) still owes a per-subagent file and a
+        # manifest.json; a bare count would turn this *security* test red when
+        # that lands, and it would read as a redaction regression.
+        for suffix in (".controller.md", ".full.md", ".html", ".json"):
+            assert any(n.endswith(suffix) for n in names), f"no {suffix} in {sorted(names)}"
+        assert any(
+            n.endswith(".md") and not n.endswith((".controller.md", ".full.md")) for n in names
+        ), f"no summary .md in {sorted(names)}"
+
+        # The sentinel proves the poisoned content actually reached the files;
+        # without it every absence assertion below could pass on empty output.
+        carriers = [p for p in artifacts if sentinel in p.read_text(encoding="utf-8")]
+        assert carriers, "no artifact carried the content; the test proved nothing"
+
+        for path in artifacts:
+            body = path.read_text(encoding="utf-8")
+            assert unshaped not in body, f"key-named secret leaked into {path.name}"
+        for path in carriers:
+            assert REDACTED in path.read_text(encoding="utf-8"), (
+                f"{path.name} carried the content but shows no redaction marker"
+            )
+
     def test_sidecar_stays_parseable_through_redaction(self, tmp_path: Path):
         """The corrupting case, end to end and on real bytes.
 

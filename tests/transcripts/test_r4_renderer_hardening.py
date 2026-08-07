@@ -148,10 +148,7 @@ def test_4_tier_output_artifacts_written(
     # Full has full subagent transcript
     assert "Full Transcript" in full_content
     assert "## 🧵 Subagent Transcripts" in full_content
-    assert (
-        "Analysis result for &lt;dataset_table&gt;" in full_content
-        or "Analysis result for <dataset_table>" in full_content
-    )
+    assert "Analysis result for <dataset_table>" in full_content
 
     # Concise has summary index
     assert "Summary" in concise_content
@@ -176,9 +173,10 @@ def test_xml_html_tag_escaping(sample_session_with_subagents: NormalizedSession)
     assert "&lt;thinking_tag&gt;" in html
     assert "<script>" not in html
 
-    # In Markdown, thinking blocks escape raw tags so viewers do not swallow them
-    assert "&lt;thinking_tag&gt;" in controller_md or "`" in controller_md
-    assert "&lt;USER_REQUEST&gt;" in controller_md
+    # The Markdown tiers carry the author's text byte for byte — see
+    # "Escaping and redaction" in specs/transcript-pipeline.md.
+    assert "<thinking_tag>" in controller_md
+    assert "<USER_REQUEST>" in controller_md
 
 
 def test_escape_html_quotes() -> None:
@@ -481,7 +479,7 @@ def test_non_string_and_empty_event_content_rendering() -> None:
     )
 
     # List content joined with newlines and escaped
-    assert "Item 1 &lt;tag&gt;" in controller_md
+    assert "Item 1 <tag>" in controller_md
     assert "12345" in controller_md
     assert "12345" in html
 
@@ -560,8 +558,8 @@ def test_thinking_block_variations_and_multiline() -> None:
         None,
     )
 
-    # Thinking tags escaped in MD and HTML
-    assert "&lt;analyze&gt;" in controller_md
+    # Verbatim in Markdown, escaped in HTML.
+    assert "<analyze>" in controller_md
     assert "&quot;confirm&quot;" in html
 
     # Opaque thinking warning present

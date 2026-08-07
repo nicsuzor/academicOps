@@ -12,7 +12,6 @@ parent's record instead of being lost.
 
 from __future__ import annotations
 
-import html
 import json
 import shutil
 from pathlib import Path
@@ -274,7 +273,7 @@ def test_full_markdown_carries_the_whole_subagent_conversation(project_dir: Path
     assert f"`{subagent.agent_id}`" in full_md
     for event in subagent.events:
         if event.content:
-            assert html.escape(event.content, quote=True) in full_md
+            assert event.content in full_md
 
 
 def test_front_matter_reports_whole_session_totals(project_dir: Path) -> None:
