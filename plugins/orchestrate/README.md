@@ -13,14 +13,29 @@ the user.
 flowchart TD
     IN(["a unit of work<br/>(a task id in a container, or a direct ask)"]) --> J["james<br/>agents/james.md"]
     J --> HY["pauli: hydrate → q → pull<br/>(context, task id, claim)"]
-    HY --> W["do the work —<br/>harness native, method not instructed here"]
-    W --> RET(["what comes back"])
+    J --> B["compose the brief:<br/>goal + why · criteria · evidence accepted<br/>(agents/james.md, 'Delegate, don't dictate')"]
+    B --> S{"size the unit"}
+
+    S -->|small| SUB["in-session subagents,<br/>cheapest model per effort type;<br/>commit to the branch and push"]
+    S -->|"substantial, or has subtasks"| ASY["isolated asynchronous agent —<br/>own branch or worktree,<br/>pushes before reclaim"]
+    S -->|cost-sensitive| POL["polecat container running agy<br/>${CLAUDE_PLUGIN_ROOT}/polecat/cli.py"]
+
+    S -->|"must be driven to a green probe"| SUP["skills/supervised-development<br/>fix the probe · brief from a file ·<br/>own build-install-probe · wait on exits"]
+    SUP --> ASY
+    SUP --> POL
+
+    ASY -.->|"a bare dispatch ends james's<br/>responsibility — no tracking"| X([no return path])
+    POL -.-> X
+    ASY -.->|"under supervised-development:<br/>judge the side-effect, reopen a false done,<br/>re-brief and iterate"| SUP
+    POL -.-> SUP
+
+    SUB --> RET(["what comes back"])
     RET --> H1["Claude Code fires PostToolBatch<br/>→ handlers.py: rule_against_hearsay<br/>(only when a call in the batch was Agent)"]
     H1 --> MSG1["messages/hearsay.md"]
     MSG1 --> D{"does every load-bearing claim carry<br/>checkable evidence, or a stated<br/>failure reason?"}
     D -->|no| BACK["send it back, naming the<br/>unsupported claim.<br/>Never verify it yourself."]
     D -->|yes| FWD["forward the evidence verbatim"]
-    BACK --> W
+    BACK --> J
 
     FWD --> REV{"needs a verdict?"}
     REV -->|"rules · strategy · quality"| SR["skills/strategic-review<br/>rbg + pauli + marsha in parallel,<br/>reconciled into one verdict"]
@@ -50,19 +65,22 @@ How an agent uses its harness — spawning, naming, messaging, fan-out — is no
 instructed by anything in this plugin. That is the harness's business, and
 instructions about it went stale faster than they earned their length.
 
+A bare dispatch has no return path by design: the worker writes its result to the task record and pushes its branch, and nothing in this plugin waits for it. `supervised-development` is the surface for work that must actually land — it keeps the loop open, judges what comes back against evidence the worker did not author, and re-briefs until a pre-registered probe is green.
+
 ## What it provides
 
-| Kind  | Name               | Purpose                                                                                                             |
-| ----- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Agent | `james`            | Takes a unit of work through to a verified result. Bounces reports that arrive without proof; never re-does work.   |
-| Agent | `marsha`           | QA. Judges whether an artifact is outstanding, and runs it to find out.                                             |
-| Agent | `adversary`        | Red-team review: attacks the evidence, the logic, and the scope. Never builds or fixes.                             |
-| Skill | `strategic-review` | Deploys rbg, pauli, and marsha in parallel and reconciles their findings into one verdict. Bound to james.          |
-| Skill | `verify`           | Marsha's QA pass: assume it is broken, then prove otherwise. Bound to marsha; commissioned, never invoked directly. |
-| Hook  | `PostToolBatch`    | The handback doctrine (rule against hearsay), delivered to the receiver when a subagent's report lands.             |
-| Hook  | `SubagentStart`    | The handback doctrine (honesty / evidence reminder), delivered to a subagent starting its turn.                     |
-| Hook  | `SessionStart`     | Writes session credentials and paths into `CLAUDE_ENV_FILE`.                                                        |
-| Hook  | `Stop`             | Closes session tracing and telemetry.                                                                               |
+| Kind  | Name                     | Purpose                                                                                                                                       |
+| ----- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent | `james`                  | Takes a unit of work through to a verified result. Bounces reports that arrive without proof; never re-does work.                             |
+| Agent | `marsha`                 | QA. Judges whether an artifact is outstanding, and runs it to find out.                                                                       |
+| Agent | `adversary`              | Red-team review: attacks the evidence, the logic, and the scope. Never builds or fixes.                                                       |
+| Skill | `supervised-development` | Drives a delegated change to a green probe: brief from a file, own the build-install-probe cycle, judge the side-effect, reopen a false done. |
+| Skill | `strategic-review`       | Deploys rbg, pauli, and marsha in parallel and reconciles their findings into one verdict. Bound to james.                                    |
+| Skill | `verify`                 | Marsha's QA pass: assume it is broken, then prove otherwise. Bound to marsha; commissioned, never invoked directly.                           |
+| Hook  | `PostToolBatch`          | The handback doctrine (rule against hearsay), delivered to the receiver when a subagent's report lands.                                     |
+| Hook  | `SubagentStart`          | The handback doctrine (honesty / evidence reminder), delivered to a subagent starting its turn.                                               |
+| Hook  | `SessionStart`           | Writes session credentials and paths into `CLAUDE_ENV_FILE`.                                                                                  |
+| Hook  | `Stop`                   | Closes session tracing and telemetry.                                                                                                         |
 
 No commands.
 
