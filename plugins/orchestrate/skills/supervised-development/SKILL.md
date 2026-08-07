@@ -47,6 +47,13 @@ verbatim and names the handback it will be judged against —
 [`honesty.md`](../../hooks/messages/honesty.md) is the shape this plugin already
 puts in front of every stopping worker.
 
+Where the unit will be judged on fitness rather than mechanics alone, the brief
+also carries the rubric that says what good looks like for it. Certification
+commissioned against a fitness deliverable with no rubric comes back asking for
+one, so a rubric you skip here costs you a review cycle to be told what §2 could
+have settled — and worse, it invites the worker to satisfy the criteria while
+missing the point, which is the failure a rubric exists to catch.
+
 **Name in the brief where the evidence lands, and make landing it there part of
 the work.** A file, a task record, a commit — somewhere you can read on your own
 initiative, without the worker alive and without its cooperation. What a worker
@@ -208,8 +215,25 @@ to the record are owned by another agent, commission the change rather than
 making it.
 
 Then decide, by judgment: append the finding to the brief and re-dispatch the
-same unit, or file a dependent unit for the fix. Either way the decision goes
-onto the record, not into your head.
+same unit, file a dependent unit for the fix, or stop. Either way the decision
+goes onto the record, not into your head.
+
+**Stop when an attempt stops teaching you something.** A re-dispatch earns its
+cost only when you have something new to put in the brief — a finding this
+attempt produced that the last one did not. When two attempts fail the same way
+and you cannot say what the next brief would tell a worker differently, the brief
+is not the problem, and dispatching again buys the same result at full price.
+Set that ceiling when you write the brief, beside the probe, and record it: a
+limit chosen after the third disappointment is chosen to justify a fourth.
+
+Then declare, and be accurate about which. **Blocked** is a fact about the world
+— a dependency that has not landed, a surface you do not hold, a decision that is
+not yours to make — and it stays true until that changes. **Failed** is a fact
+about the work: it was possible, it was attempted, and it did not reach the goal.
+Neither is a defeat to be reluctant about. A unit nobody declares is worse than a
+failed one, because it goes on looking live to everything downstream while no one
+is spending on it. Say what was tried, what the last attempt returned, and what
+you believe it would take.
 
 ## 7. Leave the loop resumable
 
