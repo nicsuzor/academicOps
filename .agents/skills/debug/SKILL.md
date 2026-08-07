@@ -165,9 +165,17 @@ client is waiting on, with no onboarding or folder-trust dialog above it:
   `/workspace` as cwd), then an `❯` on its own line inside the horizontal-rule
   input box. `/workspace` in the banner is also your check that the mount
   landed; any other cwd means `-d`/`-p` resolved somewhere unintended.
-- `agy` — its own ready prompt with no "Do you trust the contents of this
-  project?" dialog. Polecat pre-trusts `/workspace`, so that dialog appearing
-  is a `setup_staging()` failure, not something to click through.
+- `agy` — the plan name rendered beside the account in the header block
+  (`nic.suzor@gmail.com (Google AI Ultra)`), and no "Do you trust the contents
+  of this project?" dialog. Polecat pre-trusts `/workspace`, so that dialog
+  appearing is a `setup_staging()` failure, not something to click through.
+
+  Until the plan name renders, agy is still authenticating and shows
+  `⚠ Verifying your account... / We're finishing verifying your account
+  eligibility.` That is a startup race of a second or two, not an error and not
+  an account state — it leaves no trace in `agy-cli.log`, so a run judged from
+  the pane alone is the only place it can mislead you. Wait for the plan name;
+  never score a session against a banner that has not had two seconds to clear.
 
 **Footer chrome is not a boot signal.** That means the two bottom lines below
 the input box — the ccstatusline row (`Model: … | Ctx: … | ⎇ <branch> | (+n,-n)`)
