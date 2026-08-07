@@ -162,14 +162,36 @@ def test_a_relocated_claude_state_dir_is_honoured(tmp_path):
     assert [ref.path for ref in refs] == [trunk]
 
 
-def test_no_root_is_a_hardcoded_host_path(tmp_path):
-    """Every root is composed from the environment, so nothing resolves outside
-    the home the caller is actually running under."""
+def _all_roots(home, env=None):
+    return [claude_projects_root(env or {}, home=home), *agy_brain_roots(home=home)]
+
+
+def test_every_root_follows_the_home_the_process_runs_under(tmp_path):
+    """No root is an absolute literal. Two different homes must produce two
+    disjoint sets of roots — a hardcoded `/home/worker/...` would produce the
+    same set twice, and fail here."""
+    first = _all_roots(tmp_path / "home-a")
+    second = _all_roots(tmp_path / "home-b")
+
+    assert len(first) == len(second) > 0
+    assert not set(first) & set(second)
+    assert all((tmp_path / "home-a") in root.parents for root in first)
+
+
+def test_agy_roots_move_with_home_and_with_nothing_else(tmp_path):
+    """The asymmetry between the clients, asserted rather than assumed: claude
+    honours `$CLAUDE_CONFIG_DIR`, agy reads no variable that relocates its brain.
+    `agy_brain_roots` therefore takes no `env` at all — a signature that cannot
+    silently ignore one."""
+    import inspect
+
+    assert "env" not in inspect.signature(agy_brain_roots).parameters
+
     home = tmp_path / "home"
-
-    roots = [claude_projects_root({}, home=home), *agy_brain_roots({}, home=home)]
-
-    assert all(home in root.parents for root in roots)
+    assert agy_brain_roots(home=home) == [
+        home / ".gemini" / "antigravity-cli" / "brain",
+        home / ".gemini" / "tmp" / "workspace" / "agy-brain",
+    ]
 
 
 def test_the_agy_glob_matches_the_runtime_layout():

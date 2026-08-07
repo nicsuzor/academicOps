@@ -345,10 +345,10 @@ uv run pytest tests/transcripts/test_polecat_discovery.py -v
 ## Read the durable state from inside a container
 
 Supervising from inside a single-repository container, you have no
-`$AOPS_SESSIONS` — it is in neither `FORWARDED_ENV` nor `CONTAINER_SET_ENV`
-(`lib/polecat/env_contract.py`), so every path in the section above names a host
-directory the container cannot reach. What it can reach is each client's own
-state root, holding exactly what this container's run wrote:
+`$AOPS_SESSIONS` — it is never forwarded in, so every path in the section above
+names a host directory you cannot reach. Stop looking for it. What you can reach
+is each client's own state root, holding exactly what this container's run
+wrote:
 
 | Whose conversation               | Where it lands inside the container                                                                                           |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -357,7 +357,9 @@ state root, holding exactly what this container's run wrote:
 | An `agy` worker you launched     | `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl` and `transcript_full.jsonl`       |
 
 `$AOPS_SESSION_STATE_DIR` names the directory the host has mounted, so
-`polecat-session-hooks.jsonl` and `run.json` sit beside your own transcript.
+`polecat-session-hooks.jsonl` sits beside your own transcript and is readable
+live. `run.json` is not there: the host writes it after the container exits, so
+mid-run there is no run record to read.
 
 List every one of them, newest first, tagged by client, kind, agent and parent
 session — `--kind subagent` narrows it to the workers, `--json` makes it

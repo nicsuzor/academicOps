@@ -59,7 +59,7 @@ def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
                 files.append(p)
 
     # 2. agy session files, under the same brain roots the container view reads.
-    for d in agy_brain_roots(dict(os.environ)):
+    for d in agy_brain_roots():
         if d.is_dir():
             for p in d.rglob("transcript.jsonl"):
                 rel = p.relative_to(d)

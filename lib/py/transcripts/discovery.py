@@ -7,9 +7,13 @@ Two callers need this, for opposite reasons:
 - A supervisor asking what the workers it spawned actually did wants the
   sidechains — they *are* the workers — and has no host session store to read.
 
-Both resolve the same client state roots, defined here once. No root is a
-literal path: each is composed from the environment the client itself reads, so
-the same call answers on a host and inside a container.
+Both resolve the same client state roots, defined here once. Every root follows
+the home the process is actually running under, so the same call answers on a
+host and inside a container. Beyond that the two clients differ, and the
+difference is not cosmetic: Claude Code honours `$CLAUDE_CONFIG_DIR` and this
+module honours it too, while agy exposes no equivalent lever, so its roots are
+its own fixed on-disk layout under home and nothing in the environment moves
+them.
 
 `find_container_transcripts` is the container-local view. It reads only the
 client state roots, never `$AOPS_SESSIONS`, which is a host-side value polecat
@@ -23,24 +27,20 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from transcripts.adapters.claude import SUBAGENT_DIR_NAME, SUBAGENT_FILE_PREFIX
+
 #: Claude Code names each conversation `<session-uuid>.jsonl`. Matched by shape
-#: so a session directory's other `.jsonl` files — the hook log above all —
-#: cannot be mistaken for a conversation.
+#: so a session directory's other `.jsonl` files — polecat's hook log above all —
+#: cannot be mistaken for a conversation. This is the only thing keeping the hook
+#: log out of the result: it sits at the project root, which the subagent glob
+#: below never reaches.
 CLAUDE_TRANSCRIPT_NAME = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$"
 )
 
-#: A Claude subagent's sidechain lives beside its trunk, under the trunk's own
-#: stem: `<project>/<trunk-uuid>/subagents/agent-<name>-<hash>.jsonl`, with a
-#: `.meta.json` sibling naming the agent that ran.
-SUBAGENT_DIR_NAME = "subagents"
-SUBAGENT_FILE_PREFIX = "agent-"
-
 #: agy keeps one directory per conversation under its brain, and writes both a
 #: pruned `transcript.jsonl` and a `transcript_full.jsonl` into it.
 AGY_TRANSCRIPT_GLOB = "*/.system_generated/logs/transcript*.jsonl"
-
-_HOOK_LOG_SUFFIX = "-hooks.jsonl"
 
 
 def _home(home: Path | str | None = None) -> Path:
@@ -60,15 +60,15 @@ def claude_projects_root(env: dict[str, str] | None = None, home: Path | str | N
     return base / "projects"
 
 
-def agy_brain_roots(
-    env: dict[str, str] | None = None, home: Path | str | None = None
-) -> list[Path]:
+def agy_brain_roots(home: Path | str | None = None) -> list[Path]:
     """Every directory agy keeps conversation state under.
 
-    The second is the shape a polecat session directory takes when it is read
-    from the host rather than from inside the container: `lib/polecat/cli.py`
-    mounts `<session-dir>/agy-brain` at the container's brain, so the same
-    conversations appear under both names depending on which side is looking.
+    Both are agy's own layout under home; it reads no variable that relocates
+    them, which is why this takes no `env`. The second is where the brain lands
+    when agy runs under polecat: `lib/polecat/cli.py` gives the agy branch
+    `AGY_SESSION_PATH` (`~/.gemini/tmp/workspace`) as the container path it
+    mounts the session directory at, so `agy-brain` appears beneath it as well as
+    at the brain mount proper.
     """
     base = _home(home) / ".gemini"
     return [base / "antigravity-cli" / "brain", base / "tmp" / "workspace" / "agy-brain"]
@@ -119,8 +119,6 @@ def _claude_refs(root: Path) -> list[TranscriptRef]:
         for path in sorted(project_dir.glob(f"*/{SUBAGENT_DIR_NAME}/**/*.jsonl")):
             if not path.name.startswith(SUBAGENT_FILE_PREFIX):
                 continue
-            if path.name.endswith(_HOOK_LOG_SUFFIX):
-                continue
             parts = path.relative_to(project_dir).parts
             refs.append(
                 TranscriptRef(
@@ -167,7 +165,7 @@ def find_container_transcripts(
     the same question asked there.
     """
     refs = _claude_refs(claude_projects_root(env, home))
-    refs.extend(_agy_refs(agy_brain_roots(env, home)))
+    refs.extend(_agy_refs(agy_brain_roots(home)))
     return sorted(refs, key=lambda ref: _mtime(ref.path), reverse=True)
 
 
