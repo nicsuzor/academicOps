@@ -40,6 +40,8 @@ _COMMAND_TYPE_RE = re.compile(r"(?m)^type:\s*command\s*$")
 _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 
+_SHARED_MCP_PATH = Path(__file__).resolve().parents[2] / "lib" / "clients" / "agy-mcp-services.json"
+
 _TOOL_MAP = {
     "Read": "read_file",
     "Write": "write_file",
@@ -90,6 +92,8 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
 
     # Same rule as hooks: no servers means no file, not an empty one.
     servers = (manifests.get("mcp") or {}).get("mcpServers") or {}
+    if not servers and (build_dir / "agents").is_dir():
+        servers = _shared_agy_servers()
     if servers:
         mcp_str = json.dumps(servers).replace("${PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}")
         servers = json.loads(mcp_str)
@@ -106,6 +110,22 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
             shutil.copy2(
                 build_dir / "axioms" / axiom["source_file"], rules_dir / axiom["source_file"]
             )
+
+
+def _shared_agy_servers() -> dict:
+    """The MCP servers every agy plugin that ships agents needs.
+
+    agy scopes MCP access to the plugin an agent belongs to: an agent whose own
+    plugin has no `mcp_config.json` is never granted `call_mcp_tool`, so it
+    reaches no MCP server at all — however many the rest of the install
+    declares, and whatever its `tools:` say. The lazily-loaded tool schemas
+    stay visible to it, which is why this reads as a missing execution
+    primitive rather than a missing server.
+
+    Claude Code has no equivalent scoping (one session-wide set), so this is an
+    agy-only injection. The definition itself lives once, under `lib/`.
+    """
+    return json.loads(_SHARED_MCP_PATH.read_text(encoding="utf-8"))
 
 
 def _to_agy_hooks(hooks_config: dict, ctx: BuildContext) -> dict:
