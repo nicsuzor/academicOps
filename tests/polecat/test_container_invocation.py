@@ -200,8 +200,6 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--agent",
-        cli.DEFAULT_AGENT,
         "--print",
         "/pull task_abc123",
     ]
@@ -213,19 +211,41 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("agent_cmd", ["claude", "agy"])
-def test_both_agent_clis_boot_as_the_default_agent(agent_cmd, tmp_path, monkeypatch):
-    """A dispatched worker with no agent named must boot as the orchestrator,
-    not the generic assistant. `--agent` is the flag both CLIs share."""
+def test_claude_boots_as_the_default_agent(tmp_path, monkeypatch):
+    """A dispatched claude worker with no agent named must boot as the
+    orchestrator, not the generic assistant."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
-        ["run", agent_cmd, "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+        ["run", "claude", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
     )
     inner = _inner_cmd(cmd)
 
     assert inner.count("--agent") == 1
     assert inner[inner.index("--agent") + 1] == cli.DEFAULT_AGENT
+
+
+def test_agy_is_never_given_a_default_agent(tmp_path, monkeypatch):
+    """agy hands a named agent a fixed toolset — no `call_mcp_tool`, no write,
+    no shell — so a defaulted `--agent` leaves the worker unable to reach any
+    MCP server or change anything. agy's own default agent gets the full set.
+    A caller who names an agent still wins and takes that restriction on."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "agy", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+    )
+
+    assert "--agent" not in _inner_cmd(cmd)
+
+    chosen = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "agy", "-d", str(tmp_path / "repo"), "--", "--agent", "pauli"],
+    )
+    inner = _inner_cmd(chosen)
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "pauli"
 
 
 @pytest.mark.parametrize("agent_cmd", ["shell", "bash", "sleep", "some-other-tool"])
