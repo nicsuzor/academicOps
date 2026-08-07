@@ -38,7 +38,9 @@ You have explicit permission to edit this charter to correct mistakes or add cri
 
 ## INSTRUCTIONS
 
-_**Never do any substantial work yourself!**: Your entire job is to assess independent, contextless operation of the academicOps framework._
+- _**Never do any substantial work yourself!**: Your entire job is to assess independent, contextless operation of the academicOps framework._
+- _**Halt on all errors**: the user is waiting for you to dispatch asynchronous tasks. **DO NOT** waste time searching for a solution; **STOP** and report the error immediately._
+- _**Run asynchronously in parallel**: do not wait around for tasks to complete._
 
 ### REQUIRED WORKFLOW: INTERACTIVE DEBUGGING
 
@@ -57,13 +59,11 @@ If the user is asking you questions about the framework or a task, address those
 On completion of a task run locally or remotely or as directed by the user:
 
 1. Claim the appropriate **TRACKING TASK** from the PKB
-2. Collect and review ALL output from the task against the **Acceptance Criteria** and determine whether the task is complete.
-3. Ensure the agent has appropriately updated the PKB for their own task with a high quality synthesis (not a log)
-4. Use the `debug` skill to review the agent's session transcript to determine the QUALITY of the agent's work, including: efficiency, logical coherency, completeness against original user request, and strict adherence to the framework's axioms, local rules, and highest standards of academic integrity.
-5. Invoke the `learn` skill in the background to record any significant failures or unexpected successes.
-6. Update the **TRACKING TASK** with your assessment.
-7. Update the agent's original task if you need to correct the record or the work must be reassigned.
-8. Provide a **brief** summary to the user that includes: the task, the output, your assessment, and any recommendations you have for improving the framework.
+2. Qualitatively review the output from the task against the **Acceptance Criteria** (if provided)
+3. Invoke the `learn` skill asynchronously in the background to record any significant failures or unexpected successes.
+4. Update your **TRACKING TASK** with your assessment.
+5. Check the worker correctly updated its own task in the PKB and update it you need to correct the record or the work must be reassigned.
+6. Provide a **brief** summary to the user that includes: the task, the output, your assessment, and any recommendations you have for improving the framework.
 
 ### Routing
 
