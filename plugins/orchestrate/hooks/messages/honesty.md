@@ -1,29 +1,29 @@
-## REPORTING PROTOCOL & EVIDENCE CONTRACT
+# REPORTING PROTOCOL & EVIDENCE CONTRACT
 
 **WARNING**: Your LAST message was NOT COMPLIANT and will be SILENTLY DROPPED.
 
-- You MUST send your final report in the following format.
-- You MUST include your entire response (deliverable, evidence, confidence, and gaps) in a SINGLE message or response call.
-- Do NOT send a report and follow up with a separate confidence or metadata message.
-- Your report will be INVALIDATED if you send any additional messages after the final report.
-- You MUST use the report channel specified in your system instructions to reach your calling agent if provided.
+- **Send ONLY a SINGLE combined message:** You MUST include your entire response (deliverable, evidence, confidence, and gaps) in a SINGLE message or response call. Even if you have to repeat yourself (but try to be concise).
+- **You get ONE more shot:** Your report will be INVALIDATED if you send more than one message or send any additional data after the final report.
+- **Use the right channel:** You MUST use the report channel specified in your system instructions to reach your calling agent if provided.
 
-### 1. STRICT NEGATIVE CONSTRAINTS (DO NOT DO THESE)
+## 1. STRICT NEGATIVE CONSTRAINTS (DO NOT DO THESE)
 
-- **No Hearsay:** Assertions made without providing the proof are hearsay and will be rejected. Every load-bearing claim must pair with checkable evidence.
-- **No Raw Dumps:** Do not paste multi-line code blocks, raw config files, or verbose terminal outputs. Extract ONLY the MINIMAL relevant snippets required for verification.
-- **No Hidden Failures:** A smoothed-over gap is a contract failure. Failures must be honestly reported, complete with an explanation of what happened and why.
-- **No Meta-Commentary:** Do not explain how you constructed a search or apologize for limitations. Any limitations must be clearly stated without conversational filler.
+- **Don't break the chain of evidence:** Never send a report with evidence or commentary in a separate or follow up messages.
+- **No hearsay:** Assertions made without providing the proof are hearsay and will be rejected. Every load-bearing claim must pair with checkable evidence.
+- **No raw dumps:** Do not paste multi-line code blocks, raw config files, or verbose terminal outputs. Extract ONLY the MINIMAL relevant snippets required for verification.
+- **No hidden failures:** A smoothed-over gap is a contract failure. Failures must be honestly reported, complete with an explanation of what happened and why.
+- **No meta-commentary:** Do not explain how you constructed a search or apologize for limitations. Any limitations must be clearly stated without conversational filler.
+- **No recursive proof loops**: Do NOT get trapped in an endless loop trying to formally prove universally accepted facts, connective logic, or obvious physical states. You should quote existing evidence verbatim IFF the evidence is **complete**, **attributed**, and **checkable**.
+- **No exemption Abuse**: You must NOT use the trivial fact exemption to sneak in unproven task findings, empirical data, or analytical conclusions.
+- **No prose**: DO NOT present your report in prose; be CONCISE and PRECISE.
 
-### 2. REQUIRED OUTPUT SCHEMA
+## 2. REQUIRED OUTPUT SCHEMA
 
-You must format your response exactly as follows.
+**Compliance**: if the task instructions provide an explicit JSON schema for your results, you MUST comply with it STRICTLY, even if it is inconsistent with these instructions. This overrides any other instruction in this document.
 
-_DO NOT present your report in prose; be CONCISE and PRECISE._
+You must format your response exactly as follows:
 
-- **Note**: if the task instructions provide an explicit JSON schema for your results, you must comply with it.
-
-> **STATUS**: [Must be exactly: DONE, PARTIAL, ERROR, BLOCKED, or NEEDS-REDISPATCH]
+> **STATUS**: [Must be exactly: DONE, PARTIAL, ERROR, BLOCKED, or INVALID]
 >
 > **REQUEST**: [A one-sentence summary of the task you were given]
 >
@@ -31,12 +31,7 @@ _DO NOT present your report in prose; be CONCISE and PRECISE._
 >
 > **DELIVERABLE REFERENCE(S)**: [URL or other pointer directly to the output deliverables]
 
-#### A. TRIVIAL FACT EXEMPTION (For Obvious Statements)
-
-If you need to state a universally accepted fact, basic connective logic, or a self-evident truth, you may write it as a simple bullet point outside the strict structure below.
-Boundary Check: If a reviewing supervisor could reasonably ask "How do you know that?" or "Where did you find that in the system?", the statement is NOT a trivial fact and MUST be treated as a load-bearing claim.
-
-#### B. LOAD-BEARING CLAIMS (Requires Strict Structure)
+### A. REPEAT FOR ALL CLAIMS
 
 To ensure zero-context auditability, every load-bearing independent conclusion, task finding, empirical result, or synthesized analysis in your report MUST adhere to the following strict structural standard. You must loop through this exact format for every substantive claim you generate:
 
@@ -55,3 +50,8 @@ To ensure zero-context auditability, every load-bearing independent conclusion, 
 >   [NEXT-BEST ALTERNATIVE]: [Identify the strongest rebuttal or alternative hypothesis.]
 
 Constraint: A reviewing supervisor must be able to independently evaluate the soundness of your logic—and the limits of your certainty—from premise to conclusion for every single claim without ever needing to consult external sources or read the underlying reference materials.
+
+### B. TRIVIAL FACT EXEMPTION (for obvious statements only)
+
+If you need to state a universally accepted fact, basic connective logic, or a self-evident truth, you may write it as a simple bullet point outside the strict structure above.
+Boundary Check : If a reviewing supervisor could reasonably ask "How do you know that?" or "Where did you find that in the system?", the statement is NOT a trivial fact and MUST be treated as a load-bearing claim.
