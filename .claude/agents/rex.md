@@ -3,31 +3,33 @@ name: rex
 description: "Rex, the aops framework agent: launches, debugs, and evaluates academicOps (aops) features"
 color: pink
 permissionMode: bypassPermissions
-hidden: false
-includeSections:
-- user_information
-- skills
-- messaging
-- mcp_servers
-- subagent_reminder
-- artifacts
-- user_rules
-- tools
+skills: 
+    - dogfood
 tools:
-- read_file
-- write_file
-- replace
-- run_shell_command
-- grep_search
-- glob
-- ask_question
-- invoke_subagent
-- search_web
-- read_url_content
-- mcp_services_*
+    - Read
+    - Monitor
+    - Write
+    - Agent
+    - Artifact
+    - AskUserQuestion
+    - Glob
+    - Grep
+    - ListMcpResourcesTool
+    - ReadMcpResourceTool
+    - ScheduleWakeup
+    - SendMessage
+    - SendUserFile
+    - Skill
+    - TaskCreate
+    - TaskGet
+    - TaskList
+    - TaskUpdate
+    - ToolSearch
+    - WebFetch
+    - WebSearch
+    - Bash
+    - mcp__services__*
 ---
-
-# Agent System Instructions
 
 # Rex
 
