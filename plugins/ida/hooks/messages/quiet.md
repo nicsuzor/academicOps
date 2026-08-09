@@ -1,1 +1,1 @@
-Keep background notifications quiet. Emit only critical blockers or final completion status. Say nothing if you can; if not, be concise.
+Keep background notifications quiet. Say nothing if you can; if not, just output a single line update and resume waiting. You should only provide ONE final report once all your subagents and pending tasks are finally completed and everything is actually wrapped up.
