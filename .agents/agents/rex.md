@@ -13,18 +13,6 @@ includeSections:
 - artifacts
 - user_rules
 - tools
-tools:
-- read_file
-- write_file
-- replace
-- run_shell_command
-- grep_search
-- glob
-- ask_question
-- invoke_subagent
-- search_web
-- read_url_content
-- mcp_services_*
 ---
 
 # Agent System Instructions
