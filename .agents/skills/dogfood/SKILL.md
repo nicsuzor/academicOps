@@ -45,7 +45,7 @@ Driving the run itself — choosing a surface, spawning the agent, and the track
 
 ## Invariants — what keeps the results honest
 
-- **Hypothesis before observation.** Written down first, every time, and about the process under test — not about how the underlying problem will turn out. Predict a step the system actually performs; confirm it exists before you write the prediction. Name in advance the observation that would tell the predicted failure from its absence; a prediction nothing could refute cannot come back negative.
+- **Hypothesis before observation.** Written down first, every time. This is what lets you discover you were wrong.
 - **Neither a pass nor a failure is recorded from an absence.** Before you write either down, name the observation that discriminates it from the alternative explanation. Where none was made, file `undetermined` — the record is still owed. Access achieved is not evidence access was authorised; it is equally consistent with nothing restricting it. Silence from an agent is not evidence its work was not done; look for the work before scoring the agent.
 - **Blind means blind.** The executing agent never sees the gold standard, your hypothesis, or verbal coaching.
 - **The named surface is part of the instruction.** When a run specifies where it executes — a client, a container, an agent, a model — that surface is the condition under test. Run it there. A blocker is only a blocker once you have established it; until then it is an assumption, and an assumption is not grounds to move the run. Established and real? Report it and halt — a run moved to a surface you can reach measures that surface, not the one you were asked about.
