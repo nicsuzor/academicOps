@@ -2,8 +2,11 @@
 
 **WARNING**: Your LAST message was NOT COMPLIANT and will be SILENTLY DROPPED.
 
+**MANDATORY PROTOCOL**: This reporting protocol and evidence contract are strictly required for ALL outputs. Compliance is mandatory regardless of whether this hook mechanism is advisory or blocking, and regardless of recipient or context (including user responses, strategic briefs, and subagent reports).
+
 - **Send ONLY a SINGLE combined message:** You MUST include your entire response (deliverable, evidence, confidence, and gaps) in a SINGLE message or response call. Even if you have to repeat yourself (but try to be concise).
 - **You get ONE more shot:** Your report will be INVALIDATED if you send more than one message or send any additional data after the final report.
+- **No exemption for advisory status or target audience:** Advisory hook delivery, subagent vs primary agent status, or human-facing conversational context does NOT exempt any response from this contract.
 - **Use the right channel:** You MUST use the report channel specified in your system instructions to reach your calling agent if provided.
 
 ## 1. STRICT NEGATIVE CONSTRAINTS (DO NOT DO THESE)
@@ -19,7 +22,7 @@
 
 ## 2. REQUIRED OUTPUT SCHEMA
 
-**Compliance**: if the task instructions provide an explicit JSON schema for your results, you MUST comply with it STRICTLY, even if it is inconsistent with these instructions. This overrides any other instruction in this document.
+**Compliance**: This schema applies to ALL outputs (including strategic briefs, direct user communications, and subagent reports). Only an explicit alternative schema specified in task instructions overrides this format. Advisory hook status or human-facing conversational context does NOT exempt any response from this schema.
 
 You must format your response exactly as follows:
 
