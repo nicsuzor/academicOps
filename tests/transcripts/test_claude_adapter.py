@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from transcripts.adapters.claude import (
     KNOWN_ENTRY_TYPES,
+    KNOWN_TYPED_ENTRY_TYPES,
     ClaudeTranscript,
     RawEntry,
     load_claude_transcript,
@@ -50,16 +51,29 @@ def test_unknown_type_preserved_as_raw_not_dropped() -> None:
     for raw in transcript.raw_entries:
         assert isinstance(raw, RawEntry)
         assert raw.type == "last-prompt"
-        assert raw.type not in KNOWN_ENTRY_TYPES
+        assert raw.type not in KNOWN_TYPED_ENTRY_TYPES
         assert raw.raw.get("type") == "last-prompt"
 
 
-def test_unknown_type_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+def test_unknown_type_is_logged(caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:
+    jsonl_path = tmp_path / "unknown_type.jsonl"
+    jsonl_path.write_text(
+        '{"type": "totally-unknown-future-type", "payload": 1}\n',
+        encoding="utf-8",
+    )
+    with caplog.at_level(logging.WARNING, logger="transcripts.adapters.claude"):
+        load_claude_transcript(jsonl_path)
+
+    warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+    assert any("totally-unknown-future-type" in message for message in warnings)
+
+
+def test_recognized_passthrough_types_do_not_warn(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger="transcripts.adapters.claude"):
         load_claude_transcript(CLAUDE_FIXTURE)
 
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
-    assert any("last-prompt" in message for message in warnings)
+    assert not any("unrecognized transcript entry type" in message for message in warnings)
 
 
 def test_loader_never_raises_on_malformed_lines(tmp_path: Path) -> None:

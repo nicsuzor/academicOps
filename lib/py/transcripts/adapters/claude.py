@@ -52,9 +52,8 @@ SUBAGENT_DIR_NAME = "subagents"
 SUBAGENT_FILE_PREFIX = "agent-"
 
 # The top-level `type` values claude_code_log parses into typed Pydantic
-# models (see claude_code_log.converter.load_transcript). Anything else is
-# preserved as a RawEntry instead of being dropped.
-KNOWN_ENTRY_TYPES = frozenset(
+# models (see claude_code_log.converter.load_transcript).
+KNOWN_TYPED_ENTRY_TYPES = frozenset(
     {
         "user",
         "assistant",
@@ -65,6 +64,27 @@ KNOWN_ENTRY_TYPES = frozenset(
         "attachment",
     }
 )
+
+# Recognized non-event, passthrough, or internal metadata entry types written by
+# Claude Code. Preserved as raw entries for DAG continuity / losslessness, but not
+# logged as unrecognized schema drift warnings.
+KNOWN_PASSTHROUGH_ENTRY_TYPES = frozenset(
+    {
+        "last-prompt",
+        "agent-setting",
+        "pr-link",
+        "progress",
+        "permission-mode",
+        "file-history-snapshot",
+        "frame-link",
+        "custom-title",
+        "mode",
+        "agent-name",
+        "agent-color",
+    }
+)
+
+KNOWN_ENTRY_TYPES = KNOWN_TYPED_ENTRY_TYPES | KNOWN_PASSTHROUGH_ENTRY_TYPES
 
 
 @dataclass(frozen=True)
@@ -106,13 +126,14 @@ def _scan_raw_entries(jsonl_path: Path) -> list[RawEntry]:
         if not isinstance(obj, dict):
             continue
         entry_type = obj.get("type")
-        if entry_type not in KNOWN_ENTRY_TYPES:
-            logger.warning(
-                "%s:%d: unrecognized transcript entry type %r, preserving as raw",
-                jsonl_path,
-                line_no,
-                entry_type,
-            )
+        if entry_type not in KNOWN_TYPED_ENTRY_TYPES:
+            if entry_type not in KNOWN_PASSTHROUGH_ENTRY_TYPES:
+                logger.warning(
+                    "%s:%d: unrecognized transcript entry type %r, preserving as raw",
+                    jsonl_path,
+                    line_no,
+                    entry_type,
+                )
             raw_entries.append(RawEntry(line_no=line_no, type=entry_type, raw=obj))
     return raw_entries
 

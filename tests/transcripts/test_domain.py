@@ -248,3 +248,68 @@ def test_both_fixtures_produce_all_three_output_formats() -> None:
     assert "</html>" in html_claude
     data_claude = json.loads(json.dumps(sidecar_claude))
     assert data_claude["session_id"] == claude_session.session_id
+
+
+def test_extract_passthrough_metadata_to_sidecar() -> None:
+    from transcripts.domain.renderer import build_json_sidecar
+    from transcripts.model import NormalizedRawEntry
+
+    session = NormalizedSession(
+        session_id="test-passthrough-sess",
+        source_file=Path("test.jsonl"),
+        events=[],
+        raw_events=[
+            NormalizedRawEntry(
+                line_no=1,
+                type="pr-link",
+                raw={
+                    "type": "pr-link",
+                    "prNumber": 42,
+                    "prUrl": "https://github.com/aops/academicOps/pull/42",
+                    "title": "Fix transcript parser",
+                },
+            ),
+            NormalizedRawEntry(
+                line_no=2,
+                type="agent-setting",
+                raw={
+                    "type": "agent-setting",
+                    "settingKey": "permissionMode",
+                    "settingValue": "auto",
+                },
+            ),
+            NormalizedRawEntry(
+                line_no=3,
+                type="agent-name",
+                raw={
+                    "type": "agent-name",
+                    "agentName": "junior",
+                },
+            ),
+        ],
+    )
+
+    corr = infer_correlation(session)
+    assert corr["pr_number"] == "42"
+
+    sidecar = build_json_sidecar(
+        session=session,
+        slug="test",
+        started_at="2026-08-10T10:00:00Z",
+        last_modified="2026-08-10T10:00:00Z",
+        ended_at="2026-08-10T10:00:00Z",
+        has_user_context=True,
+        correlation=corr,
+        insights=None,
+    )
+
+    assert sidecar["pr_number"] == "42"
+    assert sidecar["pr_links"] == [
+        {
+            "pr_number": "42",
+            "pr_url": "https://github.com/aops/academicOps/pull/42",
+            "title": "Fix transcript parser",
+        }
+    ]
+    assert sidecar["agent_settings"] == {"permissionMode": "auto"}
+    assert sidecar["agent_names"] == ["junior"]

@@ -64,6 +64,23 @@ def infer_correlation(session: NormalizedSession) -> dict[str, str | None]:
             if branch_match:
                 pr_number = branch_match.group(1)
 
+    # Search raw_events for pr-link if PR number not found yet
+    if not pr_number:
+        for raw_entry in session.raw_events:
+            obj = raw_entry.raw
+            if not isinstance(obj, dict):
+                continue
+            entry_type = raw_entry.type or obj.get("type")
+            if entry_type == "pr-link":
+                pr_num = obj.get("prNumber") or obj.get("pr_number")
+                if not pr_num and obj.get("prUrl"):
+                    m = re.search(r"/pull/(\d+)", str(obj.get("prUrl")))
+                    if m:
+                        pr_num = m.group(1)
+                if pr_num:
+                    pr_number = str(pr_num)
+                    break
+
     # 3. Infer project
     paths_to_check = [str(session.source_file)]
     for event in session.events:
