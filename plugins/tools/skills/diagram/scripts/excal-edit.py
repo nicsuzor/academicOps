@@ -3,15 +3,26 @@
 
 Usage: excal-edit.py FILE fit <id> "<new text>"
        excal-edit.py FILE overlap
-       excal-edit.py FILE render [OUT.png]
+       excal-edit.py FILE arrows
+       excal-edit.py FILE render [OUT.png] [--region X0,Y0,X1,Y1]
 
   fit      recomputes text bounding box for element <id> (text or container)
            with <new text>, center-grows its container if needed to prevent text
            overflow, and saves the file.
   overlap  checks AABB collisions between non-nested sibling elements (excluding
            bound text-container pairs and frame-child pairs). Exits 1 on overlap.
+  arrows   checks every arrow's polyline against every shape's interior, flagging
+           any arrow that cuts through a box it is not bound to at either end
+           (the craft rule: route around unrelated boxes, never through them).
+           Exact segment/rectangle intersection, not sampling. Background zone
+           rectangles (a shape fully containing 3+ other shapes) are treated
+           as scenery, not obstacles — same spirit as `overlap`'s nesting
+           exclusion. Exits 1 on a hit.
   render   renders a visual preview (boxes, text, arrows) using matplotlib.
-           Properly inverts y-axis (Excalidraw y grows downward).
+           Properly inverts y-axis (Excalidraw y grows downward). Pass
+           --region X0,Y0,X1,Y1 to crop to one area of a large canvas instead
+           of the full extent — the whole-canvas render is illegible past a
+           couple hundred elements.
 """
 
 import json
@@ -222,6 +233,93 @@ def cmd_overlap(doc_path):
         print("OK: no overlapping non-nested sibling elements found")
 
 
+def _point_in_rect(px, py, x, y, w, h):
+    return x <= px <= x + w and y <= py <= y + h
+
+
+def _seg_seg_intersect(p1, p2, p3, p4):
+    def ccw(a, b, c):
+        return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0])
+
+    return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
+
+
+def _segment_intersects_rect(p0, p1, x, y, w, h):
+    if _point_in_rect(p0[0], p0[1], x, y, w, h) or _point_in_rect(p1[0], p1[1], x, y, w, h):
+        return True
+    corners = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+    edges = [(corners[i], corners[(i + 1) % 4]) for i in range(4)]
+    return any(_seg_seg_intersect(p0, p1, e0, e1) for e0, e1 in edges)
+
+
+def cmd_arrows(doc_path):
+    with open(doc_path, encoding="utf-8") as f:
+        doc = json.load(f)
+
+    els = live_elements(doc)
+    by_id = {e["id"]: e for e in els}
+
+    all_shapes = [
+        e
+        for e in els
+        if e.get("type") in ("rectangle", "diamond", "ellipse")
+        and e.get("width", 0) > 0
+        and e.get("height", 0) > 0
+    ]
+
+    # A background zone (large group-label rectangle a dozen real boxes sit
+    # inside) is not an obstacle an arrow must route around — it is scenery,
+    # the same way `overlap` treats a frame's own children as nested rather
+    # than colliding. There is no frameId for this diagram's zone rectangles,
+    # so detect it structurally instead: a shape that fully contains several
+    # other shapes is a background, not a node an arrow can meaningfully cut
+    # "through". Real nodes never contain other real nodes here.
+    def _fully_contains(outer, inner):
+        if outer is inner:
+            return False
+        ox, oy, ow, oh = outer["x"], outer["y"], outer["width"], outer["height"]
+        ix, iy, iw, ih = inner["x"], inner["y"], inner["width"], inner["height"]
+        return ox <= ix and oy <= iy and ix + iw <= ox + ow and iy + ih <= oy + oh
+
+    obstacles = [
+        s for s in all_shapes if sum(1 for other in all_shapes if _fully_contains(s, other)) < 3
+    ]
+    arrows = [e for e in els if e.get("type") == "arrow"]
+
+    crossings = []
+    for arrow in arrows:
+        points = arrow.get("points", [])
+        if len(points) < 2:
+            continue
+        ax_, ay_ = arrow.get("x", 0), arrow.get("y", 0)
+        abs_pts = [(ax_ + p[0], ay_ + p[1]) for p in points]
+        endpoint_ids = {
+            (arrow.get("startBinding") or {}).get("elementId"),
+            (arrow.get("endBinding") or {}).get("elementId"),
+        }
+        for shape in obstacles:
+            if shape["id"] in endpoint_ids:
+                continue
+            x, y, w, h = shape["x"], shape["y"], shape["width"], shape["height"]
+            for i in range(len(abs_pts) - 1):
+                if _segment_intersects_rect(abs_pts[i], abs_pts[i + 1], x, y, w, h):
+                    crossings.append((arrow, shape))
+                    break
+
+    if crossings:
+        print(f"FAIL: {len(crossings)} arrow/box crossing(s) detected:")
+        for arrow, shape in crossings:
+            alabel = get_label(arrow, by_id) or arrow["id"]
+            slabel = get_label(shape, by_id) or shape["id"]
+            print(
+                f"  - arrow [{arrow['id']}] ({alabel!r}) cuts through "
+                f"[{shape['type']} {shape['id']}] ({slabel!r}) it is not bound to"
+            )
+        sys.exit(1)
+    else:
+        print("OK: no arrow crosses an unrelated shape's interior")
+
+
 def cmd_render(doc_path, args):
     try:
         import matplotlib.patches as patches
@@ -231,7 +329,17 @@ def cmd_render(doc_path, args):
             "render mode requires matplotlib ('uv run --with matplotlib script.py' or install matplotlib)"
         )
 
-    out_path = args[0] if args else str(Path(doc_path).with_suffix(".png"))
+    rest = list(args)
+    region = None
+    if "--region" in rest:
+        idx = rest.index("--region")
+        if idx + 1 >= len(rest):
+            sys.exit("--region requires X0,Y0,X1,Y1")
+        x0, y0, x1, y1 = (float(v) for v in rest[idx + 1].split(","))
+        region = (x0, y0, x1, y1)
+        del rest[idx : idx + 2]
+
+    out_path = rest[0] if rest else str(Path(doc_path).with_suffix(".png"))
 
     with open(doc_path, encoding="utf-8") as f:
         doc = json.load(f)
@@ -241,7 +349,31 @@ def cmd_render(doc_path, args):
     if not els:
         sys.exit("No elements to render")
 
-    fig, ax = plt.subplots(figsize=(12, 8))
+    if region:
+        rx0, ry0, rx1, ry1 = region
+
+        def _in_region(e):
+            ex, ey = e.get("x", 0), e.get("y", 0)
+            ew, eh = e.get("width", 0), e.get("height", 0)
+            if e.get("type") == "arrow":
+                pts = e.get("points", [])
+                if not pts:
+                    return False
+                abs_x = [ex + p[0] for p in pts]
+                abs_y = [ey + p[1] for p in pts]
+                ex, ey, ew, eh = (
+                    min(abs_x),
+                    min(abs_y),
+                    max(abs_x) - min(abs_x),
+                    max(abs_y) - min(abs_y),
+                )
+            return not (ex + ew < rx0 or ex > rx1 or ey + eh < ry0 or ey > ry1)
+
+        els = [e for e in els if _in_region(e)]
+        if not els:
+            sys.exit(f"No elements intersect region {region}")
+
+    fig, ax = plt.subplots(figsize=(14, 10))
 
     # Crucial: Excalidraw y grows downward; matplotlib y grows upward by default
     ax.invert_yaxis()
@@ -275,7 +407,12 @@ def cmd_render(doc_path, args):
                     arrowprops=dict(arrowstyle="->", color="#404040", lw=1.5),
                 )
 
-    ax.autoscale_view()
+    if region:
+        rx0, ry0, rx1, ry1 = region
+        ax.set_xlim(rx0, rx1)
+        ax.set_ylim(ry1, ry0)  # inverted: Excalidraw y grows downward
+    else:
+        ax.autoscale_view()
     ax.set_title(f"Excalidraw Render: {Path(doc_path).name}")
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
@@ -295,10 +432,12 @@ def main():
         cmd_fit(doc_path, args)
     elif mode == "overlap":
         cmd_overlap(doc_path)
+    elif mode == "arrows":
+        cmd_arrows(doc_path)
     elif mode == "render":
         cmd_render(doc_path, args)
     else:
-        sys.exit(f"unknown mode {mode!r}; expected fit, overlap, or render")
+        sys.exit(f"unknown mode {mode!r}; expected fit, overlap, arrows, or render")
 
 
 if __name__ == "__main__":
