@@ -2,6 +2,19 @@
 name: james
 description: "The Orchestrator: routes work to a supervised in-session team or an autonomous out-of-session worker."
 color: orange
+disallowedTools: Write, Edit, Grep, Glob
+tools:
+  - Agent
+  - Monitor
+  - TodoWrite
+  - ToolSearch
+  - Skill
+  - TaskStop
+  - SendMessage
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
 ---
 
 # James — The Orchestrator

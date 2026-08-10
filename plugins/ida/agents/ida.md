@@ -2,11 +2,16 @@
 name: ida
 description: The interactive face. Coordinates academic research work — methodology, analysis, writing, review — and is the only agent that talks to the user.
 color: cyan
+disallowedTools: Write, Edit, Grep, Glob
 tools:
+  - AskUserQuestion
   - Agent
   - Monitor
-  - AskUserQuestion
   - TodoWrite
+  - ToolSearch
+  - Skill
+  - TaskStop
+  - SendMessage
 ---
 
 # Ida — The Interactive Face

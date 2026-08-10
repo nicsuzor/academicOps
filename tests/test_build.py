@@ -362,16 +362,21 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     assert "interactive face" in agy_agent["description"]
     assert agy_agent["hidden"] is False
 
-    # plugins/ida/agents/ida.md sets [Agent, Monitor, AskUserQuestion, TodoWrite]
+    # plugins/ida/agents/ida.md sets [AskUserQuestion, Agent, Monitor, TodoWrite, ToolSearch, Skill, TaskStop, SendMessage]
+    # AskUserQuestion -> ask_question
     # Agent -> invoke_subagent, manage_subagents, send_message
     # Monitor -> [] (dropped)
-    # AskUserQuestion -> ask_question
     # TodoWrite -> [] (dropped)
+    # ToolSearch -> [] (dropped)
+    # Skill -> [] (dropped)
+    # TaskStop -> manage_task
+    # SendMessage -> send_message
     assert agy_agent["tools"] == [
+        "ask_question",
         "invoke_subagent",
         "manage_subagents",
         "send_message",
-        "ask_question",
+        "manage_task",
     ]
 
     body = body.lstrip("\n")
@@ -400,7 +405,7 @@ def test_agy_agent_tool_names_are_translated(built):
 
 
 def test_agent_no_tools_key_semantics(built_orchestrate):
-    """james.md sets no `tools:` key in source frontmatter.
+    """marsha.md sets no `tools:` key in source frontmatter.
     Claude: leaves tools unset (inherits everything).
     agy: emits full 54 accepted tools vocabulary.
     """
@@ -410,11 +415,11 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     accepted_tools, _ = load_tool_config()
 
-    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "james.md"
+    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert "tools" not in claude_fm
 
-    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
+    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
     assert len(agy_fm["tools"]) == 54
@@ -775,3 +780,208 @@ def test_plugin_missing_source_dir_is_hard_error():
     )
     with pytest.raises(BuildError, match="plugin source missing"):
         discover_plugins(TESTDATA, decl, ["ghost"])
+
+
+def test_new_tool_mappings():
+    from build.tools import load_tool_config
+
+    _, tool_map = load_tool_config()
+    assert tool_map["SendMessage"] == ["send_message"]
+    assert tool_map["TaskCreate"] == ["manage_task"]
+    assert tool_map["TaskGet"] == ["manage_task"]
+    assert tool_map["TaskList"] == ["manage_task"]
+    assert tool_map["TaskUpdate"] == ["manage_task"]
+    assert tool_map["TaskStop"] == ["manage_task"]
+    assert tool_map["Skill"] == []
+    assert tool_map["ToolSearch"] == []
+
+
+def test_scoped_tool_translation_and_warning(capsys, tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "scoped-tool-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "scoped.md").write_text(
+        "---\nname: scoped\ndescription: Scoped agent\ntools:\n  - Bash(agy *)\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="scoped-tool-plugin",
+            marketplace_name="scoped-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "scoped-tool"}},
+    )
+    adapt_claude(plugin_dir, ctx_claude)
+    claude_res = yaml.safe_load((agents_dir / "scoped.md").read_text().split("---")[1])
+    assert claude_res["tools"] == ["Bash(agy *)"]
+
+    ctx_agy = BuildContext(
+        plugin=Plugin(
+            directory="scoped-tool-plugin",
+            marketplace_name="scoped-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "scoped-tool"}},
+    )
+    adapt_agy(plugin_dir, ctx_agy)
+    captured = capsys.readouterr()
+    assert (
+        "warning: scoped-tool/scoped: 'Bash(agy *)' scope dropped for agy; run_command is unrestricted"
+        in captured.out
+        or captured.err
+    )
+    agy_res = yaml.safe_load((agents_dir / "scoped.md").read_text().split("---")[1])
+    assert agy_res["tools"] == ["run_command"]
+
+
+def test_disallowed_tools_subtraction(tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+    from build.tools import load_tool_config
+
+    accepted_tools, _ = load_tool_config()
+
+    # Case 1: explicit tools + disallowedTools
+    plugin_dir1 = tmp_path / "disallowed-explicit"
+    agents_dir1 = plugin_dir1 / "agents"
+    agents_dir1.mkdir(parents=True)
+    (agents_dir1 / "agent1.md").write_text(
+        "---\nname: agent1\ndescription: Explicit tools\ntools:\n  - Read\n  - Write\ndisallowedTools: Write\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx1 = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-explicit",
+            marketplace_name="disallowed-explicit",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir1,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-explicit"}},
+    )
+    adapt_agy(plugin_dir1, ctx1)
+    res1 = yaml.safe_load((agents_dir1 / "agent1.md").read_text().split("---")[1])
+    assert res1["tools"] == ["view_file"]
+    assert "disallowedTools" not in res1
+
+    # Case 2: no tools key + disallowedTools (subtraction from all 54)
+    plugin_dir2 = tmp_path / "disallowed-implicit"
+    agents_dir2 = plugin_dir2 / "agents"
+    agents_dir2.mkdir(parents=True)
+    (agents_dir2 / "agent2.md").write_text(
+        "---\nname: agent2\ndescription: Implicit tools\ndisallowedTools: Write, Edit\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx2 = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-implicit",
+            marketplace_name="disallowed-implicit",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir2,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-implicit"}},
+    )
+    adapt_agy(plugin_dir2, ctx2)
+    res2 = yaml.safe_load((agents_dir2 / "agent2.md").read_text().split("---")[1])
+    expected_tools = [
+        t for t in accepted_tools if t not in ("write_to_file", "replace_file_content")
+    ]
+    assert res2["tools"] == expected_tools
+    assert len(res2["tools"]) == 52
+    assert "disallowedTools" not in res2
+
+    # Case 3: claude retains disallowedTools unchanged
+    plugin_dir3 = tmp_path / "disallowed-claude"
+    agents_dir3 = plugin_dir3 / "agents"
+    agents_dir3.mkdir(parents=True)
+    (agents_dir3 / "agent3.md").write_text(
+        "---\nname: agent3\ndescription: Implicit tools\ndisallowedTools: Write, Edit\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx3_claude = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-claude",
+            marketplace_name="disallowed-claude",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir3,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-claude"}},
+    )
+    adapt_claude(plugin_dir3, ctx3_claude)
+    res3_claude = yaml.safe_load((agents_dir3 / "agent3.md").read_text().split("---")[1])
+    assert res3_claude["disallowedTools"] == "Write, Edit"
+
+
+def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "mcp-agent-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "mcpagent.md").write_text(
+        "---\nname: mcpagent\ndescription: MCP agent\nmcpServers:\n  - services\n  - pkb\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="mcp-agent-plugin",
+            marketplace_name="mcp-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "mcp-agent"}},
+    )
+    adapt_claude(plugin_dir, ctx_claude)
+    res_claude = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
+    assert res_claude["mcpServers"] == ["services", "pkb"]
+
+    ctx_agy = BuildContext(
+        plugin=Plugin(
+            directory="mcp-agent-plugin",
+            marketplace_name="mcp-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "mcp-agent"}},
+    )
+    adapt_agy(plugin_dir, ctx_agy)
+    res_agy = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
+    assert "mcpServers" not in res_agy

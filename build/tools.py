@@ -59,39 +59,90 @@ def process_agent_tools_agy(
     file_path: Path,
     accepted_tools: list[str],
     tool_map: dict[str, list[str]],
+    plugin_name: str = "",
+    raw_disallowed_tools: Any = None,
+    has_disallowed_tools_key: bool = False,
 ) -> list[str]:
-    """Translates source agent frontmatter 'tools' into agy's accepted tool list."""
+    """Translates source agent frontmatter 'tools' and 'disallowedTools' into agy's accepted tool list."""
     if not has_tools_key:
         # Absence semantics: emit the full accepted vocabulary explicitly
-        return list(accepted_tools)
+        initial_tools = list(accepted_tools)
+    else:
+        tools_list: list[str] = []
+        if isinstance(raw_tools, str):
+            tools_list = [t.strip() for t in raw_tools.split(",") if t.strip()]
+        elif isinstance(raw_tools, list):
+            tools_list = [
+                str(t).strip() for t in raw_tools if isinstance(t, str) and str(t).strip()
+            ]
 
-    tools_list: list[str] = []
-    if isinstance(raw_tools, str):
-        tools_list = [t.strip() for t in raw_tools.split(",") if t.strip()]
-    elif isinstance(raw_tools, list):
-        tools_list = [str(t).strip() for t in raw_tools if isinstance(t, str) and str(t).strip()]
-
-    if not tools_list:
-        raise BuildError(f"{file_path}: agent {agent_name!r} has empty 'tools' list (tools: [])")
-
-    expanded: list[str] = []
-    for tool_name in tools_list:
-        if tool_name.startswith("mcp__"):
-            # MCP is implicit on agy; omitted from frontmatter tools list
-            continue
-        elif tool_name in tool_map:
-            expanded.extend(tool_map[tool_name])
-        else:
+        if not tools_list:
             raise BuildError(
-                f"{file_path}: agent {agent_name!r} has unknown/unmappable tool {tool_name!r}"
+                f"{file_path}: agent {agent_name!r} has empty 'tools' list (tools: [])"
             )
 
-    seen: set[str] = set()
-    final_tools: list[str] = []
-    for t in expanded:
-        if t not in seen:
-            seen.add(t)
-            final_tools.append(t)
+        expanded: list[str] = []
+        for tool_name in tools_list:
+            has_scope = "(" in tool_name
+            base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
+            if base_name.startswith("mcp__"):
+                # MCP is implicit on agy; omitted from frontmatter tools list
+                continue
+            elif base_name in tool_map:
+                mapped = tool_map[base_name]
+                if has_scope:
+                    unrestricted_name = mapped[0] if mapped else "tool"
+                    prefix = f"{plugin_name}/" if plugin_name else ""
+                    print(
+                        f"warning: {prefix}{agent_name}: '{tool_name}' scope dropped for agy; {unrestricted_name} is unrestricted"
+                    )
+                expanded.extend(mapped)
+            else:
+                raise BuildError(
+                    f"{file_path}: agent {agent_name!r} has unknown/unmappable tool {tool_name!r}"
+                )
+
+        seen: set[str] = set()
+        initial_tools = []
+        for t in expanded:
+            if t not in seen:
+                seen.add(t)
+                initial_tools.append(t)
+
+    # Process disallowedTools if present
+    denied_tools: list[str] = []
+    if has_disallowed_tools_key and raw_disallowed_tools is not None:
+        disallowed_list: list[str] = []
+        if isinstance(raw_disallowed_tools, str):
+            disallowed_list = [t.strip() for t in raw_disallowed_tools.split(",") if t.strip()]
+        elif isinstance(raw_disallowed_tools, list):
+            disallowed_list = [
+                str(t).strip()
+                for t in raw_disallowed_tools
+                if isinstance(t, str) and str(t).strip()
+            ]
+
+        for tool_name in disallowed_list:
+            has_scope = "(" in tool_name
+            base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
+            if base_name.startswith("mcp__"):
+                continue
+            elif base_name in tool_map:
+                mapped = tool_map[base_name]
+                if has_scope:
+                    unrestricted_name = mapped[0] if mapped else "tool"
+                    prefix = f"{plugin_name}/" if plugin_name else ""
+                    print(
+                        f"warning: {prefix}{agent_name}: '{tool_name}' scope dropped for agy; {unrestricted_name} is unrestricted"
+                    )
+                denied_tools.extend(mapped)
+            else:
+                raise BuildError(
+                    f"{file_path}: agent {agent_name!r} has unknown/unmappable tool {tool_name!r}"
+                )
+
+    denied_set = set(denied_tools)
+    final_tools = [t for t in initial_tools if t not in denied_set]
 
     if not final_tools:
         raise BuildError(f"{file_path}: agent {agent_name!r} tool expansion yielded 0 tools")
@@ -130,7 +181,8 @@ def process_agent_tools_claude(
     final_tools: list[str] = []
     seen: set[str] = set()
     for tool_name in tools_list:
-        if tool_name.startswith("mcp__") or tool_name in tool_map:
+        base_name = tool_name.split("(", 1)[0].strip() if "(" in tool_name else tool_name
+        if base_name.startswith("mcp__") or base_name in tool_map:
             if tool_name not in seen:
                 seen.add(tool_name)
                 final_tools.append(tool_name)

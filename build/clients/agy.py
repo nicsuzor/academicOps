@@ -72,7 +72,7 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
         _write_json(build_dir / "mcp_config.json", _checked_mcp(servers, ctx))
 
     _convert_commands_to_skills(build_dir)
-    _adapt_agents(build_dir)
+    _adapt_agents(build_dir, ctx)
 
     always_on = load_always_on_axioms(build_dir / "axioms")
     if always_on:
@@ -211,7 +211,7 @@ def _convert_commands_to_skills(build_dir: Path) -> None:
     shutil.rmtree(commands_dir)
 
 
-def _adapt_agents(build_dir: Path) -> None:
+def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
     """Rewrite each agent under `agents/` into agy's `agents/<name>.md`.
 
     agy's runtime reads `<name>.md` — YAML frontmatter plus a Markdown body —
@@ -230,6 +230,7 @@ def _adapt_agents(build_dir: Path) -> None:
         return
 
     accepted_tools, tool_map = load_tool_config()
+    plugin_name = ctx.plugin.marketplace_name if ctx else ""
 
     for md_file in md_files:
         content = md_file.read_text(encoding="utf-8")
@@ -254,12 +255,21 @@ def _adapt_agents(build_dir: Path) -> None:
 
         body = m.group(2).lstrip("\n")
 
-        # Carry every source field through except the five handled
-        # explicitly below (name, description, tools, hidden, model).
+        # Carry every source field through except the seven handled
+        # explicitly below (name, description, tools, hidden, model, disallowedTools, mcpServers).
         agy_frontmatter: dict = {
             k: v
             for k, v in frontmatter.items()
-            if k not in ("name", "description", "tools", "hidden", "model")
+            if k
+            not in (
+                "name",
+                "description",
+                "tools",
+                "hidden",
+                "model",
+                "disallowedTools",
+                "mcpServers",
+            )
         }
         agy_frontmatter = {
             "name": name,
@@ -275,6 +285,9 @@ def _adapt_agents(build_dir: Path) -> None:
 
         has_tools_key = "tools" in frontmatter
         raw_tools = frontmatter.get("tools")
+        has_disallowed_key = "disallowedTools" in frontmatter
+        raw_disallowed = frontmatter.get("disallowedTools")
+
         agy_frontmatter["tools"] = process_agent_tools_agy(
             raw_tools,
             has_tools_key,
@@ -282,6 +295,9 @@ def _adapt_agents(build_dir: Path) -> None:
             md_file,
             accepted_tools,
             tool_map,
+            plugin_name=plugin_name,
+            raw_disallowed_tools=raw_disallowed,
+            has_disallowed_tools_key=has_disallowed_key,
         )
 
         agy_frontmatter["hidden"] = bool(frontmatter.get("hidden", False))
