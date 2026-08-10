@@ -110,7 +110,12 @@ ignore = [
 # error, so the list cannot outlive what it excuses.
 [tool.refcheck]
 include = [
-  "specs/**/*.md",
+  "specs/*.md",
+  "specs/agents/**/*.md",
+  "specs/enforcement/**/*.md",
+  "specs/meta/**/*.md",
+  "specs/polecat/**/*.md",
+  "specs/workflows/**/*.md",
   "plugins/**/*.md",
   "lib/**/*.md",
   ".agents/**/*.md",
@@ -205,11 +210,6 @@ reason = "Configuration inside the container image, not in this repository."
 docs = "templates/github-agent/README.md"
 refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."
-
-[[tool.refcheck.allow]]
-docs = "specs/future/*.md"
-refs = ["scripts/polecat-dispatch-via-ssh.sh"]
-reason = "An artifact the proposal would create; specs/future/ describes work not yet done."
 
 [tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference

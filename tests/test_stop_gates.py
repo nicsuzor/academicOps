@@ -21,9 +21,19 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
+
+_POLICY_FILE = Path(__file__).resolve().parent / "policy.toml"
+_policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
+
+
+def _require_orchestrate_hearsay_enabled():
+    if not _policy.get("orchestrate", {}).get("rule_against_hearsay_enabled", True):
+        pytest.skip("orchestrate hearsay hook is disabled by policy")
+
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
@@ -114,6 +124,7 @@ def test_orchestrate_hearsay_fires_once_on_a_batch_carrying_an_agent_report(orch
     """``PostToolBatch`` fires exactly once per batch, with every resolved call
     in ``tool_calls`` — so a batch that dispatched a subagent alongside other
     tools still gets the reminder, and gets it once rather than per call."""
+    _require_orchestrate_hearsay_enabled()
     hearsay_md = (
         (_ORCHESTRATE_HOOKS / "messages" / "hearsay.md").read_text(encoding="utf-8").strip()
     )

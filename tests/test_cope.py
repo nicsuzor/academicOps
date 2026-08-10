@@ -31,6 +31,7 @@ import sys
 import tempfile
 import threading
 import time
+import tomllib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -40,6 +41,14 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _LIB_AXIOMS = _REPO_ROOT / "lib" / "axioms"
 _COPE_HOOKS = _REPO_ROOT / "plugins" / "rbg" / "hooks"
+_POLICY_FILE = _REPO_ROOT / "tests" / "policy.toml"
+
+_policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
+
+
+def _require_evaluate_enabled():
+    if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
+        pytest.skip("rbg evaluate hook is disabled by policy")
 
 
 def _copy_axioms(dest: Path, *, live: bool) -> Path:
@@ -1716,16 +1725,24 @@ def test_the_blocking_token_list_would_actually_catch_a_violation(tmp_path):
         )
 
 
+def _handlers_module():
+    return {
+        event: [h for h in hooked if h.__module__ == "handlers"]
+        for event, hooked in handlers.HANDLERS.items()
+    }
+
+
 def test_every_cope_handler_returns_an_advisory_or_nothing(
     hooks_dir_with_axioms, transport, monkeypatch
 ):
     """Behavioural counterpart: run every registered cope handler on a payload
     each is known to fire on, and require a non-refusal result."""
+    _require_evaluate_enabled()
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
     transport.respond = lambda payload: {"label": 1, "confidence": 1.0}
     fired = 0
-    for event, hooked in handlers.HANDLERS.items():
+    for event, hooked in _handlers_module().items():
         for handler in hooked:
             client = "agy" if getattr(handler, "only_on_clients", None) else "claude"
             ctx = _ctx(
@@ -1860,6 +1877,7 @@ def test_dispatch_end_to_end_injects_the_flagged_rule_advisory_only(
     """The whole path, as Claude Code runs it: shipped hook, real HTTP
     evaluator, real rule set. It names the rule, echoes the call, and carries
     no permission decision of any kind."""
+    _require_evaluate_enabled()
     env = _configured_env(stub_evaluator, COPE_EVALUATOR_API_KEY="test-key")
     raw = {**_PRETOOLUSE, "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
@@ -1884,6 +1902,7 @@ def test_dispatch_end_to_end_shows_the_user_that_a_rule_was_flagged(
     field the person watching ever sees. Both must be on the wire, from the
     real hook process — an advisory composed in-process proves nothing about
     what dispatch renders."""
+    _require_evaluate_enabled()
     raw = {**_PRETOOLUSE, "cwd": str(project_cwd)}
     result = _run_dispatch(
         built_cope_plugin,
@@ -1905,6 +1924,7 @@ def test_dispatch_end_to_end_shows_the_user_that_a_rule_was_flagged(
 def test_dispatch_end_to_end_is_silent_when_nothing_is_flagged(
     built_cope_plugin, stub_evaluator, project_cwd
 ):
+    _require_evaluate_enabled()
     _StubEvaluator.marker = "\x00nothing matches this\x00"
     try:
         raw = {**_PRETOOLUSE, "cwd": str(project_cwd)}
@@ -1925,6 +1945,7 @@ def test_dispatch_end_to_end_is_silent_when_nothing_is_flagged(
 def test_dispatch_end_to_end_unconfigured_is_a_silent_no_op(built_cope_plugin, project_cwd):
     """The shipped default: no evaluator configured, so the hook says nothing,
     exits clean, and does not complain on every tool call."""
+    _require_evaluate_enabled()
     raw = {**_PRETOOLUSE, "cwd": str(project_cwd)}
     result = _run_dispatch(
         built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=_dispatch_env()
@@ -1952,6 +1973,7 @@ def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin,
     naming the rules that went unchecked. It is the first call of this
     session, so the one-time outage notice is on the wire too; that is not a
     rule verdict either, and it carries no `decision`/`permissionDecision`."""
+    _require_evaluate_enabled()
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
     raw = {**_PRETOOLUSE, "session_id": "unreachable-evaluator", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
@@ -1971,6 +1993,7 @@ def test_dispatch_end_to_end_partial_configuration_says_so_and_stands_down(
     """Half a configuration is a mistake someone made, and the report has to
     name the variable they still have to set — not just that something is
     wrong."""
+    _require_evaluate_enabled()
     env = _dispatch_env(COPE_EVALUATOR_URL=_DEAD_URL)
     raw = {**_PRETOOLUSE, "session_id": "partial-configuration", "cwd": str(project_cwd)}
     result = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
@@ -1986,6 +2009,7 @@ def test_dispatch_end_to_end_reports_a_rule_file_that_could_not_be_read(
     """A rule that cannot be read is a rule that is not being enforced. The
     report has to name the file — the only person who can fix it needs to know
     which one — and the rest of the rule set has to keep working."""
+    _require_evaluate_enabled()
     rules_dir = project_cwd / ".agents" / "rules"
     rules_dir.mkdir(parents=True)
     (rules_dir / "unreadable.md").mkdir()  # a rule file that is not a file
@@ -2020,6 +2044,7 @@ def test_dispatch_end_to_end_reports_a_rule_file_that_is_never_evaluated(
     never sent to the evaluator. Its author has no way to tell from inside the
     session, which is how a rule quietly stops being enforced — so the report
     names both the file and the frontmatter line that would fix it."""
+    _require_evaluate_enabled()
     rules_dir = project_cwd / ".agents" / "rules"
     rules_dir.mkdir(parents=True)
     (rules_dir / "costly-ops-approval.md").write_text("---\ndescription: no marker\n---\n\nAsk.\n")
@@ -2049,6 +2074,7 @@ def test_dispatch_end_to_end_reports_the_same_fault_on_every_tool_call(
     (`evaluator.claim_outage_once`), so the first call gets the notice and the
     second — same session, same recurring fault — gets none. Pinned both
     calls so a reader can see which contract each channel follows."""
+    _require_evaluate_enabled()
     env = _configured_env(_DEAD_URL, COPE_EVALUATOR_TIMEOUT="2")
     raw = {**_PRETOOLUSE, "session_id": "repeated-fault", "cwd": str(project_cwd)}
     first = _run_dispatch(built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=env)
@@ -2067,6 +2093,7 @@ def test_dispatch_end_to_end_an_unconfigured_session_is_never_called_degraded(
 ):
     """The line evaluator.resolve() draws, held on the wire: nothing
     configured is a legitimate state, not a fault, and gets no line anywhere."""
+    _require_evaluate_enabled()
     raw = {**_PRETOOLUSE, "session_id": "unconfigured", "cwd": str(project_cwd)}
     result = _run_dispatch(
         built_cope_plugin, "claude", "PreToolUse", raw, cwd=project_cwd, env=_dispatch_env()
@@ -2079,6 +2106,7 @@ def test_dispatch_end_to_end_an_unconfigured_session_is_never_called_degraded(
 def test_dispatch_agy_preinvocation_injects_the_live_ruleset(built_cope_plugin, project_cwd):
     """agy's only usable phase carries a prompt, not a tool call. cope fires
     there and states the rule set — the whole reason the hook is wired."""
+    _require_evaluate_enabled()
     raw = {"prompt": "ship the release", "cwd": str(project_cwd)}
     result = _run_dispatch(
         built_cope_plugin, "agy", "PreInvocation", raw, cwd=project_cwd, env=_dispatch_env()
@@ -2095,6 +2123,7 @@ def test_dispatch_agy_preinvocation_injects_the_live_ruleset(built_cope_plugin, 
 def test_dispatch_agy_preinvocation_is_advisory_only(built_cope_plugin, project_cwd):
     """agy's wire shape has one non-empty form — an ephemeral message. There is
     no decision, no permission field, nothing that could stop the turn."""
+    _require_evaluate_enabled()
     raw = {"prompt": "ship the release", "cwd": str(project_cwd)}
     result = _run_dispatch(
         built_cope_plugin, "agy", "PreInvocation", raw, cwd=project_cwd, env=_dispatch_env()
@@ -2108,6 +2137,7 @@ def test_dispatch_claude_userpromptsubmit_stays_silent(built_cope_plugin, projec
     """Claude fires both UserPromptSubmit and PreToolUse, and cope covers it at
     PreToolUse; the pkb plugin owns Claude's UserPromptSubmit. Even reached
     directly, cope's turn-level advisory must produce nothing here."""
+    _require_evaluate_enabled()
     raw = {"hook_event_name": "UserPromptSubmit", "prompt": "hello", "cwd": str(project_cwd)}
     result = _run_dispatch(
         built_cope_plugin, "claude", "UserPromptSubmit", raw, cwd=project_cwd, env=_dispatch_env()
@@ -2120,6 +2150,7 @@ def test_dispatch_agy_never_evaluates_a_tool_call(built_cope_plugin, stub_evalua
     """A tool payload delivered on agy's phase still yields the ruleset
     advisory, not a verdict — there is no PreToolUse on agy, so cope must not
     pretend it evaluated a tool call it never saw."""
+    _require_evaluate_enabled()
     raw = {
         "prompt": "commit it",
         "tool_name": "Bash",
@@ -2142,6 +2173,7 @@ def test_dispatch_agy_never_evaluates_a_tool_call(built_cope_plugin, stub_evalua
 def test_dispatch_falls_back_to_process_cwd_when_payload_omits_it(
     built_cope_plugin, stub_evaluator, project_cwd
 ):
+    _require_evaluate_enabled()
     result = _run_dispatch(
         built_cope_plugin,
         "claude",

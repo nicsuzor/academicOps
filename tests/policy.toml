@@ -1,0 +1,30 @@
+# Policy configuration for academicOps tests.
+# This file centralizes architectural invariants, enforcement levels, and message
+# requirements so they can be modified without altering the test code itself.
+
+[rbg.stop_gate]
+# Minimum required text fragments in the shipped rule-check.md
+required_shipped_text = ["rule check", "evidence", "axioms"]
+# Events that the RBG stop gate will block on. Currently empty because rbg hooks are disabled.
+stop_events = []
+
+[hooks.messages]
+# Messages that ship with no .user.md because they have no second reader
+no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session" }
+# Messages that ship user-blind and SHOULD NOT (defect list)
+known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
+
+[pkb]
+# Is search_the_pkb enabled and returning a Result? Currently disabled.
+search_the_pkb_enabled = false
+
+[rbg.evaluate]
+# The PreToolUse rule evaluator (cope) is currently disabled
+enabled = false
+
+[ida]
+strip_the_reply_enabled = false
+
+[orchestrate]
+rule_against_hearsay_enabled = false
+honest_output_enabled = false

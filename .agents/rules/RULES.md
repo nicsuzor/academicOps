@@ -30,3 +30,11 @@ scope — changed.
 Any change to an instruction, skill, or documentation file complies with
 [`specs/meta/doc-taxonomy.md`](../../specs/meta/doc-taxonomy.md). Placement is not
 discretionary.
+
+## Policy as Code in Tests
+
+Do not hardcode architectural policies, messaging invariants, or enforcement levels inside Python test files.
+
+- Policies (e.g., required text snippets, specific hook mappings, or message exemptions) must be defined in `tests/policy.toml`.
+- Tests must assert against the configuration in `policy.toml`, never against hardcoded Python literals.
+- This separates the _mechanism_ of the test from the _policy_ of the platform, allowing non-engineers to review and modify policies without rewriting code.

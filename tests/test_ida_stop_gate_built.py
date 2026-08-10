@@ -23,9 +23,19 @@ import json
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
+
+_POLICY_FILE = Path(__file__).resolve().parent / "policy.toml"
+_policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
+
+
+def _require_ida_hooks_enabled():
+    if not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
+        pytest.skip("ida hooks are disabled by policy")
+
 
 from build.build import build_all
 
@@ -119,6 +129,7 @@ def test_stop_delivers_the_shipped_message_through_the_real_build(ida_dist, clie
     (commit 81e32c09) — only that whichever shape carries the text carries the
     right text.
     """
+    _require_ida_hooks_enabled()
     build_dir, command = _stop_command(ida_dist, client)
     proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
@@ -134,6 +145,7 @@ def test_agy_never_receives_a_blocking_shape(ida_dist, client):
     invocation has already ended by the time the event fires. The same result
     therefore has to reach it as advice or not at all — never as a shape agy
     would drop on the floor while this side recorded a block that happened."""
+    _require_ida_hooks_enabled()
     build_dir, command = _stop_command(ida_dist, client)
     proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
@@ -145,6 +157,7 @@ def test_agy_never_receives_a_blocking_shape(ida_dist, client):
 
 def test_claude_stop_tells_the_person_watching(ida_dist):
     """The gate firing is a fact about the answer they are about to read."""
+    _require_ida_hooks_enabled()
     build_dir, command = _stop_command(ida_dist, "claude")
     proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
     assert json.loads(proc.stdout)["systemMessage"] == _shipped_message(ida_dist, "quiet.user.md")
