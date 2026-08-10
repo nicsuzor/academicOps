@@ -38,5 +38,5 @@ def be_quiet(ctx: HookContext) -> Result | None:
 
 
 HANDLERS: dict[str, list] = {
-    "Stop": [be_quiet],
+    "PostToolBatch": [be_quiet],
 }

@@ -975,6 +975,7 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
             allowed_missing.update(_wires_for("PreToolUse"))
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
             allowed_missing.update(_wires_for("PostToolBatch"))
+            allowed_missing.update(_wires_for("Stop"))
         elif name == "pkb" and not _policy.get("pkb", {}).get("search_the_pkb_enabled", True):
             allowed_missing.update(_wires_for("UserPromptSubmit"))
 

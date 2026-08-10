@@ -79,7 +79,7 @@ def _stop_command(ida_dist: Path, client: str) -> tuple[Path, str]:
     if client == "claude":
         build_dir = ida_dist / "ida-claude"
         config = json.loads((build_dir / "hooks" / "hooks.json").read_text(encoding="utf-8"))
-        entries = config["hooks"].get("Stop") or config["hooks"]["PostToolBatch"]
+        entries = config["hooks"]["PostToolBatch"]
         return build_dir, entries[0]["hooks"][0]["command"]
 
     build_dir = ida_dist / "ida-agy"
