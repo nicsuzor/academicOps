@@ -1,6 +1,6 @@
 """ida's Stop gate, proven through the artifact ida actually ships.
 
-The gate is only real if the built plugin wires a `Stop` hook, the shipped
+The gate is only real if the built plugin wires a `PostToolBatch` hook, the shipped
 runtime loads the shipped message file, and the response comes back in the
 shape the client parses. Each of those has failed independently before — a
 message file with no handler, a handler with no hook entry, a hook wired to an
@@ -177,7 +177,7 @@ def test_stop_is_silent_on_its_own_continuation(ida_dist, client):
 
 def test_subagentstop_is_not_wired_so_the_gate_stays_scoped_to_the_face(ida_dist):
     """What scopes this hook to ida is the event, because the payload carries no
-    per-agent discriminator. `Stop` fires on the session's own turn boundary;
+    per-agent discriminator. `PostToolBatch` fires on the session's own turn boundary;
     a subagent ends on `SubagentStop`. Wiring that too would put the face's
     obligations in front of every worker the session dispatches.
     """
