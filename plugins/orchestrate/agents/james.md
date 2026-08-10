@@ -14,6 +14,9 @@ tools:
   - TaskGet
   - TaskList
   - TaskUpdate
+mcpServers:
+  - services
+  - pkb
 ---
 
 # James — The Orchestrator
