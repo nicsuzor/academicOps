@@ -1,6 +1,6 @@
 """ida's hook handlers.
 
-``strip_the_reply`` is the ``Stop`` gate, and the only handler here. It returns a ``warn``
+``be_quiet`` is the ``Stop`` gate, and the only handler here. It returns a ``warn``
 (lib/hooks/dispatch.py) reminding ida to strip its own reply to the person
 down to load-bearing content before it stops — not a check on what was
 already said, since the hook has no transcript to read, only a reminder that
@@ -25,7 +25,7 @@ from __future__ import annotations
 from dispatch import HookContext, Result, load_message_pair, warn
 
 
-def strip_the_reply(ctx: HookContext) -> Result | None:
+def be_quiet(ctx: HookContext) -> Result | None:
     """Remind the face to strip its reply down to what is load-bearing.
 
     Always the same reminder, regardless of what actually happened this turn —
@@ -38,6 +38,5 @@ def strip_the_reply(ctx: HookContext) -> Result | None:
 
 
 HANDLERS: dict[str, list] = {
-    # Disabled, see if this helps supervisors not feel the need to do stuff all the time.
-    # "Stop": [strip_the_reply],
+    "PostToolBatch": [be_quiet],
 }
