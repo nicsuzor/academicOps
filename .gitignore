@@ -5,6 +5,7 @@
 !.gemini/sandbox.Dockerfile
 .aops/
 .polecat/
+.agents/*
 !.agents/commands/
 !.agents/skills/
 !.agents/rules
@@ -359,3 +360,4 @@ test_result*.json
 .claude/skills
 archived
 .lmnr/
+.agents/explorer_survey_1/analysis.md
