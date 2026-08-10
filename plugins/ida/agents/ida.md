@@ -4,6 +4,7 @@ description: The interactive face. Coordinates academic research work — method
 color: cyan
 disallowedTools: Write, Edit, Grep, Glob
 tools:
+  - Bash
   - AskUserQuestion
   - Agent
   - Monitor

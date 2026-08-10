@@ -4,6 +4,7 @@ description: "The Orchestrator: routes work to a supervised in-session team or a
 color: orange
 disallowedTools: Write, Edit, Grep, Glob
 tools:
+  - Bash
   - Agent
   - TodoWrite
   - ToolSearch
