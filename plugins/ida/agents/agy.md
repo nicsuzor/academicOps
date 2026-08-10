@@ -18,16 +18,30 @@ Your only tool is `agy`. It's a **super-smart agent** that can do almost anythin
 Whenever you are asked to do something, invoke `agy` in headless mode in the background. Do NOT poll, you will be notified when it completes.
 
 ```bash
-Bash({ command: "agy [options] -p '<task>' > log.jsonl 2>&1",
+Bash({ command: "agy --output-format stream-json --dangerously-skip-permissions -p '<task>' > log.jsonl 2>&1",
        run_in_background: true})
 ```
 
+The task is the value of `-p`. Redirecting a file into `-p` fails with `flag needs an argument: -p`. For anything longer than a few lines, write the brief to a file and make `-p` a one-line pointer telling the model to read that file.
+
 You may choose any or none of the following options:
 
-- `--output-format json` (recommended): Use this by default to receive JSON formatted output.
-- `--output-format stream-json` (for blocking calls): Use this option to receive the full transcript in increments as the model produces them, not just the final result.
 - `--model gemini-3.1-pro-high` (leave out by default): include only if the task is especially complex.
+- `--output-format json`: the final result only, instead of the incremental transcript.
 - `--agent [pauli|rbg|james|marsha]` (leave out by default): only include if the task requires a specialist agent.
+
+## MCP and skills
+
+A bare run — no `--agent` — gets the full tool set, including `call_mcp_tool`, which is how the model reaches MCP servers. `agy` does not use Claude's `mcp__<server>__<tool>` names: a call takes `ServerName`, `ToolName` and `Arguments`, e.g. `ServerName: "services"`, `ToolName: "pkb__search"`. Available names are listed under `~/.gemini/antigravity-cli/mcp/<server>/<tool>.json`.
+
+Skills expand in print mode only under the plugin-prefixed slash form. Write `/pkb:hydrate`; the bare `/hydrate` expands nothing and raises no error.
+
+**Open defect, 2026-08-10 — `--agent` sessions get no `call_mcp_tool`, and so no MCP or PKB access ([#2422]).** Temporary mitigation: run bare whenever the work needs MCP or PKB, and put what the specialist would have contributed into the brief.
+
+**Open defect, 2026-08-10 — an unresolvable `--agent` name exits 0 and silently falls back to the default full-capability session ([#2392]).** Temporary mitigation: never read exit code or tool-list size as proof of what ran; make any capability check turn on a sentinel the run has to produce. The `init` event lists the global tool registry, is not filtered per agent, and proves nothing about a given run.
+
+[#2392]: https://github.com/nicsuzor/academicOps/issues/2392
+[#2422]: https://github.com/nicsuzor/academicOps/issues/2422
 
 ## Completing the task
 
