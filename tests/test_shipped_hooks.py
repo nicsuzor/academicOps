@@ -960,8 +960,8 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
         }
         wired = {wire for wire, _ in _hook_commands(client, build_dir)}
 
-        def _wires_for(canonical: str) -> set[str]:
-            return {w for w, c in _wire_events(client).items() if c == canonical} | {canonical}
+        def _wires_for(canonical: str, c_name: str = client) -> set[str]:
+            return {w for w, c in _wire_events(c_name).items() if c == canonical} | {canonical}
 
         allowed_missing = set()
         if name == "orchestrate":

@@ -3,10 +3,10 @@ name: alpha-agent
 description: Fixture agent for build system tests.
 tools:
   - Read
-  - Skill
+  - Write
   - Agent
   - AskUserQuestion
-  - Dispatch
+  - Grep
 ---
 
 You are the alpha fixture agent.

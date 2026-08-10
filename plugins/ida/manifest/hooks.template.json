@@ -5,7 +5,7 @@
     "__base__": {},
     "claude": {
       "hooks": {
-        "PostToolBatch": [
+        "Stop": [
           {
             "hooks": [
               {

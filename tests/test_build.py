@@ -338,7 +338,6 @@ def test_agy_command_converted_to_skill(built):
 
 
 def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
-
     dist_root = tmp_path_factory.mktemp("build-dist-agents")
     build_all(
         PROJECT_ROOT,
@@ -363,9 +362,17 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     assert "interactive face" in agy_agent["description"]
     assert agy_agent["hidden"] is False
 
-    # plugins/ida/agents/ida.md sets no `tools:` — Claude Code semantics is
-    # "unrestricted", and the agy output must not narrow that to zero tools.
-    assert "tools" not in agy_agent
+    # plugins/ida/agents/ida.md sets [Agent, Monitor, AskUserQuestion, TodoWrite]
+    # Agent -> invoke_subagent, manage_subagents, send_message
+    # Monitor -> [] (dropped)
+    # AskUserQuestion -> ask_question
+    # TodoWrite -> [] (dropped)
+    assert agy_agent["tools"] == [
+        "invoke_subagent",
+        "manage_subagents",
+        "send_message",
+        "ask_question",
+    ]
 
     body = body.lstrip("\n")
     assert body.startswith("# Agent System Instructions")
@@ -373,64 +380,285 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
 
 def test_agy_agent_tool_names_are_translated(built):
-    """The tool-name map, against the fixture agent rather than a real one.
-
-    Which tools a shipped agent is granted is a permission decision that moves —
-    grants are currently cleared and are being restored one at a time — so a
-    production agent's `tools:` list is the wrong subject for a test about the
-    build's rename map. The fixture agent carries a list chosen to cover both
-    branches instead.
-    """
     import yaml
 
     claude_agent = built / "fixture-alpha-claude" / "agents" / "alpha-agent.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
-    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
+    assert claude_fm["tools"] == ["Read", "Write", "Agent", "AskUserQuestion", "Grep"]
 
     agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
-    # untranslated — the map renames what agy calls by another name and leaves
-    # everything else alone.
     assert agy_fm["tools"] == [
-        "read_file",
-        "Skill",
+        "view_file",
+        "write_to_file",
         "invoke_subagent",
+        "manage_subagents",
+        "send_message",
         "ask_question",
-        "Dispatch",
+        "grep_search",
     ]
 
 
-def test_agy_agent_without_tools_key_ships_unrestricted(built_orchestrate):
-    """plugins/orchestrate/agents/james.md sets no `tools:` key at all — full,
-    unrestricted access in Claude Code. The agy build must not narrow that to
-    an empty list: `tools: []` reads to agy as "grant nothing", not "no
-    opinion", so a forced-empty default silently zeroed every such agent's
-    tool access on agy.
+def test_agent_no_tools_key_semantics(built_orchestrate):
+    """james.md sets no `tools:` key in source frontmatter.
+    Claude: leaves tools unset (inherits everything).
+    agy: emits full 54 accepted tools vocabulary.
     """
     import yaml
 
+    from build.tools import load_tool_config
+
+    accepted_tools, _ = load_tool_config()
+
+    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "james.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert "tools" not in claude_fm
+
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert "tools" not in agy_fm
+    assert agy_fm["tools"] == accepted_tools
+    assert len(agy_fm["tools"]) == 54
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
-    """plugins/orchestrate/agents/james.md pins `model: opus` — a Claude Code
-    model name absent from agy's own set (`agy models`). Forwarding it
-    verbatim doesn't degrade gracefully: agy silently drops an agent whose
-    frontmatter names a model it doesn't recognize, confirmed by direct
-    behavioral test. There is no reliable opus/sonnet -> agy-model mapping to
-    substitute, so the field must be absent, not translated.
-    """
     import yaml
 
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
-    # `color` has no such failure mode and is not agy-specific handling —
-    # it should still cross untouched.
     assert agy_fm["color"] == "orange"
+
+    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "james.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert claude_fm.get("model") == "opus" or "model" not in claude_fm
+
+
+def test_agent_empty_tools_list_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "bad-agent-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "bad.md").write_text(
+        "---\nname: bad\ndescription: Bad agent\ntools: []\n---\n\nBody", encoding="utf-8"
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="bad-agent-plugin",
+            marketplace_name="bad-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "bad-agent"}},
+    )
+
+    with pytest.raises(BuildError, match="empty 'tools' list"):
+        adapt_agy(plugin_dir, ctx)
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="bad-agent-plugin",
+            marketplace_name="bad-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "bad-agent"}},
+    )
+
+    with pytest.raises(BuildError, match="empty 'tools' list"):
+        adapt_claude(plugin_dir, ctx_claude)
+
+
+def test_agent_unmappable_tool_name_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "unmappable-tool-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "badtool.md").write_text(
+        "---\nname: badtool\ndescription: Bad tool agent\ntools:\n  - Read\n  - NonexistentToolXYZ\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="unmappable-tool-plugin",
+            marketplace_name="unmappable-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "unmappable-tool"}},
+    )
+
+    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
+        adapt_agy(plugin_dir, ctx)
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="unmappable-tool-plugin",
+            marketplace_name="unmappable-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "unmappable-tool"}},
+    )
+
+    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
+        adapt_claude(plugin_dir, ctx_claude)
+
+
+def test_agent_all_no_equivalent_tools_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "no-eq-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "noeq.md").write_text(
+        "---\nname: noeq\ndescription: No eq agent\ntools:\n  - Monitor\n  - TodoWrite\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="no-eq-plugin",
+            marketplace_name="no-eq",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "no-eq"}},
+    )
+
+    with pytest.raises(BuildError, match="yielded 0 tools"):
+        adapt_agy(plugin_dir, ctx)
+
+
+def test_agent_partial_no_equivalent_tools_drops_them_and_succeeds(tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "partial-eq-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "partial.md").write_text(
+        "---\nname: partial\ndescription: Partial eq agent\ntools:\n  - Read\n  - Monitor\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="partial-eq-plugin",
+            marketplace_name="partial-eq",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "partial-eq"}},
+    )
+
+    adapt_agy(plugin_dir, ctx)
+    res = yaml.safe_load((agents_dir / "partial.md").read_text().split("---")[1])
+    assert res["tools"] == ["view_file"]
+
+
+def test_agent_emitted_tool_not_in_vocabulary_raises_build_error(tmp_path):
+    from build.tools import process_agent_tools_agy
+
+    with pytest.raises(BuildError, match="not in agy accepted tool vocabulary"):
+        process_agent_tools_agy(
+            raw_tools=["Read"],
+            has_tools_key=True,
+            agent_name="test-agent",
+            file_path=tmp_path / "test.md",
+            accepted_tools=["run_command"],
+            tool_map={"Read": ["view_file"]},
+        )
+
+
+def test_agent_invalid_name_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "invalid-name-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "invalid_name.md").write_text(
+        "---\nname: invalid_name\ndescription: Invalid name agent\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="invalid-name-plugin",
+            marketplace_name="invalid-name",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "invalid-name"}},
+    )
+
+    with pytest.raises(BuildError, match="invalid agent name"):
+        adapt_agy(plugin_dir, ctx)
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="invalid-name-plugin",
+            marketplace_name="invalid-name",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "invalid-name"}},
+    )
+
+    with pytest.raises(BuildError, match="invalid agent name"):
+        adapt_claude(plugin_dir, ctx_claude)
+
+
+def test_agent_tools_serialised_as_yaml_list(built):
+    claude_raw = (built / "fixture-alpha-claude" / "agents" / "alpha-agent.md").read_text()
+    agy_raw = (built / "fixture-alpha-agy" / "agents" / "alpha-agent.md").read_text()
+
+    assert (
+        "tools:\n- Read" in claude_raw
+        or "tools:\n  - Read" in claude_raw
+        or "\ntools:\n-" in claude_raw
+    )
+    assert (
+        "tools:\n- view_file" in agy_raw
+        or "tools:\n  - view_file" in agy_raw
+        or "\ntools:\n-" in agy_raw
+    )
 
 
 def test_axioms_always_on_wired_per_client(built):
