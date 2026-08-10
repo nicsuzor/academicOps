@@ -164,6 +164,26 @@ def test_caller_supplied_non_interactive_is_rejected_before_anything_starts(
     assert captured == [], "no container may start for an invocation that cannot work"
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["run", "ida", "-d", "repo"],
+        ["run", "claude", "-d", "repo", "--agent", "ida"],
+        ["run", "claude", "-d", "repo", "--agent=ida"],
+        ["run", "agy", "-d", "repo", "--agent", "ida"],
+        ["run", "agy", "-d", "repo", "--agent=ida"],
+    ],
+)
+def test_ida_is_rejected_as_agent_cmd_or_agent_flag(argv, tmp_path, monkeypatch):
+    """ida is the interactive face plugin and is not installed in polecat containers."""
+    argv_with_path = [a if a != "repo" else str(tmp_path / "repo") for a in argv]
+    result, captured = _invoke_capturing(monkeypatch, tmp_path, argv_with_path)
+
+    assert result.exit_code != 0
+    assert "ida is the interactive face plugin and is not installed" in result.output
+    assert captured == [], "no container may start when ida is requested"
+
+
 def test_non_interactive_is_not_treated_as_a_headless_signal(tmp_path, monkeypatch):
     """It must not satisfy the headless check either: counting a flag that
     does not exist as 'the caller asked for headless' suppressed the real

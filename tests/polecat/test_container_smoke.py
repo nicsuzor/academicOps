@@ -55,7 +55,7 @@ _AGY_SESSION_PATH = cli.AGY_SESSION_PATH
 
 def _expected_plugin_names() -> set[str]:
     data = tomllib.loads(_MARKETPLACE_TOML.read_text())
-    return {p["name"] for p in data["plugins"]}
+    return {p["name"] for p in data["plugins"] if p["name"] != "ida"}
 
 
 def _image() -> str:
@@ -207,4 +207,4 @@ def test_every_declared_plugin_has_at_least_one_check_above():
     # Named rather than merely non-empty: a stale copy of the manifest would
     # still parse and still yield names, so the pin has to be against plugins
     # this repository actually declares (specs/ARCHITECTURE.md's plugin table).
-    assert {"ida", "pkb", "rbg"} <= expected
+    assert {"pkb", "rbg"} <= expected

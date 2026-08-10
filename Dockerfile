@@ -227,12 +227,9 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 # WHICH plugins install is read from the marketplace manifest shipped in the
 # dist tree, which build/marketplace.py renders from build/marketplace.toml —
 # the single source of truth for the plugin set (specs/ARCHITECTURE.md's plugin
-# table). Nothing here names a plugin: adding one to marketplace.toml ships it
-# in this image with no Dockerfile edit, and an empty list is a build failure
-# rather than a quietly under-populated image. Every declared plugin installs,
-# including aops-ts — the container is precisely the remote session that plugin
-# exists for, and its hook is inert unless the environment supplies both
-# CLAUDE_CODE_REMOTE=true and TS_AUTHKEY.
+# table). Every declared plugin except `ida` installs — polecat containers run
+# autonomous worker agents, so `ida` (the interactive face) is explicitly not
+# installed for either agy or claude.
 #
 # The Gemini CLI extension surface is deprecated and intentionally not
 # installed here (matches `make install`, which doesn't install it either).
@@ -279,7 +276,7 @@ RUN umask 000 \
     else \
         MP_ROOT=/tmp/aops-dist; \
     fi \
-    && PLUGINS="$(jq -r '.plugins[].name' "$MP_ROOT/.claude-plugin/marketplace.json")" \
+    && PLUGINS="$(jq -r '.plugins[].name | select(. != "ida")' "$MP_ROOT/.claude-plugin/marketplace.json")" \
     && { [ -n "$PLUGINS" ] || { echo "FATAL: no plugins declared in $MP_ROOT/.claude-plugin/marketplace.json" >&2; exit 1; }; } \
     && echo "Installing plugins: $(echo $PLUGINS)" \
     && claude plugin marketplace add "$MP_ROOT" \
