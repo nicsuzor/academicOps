@@ -58,9 +58,9 @@ permissions; whether the plugins are installed at all is `make docker-smoke-test
 
 **Re-run an agy failure without `--agent` before you believe it.** If a probe
 fails under `--agent <name>` and passes without it, the agent definition is what
-is broken, not the surface — that difference is the signature of open defect
-[#2387](https://github.com/nicsuzor/academicOps/issues/2387), and it is the only
-cheap way to recognise it.
+is broken, not the surface. The usual cause is the frontmatter `tools:` list —
+absent (9 read-only defaults), empty, or naming a tool agy does not have (hard
+failure).
 
 **Never score a capability on what the agent says.** Ask an agent for a
 server's output and it will grep that output out of any file lying around —
