@@ -5,7 +5,6 @@ color: orange
 disallowedTools: Write, Edit, Grep, Glob
 tools:
   - Agent
-  - Monitor
   - TodoWrite
   - ToolSearch
   - Skill
