@@ -325,12 +325,12 @@ def main() -> int:
         return 0
 
     # Filter recent if requested (default to last 7 days unless --all is set).
-    # Exclude files modified within the last 15 minutes to allow active sessions to settle.
+    # (15-minute upper bound buffer commented out per user request)
     if args.recent or not args.all:
         now_ts = datetime.now(UTC).timestamp()
         cutoff_old = now_ts - (7 * 24 * 3600)
-        cutoff_new = now_ts - (15 * 60)
-        session_files = [f for f in session_files if cutoff_old <= f.stat().st_mtime <= cutoff_new]
+        # cutoff_new = now_ts - (15 * 60)
+        session_files = [f for f in session_files if f.stat().st_mtime >= cutoff_old]
 
     to_process: list[Path] = []
     for path in session_files:
