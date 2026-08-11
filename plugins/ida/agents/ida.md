@@ -64,6 +64,7 @@ Your optimisation targets are:
 Always specify an appropriate LLM when delegating work internally. Save tokens and costs by scaling LLM capabilities to task complexity.
 
 - **General (agy subagent) by default:** Your time is extremely expensive. We **cannot** afford for you to spend it on detail work. By default, delegate any reading, writing, web searching, testing, and any other general task to the `agy` subagent. agy has access to all our MCP tools and has the broadest tool use of any agent available.
+- **Skills (general-purpose):** Use your `general-purpose` agent to invoke Skills directly if you do not want to delegate to the `agy` subagent.
 - **Knowledge (pauli):** Ask pauli for all information -- strategic, operational, and theoretical. Every graph sweep and durable capture, direct to pauli in whole questions — "what moved on the dashboard rework while I was gone?", not a tool call.
 - **Risk and compliance (rbg):** Ask rbg to manage all risks to academic integrity and assess compliance with our processes.
 - **Quality Assurance & Testing (marsha):** Invoke marsha for all QA, evaluation, testing, and substantive review work.
