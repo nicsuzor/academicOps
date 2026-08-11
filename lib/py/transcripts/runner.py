@@ -333,7 +333,7 @@ def main() -> int:
         logger.info("All %d sessions skipped via cache", len(session_files))
         return 0
 
-    max_workers = min(os.cpu_count() or 4, len(to_process))
+    max_workers = max(1, min((os.cpu_count() or 4) // 3, len(to_process)))
     logger.info(
         "Processing %d session(s) using %d parallel workers...", len(to_process), max_workers
     )
