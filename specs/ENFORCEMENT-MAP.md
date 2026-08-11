@@ -136,7 +136,7 @@ nowhere) · `unbuilt` · `external`.
 | **ida** — quiet gate                                         | hook          | `Stop` (both clients)                                                     | Strip the reply to the person down to load-bearing content; silent on the continuation stop                                                                                                                                                                                                                        | imperative  | advisory      | —                 | —                                     | live [^h]         |
 | **orchestrate** — credential isolation                       | hook          | `SessionStart`                                                            | Appends the session's credential and path variables to `CLAUDE_ENV_FILE`, scoping git and GitHub auth to the bot token so a container never inherits the operator's identity                                                                                                                                       | —           | structural    | —                 | —                                     | live              |
 | **orchestrate** — honesty                                    | hook          | `SubagentStop`                                                            | Present substantiating evidence with the claim; name what you did not do; "changed, unverified" until observed passing. In Polecat container runs, injects into worker context; in native Task-tool runs, advisory context lands in parent caller context upon task completion notification.                       | imperative  | advisory      | —                 | —                                     | live              |
-| **orchestrate** — honesty                                    | hook          | `Stop`                                                                    | Same reminder at the face's own turn boundary                                                                                                                                                                                                                                                                      | imperative  | advisory      | —                 | —                                     | disconnected      |
+| **orchestrate** — honesty                                    | hook          | `Stop` (Claude Code)                                                      | Same reminder at every other agent's own turn boundary; skipped for `ida:ida`. Not on agy, where the one mapped event fires per tool call [^j]                                                                                                                                                                     | imperative  | advisory      | —                 | —                                     | live              |
 | **orchestrate** — hearsay                                    | hook          | `PostToolBatch`                                                           | A subagent's report is second-hand; expect proof with it and send back anything without                                                                                                                                                                                                                            | cautionary  | advisory      | —                 | —                                     | disconnected      |
 | **pkb** — prompt grounding                                   | hook          | `UserPromptSubmit`                                                        | Ground every prompt in PKB history via `hydrate` before acting                                                                                                                                                                                                                                                     | imperative  | advisory      | —                 | —                                     | disconnected [^c] |
 | **pkb** — task-release gate                                  | hook          | `Stop` / `SubagentStop`                                                   | Block once per stop-chain while the session still holds an `in_progress` task                                                                                                                                                                                                                                      | imperative  | —             | —                 | —                                     | unbuilt [^d]      |
@@ -186,7 +186,9 @@ nowhere) · `unbuilt` · `external`.
 
 [^g]: A GitHub ruleset on the repository, not a file in it.
 
-[^h]: `plugins/ida/manifest/hooks.template.json` declares this hook `async`. It returns an advisory, so nothing is lost — but no stop hook in the framework can currently carry a disposition.
+[^h]: `plugins/ida/manifest/hooks.template.json` declares this hook `async`. On Claude Code 2.1.227 an `async` `Stop` hook's output never reaches the model — not on that turn and not on the next — so an advisory declared `async` there reaches nobody until the entry is declared synchronously, as `orchestrate`'s stop hooks now are.
+
+[^j]: agy's `PostInvocation` — its only hook event mapped onto canonical `Stop` — fires after every tool call, and agy sends no `stop_hook_active`, so dispatch's once-per-chain guard cannot suppress the repeat. `honest_output` therefore returns nothing on agy, and agy workers get no honesty reminder on any path (#2413).
 
 [^i]: `plugins/rbg/hooks/messages/rule-check.md` names the three layers as directories — the shipped `axioms/`, the project's `.agents/rules/`, and `$ACA_DATA/.agents/rules/` — and the rbg agent reads them as such. Nothing on this path consults `trigger:`, so `off` does not hide a rule from it; only the handler being unregistered does.
 
@@ -219,13 +221,15 @@ Named here so the absence is deliberate rather than an omission.
 ## Known drift
 
 - **`specs/ARCHITECTURE.md`, Hooks** describes the cope, rbg stop-gate, pkb
-  grounding, hearsay, and face-side honesty hooks as wired. All five are
-  commented out of their plugins' `HANDLERS`. That table is design intent; the
-  register above is what fires.
-- **Every stop-time hook is declared `async`**, so no disposition returned on a
-  stop is honoured by the runtime whatever the handler returns. The one gate
-  written to block (`rbg`'s rule check) would be advisory even if it were
-  reconnected.
+  grounding, and hearsay hooks as wired. All four are commented out of their
+  plugins' `HANDLERS`. That table is design intent; the register above is what
+  fires.
+- **Every stop-time hook but `orchestrate`'s is declared `async`**, so no
+  disposition returned on those stops is honoured by the runtime whatever the
+  handler returns — and on Claude Code 2.1.227 an `async` `Stop` hook's
+  advisory text is discarded outright rather than delivered on the next turn.
+  The one gate written to block (`rbg`'s rule check) would be advisory even if
+  it were reconnected.
 - **A disconnected hook still spawns a process.** The manifests continue to
   declare the events, so the client runs the dispatcher and it does nothing —
   dark and degraded are not distinguishable from outside.

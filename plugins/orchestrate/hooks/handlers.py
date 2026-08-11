@@ -91,11 +91,37 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 
 
 def honest_output(ctx: HookContext) -> Result | None:
-    """Remind agents to present substantiating evidence with their claims."""
+    """Remind agents to present substantiating evidence with their claims.
 
-    # Don't run on Ida:
+    Registered on both stop events. ``SubagentStop`` binds a worker at handback;
+    ``Stop`` binds every other agent at its own turn boundary, which is the only
+    moment an agent that is not a subagent ever reaches. ida is the single
+    exemption — it speaks to the person and its reply is governed by its own
+    gate. ``agent_type`` is what names it, and Claude Code carries that field on
+    ``Stop``: a session run under ``--agent <name>`` puts ``<name>`` there
+    (observed on 2.1.227), so the exemption is live on this path where on
+    ``SubagentStop`` it never was — ida is never a subagent.
+
+    Once per stop chain, not once per fire: dispatch.py drops the
+    ``stop_hook_active`` re-entry before any handler loads.
+
+    TEMPORARY (2026-08-11) — the ``Stop`` half runs on Claude Code only, so on
+    agy this handler returns nothing on every event and agy workers still get no
+    honesty reminder at all (#2413). agy fires ``PostInvocation`` after *every
+    tool call* and lib/hooks/dispatch.py maps that wire event onto canonical
+    ``Stop``; agy also never sends ``stop_hook_active``, so the once-per-chain
+    guard cannot fire. Registering this on agy's canonical ``Stop`` therefore
+    re-injects the whole block per tool call — 20+ injections in 42 steps with
+    context truncated by step 4 when rbg's stop gate did it, which is why that
+    gate is switched off today. agy's own end-of-execution ``Stop`` is a
+    separate wire event landing on the same canonical key; telling the two
+    apart is what closing #2413 needs.
+    """
     if ctx.agent_type == "ida:ida":
-        return
+        return None
+
+    if ctx.event == "Stop" and ctx.client != "claude":
+        return None
 
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
@@ -192,7 +218,7 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [pre_tool],
     "PostToolUse": [post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop],
+    "Stop": [stop, honest_output],
     # "PostToolBatch": [rule_against_hearsay],
     "SubagentStop": [honest_output],
 }
