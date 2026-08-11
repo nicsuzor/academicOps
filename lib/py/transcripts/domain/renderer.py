@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from transcripts.domain.secret_redaction import redact_obj, redact_secrets
@@ -626,15 +628,48 @@ def truncate_lines(text: str, max_lines: int = 10) -> str:
     return "\n".join(lines[:max_lines]) + f"\n... (truncated {omitted} lines)"
 
 
+def _strip_command_runtime_header(content: str) -> tuple[str, str | None]:
+    """Parse Created At / Completed At from tool output, returning (clean_content, duration_str)."""
+    match = re.search(
+        r"^Created At:\s*(?P<start>[^\n]+)\nCompleted At:\s*(?P<end>[^\n]+)\n?",
+        content,
+    )
+    if not match:
+        return content, None
+
+    try:
+        start_dt = datetime.fromisoformat(match.group("start").strip())
+        end_dt = datetime.fromisoformat(match.group("end").strip())
+        dur_sec = max((end_dt - start_dt).total_seconds(), 0.0)
+        if dur_sec < 60:
+            dur_str = f"{dur_sec:.1f}s" if dur_sec >= 0.1 else f"{int(dur_sec * 1000)}ms"
+        else:
+            mins = int(dur_sec // 60)
+            secs = int(dur_sec % 60)
+            dur_str = f"{mins}m {secs}s"
+
+        clean_content = content[match.end() :]
+        return clean_content, dur_str
+    except Exception:
+        return content, None
+
+
 def _format_tool_output_markdown(content: str, max_lines: int = 10) -> list[str]:
     """Format tool output in Markdown with line truncation for large outputs."""
-    byte_count = len(content.encode("utf-8"))
-    lines_count = len(content.splitlines())
-    fence = _get_code_fence(content)
+    clean_content, dur_str = _strip_command_runtime_header(content)
+    if not clean_content or not clean_content.strip():
+        dur_suffix = f" (duration: {dur_str})" if dur_str else ""
+        return [f"*(tool output clean exit with no stdout{dur_suffix})*", ""]
+
+    byte_count = len(clean_content.encode("utf-8"))
+    lines_count = len(clean_content.splitlines())
+    fence = _get_code_fence(clean_content)
+    dur_label = f" | duration: {dur_str}" if dur_str else ""
+
     if lines_count > max_lines:
-        truncated_content = truncate_lines(content, max_lines=max_lines)
+        truncated_content = truncate_lines(clean_content, max_lines=max_lines)
         return [
-            f"<details><summary>Tool Output ({byte_count} bytes)</summary>",
+            f"<details><summary>Tool Output ({byte_count} bytes{dur_label})</summary>",
             "",
             fence,
             truncated_content,
@@ -645,7 +680,7 @@ def _format_tool_output_markdown(content: str, max_lines: int = 10) -> list[str]
         ]
     return [
         fence,
-        content,
+        clean_content.strip(),
         fence,
         "",
     ]
@@ -819,13 +854,14 @@ def _render_events_markdown(
 
         if event.tool_calls:
             for tc in event.tool_calls:
-                args_str = json.dumps(tc.args, ensure_ascii=False) if tc.args else "{}"
-                lines.append(f"#### 🛠️ Tool `{tc.name}` (`{args_str}`){ts_str}")
+                args = tc.args or {}
+                summary = args.get("toolSummary") or args.get("toolAction")
+                if summary:
+                    lines.append(f"#### 🛠️ Tool call: `{tc.name}` — *{summary}*{ts_str}")
+                else:
+                    lines.append(f"#### 🛠️ Tool call: `{tc.name}`{ts_str}")
                 lines.append("")
-                lines.append("```json")
-                lines.append(truncate_lines(_dump_tool_args(tc.args, indent=2), max_lines=15))
-                lines.append("```")
-                lines.append("")
+
                 spawned = lookup.get(tc.call_id or "")
                 if spawned:
                     idx, subagent = spawned
@@ -870,13 +906,41 @@ def _render_events_markdown(
                             for line in truncate_lines(resp_text, max_lines=10).splitlines()
                         )
                         lines.append("")
+                else:
+                    clean_args = {
+                        k: v for k, v in args.items() if k not in ("toolAction", "toolSummary")
+                    }
+                    if clean_args:
+                        lines.append("```json")
+                        lines.append(
+                            truncate_lines(_dump_tool_args(clean_args, indent=2), max_lines=15)
+                        )
+                        lines.append("```")
+                        lines.append("")
 
         tool_use_id = event.meta.get("tool_use_id") if event.type == "tool_output" else None
         returned = lookup.get(tool_use_id or "")
         if returned:
             idx, subagent = returned
-            lines.append(f"↩ **Subagent {idx}: `{subagent.label}` returned here.**")
+            type_part = (
+                f" (`{subagent.agent_type}`)"
+                if subagent.agent_type and subagent.agent_type != subagent.label
+                else ""
+            )
+            lines.append(
+                f"↩ **Subagent {idx}: `{subagent.label}`{type_part} returned to main session.**"
+            )
             lines.append("")
+
+            resp_text = _get_subagent_final_response(subagent) or content
+            clean_resp, _ = _strip_command_runtime_header(resp_text)
+            if clean_resp and clean_resp.strip():
+                lines.append("  > **Message returned to main session:**")
+                lines.extend(
+                    f"  > {_md_text(line)}"
+                    for line in truncate_lines(clean_resp.strip(), max_lines=10).splitlines()
+                )
+                lines.append("")
 
         if event.meta.get("stop_reason") or event.type == "stop":
             stop_reason = event.meta.get("stop_reason") or "Session stop sequence reached"

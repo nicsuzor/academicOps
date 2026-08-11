@@ -82,7 +82,9 @@ def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
                     p.is_file()
                     and not p.name.endswith("-hooks.jsonl")
                     and p.name != "transcript.jsonl"
+                    and p.name != "transcript_full.jsonl"
                     and "subagents" not in rel.parts
+                    and "chunks" not in rel.parts
                 ):
                     files.append(p)
 
@@ -92,6 +94,7 @@ def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
                     p.is_file()
                     and not p.name.endswith("-hooks.jsonl")
                     and "subagents" not in rel.parts
+                    and "chunks" not in rel.parts
                 ):
                     files.append(p)
 

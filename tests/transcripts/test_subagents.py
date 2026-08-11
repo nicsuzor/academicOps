@@ -517,7 +517,7 @@ def test_trunk_marks_where_a_subagent_was_spawned_and_where_it_returned() -> Non
     full_md = render_to_full_markdown(session, "s4", "", "", "", True, CORRELATION, None)
 
     spawn_marker = "spawned Subagent 1: `rbg`"
-    return_marker = "Subagent 1: `rbg` returned here"
+    return_marker = "Subagent 1: `rbg` returned"
     assert spawn_marker in full_md
     assert return_marker in full_md
     # The pointer must appear between the spawning call and the trunk's next
