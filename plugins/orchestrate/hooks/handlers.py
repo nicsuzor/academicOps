@@ -5,17 +5,10 @@ from __future__ import annotations
 import logging
 import os
 import shlex
-import sys
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, load_message_pair, warn
-
-# Ensure parent directory of hooks (plugins/orchestrate) is in sys.path so claude_code_tracer can be imported
-_PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-if str(_PLUGIN_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PLUGIN_ROOT))
 
 log = logging.getLogger("orchestrate.handlers")
 

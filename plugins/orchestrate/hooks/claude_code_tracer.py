@@ -780,12 +780,16 @@ def _create_exporter(
                 OTLPSpanExporter as GRPCSpanExporter,
             )
 
-            is_http = endpoint.startswith("http://")
-            log.debug("Initializing OTLP gRPC span exporter for endpoint %s", endpoint)
+            insecure = not endpoint.startswith("https://")
+            log.debug(
+                "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
+                endpoint,
+                insecure,
+            )
             return GRPCSpanExporter(
                 endpoint=endpoint,
                 headers=headers if headers else None,
-                insecure=is_http,
+                insecure=insecure,
             )
         except Exception as e:
             log.debug(

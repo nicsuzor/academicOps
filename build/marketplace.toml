@@ -44,3 +44,9 @@ directory = "tools"
 name = "tools"
 description = "Domain research skills."
 category = "productivity"
+
+[[plugins]]
+directory = "aops-debug"
+name = "aops-debug"
+description = "Debug plugin that dumps raw hook payloads."
+category = "productivity"

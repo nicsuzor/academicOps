@@ -362,7 +362,8 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     assert "interactive face" in agy_agent["description"]
     assert agy_agent["hidden"] is False
 
-    # plugins/ida/agents/ida.md sets [AskUserQuestion, Agent, Monitor, TodoWrite, ToolSearch, Skill, TaskStop, SendMessage]
+    # plugins/ida/agents/ida.md sets [Bash, AskUserQuestion, Agent, Monitor, TodoWrite, ToolSearch, Skill, TaskStop, SendMessage]
+    # Bash -> run_command
     # AskUserQuestion -> ask_question
     # Agent -> invoke_subagent, manage_subagents, send_message
     # Monitor -> [] (dropped)
@@ -372,6 +373,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     # TaskStop -> manage_task
     # SendMessage -> send_message
     assert agy_agent["tools"] == [
+        "run_command",
         "ask_question",
         "invoke_subagent",
         "manage_subagents",

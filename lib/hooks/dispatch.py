@@ -137,7 +137,7 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     handler, so every current and future Stop/SubagentStop handler is covered
     without having to remember it.
     """
-    return event in STOP_EVENTS and bool(raw.get("stop_hook_active"))
+    return (event in STOP_EVENTS or event == "PostToolBatch") and bool(raw.get("stop_hook_active"))
 
 
 TO_CANONICAL = {
