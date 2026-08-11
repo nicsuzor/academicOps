@@ -10,7 +10,9 @@ tools:
   - mcp__plugin_pkb_services__pkb__*
 mcpServers:
   - services
-  - pkb
+  - pkb:services
+  - pkb_services
+  - plugin:pkb:services
 ---
 
 # Pauli — Memory and Strategy
