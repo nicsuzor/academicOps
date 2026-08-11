@@ -36,244 +36,291 @@ On completion: claim the record, review the output against those criteria, and w
 
 ## Before you drive anything, find out what is already known
 
-Search the PKB for a current-state note on the surfaces you are about to test —
-which ones were last observed working, which were failing, and against which
-build. Someone has usually already spent a session establishing that, and a
-matrix you re-derive by hand is a matrix you pay for twice.
+Search the PKB for a current-state note on the surfaces you are about to test — which ones were last observed working, which were failing, and against which build. Someone has usually already spent a session establishing that, and a matrix you re-derive by hand is a matrix you pay for twice.
 
-Read what you find as an observation with a date on it, not as fact: it was true
-of the build it names. Re-run the cells you are about to rely on, and when you
-finish, rewrite that note rather than adding a second one beside it. A stale
-state note is worse than none, because it reads as current.
+Read what you find as an observation with a date on it, not as fact: it was true of the build it names. Re-run the cells you are about to rely on, and when you finish, rewrite that note rather than adding a second one beside it. A stale state note is worse than none, because it reads as current.
+
+## Environment Pre-Flight Matrix
+
+Before driving any Polecat container, verify all required host environment variables are set. `entrypoint.sh` and `lib/polecat/cli.py` enforce these requirements on startup:
+
+| Variable            | Mandatory For      | Typical Host Value / Source            | Consequence if Missing / Invalid                                                |
+| ------------------- | ------------------ | -------------------------------------- | ------------------------------------------------------------------------------- |
+| `POLECAT_HOME`      | All container runs | `$HOME/.polecat` or `/home/nic/.aops`  | Container launcher exits immediately: `Error: no polecat home configured`       |
+| `POLECAT_IMAGE`     | All container runs | `ghcr.io/nicsuzor/aops-crew:latest`    | Container launcher exits immediately: `Error: no container image configured`    |
+| `AOPS_SESSIONS`     | All container runs | `/home/nic/src/sessions`               | Container launcher exits: `Error: no sessions root configured`                  |
+| `GEMINI_CONFIG_DIR` | `agy` runs         | `$HOME/.gemini` or `/home/nic/.gemini` | `agy` boots into an unanswerable Google OAuth login prompt inside the container |
+| `AOPS_BOT_GH_TOKEN` | All container runs | `gh-token-placeholder` or bot PAT      | Container `entrypoint.sh` aborts with `Missing AOPS_BOT_GH_TOKEN`               |
+| `GIT_AUTHOR_NAME`   | All container runs | `AcademicOps Bot`                      | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_NAME`                 |
+| `GIT_AUTHOR_EMAIL`  | All container runs | `bot@academicops.org`                  | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_EMAIL`                |
 
 ## Scripted probes
 
-[`scripts/probe.sh`](scripts/probe.sh) drives one question;
-[`scripts/matrix-probe.sh`](scripts/matrix-probe.sh) drives a capability matrix
-— MCP, skills, subagent dispatch, permissions — and prints PASS/FAIL per cell.
-Both take the client as their first argument, so the same command covers both
-surfaces. Run them once per client; a pass on one is no evidence for the other.
-They cover MCP reachability, skill resolution, subagent dispatch and
-permissions; whether the plugins are installed at all is `make docker-smoke-test`.
+[`scripts/probe.sh`](scripts/probe.sh) drives one question; [`scripts/matrix-probe.sh`](scripts/matrix-probe.sh) drives a capability matrix — MCP, skills, subagent dispatch, permissions — and prints PASS/FAIL per cell. Both take the client as their first argument, so the same command covers both surfaces. Run them once per client; a pass on one is no evidence for the other. They cover MCP reachability, skill resolution, subagent dispatch and permissions; whether the plugins are installed at all is `make docker-smoke-test`.
 
-**Re-run an agy failure without `--agent` before you believe it.** If a probe
-fails under `--agent <name>` and passes without it, the agent definition is what
-is broken, not the surface. The usual cause is the frontmatter `tools:` list —
-absent (9 read-only defaults), empty, or naming a tool agy does not have (hard
-failure).
+**Re-run an agy failure without `--agent` before you believe it.** If a probe fails under `--agent <name>` and passes without it, the agent definition is what is broken, not the surface. The usual cause is the frontmatter `tools:` list — absent (9 read-only defaults), empty, or naming a tool agy does not have (hard failure).
 
-**Never score a capability on what the agent says.** Ask an agent for a
-server's output and it will grep that output out of any file lying around —
-including the logs, task outputs and transcripts your own probing leaves behind
-— and report it as though it had made the call. The contamination compounds:
-each run writes the expected answer to disk, so later runs pass more readily
-than earlier ones, and a surface that never worked reads as fixed. Score the
-tool-call record instead — `MCP_TOOL` steps in agy's `transcript_full.jsonl`,
-`tool_use` records in claude's session jsonl — which is what
-`matrix-probe.sh`'s MCP cell does. The same caution applies to any cell whose
-expected answer could exist on disk.
+**Never score a capability on what the agent says.** Ask an agent for a server's output and it will grep that output out of any file lying around — including the logs, task outputs and transcripts your own probing leaves behind — and report it as though it had made the call. Score the tool-call record instead — `MCP_TOOL` steps in agy's `transcript_full.jsonl`, `tool_use` records in claude's session jsonl — which is what `matrix-probe.sh`'s MCP cell does.
 
-They exist because a hand-driven walk is slow enough that it gets run once and
-believed thereafter. Read their environment contract before the first run: tmux
-does not inherit a fresh environment, so every variable a plugin's MCP server
-command interpolates has to be written into the launch script. A server that
-never starts because its endpoint variable arrived empty looks exactly like a
-server that is refusing you.
+## Spin Up: Launch Script Pattern & Driving Harness
 
-## Spin up
+Always write your container invocation into a launch script `/tmp/launch-$TMUX_NAME.sh` rather than passing inline command strings to `tmux new-session`. Inline commands fail when shell expansion, nested quoting, or virtualenv path resolution (`uv run python`) break inside `/bin/sh -c`.
 
-Resolve the checkout under test first, and spell it out in every command. Never
-`$AOPS`, never an alias, never a relative path — the spec's Gotchas say what
-each of those breaks and why the symptom misleads.
-
-Write the launch into a small script and hand tmux the script path, not an
-inline command — the spec's "The pattern" shows the invocation; a version of it
-carrying env assignments and nested quoting through `sh -c` is where this step
-dies before the container starts.
+### 1. The Canonical Launch Script Pattern
 
 ```bash
-CHECKOUT="$(git rev-parse --show-toplevel)"   # the tree whose change you are testing
+CHECKOUT="$(git rev-parse --show-toplevel)"
 export TMUX_NAME="polecat-debug-$RANDOM"
-cat > /tmp/launch-$TMUX_NAME.sh <<EOF
-#!/bin/bash
-export POLECAT_HOME=... POLECAT_IMAGE=... GIT_AUTHOR_NAME=... GIT_AUTHOR_EMAIL=... AOPS_BOT_GH_TOKEN=...
+LAUNCH_SCRIPT="/tmp/launch-${TMUX_NAME}.sh"
+
+cat > "$LAUNCH_SCRIPT" <<EOF
+#!/usr/bin/env bash
+export POLECAT_HOME="${POLECAT_HOME:-$HOME/.polecat}"
+export POLECAT_IMAGE="${POLECAT_IMAGE:-ghcr.io/nicsuzor/aops-crew:latest}"
+export AOPS_SESSIONS="${AOPS_SESSIONS:-$HOME/src/sessions}"
+export GEMINI_CONFIG_DIR="${GEMINI_CONFIG_DIR:-$HOME/.gemini}"
+export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-AcademicOps Bot}"
+export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-bot@academicops.org}"
+export AOPS_BOT_GH_TOKEN="${AOPS_BOT_GH_TOKEN:-dummy_token_for_test}"
+
 exec uv run --project "$CHECKOUT" python "$CHECKOUT/lib/polecat/cli.py" \
-  run -d "$CHECKOUT" -s "$TMUX_NAME" claude -- "what is 2 + 2?"
+  run -d "$CHECKOUT" -s "$TMUX_NAME" claude -- -p "what is 2 + 2?"
 EOF
-chmod +x /tmp/launch-$TMUX_NAME.sh
-tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 "/tmp/launch-$TMUX_NAME.sh"
+chmod +x "$LAUNCH_SCRIPT"
+
+tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 "$LAUNCH_SCRIPT"
 ```
 
-Swap `claude` for `agy` to debug the Antigravity client, or `shell` for a plain
-shell with no agent. Use `-p <project>` in place of `-d <repo-path>` when the
-project has a `paths` entry in `$POLECAT_HOME/local.yaml`. Always pass
-`-s "$TMUX_NAME"` so the tmux session name and the host log directory name
-match.
+### 2. Mandatory Click `--` (Double-Dash) Parameter Separator
 
-**Click option interception and `--` flag separator:**
-`lib/polecat/cli.py` defines `-p` as `@click.option("-p", "--project")` on the `run` command.
+`lib/polecat/cli.py` defines `@click.option("-p", "--project")` on the `run` command.
+
 If you pass `-p` after `run` without using `--` (e.g. `run -d <dir> -s <sess> claude -p "prompt"`), Click intercepts `-p` as `run`'s `--project` parameter, creating a session log folder named after the prompt text!
-To pass `-p` or trailing options to the agent CLI, place `--` (double dash) before the agent arguments, or pass the prompt positionally:
-`python lib/polecat/cli.py run -d <dir> -s <session> claude -- -p "what is 2 + 2?"`
 
-Set every variable the script exports. `POLECAT_HOME` and `POLECAT_IMAGE` have
-no defaults and polecat exits naming whichever is missing; `entrypoint.sh`
-refuses to start without `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL` and
-`AOPS_BOT_GH_TOKEN`, and a probe session that never pushes can pass a
-placeholder for the token. An `agy` session also needs `GEMINI_CONFIG_DIR`, or
-it boots into an OAuth wall instead of a ready prompt — the spec's "Dev-loop"
-section says why. Keep the workspace under `$HOME`; the spec's Gotchas say why
-a mount source outside the VM's shared paths fails silently rather than loudly.
-
-**Never pass `-d` a linked git worktree.** Its `.git` is a file pointing at the
-main checkout's `.git/worktrees/<name>`, which is outside the mounted directory,
-so every git command in the container fails with `fatal: not a git repository`.
-`-d` skips clone-based isolation by design and mounts the path as-is, so nothing
-repairs this. Add a `paths` entry for the worktree in `$POLECAT_HOME/local.yaml`
-and run with `-p <project>` instead.
-
-**Reproduce the real invocation before simplifying.** Whether a prompt or `-t
-<task>` is present changes what the client renders before going idle; a
-simplified repro can look like a dead hang while pointing at the wrong layer.
-
-**Check the client's flag surface before assuming its behaviour:**
+To prevent Click option collisions, **always place `--` (double-dash) before agent parameters and prompts**:
 
 ```bash
-docker run --rm --entrypoint agy "$POLECAT_IMAGE" --help
+# CORRECT: Double-dash isolates inner agent flags from Click option parsing
+uv run python lib/polecat/cli.py run -p <project> -s <session> claude -- -p "what is 2 + 2?"
+uv run python lib/polecat/cli.py run -p <project> -s <session> agy -- "what is 2 + 2?"
 ```
 
-agy has no bare-positional-prompt convention — an initial prompt lands only via
-`-i`/`--prompt-interactive` or `-p`/`--print`. `cli.py`'s `run()` handles this,
-but know it is there before concluding a dropped prompt means a crash.
+### 3. Driving Parameters & Tmux Session Mechanics
 
-## Interact
+- **Explicit Window Dimensions**: Always pass `-x 220 -y 50` when calling `tmux new-session`. This ensures consistent pane geometry so TUI headers, input boxes, and status lines render without wrapping corruption.
+- **Git Worktree Gotcha**: Never pass a linked git worktree directory to `-d`. Linked worktrees contain a `.git` file referencing `.git/worktrees/<name>` outside the mounted container directory, causing all container git commands to fail with `fatal: not a git repository`. Use a full clone checkout with `-d`, or register a project mapping in `$POLECAT_HOME/local.yaml` and pass `-p <project>`.
+
+## Client Asymmetries (`claude` vs `agy`)
+
+The two agent clients exhibit significant operational and diagnostic asymmetries:
+
+| Dimension                       | Claude Code (`claude`)                                              | Antigravity CLI (`agy`)                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Authentication & Staging**    | Configured via `.claude/settings.json` and API keys in environment. | Requires `$GEMINI_CONFIG_DIR` staging via `setup_staging()` (`antigravity-oauth-token`). Without it, boots into OAuth wall.         |
+| **Startup Rendering Race**      | Immediate rendering of model banner and `❯` input prompt.           | Renders `⚠ Verifying your account...` for 2–3 seconds before header plan name (`nic.suzor@gmail.com (Google AI Ultra)`) appears.    |
+| **Logging Surface**             | Native stdout/stderr output visible via `docker logs <container>`.  | Redirects output to internal log files. `docker logs` returns **empty**. Host logs land at `$AOPS_SESSIONS/.../agy-cli.log`.        |
+| **Agent Definition Mitigation** | Supports `--agent <name>` (e.g. `@orchestrate:james`).              | Issue #2387: Passing `--agent <name>` to `agy` strips MCP tools and write capabilities. `agy` currently defaults to its base agent. |
+| **Default Prompt Flag**         | Accepts positional prompt strings.                                  | Requires explicit `-i`/`--prompt-interactive` or `-p`/`--print` flags for non-interactive prompts.                                  |
+
+## Interact & Readiness Protocol
 
 ```bash
+# 1. Poll pane output for client boot readiness signal
+tmux capture-pane -t "$TMUX_NAME" -p -S -2000
+
+# - For claude: Wait until prompt box with '❯' renders.
+# - For agy: Wait 2-3s for auth race to clear and plan name ('nic.suzor@gmail.com') to render in header.
+
+# 2. Send prompt text using -l (literal text flag to prevent tmux key parsing errors)
 tmux send-keys -t "$TMUX_NAME" -l "your prompt text here"
-tmux send-keys -t "$TMUX_NAME" Enter           # Enter is always a separate call
-tmux send-keys -t "$TMUX_NAME" Down Down Enter # raw keys for menu navigation
+
+# 3. Always submit Enter as a separate tmux command
+tmux send-keys -t "$TMUX_NAME" Enter
+
+# 4. For TUI menu navigation (e.g., AskUserQuestion prompts):
+tmux send-keys -t "$TMUX_NAME" Down Down Enter
 ```
 
-## Read the live state
+## Read the Live State
 
 ```bash
-tmux capture-pane -t "$TMUX_NAME" -p -S -2000   # -S for scrollback
+tmux capture-pane -t "$TMUX_NAME" -p -S -2000
 ```
 
-This is exactly what an attached human would see. Use it to judge behaviour. It
-dies with the tmux session; it is not a durable record.
+This reflects what an attached user sees. It is an ephemeral buffer that dies when the tmux session is killed.
 
-## Read the durable state
+## Read Durable State & Authoritative Record Inspection
 
-`run` prints `Workspace:` and `Session logs:` on start. The session directory is
-bind-mounted live into the container, so it survives the tmux session:
+Session logs persist live on the host filesystem under:
 
 ```
-$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/<project>/
+$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/workspace/
 ```
 
-It holds the agent's own raw transcript, written natively by the client —
-Claude's `<session-uuid>.jsonl`, or agy's `agy-brain/`, `agy-logs/`, and
-`agy-cli.log`. When working inside a live container or needing the raw record, read the raw JSONL directly with `jq`/`grep`/`less`. The transcript-to-markdown converter in `lib/py/transcripts/` (specified in `specs/transcript-pipeline.md`) is a host-side batch pass over finished sessions, not something to run mid-session.
+### Authoritative Shell Inspection Commands (`jq` / `grep` / `pytest`)
 
-## Clean up
+Never rely solely on visual pane capture. Always audit the host-side record files using these authoritative commands:
+
+#### 1. Audit Session Execution Manifest (`run.json` Schema v1)
+
+```bash
+SESS_DIR="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$TMUX_NAME/workspace"
+
+jq '{schema_version, status, exit_code, delivery_guard, transcript, degraded}' "$SESS_DIR/run.json"
+```
+
+**Pass Assertions**:
+
+- `.schema_version == 1`
+- `.status == "success"`
+- `.delivery_guard.ok == true`
+- `.transcript.found == true` (with `event_count > 0`)
+
+#### 2. Audit Shared Hook Telemetry (`polecat-session-hooks.jsonl`)
+
+```bash
+jq -c '.' "$SESS_DIR/polecat-session-hooks.jsonl" | head -n 10
+```
+
+**Pass Assertions**: Each line must strictly conform to the 5-field schema: `ts` (ISO 8601 with microsecond UTC), `client` (`claude`|`agy`), `event`, `session_id`, `tool`.
+
+#### 3. Inspect Native Raw Transcript Files
+
+```bash
+# For Claude Code (JSONL format):
+jq -c '.message.content[]? | select(.type=="tool_use" or .type=="text")' "$SESS_DIR"/[0-9a-f]*.jsonl | head -n 10
+
+# For Antigravity (agy-brain directory):
+grep -i "event" "$SESS_DIR/agy-brain"/*/.system_generated/logs/transcript_full.jsonl | head -n 10
+```
+
+#### 4. Run Transcript Discovery Unit Tests
+
+```bash
+uv run pytest tests/transcripts/test_polecat_discovery.py -v
+```
+
+**Pass Assertions**: All tests pass (e.g. `8 passed in 3.37s`), confirming that the transcript discovery engine correctly parses logs for both `claude` and `agy` while excluding internal `subagents/` and hook files.
+
+## Clean Up
 
 ```bash
 tmux send-keys -t "$TMUX_NAME" -l "/exit"; tmux send-keys -t "$TMUX_NAME" Enter
-sleep 2   # let the client flush its session file
-tmux kill-session -t "$TMUX_NAME"
+sleep 2   # Allow client to flush transcript buffer and host bind-mounts
+tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 ```
 
-No container cleanup is needed — `run` uses `docker run --rm`.
+Container cleanup is automatic because `lib/polecat/cli.py` invokes `docker run --rm`.
 
-## Validate a dev change
+## Verbatim Proof Excerpts from Empirical Acceptance Runs
 
-Run after any change to `plugins/*/hooks`, `lib/`, the shipped skills, agents
-or commands, `lib/polecat/cli.py`, `lib/polecat/defaults/*`, `entrypoint.sh`,
-or the Dockerfile. This is what separates "the files are in the image" from
-"the framework actually fires" — a plugin that installs cleanly and does
-nothing is the failure this catches.
+Your final report must include verbatim terminal pane excerpts and host log snippets proving test execution.
 
-Before §0, write down the one thing your change was supposed to make happen
-inside a container — the specific hook, skill, agent, command or CLI behaviour
-it touched. §3 and §4 are scored against that sentence, not against "the
-session looked fine". **You must include verbatim excerpts from `tmux capture-pane` or the session logs in your final report to prove your claims of success. Do not just assert that it worked.**
+### 1. Verbatim Terminal Pane Output (`claude` Session Boot)
 
-**Run the whole walk once per client.** §0 and the pre-flight are shared; §2
-through §6 are per-client and run twice — once with `claude`, once with `agy`.
-Asymmetric breakage between them is common, and a pass on one is no evidence
-for the other. Do not report the walk complete with one client run. Within a
-client, walk the layers in order and stop at the first failure: a later
-layer's result is uninterpretable once an earlier one is broken.
+```text
+Workspace: /home/nic/src/academicOps
+Session logs: /home/nic/src/sessions/logs/20260811/polecat-accept-m1/workspace
+Running: ghcr.io/nicsuzor/aops-crew:latest claude --permission-mode=auto ...
+ ▐▛███▜▌   Claude Code v2.1.223
+▝▜█████▛▘  Opus 5 · Claude API
+  ▘▘ ▝▝    @orchestrate:james · /workspace
 
-**Pre-flight: are hooks live?** Read `_log_fire` and `_load_handlers` in
-`lib/hooks/dispatch.py`. While either returns before its body, no hook fires and
-no hook log is written for any client, whatever your change did. If that is the
-state you find, §5 cannot pass and §3 cannot tell you anything about hook
-behaviour — run both anyway, and read their results as uninformative rather than
-as failures. Establish this before §0, not after a confusing §5.
+ ▎ Using Opus 5 (from .claude/settings.json) · /model
 
-**§0 Build the image from your change.** `make docker-build` reuses the layer
-cache and is right for the edit loop. Before certifying anything, use
-`make verify-docker` — a cached layer can carry the previous plugin set into
-an image that looks rebuilt, and a green result on that image is evidence of
-nothing.
+● Auto mode lets Claude handle permission prompts automatically...
 
-**§1 Structural check.** `make docker-smoke-test` boots the real image and
-asserts every plugin `build/marketplace.toml` declares is installed and enabled
-under `claude` and present under agy, that `$ACA_DATA` matches what `cli.py`
-mounts layer-3 rules onto, and that the agy session mount target is writable.
-Seconds, no tmux. A marketplace cache-miss or a failed plugin install is silent
-at startup and only surfaces later as missing tools; this catches it
-immediately. For what a structural pass does and does not prove, read the
-spec's "Plugin structural check" — the layers below are what it says to
-corroborate with.
+───────────────────────────────────────────────────────────────────────────────────────── orchestrate:james ──
+❯ 
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Model: Opus 5 | Ctx: 0 | ⎇ v0.7.2 | (+0,-0)                                               ● high · /effort
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← for agents
+```
 
-**§2 Boot signals.** Spin a session with the tmux pattern above, then
-`capture-pane -p -S -2000`. The pass condition is an empty input prompt the
-client is waiting on, with no onboarding or folder-trust dialog above it:
+### 2. Verbatim Terminal Pane Output (`agy` Session Boot)
 
-- `claude` — the banner block (`Claude Code v<version>`, the model line, and
-  `/workspace` as cwd), then an `❯` on its own line inside the horizontal-rule
-  input box. `/workspace` in the banner is also your check that the mount
-  landed; any other cwd means `-d`/`-p` resolved somewhere unintended.
-- `agy` — the plan name rendered beside the account in the header block
-  (`nic.suzor@gmail.com (Google AI Ultra)`), and no "Do you trust the contents
-  of this project?" dialog. Polecat pre-trusts `/workspace`, so that dialog
-  appearing is a `setup_staging()` failure, not something to click through.
+```text
+    ▄▀▀▄        Antigravity CLI 1.1.10
+   ▀▀▀▀▀▀       nic.suzor@gmail.com (Google AI Ultra)
+  ▀▀▀▀▀▀▀▀      Gemini 3.6 Flash (High)
+ ▄▀▀    ▀▀▄     /workspace
+▄▀▀      ▀▀▄
+```
 
-  Until the plan name renders, agy is still authenticating and shows
-  `⚠ Verifying your account... / We're finishing verifying your account
-  eligibility.` That is a startup race of a second or two, not an error and not
-  an account state — it leaves no trace in `agy-cli.log`, so a run judged from
-  the pane alone is the only place it can mislead you. Wait for the plan name;
-  never score a session against a banner that has not had two seconds to clear.
+### 3. Verbatim Host Session Manifest (`run.json` Schema v1 Output)
 
-**Footer chrome is not a boot signal.** That means the two bottom lines below
-the input box — the ccstatusline row (`Model: … | Ctx: … | ⎇ <branch> | (+n,-n)`)
-and the mode row (`⏵⏵ auto mode on …`). Both render while the client is still
-starting, so neither tells you it is ready. Read the input box, not the footer.
+```json
+{
+  "schema_version": 1,
+  "session_id": "polecat-accept-m1",
+  "container_id": "9665cf4c5cc4273ffe9c7cb4893e08fba2fafb4990aa60647634ef664a129e27",
+  "container_name": "polecat-polecat-accept-m1",
+  "agent": "claude",
+  "task_id": null,
+  "seeded_prompt": null,
+  "image_ref": "ghcr.io/nicsuzor/aops-crew:latest",
+  "image_digest": "sha256:3c8bf2e249f182938b87eda62aa60fc049cf63a90cf4445d4ed5af42b15a5cdf",
+  "workspace_dir": "/home/nic/src/academicOps",
+  "session_dir": "/home/nic/src/sessions/logs/20260811/polecat-accept-m1/workspace",
+  "commit_start": "560fce7c461f931e04b1767209e9fc558bb9b2e1",
+  "commit_end": "560fce7c461f931e04b1767209e9fc558bb9b2e1",
+  "exit_code": 0,
+  "status": "success",
+  "delivery_guard": {
+    "ok": true,
+    "error": null
+  },
+  "transcript": {
+    "found": true,
+    "path": "/home/nic/src/sessions/logs/20260811/polecat-accept-m1/workspace/ce3d9c89-a5ee-4440-9c76-c878d75d9b86.jsonl",
+    "bytes": 25378,
+    "count": 2,
+    "event_count": 28
+  },
+  "started_at": "2026-08-10T22:11:03Z",
+  "ended_at": "2026-08-10T22:11:27Z",
+  "duration_seconds": 24,
+  "worker_model": null,
+  "degraded": [
+    {
+      "what": "worker_model",
+      "why": "not selectable or observable from the host launcher"
+    }
+  ]
+}
+```
 
-**§3 First prompt.** Send a trivial prompt (e.g. "what is 2 + 2?") and capture again.
-You MUST verify that the agent actually produced the expected model response (e.g. the literal string `4`) in the captured pane or session log.
-Do not treat the mere rendering of the CLI prompt box or container boot as a response — poll or re-capture the pane until the model's actual answer is visible in the output transcript, and **include the verbatim transcript extract** in your test report to prove it. A hook-blocked error is also a pass for this layer if the hook fired and reported error text, provided you capture that text verbatim.
+## Validate a Dev Change (6-Stage Verification Walk)
 
-**§4 Exercise the path you changed.** Invoke a skill and dispatch a subagent
-from inside the session — and choose ones that run through the code your change
-touched, named in the sentence you wrote before §0. An arbitrary skill that
-resolves proves the skill machinery works and says nothing about your change;
-that is the failure this layer exists to catch. Where no shipped skill or
-subagent reaches your change, drive it directly (the command, the tool call,
-the hook's trigger) and say in your report that you did so. Verify visible
-output in the pane, not merely that the call returned: a skill that resolves
-and produces nothing passes a structural check and fails here. **You must capture and present the verbatim visible output that proves the skill resolved successfully.**
+Run this protocol after modifying any framework code (`plugins/*/hooks`, `lib/`, skills, `lib/polecat/cli.py`, `entrypoint.sh`, Dockerfile).
 
-**§5 Observability.** Confirm `polecat-session-hooks.jsonl` is present and
-populated in the session directory, and that the PKB MCP answers rather than
-refusing or timing out. The spec says what that file is evidence of, under
-"Log & artifact locations". An empty or missing hook log is a finding only if
-the pre-flight found hooks live; otherwise it says nothing about your change.
+### Protocol Rules:
 
-**§6 Cleanup** as above, then go back to §2 for the client you have not run yet.
+- **Dual-Client Verification**: Run the verification walk twice — once with `claude`, once with `agy`.
+- **Sequential Evaluation**: Walk the layers in order. Stop at the first failure.
+- **Verbatim Evidence Mandatory**: Include verbatim excerpts from `tmux capture-pane` and session log files in your final report.
 
-On failure, file one issue per root cause, not per symptom.
+### Step-by-Step Walk:
+
+1. **Pre-flight (Hooks Check)**: Verify `_log_fire` and `_load_handlers` in `lib/hooks/dispatch.py` are not returning early.
+2. **§0 Image Build & Freshness**: Run `make docker-build` followed by `make verify-docker` to guarantee image layer freshness.
+3. **§1 Structural Smoke Test**: Run `make docker-smoke-test` to confirm plugin installation in container image.
+4. **§2 Container Boot Signals**:
+   - `claude`: Confirm banner and `❯` input box render inside `/workspace`.
+   - `agy`: Confirm 2–3s auth race clears and plan name (`nic.suzor@gmail.com`) renders in header block.
+5. **§3 First Prompt & Model Output Assertion**: Send prompt (e.g. `"what is 2 + 2?"`) and capture pane. **You MUST assert the literal model output string (e.g. `4`)** in the captured pane or session transcript. Merely rendering the prompt box is NOT proof of success.
+6. **§4 Exercise Changed Path**: Invoke the specific changed skill, hook, or tool call and capture the visible execution output.
+7. **§5 Observability & Authoritative Audit**: Audit `run.json` (`status: "success"`, `delivery_guard.ok: true`), verify `polecat-session-hooks.jsonl` events, and run `pytest tests/transcripts/test_polecat_discovery.py`.
+8. **§6 Clean Teardown**: Send `/exit`, wait `sleep 2`, kill session.
+
+## Diagnostic Gotchas & Reference
+
+| Symptom / Error                                   | Root Cause                                                                              | Immediate Fix / Remediation                                                                      |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `no server running on /tmp/tmux-...`              | Inline tmux command failed in `/bin/sh -c` due to quoting or missing PATH exports       | Use launch script wrapper file `/tmp/launch-$SESSION.sh`                                         |
+| Session log directory named after prompt string   | Passed `-p` option after `run` without `--` separator; Click parsed `-p` as `--project` | Place `--` (double-dash) before agent flags and prompts                                          |
+| `agy` stuck at Google OAuth login prompt          | `GEMINI_CONFIG_DIR` missing or lacks `antigravity-oauth-token`                          | Set `GEMINI_CONFIG_DIR=~/.gemini` and ensure token exists                                        |
+| `docker logs <container>` returns empty for `agy` | `agy` redirects logs to internal log files                                              | Read host bind-mounted file `$AOPS_SESSIONS/.../agy-cli.log`                                     |
+| `fatal: not a git repository` in container        | `-d` passed a linked git worktree directory                                             | Use full git clone directory for `-d` or pass `-p <project>`                                     |
+| Premature boot failure report for `agy`           | Captured pane during 2–3s `⚠ Verifying your account...` auth rendering race             | Wait 2–3 seconds for header plan name to render before inspecting                                |
+| MCP tool calls missing in agent response          | Agent grepped answers from host disk files rather than executing tools                  | Inspect native transcript JSONL (`transcript_full.jsonl` / `<uuid>.jsonl`) for `MCP_TOOL` events |
