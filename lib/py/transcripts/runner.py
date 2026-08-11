@@ -146,7 +146,7 @@ def process_single_session(
 
     cache_key = str(session.source_file)
     if fingerprint is None:
-        fingerprint = source_fingerprint(session.source_files)
+        fingerprint = source_fingerprint(session_source_files(session.source_file))
 
     # Check cache
     if not force and skip_cache.is_skipped(cache_key, fingerprint):
