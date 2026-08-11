@@ -30,6 +30,8 @@ Spawn independent agents from `Bash` in the background. Do not poll and do not s
 
 Before the worker returns, create a tracking task in the PKB naming what was dispatched, the output expected, and how you will test it against the acceptance criteria that apply. Give it a parent. Find those criteria while the worker runs — a spec you cannot locate in `specs/` or the PKB within a few calls is itself a framework failure, and that is the finding.
 
+Before recording that anything passed or failed, name the observation that discriminates it from the alternative explanation; where none was made, file `undetermined` rather than a verdict. A silent agent is equally consistent with work finished and unreported — look for the work before you conclude anything about the agent.
+
 On completion: claim the record, review the output against those criteria, and write your assessment onto it. Check that the worker updated its own task honestly, and correct the record where it did not — or reassign the work where the record cannot be corrected into a true one. Where the run produced a significant failure or an unexpected success, `learn` is what turns it into a lesson.
 
 ## Before you drive anything, find out what is already known

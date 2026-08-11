@@ -320,9 +320,27 @@ def rule_check(ctx: HookContext) -> Result | None:
     return block(reason)
 
 
+# TEMPORARY (2026-08-08, v0.7.1) — rbg's hooks are deliberately unregistered.
+# Re-enable by uncommenting; do not delete the entries.
+#
+# Why they are off: on agy, `lib/hooks/dispatch.py` maps `PostInvocation` ->
+# `Stop`, but agy fires `PostInvocation` after *every* tool call rather than at
+# end of turn, and the once-per-chain guard reads `stop_hook_active` — a Claude
+# Code payload field that agy never sends. The guard therefore never trips and
+# `rule_check` re-injects the full rule-check block on every tool call. Measured
+# in session `matrix-agy-3421700`: 20+ injections in 42 steps, context truncated
+# by step 4, and an unrequested `rbg` subagent spawn that abandoned the task.
+#
+# This is a mitigation, not the design. The stop gate is owed on both clients;
+# see aops_d27c7aea for the evidence and the two candidate repairs.
+#
+# Whoever next merges dev into this branch: this same disable was made in
+# 60be332b9 and silently reverted by 9ebb6d872, an unrelated feature commit. If
+# these lines come back uncommented after a merge, that is the regression, not
+# an intentional re-enable.
 HANDLERS = {
-    "PreToolUse": [evaluate],
-    "UserPromptSubmit": [inject_ruleset],
-    "Stop": [rule_check],
-    "SubagentStop": [rule_check],
+    # "PreToolUse": [evaluate],
+    # "UserPromptSubmit": [inject_ruleset],
+    # "Stop": [rule_check],
+    # "SubagentStop": [rule_check],
 }

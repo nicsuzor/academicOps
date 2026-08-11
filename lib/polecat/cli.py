@@ -697,15 +697,20 @@ def _minimal_agent_settings(host_settings, mcp_url=None):
     auth-mechanism selector is carried over, because the staged credential is
     otherwise ignored.
 
-    `mcp_url` re-adds exactly one server, from the environment. agy registers
-    its MCP execution primitive (`call_mcp_tool`) from *user-level*
-    `mcpServers` only: a server declared by an installed plugin's
-    `mcp_config.json` is enumerated — its tool schemas even appear in the
-    session — but no primitive is registered to call them, so the agent
-    reports the tools as unavailable and answers from the filesystem instead.
-    Stripping the host block therefore left every container agy session unable
-    to reach any MCP server. Declared as `httpUrl`, which agy connects to
-    directly rather than spawning a proxy that has to win a startup race.
+    `mcp_url` re-adds exactly one server, from the environment, declared as
+    `httpUrl` so agy connects directly rather than spawning a proxy that has to
+    win a startup race.
+
+    Measured 2026-08-09, agy 1.1.11, headless `agy -p` in the container: it is
+    the *plugin-level* `mcp_config.json` that registers agy's MCP execution
+    primitive (`call_mcp_tool`). Emptying it removed `call_mcp_tool`,
+    `list_resources` and `read_resource` from the declared tool set even though
+    this user-level block was present and correct. Keep both — do not "simplify"
+    by dropping the plugin declaration.
+
+    Not measured for other agy versions or for the interactive TUI. The TUI
+    declares no MCP tools at all (it defers them as "lazy" and registers no
+    primitive), which is a client limitation, not a consequence of this file.
     """
     minimal = {}
     auth_type = ((host_settings.get("security") or {}).get("auth") or {}).get("selectedType")

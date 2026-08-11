@@ -154,8 +154,18 @@ format:
 
 docker: docker-build
 
+# The agent CLIs install "latest" from their vendor install scripts at build
+# time, so their Docker layers only refresh when their ARG value changes.
+# Nothing varied these before, so the layers froze at first-build state and the
+# image silently kept an old agy/claude indefinitely — observed 2026-08-08 as an
+# image pinned to agy 1.1.10 while 1.1.11 was current, which cost the container
+# its MCP tools. Pass a value that differs from the last build to refresh:
+#   make docker-build AGY_VERSION=1.1.11
 docker-build: build
-	@docker build --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
+	@docker build --build-arg AOPS_DIST_SOURCE=local \
+		$(if $(AGY_VERSION),--build-arg AGY_VERSION=$(AGY_VERSION)) \
+		$(if $(CLAUDE_CODE_VERSION),--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION)) \
+		-t $(IMAGE) -t $(notdir $(IMAGE)):latest .
 	@echo "✓ built $(IMAGE)"
 
 # The environment contract is defined once, in lib/polecat/env_contract.py,
