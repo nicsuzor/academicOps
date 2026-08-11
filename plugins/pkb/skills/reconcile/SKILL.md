@@ -62,10 +62,11 @@ default markdown format, and repeat until the whole set is covered — many narr
 calls, never one wide one.
 
 ### Task Status Reconciliation
+
 Evaluate each non-terminal task in `in_progress`, `review`, or `merge_ready` status individually to verify its actual state against reality:
+
 - Check whether active work is still occurring, whether work was completed, or whether an associated PR was merged or closed.
 - Update the task's status in the PKB to accurately reflect reality (e.g., mark as `done`, return to `inbox`, or set to `ready`).
-
 
 ## 2 — Probe every suspect claim, then confirm it or requeue it
 
