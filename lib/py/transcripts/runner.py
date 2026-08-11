@@ -355,6 +355,7 @@ def main() -> int:
             cache_key, fp, ok = _process_single_session_worker((p, sessions_dir, args.force))
             if ok:
                 processed_count += 1
+                skip_cache.mark_processed(cache_key, fp)
             elif fp:
                 skip_cache.mark_empty(cache_key, fp)
     else:
@@ -364,6 +365,7 @@ def main() -> int:
             for cache_key, fp, ok in results:
                 if ok:
                     processed_count += 1
+                    skip_cache.mark_processed(cache_key, fp)
                 elif fp:
                     skip_cache.mark_empty(cache_key, fp)
 

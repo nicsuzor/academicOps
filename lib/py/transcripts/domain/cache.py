@@ -135,6 +135,12 @@ class SkipCache:
         self.empty_sessions[key] = {"fingerprint": fingerprint, "ts": now}
         self.save()
 
+    def mark_processed(self, key: str, fingerprint: str) -> None:
+        """Record a successfully rendered session so unchanged runs skip re-parsing."""
+        now = datetime.now(UTC).timestamp()
+        self.empty_sessions[key] = {"fingerprint": fingerprint, "ts": now}
+        self.save()
+
     def forget(self, key: str) -> None:
         """Drop a key that has since produced output, so the cache stays honest."""
         if self.empty_sessions.pop(key, None) is not None:
