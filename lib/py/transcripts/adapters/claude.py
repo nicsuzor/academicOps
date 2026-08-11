@@ -66,6 +66,27 @@ KNOWN_ENTRY_TYPES = frozenset(
     }
 )
 
+# Routine non-model metadata entry types produced by Claude Code.
+# Preserved as RawEntry silently (logged at DEBUG level) to avoid warning spam.
+ROUTINE_RAW_TYPES = frozenset(
+    {
+        "mode",
+        "permission-mode",
+        "agent-setting",
+        "agent-name",
+        "custom-title",
+        "last-prompt",
+        "pr-link",
+        "started",
+        "worktree-state",
+        "result",
+        "relocated",
+        "frame-link",
+        "bridge-session",
+        "fork-context-ref",
+    }
+)
+
 
 @dataclass(frozen=True)
 class RawEntry:
@@ -107,12 +128,20 @@ def _scan_raw_entries(jsonl_path: Path) -> list[RawEntry]:
             continue
         entry_type = obj.get("type")
         if entry_type not in KNOWN_ENTRY_TYPES:
-            logger.warning(
-                "%s:%d: unrecognized transcript entry type %r, preserving as raw",
-                jsonl_path,
-                line_no,
-                entry_type,
-            )
+            if entry_type in ROUTINE_RAW_TYPES:
+                logger.debug(
+                    "%s:%d: routine raw transcript entry type %r, preserving as raw",
+                    jsonl_path,
+                    line_no,
+                    entry_type,
+                )
+            else:
+                logger.warning(
+                    "%s:%d: unrecognized transcript entry type %r, preserving as raw",
+                    jsonl_path,
+                    line_no,
+                    entry_type,
+                )
             raw_entries.append(RawEntry(line_no=line_no, type=entry_type, raw=obj))
     return raw_entries
 

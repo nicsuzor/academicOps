@@ -1507,6 +1507,7 @@ def build_json_sidecar(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    source_content_hash: str | None = None,
 ) -> dict[str, Any]:
     """Build the metadata sidecar as data."""
     user_prompts = []
@@ -1552,6 +1553,7 @@ def build_json_sidecar(
         "task_id": correlation.get("task_id"),
         "pr_number": correlation.get("pr_number"),
         "insights": insights,
+        "source_content_hash": source_content_hash,
         "event_count": len(session.events),
         "tokens_used": session.tokens_used,
         "cost_usd": session.cost_usd,
@@ -1596,6 +1598,7 @@ def render_to_json(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    source_content_hash: str | None = None,
 ) -> str:
     """Serialise the metadata sidecar."""
     return json.dumps(
@@ -1608,6 +1611,7 @@ def render_to_json(
             has_user_context,
             correlation,
             insights,
+            source_content_hash,
         ),
         indent=2,
     )
@@ -1622,6 +1626,7 @@ def render_session_to_all_formats(
     has_user_context: bool,
     correlation: dict[str, str | None],
     insights: str | None,
+    source_content_hash: str | None = None,
 ) -> tuple[str, str, str, str, dict[str, Any]]:
     """Render a session into all 4 output tiers plus JSON sidecar.
 
@@ -1640,6 +1645,14 @@ def render_session_to_all_formats(
         session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
     )
     json_sidecar = build_json_sidecar(
-        session, slug, started_at, last_modified, ended_at, has_user_context, correlation, insights
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user_context,
+        correlation,
+        insights,
+        source_content_hash,
     )
     return controller_md, full_md, md, html, json_sidecar

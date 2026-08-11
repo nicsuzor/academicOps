@@ -54,12 +54,23 @@ def test_unknown_type_preserved_as_raw_not_dropped() -> None:
         assert raw.raw.get("type") == "last-prompt"
 
 
-def test_unknown_type_is_logged(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.WARNING, logger="transcripts.adapters.claude"):
+def test_unknown_type_is_logged(caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:
+    # Routine raw entry types (like last-prompt) are logged at DEBUG
+    with caplog.at_level(logging.DEBUG, logger="transcripts.adapters.claude"):
         load_claude_transcript(CLAUDE_FIXTURE)
 
+    debug_msgs = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any("last-prompt" in message for message in debug_msgs)
+
+    # Unexpected raw entry types produce a WARNING
+    caplog.clear()
+    unknown_file = tmp_path / "unknown.jsonl"
+    unknown_file.write_text('{"type": "totally-unknown-future-type"}\n', encoding="utf-8")
+    with caplog.at_level(logging.WARNING, logger="transcripts.adapters.claude"):
+        load_claude_transcript(unknown_file)
+
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
-    assert any("last-prompt" in message for message in warnings)
+    assert any("totally-unknown-future-type" in message for message in warnings)
 
 
 def test_loader_never_raises_on_malformed_lines(tmp_path: Path) -> None:
