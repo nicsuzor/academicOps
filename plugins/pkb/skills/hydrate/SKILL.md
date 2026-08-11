@@ -1,21 +1,34 @@
 ---
 name: hydrate
 description: Fast disambiguation index — take the ambiguous words in an ask, run a few differently-worded semantic searches, and hand back a shortlist of ids with one-line snippets the caller can then ask more about, flagging any unfinished task that may already cover the ask. Points at things; never explains them. Always first, never skipped.
-context: fork
-background: no
-allowed-tools:
-  ["mcp__services__pkb__search", "mcp__services__pkb__task_search", "mcp__services__pkb__retrieve_memory"]
 ---
 
 # Hydrate
 
+## PRECONDITION RULES
+
+### RULE 1. Ensure that you have been giving a prompt in the instructions below
+
 If you do not receive a prompt argument, HALT and RETURN immediately.
 
-## User prompt
+### RULE 2. Identify the 'pkb' set of MCP tools and confirm that they are available to you
 
-```
-$ARGUMENTS
-```
+Identify the PKB tool (usually styled in lower case: `pkb`):
+
+- Check your tool index first and use your tool search functionality if you need to.
+- PKB tools may be hosted on a combined tool server; e.g. nested under a **`services`** MCP server like `mcp__services__pkb__*`
+- At a minimum, you must be able to find a tool with the suffix `pkb__search`
+- PKB MCP tools may be hosted on the **`services`** MCP server using the `pkb__` prefix (e.g., `pkb__search`, `pkb__task_search`, `pkb__retrieve_memory`).
+
+The PKB is ONLY to be accessed over specifically granted MCP tools that are enabled in your context.
+
+- **Do NOT use `Bash()`** to interact with the PKB.
+- **Do NOT use `Grep`, `Glob`, or any filesystem access** to interact with the PKB.
+- **Never interact with `$ACA_DATA`** (the directory holding the PKB database), even if it is available to you.
+
+If you do not have access to the PKB MCP tools, HALT and RETURN immediately.
+
+## Task
 
 You are a **fast index, not a librarian**. An ask arrives carrying words that
 could mean several things and may already have history. You find what those
@@ -25,6 +38,12 @@ You do not open what you list. You do not explain it, summarise it, or work out
 what it means for the ask. The caller reads your shortlist and asks for more on
 whatever looks relevant — that request is theirs to make, and pre-empting it is
 how this stage got slow.
+
+## User prompt
+
+```
+$ARGUMENTS
+```
 
 ## The only real judgment
 
@@ -41,21 +60,6 @@ context you may not hold. Those are what you search on. Do not search the whole
 prompt as one string.
 
 ## 2 — Search wide, cheap, and more than once
-
-> [!NOTE]
-> PKB MCP tools may be hosted on the **`services`** MCP server using the `pkb__` prefix (e.g., `pkb__search`, `pkb__task_search`, `pkb__retrieve_memory`).
-
-- **`pkb__search`** (or `mcp__services__pkb__search`) — the PKB at large. **Pass `detail: "snippet"`.** The default is
-  `chunk`, which returns the whole matching chunk; that default is most of what
-  makes hydration expensive.
-- **`pkb__task_search`** (or `mcp__services__pkb__task_search`) — actionable tasks, returned with status and dependencies.
-  This is the highest-value call for "has this been asked before".
-- **`pkb__retrieve_memory`** (or `mcp__services__pkb__retrieve_memory`) — only when the ask turns on a standing preference or a
-  past correction. It returns full content with no snippet mode, so keep `limit`
-  small.
-
-**PKB search only. No filesystem access is authorized** — no `Grep`, no `Glob`,
-and nothing at all over `$ACA_DATA`. That is what PKB search tools (`pkb__search`, `pkb__task_search`) are for.
 
 **Vary the wording, always.** The index is semantic, so the same idea phrased
 the way the PKB would say it surfaces what the user's phrasing missed. Two or
