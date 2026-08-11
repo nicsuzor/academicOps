@@ -181,11 +181,11 @@ def test_prompt_ledger_generation_with_filtered_sidecars(tmp_path):
     sidecar_data = {
         "session_id": "1234567890",
         "has_user_context": True,
-        "started_at": "2026-08-04T10:00:00Z",
+        "started_at": "2026-08-11T10:00:00Z",
         "project": "test-proj",
-        "user_prompts": [{"text": "Fix the pipeline bug", "timestamp": "2026-08-04T10:00:00Z"}],
+        "user_prompts": [{"text": "Fix the pipeline bug", "timestamp": "2026-08-11T10:00:00Z"}],
         "injected_prompts": [
-            {"text": "<system-reminder>rule</system-reminder>", "timestamp": "2026-08-04T10:00:00Z"}
+            {"text": "<system-reminder>rule</system-reminder>", "timestamp": "2026-08-11T10:00:00Z"}
         ],
     }
 

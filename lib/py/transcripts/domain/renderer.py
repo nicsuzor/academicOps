@@ -1498,6 +1498,60 @@ def render_to_html(
     return html
 
 
+def extract_metadata_from_raw_events(session: NormalizedSession) -> dict[str, Any]:
+    """Extract metadata (pr_links, agent_settings, agent_names) from raw non-event entries."""
+    pr_links: list[dict[str, str]] = []
+    agent_settings: dict[str, Any] = {}
+    agent_names: list[str] = []
+
+    for raw_entry in session.raw_events:
+        obj = raw_entry.raw
+        if not isinstance(obj, dict):
+            continue
+
+        entry_type = raw_entry.type or obj.get("type")
+
+        if entry_type == "pr-link":
+            pr_num = obj.get("prNumber") or obj.get("pr_number")
+            pr_url = obj.get("prUrl") or obj.get("url") or obj.get("pr_url")
+            if not pr_num and pr_url:
+                match = re.search(r"/pull/(\d+)", str(pr_url))
+                if match:
+                    pr_num = match.group(1)
+            link_info: dict[str, str] = {}
+            if pr_num:
+                link_info["pr_number"] = str(pr_num)
+            if pr_url:
+                link_info["pr_url"] = str(pr_url)
+            if obj.get("title"):
+                link_info["title"] = str(obj["title"])
+            if link_info and link_info not in pr_links:
+                pr_links.append(link_info)
+
+        elif entry_type == "agent-setting":
+            key = (
+                obj.get("settingKey") or obj.get("key") or obj.get("setting_key") or obj.get("name")
+            )
+            val = obj.get("settingValue") if "settingValue" in obj else obj.get("value")
+            if val is None and "setting_value" in obj:
+                val = obj.get("setting_value")
+            if key:
+                agent_settings[str(key)] = val
+
+        elif entry_type == "agent-name":
+            name = (
+                obj.get("agentName") or obj.get("name") or obj.get("agent_name") or obj.get("value")
+            )
+            if name and str(name) not in agent_names:
+                agent_names.append(str(name))
+
+    return {
+        "pr_links": pr_links,
+        "agent_settings": agent_settings,
+        "agent_names": agent_names,
+    }
+
+
 def build_json_sidecar(
     session: NormalizedSession,
     slug: str,
@@ -1542,6 +1596,11 @@ def build_json_sidecar(
                     }
                 )
 
+    raw_metadata = extract_metadata_from_raw_events(session)
+    pr_num = correlation.get("pr_number")
+    if not pr_num and raw_metadata["pr_links"]:
+        pr_num = raw_metadata["pr_links"][0].get("pr_number")
+
     data: dict[str, Any] = {
         "session_id": session.session_id,
         "slug": slug,
@@ -1551,7 +1610,10 @@ def build_json_sidecar(
         "has_user_context": has_user_context,
         "project": correlation.get("project"),
         "task_id": correlation.get("task_id"),
-        "pr_number": correlation.get("pr_number"),
+        "pr_number": pr_num,
+        "pr_links": raw_metadata["pr_links"],
+        "agent_settings": raw_metadata["agent_settings"],
+        "agent_names": raw_metadata["agent_names"],
         "insights": insights,
         "source_content_hash": source_content_hash,
         "event_count": len(session.events),
