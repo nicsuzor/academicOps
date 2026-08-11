@@ -153,7 +153,8 @@ string-matching Edits against the JSON. In the script or using `scripts/excal-ed
 - **Use helper utilities** (`scripts/excal-edit.py`):
   - `python3 scripts/excal-edit.py FILE fit <id> "<new text>"`: Recomputes text bounding box and grows container centered to prevent text overflow.
   - `python3 scripts/excal-edit.py FILE overlap`: Flags AABB collisions between non-nested sibling elements (exits 1 if overlap exists).
-  - `python3 scripts/excal-edit.py FILE render [OUT.png]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates).
+  - `python3 scripts/excal-edit.py FILE arrows`: Flags any arrow whose polyline cuts through a shape it isn't bound to at either end — the check for "route around unrelated boxes, never through them" after moving or rerouting an arrow by hand. Background zone rectangles (a shape fully containing 3+ others) don't count as obstacles. Exits 1 on a hit.
+  - `python3 scripts/excal-edit.py FILE render [OUT.png] [--region X0,Y0,X1,Y1]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates). Pass `--region` to crop to one area — past a couple hundred elements the whole-canvas render is too dense to read.
 - **Write both text layers, always.** A text element carries `text` — the
   wrapped copy Excalidraw paints — and `originalText`, the unwrapped source it
   re-wraps from. `originalText` is the one that survives: set `text` alone and
