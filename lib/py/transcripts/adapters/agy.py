@@ -57,6 +57,10 @@ ROUTINE_AGY_TYPES = frozenset(
         "SYSTEM_MESSAGE",
         "CODE_ACTION",
         "USER_EXPLICIT",
+        "GENERIC",
+        "ERROR_MESSAGE",
+        "EPHEMERAL_MESSAGE",
+        "FIND",
     }
 )
 
