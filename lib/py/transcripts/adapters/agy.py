@@ -51,6 +51,16 @@ KNOWN_AGY_TYPES = frozenset(
 )
 
 
+# Routine agy entry types that are preserved as NormalizedRawEntry silently (DEBUG level).
+ROUTINE_AGY_TYPES = frozenset(
+    {
+        "SYSTEM_MESSAGE",
+        "CODE_ACTION",
+        "USER_EXPLICIT",
+    }
+)
+
+
 def _clean_val(v: Any) -> Any:
     """Clean string values that have outer double quotes."""
     if isinstance(v, str) and v.startswith('"') and v.endswith('"') and len(v) >= 2:
@@ -99,12 +109,20 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
 
         entry_type = obj.get("type")
         if entry_type not in KNOWN_AGY_TYPES:
-            logger.warning(
-                "%s:%d: unrecognized transcript entry type %r, preserving as raw",
-                jsonl_path,
-                line_no,
-                entry_type,
-            )
+            if entry_type in ROUTINE_AGY_TYPES:
+                logger.debug(
+                    "%s:%d: routine transcript entry type %r, preserving as raw",
+                    jsonl_path,
+                    line_no,
+                    entry_type,
+                )
+            else:
+                logger.warning(
+                    "%s:%d: unrecognized transcript entry type %r, preserving as raw",
+                    jsonl_path,
+                    line_no,
+                    entry_type,
+                )
             raw_events.append(
                 NormalizedRawEntry(
                     line_no=line_no,
