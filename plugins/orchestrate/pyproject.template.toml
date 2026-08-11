@@ -8,4 +8,5 @@ dependencies = [
   # The framework's core dependencies (for things like mcp servers or scripts) go here.
   "pydantic>=2.0",
   "fastmcp>=2.13.1",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.40.0",
 ]

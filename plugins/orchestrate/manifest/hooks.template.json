@@ -14,6 +14,49 @@
             ]
           }
         ],
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude UserPromptSubmit"
+              }
+            ]
+          }
+        ],
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolUse"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostToolUseFailure": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolUseFailure"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
         "PostToolBatch": [
           {
             "hooks": [
@@ -50,6 +93,16 @@
     },
     "agy": {
       "hooks": {
+        "PreInvocation": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
+              }
+            ]
+          }
+        ],
         "PostInvocation": [
           {
             "hooks": [

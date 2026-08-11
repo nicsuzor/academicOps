@@ -101,6 +101,7 @@ CANONICAL_EVENTS = (
     "UserPromptSubmit",
     "PreToolUse",
     "PostToolUse",
+    "PostToolUseFailure",
     # Fires once after every call in a resolved batch, carrying all of them in
     # ``tool_calls`` — the one event that sees a whole batch rather than a
     # single call. Claude Code only; agy has no wire equivalent.
