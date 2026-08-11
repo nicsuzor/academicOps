@@ -92,6 +92,11 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind agents to present substantiating evidence with their claims."""
+
+    # Don't run on Ida:
+    if ctx.agent_type == "ida:ida":
+        return
+
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
