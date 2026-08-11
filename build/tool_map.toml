@@ -32,6 +32,7 @@ accepted_tools = [
   "browser_subagent",
   "capture_browser_console_logs",
   "capture_browser_screenshot",
+  "call_mcp_tool",
   "click_browser_pixel",
   "command_status",
   "define_subagent",
@@ -69,7 +70,7 @@ accepted_tools = [
 ]
 
 [tool_map]
-Read = ["list_dir", "view_file"]
+Read = ["view_file"]
 Write = ["write_to_file"]
 Edit = ["replace_file_content"]
 Bash = ["run_command"]
@@ -87,6 +88,7 @@ TaskList = ["manage_task"]
 TaskUpdate = ["manage_task"]
 TaskStop = ["manage_task"]
 Skill = []
-ToolSearch = ["call_mcp_tool"]
+ToolSearch = []
+ListMcpResourcesTool = ["list_resources"]
 TodoWrite = []
 Monitor = []

@@ -66,7 +66,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     ca-certificates \
     openssh-client \
-    golang-go \
+    && GO_ARCH=$(dpkg --print-architecture) \
+    && curl -fsSL "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" | tar -C /usr/local -xz \
+    && ln -s /usr/local/go/bin/* /usr/local/bin/ \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -138,7 +140,7 @@ USER worker
 
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
-    PATH="/home/worker/go/bin:/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
+    PATH="/home/worker/go/bin:/usr/local/go/bin:/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
     ANTIGRAVITY_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 \

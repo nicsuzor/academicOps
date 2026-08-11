@@ -34,7 +34,9 @@ def be_quiet(ctx: HookContext) -> Result | None:
     structural self-loop guard suppresses the ``stop_hook_active`` re-fire, so
     this handler does not check that flag itself.
     """
-    return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
+    # Only fire on Ida
+    if ctx.agent_type == "ida:ida":
+        return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
 
 
 HANDLERS: dict[str, list] = {

@@ -379,6 +379,8 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         "manage_subagents",
         "send_message",
         "manage_task",
+        "view_file",
+        "list_resources",
     ]
 
     body = body.lstrip("\n")
@@ -424,7 +426,7 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
-    assert len(agy_fm["tools"]) == 54
+    assert len(agy_fm["tools"]) == len(accepted_tools)
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
@@ -913,7 +915,7 @@ def test_disallowed_tools_subtraction(tmp_path):
         t for t in accepted_tools if t not in ("write_to_file", "replace_file_content")
     ]
     assert res2["tools"] == expected_tools
-    assert len(res2["tools"]) == 52
+    assert len(res2["tools"]) == len(expected_tools)
     assert "disallowedTools" not in res2
 
     # Case 3: claude retains disallowedTools unchanged

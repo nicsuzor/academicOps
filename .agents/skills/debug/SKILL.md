@@ -84,7 +84,7 @@ export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-bot@academicops.org}"
 export AOPS_BOT_GH_TOKEN="${AOPS_BOT_GH_TOKEN:-dummy_token_for_test}"
 
 exec uv run --project "$CHECKOUT" python "$CHECKOUT/lib/polecat/cli.py" \
-  run -d "$CHECKOUT" -s "$TMUX_NAME" claude -- -p "what is 2 + 2?"
+  run -d "$CHECKOUT" -s "$TMUX_NAME" claude -- -p "call pkb get_status() and return results"
 EOF
 chmod +x "$LAUNCH_SCRIPT"
 
@@ -101,8 +101,8 @@ To prevent Click option collisions, **always place `--` (double-dash) before age
 
 ```bash
 # CORRECT: Double-dash isolates inner agent flags from Click option parsing
-uv run python lib/polecat/cli.py run -p <project> -s <session> claude -- -p "what is 2 + 2?"
-uv run python lib/polecat/cli.py run -p <project> -s <session> agy -- "what is 2 + 2?"
+uv run python lib/polecat/cli.py run -p <project> -s <session> claude -- -p "call pkb get_status() and return results"
+uv run python lib/polecat/cli.py run -p <project> -s <session> agy -- -p "call pkb get_status() and return results"
 ```
 
 ### 3. Driving Parameters & Tmux Session Mechanics
@@ -308,7 +308,7 @@ Run this protocol after modifying any framework code (`plugins/*/hooks`, `lib/`,
 4. **§2 Container Boot Signals**:
    - `claude`: Confirm banner and `❯` input box render inside `/workspace`.
    - `agy`: Confirm 2–3s auth race clears and plan name (`nic.suzor@gmail.com`) renders in header block.
-5. **§3 First Prompt & Model Output Assertion**: Send prompt (e.g. `"what is 2 + 2?"`) and capture pane. **You MUST assert the literal model output string (e.g. `4`)** in the captured pane or session transcript. Merely rendering the prompt box is NOT proof of success.
+5. **§3 First Prompt & Model Output Assertion**: Send prompt (e.g. `"call pkb get_status() and return results"`) and capture pane. **You MUST assert the model output string or tool call record** (e.g. PKB status / tool execution results) in the captured pane or session transcript. Merely rendering the prompt box is NOT proof of success.
 6. **§4 Exercise Changed Path**: Invoke the specific changed skill, hook, or tool call and capture the visible execution output.
 7. **§5 Observability & Authoritative Audit**: Audit `run.json` (`status: "success"`, `delivery_guard.ok: true`), verify `polecat-session-hooks.jsonl` events, and run `pytest tests/transcripts/test_polecat_discovery.py`.
 8. **§6 Clean Teardown**: Send `/exit`, wait `sleep 2`, kill session.

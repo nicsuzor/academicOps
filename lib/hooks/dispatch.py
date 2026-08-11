@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
@@ -27,6 +27,12 @@ class HookContext:
     tool: str = ""
     command: str = ""
     session_id: str = ""
+    agent_type: str = ""
+    agent_id: str = ""
+    prompt_id: str = ""
+    transcript_path: str = ""
+    cwd: str = ""
+    hook_event_name: str = ""
     # PostToolBatch only: every tool call in the resolved batch, each a
     # ``{tool_name, tool_input, tool_use_id, tool_response}`` mapping. Empty on
     # every other event, so a handler can read it without guarding the event.
@@ -161,18 +167,13 @@ def _log_fire(ctx: HookContext) -> None:
     log_path = os.environ.get("AOPS_HOOK_LOG_PATH")
     if not log_path:
         return
-    record = {
-        "ts": datetime.now(UTC).isoformat(),
-        "client": ctx.client,
-        "event": ctx.event,
-        "session_id": ctx.session_id,
-        "tool": ctx.tool,
-    }
+    record = asdict(ctx)
+    record["ts"] = datetime.now(UTC).isoformat()
     try:
         path = Path(log_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record) + "\n")
+            f.write(json.dumps(record, default=str) + "\n")
     except OSError:
         pass
 
@@ -296,16 +297,23 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
     tool_calls = (
         tuple(c for c in raw_calls if isinstance(c, dict)) if isinstance(raw_calls, list) else ()
     )
-    return HookContext(
+
+    valid_keys = {f.name for f in fields(HookContext)}
+    kwargs = {k: v for k, v in raw.items() if k in valid_keys and v is not None}
+
+    kwargs.update(
         client=client,
         event=event,
-        tool=raw.get("tool_name") or raw.get("toolName") or "",
+        tool=raw.get("tool_name") or raw.get("toolName") or kwargs.get("tool", ""),
         command=command,
-        session_id=raw.get("session_id") or raw.get("conversationId") or "",
+        session_id=raw.get("session_id")
+        or raw.get("conversationId")
+        or kwargs.get("session_id", ""),
         tool_calls=tool_calls,
         raw=raw,
         hooks_dir=hooks_dir,
     )
+    return HookContext(**kwargs)
 
 
 # The operator-visible switch for OTel emission. Read here only to decide
