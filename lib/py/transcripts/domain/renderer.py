@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+from dataclasses import dataclass, field
 from typing import Any
 
 from transcripts.domain.secret_redaction import redact_obj, redact_secrets
@@ -107,8 +108,160 @@ def _depth_label(subagent: SubagentTranscript) -> str:
     return f"{depth} (fork)" if subagent.is_fork else depth
 
 
+@dataclass
+class SubagentTreeNode:
+    subagent: SubagentTranscript
+    level_label: str  # "L1", "L2", "L1 (unlinked)", "L2 (orphaned: ...)"
+    call_path: str  # "main/pauli/marsha"
+    parent_label: str  # "main", "pauli"
+    index_str: str  # "1", "1.1", "2"
+    children: list[SubagentTreeNode] = field(default_factory=list)
+
+
+def _build_subagent_tree(session: NormalizedSession) -> list[SubagentTreeNode]:
+    """Construct a hierarchical subagent call tree based on parent_agent_id linkages."""
+    if not session.subagents:
+        return []
+
+    sub_by_id = {sub.agent_id: sub for sub in session.subagents}
+    children_map: dict[str, list[SubagentTranscript]] = {}
+    roots: list[SubagentTranscript] = []
+
+    for sub in session.subagents:
+        pid = sub.parent_agent_id
+        if not pid:
+            roots.append(sub)
+            if f"unlinked_subagent: {sub.agent_id}" not in session.degraded:
+                session.degraded.append(f"unlinked_subagent: {sub.agent_id}")
+        elif pid == session.session_id or pid == "main":
+            roots.append(sub)
+        elif pid in sub_by_id:
+            children_map.setdefault(pid, []).append(sub)
+        else:
+            # Orphaned parent reference
+            roots.append(sub)
+            if f"orphaned_subagent_parent: {pid}" not in session.degraded:
+                session.degraded.append(f"orphaned_subagent_parent: {pid}")
+
+    if not roots and session.subagents:
+        # All subagents are in a cyclic reference loop with no entry root
+        roots.append(session.subagents[0])
+        if f"cycle_detected_subagent: {session.subagents[0].agent_id}" not in session.degraded:
+            session.degraded.append(f"cycle_detected_subagent: {session.subagents[0].agent_id}")
+
+    all_visited: set[str] = set()
+
+    def build_nodes(
+        subagents: list[SubagentTranscript],
+        parent_path: str,
+        parent_label: str,
+        depth: int,
+        parent_index_prefix: str,
+        ancestor_visited: set[str],
+        start_idx: int = 1,
+    ) -> list[SubagentTreeNode]:
+        label_counts: dict[str, int] = {}
+        for s in subagents:
+            label_counts[s.label] = label_counts.get(s.label, 0) + 1
+
+        nodes: list[SubagentTreeNode] = []
+        for idx, sub in enumerate(subagents, start=start_idx):
+            if sub.agent_id in ancestor_visited:
+                # Cycle detected
+                if f"cycle_detected_subagent: {sub.agent_id}" not in session.degraded:
+                    session.degraded.append(f"cycle_detected_subagent: {sub.agent_id}")
+                continue
+
+            if sub.agent_id in all_visited:
+                continue
+
+            all_visited.add(sub.agent_id)
+            index_str = f"{parent_index_prefix}{idx}" if parent_index_prefix else str(idx)
+
+            if label_counts[sub.label] > 1:
+                seg_label = f"{sub.label}-{sub.agent_id[:8]}"
+            else:
+                seg_label = sub.label
+
+            pid = sub.parent_agent_id
+            if depth == 1:
+                if pid == "main" or pid == session.session_id:
+                    level_label = "L1"
+                    node_path = f"{parent_path}/{seg_label}"
+                elif pid in sub_by_id:
+                    level_label = "L1"
+                    node_path = f"{parent_path}/{seg_label}"
+                elif not pid:
+                    level_label = "L1 (unlinked)"
+                    node_path = f"{parent_path}/unlinked/{seg_label}"
+                else:
+                    level_label = f"L2 (orphaned: {pid[:8]})"
+                    node_path = f"{parent_path}/orphaned/{seg_label}"
+            else:
+                level_label = f"L{depth}"
+                node_path = f"{parent_path}/{seg_label}"
+
+            child_subs = children_map.get(sub.agent_id, [])
+            new_ancestor_visited = ancestor_visited | {sub.agent_id}
+            children_nodes = build_nodes(
+                child_subs,
+                node_path,
+                sub.label,
+                depth + 1,
+                f"{index_str}.",
+                new_ancestor_visited,
+            )
+
+            nodes.append(
+                SubagentTreeNode(
+                    subagent=sub,
+                    level_label=level_label,
+                    call_path=node_path,
+                    parent_label=parent_label,
+                    index_str=index_str,
+                    children=children_nodes,
+                )
+            )
+        return nodes
+
+    tree_nodes = build_nodes(roots, "main", "main", 1, "", set())
+
+    while len(all_visited) < len(session.subagents):
+        unvisited = [s for s in session.subagents if s.agent_id not in all_visited]
+        if not unvisited:
+            break
+        for sub in unvisited:
+            pid = sub.parent_agent_id
+            if pid and pid not in ("main", session.session_id) and pid not in sub_by_id:
+                if f"orphaned_subagent_parent: {pid}" not in session.degraded:
+                    session.degraded.append(f"orphaned_subagent_parent: {pid}")
+            else:
+                if f"cycle_detected_subagent: {sub.agent_id}" not in session.degraded:
+                    session.degraded.append(f"cycle_detected_subagent: {sub.agent_id}")
+
+        extra_nodes = build_nodes(
+            unvisited, "main", "main", 1, "", set(), start_idx=len(tree_nodes) + 1
+        )
+        if not extra_nodes:
+            break
+        tree_nodes.extend(extra_nodes)
+
+    return tree_nodes
+
+
+def _fmt_tok(n: int) -> str:
+    """Format token count into human-readable compact string (e.g. 1k, 120k, 13M)."""
+    if n < 1_000:
+        return str(n)
+    if n >= 1_000_000:
+        val = f"{n / 1_000_000:.1f}".rstrip("0").rstrip(".")
+        return f"{val}M"
+    val = f"{n / 1_000:.1f}".rstrip("0").rstrip(".")
+    return f"{val}k"
+
+
 def _render_subagent_index(session: NormalizedSession, filename_base: str) -> list[str]:
-    """A one-row-per-subagent table naming every sidechain the session spawned."""
+    """Render hierarchical L1/L2 subagent call tree with ASCII tree block and enriched table."""
     if not session.subagents:
         return []
 
@@ -119,20 +272,92 @@ def _render_subagent_index(session: NormalizedSession, filename_base: str) -> li
         f"Their full transcripts are in the "
         f"[Full Markdown Details](./{_md_text(filename_base)}.full.md).",
         "",
-        "| # | Agent | Type | Depth | Events | Tokens | Started | Task |",
-        "|---|-------|------|-------|--------|--------|---------|------|",
+        "### Subagent Call Tree Lineage",
+        "",
+        "```",
+        f"main (Controlling Agent) [{_fmt_tok(session.controller_tokens)} tok | ${session.controller_cost_usd:.2f}]",
     ]
-    for idx, subagent in enumerate(session.subagents, start=1):
-        started, _ = _subagent_time_range(subagent)
-        raw_desc = (subagent.description or "").strip().replace("\n", " ")
+
+    tree_nodes = _build_subagent_tree(session)
+
+    def render_ascii_tree(nodes: list[SubagentTreeNode], prefix: str = "") -> None:
+        for i, node in enumerate(nodes):
+            is_last = i == len(nodes) - 1
+            connector = "└── " if is_last else "├── "
+            sub = node.subagent
+
+            clean_level = (
+                node.level_label.split(" ")[0] if "(" in node.level_label else node.level_label
+            )
+            if not sub.agent_type or sub.label == sub.agent_type:
+                display_name = sub.label
+            else:
+                display_name = f"{sub.label} ({sub.agent_type})"
+            level_str = f" ({clean_level})"
+
+            if sub.input_tokens or sub.cache_read_input_tokens or sub.output_tokens:
+                split_str = (
+                    f"in: {_fmt_tok(sub.input_tokens)}, "
+                    f"cr: {_fmt_tok(sub.cache_read_input_tokens)}, "
+                    f"cw: {_fmt_tok(sub.cache_creation_input_tokens)}, "
+                    f"out: {_fmt_tok(sub.output_tokens)}"
+                )
+                metrics_str = (
+                    f" [{_fmt_tok(sub.tokens_used)} tok ({split_str}) | ${sub.cost_usd:.2f}]"
+                )
+            else:
+                metrics_str = f" [{_fmt_tok(sub.tokens_used)} tok | ${sub.cost_usd:.2f}]"
+
+            dot = "." if "." not in node.index_str else ""
+            raw_desc = (sub.description or "").strip().replace("\n", " ")
+            desc_str = (
+                f" — {raw_desc[:57]}..."
+                if len(raw_desc) > 60
+                else (f" — {raw_desc}" if raw_desc else "")
+            )
+            lines.append(
+                f"{prefix}{connector}{node.index_str}{dot} {display_name}{level_str}{metrics_str}{desc_str}"
+            )
+
+            child_prefix = prefix + ("    " if is_last else "│   ")
+            render_ascii_tree(node.children, child_prefix)
+
+    render_ascii_tree(tree_nodes)
+    lines.extend(["```", ""])
+
+    # Render Enriched Subagent Index Table
+    lines.extend(
+        [
+            "| Level | Call Path | Agent Label | Type | Parent Agent | Events | Tokens (in / cr / out) | USD Cost | Task / Description |",
+            "|-------|-----------|-------------|------|--------------|--------|------------------------|----------|--------------------|",
+        ]
+    )
+
+    def flatten_tree(nodes: list[SubagentTreeNode]) -> list[SubagentTreeNode]:
+        flat = []
+        for n in nodes:
+            flat.append(n)
+            flat.extend(flatten_tree(n.children))
+        return flat
+
+    for node in flatten_tree(tree_nodes):
+        sub = node.subagent
+        raw_desc = (sub.description or "").strip().replace("\n", " ")
         if len(raw_desc) > 80:
             raw_desc = raw_desc[:77] + "..."
         description = _md_text(raw_desc).replace("|", "\\|")
+
+        if sub.input_tokens or sub.cache_read_input_tokens or sub.output_tokens:
+            tok_detail = f"{_fmt_tok(sub.tokens_used)} (in: {_fmt_tok(sub.input_tokens)}, cr: {_fmt_tok(sub.cache_read_input_tokens)}, out: {_fmt_tok(sub.output_tokens)})"
+        else:
+            tok_detail = f"{_fmt_tok(sub.tokens_used)}"
+
         lines.append(
-            f"| {idx} | `{subagent.label}` | {_md_text(subagent.agent_type or '')} | "
-            f"{_depth_label(subagent)} | {len(subagent.events)} | {subagent.tokens_used} | "
-            f"{_md_text(started)} | {description} |"
+            f"| {node.level_label} | `{node.call_path}` | `{sub.label}` | "
+            f"{_md_text(sub.agent_type or '')} | `{node.parent_label}` | "
+            f"{len(sub.events)} | {tok_detail} | ${sub.cost_usd:.2f} | {description} |"
         )
+
     lines.append("")
     return lines
 
@@ -239,17 +464,180 @@ def _get_code_fence(content: str) -> str:
     return "`" * fence_len
 
 
-def _format_tool_output_markdown(content: str) -> list[str]:
-    """Format tool output in Markdown with escaping or collapsible details blocks."""
-    byte_count = len(content.encode("utf-8"))
+def _is_error_event(event: NormalizedEvent) -> bool:
+    """Determine whether a transcript event represents an error or termination cutoff."""
+    if event.meta.get("is_error") is True:
+        return True
+    exit_code = event.meta.get("exit_code")
+    if exit_code is not None and exit_code != 0:
+        return True
+    content_lower = str(event.content or "").lower()
+    if event.source == "tool" or event.type == "tool_output":
+        if "command not found" in content_lower:
+            return True
+        import re
+
+        for m in re.finditer(r"exit code:\s*(\d+)", content_lower):
+            if int(m.group(1)) != 0:
+                return True
+    if event.source == "system" and (
+        event.meta.get("is_cutoff") is True
+        or "limit exceeded" in content_lower
+        or "spend limit" in content_lower
+        or event.meta.get("error_type") is not None
+    ):
+        return True
+    return False
+
+
+def _format_error_block_markdown(
+    event: NormalizedEvent,
+    tool_call_names: dict[str, str] | None = None,
+    cumulative_cost_usd: float | None = None,
+) -> list[str]:
+    """Format tool execution errors, subagent failures, and system cutoffs into [!ERROR_BLOCK] callouts."""
+    content = str(event.content or "").strip()
+    content_lower = content.lower()
+
+    # 1. Error Type Classification
+    error_type = event.meta.get("error_type")
+    if not error_type:
+        if event.source == "system":
+            if "spend limit" in content_lower or "limit" in content_lower:
+                error_type = "Org Spend Limit Cutoff"
+            elif "context" in content_lower:
+                error_type = "Context Window Limit Exceeded"
+            else:
+                error_type = "System Termination"
+        elif event.source == "tool" or event.type == "tool_output":
+            if "command not found" in content_lower:
+                error_type = "Tool Execution Failure"
+            else:
+                error_type = "Tool Execution Failure"
+        else:
+            error_type = "Execution Error"
+
+    # 2. Source Event / Tool
+    tool_use_id = event.meta.get("tool_use_id") or ""
+    tool_name = (
+        event.meta.get("tool_name")
+        or event.meta.get("name")
+        or (tool_call_names.get(tool_use_id) if tool_call_names and tool_use_id else None)
+    )
+
+    if not tool_name and event.source == "system":
+        source_tool_str = "`Session Termination`"
+    elif tool_name:
+        source_tool_str = f"`{tool_name}` (`{tool_use_id}`)" if tool_use_id else f"`{tool_name}`"
+    elif event.source == "tool" or event.type == "tool_output":
+        source_tool_str = f"`Tool` (`{tool_use_id}`)" if tool_use_id else "`Tool`"
+    else:
+        source_tool_str = f"`{event.source or 'System Event'}`"
+
+    # 3. Status / Exit Code
+    exit_code = event.meta.get("exit_code")
+    if exit_code is not None:
+        status_str = str(exit_code)
+    elif "exit code: 127" in content_lower:
+        status_str = "127"
+    elif "exit code:" in content_lower:
+        import re
+
+        m = re.search(r"exit code:\s*(\d+)", content, re.IGNORECASE)
+        status_str = m.group(1) if m else "1"
+    elif event.source == "system":
+        limit_usd = event.meta.get("limit_usd")
+        if cumulative_cost_usd is not None and limit_usd is not None:
+            status_str = f"Limit Exceeded (${cumulative_cost_usd:.4f} / ${limit_usd:.4f})"
+        elif cumulative_cost_usd is not None:
+            status_str = f"Limit Exceeded (${cumulative_cost_usd:.4f})"
+        else:
+            status_str = str(event.meta.get("status", "Terminated"))
+    else:
+        status_str = str(event.meta.get("status", "1"))
+
+    # 4. Message & Truncation (>500 chars or >10 lines)
     is_large = len(content) > 500 or len(content.splitlines()) > 10
-    fence = _get_code_fence(content)
+    lines = content.splitlines()
     if is_large:
+        summary_msg = "\n".join(lines[:5])
+    else:
+        summary_msg = content
+
+    # 5. Impact
+    impact = event.meta.get("impact")
+    if not impact:
+        if error_type == "Org Spend Limit Cutoff":
+            impact = "Session terminated immediately. Subagent calls aborted."
+        elif "command not found" in content_lower:
+            impact = "Tool call failed; assistant requested fallback execution."
+        elif event.source == "tool" or event.type == "tool_output":
+            impact = "Tool execution returned error status; operation unfulfilled."
+        else:
+            impact = "Event execution degraded or halted."
+
+    # Build Callout Lines
+    block = [
+        "> [!ERROR_BLOCK]",
+        f"> **Error Type:** `{error_type}`",
+        f"> **Source Event / Tool:** {source_tool_str}",
+        f"> **Status / Exit Code:** `{status_str}`",
+    ]
+
+    msg_lines = summary_msg.splitlines()
+    if msg_lines:
+        if len(msg_lines) == 1:
+            block.append(f"> **Message:** `{msg_lines[0]}`")
+        else:
+            block.append(f"> **Message:** {_md_text(msg_lines[0])}")
+            for ml in msg_lines[1:]:
+                block.append(f"> {_md_text(ml)}")
+    else:
+        block.append("> **Message:** (empty error message)")
+
+    block.append(f"> **Impact:** {impact}")
+
+    if is_large:
+        fence = _get_code_fence(content)
+        block.extend(
+            [
+                "> <details><summary>Full Error Output</summary>",
+                ">",
+                f"> {fence}",
+                *(f"> {line}" for line in content.splitlines()),
+                f"> {fence}",
+                ">",
+                "> </details>",
+            ]
+        )
+
+    block.append("")
+    return block
+
+
+def truncate_lines(text: str, max_lines: int = 10) -> str:
+    """Truncate text to max_lines, appending a count of omitted lines if truncated."""
+    if not text:
+        return ""
+    lines = text.strip().split("\n")
+    if len(lines) <= max_lines:
+        return "\n".join(lines)
+    omitted = len(lines) - max_lines
+    return "\n".join(lines[:max_lines]) + f"\n... (truncated {omitted} lines)"
+
+
+def _format_tool_output_markdown(content: str, max_lines: int = 10) -> list[str]:
+    """Format tool output in Markdown with line truncation for large outputs."""
+    byte_count = len(content.encode("utf-8"))
+    lines_count = len(content.splitlines())
+    fence = _get_code_fence(content)
+    if lines_count > max_lines:
+        truncated_content = truncate_lines(content, max_lines=max_lines)
         return [
             f"<details><summary>Tool Output ({byte_count} bytes)</summary>",
             "",
             fence,
-            content,
+            truncated_content,
             fence,
             "",
             "</details>",
@@ -263,32 +651,68 @@ def _format_tool_output_markdown(content: str) -> list[str]:
     ]
 
 
+def _get_subagent_final_response(subagent: SubagentTranscript) -> str:
+    """Extract the final text response or summary returned by a subagent."""
+    for ev in reversed(subagent.events):
+        if ev.source == "model" and ev.content and ev.content.strip():
+            return ev.content.strip()
+        if ev.type == "tool_output" and ev.content and ev.content.strip():
+            return ev.content.strip()
+    return subagent.description or ""
+
+
 def _render_events_markdown(
     events: list[NormalizedEvent],
     subagent_lookup: dict[str, tuple[int, SubagentTranscript]] | None = None,
 ) -> list[str]:
-    """Render a conversation event by event, in order."""
+    """Render a conversation event by event in turn-by-turn markdown format."""
     lookup = subagent_lookup or {}
     lines: list[str] = []
-    for event in events:
-        emoji = "📋"
-        if event.source == "user":
-            is_human = event.meta.get("is_human", True)
-            prompt_kind = event.meta.get("prompt_kind", "user")
-            if not is_human:
-                emoji = f"📌 Injected Context (`{prompt_kind}`)"
-            else:
-                emoji = "🤷 User"
-        elif event.source == "model":
-            emoji = "🤖 Assistant"
-        elif event.source == "tool":
-            emoji = "🛠️ Tool"
-        elif event.source == "system":
-            emoji = "📌 System"
 
-        ts_str = f" `({event.timestamp})`" if event.timestamp else ""
-        lines.append(f"#### {emoji}{ts_str}")
+    # Map tool call ids to tool names for error callout context
+    tool_call_names: dict[str, str] = {}
+    for ev in events:
+        if ev.tool_calls:
+            for tc in ev.tool_calls:
+                if tc.call_id:
+                    tool_call_names[tc.call_id] = tc.name
+
+    turn_num = 1
+    for event in events:
+        lines.append(f"### Turn {turn_num}:")
         lines.append("")
+
+        # Render per-step token pill for assistant turns carrying usage metadata
+        if event.source == "model" and "usage" in event.meta:
+            u = event.meta["usage"]
+            inp = u.get("input_tokens", 0)
+            outp = u.get("output_tokens", 0)
+            cr = u.get("cache_read_input_tokens", 0)
+            cc = u.get("cache_creation_input_tokens", 0)
+            step_cost = u.get("step_cost_usd", 0.0)
+            cum_cost = u.get("cumulative_cost_usd", 0.0)
+
+            tot_tokens = inp + outp + cr + cc
+            if tot_tokens > 0:
+                cache_parts = []
+                if cr > 0:
+                    cache_parts.append(f"`{cr:,}` cache read")
+                if cc > 0:
+                    cache_parts.append(f"`{cc:,}` cache write")
+
+                cache_str = f" ({', '.join(cache_parts)})" if cache_parts else ""
+
+                if "unknown_model" in event.meta:
+                    cost_str = f"N/A (unknown model: {event.meta['unknown_model']})"
+                else:
+                    cost_str = f"`${step_cost:.4f}`"
+
+                pill_line = (
+                    f"> **Tokens:** `{inp:,}` in{cache_str} | `{outp:,}` out | "
+                    f"**Step Cost:** {cost_str} | **Cumulative:** `${cum_cost:.4f}`"
+                )
+                lines.append(pill_line)
+                lines.append("")
 
         if event.thinking:
             lines.extend(
@@ -317,51 +741,135 @@ def _render_events_markdown(
             else:
                 content = str(content)
 
-        if content:
-            if event.source == "user":
-                is_human = event.meta.get("is_human", True)
-                prompt_kind = event.meta.get("prompt_kind", "user")
-                human_text = (
-                    event.meta.get("human_content")
-                    if "human_content" in event.meta
-                    else (content if is_human else "")
-                )
-                injected_text = (
-                    event.meta.get("injected_content")
-                    if "injected_content" in event.meta
-                    else (content if not is_human else "")
+        ts_str = f" `({event.timestamp})`" if event.timestamp else ""
+
+        if event.source == "user":
+            is_human = event.meta.get("is_human", True)
+            prompt_kind = event.meta.get("prompt_kind", "user")
+            human_text = (
+                event.meta.get("human_content")
+                if "human_content" in event.meta
+                else (content if is_human else "")
+            )
+            injected_text = (
+                event.meta.get("injected_content")
+                if "injected_content" in event.meta
+                else (content if not is_human else "")
+            )
+
+            if is_human and human_text:
+                lines.append(f"#### 🤷 User{ts_str}")
+                lines.append("")
+                lines.append(_md_text(human_text))
+                lines.append("")
+            if injected_text:
+                lines.append(f"#### 📌 Injected Context (`{prompt_kind}`){ts_str}")
+                lines.append("")
+                lines.extend(
+                    [
+                        "> [!NOTE]",
+                        f"> **Injected Context (`{prompt_kind}`):**",
+                        *(f"> {_md_text(line)}" for line in injected_text.splitlines()),
+                        "",
+                    ]
                 )
 
-                if is_human and human_text:
-                    lines.append(_md_text(human_text))
-                    lines.append("")
-                if injected_text:
-                    lines.extend(
-                        [
-                            "> [!NOTE]",
-                            f"> **Injected Context (`{prompt_kind}`):**",
-                            *(f"> {_md_text(line)}" for line in injected_text.splitlines()),
-                            "",
-                        ]
-                    )
-            elif event.source == "tool" or event.type == "tool_output":
-                lines.extend(_format_tool_output_markdown(content))
+        elif event.source == "model" and content and not event.tool_calls:
+            model_name = event.meta.get("model") or "assistant"
+            agent_name = event.meta.get("agent_name") or event.meta.get("agent_type") or "main"
+            lines.append(f"#### 🤖 Assistant (`{agent_name}`, `{model_name}`){ts_str}")
+            lines.append("")
+            lines.append("```")
+            lines.append(content.strip())
+            lines.append("```")
+            lines.append("")
+
+        elif event.source == "tool" or event.type == "tool_output":
+            if _is_error_event(event):
+                lines.extend(_format_error_block_markdown(event, tool_call_names=tool_call_names))
+            elif (
+                "REPORTING PROTOCOL" in content
+                or "EVIDENCE CONTRACT" in content
+                or "hook" in content.lower()
+            ):
+                lines.append(f"#### hook: stop{ts_str}")
+                lines.append("")
+                lines.append("```")
+                lines.append(truncate_lines(content, max_lines=10))
+                lines.append("```")
+                lines.append("")
             else:
+                lines.append(f"#### 🛠️ Tool Output{ts_str}")
+                lines.extend(_format_tool_output_markdown(content, max_lines=10))
+
+        elif event.source == "system":
+            if _is_error_event(event):
+                lines.extend(_format_error_block_markdown(event, tool_call_names=tool_call_names))
+            else:
+                lines.append(f"#### 📌 System{ts_str}")
+                lines.append("")
                 lines.append(_md_text(content))
                 lines.append("")
 
+        elif content and not event.tool_calls:
+            lines.append(f"#### Message{ts_str}")
+            lines.append("")
+            lines.append(_md_text(content))
+            lines.append("")
+
         if event.tool_calls:
-            lines.append("**Tool Calls:**")
             for tc in event.tool_calls:
-                lines.append(f"- Call `{tc.name}` with args:")
-                lines.append("  ```json")
-                lines.append(_dump_tool_args(tc.args, indent=4))
-                lines.append("  ```")
+                args_str = json.dumps(tc.args, ensure_ascii=False) if tc.args else "{}"
+                lines.append(f"#### 🛠️ Tool `{tc.name}` (`{args_str}`){ts_str}")
+                lines.append("")
+                lines.append("```json")
+                lines.append(truncate_lines(_dump_tool_args(tc.args, indent=2), max_lines=15))
+                lines.append("```")
+                lines.append("")
                 spawned = lookup.get(tc.call_id or "")
                 if spawned:
                     idx, subagent = spawned
-                    lines.append(f"  → **spawned Subagent {idx}: `{subagent.label}`** (see below)")
-            lines.append("")
+                    model_part = f", `{subagent.model}`" if subagent.model else ""
+                    type_part = f"`{subagent.agent_type}`" if subagent.agent_type else ""
+
+                    if (
+                        subagent.label
+                        and subagent.agent_type
+                        and subagent.label != subagent.agent_type
+                    ):
+                        label_str = f"`{subagent.label}` ({type_part}{model_part})"
+                    elif subagent.label:
+                        label_str = (
+                            f"`{subagent.label}` ({model_part.strip(', ')})"
+                            if model_part
+                            else f"`{subagent.label}`"
+                        )
+                    else:
+                        label_str = f"{type_part}{model_part}"
+
+                    tok_str = f"`{_fmt_tok(subagent.tokens_used)}` tok | `${subagent.cost_usd:.2f}`"
+                    lines.append(f"  → **spawned Subagent {idx}: {label_str}** [{tok_str}]")
+                    lines.append("")
+
+                    prompt_text = (
+                        subagent.description
+                        or (tc.args.get("prompt") if tc.args else None)
+                        or (tc.args.get("description") if tc.args else None)
+                    )
+                    if prompt_text:
+                        lines.append("  ```")
+                        lines.append(truncate_lines(str(prompt_text), max_lines=10))
+                        lines.append("  ```")
+                        lines.append("")
+
+                    resp_text = _get_subagent_final_response(subagent)
+                    if resp_text:
+                        lines.append("  > **Subagent Response:**")
+                        lines.extend(
+                            f"  > {_md_text(line)}"
+                            for line in truncate_lines(resp_text, max_lines=10).splitlines()
+                        )
+                        lines.append("")
 
         tool_use_id = event.meta.get("tool_use_id") if event.type == "tool_output" else None
         returned = lookup.get(tool_use_id or "")
@@ -370,8 +878,18 @@ def _render_events_markdown(
             lines.append(f"↩ **Subagent {idx}: `{subagent.label}` returned here.**")
             lines.append("")
 
+        if event.meta.get("stop_reason") or event.type == "stop":
+            stop_reason = event.meta.get("stop_reason") or "Session stop sequence reached"
+            lines.append(f"#### stop{ts_str}")
+            lines.append("```")
+            lines.append(stop_reason)
+            lines.append("```")
+            lines.append("")
+
         lines.append("---")
         lines.append("")
+        turn_num += 1
+
     return lines
 
 
@@ -662,23 +1180,51 @@ def render_to_html(
                 )
             content_html_rendered = "".join(content_parts_html)
         elif event.source == "tool" or event.type == "tool_output":
+            is_err = _is_error_event(event)
             byte_count = len(content.encode("utf-8"))
             is_large = len(content) > 500 or len(content.splitlines()) > 10
             content_escaped = _escape_html(content)
-            if is_large:
+            if is_err:
+                source_class = "tool error"
+                if is_large:
+                    content_html_rendered = (
+                        f'<div class="error-box">'
+                        f'<span class="badge error-badge">ERROR BLOCK</span>'
+                        f'<details class="tool-output-details">'
+                        f"<summary>Full Error Output ({byte_count} bytes)</summary>"
+                        f"<pre><code>{content_escaped}</code></pre>"
+                        f"</details></div>"
+                    )
+                else:
+                    content_html_rendered = (
+                        f'<div class="error-box">'
+                        f'<span class="badge error-badge">ERROR BLOCK</span>'
+                        f"<pre><code>{content_escaped}</code></pre></div>"
+                    )
+            else:
+                if is_large:
+                    content_html_rendered = (
+                        f'<details class="tool-output-details">'
+                        f"<summary>Tool Output ({byte_count} bytes)</summary>"
+                        f"<pre><code>{content_escaped}</code></pre>"
+                        f"</details>"
+                    )
+                else:
+                    content_html_rendered = (
+                        f'<div class="content"><pre><code>{content_escaped}</code></pre></div>'
+                    )
+        else:
+            is_err = _is_error_event(event)
+            content_escaped = _escape_html(content).replace("\n", "<br>")
+            if is_err:
+                source_class = f"{source_class} error"
                 content_html_rendered = (
-                    f'<details class="tool-output-details">'
-                    f"<summary>Tool Output ({byte_count} bytes)</summary>"
-                    f"<pre><code>{content_escaped}</code></pre>"
-                    f"</details>"
+                    f'<div class="error-box">'
+                    f'<span class="badge error-badge">ERROR BLOCK</span>'
+                    f'<div class="content">{content_escaped}</div></div>'
                 )
             else:
-                content_html_rendered = (
-                    f'<div class="content"><pre><code>{content_escaped}</code></pre></div>'
-                )
-        else:
-            content_escaped = _escape_html(content).replace("\n", "<br>")
-            content_html_rendered = f'<div class="content">{content_escaped}</div>'
+                content_html_rendered = f'<div class="content">{content_escaped}</div>'
 
         # Format tool calls
         tc_html = ""
@@ -842,6 +1388,19 @@ def render_to_html(
             vertical-align: top;
         }}
         table.subagents th {{ color: #a1a1aa; }}
+        .error-box {{
+            background-color: #2a1215;
+            border: 1px solid #991b1b;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }}
+        .error-badge {{
+            background-color: #dc2626;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }}
     </style>
 </head>
 <body>

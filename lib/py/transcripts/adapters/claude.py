@@ -246,9 +246,41 @@ def get_model_rates(model_name: str | None) -> ModelRates | None:
     return None
 
 
+class UsageAccumulation(tuple):
+    """3-element tuple (tokens_used, cost_usd, degraded) with detailed token breakdown attributes."""
+
+    tokens_used: int
+    cost_usd: float
+    degraded: list[str]
+    input_tokens: int
+    output_tokens: int
+    cache_read_input_tokens: int
+    cache_creation_input_tokens: int
+
+    def __new__(
+        cls,
+        tokens_used: int,
+        cost_usd: float,
+        degraded: list[str],
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cache_read_input_tokens: int = 0,
+        cache_creation_input_tokens: int = 0,
+    ):
+        obj = super().__new__(cls, (tokens_used, cost_usd, degraded))
+        obj.tokens_used = tokens_used
+        obj.cost_usd = cost_usd
+        obj.degraded = degraded
+        obj.input_tokens = input_tokens
+        obj.output_tokens = output_tokens
+        obj.cache_read_input_tokens = cache_read_input_tokens
+        obj.cache_creation_input_tokens = cache_creation_input_tokens
+        return obj
+
+
 def _accumulate_usage(
     entries: list[TranscriptEntry], default_model: str | None = None
-) -> tuple[int, float, list[str]]:
+) -> UsageAccumulation:
     """Total tokens, estimated USD cost, and degraded notices across entries carrying usage data."""
     total_input = 0
     total_cache_creation = 0
@@ -310,12 +342,26 @@ def _accumulate_usage(
             total_cost_usd += cost
 
     tokens_used = total_input + total_cache_creation + total_cache_read + total_output
-    return tokens_used, total_cost_usd, degraded
+    return UsageAccumulation(
+        tokens_used=tokens_used,
+        cost_usd=total_cost_usd,
+        degraded=degraded,
+        input_tokens=total_input,
+        output_tokens=total_output,
+        cache_read_input_tokens=total_cache_read,
+        cache_creation_input_tokens=total_cache_creation,
+    )
 
 
-def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
-    """Map parsed Claude Code entries onto the common NormalizedEvent model."""
+def _entries_to_events(
+    entries: list[TranscriptEntry], default_model: str | None = None
+) -> list[NormalizedEvent]:
+    """Map parsed Claude Code entries onto the common NormalizedEvent model, attaching usage metrics."""
     events: list[NormalizedEvent] = []
+    cumulative_cost_usd = 0.0
+    prev_cache_creation = 0
+    seen_message_ids: set[str] = set()
+
     for entry in entries:
         entry_type = entry.type
         if entry_type == "user":
@@ -413,6 +459,62 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
                         )
             content = "".join(content_parts)
             thinking = "".join(thinking_parts) if thinking_parts else None
+
+            meta: dict[str, Any] = {"cwd": entry.cwd}
+
+            # Extract LLM usage metrics if present on entry.message
+            if (
+                hasattr(entry, "message")
+                and entry.message
+                and hasattr(entry.message, "usage")
+                and entry.message.usage
+            ):
+                msg = entry.message
+                msg_id = getattr(msg, "id", None)
+                is_duplicate = False
+                if msg_id:
+                    if msg_id in seen_message_ids:
+                        is_duplicate = True
+                    else:
+                        seen_message_ids.add(msg_id)
+
+                u = msg.usage
+                inp = getattr(u, "input_tokens", 0) or 0
+                cc = getattr(u, "cache_creation_input_tokens", 0) or 0
+                cr = getattr(u, "cache_read_input_tokens", 0) or 0
+                outp = getattr(u, "output_tokens", 0) or 0
+
+                cc_inc = cc if (cc > 0 and cc != prev_cache_creation) else 0
+                prev_cache_creation = cc
+
+                entry_model = (
+                    getattr(msg, "model", None) or getattr(entry, "model", None) or default_model
+                )
+                rates = get_model_rates(entry_model)
+
+                if rates is not None and not is_duplicate:
+                    step_cost = (
+                        inp * rates.input_usd_per_m
+                        + cc_inc * rates.cache_creation_usd_per_m
+                        + cr * rates.cache_read_usd_per_m
+                        + outp * rates.output_usd_per_m
+                    ) / 1_000_000
+                    cumulative_cost_usd += step_cost
+                    step_cost_usd = step_cost
+                else:
+                    step_cost_usd = 0.0
+
+                meta["usage"] = {
+                    "input_tokens": inp,
+                    "output_tokens": outp,
+                    "cache_read_input_tokens": cr,
+                    "cache_creation_input_tokens": cc,
+                    "step_cost_usd": round(step_cost_usd, 6),
+                    "cumulative_cost_usd": round(cumulative_cost_usd, 6),
+                }
+                if rates is None and entry_model:
+                    meta["unknown_model"] = entry_model
+
             events.append(
                 NormalizedEvent(
                     event_id=entry.uuid,
@@ -423,7 +525,7 @@ def _entries_to_events(entries: list[TranscriptEntry]) -> list[NormalizedEvent]:
                     thinking=thinking,
                     thinking_opaque=thinking_opaque and not thinking,
                     tool_calls=tool_calls if tool_calls else None,
-                    meta={"cwd": entry.cwd},
+                    meta=meta,
                 )
             )
         elif entry_type == "attachment":
@@ -520,7 +622,8 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
             break
 
     trunk_entries = [entry for entry in transcript.entries if not _is_sidechain_entry(entry)]
-    tokens_used, cost_usd, degraded = _accumulate_usage(trunk_entries)
+    usage_acc = _accumulate_usage(trunk_entries)
+    tokens_used, cost_usd, degraded = usage_acc
 
     raw_events = [
         NormalizedRawEntry(line_no=raw.line_no, type=raw.type, raw=raw.raw)
@@ -584,10 +687,11 @@ def _build_subagent(
     meta = _read_subagent_meta(source_file)
     model = meta.get("model")
     default_model = model if isinstance(model, str) else None
-    tokens_used, cost_usd, degraded = _accumulate_usage(entries, default_model=default_model)
+    usage_acc = _accumulate_usage(entries, default_model=default_model)
+    tokens_used, cost_usd, degraded = usage_acc
     tool_use_id = meta.get("toolUseId")
     spawn_depth = meta.get("spawnDepth")
-    events = _entries_to_events(entries)
+    events = _entries_to_events(entries, default_model=default_model)
 
     # Deduplicate inter-agent message echoes against parent events
     parent_event_ids = {e.event_id for e in parent_events if e.event_id}
@@ -597,15 +701,38 @@ def _build_subagent(
             continue
         deduped_events.append(ev)
 
+    # Look up parent spawning tool call args
+    spawning_args = {}
+    if tool_use_id:
+        for ev in parent_events:
+            for call in ev.tool_calls or ():
+                if call.call_id == tool_use_id:
+                    spawning_args = call.args or {}
+                    break
+    if not spawning_args:
+        meta_name = meta.get("name")
+        meta_desc = meta.get("description")
+        for ev in parent_events:
+            for call in ev.tool_calls or ():
+                args = call.args or {}
+                call_name = args.get("name")
+                call_desc = args.get("description") or args.get("prompt")
+                if (meta_name and call_name == meta_name) or (meta_desc and call_desc == meta_desc):
+                    spawning_args = args
+                    break
+            if spawning_args:
+                break
+
+    true_agent_type = spawning_args.get("subagent_type") or meta.get("agentType")
+
     # Description resolution with unlinked subagent fallback
     desc = meta.get("description") or _describe_from_parent(parent_events, tool_use_id)
     if not desc:
-        agent_type = meta.get("agentType")
         for ev in parent_events:
             for call in ev.tool_calls or ():
                 args = call.args or {}
                 call_agent = args.get("subagent_type") or args.get("name") or call.name
-                if call_agent and (call_agent == agent_type or call_agent == agent_id):
+                if call_agent and (call_agent == true_agent_type or call_agent == agent_id):
                     d = args.get("description") or args.get("prompt")
                     if d:
                         desc = str(d)
@@ -623,13 +750,17 @@ def _build_subagent(
         agent_id=agent_id,
         source_file=source_file,
         events=deduped_events,
-        agent_type=meta.get("agentType"),
+        agent_type=true_agent_type,
         name=meta.get("name"),
         description=desc,
         parent_tool_use_id=tool_use_id,
         parent_agent_id=meta.get("parentAgentId"),
         tokens_used=tokens_used,
         cost_usd=cost_usd,
+        input_tokens=usage_acc.input_tokens,
+        output_tokens=usage_acc.output_tokens,
+        cache_read_input_tokens=usage_acc.cache_read_input_tokens,
+        cache_creation_input_tokens=usage_acc.cache_creation_input_tokens,
         spawn_depth=spawn_depth if isinstance(spawn_depth, int) else None,
         is_fork=bool(meta.get("isFork", False)),
         model=default_model,
