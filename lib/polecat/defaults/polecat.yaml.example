@@ -31,6 +31,9 @@
 # docker:
 #   image: your-registry/your-account/polecat:your-tag
 
+# Default git branch or ref for isolated container workspaces (used when --base is omitted).
+# branch: main
+
 # Per-machine workspace paths are NOT read from this file. They live in
 # <polecat_home>/local.yaml (cli.py, load_local_overlay), which maps a
 # --project name to a checkout on this machine:

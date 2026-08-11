@@ -220,6 +220,8 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        "james",
         "--print",
         "/pull task_abc123",
     ]
@@ -231,13 +233,13 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 # --------------------------------------------------------------------------
 
 
-def test_claude_boots_as_the_default_agent(tmp_path, monkeypatch):
-    """A dispatched claude worker with no agent named must boot as the
-    orchestrator, not the generic assistant."""
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_all_clients_boot_as_the_default_agent(client, tmp_path, monkeypatch):
+    """A dispatched worker with no agent named must boot as DEFAULT_AGENT (james) on all clients."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
-        ["run", "claude", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+        ["run", client, "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
     )
     inner = _inner_cmd(cmd)
 
@@ -245,37 +247,20 @@ def test_claude_boots_as_the_default_agent(tmp_path, monkeypatch):
     assert inner[inner.index("--agent") + 1] == cli.DEFAULT_AGENT
 
 
-def test_agy_carries_the_no_default_agent_mitigation_for_issue_2387(tmp_path, monkeypatch):
-    """Pins a TEMPORARY MITIGATION, not the intended contract (#2387).
-
-    Every dispatched worker should boot as `DEFAULT_AGENT`, on every client.
-    That does not hold on agy today: every agent this repo builds — james, rbg
-    and pauli were tested — comes up under `--agent <name>` with a fixed
-    toolset and no `call_mcp_tool`, no write, no shell, so defaulting agy to
-    james shipped a worker that reached no MCP server and changed nothing.
-    Whether the cause is agy or our own build adapter is not established.
-    Until #2387 closes, agy runs on its own default agent — full tools, none of
-    our persona.
-
-    When #2387 closes, delete this test and add `agy` back to
-    `test_claude_boots_as_the_default_agent`. Do not extend or entrench it.
-    """
+@pytest.mark.parametrize("client", ["claude", "agy"])
+@pytest.mark.parametrize("flag", ["--agent", "-a"])
+def test_cli_agent_option_overrides_default_agent(client, flag, tmp_path, monkeypatch):
+    """The --agent / -a Click option allows changing the agent persona on all clients."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
-        ["run", "agy", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+        ["run", client, "-d", str(tmp_path / "repo"), flag, "pauli", "-t", "task_abc123"],
     )
+    inner = _inner_cmd(cmd)
 
-    assert "--agent" not in _inner_cmd(cmd)
-
-    chosen = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        ["run", "agy", "-d", str(tmp_path / "repo"), "--", "--agent", "pauli"],
-    )
-    inner = _inner_cmd(chosen)
     assert inner.count("--agent") == 1
     assert inner[inner.index("--agent") + 1] == "pauli"
+    assert cli.DEFAULT_AGENT not in inner
 
 
 @pytest.mark.parametrize("agent_cmd", ["shell", "bash", "sleep", "some-other-tool"])
@@ -317,8 +302,7 @@ def test_caller_supplied_agent_wins_over_the_default_for_agy(tmp_path, monkeypat
 
 
 def test_caller_supplied_agent_in_equals_form_is_not_duplicated(tmp_path, monkeypatch):
-    """`--agent=rbg` is one token, so a naive equality check would miss it and
-    the container would end up holding two conflicting personas."""
+    """`--agent=rbg` is parsed as setting the agent persona without duplicating."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -326,8 +310,8 @@ def test_caller_supplied_agent_in_equals_form_is_not_duplicated(tmp_path, monkey
     )
     inner = _inner_cmd(cmd)
 
-    assert "--agent" not in inner
-    assert inner.count("--agent=rbg") == 1
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
     assert cli.DEFAULT_AGENT not in inner
 
 

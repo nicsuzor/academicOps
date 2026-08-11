@@ -47,7 +47,8 @@ the container.
    `<polecat_home>/local.yaml`'s `paths` map.
 3. Unless `--repo-dir` was given, clones the resolved repo (`git clone --local
    --no-checkout`) into `$POLECAT_HOME/worktrees/<session-id>`, checks out
-   `polecat/<session-id>` at the host repo's current `HEAD`, and repoints `origin`
+   `polecat/<session-id>` at the commit specified by `--base` (defaulting to the
+   `branch` key in `polecat.yaml`, or `HEAD`), and repoints `origin`
    at the host repo's own remote — so a push from inside the container reaches the
    real remote and nothing the container does is visible in the host checkout
    until pushed. This clone is deleted again when `run` exits, success or failure.

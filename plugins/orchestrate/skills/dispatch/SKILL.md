@@ -63,11 +63,12 @@ All dispatches use a standard `polecat run` command wrapped in a detached `tmux`
 
 #### 1. Command Template
 
-Define the session identifier and build the launch command:
+Define the session identifier and build the launch command (always pass `--base` with the current `HEAD` commit to ensure workers branch from the coordinator's current commit state):
 
 ```bash
+HEAD=$(git rev-parse HEAD)
 NAME="dispatch-<task-id>"
-CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME"
+CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME --base $HEAD"
 ```
 
 #### 2. Launch (Local vs Remote)
