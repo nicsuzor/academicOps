@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from transcripts.adapters.agy import load_agy_transcript
@@ -178,18 +180,20 @@ def test_prompt_ledger_generation_with_filtered_sidecars(tmp_path):
     transcripts_dir = tmp_path / "transcripts"
     transcripts_dir.mkdir(parents=True)
 
+    # Timestamps are computed relative to now so they stay inside
+    # the prompt ledger's rolling seven-day window over time.
+    recent_iso = (datetime.now(UTC) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     sidecar_data = {
         "session_id": "1234567890",
         "has_user_context": True,
-        "started_at": "2026-08-11T10:00:00Z",
+        "started_at": recent_iso,
         "project": "test-proj",
-        "user_prompts": [{"text": "Fix the pipeline bug", "timestamp": "2026-08-11T10:00:00Z"}],
+        "user_prompts": [{"text": "Fix the pipeline bug", "timestamp": recent_iso}],
         "injected_prompts": [
-            {"text": "<system-reminder>rule</system-reminder>", "timestamp": "2026-08-11T10:00:00Z"}
+            {"text": "<system-reminder>rule</system-reminder>", "timestamp": recent_iso}
         ],
     }
-
-    import json
 
     (transcripts_dir / "sidecar.json").write_text(json.dumps(sidecar_data), encoding="utf-8")
 
