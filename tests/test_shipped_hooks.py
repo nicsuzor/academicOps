@@ -1002,7 +1002,7 @@ def test_hook_bearing_plugins_all_present(dist_root):
         for name, client, build_dir in _build_dirs(dist_root)
         if _hooks_config(client, build_dir)
     }
-    assert hook_plugins == {"aops-debug", "ida", "orchestrate", "pkb", "rbg", "ts"}
+    assert hook_plugins == {"ida", "orchestrate", "pkb", "rbg", "ts"}
 
 
 def test_rbg_wires_preinvocation_on_agy(dist_root):

@@ -2,11 +2,27 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shlex
+import sys
 from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
 from dispatch import HookContext, Result, load_message_pair, warn
+
+# Ensure parent directory of hooks (plugins/orchestrate) is in sys.path so claude_code_tracer can be imported
+_PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+if str(_PLUGIN_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PLUGIN_ROOT))
+
+log = logging.getLogger("orchestrate.handlers")
+
+try:
+    import claude_code_tracer
+except ImportError:
+    claude_code_tracer = None
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -86,9 +102,99 @@ def honest_output(ctx: HookContext) -> Result | None:
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
+def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
+    """Extract and normalize payload dictionary for claude_code_tracer."""
+    data = dict(ctx.raw)
+    if ctx.session_id:
+        data.setdefault("session_id", ctx.session_id)
+    if ctx.tool:
+        data.setdefault("tool_name", ctx.tool)
+    if "toolName" in data and "tool_name" not in data:
+        data["tool_name"] = data["toolName"]
+    if "toolInput" in data and "tool_input" not in data:
+        data["tool_input"] = data["toolInput"]
+    if "toolResponse" in data and "tool_response" not in data:
+        data["tool_response"] = data["toolResponse"]
+    return data
+
+
+def user_prompt_submit(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for UserPromptSubmit."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_user_prompt_submit(data, config)
+    except Exception as exc:
+        log.warning("user_prompt_submit tracer failed: %s", exc)
+    return None
+
+
+def pre_tool(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for PreToolUse."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_pre_tool(data, config)
+    except Exception as exc:
+        log.warning("pre_tool tracer failed: %s", exc)
+    return None
+
+
+def post_tool(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for PostToolUse."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_post_tool(data, config)
+    except Exception as exc:
+        log.warning("post_tool tracer failed: %s", exc)
+    return None
+
+
+def post_tool_failure(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for PostToolUseFailure."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_post_tool_failure(data, config)
+    except Exception as exc:
+        log.warning("post_tool_failure tracer failed: %s", exc)
+    return None
+
+
+def stop(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for Stop."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_stop(data, config)
+    except Exception as exc:
+        log.warning("stop tracer failed: %s", exc)
+    return None
+
+
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
+    "UserPromptSubmit": [user_prompt_submit],
+    "PreToolUse": [pre_tool],
+    "PostToolUse": [post_tool],
+    "PostToolUseFailure": [post_tool_failure],
+    "Stop": [stop],
     # "PostToolBatch": [rule_against_hearsay],
-    # "Stop": [honest_output],
     "SubagentStop": [honest_output],
 }

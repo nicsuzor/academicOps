@@ -1,7 +1,0 @@
-{
-  "manifestVersion": "1.0",
-  "name": "aops-debug",
-  "clients": {
-    "__base__": {}
-  }
-}

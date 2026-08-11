@@ -14,7 +14,7 @@ IMAGE ?= ghcr.io/nicsuzor/aops-crew
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
 PLUGIN_NAMES = $(shell uv run python -c "import tomllib, pathlib; d = tomllib.loads(pathlib.Path('build/marketplace.toml').read_text()); print(' '.join(p['name'] for p in d['plugins']))" 2>/dev/null)
-STALE_PLUGIN_NAMES = aops aops-cope aops-core aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts
+STALE_PLUGIN_NAMES = aops aops-cope aops-core aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts aops-debug
 
 help:
 	@echo "make build          - assemble dist/ for every plugin, both clients (build/build.py)"

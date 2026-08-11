@@ -1,3 +1,0 @@
-[[shared]]
-from = "hooks"
-to = "hooks"
