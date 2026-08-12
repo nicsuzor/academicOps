@@ -372,7 +372,9 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         "send_message",
         "view_file",
         "list_resources",
+        "mcp_services_pkb_search",
         "mcp_services_pkb_get_task",
+        "mcp_services_pkb_claim_task",
         "mcp_services_pkb_status",
     ]
 
@@ -418,8 +420,7 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert agy_fm["tools"] == accepted_tools
-    assert len(agy_fm["tools"]) == len(accepted_tools)
+    assert agy_fm["tools"] == ["*"]
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):

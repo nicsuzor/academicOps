@@ -152,9 +152,7 @@ The split it encodes is that proof is attached by the **worker**, because a
 returning result cannot be amended afterwards, and that the **receiver's** only
 move on a report without proof is to send it back. Re-verifying, re-running, or
 completing the work on the worker's behalf is not the receiver's job at any
-tier. Brief composition is the same shape and sits in james's body under
-"Delegate, don't dictate": the goal and why it matters, the criteria the output
-will be assessed against, and the evidence that will be accepted.
+tier.
 
 ### rbg
 
