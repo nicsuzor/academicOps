@@ -5,54 +5,67 @@ description: Claim a queued task, execute it, record the result on the task, and
 
 # Pull
 
-Each task was vetted before it became available. Execute it faithfully: it is the whole of your obligation and the limit of your authority.
+Claim a task from the Personal Knowledge Base (PKB) and manage an appropriately sized team of subagents to achieve the goal in line with the parameters and acceptance criteria.
 
-Work counts only once it is recorded on the task. In an ephemeral container or worktree your changes exist nowhere else — halt without completing the handover and they are destroyed.
+## Dispatch procedure
 
-## 1. Claim and continuously update your task
+You have a strong team of subagents available. Your job is to delegate to them and manage complex tasks to completion. The standard we are aiming for is nothing short of excellence.
+
+Use your native tools to manage a team of subagents working in the background.
+
+### 1. Claim
 
 Claim your task through the knowledge base and synchronise it with your internal TODO list.
 
-- If you were given no id, search for the task by title; if you cannot find it, halt and report.
-- Ensure both the PKB and your internal TODO list are COMPREHENSIVE and always IMMEDIATELY updated.
-- DO NOT append your actions, findings, or plans to the PKB. The PKB task is a WORKFLOW, not a LOG.
-- DO NOT allow the PKB task to grow with your findings and considerations. It must always remain concise, structured, and action-oriented.
-- IMMEDIATELY write completion information to each subtask as it is completed. You may be interrupted at any time and any internal state will be DESTROYED.
-- SYNTHESISE, DO NOT APPEND: the ONLY information you may write to your PKB task is: completion status for each step, links to the deliverable, and concise evidence of completion.
+- Use the `pkb:services:pkb` MCP server to call `claim_task` with your task id.
+- If you do not have a task id, search for the task by title using the `task_search` command.
+- If you cannot find it with certainty, halt and report.
 
-The claimed task is your unit of delivery, children included. Existing children are input to your plan: execute them directly in sequence or in parallel where the work allows. The return contract attaches to the **claimed** task — one deliverable, with evidence and an output URL — never a spray of per-child deliverables.
+The return contract attaches to the **claimed** task — one deliverable, with evidence and an output URL — including the completed child tasks.
 
-## 2. Plan
+**Your authority does not extend to related, out-of-tree tasks:** you must stay within the scope of your granted authority within a task and its descendants. If your are blocked by an external task, you must do what you can and return any blocked work unfinished.
 
-Track every step and deliverable on your native task list, including all outstanding subtasks, then a verification step, and finally "Handover".
+**Within the bounds of your task, you MUST exercise your discretion:** We are relying on you to make autonomous decisions about how best to achieve the goal in line with the parameters and acceptance criteria. You should try the most appropriate approach; even if it is not accepted at the review stage, providing a worked example helps the project maintainers to choose between options. Returning something and explaining the roads not taken is better than waiting for permission and returning nothing. You are working in an isolated environment; you can make changes without fear of causing damage.
 
-## 3. Execute
+### 2. Hydrate
 
-Execute the steps systematically, sequencing in parallel where the work allows.
+Call on **`pauli`** to use the _`hydrate`_ skill to get the most up to date context for the task at hand. Ask `pauli` for all information -- strategic, operational, and theoretical -- whenever you start a new step or your instructions are ambiguous.
 
-**Refuse and attempt.** Refuse any choice not derivable with reasonable confidence from the axioms plus the context you were given — that is the same limit on your authority, applied to decisions. Attempt everything that does not depend on a refused choice, then take `dump`'s `partial` path.
+### 3. Dispatch
 
-## 4. Fail FAST and LOUD
+Work through your ToDo list, delegating to and managing subagents as required.
 
-Failures are routine and provide valuable information.
+- Use your native tools to delegate subtasks to subagents.
+- Execute tasks in parallel where the work allows.
+- **Do not poll, sleep, or loop to wait for your agents**; you will receive a callback when they finish.
 
-- **NO WORKAROUNDS**: DO NOT attempt to bypass or repair an infrastructure or tooling problem.
-- **HALT IMMEDIATELY** and provide concise and clear evidence of the failure in your task.
-- **Workarounds are selfish and dangerous**: failures must be dealt with upstream so that others do not repeat the same mistakes.
+**4. Stop and Consolidate:**
 
-## 5. Partial completion is SUCCESS
+- Do not assemble interim reports.
+- Once all work has been completed, prepare a consolidated and synthesized report for the user.
+- Your report must include verbatim, well-referenced extracts of each logical claim you make.
+- If a particular step proves impossible to complete (due to incomplete design or tooling limitations), you should **clearly state the work NOT done**; you should still complete any steps that do not rely on the failed work.
 
-Complete what steps you can and cut at a clean seam. Mark what is incomplete and why.
-
-## 6. Verify
+**5. Validate your report:**
 
 Check your work against the literal requirements and acceptance criteria set out in the task, and carry the evidence for each into the report you hand back — the brief's evidence bar is what your claims are admitted against. Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
 
-Do not certify a task complete without certainty that it is delivered in full.
+Work is only complete when verified by `marsha` and `rbg` accompanied with **durable records of evidence** and **well-constructed reasoning.** Always report your level of certainty and explain any plausible alternative hypotheses.
 
-## 7. Handover
+Before you return your report, you must obtain independent verification from your specialized reviewers:
 
-Invoke the `dump` skill. It records your work and lets the task proceed to the next stage.
+- **`rbg` (Compliance)**: Mandatory verification of rules, axioms, and project standards. Ask `rbg` to manage all risks to academic integrity and assess compliance with our processes.
+- **`marsha` (Quality)**: Invoke `marsha` for all QA, evaluation, testing, and substantive review work, assessing deliverables against original task and acceptance requirements, and a qualitative assessment of excellence.
+
+If your reviewers recommend changes, loop back to **step 2** with new instructions.
+
+**Do not** certify a task complete without certainty that it is delivered in full.
+
+**If your reviewers REJECT the work**, you must return the task FAILED. This is not your fault: the task is undeliverable as designed. You **do not have authority** to repair work by changing the pre-determined and certified workflow processes and acceptance requirements you were initially provided. This task **must** be escalated for a full re-design and re-certification pass before it can be dispatched again.
+
+**6. Handover (land the plane):**
+
+Conclude by invoking the `dump` skill for a full handover. It records your work and lets the task proceed to the next stage.
 
 - Your environment is EPHEMERAL. You must use the `dump` skill or your work will be DESTROYED.
-- Your supervisor is STRICT. If you do not adhere precisely to the handover instructions, your work will be SILENTLY REJECTED.
+- Your supervisor is STRICT. If you do not adhere precisely to the handover instructions, your work will be SILENTLY REJECTED and we will have to start the task over with a new agent.
