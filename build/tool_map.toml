@@ -2,7 +2,7 @@
 # Documented re-extraction step:
 # 1. Run an agy session with `--output-format stream-json` to extract candidate tool names from the `init` event `tools` array (56 host native tool names).
 # 2. Test each candidate tool name ALONE in an agent's `tools:` frontmatter key and check the exit code of `agy --agent <name>`.
-# 3. Omit `call_mcp_tool` and `delete_knowledge` (both cause exit code 1 / LOUD failure at execution time when declared in agent frontmatter `tools:` list).
+# 3. Omit `delete_knowledge` (maybe -- surface not clear? causes exit code 1 / LOUD failure at execution time when declared in agent frontmatter `tools:` list).
 # 4. Save the 54 accepted tool names below.
 
 [provenance]
@@ -88,7 +88,7 @@ TaskList = ["manage_task"]
 TaskUpdate = ["manage_task"]
 TaskStop = ["manage_task"]
 Skill = []
-ToolSearch = []
+ToolSearch = ["call_mcp_tool"]
 ListMcpResourcesTool = ["list_resources"]
 TodoWrite = []
 Monitor = []
