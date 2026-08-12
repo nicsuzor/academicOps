@@ -1,6 +1,6 @@
 ---
 name: dump
-description: "Session exit — one skill, four paths. Bare `/dump` is the emergency bail: resume task plus a short handover, nothing committed. `/dump full` is the canonical close: commit, push, PR, release. `/dump partial` hands back attempted work with the refused decisions named. `/dump pause` hands control back with the work still in progress."
+description: "Session exit and handover — commit and push your work, release any claimed PKB tasks with a status report, and emit a single final handover message. Invoke whenever a session is ending, being interrupted, or work must be handed off to the next agent."
 ---
 
 # Dump — Session Exit

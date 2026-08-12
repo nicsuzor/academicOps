@@ -32,7 +32,7 @@ flowchart TD
         learn -. task scope .-> pull
     end
 
-    pull --> dump["skills/dump<br/>session exit — bail, close,<br/>hand back, or pause"]
+    pull --> dump["skills/dump<br/>session exit — save, push,<br/>release tasks, hand over"]
     pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
     reconcile -- "re-plan when the wave lands:<br/>back to inbox" --> capture
 
@@ -186,7 +186,7 @@ not collection. The standard for what that means is
 | `reconcile` | Establish what is true about in-flight and finished work, write it back, return the affected tasks to `inbox`.                                                                                                           |
 | `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                                                                                                                        |
 | `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims.                                                                                                        |
-| `dump`      | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                                                                                                                            |
+| `dump`      | Session exit — save and push work, release claimed tasks with a report, and emit a final handover.                                                                                                                       |
 
 ### Command
 
