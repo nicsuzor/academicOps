@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.7.2](https://github.com/nicsuzor/academicOps/compare/v0.7.1...v0.7.2) (2026-08-12)
+
+
+### Features
+
+* **build:** rewrite agy agent tool translation according to verified semantics ([a4e5679](https://github.com/nicsuzor/academicOps/commit/a4e5679c2d8b5fced590384954e8e4764999b835))
+* **diagram:** add excal-edit.py arrows check and render --region ([2351fc0](https://github.com/nicsuzor/academicOps/commit/2351fc0e0c414cb0ca10553a2eefb668ed75fe16))
+* **diagram:** excal-edit.py arrows check + render --region ([8e639ef](https://github.com/nicsuzor/academicOps/commit/8e639ef0b9c6fe1ac197046f3192dd154898c66c))
+* **ida:** fold final-reply standing discipline rules into ida agent definition (task_ff6f26ed) ([3ae45c9](https://github.com/nicsuzor/academicOps/commit/3ae45c90a4757b8146ef5230060a42ca17129e89))
+* **ida:** fold final-reply standing discipline rules into ida agent definition (task_ff6f26ed) ([5c3b9d7](https://github.com/nicsuzor/academicOps/commit/5c3b9d7a4d7c3af35c4c9eb165433ba2e4bdc4f8))
+* **ida:** sharpen ADHD executive briefing standard and hook rules ([b178a6b](https://github.com/nicsuzor/academicOps/commit/b178a6b8414ef2c57517a1d7d9c2da7ec7730b0d))
+* **orchestrate:** import Claude Code OTel gRPC tracer into orchestrate plugin ([bc98f41](https://github.com/nicsuzor/academicOps/commit/bc98f4103e11ab655646b7d97a19f12055a7d9f6))
+* **orchestrate:** import Claude Code OTel gRPC tracer into orchestrate plugin ([16da41a](https://github.com/nicsuzor/academicOps/commit/16da41a717ee8e79d85a90b33edbf9951ab5fb00))
+* **v0.7.2:** OpenInference OTel tracer, AGY tool translation, transcript engine overhaul, and agent discipline ([6170917](https://github.com/nicsuzor/academicOps/commit/6170917179fe933c292c62ee146345669da3548a))
+
+
+### Bug Fixes
+
+* **build:** let AGY_VERSION/CLAUDE_CODE_VERSION actually refresh their layers; correct MCP registration docstring ([4e56f08](https://github.com/nicsuzor/academicOps/commit/4e56f086dbc79b9df58cf80f891c489aa81f76e3))
+* **hooks:** log a warning when claude_code_tracer fails to import ([c595e8e](https://github.com/nicsuzor/academicOps/commit/c595e8ebb53675dc02557a72d989b3db9a98af08))
+* **ida:** point quiet.md at the briefing standard instead of restating it ([d001827](https://github.com/nicsuzor/academicOps/commit/d0018278ae3709e9e5e2092d06c4bf4c0de67221))
+* **ida:** restore PostToolBatch hook wiring and update assertions ([28d74ba](https://github.com/nicsuzor/academicOps/commit/28d74bab3f23382a8cc23429143744e1574f67ce))
+* **orchestrate:** add doc/diagram QA criteria to marsha and strategic-review ([fe364ae](https://github.com/nicsuzor/academicOps/commit/fe364ae39cdebe01652f2aef9811b679a5e7a495))
+* **orchestrate:** address strategic review feedback for OTel tracer PR [#2425](https://github.com/nicsuzor/academicOps/issues/2425) ([1a180cc](https://github.com/nicsuzor/academicOps/commit/1a180cc7e85b5953b4d873eaab196c1ddf1e795d))
+* **polecat:** do not install ida plugin in polecat containers ([2b6c9ac](https://github.com/nicsuzor/academicOps/commit/2b6c9ac75d2a350fff1950fb0ca936daa62c2dc7))
+* **rbg:** unregister hooks again — agy PostInvocation→Stop fires the rule gate on every tool call ([9e5c62a](https://github.com/nicsuzor/academicOps/commit/9e5c62a16b67a0ab74ba7b177993d7a923b8f01d))
+* **tracer:** annotate TracerProvider kwargs dict as dict[str, Any] ([6e8ad0e](https://github.com/nicsuzor/academicOps/commit/6e8ad0e1d8d97e330ebe83175a079fa257c888f2))
+* **tracer:** bound OTLP span export with a 2s timeout ([04cfee7](https://github.com/nicsuzor/academicOps/commit/04cfee73b7bd8895bb62a4aefd418a73457fd906))
+
+
+### Reverts
+
+* **dogfood:** drop the process-scoped hypothesis clause — blind re-test showed no gap to close ([d5759f0](https://github.com/nicsuzor/academicOps/commit/d5759f0ee55b03288fbf3037b05326407af984a0))
+
+
+### Documentation
+
+* **build:** label the call_mcp_tool omission as a dated [#2422](https://github.com/nicsuzor/academicOps/issues/2422) mitigation ([a6237f9](https://github.com/nicsuzor/academicOps/commit/a6237f9c21787e1e5de88d92b42885292ddce04c))
+* **core:** update agy defect note to MCP issue [#2422](https://github.com/nicsuzor/academicOps/issues/2422) and fix test docstrings ([3158803](https://github.com/nicsuzor/academicOps/commit/3158803caf30acfcab654e3298602645a6b43815))
+* **debug:** update agy diagnostic advice for frontmatter tools and retire defect [#2387](https://github.com/nicsuzor/academicOps/issues/2387) reference ([63388f0](https://github.com/nicsuzor/academicOps/commit/63388f0277549ab3f81edc30d46d9e86a81bac95))
+* **ida:** correct agy wrapper invocation, MCP and skill forms ([e93b1dc](https://github.com/nicsuzor/academicOps/commit/e93b1dcc6beee250996f72e06443b3a922bbab66))
+* **ida:** warn against briefing findings instead of the user's task ([20c7ed9](https://github.com/nicsuzor/academicOps/commit/20c7ed932be294a1cbfe1a6476d0fa3c379d21a6))
+* **reconcile:** add concise task status reconciliation instruction ([d89a639](https://github.com/nicsuzor/academicOps/commit/d89a639ae78d09fc86e05e196bd9b68af0f41675))
+* **skills:** make hypotheses falsifiable, keep doctrine out of briefs, bar verdicts from absence ([4ca9d2c](https://github.com/nicsuzor/academicOps/commit/4ca9d2cff54c0e231959ee2f0309630153e0fde2))
+* **specs:** mark the enforcement carriers this branch deleted ([04b584e](https://github.com/nicsuzor/academicOps/commit/04b584eda6b0cdb8b5acef48b253ee8e8a165f1e))
+* **specs:** reconcile ARCHITECTURE with what the branch ships ([829d17f](https://github.com/nicsuzor/academicOps/commit/829d17fec6efb219ad81ec934162689bbe950a36))
+* **tracer:** record why transcript discovery cannot reuse lib/py/transcripts ([edacc46](https://github.com/nicsuzor/academicOps/commit/edacc46bd4b3d47c8f093f6c3178bcfdfbb3704a))
+
+
+### Tests
+
+* **tracer:** assert the export timeout on both exporter constructions ([9eeac2e](https://github.com/nicsuzor/academicOps/commit/9eeac2ef42ea28c85d4f5c6e30e82ee93bb20d83))
+
 ## [0.7.1](https://github.com/nicsuzor/academicOps/compare/v0.7.0...v0.7.1) (2026-08-07)
 
 ### Features
