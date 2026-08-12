@@ -133,6 +133,7 @@ def test_create_exporter_grpc_success():
             endpoint="http://localhost:4317",
             headers={"Authorization": "Bearer token"},
             insecure=True,
+            timeout=claude_code_tracer._EXPORT_TIMEOUT_S,
         )
 
 
@@ -154,6 +155,7 @@ def test_create_exporter_grpc_missing_fallback_http():
         mock_http_exporter_cls.assert_called_once_with(
             endpoint="http://localhost:4318/v1/traces",
             headers=None,
+            timeout=claude_code_tracer._EXPORT_TIMEOUT_S,
         )
 
 
