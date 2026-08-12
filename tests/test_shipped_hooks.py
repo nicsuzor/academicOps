@@ -27,6 +27,7 @@ import subprocess
 import sys
 import tarfile
 import threading
+import tomllib
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -40,6 +41,15 @@ from build.tree import EXCLUDE_NAMES, has_shebang
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
+_POLICY_FILE = _REPO_ROOT / "tests" / "policy.toml"
+_policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
+
+
+def _require_evaluate_enabled():
+    if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
+        pytest.skip("rbg evaluate hook is disabled by policy")
+
+
 _CLIENTS = ("claude", "agy")
 
 # PEP 440, because the built plugin carries this into its own pyproject.toml
@@ -581,6 +591,7 @@ def test_cope_shipped_hook_flags_the_axiom_it_ships_for(dist_root, stub_evaluato
     runs it, on a `--no-verify` commit, against an evaluator that flags the
     matching policy. It names halt-on-failure and echoes the call. Exit 0 alone
     would also be satisfied by a hook that does nothing."""
+    _require_evaluate_enabled()
     build_dir = dist_root / "rbg-claude"
     commands = _hook_commands("claude", build_dir)
     assert commands, "aops-cope-claude ships no hook command"
@@ -603,6 +614,7 @@ def test_cope_shipped_hook_tells_the_person_watching_which_rule_was_flagged(
     stdout, because that is the only field of this response Claude Code shows
     the person whose rules these are. Without it the check runs, corrects the
     agent, and never surfaces — leaving them nothing to decide on."""
+    _require_evaluate_enabled()
     build_dir = dist_root / "rbg-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     proc = _run_shipped_hook(
@@ -634,6 +646,7 @@ def test_rbg_shipped_hook_reports_a_degradation_out_of_the_built_artifact(
     displaces nothing else, which is the fail-open guarantee. And reporting is
     never a gate: this hook may not block a tool call.
     """
+    _require_evaluate_enabled()
     project = tmp_path / "project"
     (project / ".agents" / "rules").mkdir(parents=True)
     (project / ".agents" / "rules" / "unreadable.md").mkdir()  # a rule file that is not a file
@@ -670,6 +683,7 @@ def test_rbg_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_ro
     the hook. Warming it first keeps the assertion exact — stderr must be
     EMPTY, not merely free of anything that looks like a complaint.
     """
+    _require_evaluate_enabled()
     build_dir = dist_root / "rbg-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     unconfigured = dict.fromkeys(
@@ -702,6 +716,7 @@ def test_rbg_shipped_hook_traces_every_rule_evaluated_not_only_the_matches(
     ``halt-on-failure``, which is the one the stub evaluator flags. A tuning
     set built from the flags alone could never show what an unflagged rule was
     asked and answered, which is the whole reason every evaluation is traced."""
+    _require_evaluate_enabled()
     build_dir = dist_root / "rbg-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     trace_path = tmp_path / "trace" / "rbg-eval-trace.jsonl"
@@ -757,6 +772,7 @@ def test_shipped_rbg_hook_can_never_emit_a_blocking_decision(dist_root, stub_eva
     Scoped to `PreToolUse`. rbg's `Stop`/`SubagentStop` gate does carry a
     disposition, and legitimately: what it withholds is the stop, not the tool
     call. Its coverage is tests/test_rbg_stop_gate.py."""
+    _require_evaluate_enabled()
     build_dir = dist_root / "rbg-claude"
     proc = _run_shipped_hook(
         "claude",
@@ -919,12 +935,53 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
             continue  # the debug plugin wires every event on purpose
 
         registered = _registered_events(hooks_dir, client)
-        assert registered, f"{name}-{client}: handlers.py registers nothing"
+        if not registered:
+            # If a plugin is entirely disabled by policy, we allow it to register nothing.
+            is_disabled = False
+            if name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get(
+                "enabled", True
+            ):
+                is_disabled = True
+            elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
+                is_disabled = True
+            elif name == "pkb" and not _policy.get("pkb", {}).get("search_the_pkb_enabled", True):
+                is_disabled = True
+            elif name == "orchestrate":
+                p = _policy.get("orchestrate", {})
+                if not p.get("rule_against_hearsay_enabled", True) and not p.get(
+                    "honest_output_enabled", True
+                ):
+                    is_disabled = True
+            assert is_disabled, f"{name}-{client}: handlers.py registers nothing"
+            continue
 
         expected = {
             wire for wire, canonical in _wire_events(client).items() if canonical in registered
         }
         wired = {wire for wire, _ in _hook_commands(client, build_dir)}
+
+        def _wires_for(canonical: str, c_name: str = client) -> set[str]:
+            return {w for w, c in _wire_events(c_name).items() if c == canonical} | {canonical}
+
+        allowed_missing = set()
+        if name == "orchestrate":
+            p = _policy.get("orchestrate", {})
+            if not p.get("rule_against_hearsay_enabled", True):
+                allowed_missing.update(_wires_for("PostToolBatch"))
+            if not p.get("honest_output_enabled", True):
+                allowed_missing.update(_wires_for("Stop"))
+                allowed_missing.update(_wires_for("SubagentStop"))
+        elif name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
+            allowed_missing.update(_wires_for("PreToolUse"))
+        elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
+            allowed_missing.update(_wires_for("PostToolBatch"))
+            allowed_missing.update(_wires_for("Stop"))
+        elif name == "pkb" and not _policy.get("pkb", {}).get("search_the_pkb_enabled", True):
+            allowed_missing.update(_wires_for("UserPromptSubmit"))
+
+        wired = wired - allowed_missing
+        expected = expected - allowed_missing
+
         assert wired == expected, (
             f"{name}-{client}: handlers register {sorted(registered)}; "
             f"this client fires {sorted(expected)}; hooks.json wires {sorted(wired)}"

@@ -11,5 +11,10 @@
       "command(make *)",
       "command(*)"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "agystatusline",
+    "padding": 0
   }
 }

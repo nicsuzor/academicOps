@@ -66,6 +66,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     ca-certificates \
     openssh-client \
+    golang-go \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -137,7 +138,7 @@ USER worker
 
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
-    PATH="/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
+    PATH="/home/worker/go/bin:/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
     ANTIGRAVITY_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 \
@@ -168,6 +169,9 @@ RUN umask 000 && curl -fsSL https://antigravity.google/cli/install.sh | bash \
 
 # Install Python-based CLI tools as user (installs to ~/.local/bin)
 RUN umask 000 && uv tool install ruff
+
+# Install agystatusline for agy status line
+RUN umask 000 && go install github.com/yuys13/agystatusline@latest
 
 # ── Layer ordering from here down ──────────────────────────────────────
 # Docker invalidates every layer AFTER the first cache miss, so the layers
@@ -210,6 +214,7 @@ RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --gr
 # here because none of these depend on anything below.
 RUN umask 000 && mkdir -p /home/worker/.claude \
     /home/worker/.config/ccstatusline \
+    /home/worker/.config/agystatusline \
     /home/worker/.gemini/antigravity-cli/cache
 
 # ── Install aops framework from the source selected above ─────────────
@@ -227,12 +232,9 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 # WHICH plugins install is read from the marketplace manifest shipped in the
 # dist tree, which build/marketplace.py renders from build/marketplace.toml —
 # the single source of truth for the plugin set (specs/ARCHITECTURE.md's plugin
-# table). Nothing here names a plugin: adding one to marketplace.toml ships it
-# in this image with no Dockerfile edit, and an empty list is a build failure
-# rather than a quietly under-populated image. Every declared plugin installs,
-# including aops-ts — the container is precisely the remote session that plugin
-# exists for, and its hook is inert unless the environment supplies both
-# CLAUDE_CODE_REMOTE=true and TS_AUTHKEY.
+# table). Every declared plugin except `ida` installs — polecat containers run
+# autonomous worker agents, so `ida` (the interactive face) is explicitly not
+# installed for either agy or claude.
 #
 # The Gemini CLI extension surface is deprecated and intentionally not
 # installed here (matches `make install`, which doesn't install it either).
@@ -279,7 +281,7 @@ RUN umask 000 \
     else \
         MP_ROOT=/tmp/aops-dist; \
     fi \
-    && PLUGINS="$(jq -r '.plugins[].name' "$MP_ROOT/.claude-plugin/marketplace.json")" \
+    && PLUGINS="$(jq -r '.plugins[].name | select(. != "ida")' "$MP_ROOT/.claude-plugin/marketplace.json")" \
     && { [ -n "$PLUGINS" ] || { echo "FATAL: no plugins declared in $MP_ROOT/.claude-plugin/marketplace.json" >&2; exit 1; }; } \
     && echo "Installing plugins: $(echo $PLUGINS)" \
     && claude plugin marketplace add "$MP_ROOT" \
@@ -327,6 +329,7 @@ RUN uvx --from 'fastmcp-slim[server]' fastmcp --version >/dev/null 2>&1 || true
 # ~/.gemini, so these files have to land after it to win. Only their parent
 # dirs were hoisted (see the batched mkdir further up).
 COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/ccstatusline-settings.json /home/worker/.config/ccstatusline/settings.json
+COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agystatusline-settings.json /home/worker/.config/agystatusline/settings.json
 # Seed .claude.json with hasCompletedOnboarding so headless workers authenticated
 # via CLAUDE_CODE_OAUTH_TOKEN skip the interactive theme/login prompts. The
 # env-only auth model (lib/polecat/cli.py's get_env_forwards()) stages no

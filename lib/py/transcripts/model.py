@@ -68,6 +68,10 @@ class SubagentTranscript:
     parent_agent_id: str | None = None
     tokens_used: int = 0
     cost_usd: float = 0.0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
     # From the `agent-<id>.meta.json` sidecar. `spawn_depth` is NOT reliably
     # parent+1 for team-mode spawns (a mailbox/named spawn) — `parent_agent_id`
     # is the field that stays correct there; treat spawn_depth as a rendering

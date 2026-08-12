@@ -18,7 +18,7 @@ The hydration/JIT context system repeatedly fails to deliver information that ag
 Two failure modes recur:
 
 1. **Architecture knowledge gaps**: The hydrator does not surface how the system actually works (e.g., that `.env.local` gate mode env vars are injected at session launch via `CLAUDE_ENV_FILE`, not sourced inside hook subprocesses).
-2. **Existing-work blindness**: The hydrator fails to surface existing test suites, specs, or implementations before the agent proposes building something that already exists (e.g., proposing a "gate simulator" CLI tool when `tests/hooks/test_gate_verdicts.py` already covers exactly that).
+2. **Existing-work blindness**: The hydrator fails to surface existing test suites, specs, or implementations before the agent proposes building something that already exists (e.g., proposing a "gate simulator" CLI tool when `tests/test_dispatch_gate.py` already covers exactly that).
 
 ## Ownership
 
@@ -58,7 +58,7 @@ When diagnosis reveals a structural problem (not just a missing fact):
 
 1. Create a spec or spec amendment describing the structural change
 2. Wire it as a dependency of the current release milestone
-3. Include regression tests (add scenarios to `tests/hooks/test_gate_verdicts.py` or create new test files)
+3. Include regression tests (asserted behaviourally, `tests/test_dispatch_gate.py`). Nothing inside the hooks directory, and no hook imported by it, can construct the shape that blocks a tool call.
 4. QA verification required before closing
 
 ## Gap Taxonomy
@@ -66,7 +66,7 @@ When diagnosis reveals a structural problem (not just a missing fact):
 | Gap Type                   | Description                                                                     | Example                                                                      | Typical Fix                                           |
 | -------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
 | **Missing fact**           | A specific fact about the system is not in any context the hydrator can access  | "env vars are injected via CLAUDE_ENV_FILE"                                  | Add to relevant reference doc or memory               |
-| **Missing file reference** | The hydrator does not know to surface a specific file when context matches      | "test_gate_verdicts.py exists and covers gate simulation"                    | Add to context-map.json or workflow reference section |
+| **Missing file reference** | The hydrator does not know to surface a specific file when context matches      | "test_dispatch_gate.py exists and covers gate simulation"                    | Add to context-map.json or workflow reference section |
 | **Wrong assumption**       | The hydrator (or agent) assumes something that contradicts how the system works | "hooks source .env.local in subprocess"                                      | Correct the reference doc; add to guardrails          |
 | **Stale context**          | Context exists but is outdated                                                  | "test file moved from old location"                                          | Update reference; add staleness check                 |
 | **Missing workflow step**  | A workflow omits a step that would have prevented the error                     | "feature-dev workflow should check existing tests before proposing new ones" | Update workflow file                                  |
@@ -125,7 +125,7 @@ Track these across releases to measure improvement:
 When the hydrator is enriching a task that involves hooks, gates, or the framework itself, it MUST:
 
 1. Search for existing test files: `tests/hooks/`, `tests/integration/`, `tests/e2e/`
-2. Check if `test_gate_verdicts.py` scenarios cover the relevant gate behavior
+2. Check if `test_dispatch_gate.py` scenarios cover the relevant gate behavior
 3. Surface the hooks reference doc (`hooks.md`) architecture section
 4. Note that gate mode env vars are injected at session launch (not sourced in hook subprocesses)
 5. Check for related open tasks under `aops-fa32b8ad`
@@ -136,7 +136,7 @@ This self-check should be added to the hydrator's detection patterns in SKILL.md
 
 - **Epic**: `aops-fa32b8ad` (Hydration Gate Reliability)
 - **Existing tasks**: `aops-1bf76d85` (env var architecture gap)
-- **Test suite**: `tests/hooks/test_gate_verdicts.py` (gate verdict regression tests)
+- **Test suite**: `tests/test_dispatch_gate.py` (gate verdict regression tests)
 - **Hydrator skill**: `aops-core/skills/hydrator/SKILL.md`
 - **Context map**: `.agents/context-map.json`
 - **Hooks reference**: `.agents/skills/framework/references/hooks.md`

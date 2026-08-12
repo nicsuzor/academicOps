@@ -140,9 +140,9 @@ def test_4_tier_output_artifacts_written(
     full_content = full_path.read_text(encoding="utf-8")
     concise_content = concise_path.read_text(encoding="utf-8")
 
-    # Controller has controlling agent events but NOT subagent conversation details
+    # Controller has controlling agent events and inline subagent response callouts
     assert "Controlling Agent Transcript" in controller_content
-    assert "Analysis result for <dataset_table>" not in controller_content
+    assert "Subagent Response:" in controller_content
     assert "## 🧵 Subagents" in controller_content
 
     # Full has full subagent transcript

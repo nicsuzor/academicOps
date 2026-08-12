@@ -85,28 +85,16 @@ make format         # ruff format + dprint fmt
 
 Headless agy runs use `agy --output-format stream-json -p "<prompt>"`.
 
-**Open defect, 2026-08-07 — no agent parity on agy ([#2387]).** Every agent
-_this repo builds_ — james, rbg and pauli were tested — comes up under
-`--agent <name>` with a fixed read-only toolset (`find_by_name`,
-`generate_image`, `grep_search`, `list_dir`, `read_url_content`, `schedule`,
-`search_web`, `send_message`, `view_file`): no `call_mcp_tool`, no write, no
-shell. An unnamed agy run gets the full set. So the personas that carry this
-framework's doctrine cannot currently run work on agy.
-
-**Cause isolated:** agy's persona mechanism downstream restricts tool schemas
-presented to the model to the read-only subset, dropping shell, write, and MCP
-tools, even though all 56 tools are registered at init. The build adapter (and
-its `includeSections` injection) is cleared: a hand-written agent definition
-untouched by our build comes up identically crippled. Dropping `--agent` remains
-a **temporary mitigation** and client parity stands owed. A worker that reads
-and greps and then dies with `trajectory converted to zero chat messages` at
-exit 0 had no write tool — read that as this defect, not as a crash to retry
-verbatim.
+**Open defect — named agy agents get no MCP access ([#2422]).** `agy` honours an
+explicit `tools:` list in agent frontmatter (an agent without `tools:` defaults
+to a 9-tool read-only set). The build emits explicit tool lists so named agents
+get native tools, but named `agy` agents receive no MCP access because `agy`'s
+`DeclarativeAgentMixin` does not register MCP tool converters ([#2422]).
 
 A worker that has to change anything also wants
 `--dangerously-skip-permissions`.
 
-[#2387]: https://github.com/nicsuzor/academicOps/issues/2387
+[#2422]: https://github.com/nicsuzor/academicOps/issues/2422
 
 Give a worker its brief in a file and pass a one-line pointer. Long `-p`
 prompts are also a way to lose a run, and a brief on disk is the one the next

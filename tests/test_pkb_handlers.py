@@ -18,6 +18,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 PKB_HOOKS = REPO_ROOT / "plugins" / "pkb" / "hooks"
 RUN_MCP = REPO_ROOT / "plugins" / "pkb" / "scripts" / "run-mcp.sh"
+POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
+
+_policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
+
+
+def _require_search_enabled():
+    if not _policy.get("pkb", {}).get("search_the_pkb_enabled", True):
+        pytest.skip("search_the_pkb is disabled by policy")
+
 
 # Resolved once, up front: a test that strips PATH down to an empty directory
 # (to prove run-mcp.sh can't find `uvx`) must still be able to launch `bash`
@@ -115,6 +125,7 @@ def _run(handler: str, raw: dict):
 
 
 def test_search_the_pkb_is_wired_only_to_userpromptsubmit():
+    _require_search_enabled()
     registered = _handlers_module()
     assert registered["UserPromptSubmit"] == ["search_the_pkb"]
     assert set(registered["names"]) >= {"search_the_pkb", "HANDLERS"}
@@ -125,6 +136,7 @@ def test_search_the_pkb_has_no_client_scope_so_it_fires_on_both():
     `dispatch.py`'s `_for_client` only narrows a handler that declares
     `only_on_clients` — the absence of that attribute is what makes `both`
     true, so this pins the absence rather than assuming it."""
+    _require_search_enabled()
     registered = _handlers_module()
     assert registered["only_on_clients"]["search_the_pkb"] is None
 
@@ -134,6 +146,7 @@ def test_search_the_pkb_returns_an_advisory_never_a_refusal():
     nothing in-session may block on this hook (specs/ARCHITECTURE.md,
     Enforcement) — a refusal is reserved for structural impossibility
     (lib/hooks/dispatch.py), and searching the PKB is never that."""
+    _require_search_enabled()
     res = _run("search_the_pkb", {"hook_event_name": "UserPromptSubmit", "prompt": "anything"})
     assert res is not None
     assert res["kind"] == "advise"
@@ -146,6 +159,7 @@ def test_search_the_pkb_carries_the_user_line_as_well_as_the_agent_text():
     from `messages/pkb-context.user.md` alongside the agent's full text. This
     hook fires on every prompt: a silent one would make the framework's most
     frequent injection its least visible."""
+    _require_search_enabled()
     assert PKB_CONTEXT_USER_TEXT, "pkb-context.user.md ships empty, which reads as absent"
     res = _run("search_the_pkb", {"hook_event_name": "UserPromptSubmit"})
     assert res["user_text"] == PKB_CONTEXT_USER_TEXT
@@ -187,6 +201,7 @@ def _dispatch(hooks_dir: Path, client: str, event: str, raw: dict, env: dict | N
 def test_dispatch_claude_userpromptsubmit_uses_additional_context_never_a_permission_decision(
     tmp_path,
 ):
+    _require_search_enabled()
     hooks_dir = _pkb_plugin(tmp_path)
     result = _dispatch(
         hooks_dir,
@@ -206,6 +221,7 @@ def test_dispatch_claude_puts_the_user_line_on_system_message(tmp_path):
     to survive rendering. Claude Code is the client with a channel for each
     reader (lib/hooks/dispatch.py, `_render_claude`), and `systemMessage` is
     where the person's copy lands."""
+    _require_search_enabled()
     hooks_dir = _pkb_plugin(tmp_path)
     result = _dispatch(
         hooks_dir,
@@ -223,6 +239,7 @@ def test_dispatch_agy_preinvocation_alias_also_fires(tmp_path):
     """agy's `PreInvocation` is `UserPromptSubmit`'s canonical alias
     (lib/hooks/dispatch.py) — the architecture table marks this hook `both`, so
     the agy wire event must reach the same handler."""
+    _require_search_enabled()
     hooks_dir = _pkb_plugin(tmp_path)
     result = _dispatch(hooks_dir, "agy", "PreInvocation", {})
     assert result.returncode == 0
@@ -236,6 +253,7 @@ def test_dispatch_agy_preinvocation_alias_also_fires(tmp_path):
 
 
 def test_injected_text_is_exactly_the_shipped_message_file():
+    _require_search_enabled()
     res = _run("search_the_pkb", {"hook_event_name": "UserPromptSubmit"})
     assert res["inject_text"] == PKB_CONTEXT_TEXT
 
@@ -244,6 +262,7 @@ def test_editing_the_message_file_changes_the_output(tmp_path):
     """Proves the wording is loaded from markdown, not a Python literal — the
     contract lib/hooks/dispatch.py promises every hook message. If this test
     fails, `search_the_pkb` stopped calling `load_message_pair(...)`."""
+    _require_search_enabled()
     hooks_dir = _pkb_plugin(tmp_path)
     (hooks_dir / "messages" / "pkb-context.md").write_text("Changed wording for this test.\n")
     result = _dispatch(
@@ -276,6 +295,7 @@ def test_a_missing_message_file_is_never_a_silent_empty_injection(tmp_path):
     than inject nothing. An empty `additionalContext` is indistinguishable, to
     every reader, from a hook that ran and decided the turn needed no context —
     so the one failure that matters here is the one that leaves no trace."""
+    _require_search_enabled()
     hooks_dir = _pkb_plugin(tmp_path)
     (hooks_dir / "messages" / "pkb-context.md").unlink()
     result = _dispatch(
@@ -325,6 +345,7 @@ def test_search_the_pkb_output_is_identical_regardless_of_prompt_or_session():
     """Pins the actual, current behaviour: nothing in the payload — the
     prompt's content, the session id, an empty prompt — changes what this
     handler returns. There is exactly one branch."""
+    _require_search_enabled()
     baseline = _run("search_the_pkb", {"hook_event_name": "UserPromptSubmit", "session_id": "a"})
     variants = [
         {
@@ -345,6 +366,7 @@ def test_search_the_pkb_never_reaches_the_network():
     in this test environment, so a handler that tried to would hang or raise
     instead of returning promptly — this asserts on the timing floor, not
     just the words in the docstring."""
+    _require_search_enabled()
     import time
 
     started = time.monotonic()

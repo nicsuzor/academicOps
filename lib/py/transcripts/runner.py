@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -82,7 +83,9 @@ def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
                     p.is_file()
                     and not p.name.endswith("-hooks.jsonl")
                     and p.name != "transcript.jsonl"
+                    and p.name != "transcript_full.jsonl"
                     and "subagents" not in rel.parts
+                    and "chunks" not in rel.parts
                 ):
                     files.append(p)
 
@@ -92,6 +95,7 @@ def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
                     p.is_file()
                     and not p.name.endswith("-hooks.jsonl")
                     and "subagents" not in rel.parts
+                    and "chunks" not in rel.parts
                 ):
                     files.append(p)
 
@@ -146,7 +150,7 @@ def process_single_session(
 
     cache_key = str(session.source_file)
     if fingerprint is None:
-        fingerprint = source_fingerprint(session.source_files)
+        fingerprint = source_fingerprint(session_source_files(session.source_file))
 
     # Check cache
     if not force and skip_cache.is_skipped(cache_key, fingerprint):
@@ -230,6 +234,29 @@ def process_single_session(
     return True
 
 
+def _process_single_session_worker(args_tuple: tuple[Path, Path, bool]) -> tuple[str, str, bool]:
+    """Top-level worker function for ProcessPoolExecutor parallel batch processing."""
+    path, sessions_dir, force = args_tuple
+    try:
+        fingerprint = source_fingerprint(session_source_files(path))
+        session = load_session(path)
+        if not session or not session.events:
+            return (str(path), fingerprint, False)
+
+        dummy_cache = SkipCache(sessions_dir / ".transcripts_skip_cache.json")
+        ok = process_single_session(
+            session,
+            sessions_dir,
+            dummy_cache,
+            force=force,
+            fingerprint=fingerprint,
+        )
+        return (str(path), fingerprint, ok)
+    except Exception:
+        logger.exception("Failed to process session file %s", path)
+        return (str(path), "", False)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="AcademicOps transcript pipeline batch runner")
     parser.add_argument(
@@ -294,33 +321,40 @@ def main() -> int:
         cutoff = datetime.now(UTC).timestamp() - (7 * 24 * 3600)
         session_files = [f for f in session_files if f.stat().st_mtime >= cutoff]
 
-    processed_count = 0
+    to_process: list[Path] = []
     for path in session_files:
-        try:
-            # Fingerprint before parsing: a session known to be empty and
-            # unchanged since costs a couple of stat() calls, not a parse.
-            fingerprint = source_fingerprint(session_source_files(path))
-            if not args.force and skip_cache.is_skipped(str(path), fingerprint):
-                logger.debug("Skipping unchanged empty session file %s via cache", path)
-                continue
+        fingerprint = source_fingerprint(session_source_files(path))
+        if not args.force and skip_cache.is_skipped(str(path), fingerprint):
+            logger.debug("Skipping unchanged empty session file %s via cache", path)
+            continue
+        to_process.append(path)
 
-            session = load_session(path)
-            if not session:
-                # Parsed to nothing. Record it against the same fingerprint so
-                # the next run skips it until the file changes.
-                logger.debug("No session could be loaded from %s, marking in skip cache", path)
-                skip_cache.mark_empty(str(path), fingerprint)
-                continue
-            if process_single_session(
-                session,
-                sessions_dir,
-                skip_cache,
-                force=args.force,
-                fingerprint=fingerprint,
-            ):
+    if not to_process:
+        logger.info("All %d sessions skipped via cache", len(session_files))
+        return 0
+
+    max_workers = max(1, min((os.cpu_count() or 4) // 3, len(to_process)))
+    logger.info(
+        "Processing %d session(s) using %d parallel workers...", len(to_process), max_workers
+    )
+
+    processed_count = 0
+    if max_workers <= 1:
+        for p in to_process:
+            cache_key, fp, ok = _process_single_session_worker((p, sessions_dir, args.force))
+            if ok:
                 processed_count += 1
-        except Exception:
-            logger.exception("Failed to process session file %s", path)
+            elif fp:
+                skip_cache.mark_empty(cache_key, fp)
+    else:
+        worker_args = [(p, sessions_dir, args.force) for p in to_process]
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            results = executor.map(_process_single_session_worker, worker_args)
+            for cache_key, fp, ok in results:
+                if ok:
+                    processed_count += 1
+                elif fp:
+                    skip_cache.mark_empty(cache_key, fp)
 
     logger.info("Batch run complete. Processed %d sessions.", processed_count)
 

@@ -816,7 +816,7 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
 
 
 def _reject_bad_agent_cmd(agent_cmd, extra_args):
-    """Catch the two shapes that would otherwise fail deep inside the container,
+    """Catch the shapes that would otherwise fail deep inside the container,
     after a clone and an image check, with an error naming neither polecat nor
     the flag's replacement."""
     # Unknown options pass through to the inner CLI, so an option appearing
@@ -827,6 +827,22 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args):
             f"agent name (extra_args={extra_args!r}). AGENT_CMD is a plain "
             "positional: claude, agy, shell, bash, or sleep."
         )
+
+    if agent_cmd == "ida":
+        fail(
+            "ida is the interactive face plugin and is not installed in polecat containers. "
+            "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg) via "
+            "claude or agy."
+        )
+
+    for idx, arg in enumerate(extra_args):
+        if arg == "--agent=ida" or (
+            arg == "--agent" and idx + 1 < len(extra_args) and extra_args[idx + 1] == "ida"
+        ):
+            fail(
+                "ida is the interactive face plugin and is not installed in polecat containers. "
+                "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg)."
+            )
 
     # Neither agent CLI has a --non-interactive flag; both exit on an unknown one.
     if agent_cmd in ("claude", "agy") and "--non-interactive" in extra_args:

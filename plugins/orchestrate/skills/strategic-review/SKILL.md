@@ -7,7 +7,7 @@ description: Multi-agent review of any artifact — a document, plan, proposal, 
 
 Review an artifact from several expert perspectives and return **one reconciled verdict**.
 
-James runs this skill end to end: assembles the standards, deploys the three reviewers, interrogates their output, and reconciles it into one verdict. Reviewer independence comes from the reviewers working blind to each other, and from james treating their output as input rather than truth — not from splitting who deploys them from who reconciles them. Never substitute your own reading of the artifact for the review — a verdict from an agent that reviewed itself is the thing this skill exists to prevent.
+James runs this skill end to end: assembles the standards, deploys the three reviewers, interrogates their output, and reconciles it into one verdict. Reviewer independence comes from the reviewers working blind to each other, and from james treating their output as input rather than truth — not from splitting who deploys them from who reconciles them. Never substitute your own reading of the artifact for the review — a verdict from an agent that reviewed itself is the thing this skill exists to prevent. A reviewer commissioned in the session narrative or plan but not actually invoked and awaited is not a completed review step, and self-verification by the author does not substitute for a commissioned reviewer's actual returned verdict.
 
 This requires a subagent surface. If you hold none, you cannot run this skill: hand the artifact to a context that can spawn, and say so.
 
@@ -41,7 +41,7 @@ A deterministic rig standing in for a judgment call is one named instance of a b
 
 ## 3. Deploy the three reviewers, in parallel
 
-Spawn all three in a **single message**, each with the artifact, the assembled standards, and an explicit model. Dispatches are neutral — never pre-state an expected verdict.
+Spawn all three in a **single message**, each with the artifact, the assembled standards, and an explicit model. Dispatches are neutral — never pre-state an expected verdict. A reviewer commissioned in the plan or session narrative but not actually invoked and awaited is not a completed review step; self-verification by the author never substitutes for a commissioned reviewer's returned verdict.
 
 - **rbg** — axiom and rule compliance. Always runs.
 - **pauli** — strategic critique: the premise test above, then architectural fit. Is this in the right place, or a workaround for a root cause belonging elsewhere? Always runs.

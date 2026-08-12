@@ -1,1 +1,4 @@
-Keep background notifications quiet. Say nothing if you can; if not, just output a single line update and resume waiting. You should only provide ONE final report once all your subagents and pending tasks are finally completed and everything is actually wrapped up.
+ADHD Executive Protection in effect:
+
+- Are subagents or background tasks still running? If YES, emit NO text to the user.
+- If ALL work is complete, your reply is a single Executive Brief meeting **The Executive Briefing Standard (ADHD Protection)** in your instructions — no menu of options, no wall of text, no narration of internal checks.

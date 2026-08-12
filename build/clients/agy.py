@@ -23,37 +23,13 @@ import yaml
 from build.axioms import load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
+from build.tools import load_tool_config, process_agent_tools_agy, validate_agent_name_and_desc
 
 _PLUGIN_ROOT_RE = re.compile(r'"?\$\{AGY_PLUGIN_ROOT\}/([^"\s]*)"?')
-# The bare, no-trailing-slash form — `--project "${AGY_PLUGIN_ROOT}"` — used to
-# pin a `uv run` invocation to the plugin root rather than name a file inside
-# it. `_PLUGIN_ROOT_RE` above requires a `/` right after the closing brace, so
-# it never matches this form and left it in the shipped hooks.json verbatim: a
-# literal `${AGY_PLUGIN_ROOT}` token that isn't a real shell variable, which
-# agy's shell then expands to nothing, dropping the `--project` value
-# entirely and failing every hook invocation with "a value is required for
-# '--project <PROJECT>' but none was supplied". Since `_handler`'s own
-# guarantee is that agy's cwd for the hook is already the plugin root, the
-# fix is the same relative form the CLI needs elsewhere: `.`.
 _PLUGIN_ROOT_BARE_RE = re.compile(r'"\$\{AGY_PLUGIN_ROOT\}"')
 _COMMAND_TYPE_RE = re.compile(r"(?m)^type:\s*command\s*$")
 _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
-
-_TOOL_MAP = {
-    "Read": "read_file",
-    "Write": "write_file",
-    "Edit": "replace",
-    "Bash": "run_shell_command",
-    "Grep": "grep_search",
-    "Glob": "glob",
-    "AskUserQuestion": "ask_question",
-    "Agent": "invoke_subagent",
-    "WebSearch": "search_web",
-    "WebFetch": "read_url_content",
-    "TodoWrite": "todo_write",
-    "NotebookEdit": "notebook_edit",
-}
 
 # agy's five hook events, split by the structure each one takes. The tool
 # events group their handlers under a `matcher` regex; the rest take a flat
@@ -96,7 +72,7 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
         _write_json(build_dir / "mcp_config.json", _checked_mcp(servers, ctx))
 
     _convert_commands_to_skills(build_dir)
-    _adapt_agents(build_dir)
+    _adapt_agents(build_dir, ctx)
 
     always_on = load_always_on_axioms(build_dir / "axioms")
     if always_on:
@@ -235,15 +211,7 @@ def _convert_commands_to_skills(build_dir: Path) -> None:
     shutil.rmtree(commands_dir)
 
 
-def _translate_tool_name(tool: str) -> str:
-    if tool in _TOOL_MAP:
-        return _TOOL_MAP[tool]
-    if tool.startswith("mcp__"):
-        return tool.replace("__", "_")
-    return tool
-
-
-def _adapt_agents(build_dir: Path) -> None:
+def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
     """Rewrite each agent under `agents/` into agy's `agents/<name>.md`.
 
     agy's runtime reads `<name>.md` — YAML frontmatter plus a Markdown body —
@@ -260,6 +228,9 @@ def _adapt_agents(build_dir: Path) -> None:
     md_files = sorted(agents_dir.rglob("*.md"))
     if not md_files:
         return
+
+    accepted_tools, tool_map = load_tool_config()
+    plugin_name = ctx.plugin.marketplace_name if ctx else ""
 
     for md_file in md_files:
         content = md_file.read_text(encoding="utf-8")
@@ -279,24 +250,26 @@ def _adapt_agents(build_dir: Path) -> None:
         if not name:
             name = md_file.parent.name if md_file.stem == "agent" else md_file.stem
 
-        if not re.match(r"^[a-z0-9_-]+$", name):
-            raise BuildError(
-                f"{md_file}: invalid agy agent name {name!r} — must be lowercase letters, numbers, hyphens, or underscores"
-            )
-
         description = frontmatter.get("description")
-        if not description or not str(description).strip():
-            raise BuildError(f"{md_file}: missing required frontmatter field 'description'")
+        name = validate_agent_name_and_desc(name, description, md_file)
 
         body = m.group(2).lstrip("\n")
 
-        # Carry every source field through except the four handled
-        # explicitly below, so an agy-relevant addition (e.g. `color`)
-        # doesn't need this function's attention to reach the build.
+        # Carry every source field through except the seven handled
+        # explicitly below (name, description, tools, hidden, model, disallowedTools, mcpServers).
         agy_frontmatter: dict = {
             k: v
             for k, v in frontmatter.items()
-            if k not in ("name", "description", "tools", "hidden", "model")
+            if k
+            not in (
+                "name",
+                "description",
+                "tools",
+                "hidden",
+                "model",
+                "disallowedTools",
+                "mcpServers",
+            )
         }
         agy_frontmatter = {
             "name": name,
@@ -304,37 +277,28 @@ def _adapt_agents(build_dir: Path) -> None:
             **agy_frontmatter,
         }
 
-        # `model` names a Claude Code model ("opus", "sonnet", ...); agy's
-        # own model set is disjoint (`agy models`: gemini-*, claude-sonnet-4-6,
-        # claude-opus-4-6-thinking, gpt-oss-*). Forwarding the Claude name
-        # verbatim doesn't downgrade gracefully — agy silently drops the
-        # entire agent from `agy agents` when its frontmatter carries a model
-        # value it doesn't recognize. There is no reliable Claude-name ->
-        # agy-name mapping to substitute (the tiers don't line up and agy's
-        # own set moves independently), so the field is dropped rather than
-        # guessed; agy runs the agent on its own default model instead.
+        # `model` names a Claude Code model ("opus", "sonnet", ...); agy silently
+        # drops the agent from `agy agents` when its frontmatter carries an
+        # unrecognized model value. `--agent <name>` then silently falls back
+        # to a full unnamed session with every tool (56 tools). That is a
+        # privilege escalation, not a cosmetic bug. Thus `model` is dropped.
 
-        if "tools" in frontmatter:
-            raw_tools = frontmatter["tools"]
-            if isinstance(raw_tools, str):
-                raw_tools = [t.strip() for t in raw_tools.split(",") if t.strip()]
-            elif not isinstance(raw_tools, list):
-                raw_tools = []
+        has_tools_key = "tools" in frontmatter
+        raw_tools = frontmatter.get("tools")
+        has_disallowed_key = "disallowedTools" in frontmatter
+        raw_disallowed = frontmatter.get("disallowedTools")
 
-            tool_names: list[str] = []
-            seen: set[str] = set()
-            for t in raw_tools:
-                if not isinstance(t, str):
-                    continue
-                mapped = _translate_tool_name(t)
-                if mapped and mapped not in seen:
-                    seen.add(mapped)
-                    tool_names.append(mapped)
-            agy_frontmatter["tools"] = tool_names
-        # else: no `tools:` key at all — in Claude Code this means
-        # unrestricted access, so the key is left unset here too. Always
-        # emitting `tools: []` for an agent whose source never restricted
-        # tools shipped every such agent to agy with zero tools, silently.
+        agy_frontmatter["tools"] = process_agent_tools_agy(
+            raw_tools,
+            has_tools_key,
+            name,
+            md_file,
+            accepted_tools,
+            tool_map,
+            plugin_name=plugin_name,
+            raw_disallowed_tools=raw_disallowed,
+            has_disallowed_tools_key=has_disallowed_key,
+        )
 
         agy_frontmatter["hidden"] = bool(frontmatter.get("hidden", False))
 

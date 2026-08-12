@@ -185,14 +185,14 @@ def test_rbg_ships_the_stop_gate_on_claude_and_agy():
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_ida_ships_the_quiet_gate_on_claude_stop_only():
     """ida's quiet gate directs the face to strip its own reply before it
-    speaks to the person. Registered on claude ``Stop`` and agy
+    speaks to the person. Registered on claude ``PostToolBatch`` and agy
     ``PostInvocation`` (which dispatch.py maps onto canonical ``Stop``) only:
     claude ``SubagentStop`` fires on the *stopping subagent's* own context, so
     wiring it there would nag a worker about a reply it never sends to the
     person — the fix for the defect the superseded gate-wiring-v07 branch
     shipped."""
     events = _claude_hook_events("ida-claude")
-    assert "Stop" in events
+    assert "PostToolBatch" in events
     assert "SubagentStop" not in events
     assert "PostInvocation" in _agy_hook_events("ida-agy")
 

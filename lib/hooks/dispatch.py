@@ -101,6 +101,7 @@ CANONICAL_EVENTS = (
     "UserPromptSubmit",
     "PreToolUse",
     "PostToolUse",
+    "PostToolUseFailure",
     # Fires once after every call in a resolved batch, carrying all of them in
     # ``tool_calls`` — the one event that sees a whole batch rather than a
     # single call. Claude Code only; agy has no wire equivalent.
@@ -110,6 +111,7 @@ CANONICAL_EVENTS = (
 )
 
 STOP_EVENTS = ("Stop", "SubagentStop")
+CONTINUATION_EVENTS = ("Stop", "SubagentStop", "PostToolBatch")
 
 # The events a block disposition is honoured on. Claude Code reads
 # ``decision: "block"`` on a stop and gives the session another turn; on every
@@ -136,7 +138,7 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     handler, so every current and future Stop/SubagentStop handler is covered
     without having to remember it.
     """
-    return event in STOP_EVENTS and bool(raw.get("stop_hook_active"))
+    return event in CONTINUATION_EVENTS and bool(raw.get("stop_hook_active"))
 
 
 TO_CANONICAL = {
