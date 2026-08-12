@@ -759,6 +759,12 @@ def _otel_imports():
     )
 
 
+# Span export runs inside the hook, on the hot path of every tool call. The SDK
+# default of 10s lets a dead collector retry three times and add ~7s of latency
+# per call; this caps one failed export at roughly a second.
+_EXPORT_TIMEOUT_S = 2
+
+
 def _create_exporter(
     endpoint: str,
     headers: dict | None = None,
@@ -790,6 +796,7 @@ def _create_exporter(
                 endpoint=endpoint,
                 headers=headers if headers else None,
                 insecure=insecure,
+                timeout=_EXPORT_TIMEOUT_S,
             )
         except Exception as e:
             log.debug(
@@ -804,7 +811,11 @@ def _create_exporter(
         )
 
         log.debug("Initializing OTLP HTTP span exporter for endpoint %s", endpoint)
-        return HTTPSpanExporter(endpoint=endpoint, headers=headers if headers else None)
+        return HTTPSpanExporter(
+            endpoint=endpoint,
+            headers=headers if headers else None,
+            timeout=_EXPORT_TIMEOUT_S,
+        )
     except Exception as e:
         log.debug(
             "HTTP OTLPSpanExporter unavailable or failed to initialize (%s); falling back to ConsoleSpanExporter",
