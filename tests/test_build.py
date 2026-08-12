@@ -360,27 +360,20 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     agy_agent = yaml.safe_load(fm)
     assert agy_agent["name"] == "ida"
     assert "interactive face" in agy_agent["description"]
-    assert agy_agent["hidden"] is False
+    assert "hidden" not in agy_agent
+    assert "includeSections" not in agy_agent
+    assert agy_agent["mcpServers"] == ["services"]
 
-    # plugins/ida/agents/ida.md sets [Bash, AskUserQuestion, Agent, Monitor, TodoWrite, ToolSearch, Skill, TaskStop, SendMessage]
-    # Bash -> run_command
-    # AskUserQuestion -> ask_question
-    # Agent -> invoke_subagent, manage_subagents, send_message
-    # Monitor -> [] (dropped)
-    # TodoWrite -> [] (dropped)
-    # ToolSearch -> [] (dropped)
-    # Skill -> [] (dropped)
-    # TaskStop -> manage_task
-    # SendMessage -> send_message
     assert agy_agent["tools"] == [
         "run_command",
         "ask_question",
         "invoke_subagent",
         "manage_subagents",
         "send_message",
-        "manage_task",
         "view_file",
         "list_resources",
+        "mcp_services_pkb_get_task",
+        "mcp_services_pkb_status",
     ]
 
     body = body.lstrip("\n")
@@ -988,4 +981,31 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     )
     adapt_agy(plugin_dir, ctx_agy)
     res_agy = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
-    assert "mcpServers" not in res_agy
+    assert res_agy["mcpServers"] == ["services", "pkb"]
+    assert "hidden" not in res_agy
+    assert "includeSections" not in res_agy
+
+
+def test_pauli_agy_frontmatter(tmp_path):
+    import yaml
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["pkb"],
+        version=VERSION,
+    )
+
+    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
+    assert pauli_md.is_file()
+    fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
+    agent = yaml.safe_load(fm)
+
+    assert agent["name"] == "pauli"
+    assert agent["mcpServers"] == ["services"]
+    assert agent["tools"] == ["view_file", "list_resources", "mcp_services_*"]
+    assert "hidden" not in agent
+    assert "includeSections" not in agent
+    assert "call_mcp_tool" not in agent["tools"]

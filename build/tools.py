@@ -52,6 +52,81 @@ def validate_agent_name_and_desc(name: Any, description: Any, file_path: Path) -
     return name
 
 
+def translate_mcp_tool_to_agy(tool_name: str, plugin_name: str = "") -> str:
+    """Translates Claude Code MCP tool notation (mcp__server__tool) to agy format (mcp_server_tool or mcp_server_*)."""
+    raw = tool_name[5:] if tool_name.startswith("mcp__") else tool_name
+    parts = raw.split("__")
+    if not parts or not parts[0]:
+        return ""
+    server_raw = parts[0]
+    if ":" in server_raw:
+        server_name = server_raw.split(":")[-1]
+    elif plugin_name and server_raw.startswith(f"plugin_{plugin_name}_"):
+        server_name = server_raw[len(f"plugin_{plugin_name}_") :]
+    elif server_raw.startswith("plugin_"):
+        subparts = server_raw.split("_")
+        server_name = subparts[-1] if len(subparts) >= 3 else server_raw
+    elif plugin_name and server_raw.startswith(f"{plugin_name}_"):
+        server_name = server_raw[len(f"{plugin_name}_") :]
+    else:
+        server_name = server_raw
+
+    rest = parts[1:]
+    if not rest or any("*" in p for p in rest):
+        tool_suffix = "*"
+    else:
+        tool_suffix = "_".join(rest)
+
+    return f"mcp_{server_name}_{tool_suffix}"
+
+
+def extract_agy_mcp_servers(frontmatter: dict[str, Any], plugin_name: str = "") -> list[str]:
+    """Extracts unique canonical MCP server names for agy from frontmatter's mcpServers and mcp__ tools."""
+    raw_mcp_servers = frontmatter.get("mcpServers")
+    servers: list[str] = []
+
+    def _add_server(s: str) -> None:
+        if not s or not isinstance(s, str):
+            return
+        if ":" in s:
+            s = s.split(":")[-1]
+        if plugin_name and s.startswith(f"plugin_{plugin_name}_"):
+            s = s[len(f"plugin_{plugin_name}_") :]
+        elif s.startswith("plugin_"):
+            parts = s.split("_")
+            if len(parts) >= 3:
+                s = parts[-1]
+        if plugin_name and s.startswith(f"{plugin_name}_"):
+            s = s[len(f"{plugin_name}_") :]
+
+        if s and s not in servers:
+            servers.append(s)
+
+    if raw_mcp_servers:
+        if isinstance(raw_mcp_servers, str):
+            for item in raw_mcp_servers.split(","):
+                _add_server(item.strip())
+        elif isinstance(raw_mcp_servers, list):
+            for item in raw_mcp_servers:
+                _add_server(str(item).strip())
+
+    for key in ("tools", "disallowedTools"):
+        val = frontmatter.get(key)
+        tool_list = []
+        if isinstance(val, str):
+            tool_list = [t.strip() for t in val.split(",") if t.strip()]
+        elif isinstance(val, list):
+            tool_list = [str(t).strip() for t in val if isinstance(t, str)]
+        for t in tool_list:
+            base_name = t.split("(", 1)[0].strip() if "(" in t else t
+            if base_name.startswith("mcp__"):
+                parts = base_name[5:].split("__")
+                if parts and parts[0]:
+                    _add_server(parts[0])
+
+    return servers
+
+
 def process_agent_tools_agy(
     raw_tools: Any,
     has_tools_key: bool,
@@ -86,8 +161,9 @@ def process_agent_tools_agy(
             has_scope = "(" in tool_name
             base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
             if base_name.startswith("mcp__"):
-                # MCP is implicit on agy; omitted from frontmatter tools list
-                continue
+                translated_mcp = translate_mcp_tool_to_agy(base_name, plugin_name)
+                if translated_mcp:
+                    expanded.append(translated_mcp)
             elif base_name in tool_map:
                 mapped = tool_map[base_name]
                 if has_scope:
@@ -126,7 +202,9 @@ def process_agent_tools_agy(
             has_scope = "(" in tool_name
             base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
             if base_name.startswith("mcp__"):
-                continue
+                translated_mcp = translate_mcp_tool_to_agy(base_name, plugin_name)
+                if translated_mcp:
+                    denied_tools.append(translated_mcp)
             elif base_name in tool_map:
                 mapped = tool_map[base_name]
                 if has_scope:
@@ -149,7 +227,7 @@ def process_agent_tools_agy(
 
     accepted_set = set(accepted_tools)
     for t in final_tools:
-        if t not in accepted_set:
+        if t not in accepted_set and not t.startswith("mcp_"):
             raise BuildError(
                 f"{file_path}: agent {agent_name!r} emitted tool {t!r} which is not in agy accepted tool vocabulary"
             )

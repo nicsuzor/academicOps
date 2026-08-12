@@ -32,7 +32,6 @@ accepted_tools = [
   "browser_subagent",
   "capture_browser_console_logs",
   "capture_browser_screenshot",
-  "call_mcp_tool",
   "click_browser_pixel",
   "command_status",
   "define_subagent",
@@ -88,7 +87,7 @@ TaskList = ["manage_task"]
 TaskUpdate = ["manage_task"]
 TaskStop = ["manage_task"]
 Skill = []
-ToolSearch = ["call_mcp_tool"]
+ToolSearch = []
 ListMcpResourcesTool = ["list_resources"]
 TodoWrite = []
 Monitor = []

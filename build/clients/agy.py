@@ -23,7 +23,12 @@ import yaml
 from build.axioms import load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
-from build.tools import load_tool_config, process_agent_tools_agy, validate_agent_name_and_desc
+from build.tools import (
+    extract_agy_mcp_servers,
+    load_tool_config,
+    process_agent_tools_agy,
+    validate_agent_name_and_desc,
+)
 
 _PLUGIN_ROOT_RE = re.compile(r'"?\$\{AGY_PLUGIN_ROOT\}/([^"\s]*)"?')
 _PLUGIN_ROOT_BARE_RE = re.compile(r'"\$\{AGY_PLUGIN_ROOT\}"')
@@ -38,16 +43,6 @@ _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 # "Hook Spec Fields" and "Supported Event Types" sections define them.
 _GROUPED_EVENTS = ("PreToolUse", "PostToolUse")
 _FLAT_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
-_AGY_INCLUDE_SECTIONS = [
-    "user_information",
-    "skills",
-    "messaging",
-    "mcp_servers",
-    "subagent_reminder",
-    "artifacts",
-    "user_rules",
-    "tools",
-]
 
 
 def adapt(build_dir: Path, ctx: BuildContext) -> None:
@@ -255,9 +250,9 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
 
         body = m.group(2).lstrip("\n")
 
-        # Carry every source field through except the seven handled
-        # explicitly below (name, description, tools, hidden, model, disallowedTools, mcpServers).
-        agy_frontmatter: dict = {
+        # Carry every source field through except those handled explicitly below:
+        # (name, description, tools, hidden, includeSections, model, disallowedTools, mcpServers).
+        extra_fields: dict = {
             k: v
             for k, v in frontmatter.items()
             if k
@@ -266,15 +261,11 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
                 "description",
                 "tools",
                 "hidden",
+                "includeSections",
                 "model",
                 "disallowedTools",
                 "mcpServers",
             )
-        }
-        agy_frontmatter = {
-            "name": name,
-            "description": str(description).strip(),
-            **agy_frontmatter,
         }
 
         # `model` names a Claude Code model ("opus", "sonnet", ...); agy silently
@@ -288,7 +279,7 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
         has_disallowed_key = "disallowedTools" in frontmatter
         raw_disallowed = frontmatter.get("disallowedTools")
 
-        agy_frontmatter["tools"] = process_agent_tools_agy(
+        processed_tools = process_agent_tools_agy(
             raw_tools,
             has_tools_key,
             name,
@@ -300,10 +291,16 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
             has_disallowed_tools_key=has_disallowed_key,
         )
 
-        agy_frontmatter["hidden"] = bool(frontmatter.get("hidden", False))
+        mcp_servers = extract_agy_mcp_servers(frontmatter, plugin_name=plugin_name)
 
-        if "includeSections" not in agy_frontmatter:
-            agy_frontmatter["includeSections"] = _AGY_INCLUDE_SECTIONS
+        agy_frontmatter: dict = {
+            "name": name,
+            "description": str(description).strip(),
+            **extra_fields,
+        }
+        if mcp_servers:
+            agy_frontmatter["mcpServers"] = mcp_servers
+        agy_frontmatter["tools"] = processed_tools
 
         if not body.startswith("# Agent System Instructions"):
             body = f"# Agent System Instructions\n\n{body}"
