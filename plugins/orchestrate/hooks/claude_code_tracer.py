@@ -334,6 +334,20 @@ def _find_transcript_path(data: dict, session_id: str) -> str | None:
     value in hook ``data`` can change mid-session when Claude Code writes
     entries to a *different* project directory (e.g. after ``gh pr create``
     in a worktree context).
+
+    Duplicates the ``~/.claude/projects`` discovery in
+    ``lib/py/transcripts/runner.py`` (``find_session_files``), and the
+    assistant/``usage`` parsing below duplicates
+    ``lib/py/transcripts/adapters/claude.py``. Reuse is blocked by packaging,
+    not by taste: hooks run as ``uv run --project "${CLAUDE_PLUGIN_ROOT}"``
+    against the plugin's own dist environment, which has no path to ``lib/py``
+    and none of the transcripts pipeline's third-party dependencies (the
+    adapter is a wrapper around ``claude_code_log``). The pipeline is reached
+    only by shelling out to a source checkout at ``AOPS_SRC_DIR``, which a hook
+    on the hot path of every tool call cannot rely on being set. Collapsing
+    the two needs a dependency-free discovery helper in ``lib/`` that the build
+    injects into plugin hook directories the way it injects ``dispatch.py``.
+    Known duplication, 2026-08-12; not yet tracked by an issue.
     """
     candidates: list[str] = []
 
