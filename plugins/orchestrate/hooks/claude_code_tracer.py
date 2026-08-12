@@ -1096,7 +1096,7 @@ def _build_and_export_spans(
             if rec.get("force_span_id"):
                 id_generator = _make_fixed_id_generator(rec["span_id_hex"])
 
-            kwargs = {"resource": resource}
+            kwargs: dict[str, Any] = {"resource": resource}
             if id_generator:
                 kwargs["id_generator"] = id_generator
 
