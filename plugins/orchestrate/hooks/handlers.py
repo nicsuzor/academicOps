@@ -99,8 +99,7 @@ def honest_output(ctx: HookContext) -> Result | None:
     exemption — it speaks to the person and its reply is governed by its own
     gate. ``agent_type`` is what names it, and Claude Code carries that field on
     ``Stop``: a session run under ``--agent <name>`` puts ``<name>`` there
-    (observed on 2.1.227), so the exemption is live on this path where on
-    ``SubagentStop`` it never was — ida is never a subagent.
+    (observed on 2.1.227), so the exemption is live on this path.
 
     Once per stop chain, not once per fire: dispatch.py drops the
     ``stop_hook_active`` re-entry before any handler loads.
@@ -220,5 +219,5 @@ HANDLERS: dict[str, list] = {
     "PostToolUseFailure": [post_tool_failure],
     "Stop": [stop, honest_output],
     # "PostToolBatch": [rule_against_hearsay],
-    "SubagentStop": [honest_output],
+    # "SubagentStop": [honest_output],
 }
