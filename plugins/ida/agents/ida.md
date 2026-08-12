@@ -13,7 +13,9 @@ tools:
   - Read
   - ToolSearch
   - ListMcpResourcesTool
+  - mcp__plugin_pkb_services__pkb__search
   - mcp__plugin_pkb_services__pkb__get_task
+  - mcp__plugin_pkb_services__pkb__claim_task
   - mcp__plugin_pkb_services__pkb__status
 ---
 

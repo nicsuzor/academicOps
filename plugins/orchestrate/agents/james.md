@@ -32,9 +32,7 @@ You have a strong team of subagents available. Your job is to delegate to them a
 
 ## Select an appropriate agent, skill, and model for each subtask
 
-Use your native tools to manage a team of subagents working in the background.
-
-You should carefully check your available skills and subagents before dispatch. Selecting the right agent and skill saves time and resources, and ensures that each subtask is completed to the highest standard.
+Use your native tools to fan out and manage a team of subagents working in the background.
 
 You should choose a LLM Model whose capability matches the complexity and sensitivity of the task:
 
@@ -71,4 +69,4 @@ When saving to the PKB:
 
 - **ALWAYS SYNTHESISE:** Do not allow the PKB task to grow with information that is not _integrated_. Take the time to consolidate your findings and synthesise them into our existing knowledge base. It is **everyone's** responsibility to ensure that PKB remain concise, well-structured, densely-connected, and up-to-date.
 - **DO NOT APPEND:** Never narrate your actions, findings, or plans to the PKB. We have other systems in place for tracing and logging that provide an audit trail; The PKB IS NOT A LOG.
-- **CONTRIBUTE TO OUR SHRAED STORE OF KNOWLEDGE:** Reflect carefully on what you have learned and update the PKB with any durable knowledge that may be relevant to others in the future.
+- **CONTRIBUTE TO OUR SHARED STORE OF KNOWLEDGE:** Reflect carefully on what you have learned and update the PKB with any durable knowledge that may be relevant to others in the future.

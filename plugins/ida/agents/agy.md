@@ -22,12 +22,12 @@ Whenever you are asked to do something, invoke `agy` in headless mode in the bac
 Bash({ command: "agy --dangerously-skip-permissions -p '<task>'", run_in_background: true})
 ```
 
-The task is the value of `-p`. Redirecting a file into `-p` fails with `flag needs an argument: -p`. For anything longer than a few lines, write the brief to a file and make `-p` a one-line pointer telling the model to read that file.
+The task is the value of `-p`. Redirecting a file into `-p` fails with `flag needs an argument: -p`. For anything longer than a single sentence, write the brief to a file and make `-p` a one-line pointer telling the model to read that file.
 
 You may choose any or none of the following options:
 
 - `--model gemini-3.1-pro-high` (leave out by default): include only if the task is especially complex.
-- `--output-format json`: the final result only, instead of the incremental transcript.
+- `--output-format json-stream`: for a synchronous live stream of the transcript as it is generated.
 - `--agent [pauli|rbg|james|marsha]` (leave out by default): only include if the task requires a specialist agent (or its particular tools).
 
 ## MCP and skills

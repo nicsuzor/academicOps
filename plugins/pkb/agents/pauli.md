@@ -7,11 +7,9 @@ tools:
   - Read
   - ToolSearch
   - ListMcpResourcesTool
-  - mcp__plugin_pkb_services__pkb__*
+  - mcp__plugin_pkb_services__*
 mcpServers:
   - services
-  - pkb:services
-  - pkb_services
   - plugin:pkb:services
 ---
 
