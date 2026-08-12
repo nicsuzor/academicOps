@@ -65,7 +65,7 @@ If your reviewers recommend changes, loop back to **step 2** with new instructio
 
 **6. Handover (land the plane):**
 
-Conclude by invoking the `dump` skill for a full handover. It records your work and lets the task proceed to the next stage.
+Conclude by invoking the `dump` skill to hand over. It records your work and lets the task proceed to the next stage.
 
 - Your environment is EPHEMERAL. You must use the `dump` skill or your work will be DESTROYED.
 - Your supervisor is STRICT. If you do not adhere precisely to the handover instructions, your work will be SILENTLY REJECTED and we will have to start the task over with a new agent.
