@@ -566,7 +566,9 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
     return True, None
 
 
-def resolve_isolated_workspace(canonical_dir, session_id, polecat_home, base=None, config=None):
+def resolve_isolated_workspace(
+    canonical_dir, session_id, polecat_home, base=None, config=None, branch=None
+):
     """Create a per-session standalone clone of `canonical_dir` and return the
     path to mount, so a container never writes to a shared checkout.
 
@@ -608,7 +610,7 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home, base=Non
     clones_dir = Path(polecat_home) / "worktrees"
     clones_dir.mkdir(parents=True, exist_ok=True)
     clone_path = clones_dir / session_id
-    branch_name = f"polecat/{session_id}"
+    branch_name = branch or f"polecat/{session_id}"
 
     config = config or {}
     base_ref = base or config.get("branch") or "HEAD"
@@ -1016,6 +1018,8 @@ def _build_docker_argv(
     config,
     docker_args,
     session_id=None,
+    with_sessions=False,
+    sessions_base=None,
 ):
     """The full `docker run` argv. Also pre-creates the bind-mount targets
     under `session_dir` — see below for why that cannot wait until launch."""
@@ -1085,6 +1089,12 @@ def _build_docker_argv(
             cmd.extend(["--group-add", str(Path("/var/run/docker.sock").stat().st_gid)])
         except Exception:
             pass
+
+    if with_sessions and sessions_base:
+        transcripts_path = (sessions_base / "transcripts").resolve()
+        transcripts_path.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
+        env["AOPS_SESSIONS"] = "/sessions"
 
     cmd.extend(docker_args)
     for key, value in env.items():
@@ -1294,12 +1304,34 @@ def main():
     help="Base commit or branch to create private branch from (default: branch in polecat.yaml).",
 )
 @click.option(
+    "--branch",
+    "-b",
+    help="Custom branch name to check out in isolated clone (default: polecat/<session-id>).",
+)
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
+@click.option(
     "--agent",
     "-a",
     help="Agent persona to run inside container (default: james).",
 )
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
-def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, base, agent, extra_args):
+def run(
+    agent_cmd,
+    project,
+    repo_dir,
+    session_name,
+    mcp_url,
+    task,
+    base,
+    branch,
+    with_sessions,
+    agent,
+    extra_args,
+):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
 
     Anything after AGENT_CMD that is not one of this command's own options is
@@ -1325,12 +1357,14 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, base, agent, 
     session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")
     session_dir.mkdir(parents=True, exist_ok=True)
 
+    effective_branch = branch or os.environ.get("AOPS_POLECAT_BRANCH") or os.environ.get("POLECAT_BRANCH")
+
     # An explicit --repo-dir is the caller's own isolation to own; every other
     # path resolves to a shared checkout and must be cloned first.
     clone_cleanup = None
     if repo_dir is None:
         workspace_dir, clone_cleanup = resolve_isolated_workspace(
-            workspace_dir, session_id, polecat_home, base=base, config=config
+            workspace_dir, session_id, polecat_home, base=base, config=config, branch=effective_branch
         )
 
     initial_head = _get_git_head(workspace_dir)
@@ -1367,6 +1401,17 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, base, agent, 
         env = get_env_forwards(config)
         if mcp_url:
             env["PKB_MCP_URL"] = mcp_url
+
+        if effective_branch:
+            env["AOPS_POLECAT_BRANCH"] = effective_branch
+
+        has_sessions_access = False
+        if with_sessions:
+            has_sessions_access = True
+        elif config.get("sessions_access"):
+            has_sessions_access = True
+        elif project and config.get("projects", {}).get(project, {}).get("sessions_access"):
+            has_sessions_access = True
 
         docker_args = []
         explicit_headless = bool(HEADLESS_FLAGS.intersection(extra_args))
@@ -1408,6 +1453,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, base, agent, 
             config=config,
             docker_args=docker_args,
             session_id=session_id,
+            with_sessions=has_sessions_access,
+            sessions_base=sessions_base,
         )
 
         click.echo(f"Workspace: {workspace_dir}")

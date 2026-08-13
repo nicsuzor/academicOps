@@ -436,3 +436,61 @@ def test_polecat_typechecks_clean():
     diagnostics = json.loads(result.stdout)["generalDiagnostics"]
     errors = [d for d in diagnostics if d.get("severity") == "error"]
     assert errors == [], errors
+
+
+def test_sessions_mount_via_with_sessions_flag(monkeypatch, tmp_path):
+    """Passing --with-sessions mounts transcripts ro and sets AOPS_SESSIONS=/sessions."""
+    docker_cmd = _capture_docker_cmd(
+        monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo"), "--with-sessions"]
+    )
+    sessions_dir = tmp_path / "sessions"
+    expected_mount = f"{(sessions_dir / 'transcripts').resolve()}:/sessions/transcripts:ro"
+
+    assert "-v" in docker_cmd
+    assert expected_mount in docker_cmd
+    assert "-e" in docker_cmd
+    assert "AOPS_SESSIONS=/sessions" in docker_cmd
+
+
+def test_sessions_mount_via_project_config(monkeypatch, tmp_path):
+    """Configuring sessions_access: true mounts transcripts ro and sets AOPS_SESSIONS=/sessions."""
+    _base_mocks(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"},
+            "sessions_access": True,
+        },
+    )
+    captured = []
+
+    def fake_run(cmd, *a, **kw):
+        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+            captured.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    monkeypatch.setattr(cli, "_seed_confirmed", lambda session_dir, task: True)
+
+    result = CliRunner().invoke(cli.main, ["run", "claude", "-d", str(tmp_path / "repo")])
+    assert result.exit_code == 0, result.output
+    docker_cmd = captured[0]
+
+    sessions_dir = tmp_path / "sessions"
+    expected_mount = f"{(sessions_dir / 'transcripts').resolve()}:/sessions/transcripts:ro"
+
+    assert expected_mount in docker_cmd
+    assert "AOPS_SESSIONS=/sessions" in docker_cmd
+
+
+
+def test_branch_option_sets_env_var(monkeypatch, tmp_path):
+    """Passing --branch sets AOPS_POLECAT_BRANCH in container env."""
+    docker_cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--branch", "feature/test-branch"],
+    )
+    assert "AOPS_POLECAT_BRANCH=feature/test-branch" in docker_cmd
+
