@@ -3,7 +3,7 @@ name: agy
 description: A generic, multi-purpose agent that uses full-featured flagship Gemini models (cheaper, faster, but still very powerful)
 color: blue
 tools:
-  - Bash(uv run *)
+  - Bash
   - Monitor
 ---
 
