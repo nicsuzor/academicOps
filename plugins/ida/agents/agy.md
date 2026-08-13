@@ -18,9 +18,11 @@ Your tool is `polecat`, which runs `agy` — a **super-smart agent** that can do
 Whenever you are asked to do something, invoke `agy` in headless mode in the background. Do NOT poll, you will be notified when it completes.
 
 ```bash
-Bash({ command: "uv run --project \"$AOPS\" polecat run agy --repo-dir <repo> -s <session-name> '<task>' > log.jsonl 2>&1",
+Bash({ command: "POLECAT_PRINT_TIMEOUT=30m uv run --project \"$AOPS\" polecat run agy --repo-dir <repo> -s <session-name> '<task>' > log.jsonl 2>&1",
        run_in_background: true})
 ```
+
+`POLECAT_PRINT_TIMEOUT` must be set, and takes a **Go duration string** (`30m`, `45m` — never a unitless integer, which fails at flag parse). Polecat forwards `--print-timeout` only when this variable is set (`cli.py:1001`); with it unset, agy falls back to its own ~5-minute default and silently cuts off exactly the medium-or-larger jobs this route exists to carry.
 
 The task is a **bare positional argument**, and it must be the **first** thing after the options — polecat rewrites the first extra argument into agy's `--print <task>` and appends the rest, so any flag placed before the task text is silently taken as the task. Do **not** pass the task with `-p`: polecat's own `-p` is `--project`, and it would swallow the value. Do **not** pass `--dangerously-skip-permissions`; polecat already adds it inside the container. Polecat has no default workspace, so one of `--repo-dir <host path>` or `-p <project name>` is required. `--repo-dir` mounts the directory **exactly as given** and skips the isolated clone (`cli.py:1327` only clones when `--repo-dir` is absent), so never pass a linked git worktree: its `.git` is a pointer into a host admin directory the container cannot resolve, and the run dies with `fatal: not a git repository`, exit 128. Pass a real repository, or use `-p <project>`, which does clone. For anything longer than a few lines, write the brief to a file and make the task text a one-line pointer telling the model to read that file.
 
