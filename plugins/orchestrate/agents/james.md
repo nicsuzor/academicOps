@@ -34,7 +34,12 @@ You have a strong team of subagents available. Your job is to delegate to them a
 
 Use your native tools to fan out and manage a team of subagents working in the background.
 
-You should choose a LLM Model whose capability matches the complexity and sensitivity of the task:
+By default, you should use an antigravity subagent like `agy` for all work.
+
+- `agy` provides a highly capable model that is much faster and cheaper than alternatives.
+- The trick is to minimise the traffic between the orchestrator and the subagents. Do not over-brief the subagent (they're smart, remember, and they've got all the same information you do), and always ask them to synthesise and summarise their findings into a concise report. It just doubles our costs if you end up reading and summarising the same information yourself.
+
+If you do not invoke `agy`, you shoud choose a LLM Model whose capability matches the complexity and sensitivity of the task:
 
 - Use the cheapest tier of models for simple reads and writes
 - Default to an intermediate model for most tasks
