@@ -8,6 +8,7 @@ from pathlib import Path
 from transcripts.adapters.agy import load_agy_transcript
 from transcripts.adapters.claude import load_claude_transcript, normalize_claude_transcript
 from transcripts.domain.cache import SkipCache, source_fingerprint
+from transcripts.domain.checkpoint import is_compaction_checkpoint
 from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
@@ -73,6 +74,111 @@ def test_semantic_user_context() -> None:
         ],
     )
     assert has_user_context(interactive_session)
+
+
+def test_compaction_checkpoint_predicate() -> None:
+    """Test is_compaction_checkpoint identifies truncation/compaction markers."""
+    compaction_event = NormalizedEvent(
+        event_id="e_chk",
+        timestamp="2026-08-01T03:28:56Z",
+        source="system",
+        type="checkpoint",
+        content="{{ CHECKPOINT 0 }}\n **The earlier parts of this conversation have been truncated...**\n\n# USER Objective:\nSecurity maintenance",
+    )
+    assert is_compaction_checkpoint(compaction_event)
+
+    normal_checkpoint = NormalizedEvent(
+        event_id="e_chk2",
+        timestamp="2026-08-01T03:28:56Z",
+        source="system",
+        type="checkpoint",
+        content="Normal checkpoint summary without truncation boilerplate",
+    )
+    assert not is_compaction_checkpoint(normal_checkpoint)
+
+    message_event = NormalizedEvent(
+        event_id="e_msg",
+        timestamp="2026-08-01T03:28:56Z",
+        source="user",
+        type="message",
+        content="USER Objective: build feature",
+    )
+    assert not is_compaction_checkpoint(message_event)
+
+
+def test_compacted_human_session_regression_a644e98e() -> None:
+    """Session 20260801-03-adhoc-a644e98e regression test:
+
+    A human session carrying hand-typed user prompts and a truncation checkpoint
+    must classify as has_user_context=True and its insights must carry a computed
+    outcome summary rather than compaction boilerplate.
+    """
+    session = NormalizedSession(
+        session_id="a644e98e-ac06-4d44-ac5d-155b67f3f817",
+        source_file=Path("dummy.jsonl"),
+        events=[
+            NormalizedEvent(
+                event_id="e1",
+                timestamp="2026-08-01T03:28:56Z",
+                source="user",
+                type="message",
+                content="Do two things for me please:\n1. prohibit agents from making bad changes",
+            ),
+            NormalizedEvent(
+                event_id="e2",
+                timestamp="2026-08-01T03:29:00Z",
+                source="system",
+                type="checkpoint",
+                content="{{ CHECKPOINT 0 }}\n **The earlier parts of this conversation have been truncated...**\n\n# USER Objective:\nRepo Security\n\n# Conversation Logs\n- /path/to/log",
+            ),
+            NormalizedEvent(
+                event_id="e3",
+                timestamp="2026-08-01T03:30:00Z",
+                source="model",
+                type="message",
+                content="I have investigated the commit and updated the Makefile.",
+            ),
+        ],
+    )
+
+    # 1. Classified human (True)
+    assert has_user_context(session) is True
+
+    # 2. Insights carries computed fallback summary, not compaction boilerplate
+    insights = infer_insights(session)
+    assert insights is not None
+    assert "{{ CHECKPOINT" not in insights
+    assert "USER Objective:" not in insights
+    assert "Conversation Logs" not in insights
+    assert "Final response: I have investigated the commit" in insights
+
+
+def test_verdict_mechanism_signal_takes_priority_over_fallback() -> None:
+    """Explicit VERDICT/MECHANISM model messages take priority over fallback."""
+    session = NormalizedSession(
+        session_id="s_verdict",
+        source_file=Path("dummy.jsonl"),
+        events=[
+            NormalizedEvent(
+                event_id="e1",
+                timestamp="2026-08-01T03:28:56Z",
+                source="system",
+                type="checkpoint",
+                content="{{ CHECKPOINT 0 }}\n# USER Objective:\nRepo Security",
+            ),
+            NormalizedEvent(
+                event_id="e2",
+                timestamp="2026-08-01T03:30:00Z",
+                source="model",
+                type="message",
+                content="VERDICT: SUCCESS\nMECHANISM: Fixed git hook permissions.",
+            ),
+        ],
+    )
+    insights = infer_insights(session)
+    assert insights is not None
+    assert "VERDICT: SUCCESS" in insights
+    assert "MECHANISM: Fixed git hook permissions." in insights
 
 
 # --- Invariant 3: Event-time timestamps --------------------------------------
@@ -288,4 +394,3 @@ def test_get_session_output_dir_invalid_started_at(tmp_path: Path) -> None:
     out = get_session_output_dir(started_at, correlation, tmp_path)
     assert out.parent == tmp_path / "transcripts"
     assert len(out.name) == 7 and out.name[4] == "-"
-

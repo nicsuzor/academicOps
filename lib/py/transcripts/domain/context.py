@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from transcripts.domain.checkpoint import is_compaction_checkpoint
 from transcripts.model import NormalizedSession
 
 
@@ -33,9 +34,10 @@ def has_user_context(session: NormalizedSession) -> bool:
 
     # Check if the session contains system events typical of automated cron/harnesses
     for event in session.events:
-        if event.type == "checkpoint" and event.content:
-            if "USER Objective:" in event.content or "Conversation Logs" in event.content:
-                return False
+        if is_compaction_checkpoint(event):
+            # Compaction checkpoints occur when long sessions are truncated;
+            # they carry context summaries but do not mean the session was automated.
+            continue
         if event.type == "tool_output" and event.content:
             if "tailscale-up.sh" in event.content or "session-end-sync.sh" in event.content:
                 return False
