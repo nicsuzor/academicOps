@@ -180,7 +180,8 @@ def test_orchestrate_honesty_fires_on_the_claude_stop(orchestrate_hooks):
     result = _run(orchestrate_hooks, "claude", "Stop", {"hook_event_name": "Stop"})
     assert result.returncode == 0
     out = json.loads(result.stdout)
-    assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
+    assert out["decision"] == "block"
+    assert out["reason"] == _honesty_md()
 
 
 def test_orchestrate_honesty_skips_ida_on_the_stop_path(orchestrate_hooks):
@@ -206,7 +207,8 @@ def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_ida(orchestrate
     )
     assert result.returncode == 0
     out = json.loads(result.stdout)
-    assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
+    assert out["decision"] == "block"
+    assert out["reason"] == _honesty_md()
 
 
 def test_orchestrate_honesty_is_silent_on_agys_post_invocation(orchestrate_hooks):
@@ -233,7 +235,9 @@ def test_orchestrate_honesty_is_silent_on_the_continuation_stop(orchestrate_hook
     assert result.stdout.strip() == ""
 
 
-def test_orchestrate_honesty_still_fires_on_subagentstop(orchestrate_hooks):
+def test_orchestrate_honesty_is_silent_when_subagentstop_not_in_handlers(orchestrate_hooks):
+    """SubagentStop is not registered in HANDLERS, so a subagent handback receives
+    nothing until re-registered."""
     result = _run(
         orchestrate_hooks,
         "claude",
@@ -241,8 +245,7 @@ def test_orchestrate_honesty_still_fires_on_subagentstop(orchestrate_hooks):
         {"hook_event_name": "SubagentStop", "agent_type": "Explore"},
     )
     assert result.returncode == 0
-    out = json.loads(result.stdout)
-    assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
+    assert result.stdout.strip() == ""
 
 
 def test_orchestrate_stop_hook_is_wired_synchronously(orchestrate_hooks):

@@ -965,12 +965,12 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
 
         allowed_missing = set()
         if name == "orchestrate":
+            allowed_missing.update(_wires_for("SubagentStop"))
             p = _policy.get("orchestrate", {})
             if not p.get("rule_against_hearsay_enabled", True):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):
                 allowed_missing.update(_wires_for("Stop"))
-                allowed_missing.update(_wires_for("SubagentStop"))
         elif name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
             allowed_missing.update(_wires_for("PreToolUse"))
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):

@@ -30,7 +30,7 @@ flowchart TD
     MAR --> OUT
 
     ANY(["any agent about to stop"]) --> H2["Stop / SubagentStop<br/>→ handlers.py: honest_output"]
-    H2 --> MSG2["messages/honesty.md<br/>advisory, declared async"]
+    H2 --> MSG2["messages/honesty.md<br/>blocking via block()"]
 
     SS(["session start"]) --> H3["handlers.py: session_start<br/>→ appends credentials and paths<br/>to CLAUDE_ENV_FILE"]
 ```
