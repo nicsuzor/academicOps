@@ -263,3 +263,17 @@ def test_isolated_workspace_defaults_to_head_when_unconfigured(fake_canonical_re
     assert isolated_sha == head_sha
 
     cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_respects_custom_branch_option(fake_canonical_repo, tmp_path):
+    """When branch is passed explicitly, the isolated clone checks out that custom branch name."""
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo, "session-custom-branch", polecat_home, branch="feat/custom-override"
+    )
+
+    branch_name = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=isolated_path).strip()
+    assert branch_name == "feat/custom-override"
+
+    cleanup_isolated_workspace(cleanup_info)
+
