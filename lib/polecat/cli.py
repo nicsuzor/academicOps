@@ -1357,14 +1357,12 @@ def run(
     session_dir = sessions_base / "logs" / session_date / session_id / (project or "workspace")
     session_dir.mkdir(parents=True, exist_ok=True)
 
-    effective_branch = branch or os.environ.get("AOPS_POLECAT_BRANCH") or os.environ.get("POLECAT_BRANCH")
-
     # An explicit --repo-dir is the caller's own isolation to own; every other
     # path resolves to a shared checkout and must be cloned first.
     clone_cleanup = None
     if repo_dir is None:
         workspace_dir, clone_cleanup = resolve_isolated_workspace(
-            workspace_dir, session_id, polecat_home, base=base, config=config, branch=effective_branch
+            workspace_dir, session_id, polecat_home, base=base, config=config, branch=branch
         )
 
     initial_head = _get_git_head(workspace_dir)
@@ -1402,8 +1400,8 @@ def run(
         if mcp_url:
             env["PKB_MCP_URL"] = mcp_url
 
-        if effective_branch:
-            env["AOPS_POLECAT_BRANCH"] = effective_branch
+        if branch:
+            env["AOPS_POLECAT_BRANCH"] = branch
 
         has_sessions_access = False
         if with_sessions:
