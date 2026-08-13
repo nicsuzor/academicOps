@@ -22,6 +22,10 @@
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) — the universal claim-evidence shape.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) — Claude Code auto-mode classifier design and cost model.
 
+## ADHD / attention surface
+
+- [adhd/completion-line.md](adhd/completion-line.md) — what reaches Nic between an instruction and its result: the channel inventory, and the graph-rendered completion line.
+
 ## Polecat
 
 - [polecat/polecat-system.md](polecat/polecat-system.md) — one isolated container + isolated clone per `polecat run` invocation.
