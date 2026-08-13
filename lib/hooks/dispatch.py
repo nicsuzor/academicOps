@@ -229,27 +229,23 @@ def _merge(results: list[Result | None]) -> Result | None:
 
 
 def _render_claude(result: Result, event: str) -> dict:
-    if result.kind is Kind.BLOCK and event in BLOCKABLE_EVENTS:
-        # The one shape Claude Code reads as "do not stop": a top-level
-        # decision, not nested under hookSpecificOutput.
-        blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
-        if result.user_text:
-            blocked["systemMessage"] = result.user_text
-        return blocked
-
     if result.kind is Kind.BLOCK:
-        # A block only means something on Stop/SubagentStop — Claude Code has no
-        # "block" shape for any other event. A handler that returns one here is
-        # a wiring bug: report it loudly and degrade to an advisory rather than
-        # emit a shape that corrupts the response or silently does nothing. The
-        # text is still worth delivering; the disposition is not, and a handler
-        # must not read silence here as enforcement that happened.
-        print(
-            f"dispatch: block() is illegal on event {event!r} (Claude Code only "
-            "reads a block decision on Stop/SubagentStop) — degrading to an "
-            "advisory instead of corrupting the hook response",
-            file=sys.stderr,
-        )
+        if event in BLOCKABLE_EVENTS:
+            # The one shape Claude Code reads as "do not stop": a top-level
+            # decision, not nested under hookSpecificOutput.
+            blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
+            if result.user_text:
+                blocked["systemMessage"] = result.user_text
+            return blocked
+
+        else:
+            # Block only means something on certain events; in case of misconfiguration
+            # text is still worth delivering; the disposition is not, and a handler
+            # must not read silence here as enforcement that happened.
+            print(
+                f"dispatch: block() is illegal on event {event!r}",
+                file=sys.stderr,
+            )
 
     if result.kind is Kind.REFUSE:
         specific = {
@@ -408,9 +404,7 @@ def main(argv: list[str]) -> int:
     if event is None:
         return 0
 
-    # Structural self-loop guard: no-op before any handler is loaded or run,
-    # and before normalize() / _log_fire() — no state is touched, nothing is
-    # printed. See is_continuation()'s docstring for what this guards against.
+    # Do not fire if we have already prevented a stop event this turn
     if is_continuation(event, raw):
         return 0
 

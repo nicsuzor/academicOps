@@ -8,7 +8,7 @@ import shlex
 from collections.abc import Callable
 from typing import Any
 
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import HookContext, Result, block, load_message_pair, warn
 
 log = logging.getLogger("orchestrate.handlers")
 
@@ -115,6 +115,9 @@ def honest_output(ctx: HookContext) -> Result | None:
     gate is switched off today. agy's own end-of-execution ``Stop`` is a
     separate wire event landing on the same canonical key; telling the two
     apart is what closing #2413 needs.
+
+    This fires blocking, because we need the harness to set the flag
+    stop_hook_active so that we don't run it more than oncel
     """
     if ctx.agent_type == "ida:ida":
         return None
@@ -122,7 +125,7 @@ def honest_output(ctx: HookContext) -> Result | None:
     if ctx.event == "Stop" and ctx.client != "claude":
         return None
 
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+    return block(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
