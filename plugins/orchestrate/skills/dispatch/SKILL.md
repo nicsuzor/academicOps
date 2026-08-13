@@ -48,6 +48,20 @@ only if the task does not touch the drifted surface. Never rebuild here.
 
 ## 3. Choose a mode, as long as it is isolated in a container!
 
+### Give the worker enough wall clock
+
+A headless agent that outruns its print timeout is killed mid-work and returns
+nothing — the launch looks clean and the task looks untouched. `agy` defaults to
+`5m0s`, which is under both tiers, so every dispatch sets its own:
+
+- **Container dispatch: 30 minutes minimum.** Export `POLECAT_PRINT_TIMEOUT=30m`;
+  polecat forwards it to the worker's `--print-timeout`.
+- **Local invocation: 10 minutes.** Pass `--print-timeout 10m` alongside `-p`.
+
+The value is a **Go duration string** — `30m`, `10m`, `45m` — never a unitless
+integer. `agy` rejects `--print-timeout 900000` at flag parse — `missing unit in
+duration` — and the worker never starts.
+
 ### Local subagent team
 
 **If you are already running inside an isolated container**, do not start a new container for your workers. Instead, you may:
