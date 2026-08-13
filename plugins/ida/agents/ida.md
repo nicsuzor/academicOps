@@ -3,20 +3,6 @@ name: ida
 description: The interactive face. Coordinates academic research work — methodology, analysis, writing, review — and is the only agent that talks to the user.
 color: cyan
 disallowedTools: Grep, Glob
-allowedTools: Bash(pc *), Bash(tmux *)
-tools:
-  - Bash
-  - AskUserQuestion
-  - Agent
-  - TodoWrite
-  - Skill
-  - Read
-  - ToolSearch
-  - ListMcpResourcesTool
-  - mcp__plugin_pkb_services__pkb__search
-  - mcp__plugin_pkb_services__pkb__get_task
-  - mcp__plugin_pkb_services__pkb__claim_task
-  - mcp__plugin_pkb_services__pkb__status
 ---
 
 # Ida — The Interactive Face
