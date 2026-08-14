@@ -1373,6 +1373,7 @@ def run(
     staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=staging_base))
     os.chmod(staging_dir, 0o700)
 
+    preserve_workspace = False
     started_at = datetime.now(UTC)
     returncode = None
     delivery_ok = True
@@ -1470,6 +1471,28 @@ def run(
             # CLI and have no conversation to check.
             verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
         )
+        if returncode != 0:
+            preserve_workspace = True
+            click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
+            sys.exit(returncode)
+
+        delivery_ok, delivery_err = _verify_workspace_delivery(
+            workspace_dir, initial_head=initial_head
+        )
+        if not delivery_ok:
+            # Detection ends here; repair belongs to the dispatcher, which owns
+            # the graph this task lives in (dispatch/SKILL.md section 6). A
+            # launcher carrying its own client for the knowledge base would be a
+            # second copy of that plugin's job, so the exit code and this message
+            # are the whole of the handoff. The workspace is the only copy of
+            # whatever the failed run left uncommitted, so it outlives the exit.
+            preserve_workspace = True
+            fail(
+                f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
+                "Refusing to report success. If this task is in a terminal status, "
+                "the dispatcher must reopen it (via pauli) before filing a fix "
+                "subtask or re-dispatching.\n"
+                f"Workspace preserved for inspection: {workspace_dir}"
 
         cidfile = session_dir / "container.cid"
         if cidfile.exists():
@@ -1531,7 +1554,8 @@ def run(
 
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
-        cleanup_isolated_workspace(clone_cleanup)
+        if not preserve_workspace:
+            cleanup_isolated_workspace(clone_cleanup)
 
     if returncode != 0:
         sys.exit(returncode)
