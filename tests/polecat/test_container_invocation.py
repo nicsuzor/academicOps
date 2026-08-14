@@ -484,7 +484,6 @@ def test_sessions_mount_via_project_config(monkeypatch, tmp_path):
     assert "AOPS_SESSIONS=/sessions" in docker_cmd
 
 
-
 def test_branch_option_sets_env_var(monkeypatch, tmp_path):
     """Passing --branch sets AOPS_POLECAT_BRANCH in container env."""
     docker_cmd = _capture_docker_cmd(
@@ -493,4 +492,3 @@ def test_branch_option_sets_env_var(monkeypatch, tmp_path):
         ["run", "claude", "-d", str(tmp_path / "repo"), "--branch", "feature/test-branch"],
     )
     assert "AOPS_POLECAT_BRANCH=feature/test-branch" in docker_cmd
-

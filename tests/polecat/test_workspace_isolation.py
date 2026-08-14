@@ -276,4 +276,3 @@ def test_isolated_workspace_respects_custom_branch_option(fake_canonical_repo, t
     assert branch_name == "feat/custom-override"
 
     cleanup_isolated_workspace(cleanup_info)
-
