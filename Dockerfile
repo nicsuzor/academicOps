@@ -84,6 +84,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
     && ln -s /usr/bin/batcat /usr/local/bin/bat
 
+# Install rtk (Rust Token Killer) — the token-optimizing CLI proxy documented
+# in ~/.claude/RTK.md on the host. The binary alone is inert: the savings
+# come from the PreToolUse hook (`rtk hook claude`, installed for the worker
+# user further down, after the plugin-install step writes the rest of
+# settings.json) that rewrites commands in place before execution.
+#
+# Ships as the static musl build, not the .deb the host uses: the .deb
+# Depends: libc6 (>= 2.39), but this image's base (python:3.12-slim-bookworm)
+# ships glibc 2.36 — confirmed by hand: `dpkg -i` half-installs and the
+# resulting binary fails at runtime with "GLIBC_2.39 not found". The musl
+# build has no glibc dependency at all (`ldd` reports "statically linked")
+# and runs identically here. Same amd64 arch as the host binary either way —
+# this image is linux/amd64, and a host binary of the wrong arch would not be
+# portable, but the musl tarball is fetched fresh from the same GitHub
+# release the host's .deb came from, not copied off the host, so arch is
+# whatever this build targets.
+#
+# Version pinned to match what's on the host (`dpkg -l rtk` on nicwin,
+# 2026-08-13: 0.43.0-1). Bump deliberately via --build-arg RTK_VERSION, not
+# by fetching "latest" — an unpinned hook that changes rewrite behavior under
+# a worker mid-flight is worse than a stale one.
+ARG RTK_VERSION=0.43.0
+RUN RTK_URL="https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/rtk-x86_64-unknown-linux-musl.tar.gz" \
+    && curl -fsSL -o /tmp/rtk.tar.gz "$RTK_URL" \
+    && tar -xzf /tmp/rtk.tar.gz -C /tmp \
+    && install -m 755 /tmp/rtk /usr/local/bin/rtk \
+    && rm -rf /tmp/rtk.tar.gz /tmp/rtk \
+    && rtk --version
+
 # Pre-install Playwright's Chromium browser and its system dependencies.
 # Marsha and other workers run browser verification via `playwright`; without
 # this, each container has to run `npx playwright install-deps` at runtime —
@@ -321,6 +350,36 @@ RUN umask 000 \
     && cp "$MP_ROOT"/.claude-plugin/marketplace.json /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin/marketplace.json \
     # keep for now && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
+
+# Register the rtk PreToolUse hook in the worker's settings.json — this is
+# the half of rtk that actually delivers token savings (see the rtk install
+# above). Run rtk's own installer rather than hand-writing the JSON: it
+# merges into the existing file (preserving statusLine/enabledPlugins written
+# above it) instead of overwriting it, which is exactly how the hook got into
+# ~/.claude/settings.json on the host (`rtk init --global --agent claude`,
+# verified by diffing the host's settings.json against a fresh --dry-run of
+# this same command). --hook-only skips writing RTK.md (its meta-commands
+# doc) into the image; --auto-patch skips the interactive confirmation this
+# non-interactive build can't answer. Must run after the plugin-install block
+# above, which COPYs settings.json in and then overwrites it wholesale via
+# jq — running rtk init before that would have its hook clobbered.
+RUN umask 000 \
+    && rtk init --global --agent claude --auto-patch --hook-only \
+    && rm -f /home/worker/.claude/settings.json.bak \
+    && jq -e '.hooks.PreToolUse[0].hooks[0].command == "rtk hook claude"' /home/worker/.claude/settings.json >/dev/null \
+    && chmod -R a+rwX /home/worker/.claude
+
+# No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
+# scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
+# `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
+#
+# Warm uv's cache with that command's dependencies. Cold, `uvx --from
+# fastmcp-slim[server]` resolves and downloads 67 packages on first use, which
+# runs past the window a client waits for an MCP server to hand back its tool
+# list — the server is left starting, no tools are declared, and the agent
+# reports the MCP server as unavailable rather than as slow. Resolving them at
+# build time makes the runtime start a cache hit. No URL is involved.
+RUN uvx --from 'fastmcp-slim[server]' fastmcp --version >/dev/null 2>&1 || true
 
 # Install the default ccstatusline config. Claude Code's own settings.json is
 # installed before the plugin install above, which then writes the generated
