@@ -97,6 +97,8 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind agents to present substantiating evidence with their claims.
 
+    ## When enabled:
+
     Registered on both stop events:
     - ``SubagentStop`` binds a worker at handback;
     - ``Stop`` binds every other agent at its own turn boundary, which is the only
