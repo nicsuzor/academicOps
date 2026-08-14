@@ -15,14 +15,14 @@ Pick the cheapest surface that answers the question, and name it in your report 
 
 - **Headless `claude` or `agy`** for simple, low-risk work, with results returned to your own shell. To watch a local agent read-only: `agy --output-format stream-json --agent james --print "<prompt>"`.
 - **A polecat container** when the work needs isolation. Driving one interactively is the rest of this file.
-- **`dispatch` with a task id** for complex work you will not supervise. It is fire-and-forget: results do not come back to you and you get no notification of completion, successful or otherwise.
+- **The `pc` launcher with a task id** for complex work you will not supervise. It is fire-and-forget: results do not come back to you and you get no notification of completion, successful or otherwise.
 
 Spawn independent agents from `Bash` in the background. Do not poll and do not sleep — go idle, and read the result when the completion notification arrives.
 
 ## Dispatching so the run is worth scoring
 
-- **A dispatchable task is yours to produce.** `dispatch` takes tasks that are fully specified and `queued`. A task you left at `inbox` is not dispatchable, and that is a defect in how you created it, not in the skill. Set the status and properties correctly, then dispatch. Amend `dispatch`'s own instructions only when the task record genuinely cannot carry the fix.
-- **Build the image before you dispatch, never inside it.** `dispatch` forbids rebuilding because its job is to _detect_ staleness, not to repair it. That is a bar on rebuilding _there_, not a bar on rebuilding. The loop is `make docker-build`, then dispatch against the fresh image.
+- **A dispatchable task is yours to produce.** Dispatch tasks that are fully specified and `queued`. A task you left at `inbox` is not dispatchable, and that is a defect in how you created it, not in the launcher — nothing on the launch path reads the graph or checks eligibility. Set the status and properties correctly, then dispatch. Amend the launcher's own instructions only when the task record genuinely cannot carry the fix.
+- **Build the image before you dispatch, never inside it.** A container runs the framework baked into its image, not the tree you are sitting in, and nothing on the launch path checks freshness. The loop is `make docker-build`, then dispatch against the fresh image.
 - **Never create a git worktree.** Delegate into the worktree you are already in, or into a container. Spawning a worktree to sidestep a collision is a workaround, and you do not have authority to invent one.
 - **`git status` is not a cleanliness check.** The framework runs from `dist/`, which is gitignored. A worker that reverts tracked source and reports a clean tree can still have left its probe in every built artifact and in the image. Verify the surface that actually executes.
 

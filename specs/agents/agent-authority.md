@@ -109,8 +109,8 @@ five agent files now declare it, each per its actual role.** `pauli`
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
 (`plugins/orchestrate/agents/james.md`) declares the explicit list
 `["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
-three reviewers his own description names, plus the plain worker surface his
-dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
+three reviewers his own description names, plus the plain worker surface his own
+fan-out requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
 `subagents: []`: its own description does not involve spawning, since it
 returns a verdict. `ida` (`plugins/ida/agents/ida.md`) declares the explicit
 list `["orchestrate:james", "pkb:pauli"]`, matching the only two delegation

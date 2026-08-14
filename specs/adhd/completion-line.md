@@ -204,8 +204,9 @@ surface showed it). Only the third proves Nic saw anything.
    would know before the line could be written. That dependency is real and is the
    reason the local-CLI rule is load-bearing here rather than merely tidy.
 3. **`review`-as-landed is a judgement, not a derivation** (above).
-4. **A defect found on the way, filed not fixed:** the dispatch skill's documented
-   `tmux new-session -d` still gives the process a TTY, so `cli.py:1415-1416`
+4. **A defect found on the way, filed not fixed:** the launcher's documented
+   `tmux new-session -d` (`plugins/ida/agents/pc.md`) still gives the process a
+   TTY, so `cli.py:1415-1416`
    computes `is_interactive = True`, polecat adds `-it`, and the `claude` lane runs
    the interactive TUI instead of `--print`. `POLECAT_PRINT_TIMEOUT` (`cli.py:998-1000`)
    is inside an `agent_cmd == "agy"` branch, so the claude lane has no wall-clock

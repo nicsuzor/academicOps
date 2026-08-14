@@ -49,15 +49,14 @@ def built_orchestrate(tmp_path_factory) -> Path:
 
 
 def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
-    """James invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` via
-    `skills/dispatch` (`plugins/orchestrate/agents/james.md`,
-    `plugins/orchestrate/skills/dispatch/SKILL.md`), and that path is true only
-    because `plugins/orchestrate/manifest/plugin.toml` injects it from
-    `lib/polecat/`.
+    """The polecat launcher agent (`plugins/ida/agents/pc.md`) invokes
+    `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
+    root at all is `plugins/orchestrate/manifest/plugin.toml`, which injects it
+    from `lib/polecat/`.
 
-    Drop those `[[shared]]` stanzas and nothing fails at build time. Dispatch
-    fails at runtime, inside a container, with file-not-found. This is the check
-    that turns that into a build-time failure instead.
+    Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
+    fails at runtime, with file-not-found. This is the check that turns that into
+    a build-time failure instead.
     """
     for client in ("claude", "agy"):
         polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"

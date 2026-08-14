@@ -46,7 +46,7 @@ flowchart TD
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    brief -. "task is now briefed" .-> dispatch(["orchestrate:james — skills/dispatch<br/>reads the task by id and routes it<br/>to a worker surface"])
+    brief -. "task is now briefed" .-> dispatch(["ida:pc — polecat launcher<br/>takes the task by id and launches<br/>a worker container onto it"])
     dispatch --> pull
 ```
 
