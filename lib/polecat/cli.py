@@ -927,12 +927,19 @@ def _default_agent_args(extra_args, agent_override=None):
 
 
 def _build_inner_command(
-    agent_cmd, extra_args, is_interactive, explicit_headless, task, agent=None
+    agent_cmd,
+    extra_args,
+    is_interactive,
+    explicit_headless,
+    task,
+    agent=None,
+    output_format=None,
+    prompt=None,
 ):
     """The command run inside the container, and the container path that agent
     writes its session state to.
 
-    Returns (inner_cmd, container_session_path, seeded_from_task).
+    Returns (inner_cmd, container_session_path, seeded_from_task, seeded_prompt).
     """
     claude_session_path = CLAUDE_SESSION_PATH
 
@@ -944,6 +951,8 @@ def _build_inner_command(
             "--setting-sources=user,project",
             *_default_agent_args(extra_args, agent),
         ]
+        if output_format:
+            inner_cmd.extend(["--output-format", output_format])
         if not is_interactive and not explicit_headless:
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
@@ -959,6 +968,8 @@ def _build_inner_command(
             "/home/worker/.gemini/antigravity-cli/cli.log",
             *_default_agent_args(extra_args, agent),
         ]
+        if output_format:
+            inner_cmd.extend(["--output-format", output_format])
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
         inner_cmd = ["bash"]
@@ -969,38 +980,51 @@ def _build_inner_command(
         container_session_path = claude_session_path
         inner_cmd = [agent_cmd]
 
-    seeded_from_task = bool(task) and not extra_args
-    if seeded_from_task:
-        extra_args = (f"/pull {task}",)
-
-    seeded_prompt = (
-        f"/pull {task}" if seeded_from_task else (" ".join(extra_args) if extra_args else None)
-    )
-
-    if extra_args:
-        agy_prompt_flags = {
-            "-p",
-            "--print",
-            "--prompt",
-            "-i",
-            "--prompt-interactive",
-            "-c",
-            "--continue",
-            "--conversation",
-        }
-        if agent_cmd == "agy" and not agy_prompt_flags.intersection(extra_args):
-            # Autonomous dispatch runs headless so the agent completes its loop
-            # and exits; an interactive prompt would leave a live container
-            # idling forever. The print timeout must precede --print with
-            # nothing between --print and its prompt value: a value-taking flag
-            # consumes the next token whatever it is, so an interposed flag
-            # becomes the prompt and the real one is silently dropped.
-            print_timeout = os.environ.get("POLECAT_PRINT_TIMEOUT")
-            if print_timeout:
-                inner_cmd.extend(["--print-timeout", print_timeout])
-            inner_cmd.extend(["--print", extra_args[0], *extra_args[1:]])
+    seeded_from_task = bool(task) and not extra_args and not prompt
+    if prompt:
+        seeded_prompt = prompt
+        if agent_cmd == "agy":
+            inner_cmd.extend(["--prompt", prompt])
+        elif agent_cmd == "claude":
+            inner_cmd.append(prompt)
+        elif extra_args:
+            inner_cmd.extend(extra_args)
+    elif seeded_from_task:
+        seeded_prompt = f"/pull {task}"
+        if agent_cmd == "agy":
+            inner_cmd.extend(["--print", f"/pull {task}"])
+        else:
+            inner_cmd.append(f"/pull {task}")
+    elif extra_args:
+        seeded_prompt = " ".join(extra_args)
+        if agent_cmd == "agy":
+            agy_prompt_flags = {
+                "-p",
+                "--print",
+                "--prompt",
+                "-i",
+                "--prompt-interactive",
+                "-c",
+                "--continue",
+                "--conversation",
+            }
+            if not agy_prompt_flags.intersection(extra_args):
+                # Autonomous dispatch runs headless so the agent completes its loop
+                # and exits; an interactive prompt would leave a live container
+                # idling forever. The print timeout must precede --print with
+                # nothing between --print and its prompt value: a value-taking flag
+                # consumes the next token whatever it is, so an interposed flag
+                # becomes the prompt and the real one is silently dropped.
+                print_timeout = os.environ.get("POLECAT_PRINT_TIMEOUT")
+                if print_timeout:
+                    inner_cmd.extend(["--print-timeout", print_timeout])
+                inner_cmd.extend(["--print", extra_args[0], *extra_args[1:]])
+            else:
+                inner_cmd.extend(extra_args)
         else:
             inner_cmd.extend(extra_args)
+    else:
+        seeded_prompt = None
 
     return inner_cmd, container_session_path, seeded_from_task, seeded_prompt
 
@@ -1252,7 +1276,7 @@ def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task,
 
     for attempt in range(1, max_attempts + 1):
         suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
-        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd[:3])} ...")
+        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd[:3])} ...", err=True)
         returncode = subprocess.run(cmd).returncode
 
         if not verify_seed:
@@ -1318,6 +1342,15 @@ def main():
     "-a",
     help="Agent persona to run inside container (default: james).",
 )
+@click.option(
+    "--output-format",
+    "-o",
+    help="Output format for print/headless mode (e.g. text, json, stream-json).",
+)
+@click.option(
+    "--prompt",
+    help="Prompt string for print/headless mode.",
+)
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
 def run(
     agent_cmd,
@@ -1330,6 +1363,8 @@ def run(
     branch,
     with_sessions,
     agent,
+    output_format,
+    prompt,
     extra_args,
 ):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
@@ -1413,7 +1448,9 @@ def run(
             has_sessions_access = True
 
         docker_args = []
-        explicit_headless = bool(HEADLESS_FLAGS.intersection(extra_args))
+        explicit_headless = (
+            bool(HEADLESS_FLAGS.intersection(extra_args)) or bool(output_format) or bool(prompt)
+        )
         is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
@@ -1426,7 +1463,14 @@ def run(
             env["CLAUDE_NON_INTERACTIVE"] = "1"
 
         inner_cmd, container_session_path, seeded_from_task, seeded_prompt = _build_inner_command(
-            agent_cmd, extra_args, is_interactive, explicit_headless, task, agent=agent
+            agent_cmd,
+            extra_args,
+            is_interactive,
+            explicit_headless,
+            task,
+            agent=agent,
+            output_format=output_format,
+            prompt=prompt,
         )
 
         env["AOPS_POLECAT_CONTAINER"] = "1"
@@ -1456,8 +1500,8 @@ def run(
             sessions_base=sessions_base,
         )
 
-        click.echo(f"Workspace: {workspace_dir}")
-        click.echo(f"Session logs: {session_dir}")
+        click.echo(f"Workspace: {workspace_dir}", err=True)
+        click.echo(f"Session logs: {session_dir}", err=True)
 
         returncode = _execute_with_seed_verification(
             cmd,

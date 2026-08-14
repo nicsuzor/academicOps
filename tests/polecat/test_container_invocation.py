@@ -492,3 +492,98 @@ def test_branch_option_sets_env_var(monkeypatch, tmp_path):
         ["run", "claude", "-d", str(tmp_path / "repo"), "--branch", "feature/test-branch"],
     )
     assert "AOPS_POLECAT_BRANCH=feature/test-branch" in docker_cmd
+
+
+def test_agy_output_format_and_prompt_options(monkeypatch, tmp_path):
+    """Passing --output-format and --prompt to agy constructs the expected flags in order."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "--output-format",
+            "stream-json",
+            "--prompt",
+            "hello world",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "agy",
+        "--dangerously-skip-permissions",
+        "--log-file",
+        "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        "james",
+        "--output-format",
+        "stream-json",
+        "--prompt",
+        "hello world",
+    ]
+    assert "-it" not in cmd
+
+
+def test_agy_output_format_with_positional_prompt(monkeypatch, tmp_path):
+    """Passing --output-format with a positional prompt places format before prompt."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "--output-format=stream-json",
+            "hello positional",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "agy",
+        "--dangerously-skip-permissions",
+        "--log-file",
+        "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        "james",
+        "--output-format",
+        "stream-json",
+        "--print",
+        "hello positional",
+    ]
+    assert "-it" not in cmd
+
+
+def test_claude_output_format_and_prompt_options(monkeypatch, tmp_path):
+    """Passing --output-format and --prompt to claude constructs the expected flags."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+            "--output-format",
+            "json",
+            "--prompt",
+            "hello claude",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "claude",
+        "--permission-mode=auto",
+        "--setting-sources=user,project",
+        "--agent",
+        "james",
+        "--output-format",
+        "json",
+        "hello claude",
+    ]
+    assert "-it" not in cmd
