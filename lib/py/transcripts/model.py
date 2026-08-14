@@ -68,6 +68,10 @@ class SubagentTranscript:
     parent_agent_id: str | None = None
     tokens_used: int = 0
     cost_usd: float = 0.0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
     # From the `agent-<id>.meta.json` sidecar. `spawn_depth` is NOT reliably
     # parent+1 for team-mode spawns (a mailbox/named spawn) — `parent_agent_id`
     # is the field that stays correct there; treat spawn_depth as a rendering
@@ -75,6 +79,8 @@ class SubagentTranscript:
     # spawn (inherits the parent's context) rather than a fresh subagent.
     spawn_depth: int | None = None
     is_fork: bool = False
+    model: str | None = None
+    degraded: list[str] = field(default_factory=list)
 
     @property
     def label(self) -> str:
@@ -97,6 +103,7 @@ class NormalizedSession:
     tokens_used: int = 0
     cost_usd: float = 0.0
     subagents: list[SubagentTranscript] = field(default_factory=list)
+    degraded: list[str] = field(default_factory=list)
 
     @property
     def source_files(self) -> list[Path]:
@@ -109,11 +116,31 @@ class NormalizedSession:
         return len(self.events) + sum(len(sub.events) for sub in self.subagents)
 
     @property
+    def controller_tokens(self) -> int:
+        """Tokens used strictly by the controlling agent (trunk)."""
+        return self.tokens_used
+
+    @property
+    def subagent_tokens(self) -> int:
+        """Tokens used by all subagents combined."""
+        return sum(sub.tokens_used for sub in self.subagents)
+
+    @property
+    def controller_cost_usd(self) -> float:
+        """Estimated USD cost strictly for the controlling agent (trunk)."""
+        return self.cost_usd
+
+    @property
+    def subagent_cost_usd(self) -> float:
+        """Estimated USD cost for all subagents combined."""
+        return sum(sub.cost_usd for sub in self.subagents)
+
+    @property
     def total_tokens_used(self) -> int:
         """Trunk tokens plus every subagent's tokens — the session's real spend."""
-        return self.tokens_used + sum(sub.tokens_used for sub in self.subagents)
+        return self.controller_tokens + self.subagent_tokens
 
     @property
     def total_cost_usd(self) -> float:
         """Trunk cost plus every subagent's cost — the session's real spend."""
-        return self.cost_usd + sum(sub.cost_usd for sub in self.subagents)
+        return self.controller_cost_usd + self.subagent_cost_usd

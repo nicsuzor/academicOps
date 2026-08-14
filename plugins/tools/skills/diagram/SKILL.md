@@ -19,6 +19,18 @@ hazards syntax knowledge does not cover.
 If the user has not said which, ask before drawing. Converting after the fact
 loses the layout work.
 
+## Working live with the user
+
+A diagram file the user has open is a two-way conversation surface, not a
+one-shot deliverable — their edits in the app are messages to you, made in the
+diagram's own visual language instead of prose. Before writing, check whether
+the file changed since you last saved it (mtime, or diff against what you last
+wrote); if so, read what moved, what was deleted, what was relabelled, and
+treat that as their reply before doing anything else. Never overwrite a live
+file blind. Fold what you learn into whatever else it implies — a task in the
+PKB, a spec, code — then bring your own response back as a change to the same
+diagram, not as an explanation of it.
+
 ## Craft rules (both styles)
 
 - **One message per chart.** State the purpose in one line first ("how a session
@@ -29,10 +41,15 @@ loses the layout work.
   Minimise backward arrows and edge crossings.
 - **Verb-first labels, 3–9 words.** Detail goes in a note or legend, never inside
   the box. Big blocks of text in boxes are the most common failure.
+- **State the fact, not its history.** A node or tag says what is true now
+  (`[DARK]`, `[PROPOSED]`) — never why, when, or what it used to be. No dates,
+  no "removed 2026-08", no "was: X, Y, Z" audit trails. That belongs in git or
+  a spec; a diagram that narrates change is a log wearing a diagram's shape.
 - **Distinct shapes carry distinct semantics** — process, decision, terminal,
   data/IO. Never reuse one shape for two meanings in the same chart.
 - **Same hierarchy level, same size and weight.** Uniform everything is chaos;
   so is arbitrary variation.
+- **No prose or investigation notes.** Diagrams depict system state and architecture, not investigation history. If something needs a dated log or investigation notes, put it in git commits, specs, or memory (`remember`). Never append investigation notes to an existing diagram file.
 
 ## Style: mermaid
 
@@ -92,6 +109,72 @@ Use fixed-width keys of equal length over the `0-9A-Za-z` ASCII alphabet (`a00`,
 ad hoc scheme like `c00`, `d02` is silently regenerated on the next open/save,
 resorting the whole array with it.
 
+### Reading an existing file
+
+Never Read a `.excalidraw` file raw. It is one long line of JSON — offset/limit
+cannot window it, a 135KB file is ~35k+ tokens, and Read refuses past 25k. The
+semantics fit in ~6% of that. Project them with the bundled viewer
+(`scripts/excalidraw-view.py` beside this file, stdlib only):
+
+```bash
+python3 scripts/excalidraw-view.py FILE summary        # counts, extents, max index, order sanity
+python3 scripts/excalidraw-view.py FILE map            # shapes with labels, free text, arrow topology
+python3 scripts/excalidraw-view.py FILE style          # modal style values to copy for new elements
+python3 scripts/excalidraw-view.py FILE check          # structural validation — exit 1 on any fault
+python3 scripts/excalidraw-view.py FILE1 diff FILE2    # summary before/after diff (counts, removals, topology)
+```
+
+`summary` then `map` is full situational awareness; add `style` before creating
+elements so new work matches the house look. For anything the viewer does not
+cover, write a small jq/python projection — never dump the file.
+
+Projected output is for reasoning, **not for Edit anchors**: jq and python
+decode JSON, so `\n` and unicode escapes no longer match the bytes on disk.
+
+### Editing an existing file
+
+Mutate through a short python script — load, modify, dump — never by
+string-matching Edits against the JSON. In the script or using `scripts/excal-edit.py`:
+
+- **Back up first** (`cp FILE FILE.bak-<date>`). Fix a bad result by editing the
+  script and re-running it against the backup — never by patching its output.
+- **Prefer append-only.** New elements added in free canvas (`summary` prints
+  the extents) leave every existing binding untouched.
+- **Clone, don't author.** `copy.deepcopy` an existing element of the same type
+  as the template, then reset the identity fields: `id`, `seed`, `versionNonce`,
+  `version`, `updated`, and clear `groupIds`, `containerId`, `boundElements`
+  before wiring the new relationships.
+- **Continue `index` past the current maximum** (`summary` prints it) so
+  existing elements keep their z-order and the array stays sorted.
+- **Validate on both sides of the write**: `check` mode before editing proves
+  you started from a well-formed file; `check` plus a fresh-interpreter re-parse
+  after proves you left one. A file can pass every referential check and still
+  be unopenable — that is exactly what `check`'s order test catches.
+- **Use helper utilities** (`scripts/excal-edit.py`):
+  - `python3 scripts/excal-edit.py FILE fit <id> "<new text>"`: Recomputes text bounding box and grows container centered to prevent text overflow.
+  - `python3 scripts/excal-edit.py FILE overlap`: Flags AABB collisions between non-nested sibling elements (exits 1 if overlap exists).
+  - `python3 scripts/excal-edit.py FILE arrows`: Flags any arrow whose polyline cuts through a shape it isn't bound to at either end — the check for "route around unrelated boxes, never through them" after moving or rerouting an arrow by hand. Background zone rectangles (a shape fully containing 3+ others) don't count as obstacles. Exits 1 on a hit.
+  - `python3 scripts/excal-edit.py FILE render [OUT.png] [--region X0,Y0,X1,Y1]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates). Pass `--region` to crop to one area — past a couple hundred elements the whole-canvas render is too dense to read.
+- **Write both text layers, always.** A text element carries `text` — the
+  wrapped copy Excalidraw paints — and `originalText`, the unwrapped source it
+  re-wraps from. `originalText` is the one that survives: set `text` alone and
+  the next time the editor lays that element out it regenerates `text` from the
+  stale `originalText`, and the edit is gone with nothing to show it ever
+  happened. Set both to the same string on every text write. `check` fails the
+  file when the two disagree in content rather than only in line breaks.
+- **Read `originalText`, not `text`, when you need what an element says.** On a
+  file some earlier writer damaged, `text` may hold a label nobody will see
+  again. When the two disagree, report both and ask which is wanted — do not
+  pick.
+- **Never append investigation notes to a diagram file.** Put investigation notes in git commits, specs, or memory (`remember`).
+
+If a targeted Edit is genuinely simpler (one text swap), extract the exact
+`old_string` with `grep -o` from the raw file so the escaping matches.
+
+To see layout rather than structure, render with `scripts/excal-edit.py FILE render` or matplotlib (`uv run --with matplotlib`, not system python) and read the image.
+Say what that proves: geometry and collisions, not Excalidraw's true rendering —
+bound-text wrapping can still differ.
+
 ### Layout
 
 - **No rigid alignment.** Radial and clustered, spreading in all directions —
@@ -122,17 +205,45 @@ by default, medium (3–4px) for emphasis.
 
 ### Bundled libraries
 
-Six `.excalidrawlib` files ship in `libraries/` beside this file:
+`.excalidrawlib` files ship in `libraries/` beside this file:
 
-- `awesome-icons` — general-purpose icon set
-- `data-processing`, `data-viz` — pipeline stages and chart elements
+- `simple-sticky-notes` — sticky notes in seven colours; the only bundled
+  library whose text is already bound to its container
+- `banners`, `clouds` — section headers, and mind-map topic holders
+- `calendar`, `organization-chart` — month templates, org charts
+- `flow-chart-symbols` — start/end, process, decision, document, manual input
+- `mathematical-symbols` — drawn to sit beside Virgil text
+- `data-processing` — pipeline stages
 - `stick-figures`, `stick-figures-collaboration` — people, and group scenes
-- `hearts` — decorative
+
+**Only version-2 libraries ship here.** A v1 file stores bare element arrays
+under `library` with no item names, so nothing can ask it for anything by name.
+Do not add one: find a v2 equivalent, or go without.
+
+**Library text is usually unbound.** Only `simple-sticky-notes` ships text with
+a `containerId`; everywhere else the labels float, which is the desync this
+skill forbids. After pasting an item, either bind its text or treat the label as
+decoration you will replace.
 
 Load through the Excalidraw library panel → "Load library from file". Recolour
 to the palette below, use 1–3 icons per section, size them to the neighbouring
 text, and do not mix icon styles within one diagram. Material Symbols Outlined
 SVGs are a good source for anything the bundled libraries lack.
+
+To place a library item by script instead, list the items and emit one as an
+appendable element group:
+
+```bash
+python3 scripts/excalidraw-view.py libraries/stick-figures.excalidrawlib lib
+python3 scripts/excalidraw-view.py libraries/stick-figures.excalidrawlib \
+  item "Grandma" --after b3lh --at 400,3400 > /tmp/group.json
+```
+
+`item` mints fresh ids, seeds and indices and rewrites the group's internal
+references, so the output appends straight onto `elements`. Pass the target's
+current max `index` as `--after` (read it from `summary`) and validate with
+`check` afterwards. Older libraries store items unnamed — `lib` gives those a
+`#N` selector.
 
 ### Export
 
@@ -175,5 +286,5 @@ Rules:
 - Palette limited and meaningful; contrast holds.
 - Consistent roughness and fill pattern; no orphaned elements.
 - Readable at the size it will actually be viewed.
-- For a hand-written `.excalidraw`: elements array sorted by `index`, and the
-  file opens.
+- For a hand-written or script-edited `.excalidraw`:
+  `scripts/excalidraw-view.py FILE check` passes, and the file opens.

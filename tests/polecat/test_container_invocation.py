@@ -164,6 +164,26 @@ def test_caller_supplied_non_interactive_is_rejected_before_anything_starts(
     assert captured == [], "no container may start for an invocation that cannot work"
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["run", "ida", "-d", "repo"],
+        ["run", "claude", "-d", "repo", "--agent", "ida"],
+        ["run", "claude", "-d", "repo", "--agent=ida"],
+        ["run", "agy", "-d", "repo", "--agent", "ida"],
+        ["run", "agy", "-d", "repo", "--agent=ida"],
+    ],
+)
+def test_ida_is_rejected_as_agent_cmd_or_agent_flag(argv, tmp_path, monkeypatch):
+    """ida is the interactive face plugin and is not installed in polecat containers."""
+    argv_with_path = [a if a != "repo" else str(tmp_path / "repo") for a in argv]
+    result, captured = _invoke_capturing(monkeypatch, tmp_path, argv_with_path)
+
+    assert result.exit_code != 0
+    assert "ida is the interactive face plugin and is not installed" in result.output
+    assert captured == [], "no container may start when ida is requested"
+
+
 def test_non_interactive_is_not_treated_as_a_headless_signal(tmp_path, monkeypatch):
     """It must not satisfy the headless check either: counting a flag that
     does not exist as 'the caller asked for headless' suppressed the real
@@ -200,10 +220,107 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        "james",
         "--print",
         "/pull task_abc123",
     ]
     assert "--non-interactive" not in inner
+
+
+# --------------------------------------------------------------------------
+# Default agent
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_all_clients_boot_as_the_default_agent(client, tmp_path, monkeypatch):
+    """A dispatched worker with no agent named must boot as DEFAULT_AGENT (james) on all clients."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", client, "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == cli.DEFAULT_AGENT
+
+
+@pytest.mark.parametrize("client", ["claude", "agy"])
+@pytest.mark.parametrize("flag", ["--agent", "-a"])
+def test_cli_agent_option_overrides_default_agent(client, flag, tmp_path, monkeypatch):
+    """The --agent / -a Click option allows changing the agent persona on all clients."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", client, "-d", str(tmp_path / "repo"), flag, "pauli", "-t", "task_abc123"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "pauli"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+@pytest.mark.parametrize("agent_cmd", ["shell", "bash", "sleep", "some-other-tool"])
+def test_non_agent_commands_never_get_the_agent_flag(agent_cmd, tmp_path, monkeypatch):
+    """`--agent` means nothing to bash or sleep; a stray flag would break them."""
+    cmd = _capture_docker_cmd(
+        monkeypatch, tmp_path, ["run", agent_cmd, "-d", str(tmp_path / "repo")]
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--agent" not in inner
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_wins_over_the_default_for_claude(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--agent", "rbg", "hello"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_wins_over_the_default_for_agy(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "agy", "-d", str(tmp_path / "repo"), "--print", "hello", "--agent", "rbg"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_caller_supplied_agent_in_equals_form_is_not_duplicated(tmp_path, monkeypatch):
+    """`--agent=rbg` is parsed as setting the agent persona without duplicating."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--agent=rbg", "hello"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "rbg"
+    assert cli.DEFAULT_AGENT not in inner
+
+
+def test_the_default_agent_name_appears_once_in_the_source():
+    """One constant, two branches. A second literal is a second place to change
+    it and a chance for the two clients to drift apart."""
+    source = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
+
+    assert source.count(f'"{cli.DEFAULT_AGENT}"') == 1
 
 
 # --------------------------------------------------------------------------
@@ -319,3 +436,59 @@ def test_polecat_typechecks_clean():
     diagnostics = json.loads(result.stdout)["generalDiagnostics"]
     errors = [d for d in diagnostics if d.get("severity") == "error"]
     assert errors == [], errors
+
+
+def test_sessions_mount_via_with_sessions_flag(monkeypatch, tmp_path):
+    """Passing --with-sessions mounts transcripts ro and sets AOPS_SESSIONS=/sessions."""
+    docker_cmd = _capture_docker_cmd(
+        monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo"), "--with-sessions"]
+    )
+    sessions_dir = tmp_path / "sessions"
+    expected_mount = f"{(sessions_dir / 'transcripts').resolve()}:/sessions/transcripts:ro"
+
+    assert "-v" in docker_cmd
+    assert expected_mount in docker_cmd
+    assert "-e" in docker_cmd
+    assert "AOPS_SESSIONS=/sessions" in docker_cmd
+
+
+def test_sessions_mount_via_project_config(monkeypatch, tmp_path):
+    """Configuring sessions_access: true mounts transcripts ro and sets AOPS_SESSIONS=/sessions."""
+    _base_mocks(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"},
+            "sessions_access": True,
+        },
+    )
+    captured = []
+
+    def fake_run(cmd, *a, **kw):
+        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+            captured.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    monkeypatch.setattr(cli, "_seed_confirmed", lambda session_dir, task: True)
+
+    result = CliRunner().invoke(cli.main, ["run", "claude", "-d", str(tmp_path / "repo")])
+    assert result.exit_code == 0, result.output
+    docker_cmd = captured[0]
+
+    sessions_dir = tmp_path / "sessions"
+    expected_mount = f"{(sessions_dir / 'transcripts').resolve()}:/sessions/transcripts:ro"
+
+    assert expected_mount in docker_cmd
+    assert "AOPS_SESSIONS=/sessions" in docker_cmd
+
+
+def test_branch_option_sets_env_var(monkeypatch, tmp_path):
+    """Passing --branch sets AOPS_POLECAT_BRANCH in container env."""
+    docker_cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--branch", "feature/test-branch"],
+    )
+    assert "AOPS_POLECAT_BRANCH=feature/test-branch" in docker_cmd

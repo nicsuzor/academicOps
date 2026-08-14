@@ -1,6 +1,6 @@
 ---
 description: Never modify or substitute a source serving as evidence; if the primary source is unreachable, halt.
-trigger: always_on
+trigger: off
 ---
 
 ## Evidence Is Immutable and Irreplaceable

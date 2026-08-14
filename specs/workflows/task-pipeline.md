@@ -22,7 +22,8 @@ stage, `strategize`, in `plugins/ida/skills/`. Nothing here restates them.
                               │
                               ▼
 ===================================================================
-BREAKPOINT 1 — the user calls brief on an inbox node. Being called is the gate.
+BREAKPOINT 1 — the user calls brief on an inbox node, or on a raw ask that
+brief captures itself first. Being called is the gate.
 ===================================================================
 brief (composes only — never dispatches) ──► status: queued
    ├─► placed under the right parent, valued, densely wired
@@ -64,6 +65,14 @@ else — value, edges, assumptions, forks, decisions — waits, because every
 judgment made at capture is made on the thinnest context anyone will ever have
 about the ask, and a fragment that costs more than a few seconds to capture is a
 fragment that stops being captured.
+
+**`brief` captures too, when it is handed prose rather than an id.** The ask a
+user pastes straight into the call has no node behind it, and the executor reads
+the body rather than the invocation, so the node has to exist before there is
+anything to brief. `brief` writes the same one `inbox` node `/q` would have, then
+proceeds — it is already reading the neighbourhood, so the placement judgment
+capture defers is one it is about to make anyway. The gate is the call, never
+which surface wrote the node.
 
 **Hydrate points; it does not read.** It runs on every ask, which is the widest
 point in the funnel, so it does the cheap half: a few differently-worded

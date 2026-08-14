@@ -16,10 +16,8 @@ import pytest
 
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
-from build.includes import resolve_includes
 from build.manifest import merge_one_level, render_template
 from build.marketplace import load_marketplace_toml
-from build.shared import load_shared_entries
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
@@ -51,15 +49,14 @@ def built_orchestrate(tmp_path_factory) -> Path:
 
 
 def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
-    """James invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` via
-    `skills/dispatch` (`plugins/orchestrate/agents/james.md`,
-    `plugins/orchestrate/skills/dispatch/SKILL.md`), and that path is true only
-    because `plugins/orchestrate/manifest/plugin.toml` injects it from
-    `lib/polecat/`.
+    """The polecat launcher agent (`plugins/ida/agents/pc.md`) invokes
+    `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
+    root at all is `plugins/orchestrate/manifest/plugin.toml`, which injects it
+    from `lib/polecat/`.
 
-    Drop those `[[shared]]` stanzas and nothing fails at build time. Dispatch
-    fails at runtime, inside a container, with file-not-found. This is the check
-    that turns that into a build-time failure instead.
+    Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
+    fails at runtime, with file-not-found. This is the check that turns that into
+    a build-time failure instead.
     """
     for client in ("claude", "agy"):
         polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
@@ -75,118 +72,9 @@ def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
 # --- stage 1/2: shared injection + include resolution -----------------------
 
 
-def test_shared_directory_injected_both_clients(built):
-    for client in ("claude", "agy"):
-        base = built / f"fixture-alpha-{client}"
-        assert (base / "doctrine" / "base.md").is_file()
-        assert (base / "doctrine" / "greeting.md").is_file()
-
-
 def test_shared_single_file_injected_both_clients(built):
     for client in ("claude", "agy"):
         assert (built / f"fixture-alpha-{client}" / "hooks" / "hook.py").is_file()
-
-
-def test_recursive_include_resolved(built):
-    content = (built / "fixture-alpha-claude" / "commands" / "greet.md").read_text()
-    assert "@include" not in content
-    assert "Body of the base fixture doctrine." in content
-    assert "before the include" in content
-    assert "after the include" in content
-
-
-def test_missing_include_target_is_hard_error(tmp_path):
-    lib_dir = tmp_path / "lib"
-    lib_dir.mkdir()
-    with pytest.raises(BuildError, match="not found"):
-        resolve_includes("@include nope.md\n", lib_dir, "origin.md")
-
-
-def test_include_cycle_is_hard_error(tmp_path):
-    lib_dir = tmp_path / "lib"
-    lib_dir.mkdir()
-    (lib_dir / "a.md").write_text("@include b.md\n")
-    (lib_dir / "b.md").write_text("@include a.md\n")
-    with pytest.raises(BuildError, match="cycle"):
-        resolve_includes("@include a.md\n", lib_dir, "origin.md")
-
-
-# --- stage 1: shared-injection declarations fail loudly, never silently ------
-
-
-def _plugin_toml(tmp_path: Path, body: str) -> Path:
-    path = tmp_path / "plugin.toml"
-    path.write_text(body, encoding="utf-8")
-    return path
-
-
-def test_scaffold_hint_shape_is_a_hard_error_not_a_silent_no_op(tmp_path):
-    """The exact shape `templates/plugin/manifest/plugin.toml` used to hint at.
-
-    `[build]` / `includes` is not the schema `load_shared_entries` consumes, and
-    a plain `data.get("shared", [])` read it as zero entries — no error, no
-    warning, no `lib/` injection. Anyone scaffolding a plugin and following the
-    template's own hint got a plugin silently missing its shared material, which
-    `.agents/CORE.md` makes the sole permitted route for shared content. This
-    pins that the unrecognised declaration fails the build by name instead.
-    """
-    path = _plugin_toml(tmp_path, '[build]\nincludes = [ "lib/my_module" ]\n')
-    with pytest.raises(BuildError, match=r"unrecognised top-level key\(s\) \['build'\]"):
-        load_shared_entries(path)
-
-
-def test_declaring_nothing_is_still_legal(tmp_path):
-    """Fail-loud must not fail plugins that legitimately declare nothing: an
-    absent file and a comment-only file both mean "declares nothing"."""
-    assert load_shared_entries(tmp_path / "absent.toml") == []
-    assert load_shared_entries(_plugin_toml(tmp_path, "# just a comment\n")) == []
-
-
-def test_misspelled_entry_key_is_a_hard_error(tmp_path):
-    path = _plugin_toml(tmp_path, '[[shared]]\nfrom = "hooks"\nto = "hooks"\nfrmo = "typo"\n')
-    with pytest.raises(BuildError, match=r"unrecognised key\(s\) \['frmo'\]"):
-        load_shared_entries(path)
-
-
-def test_shared_as_wrong_type_is_a_hard_error(tmp_path):
-    with pytest.raises(BuildError, match="must be an array of tables"):
-        load_shared_entries(_plugin_toml(tmp_path, 'shared = "hooks"\n'))
-
-
-def test_malformed_toml_names_the_file(tmp_path):
-    with pytest.raises(BuildError, match="malformed TOML"):
-        load_shared_entries(_plugin_toml(tmp_path, "[[shared]\nfrom = \n"))
-
-
-def test_well_formed_shared_still_loads(tmp_path):
-    path = _plugin_toml(tmp_path, '[[shared]]\nfrom = "hooks"\nto = "hooks"\n')
-    assert load_shared_entries(path) == [{"from": "hooks", "to": "hooks"}]
-
-
-def test_scaffold_template_hints_the_shape_the_build_consumes(tmp_path):
-    """The scaffold's own example must be something `load_shared_entries` accepts.
-
-    Uncommenting that example is the path a new plugin author takes; if the
-    shape it hints at is not the consumed one, the scaffold steers them into a
-    silent violation of the `lib/`-injection constraint. Asserting the text
-    alone would not catch a drift in the consumer, so this uncomments the
-    example and feeds it through the real loader.
-    """
-    text = (PROJECT_ROOT / "templates" / "plugin" / "manifest" / "plugin.toml").read_text(
-        encoding="utf-8"
-    )
-    assert "[build]" not in text, "scaffold still hints at the unconsumed [build] shape"
-
-    uncommented = "\n".join(
-        line.lstrip("#").strip() for line in text.splitlines() if line.lstrip().startswith("#")
-    )
-    assert "[[shared]]" in uncommented, "scaffold shows no [[shared]] example to copy"
-    # rindex, not index: the prose above the example names `[[shared]]` too, and
-    # the copyable example is the last thing in the file.
-    example = uncommented[uncommented.rindex("[[shared]]") :]
-    assert load_shared_entries(_plugin_toml(tmp_path, example)) == [
-        {"from": "my_module", "to": "my_module"}
-    ]
 
 
 # --- stage 3: manifest rendering --------------------------------------------
@@ -449,8 +337,6 @@ def test_agy_command_converted_to_skill(built):
 
 
 def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
-    import yaml
-
     dist_root = tmp_path_factory.mktemp("build-dist-agents")
     build_all(
         PROJECT_ROOT,
@@ -460,36 +346,322 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         version=VERSION,
     )
 
-    # Check claude dist retains original Claude Code canonical tool names in agents/ida.md
-    claude_ida = dist_root / "ida-claude" / "agents" / "ida.md"
-    assert claude_ida.is_file()
-    claude_fm = yaml.safe_load(claude_ida.read_text().split("---")[1])
-    assert claude_fm["tools"] == ["Read", "Skill", "Agent", "AskUserQuestion", "Dispatch"]
+    import yaml
 
-    # Check agy dist converts agents/ida.md to agents/ida/agent.md with translated tools
-    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida" / "agent.md"
+    # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
+    # read format — see build/clients/agy.py's _adapt_agents docstring).
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "ida-agy" / "agents" / "ida.md").exists()
+    assert not (dist_root / "ida-agy" / "agents" / "ida" / "agent.md").exists()
 
-    parts = agy_ida_md.read_text().split("---")
-    agy_fm = yaml.safe_load(parts[1])
-    assert agy_fm["name"] == "ida"
-    assert "interactive face" in agy_fm["description"]
-    assert agy_fm["hidden"] is False
-    # `Skill` and `Dispatch` have no entry in the agy tool map, so they cross
-    # untranslated — the map renames what agy calls by another name and leaves
-    # everything else alone.
-    assert agy_fm["tools"] == [
-        "read_file",
-        "Skill",
+    raw = agy_ida_md.read_text()
+    fm, _, body = raw.partition("---\n")[2].partition("---\n")
+    agy_agent = yaml.safe_load(fm)
+    assert agy_agent["name"] == "ida"
+    assert "interactive face" in agy_agent["description"]
+    assert "hidden" not in agy_agent
+    assert "includeSections" not in agy_agent
+    # ida declares no `mcpServers:` and reaches no MCP tool, so the build must
+    # not invent a server for it. The normalisation of a declared list is
+    # covered by test_pauli_agy_frontmatter.
+    assert "mcpServers" not in agy_agent
+
+    # ida's Claude tools are Agent, TodoWrite, Skill, SendMessage and the five
+    # Task* verbs. `TodoWrite` and `Skill` map to nothing on agy, the Task*
+    # verbs all collapse onto the one `manage_task`, and `send_message` is
+    # reached by both Agent and SendMessage — so the translation has to dedupe
+    # rather than repeat it.
+    assert agy_agent["tools"] == [
         "invoke_subagent",
-        "ask_question",
-        "Dispatch",
+        "manage_subagents",
+        "send_message",
+        "manage_task",
     ]
 
-    body = parts[2]
-    assert "# Agent System Instructions" in body
+    body = body.lstrip("\n")
+    assert body.startswith("# Agent System Instructions")
     assert "# Ida — The Interactive Face" in body
+
+
+def test_agy_agent_tool_names_are_translated(built):
+    import yaml
+
+    claude_agent = built / "fixture-alpha-claude" / "agents" / "alpha-agent.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert claude_fm["tools"] == ["Read", "Write", "Agent", "AskUserQuestion", "Grep"]
+
+    agy_agent = built / "fixture-alpha-agy" / "agents" / "alpha-agent.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    assert agy_fm["tools"] == [
+        "view_file",
+        "write_to_file",
+        "invoke_subagent",
+        "manage_subagents",
+        "send_message",
+        "ask_question",
+        "grep_search",
+    ]
+
+
+def test_agent_no_tools_key_semantics(built_orchestrate):
+    """marsha.md sets no `tools:` key in source frontmatter.
+    Claude: leaves tools unset (inherits everything).
+    agy: emits full 54 accepted tools vocabulary.
+    """
+    import yaml
+
+    from build.tools import load_tool_config
+
+    accepted_tools, _ = load_tool_config()
+
+    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "marsha.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert "tools" not in claude_fm
+
+    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    assert agy_fm["tools"] == ["*"]
+
+
+def test_agy_agent_drops_claude_model_name(built_orchestrate):
+    import yaml
+
+    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    assert "model" not in agy_fm
+    assert agy_fm["color"] == "orange"
+
+    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "james.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert claude_fm.get("model") == "opus" or "model" not in claude_fm
+
+
+def test_agent_empty_tools_list_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "bad-agent-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "bad.md").write_text(
+        "---\nname: bad\ndescription: Bad agent\ntools: []\n---\n\nBody", encoding="utf-8"
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="bad-agent-plugin",
+            marketplace_name="bad-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "bad-agent"}},
+    )
+
+    with pytest.raises(BuildError, match="empty 'tools' list"):
+        adapt_agy(plugin_dir, ctx)
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="bad-agent-plugin",
+            marketplace_name="bad-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "bad-agent"}},
+    )
+
+    with pytest.raises(BuildError, match="empty 'tools' list"):
+        adapt_claude(plugin_dir, ctx_claude)
+
+
+def test_agent_unmappable_tool_name_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "unmappable-tool-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "badtool.md").write_text(
+        "---\nname: badtool\ndescription: Bad tool agent\ntools:\n  - Read\n  - NonexistentToolXYZ\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="unmappable-tool-plugin",
+            marketplace_name="unmappable-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "unmappable-tool"}},
+    )
+
+    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
+        adapt_agy(plugin_dir, ctx)
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="unmappable-tool-plugin",
+            marketplace_name="unmappable-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "unmappable-tool"}},
+    )
+
+    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
+        adapt_claude(plugin_dir, ctx_claude)
+
+
+def test_agent_all_no_equivalent_tools_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "no-eq-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "noeq.md").write_text(
+        "---\nname: noeq\ndescription: No eq agent\ntools:\n  - Monitor\n  - TodoWrite\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="no-eq-plugin",
+            marketplace_name="no-eq",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "no-eq"}},
+    )
+
+    with pytest.raises(BuildError, match="yielded 0 tools"):
+        adapt_agy(plugin_dir, ctx)
+
+
+def test_agent_partial_no_equivalent_tools_drops_them_and_succeeds(tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "partial-eq-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "partial.md").write_text(
+        "---\nname: partial\ndescription: Partial eq agent\ntools:\n  - Read\n  - Monitor\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="partial-eq-plugin",
+            marketplace_name="partial-eq",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "partial-eq"}},
+    )
+
+    adapt_agy(plugin_dir, ctx)
+    res = yaml.safe_load((agents_dir / "partial.md").read_text().split("---")[1])
+    assert res["tools"] == ["view_file"]
+
+
+def test_agent_emitted_tool_not_in_vocabulary_raises_build_error(tmp_path):
+    from build.tools import process_agent_tools_agy
+
+    with pytest.raises(BuildError, match="not in agy accepted tool vocabulary"):
+        process_agent_tools_agy(
+            raw_tools=["Read"],
+            has_tools_key=True,
+            agent_name="test-agent",
+            file_path=tmp_path / "test.md",
+            accepted_tools=["run_command"],
+            tool_map={"Read": ["view_file"]},
+        )
+
+
+def test_agent_invalid_name_raises_build_error(tmp_path):
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "invalid-name-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "invalid_name.md").write_text(
+        "---\nname: invalid_name\ndescription: Invalid name agent\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx = BuildContext(
+        plugin=Plugin(
+            directory="invalid-name-plugin",
+            marketplace_name="invalid-name",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "invalid-name"}},
+    )
+
+    with pytest.raises(BuildError, match="invalid agent name"):
+        adapt_agy(plugin_dir, ctx)
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="invalid-name-plugin",
+            marketplace_name="invalid-name",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "invalid-name"}},
+    )
+
+    with pytest.raises(BuildError, match="invalid agent name"):
+        adapt_claude(plugin_dir, ctx_claude)
+
+
+def test_agent_tools_serialised_as_yaml_list(built):
+    claude_raw = (built / "fixture-alpha-claude" / "agents" / "alpha-agent.md").read_text()
+    agy_raw = (built / "fixture-alpha-agy" / "agents" / "alpha-agent.md").read_text()
+
+    assert (
+        "tools:\n- Read" in claude_raw
+        or "tools:\n  - Read" in claude_raw
+        or "\ntools:\n-" in claude_raw
+    )
+    assert (
+        "tools:\n- view_file" in agy_raw
+        or "tools:\n  - view_file" in agy_raw
+        or "\ntools:\n-" in agy_raw
+    )
 
 
 def test_axioms_always_on_wired_per_client(built):
@@ -518,17 +690,16 @@ def test_axioms_raw_dir_shipped_both_clients(built):
 # --- stage 5: packaging ------------------------------------------------------
 
 
-def test_claude_tarball_contains_directory_prefix(built):
-    with tarfile.open(built / "fixture-alpha-claude.tar.gz") as tar:
-        names = tar.getnames()
-    assert all(n == "fixture-alpha-claude" or n.startswith("fixture-alpha-claude/") for n in names)
-
-
-def test_agy_tarball_flattens_to_root(built):
-    with tarfile.open(built / "fixture-alpha-agy.tar.gz") as tar:
-        names = tar.getnames()
-    assert all(n == "." or n.startswith("./") for n in names)
-    assert "./plugin.json" in names
+def test_tarballs_contain_directory_prefix(built):
+    for client in ("claude", "agy"):
+        with tarfile.open(built / f"fixture-alpha-{client}.tar.gz") as tar:
+            names = tar.getnames()
+        prefix = f"fixture-alpha-{client}"
+        assert all(n == prefix or n.startswith(f"{prefix}/") for n in names)
+        if client == "claude":
+            assert f"{prefix}/.claude-plugin/plugin.json" in names
+        else:
+            assert f"{prefix}/plugin.json" in names
 
 
 def test_no_stage_directory_left_behind(built):
@@ -607,3 +778,244 @@ def test_plugin_missing_source_dir_is_hard_error():
     )
     with pytest.raises(BuildError, match="plugin source missing"):
         discover_plugins(TESTDATA, decl, ["ghost"])
+
+
+def test_new_tool_mappings():
+    from build.tools import load_tool_config
+
+    _, tool_map = load_tool_config()
+    assert tool_map["SendMessage"] == ["send_message"]
+    assert tool_map["TaskCreate"] == ["manage_task"]
+    assert tool_map["TaskGet"] == ["manage_task"]
+    assert tool_map["TaskList"] == ["manage_task"]
+    assert tool_map["TaskUpdate"] == ["manage_task"]
+    assert tool_map["TaskStop"] == ["manage_task"]
+    assert tool_map["Skill"] == []
+    assert tool_map["ToolSearch"] == []
+
+
+def test_scoped_tool_translation_and_warning(capsys, tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "scoped-tool-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "scoped.md").write_text(
+        "---\nname: scoped\ndescription: Scoped agent\ntools:\n  - Bash(agy *)\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="scoped-tool-plugin",
+            marketplace_name="scoped-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "scoped-tool"}},
+    )
+    adapt_claude(plugin_dir, ctx_claude)
+    claude_res = yaml.safe_load((agents_dir / "scoped.md").read_text().split("---")[1])
+    assert claude_res["tools"] == ["Bash(agy *)"]
+
+    ctx_agy = BuildContext(
+        plugin=Plugin(
+            directory="scoped-tool-plugin",
+            marketplace_name="scoped-tool",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "scoped-tool"}},
+    )
+    adapt_agy(plugin_dir, ctx_agy)
+    captured = capsys.readouterr()
+    assert (
+        "warning: scoped-tool/scoped: 'Bash(agy *)' scope dropped for agy; run_command is unrestricted"
+        in captured.out
+        or captured.err
+    )
+    agy_res = yaml.safe_load((agents_dir / "scoped.md").read_text().split("---")[1])
+    assert agy_res["tools"] == ["run_command"]
+
+
+def test_disallowed_tools_subtraction(tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+    from build.tools import load_tool_config
+
+    accepted_tools, _ = load_tool_config()
+
+    # Case 1: explicit tools + disallowedTools
+    plugin_dir1 = tmp_path / "disallowed-explicit"
+    agents_dir1 = plugin_dir1 / "agents"
+    agents_dir1.mkdir(parents=True)
+    (agents_dir1 / "agent1.md").write_text(
+        "---\nname: agent1\ndescription: Explicit tools\ntools:\n  - Read\n  - Write\ndisallowedTools: Write\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx1 = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-explicit",
+            marketplace_name="disallowed-explicit",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir1,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-explicit"}},
+    )
+    adapt_agy(plugin_dir1, ctx1)
+    res1 = yaml.safe_load((agents_dir1 / "agent1.md").read_text().split("---")[1])
+    assert res1["tools"] == ["view_file"]
+    assert "disallowedTools" not in res1
+
+    # Case 2: no tools key + disallowedTools (subtraction from all 54)
+    plugin_dir2 = tmp_path / "disallowed-implicit"
+    agents_dir2 = plugin_dir2 / "agents"
+    agents_dir2.mkdir(parents=True)
+    (agents_dir2 / "agent2.md").write_text(
+        "---\nname: agent2\ndescription: Implicit tools\ndisallowedTools: Write, Edit\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx2 = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-implicit",
+            marketplace_name="disallowed-implicit",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir2,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-implicit"}},
+    )
+    adapt_agy(plugin_dir2, ctx2)
+    res2 = yaml.safe_load((agents_dir2 / "agent2.md").read_text().split("---")[1])
+    expected_tools = [
+        t for t in accepted_tools if t not in ("write_to_file", "replace_file_content")
+    ]
+    assert res2["tools"] == expected_tools
+    assert len(res2["tools"]) == len(expected_tools)
+    assert "disallowedTools" not in res2
+
+    # Case 3: claude retains disallowedTools unchanged
+    plugin_dir3 = tmp_path / "disallowed-claude"
+    agents_dir3 = plugin_dir3 / "agents"
+    agents_dir3.mkdir(parents=True)
+    (agents_dir3 / "agent3.md").write_text(
+        "---\nname: agent3\ndescription: Implicit tools\ndisallowedTools: Write, Edit\n---\n\nBody",
+        encoding="utf-8",
+    )
+    ctx3_claude = BuildContext(
+        plugin=Plugin(
+            directory="disallowed-claude",
+            marketplace_name="disallowed-claude",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir3,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "disallowed-claude"}},
+    )
+    adapt_claude(plugin_dir3, ctx3_claude)
+    res3_claude = yaml.safe_load((agents_dir3 / "agent3.md").read_text().split("---")[1])
+    assert res3_claude["disallowedTools"] == "Write, Edit"
+
+
+def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
+    import yaml
+
+    from build.clients.agy import adapt as adapt_agy
+    from build.clients.claude import adapt as adapt_claude
+    from build.context import BuildContext, Plugin
+
+    plugin_dir = tmp_path / "mcp-agent-plugin"
+    agents_dir = plugin_dir / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "mcpagent.md").write_text(
+        "---\nname: mcpagent\ndescription: MCP agent\nmcpServers:\n  - services\n  - pkb\n---\n\nBody",
+        encoding="utf-8",
+    )
+
+    ctx_claude = BuildContext(
+        plugin=Plugin(
+            directory="mcp-agent-plugin",
+            marketplace_name="mcp-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="claude",
+        version=VERSION,
+        manifests={"plugin": {"name": "mcp-agent"}},
+    )
+    adapt_claude(plugin_dir, ctx_claude)
+    res_claude = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
+    assert res_claude["mcpServers"] == ["services", "pkb"]
+
+    ctx_agy = BuildContext(
+        plugin=Plugin(
+            directory="mcp-agent-plugin",
+            marketplace_name="mcp-agent",
+            description="desc",
+            category="productivity",
+            source_dir=plugin_dir,
+        ),
+        client="agy",
+        version=VERSION,
+        manifests={"plugin": {"name": "mcp-agent"}},
+    )
+    adapt_agy(plugin_dir, ctx_agy)
+    res_agy = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
+    assert res_agy["mcpServers"] == ["services", "pkb"]
+    assert "hidden" not in res_agy
+    assert "includeSections" not in res_agy
+
+
+def test_pauli_agy_frontmatter(tmp_path):
+    import yaml
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["pkb"],
+        version=VERSION,
+    )
+
+    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
+    assert pauli_md.is_file()
+    fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
+    agent = yaml.safe_load(fm)
+
+    assert agent["name"] == "pauli"
+    assert agent["mcpServers"] == ["services"]
+    # pauli declares Bash, Skill, Read, ToolSearch, ListMcpResourcesTool and the
+    # pkb server wildcard. `Skill` and `ToolSearch` have no agy counterpart and
+    # drop out; the plugin-qualified wildcard normalises onto the `services`
+    # server it resolves to.
+    assert agent["tools"] == [
+        "run_command",
+        "view_file",
+        "list_resources",
+        "mcp_services_*",
+    ]
+    assert "hidden" not in agent
+    assert "includeSections" not in agent
+    assert "call_mcp_tool" not in agent["tools"]

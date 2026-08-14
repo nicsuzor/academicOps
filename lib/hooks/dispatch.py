@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
@@ -27,6 +27,12 @@ class HookContext:
     tool: str = ""
     command: str = ""
     session_id: str = ""
+    agent_type: str = ""
+    agent_id: str = ""
+    prompt_id: str = ""
+    transcript_path: str = ""
+    cwd: str = ""
+    hook_event_name: str = ""
     # PostToolBatch only: every tool call in the resolved batch, each a
     # ``{tool_name, tool_input, tool_use_id, tool_response}`` mapping. Empty on
     # every other event, so a handler can read it without guarding the event.
@@ -101,6 +107,7 @@ CANONICAL_EVENTS = (
     "UserPromptSubmit",
     "PreToolUse",
     "PostToolUse",
+    "PostToolUseFailure",
     # Fires once after every call in a resolved batch, carrying all of them in
     # ``tool_calls`` — the one event that sees a whole batch rather than a
     # single call. Claude Code only; agy has no wire equivalent.
@@ -110,6 +117,7 @@ CANONICAL_EVENTS = (
 )
 
 STOP_EVENTS = ("Stop", "SubagentStop")
+CONTINUATION_EVENTS = ("Stop", "SubagentStop", "PostToolBatch")
 
 # The events a block disposition is honoured on. Claude Code reads
 # ``decision: "block"`` on a stop and gives the session another turn; on every
@@ -136,7 +144,7 @@ def is_continuation(event: str, raw: dict[str, Any]) -> bool:
     handler, so every current and future Stop/SubagentStop handler is covered
     without having to remember it.
     """
-    return event in STOP_EVENTS and bool(raw.get("stop_hook_active"))
+    return event in CONTINUATION_EVENTS and bool(raw.get("stop_hook_active"))
 
 
 TO_CANONICAL = {
@@ -159,18 +167,13 @@ def _log_fire(ctx: HookContext) -> None:
     log_path = os.environ.get("AOPS_HOOK_LOG_PATH")
     if not log_path:
         return
-    record = {
-        "ts": datetime.now(UTC).isoformat(),
-        "client": ctx.client,
-        "event": ctx.event,
-        "session_id": ctx.session_id,
-        "tool": ctx.tool,
-    }
+    record = asdict(ctx)
+    record["ts"] = datetime.now(UTC).isoformat()
     try:
         path = Path(log_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record) + "\n")
+            f.write(json.dumps(record, default=str) + "\n")
     except OSError:
         pass
 
@@ -226,27 +229,24 @@ def _merge(results: list[Result | None]) -> Result | None:
 
 
 def _render_claude(result: Result, event: str) -> dict:
-    if result.kind is Kind.BLOCK and event in BLOCKABLE_EVENTS:
-        # The one shape Claude Code reads as "do not stop": a top-level
-        # decision, not nested under hookSpecificOutput.
-        blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
-        if result.user_text:
-            blocked["systemMessage"] = result.user_text
-        return blocked
-
     if result.kind is Kind.BLOCK:
-        # A block only means something on Stop/SubagentStop — Claude Code has no
-        # "block" shape for any other event. A handler that returns one here is
-        # a wiring bug: report it loudly and degrade to an advisory rather than
-        # emit a shape that corrupts the response or silently does nothing. The
-        # text is still worth delivering; the disposition is not, and a handler
-        # must not read silence here as enforcement that happened.
-        print(
-            f"dispatch: block() is illegal on event {event!r} (Claude Code only "
-            "reads a block decision on Stop/SubagentStop) — degrading to an "
-            "advisory instead of corrupting the hook response",
-            file=sys.stderr,
-        )
+        if event in BLOCKABLE_EVENTS:
+            # The one shape Claude Code reads as "do not stop": a top-level
+            # decision, not nested under hookSpecificOutput.
+            blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
+            if result.user_text:
+                blocked["systemMessage"] = result.user_text
+            return blocked
+
+        else:
+            # Block only means something on certain events; in case of misconfiguration
+            # text is still worth delivering; the disposition is not, and a handler
+            # must not read silence here as enforcement that happened.
+            print(
+                f"dispatch: block() is illegal on event {event!r}; "
+                "degraded to advisory — the text was delivered, the block was not",
+                file=sys.stderr,
+            )
 
     if result.kind is Kind.REFUSE:
         specific = {
@@ -294,16 +294,98 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
     tool_calls = (
         tuple(c for c in raw_calls if isinstance(c, dict)) if isinstance(raw_calls, list) else ()
     )
-    return HookContext(
+
+    valid_keys = {f.name for f in fields(HookContext)}
+    kwargs = {k: v for k, v in raw.items() if k in valid_keys and v is not None}
+
+    kwargs.update(
         client=client,
         event=event,
-        tool=raw.get("tool_name") or raw.get("toolName") or "",
+        tool=raw.get("tool_name") or raw.get("toolName") or kwargs.get("tool", ""),
         command=command,
-        session_id=raw.get("session_id") or raw.get("conversationId") or "",
+        session_id=raw.get("session_id")
+        or raw.get("conversationId")
+        or kwargs.get("session_id", ""),
         tool_calls=tool_calls,
         raw=raw,
         hooks_dir=hooks_dir,
     )
+    return HookContext(**kwargs)
+
+
+# The operator-visible switch for OTel emission. Read here only to decide
+# whether a missing module is worth complaining about; `resolve()` in the
+# module itself remains the authority on the destination.
+_OTEL_TRACE_ENV = "COPE_EVALUATOR_OTEL_TRACE_PATH"
+
+
+def _get_evaluator_otel_trace():
+    """The OTel emitter, when the plugin this dispatch ships inside provides it.
+
+    `evaluator_otel_trace` ships in rbg. This file is shared into every
+    plugin's `hooks/` directory, and the entry point puts this module's own
+    directory on `sys.path`, so the import below resolves against whichever
+    plugin this copy is shipping inside — rbg's, in the builds checked. That
+    is a file reading its own plugin's directory, not another plugin's. The
+    traversal to `plugins/rbg/hooks` that used to sit here named another
+    plugin by path, and in the `dist/<name>-<client>/` layout resolved to
+    nothing, leaving the instrumentation a silent no-op.
+
+    Tests may resolve this import by injecting a path instead; the sibling
+    rule describes the shipped layout, not every possible one.
+
+    Silence is right when nobody asked for OTel. It is wrong when someone did,
+    so that case says so on stderr instead of disappearing.
+    """
+    try:
+        import evaluator_otel_trace
+
+        return evaluator_otel_trace
+    except ImportError:
+        if os.environ.get(_OTEL_TRACE_ENV):
+            print(
+                f"aops hooks: {_OTEL_TRACE_ENV} is set but evaluator_otel_trace is not "
+                "importable here — OTel instrumentation ships with rbg, and this "
+                "dispatch is running inside a plugin that does not carry it.",
+                file=sys.stderr,
+            )
+        return None
+
+
+def _instrument_otel_events(ctx: HookContext) -> None:
+    otel_mod = _get_evaluator_otel_trace()
+    if otel_mod is None:
+        return
+
+    config = otel_mod.resolve()
+    if config is None:
+        return
+
+    # 1. Tool plumbing errors (unknown_tool, missing_mcp)
+    plumbing_err = otel_mod.detect_tool_plumbing_error(ctx)
+    if plumbing_err:
+        err_type, err_msg = plumbing_err
+        otel_mod.record_tool_plumbing_error(
+            ctx, error_type=err_type, error_message=err_msg, config=config
+        )
+
+    # 2. SendMessage tool call linkage
+    is_send_msg = ctx.tool == "SendMessage" or any(
+        isinstance(call, dict)
+        and (call.get("tool_name") == "SendMessage" or call.get("tool") == "SendMessage")
+        for call in ctx.tool_calls
+    )
+    if is_send_msg:
+        otel_mod.record_send_message(ctx, config=config)
+
+    # 3. Agent idle/timeout on Stop or SubagentStop
+    idle_timeout = otel_mod.detect_agent_idle_timeout(ctx)
+    if idle_timeout:
+        otel_mod.record_agent_idle_timeout(ctx, event_type=idle_timeout, config=config)
+
+    # 4. SubagentStop unsent output inspection
+    if ctx.event == "SubagentStop":
+        otel_mod.record_subagent_stop(ctx, config=config)
 
 
 def main(argv: list[str]) -> int:
@@ -323,9 +405,7 @@ def main(argv: list[str]) -> int:
     if event is None:
         return 0
 
-    # Structural self-loop guard: no-op before any handler is loaded or run,
-    # and before normalize() / _log_fire() — no state is touched, nothing is
-    # printed. See is_continuation()'s docstring for what this guards against.
+    # Do not fire if we have already prevented a stop event this turn
     if is_continuation(event, raw):
         return 0
 
@@ -335,6 +415,7 @@ def main(argv: list[str]) -> int:
 
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
+    _instrument_otel_events(ctx)
 
     handlers = _load_handlers(event, hooks_dir)
 

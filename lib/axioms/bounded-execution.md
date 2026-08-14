@@ -1,6 +1,6 @@
 ---
 description: Every command carries a terminating bound visible in the command itself; reap what you start.
-trigger: always_on
+trigger: off
 ---
 
 ## Bounded Execution — no commands that may never terminate

@@ -18,6 +18,9 @@ export AOPS="${AOPS:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 # 1a. Failure alerting.
 STATUS_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/repo-sync-cron.status"
 mkdir -p "$(dirname "$STATUS_FILE")" 2>/dev/null || true
+# Set by any step that survives its own failure, so the status file does not
+# report OK while a step is silently failing every cycle.
+SYNC_WARN=0
 _now() { date '+%Y-%m-%d %H:%M:%S'; }
 fail() {
     local msg="$1"
@@ -84,9 +87,20 @@ if [[ "$_auth_code" != "200" ]]; then
 fi
 unset _auth_code
 export GH_TOKEN="${AOPS_BOT_GH_TOKEN}"
-export GIT_CONFIG_COUNT=1
+# Force every git subprocess spawned from here — including whatever
+# transcripts.runner shells out to for the sessions and brain repos — onto
+# HTTPS + token auth. Cron has no SSH agent, so any remote configured with an
+# SSH URL (a stray `origin-ssh`, a colleague's clone convention, a submodule)
+# fails with "Permission denied (publickey)" on every cycle. The two insteadOf
+# entries deliberately share one key: git treats each numbered
+# GIT_CONFIG_KEY_n/VALUE_n pair as a separate multi-valued config line.
+export GIT_CONFIG_COUNT=3
 export GIT_CONFIG_KEY_0="credential.helper"
 export GIT_CONFIG_VALUE_0='!f() { echo "username=x-access-token"; echo "password=${AOPS_BOT_GH_TOKEN}"; }; f'
+export GIT_CONFIG_KEY_1="url.https://github.com/.insteadOf"
+export GIT_CONFIG_VALUE_1="git@github.com:"
+export GIT_CONFIG_KEY_2="url.https://github.com/.insteadOf"
+export GIT_CONFIG_VALUE_2="ssh://git@github.com/"
 
 # Ensure we are in the AOPS directory for uv run commands
 cd "${AOPS}"
@@ -116,7 +130,14 @@ do_sync() {
     # subcommand was never implemented (polecat's cli only exposes `run`) —
     # it always failed with "Error: No such command 'sync'." and was a no-op
     # dead fallback. Removed rather than repaired: there is nothing to call.
-    git -C "${AOPS}" fetch --prune --quiet 2>&1 || echo "Warning: git fetch --prune failed"
+    # Name the remote explicitly. A bare `git fetch` resolves to
+    # branch.<current-branch>.remote, so a branch tracking a stray remote sends
+    # cron down a path it cannot authenticate. `origin` is the remote this
+    # script authenticates above.
+    if ! git -C "${AOPS}" fetch origin --prune --quiet 2>&1; then
+        echo "Warning: git fetch origin --prune failed" >&2
+        SYNC_WARN=1
+    fi
 }
 
 # ============================================================================
@@ -150,4 +171,8 @@ else
 fi
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') repo-sync-cron done"
-echo "OK $(_now)" > "$STATUS_FILE" 2>/dev/null || true
+if [[ "${SYNC_WARN}" -ne 0 ]]; then
+    echo "WARN $(_now) git fetch origin --prune failed" > "$STATUS_FILE" 2>/dev/null || true
+else
+    echo "OK $(_now)" > "$STATUS_FILE" 2>/dev/null || true
+fi

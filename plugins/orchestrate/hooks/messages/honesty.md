@@ -1,23 +1,25 @@
-# You are about to hand back. Your evidence is part of the claim, and this report is the last place to attach it.
+# REPORTING PROTOCOL & EVIDENCE CONTRACT: FALSIFIABLE EVIDENCE IS REQUIRED
 
-@include doctrine/handback.md
+To ensure zero-context auditability, every load-bearing independent conclusion, task finding, empirical result, or synthesized analysis in your report MUST be accompanied by falsifiable evidence.
 
-Name what you did not do. Anything unrun, unreachable, or unfinished is stated
-plainly — a gap named is fine, a gap smoothed over is not. "Done", "fixed",
-"works", "passing" require the originally-failing behaviour observed passing;
-until then the honest register is "changed, unverified".
+This means that when providing your final report, you **must** include your reasoning and the evidence needed to validate your report (VERBATIM, with PINPOINT citations).
 
-INCORRECT — inferences dressed as observations: flat declarative sentences that
-carry "presumably", "apparently", "clearly", "definitely" without the evidence
-behind them.
+- Constraint: A reviewing supervisor must be able to independently evaluate the soundness of your logic without needing to consult external sources or read the underlying reference materials.
+- Trivial facts exception: You do not need to provide evidence for obvious statements. If a reviewing supervisor could reasonably ask "How do you know that?" or "Where did you find that in the system?", the statement is NOT a trivial fact and MUST be treated as a load-bearing claim.
+- **Match the level of abstraction**: you must provide reasoning and evidence that are relevant for the claims directly made in YOUR report. You do not need to include evidence for every intermediate step.
+- JSON Schema exception: An explicit alternative schema specified in task instructions overrides this policy.
+- You MUST use the report channel specified in your system instructions to reach your calling agent if provided.
+- You should carefully curate the presented evidence; trim quotes and only keep relevant extracts.
+- If asserting the _absence_ of data, you must explicitly state your exact search methodology.
+- You may pass on a subagent's claims and evidence without further verification if it is compliant with these rules AND it is relevant to your report.
 
-CORRECT:
+## STRICT NEGATIVE CONSTRAINTS (DO NOT DO THESE)
 
-- "The unit test fails on an assertion error at line 17 (Observed — output of
-  `uv run pytest ...`, high confidence)."
-- "Option C looks most efficient (Reported by agent xyz, no supporting evidence,
-  low confidence)."
-
-If this report has already gone out without its evidence, send it again in full
-with the evidence in place. Evidence delivered separately from the claim it
-supports has not been attached.
+- **No infinite regression:** Only provide full evidence for the claims you make in your final report; do not present your supervisor with a laundry list of trivial proofs.
+- **No hearsay:** Assertions made without providing the proof are hearsay and will be rejected. Every load-bearing claim must pair with checkable evidence.
+- **No raw dumps:** Do not paste multi-line code blocks, raw config files, or verbose terminal outputs. Extract ONLY the MINIMAL relevant snippets required for verification.
+- **No hidden failures:** A smoothed-over gap is a contract failure. Failures must be honestly reported, complete with an explanation of what happened and why.
+- **No meta-commentary:** Do not explain how you constructed a search or apologize for limitations.
+- **No recursive proof loops**: Do NOT get trapped in an endless loop trying to formally prove universally accepted facts, connective logic, or obvious physical states. You should quote existing evidence verbatim IFF the evidence is **complete**, **attributed**, and **checkable**.
+- **No prose**: DO NOT present your report in prose and do not include any narrative filler.
+- **Do not paraphrase**: present **verbatim** extracts of relevant artifacts.

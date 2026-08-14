@@ -332,3 +332,122 @@ def test_get_env_forwards_does_not_fallback_to_user_env(monkeypatch):
     env = cli.get_env_forwards(config)
     assert env["GIT_AUTHOR_NAME"] == "botnicbot"
     assert env["GIT_AUTHOR_EMAIL"] == "botnicbot@users.noreply.github.com"
+
+
+# ---------------------------------------------------------------------------
+# resolve_telemetry: standard OTEL configuration
+# ---------------------------------------------------------------------------
+
+
+def test_unconfigured_telemetry_forwards_nothing():
+    assert cli.resolve_telemetry({}) == {}
+
+
+def test_config_file_supplies_telemetry_endpoint_and_resource_attributes():
+    env = cli.resolve_telemetry(
+        {
+            "telemetry": {
+                "endpoint": "TEST_ENDPOINT",
+                "resource_attributes": "deployment.environment=workstation,host.name=nicwin",
+            }
+        }
+    )
+    assert env == {
+        "BETA_TRACING_ENDPOINT": "TEST_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "TEST_ENDPOINT",
+        "OTEL_RESOURCE_ATTRIBUTES": "deployment.environment=workstation,host.name=nicwin",
+    }
+
+
+# ---------------------------------------------------------------------------
+# CONTAINER_SET_ENV: default agent teams env var propagation
+# ---------------------------------------------------------------------------
+
+
+def test_default_agent_teams_env_var_in_container_set_env():
+    from lib.polecat.env_contract import CONTAINER_SET_ENV
+
+    assert CONTAINER_SET_ENV.get("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS") == "1"
+
+
+def test_default_agent_teams_env_var_forwarded_by_default(monkeypatch):
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
+    env = cli.get_env_forwards(config)
+    assert env.get("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS") == "1"
+
+
+def test_default_agent_teams_env_var_in_docker_env_args():
+    from lib.polecat.env_contract import docker_env_args
+
+    args = docker_env_args()
+    assert "-e" in args
+    assert "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1" in args
+
+
+# ---------------------------------------------------------------------------
+# format_otel_resource_attributes & polecat resource attribute injection
+# ---------------------------------------------------------------------------
+
+
+def test_format_otel_resource_attributes_merges_session_project_task():
+    from lib.polecat.env_contract import format_otel_resource_attributes
+
+    res = format_otel_resource_attributes(
+        existing="service.name=my-service,deployment.env=prod",
+        session_id="session-xyz",
+        project="proj-abc",
+        task_id="task-123",
+    )
+    assert (
+        res
+        == "service.name=my-service,deployment.env=prod,polecat.session_id=session-xyz,polecat.project=proj-abc,polecat.task_id=task-123"
+    )
+
+
+def test_format_otel_resource_attributes_handles_empty_existing_and_optional_fields():
+    from lib.polecat.env_contract import format_otel_resource_attributes
+
+    res = format_otel_resource_attributes(
+        existing=None,
+        session_id="session-xyz",
+        project=None,
+        task_id=None,
+    )
+    assert res == "polecat.session_id=session-xyz"
+
+
+def test_format_otel_resource_attributes_overrides_existing_polecat_keys():
+    from lib.polecat.env_contract import format_otel_resource_attributes
+
+    res = format_otel_resource_attributes(
+        existing="polecat.session_id=old,service.name=svc",
+        session_id="new_session",
+        project="proj1",
+    )
+    assert res == "polecat.session_id=new_session,service.name=svc,polecat.project=proj1"
+
+
+def test_run_injects_polecat_otel_resource_attributes(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-p",
+            "myproj",
+            "-t",
+            "mytask",
+            "-s",
+            "mysess",
+            "-d",
+            str(tmp_path / "repo"),
+        ],
+        {},
+    )
+    otel_env_arg = [arg for arg in cmd if arg.startswith("OTEL_RESOURCE_ATTRIBUTES=")]
+    assert len(otel_env_arg) == 1
+    val = otel_env_arg[0].split("=", 1)[1]
+    assert "polecat.session_id=mysess" in val
+    assert "polecat.project=myproj" in val
+    assert "polecat.task_id=mytask" in val

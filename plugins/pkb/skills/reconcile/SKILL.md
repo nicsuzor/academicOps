@@ -1,7 +1,6 @@
 ---
 name: reconcile
 description: The return channel. Establish what is actually true about work the graph still claims is in flight and about work that finished while nobody was watching, write those facts back, and return the tasks a landed wave touched to `inbox` for re-planning. Truth maintenance only — it never closes work on its own judgment, never prunes, and never scores. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
-agent: "pauli"
 ---
 
 # Reconcile
@@ -50,7 +49,7 @@ than acting on it.
 
 ## 1 — Read the graph, claims included
 
-`list_tasks` over **every non-terminal status** the PKB MCP schema declares —
+`pkb__list_tasks` (maybe hosted under the `services` MCP server: `mcp__services__pkb__list_tasks`) over **every non-terminal status** the PKB MCP schema declares —
 that schema is the source, never a list inlined here. Later steps read and write
 across the whole of that set, so a sweep that loads only the statuses which look
 in flight reports itself complete while skipping whole classes of work.
@@ -61,6 +60,13 @@ and the session are what make it one, and they are what you check.
 Filter the slice before you pull it. Narrow by status or project, take the
 default markdown format, and repeat until the whole set is covered — many narrow
 calls, never one wide one.
+
+### Task Status Reconciliation
+
+Evaluate each non-terminal task in `in_progress`, `review`, or `merge_ready` status individually to verify its actual state against reality:
+
+- Check whether active work is still occurring, whether work was completed, or whether an associated PR was merged or closed.
+- Update the task's status in the PKB to accurately reflect reality (e.g., mark as `done`, return to `inbox`, or set to `ready`).
 
 ## 2 — Probe every suspect claim, then confirm it or requeue it
 

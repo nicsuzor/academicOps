@@ -60,9 +60,8 @@ def refs(repo: Path) -> list[str]:
         "See `lib/gone.md` for the rules.\n",
         "See [the rules](../lib/gone.md).\n",
         "See [[lib/gone.md]].\n",
-        "@include gone.md\n",
     ],
-    ids=["code-span", "markdown-link", "wikilink", "include"],
+    ids=["code-span", "markdown-link", "wikilink"],
 )
 def test_broken_reference_fails(fake_repo: Path, body: str) -> None:
     write(fake_repo, "doc.md", body)

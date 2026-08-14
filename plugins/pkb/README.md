@@ -28,11 +28,11 @@ flowchart TD
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
 
         learn -. knowledge scope .-> remember
-        learn -. project scope .-> addrule(["rbg — skills/add-rule<br/>write the project rule"])
+        learn -. project scope .-> rules[["$CWD/.agents/rules/RULES.md<br/>the rule, written parked at trigger: off"]]
         learn -. task scope .-> pull
     end
 
-    pull --> dump["skills/dump<br/>session exit — bail, close,<br/>hand back, or pause"]
+    pull --> dump["skills/dump<br/>session exit — save, push,<br/>release tasks, hand over"]
     pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
     reconcile -- "re-plan when the wave lands:<br/>back to inbox" --> capture
 
@@ -46,7 +46,7 @@ flowchart TD
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
-    brief -. "task is now briefed" .-> dispatch(["orchestrate:james — skills/dispatch<br/>reads the task by id and routes it<br/>to a worker surface"])
+    brief -. "task is now briefed" .-> dispatch(["ida:pc — polecat launcher<br/>takes the task by id and launches<br/>a worker container onto it"])
     dispatch --> pull
 ```
 
@@ -56,13 +56,13 @@ The hook fires on every prompt and never calls the PKB itself. Establishing an
 MCP session on the critical path of every turn is not affordable, and a slow
 server would stall the turn. It emits one advisory message
 (`hooks/messages/pkb-context.md`, editable without touching code) naming three
-MCP tool calls to issue before answering — `search`, `task_search`,
-`retrieve_memory`. It names no skill and does not invoke `hydrate`.
+MCP tool calls to issue before answering — `pkb__search`, `pkb__task_search`,
+`pkb__retrieve_memory` (hosted under the `services` MCP server as `mcp__services__pkb__*`). It names no skill and does not invoke `hydrate`.
 
 Compliance is voluntary. The handler returns an advisory, which is context
 injection only; nothing reads back whether the agent searched. Agents can act on
 it because they hold the PKB tools directly — james, marsha, rbg and pauli all
-inherit the full MCP namespace. `ida` is the one agent whose declared `tools`
+inherit the full MCP namespace (including `services` / `mcp__services__pkb__*`). `ida` is the one agent whose declared `tools`
 exclude them, and the message covers that case: say the tools are unavailable
 and work from what is visible, rather than guessing at what the PKB would have
 said.
@@ -186,7 +186,7 @@ not collection. The standard for what that means is
 | `reconcile` | Establish what is true about in-flight and finished work, write it back, return the affected tasks to `inbox`.                                                                                                           |
 | `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                                                                                                                        |
 | `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims.                                                                                                        |
-| `dump`      | Session exit — bail, close, hand back partial work, or pause with the work still in progress.                                                                                                                            |
+| `dump`      | Session exit — save and push work, release claimed tasks with a report, and emit a final handover.                                                                                                                       |
 
 ### Command
 

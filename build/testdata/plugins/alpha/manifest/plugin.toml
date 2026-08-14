@@ -1,6 +1,6 @@
 [[shared]]
-from = "doctrine"
-to = "doctrine"
+from = "shared-dir"
+to = "shared-dir"
 
 [[shared]]
 from = "shared-hook/hook.py"

@@ -422,13 +422,13 @@ def test_subagent_index_shows_depth_and_fork_tag() -> None:
     )
     md = render_to_markdown(session, "s1", "2026-07-05T06:45:18Z", "", "", True, CORRELATION, None)
 
-    assert "| Depth |" in md
-    assert "2 (fork)" in md
-    # A subagent with no spawnDepth in its meta sidecar renders as unknown,
-    # not as a silently-wrong 0 or 1.
-    assert "| `shallow` |" in md
-    shallow_row = next(line for line in md.splitlines() if "`shallow`" in line)
-    assert shallow_row.split("|")[4].strip() == "?"
+    assert "### Subagent Call Tree Lineage" in md
+    assert (
+        "| Level | Call Path | Agent Label | Type | Parent Agent | Events | Tokens (in / cr / out) | USD Cost | Task / Description |"
+        in md
+    )
+    assert "`main/unlinked/deep`" in md
+    assert "`main/unlinked/shallow`" in md
 
 
 def test_full_markdown_heading_level_follows_spawn_depth() -> None:
@@ -517,7 +517,7 @@ def test_trunk_marks_where_a_subagent_was_spawned_and_where_it_returned() -> Non
     full_md = render_to_full_markdown(session, "s4", "", "", "", True, CORRELATION, None)
 
     spawn_marker = "spawned Subagent 1: `rbg`"
-    return_marker = "Subagent 1: `rbg` returned here"
+    return_marker = "Subagent 1: `rbg` returned"
     assert spawn_marker in full_md
     assert return_marker in full_md
     # The pointer must appear between the spawning call and the trunk's next

@@ -1,6 +1,6 @@
 ---
 description: Every material action leaves a persisted record a third party can audit and re-trace.
-trigger: always_on
+trigger: off
 ---
 
 ## Full Observability — show your work, persist it

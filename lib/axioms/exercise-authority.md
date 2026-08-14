@@ -1,6 +1,6 @@
 ---
 description: Act within your delegated zone; escalate outside it; asking permission for safe delegated work is equally a failure.
-trigger: always_on
+trigger: off
 ---
 
 ## Exercise Authority

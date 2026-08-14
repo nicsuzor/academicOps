@@ -45,10 +45,8 @@ work.
 - **Premise judgment** — no longer a standalone gate at `claim_task`. The
   assessment happens earlier, in pauli's `brief` skill: it places and values the
   work, sorts its assumptions, names its open forks, then settles shape and
-  acceptance criteria — see
-  [enforcement.md § Task-boundary review](enforcement.md#5-task-boundary-review--three-lenses-reviewer--executor).
-  Dispatch surfaces (`/pull`, `/dispatch`) trust that rather than re-judging the
-  premise themselves.
+  acceptance criteria. Dispatch surfaces (`/pull`, `/dispatch`) trust that rather
+  than re-judging the premise themselves.
 - **Task-binding invariant** — no mutating work without a task bound to the
   session via `claim_task`. The invariant is **one session claims exactly one
   task** (possibly multiple subtasks of it) — never `$AOPS_TASK_ID`, which

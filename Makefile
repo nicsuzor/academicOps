@@ -1,6 +1,6 @@
 # academicOps — build & install. Design: specs/ARCHITECTURE.md.
 
-.PHONY: help build install-dev uninstall-dev install clean test lint format \
+.PHONY: help build build-test install-dev uninstall-dev install clean test lint format \
         docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test \
         verify-docker
 
@@ -18,6 +18,8 @@ STALE_PLUGIN_NAMES = aops aops-cope aops-core aops-extras aops-ida aops-jr aops-
 
 help:
 	@echo "make build          - assemble dist/ for every plugin, both clients (build/build.py)"
+	@echo "make build-test     - build, then validate every dist/ plugin dir with"
+	@echo "                      'claude plugin validate' and 'agy plugin validate'"
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
 	@echo "make uninstall-dev  - remove the local marketplace, restore the released one"
 	@echo "make install        - install the released plugins from the dist branch"
@@ -40,6 +42,25 @@ help:
 
 build:
 	@uv run python -m build.build
+
+# Each client ships its own manifest schema (.claude-plugin/plugin.json vs
+# plugin.json, agent.md's frontmatter shape, hooks.json's shape) and only
+# that client's own CLI can validate against it — build.py has no
+# independent checker for either. Not part of `make build`: this runs each
+# dist plugin dir through the client that will actually load it, so a
+# manifest error surfaces here instead of at install or first use.
+build-test: build
+	@for p in $(PLUGIN_NAMES); do \
+		command claude plugin validate "$(DIST)/$$p-claude" \
+			&& echo "✓ claude $$p validated" \
+			|| { echo "x claude $$p validate failed" >&2; exit 1; }; \
+		if command -v agy >/dev/null 2>&1; then \
+			agy plugin validate "$(DIST)/$$p-agy" \
+				&& echo "✓ agy $$p validated" \
+				|| { echo "x agy $$p validate failed" >&2; exit 1; }; \
+		fi; \
+	done
+	@echo "✓ dist/ validated for every plugin, both clients"
 
 # --- Install ---
 
@@ -133,8 +154,18 @@ format:
 
 docker: docker-build
 
+# The agent CLIs install "latest" from their vendor install scripts at build
+# time, so their Docker layers only refresh when their ARG value changes.
+# Nothing varied these before, so the layers froze at first-build state and the
+# image silently kept an old agy/claude indefinitely — observed 2026-08-08 as an
+# image pinned to agy 1.1.10 while 1.1.11 was current, which cost the container
+# its MCP tools. Pass a value that differs from the last build to refresh:
+#   make docker-build AGY_VERSION=1.1.11
 docker-build: build
-	@docker build --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
+	@docker build --build-arg AOPS_DIST_SOURCE=local \
+		$(if $(AGY_VERSION),--build-arg AGY_VERSION=$(AGY_VERSION)) \
+		$(if $(CLAUDE_CODE_VERSION),--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION)) \
+		-t $(IMAGE) -t $(notdir $(IMAGE)):latest .
 	@echo "✓ built $(IMAGE)"
 
 # The environment contract is defined once, in lib/polecat/env_contract.py,

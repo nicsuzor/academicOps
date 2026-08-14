@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.5.0"
+version = "0.7.2"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,6 +21,8 @@ dependencies = [
   # dev venv basedpyright and pytest run under can resolve it too.
   "opentelemetry-sdk>=1.40.0",
   "opentelemetry-exporter-otlp-json-file>=0.65b0",
+  "opentelemetry-exporter-otlp-proto-http>=1.40.0",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.40.0",
 ]
 
 [project.optional-dependencies]
@@ -110,10 +112,19 @@ ignore = [
 # error, so the list cannot outlive what it excuses.
 [tool.refcheck]
 include = [
-  "specs/**/*.md",
+  "specs/*.md",
+  "specs/agents/**/*.md",
+  "specs/enforcement/**/*.md",
+  "specs/meta/**/*.md",
+  "specs/polecat/**/*.md",
+  "specs/workflows/**/*.md",
   "plugins/**/*.md",
   "lib/**/*.md",
-  ".agents/**/*.md",
+  ".agents/*.md",
+  ".agents/skills/**/*.md",
+  ".agents/rules/**/*.md",
+  ".agents/commands/**/*.md",
+  ".agents/agents/**/*.md",
   "templates/**/*.md",
   "templates/**/*.md.template",
   ".github/agents/*.md",
@@ -207,9 +218,9 @@ refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."
 
 [[tool.refcheck.allow]]
-docs = "specs/future/*.md"
-refs = ["scripts/polecat-dispatch-via-ssh.sh"]
-reason = "An artifact the proposal would create; specs/future/ describes work not yet done."
+docs = ".agents/skills/debug/**"
+refs = [".claude/settings.json"]
+reason = "Claude Code configuration file in workspace, not in this repository."
 
 [tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference
@@ -221,6 +232,8 @@ exclude = [
   "build/testdata",
   "**/dist",
   "**/venv",
+  "plugins.disabled",
+  "plugins.disabled/**",
   "plugins/*/agents/", # Exclude non-code agent configs
   "plugins/*/commands/", # Exclude command specs
   "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
@@ -228,7 +241,7 @@ exclude = [
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["plugins/rbg/hooks", "lib/py", "lib/hooks"]
+extraPaths = ["plugins/rbg/hooks", "plugins/orchestrate/hooks", "lib/py", "lib/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:

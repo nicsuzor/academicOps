@@ -1,7 +1,6 @@
 ---
 name: brief
-description: Turn a captured ask into one unit a cold agent can be dispatched onto and judged against — placed, valued, wired, its assumptions sorted into tested and hopes, its forks named with the probe that settles each; then sized, given the process it runs under, its review and sign-off nodes, and the delegation brief itself. Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
-agent: "pauli"
+description: Turn an ask — a captured node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against — placed, valued, wired, its assumptions sorted into tested and hopes, its forks named with the probe that settles each; then sized, given the process it runs under, its review and sign-off nodes, and the delegation brief itself. Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
 ---
 
 # Brief
@@ -43,26 +42,100 @@ behind it: it may be reshaped by what this wave returns, and paying the cost
 early is the waste rolling-wave elaboration exists to avoid. More than one ask?
 Brief each independently. Never bundle.
 
-You produce no new nodes beyond the one you are briefing and the review nodes it
+The nodes you may create are the unit itself — captured in §1 where the ask
+arrived as prose — the children a cut in §4 forces, and the review nodes §6
 obliges. Everything else you produce is body content and edges.
 
-## 1 — Read what is there
+## 1 — Read what is there, and check it is still true
 
-`get_task` the unit and its parent, then **open what matters**. Capture recorded
-the ask and stopped; the reading happens here, once, on the ask that turned out
-to be worth it — prior attempts, decisions, known confounds, each with its node
-id. Open what looks load-bearing and skip what does not.
+> [!NOTE]
+> PKB MCP tools may live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g., `pkb__search`, `pkb__get_task`, `pkb__create_task`).
 
-`search`, `pkb_context`, and `task_search` before changing anything. If another
-node already covers this ask, merge into it (`update_task` / `update_body`) —
+**An ask reaches you as a node id or as prose.** Given an id, `pkb__get_task` the unit
+and its parent. Given prose with no node behind it — a pasted note, a finding, a
+fragment — there is nothing to read yet: run the searches below first, then
+either merge the ask into the node that already covers it or `pkb__create_task` it at
+`inbox` in the ask's own words, under the parent §2 places it beneath. You brief
+a node either way, because the executor reads the body and never sees the
+invocation that produced it.
+
+Then **open what matters**. Capture, where it ran, recorded the ask and stopped;
+the reading happens here, once, on the ask that turned out to be worth it — prior
+attempts, decisions, known confounds, each with its node id. Open what looks
+load-bearing and skip what does not.
+
+`pkb__search`, `pkb__pkb_context`, and `pkb__task_search` before changing anything. If another
+node already covers this ask, merge into it (`pkb__update_task` / `pkb__update_body`) —
 integrating into the body it already has, never stacking a new section under old
 content — and retire the duplicate. Never leave a sibling of a node that already
 exists. Once you have a candidate parent or a near-duplicate, check its
-neighbourhood with `get_semantic_neighbors` before committing.
+neighbourhood with `pkb__get_semantic_neighbors` before committing.
 
 Node types, edges, weights, and the priority and severity rules are the ones the
-PKB MCP tool schemas declare. Read the schema of the tool you are about to call
+PKB MCP tool schemas declare (hosted under the `services` MCP server as `pkb__<tool_name>`, e.g. `mcp__services__pkb__*`). Read the schema of the tool you are about to call
 and write in its terms.
+
+### The record is a claim, not a fact
+
+What you just read is what someone believed when they wrote it. Between then and
+now the file moved, the module was deleted, the decision was reversed, the
+dependency shipped. **Nothing in the store reports its own decay**, and a
+confident sentence written a month ago reads exactly like one written today.
+
+Sort what you read by whether it can go stale at all:
+
+- **Claims about intent** — what the user asked for, what was decided, what the
+  work is for, what is out of scope. These do not decay. The record _is_ the
+  authority; there is nothing behind it to check against.
+- **Claims about the world** — a path, a line number, a schema, a config key, a
+  deployed state, and every negative claim like "X does not exist" or "Y is
+  unimplemented". These decay silently, and they are what a brief rests its
+  weight on.
+
+Re-confirm the second kind **against the world, not against another node**,
+before any of it becomes a constraint, an acceptance criterion, or a file
+pointer in the brief. Cite what you observed this pass.
+
+Check the load-bearing ones and skip the rest: the test is whether the brief
+would change if the claim turned out false. **Prefer the cheapest observation
+that could refute it.** An inherited negative earns the most scepticism — the
+pass that wrote it saw only what its own search could reach, and the
+`honest-epistemics` axiom governs what that was ever worth.
+
+**Mixed vintage across a sibling set is the strongest tell you get.**
+Decomposition runs as close to dispatch as it can, so units carved in one pass
+are coherent with the world as it stood that day. Where fresh units sit beside
+inherited ones, the inherited ones have been carried across at least one change
+nobody re-checked, and they are where the dead premises are. Reconcile them
+against the fresh ones on substance — the same surface described two ways, a
+constraint one names and the other omits, two units that have converged on the
+same work — and hold what the older one asserts as unconfirmed until you have
+looked. Do not settle a difference by which is newer. Establish which is true.
+
+Where a load-bearing claim turns out false, that finding outranks the brief you
+came to write. A unit whose premise is dead is not briefable: record what is no
+longer true and what you observed instead, then route it by §8. Briefing over a
+dead premise dispatches a worker at something that is not there, and it comes
+back reporting success.
+
+### Check the unit against the standard it will be judged by
+
+Scope and standard drift apart. Acceptance criteria arrive after the work was
+carved, a parent's goal is sharpened after its children were cut, a rule lands
+that the unit predates.
+
+**Read the two against each other, obligation by obligation**: what the standard
+demands, and what this unit actually does. That comparison is the check, and
+nothing cheaper stands in for it — a timestamp tells you which was written
+first, never whether one covers the other, and two things written the same
+afternoon can miss each other completely.
+
+Name what the unit will be judged against and where it lives. Where the standard
+reaches ground the unit does not cover, say so on the record in the standard's
+own terms — as a named gap, never as scope you quietly absorb or a criterion you
+soften to fit what the unit already does. Promoting a unit asserts it is worth
+dispatching against the standard that will judge it; an uncovered requirement
+nobody names is the one that surfaces after the work has been accepted.
 
 ## 2 — Place it, value it, wire it
 
@@ -110,8 +183,10 @@ what the goal demands.
 Under `## Assumptions`, name what must be true for this task to matter, split in
 two: **Tested** — you have evidence, cited by node id, commit, or run; and
 **Hopes** — you do not, said plainly. A bullet moves from hopes to tested when a
-citation arrives, never because it has come to feel obvious. The hopes list is
-where all the information value is.
+citation arrives, never because it has come to feel obvious. A citation carries
+the age of whatever it points at: where it rests on a claim about the world that
+§1 has not confirmed still holds, the bullet is a hope however firmly the cited
+node stated it. The hopes list is where all the information value is.
 
 A **fork** is a point where the work cannot proceed without a choice you cannot
 make on present information. Exactly two kinds, routed differently: **blocked on
@@ -254,8 +329,10 @@ that resolves in no layer is a gap.
 Reconcile the PKB layer once per composition: `list_documents(tag="wf-template")`
 against the index's entries. A template tagged but unlisted, or listed but
 unresolvable, is an index defect — **report it, do not repair it here and do not
-route around it.** If the index document itself does not exist, compose from the
-tag enumeration and report the missing index.
+route around it.** The index carries its own standing instruction to correct
+drift on sight; that binds an agent maintaining the store, not a composing pass.
+Report what you found and compose on. If the index document itself does not
+exist, compose from the tag enumeration and report the missing index.
 
 If a template you need exists in none of the three, that is a library gap.
 **Name it. Do not freelance a process to fill it.**
@@ -383,8 +460,6 @@ capable colleague walking in cold who will not get to ask a follow-up. Append
 under the existing body; build on the scope and door type already there rather
 than repeating them.
 
-@include doctrine/delegation-brief.md
-
 Three things that doctrine leaves to you, and that this stage owes:
 
 - **Lead acceptance with the outcome to verify, not the edit you imagine
@@ -428,9 +503,9 @@ and stop:
 - Every fork either settled or carrying a designed probe, every hard dependency
   identified, the decision list written, the brief on the body → **`queued`**.
 - A hard dependency genuinely unmet → **`blocked`**, with what it waits on named.
-- Nothing found to build on, the ask under-specified, or a decision you cannot
-  settle → leave it at **`inbox`** and say what is missing. Do not backfill by
-  guessing.
+- Nothing found to build on, the ask under-specified, a premise §1 found dead,
+  or a decision you cannot settle → leave it at **`inbox`** and say what is
+  missing or no longer true. Do not backfill by guessing.
 
 One pass. You are making the task actionable, not doing it. If briefing it
 properly would mean doing the work, that is the finding: record that the unit is
@@ -461,6 +536,10 @@ a spike and stop.
 - Add approval gates beyond what the composed process placed. Mid-stream "draft
   it, then surface for review before proceeding" is theatre.
 - Promote a task you were not called on, or run the review nodes you emitted.
+- Carry a claim about the world from an earlier pass into a brief as a
+  constraint, a criterion, or a file pointer without looking at the world.
+- Promote a unit whose premise you did not confirm, or whose coverage against
+  the standard judging it you did not check. Promotion asserts both.
 - Re-brief a task nothing has changed for. A second pass over unchanged inputs
   produces confidence, not information.
 
@@ -477,7 +556,9 @@ And a third, for the structure: from the body alone a reader can say what the
 work is built from, which beliefs carry evidence and which are hopes, which forks
 are open, what probe would settle each, and what is waiting on the user — and the
 graph shows one node, well connected, with a `contributes_to` edge to a real
-target. A reviewer can state why the unit was or was not
+target. Every claim about the world the brief leans on was observed this pass and
+says so, and the standard the unit will be judged against is named, with anything
+it reaches that the unit does not covered by a gap on the record. A reviewer can state why the unit was or was not
 cut, name every template the process was composed from and the proportionality
 call behind it, and see a blocking node for every obligation that gates
 acceptance — plus a sign-off node wherever the door is one-way or ambiguous.

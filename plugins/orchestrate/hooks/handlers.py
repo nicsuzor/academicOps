@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shlex
 from collections.abc import Callable
+from typing import Any
 
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import HookContext, Result, block, load_message_pair, warn
+
+log = logging.getLogger("orchestrate.handlers")
+
+try:
+    import claude_code_tracer
+except ImportError as exc:
+    claude_code_tracer = None
+    log.warning(
+        "claude_code_tracer did not import (%s) — OTel tracing is disabled for every hook",
+        exc,
+    )
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -82,13 +95,136 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 
 
 def honest_output(ctx: HookContext) -> Result | None:
-    """Remind agents to present substantiating evidence with their claims."""
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+    """Remind agents to present substantiating evidence with their claims.
+
+    Registered on both stop events. ``SubagentStop`` binds a worker at handback;
+    ``Stop`` binds every other agent at its own turn boundary, which is the only
+    moment an agent that is not a subagent ever reaches. ida is the single
+    exemption — it speaks to the person and its reply is governed by its own
+    gate. ``agent_type`` is what names it, and Claude Code carries that field on
+    ``Stop``: a session run under ``--agent <name>`` puts ``<name>`` there
+    (observed on 2.1.227), so the exemption is live on this path.
+
+    Once per stop chain, not once per fire: dispatch.py drops the
+    ``stop_hook_active`` re-entry before any handler loads.
+
+    TEMPORARY (2026-08-11) — the ``Stop`` half runs on Claude Code only, so on
+    agy this handler returns nothing on every event and agy workers still get no
+    honesty reminder at all (#2413). agy fires ``PostInvocation`` after *every
+    tool call* and lib/hooks/dispatch.py maps that wire event onto canonical
+    ``Stop``; agy also never sends ``stop_hook_active``, so the once-per-chain
+    guard cannot fire. Registering this on agy's canonical ``Stop`` therefore
+    re-injects the whole block per tool call — 20+ injections in 42 steps with
+    context truncated by step 4 when rbg's stop gate did it, which is why that
+    gate is switched off today. agy's own end-of-execution ``Stop`` is a
+    separate wire event landing on the same canonical key; telling the two
+    apart is what closing #2413 needs.
+
+    This fires blocking, because we need the harness to set the flag
+    stop_hook_active so that we don't run it more than oncel
+    """
+    if ctx.agent_type == "ida:ida":
+        return None
+
+    if ctx.event == "Stop" and ctx.client != "claude":
+        return None
+
+    return block(*load_message_pair(ctx.hooks_dir, "honesty"))
+
+
+def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
+    """Extract and normalize payload dictionary for claude_code_tracer."""
+    data = dict(ctx.raw)
+    if ctx.session_id:
+        data.setdefault("session_id", ctx.session_id)
+    if ctx.tool:
+        data.setdefault("tool_name", ctx.tool)
+    if "toolName" in data and "tool_name" not in data:
+        data["tool_name"] = data["toolName"]
+    if "toolInput" in data and "tool_input" not in data:
+        data["tool_input"] = data["toolInput"]
+    if "toolResponse" in data and "tool_response" not in data:
+        data["tool_response"] = data["toolResponse"]
+    return data
+
+
+def user_prompt_submit(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for UserPromptSubmit."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_user_prompt_submit(data, config)
+    except Exception as exc:
+        log.warning("user_prompt_submit tracer failed: %s", exc)
+    return None
+
+
+def pre_tool(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for PreToolUse."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_pre_tool(data, config)
+    except Exception as exc:
+        log.warning("pre_tool tracer failed: %s", exc)
+    return None
+
+
+def post_tool(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for PostToolUse."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_post_tool(data, config)
+    except Exception as exc:
+        log.warning("post_tool tracer failed: %s", exc)
+    return None
+
+
+def post_tool_failure(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for PostToolUseFailure."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_post_tool_failure(data, config)
+    except Exception as exc:
+        log.warning("post_tool_failure tracer failed: %s", exc)
+    return None
+
+
+def stop(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for Stop."""
+    if claude_code_tracer is None:
+        return None
+    try:
+        config = claude_code_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            claude_code_tracer.handle_stop(data, config)
+    except Exception as exc:
+        log.warning("stop tracer failed: %s", exc)
+    return None
 
 
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
-    "PostToolBatch": [rule_against_hearsay],
-    "Stop": [honest_output],
-    "SubagentStop": [honest_output],
+    "UserPromptSubmit": [user_prompt_submit],
+    "PreToolUse": [pre_tool],
+    "PostToolUse": [post_tool],
+    "PostToolUseFailure": [post_tool_failure],
+    "Stop": [stop, honest_output],
+    # "PostToolBatch": [rule_against_hearsay],
+    # "SubagentStop": [honest_output],
 }

@@ -27,12 +27,19 @@ On top of them:
 - **A plugin never reads another plugin's files.** It may read `lib/`.
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
-- **Never modify files outside this repository.** Found a bug upstream? Report it.
+- **Commit immediately, and push.** After any change, commit with a short,
+  descriptive message — this container is ephemeral and uncommitted work
+  disappears with it. Never write `.bak`/`.orig`/copy-suffixed files; git
+  already keeps every version.
 - **Fail fast.** A documented path that does not exist, a tool that does not
   behave as documented, an acceptance criterion you cannot meet as written — stop
   and report. Do not substitute an adjacent action you can perform.
-- **Verify before asserting.** Every factual claim in a doc or instruction must be
-  true of the tree as it is. A doc that lies is worse than no doc.
+- **Nic already knows.** He wrote this. Do not explain his own system back to
+  him, restate what he just said, or re-justify a decision he has made. Report
+  what he does not already have: what you found, what is false, what you changed.
+- **Answer the question asked, then stop.** In conversation, do not pre-empt the
+  next question, propose the following three steps, or open a design fork he has
+  not reached. He sets the pace. One thing at a time, and hold.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md).
 
@@ -47,10 +54,5 @@ make lint           # ruff check + documented-reference check + basedpyright
 make format         # ruff format + dprint fmt
 ```
 
-Run `make format` before committing; pre-commit runs `dprint fmt` on markdown,
-JSON, and TOML.
-
-## Pull requests
-
-Open against `dev`. Bundle an unrelated fix only when it blocks your PR from
-merging and it is one sentence to describe; otherwise file it separately.
+Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
+JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for Python files.

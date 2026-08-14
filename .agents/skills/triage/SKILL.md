@@ -3,31 +3,6 @@ name: triage
 type: skill
 category: instruction
 description: "Triage a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
-triggers:
-  - "triage"
-  - "survey"
-  - "retro"
-  - "transcript review"
-  - "session review"
-  - "trend review"
-  - "performance trends"
-  - "issue sweep"
-  - "triage issues"
-modifies_files: true
-needs_task: false
-mode: orchestration
-domain:
-  - framework
-  - quality-assurance
-  - operations
-allowed-tools: Agent, Bash, Read, Grep, Glob, Edit, Write, Skill, AskUserQuestion, mcp__services__pkb__list_tasks, mcp__services__pkb__get_task, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__append, mcp__services__pkb__task_search
-version: 1.0.0
-tags:
-  - retro
-  - trend
-  - sweep
-  - quality
-  - consolidation
 ---
 
 # /triage — Unified Triage Skill
@@ -40,7 +15,7 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 | `trend` | Many sessions / audit files         | Trend report + recommendations |
 | `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures |
 
-**Privacy Rule**: the anonymisation clause in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md) binds every mode here, not only `retro`.
+**Privacy Rule**: the anonymisation clause in [`.agents/skills/debug/forensic-scope.md`](../debug/forensic-scope.md) binds every mode here, not only `retro`.
 
 ---
 
@@ -65,7 +40,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
 
 - Read the entire transcript.
-- The forensic read, the in-scope/out-of-scope split between fixing the reviewed session and changing the framework, and the "fix and route" invariant are the shared doctrine in [`lib/doctrine/forensic-scope.md`](../../../lib/doctrine/forensic-scope.md). Apply it as written. In retro, "route the lesson" means the destination chosen in §4, and the record it names is the filed GitHub issue.
+- The forensic read, the in-scope/out-of-scope split between fixing the reviewed session and changing the framework, and the "fix and route" invariant are stated in [`.agents/skills/debug/forensic-scope.md`](../debug/forensic-scope.md). Apply it as written. In retro, "route the lesson" means the destination chosen in §4, and the record it names is the filed GitHub issue.
 
 ### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
 
@@ -114,7 +89,7 @@ Produce a review in this exact format. Keep text concise:
 Review multiple sessions to identify systemic effectiveness and trends.
 
 > **Corpus selection — prompt mining vs trend reading.**
-> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. Read the field set off a sidecar itself; there is no schema doc. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content the sidecars don't capture (agent reasoning, tool calls).
+> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **per-session JSON sidecars** at `$AOPS_SESSIONS/transcripts/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`); harness-injected text is held out of it in the sibling `injected_prompts` array — across ALL clients, no client-name filter needed. Narrow to human-driven sessions with the `has_user_context` boolean. This is faster and more reliable than grepping raw transcripts. Read the field set off a sidecar itself; there is no schema doc. The rendered transcripts beside them (`*.full.md` in the same directory) are the fallback for content the sidecars don't capture (agent reasoning, tool calls).
 
 ### 1. Sampling & Reading
 

@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from transcripts.adapters.classifier import classify_user_prompt
 from transcripts.model import (
     NormalizedEvent,
     NormalizedRawEntry,
@@ -50,6 +51,20 @@ KNOWN_AGY_TYPES = frozenset(
 )
 
 
+# Routine agy entry types that are preserved as NormalizedRawEntry silently (DEBUG level).
+ROUTINE_AGY_TYPES = frozenset(
+    {
+        "SYSTEM_MESSAGE",
+        "CODE_ACTION",
+        "USER_EXPLICIT",
+        "GENERIC",
+        "ERROR_MESSAGE",
+        "EPHEMERAL_MESSAGE",
+        "FIND",
+    }
+)
+
+
 def _clean_val(v: Any) -> Any:
     """Clean string values that have outer double quotes."""
     if isinstance(v, str) and v.startswith('"') and v.endswith('"') and len(v) >= 2:
@@ -58,7 +73,14 @@ def _clean_val(v: Any) -> Any:
 
 
 def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
-    """Tolerantly parse an agy JSONL transcript into a NormalizedSession."""
+    """Tolerantly parse an agy JSONL transcript into a NormalizedSession.
+
+    Audit note (task aops_6d2abff5, criterion S6): agy JSONL log streams are event
+    logs emitted by the agy TUI and do not carry LLM API usage blocks (input_tokens,
+    cache_creation, etc.). Therefore, load_agy_transcript initializes NormalizedSession
+    with tokens_used=0 and cost_usd=0.0. Token and cost accounting applies only to
+    Claude Code transcripts.
+    """
     session_id = "unknown"
     for i, part in enumerate(jsonl_path.parts):
         if part == ".system_generated" and i > 0:
@@ -91,12 +113,20 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
 
         entry_type = obj.get("type")
         if entry_type not in KNOWN_AGY_TYPES:
-            logger.warning(
-                "%s:%d: unrecognized transcript entry type %r, preserving as raw",
-                jsonl_path,
-                line_no,
-                entry_type,
-            )
+            if entry_type in ROUTINE_AGY_TYPES:
+                logger.debug(
+                    "%s:%d: routine transcript entry type %r, preserving as raw",
+                    jsonl_path,
+                    line_no,
+                    entry_type,
+                )
+            else:
+                logger.warning(
+                    "%s:%d: unrecognized transcript entry type %r, preserving as raw",
+                    jsonl_path,
+                    line_no,
+                    entry_type,
+                )
             raw_events.append(
                 NormalizedRawEntry(
                     line_no=line_no,
@@ -181,6 +211,10 @@ def load_agy_transcript(jsonl_path: Path) -> NormalizedSession:
                 "CHECKPOINT",
             }:
                 meta["tool_name"] = entry_type
+
+            if norm_source == "user":
+                classification = classify_user_prompt(content, meta)
+                meta.update(classification)
 
             events.append(
                 NormalizedEvent(

@@ -46,7 +46,7 @@ All agent and skill files use **Claude Code tool names**:
 
 Legacy snake_case names (`read_file`, `run_shell_command`, `mcp_playwright_browser_navigate`) are **not permitted** in source. The build script (see §Build Translation) translates to target-specific forms as needed.
 
-## Agent Frontmatter Schema
+## Claude Agent Frontmatter Schema
 
 Agent files live under `plugins/<plugin>/agents/<name>.md` (core) or `.github/agents/<name>.agent.md` (GitHub Actions). Frontmatter is YAML.
 
@@ -109,8 +109,8 @@ five agent files now declare it, each per its actual role.** `pauli`
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
 (`plugins/orchestrate/agents/james.md`) declares the explicit list
 `["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
-three reviewers his own description names, plus the plain worker surface his
-dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
+three reviewers his own description names, plus the plain worker surface his own
+fan-out requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
 `subagents: []`: its own description does not involve spawning, since it
 returns a verdict. `ida` (`plugins/ida/agents/ida.md`) declares the explicit
 list `["orchestrate:james", "pkb:pauli"]`, matching the only two delegation
@@ -245,6 +245,81 @@ Claude Code frontmatter is the source of truth. Other harnesses receive translat
 | `mcp__<s>__<t>`    | `mcp_<s>_<t>` (underscore) |
 
 Translation is mechanical. Source files are never hand-edited to target form. Target output directories are build artifacts, not committed source.
+
+## AGY permissions
+
+The permission engine inside agy (Jetski) checks tool requests against rules configured under permissions in ~/.gemini/antigravity-\
+cli/settings.json.
+
+Rule entries follow the pattern:
+
+<action_type>(<target_or_pattern>)
+
+### Complete List of Action Categories & Syntax
+
+| Action Type      | Scope / Usage                                        | Examples                                                       |
+| ---------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| mcp(...)         | Model Context Protocol server/tool calls             | mcp(services/pkb__status) mcp(services/pkb___) mcp(services/_) |
+| read_file(...)   | Reading files or directories (recursive for folders) | read_file(/workspace/src/_)read_file(/workspace/_.md)          |
+| write_file(...)  | Creating, editing, or deleting files/directories     | write_file(/workspace/dist/*)write_file(/workspace/plugins/o   |
+|                  | rchestrate/*)                                        |                                                                |
+| command(...)     | Executing shell commands via run_shell_command       | command(git status*)command(pytest*)command(make build*)       |
+| read_url(...)    | Fetching web content via read_url_content / HTTP     | read_url(https://antigravity.google/*)                         |
+| execute_url(...) | Remote script/action execution via web endpoints     | execute_url(https://api.github.com/*)                          |
+| unsandboxed(...) | Commands running outside container boundaries        | unsandboxed(docker *)                                          |
+| ──────           |                                                      |                                                                |
+
+### Global agy settings - settings.json
+
+```json
+{
+  "trustedWorkspaces": [
+    "/workspace"
+  ],
+  "permissions": {
+    "allow": [
+      "mcp(services/pkb__status)",
+      "mcp(services/pkb__search)",
+      "read_file(/workspace/*)",
+      "write_file(/workspace/plugins/*)",
+      "command(git status*)",
+      "command(git diff*)",
+      "command(make build*)"
+    ]
+  }
+}
+```
+
+### Agent Frontmatter Declarations (Agent Level)
+
+As specified in agent-authority.md, individual agent files (e.g. plugins/orchestrate/agents/james.md) can restrict their authority\
+envelope in YAML frontmatter:
+
+```markdown
+    ---                                                                                                                                      
+    name: james                                                                                                                              
+    description: "The Orchestrator: routes work to a supervised in-session team"                                                             
+    color: orange                                                                                                                            
+    permissionMode: default                                                                                                                  
+                                                                                                                                             
+    # 1. Scope file paths (read/write globs)                                                                                                 
+    fileAccess:
+      read:
+        - "plugins/**"
+        - "specs/**"
+      write:
+        - "dist/**"
+
+    # 2. Scope shell command families
+    bashScopes:
+      - "git:read"
+      - "pytest"
+
+    # 3. Explicitly deny sensitive tools
+    disallowedTools:
+      - "write_file"
+    ---
+```
 
 ## Lint Rules
 

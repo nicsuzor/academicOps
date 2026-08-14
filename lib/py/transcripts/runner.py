@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from transcripts.domain.context import has_user_context
 from transcripts.domain.correlation import infer_correlation
 from transcripts.domain.insights import infer_insights
 from transcripts.domain.ledger import generate_prompt_ledger
-from transcripts.domain.renderer import render_session_to_all_formats, render_to_full_markdown
+from transcripts.domain.renderer import render_session_to_all_formats
 from transcripts.domain.secret_redaction import redact_obj, redact_secrets
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
@@ -29,23 +30,30 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger("transcripts.runner")
 
 
-def find_session_files() -> list[Path]:
-    """Find all Claude Code and agy session log files.
+def find_session_files(sessions_dir: Path | str | None = None) -> list[Path]:
+    """Find all Claude Code and agy session log files recursively.
 
-    Claude Code writes one trunk log per session directly under the project
-    directory, and everything below it — subagent sidechains, workflow
-    journals — belongs to that session rather than standing alone. Globbing
-    deeper would yield sidechain logs that carry the parent's `session_id`,
-    and therefore the parent's slug and output filename, so whichever was
-    written last would replace the real transcript.
+    Searches across $AOPS_SESSIONS/logs/, ~/.claude/projects/, and agy directories.
+    Strictly filters out subagents/ subdirectories and -hooks.jsonl files.
     """
+    if sessions_dir is None and "AOPS_SESSIONS" in os.environ:
+        sessions_dir = Path(os.environ["AOPS_SESSIONS"])
+    elif sessions_dir is not None:
+        sessions_dir = Path(sessions_dir)
+
     files: list[Path] = []
 
-    # 1. Claude session files: ~/.claude/projects/<project>/<session-id>.jsonl
+    # 1. Claude session files: ~/.claude/projects/**/*.jsonl
     claude_dir = Path.home() / ".claude" / "projects"
     if claude_dir.is_dir():
-        for p in claude_dir.glob("*/*.jsonl"):
-            if p.is_file() and not p.name.endswith("-hooks.jsonl"):
+        for p in claude_dir.rglob("*.jsonl"):
+            rel = p.relative_to(claude_dir)
+            if (
+                p.is_file()
+                and not p.name.endswith("-hooks.jsonl")
+                and p.name != "transcript.jsonl"
+                and "subagents" not in rel.parts
+            ):
                 files.append(p)
 
     # 2. agy session files: ~/.gemini/antigravity-cli/brain/**/transcript.jsonl
@@ -56,17 +64,55 @@ def find_session_files() -> list[Path]:
     ]
     for d in agy_dirs:
         if d.is_dir():
-            for p in d.glob("**/transcript.jsonl"):
-                if p.is_file():
+            for p in d.rglob("transcript.jsonl"):
+                rel = p.relative_to(d)
+                if (
+                    p.is_file()
+                    and not p.name.endswith("-hooks.jsonl")
+                    and "subagents" not in rel.parts
+                ):
+                    files.append(p)
+
+    # 3. Polecat/container sessions under $AOPS_SESSIONS/logs/
+    if sessions_dir is not None:
+        logs_dir = sessions_dir / "logs"
+        if logs_dir.is_dir():
+            for p in logs_dir.rglob("*.jsonl"):
+                rel = p.relative_to(logs_dir)
+                if (
+                    p.is_file()
+                    and not p.name.endswith("-hooks.jsonl")
+                    and p.name != "transcript.jsonl"
+                    and p.name != "transcript_full.jsonl"
+                    and "subagents" not in rel.parts
+                    and "chunks" not in rel.parts
+                ):
+                    files.append(p)
+
+            for p in logs_dir.rglob("transcript.jsonl"):
+                rel = p.relative_to(logs_dir)
+                if (
+                    p.is_file()
+                    and not p.name.endswith("-hooks.jsonl")
+                    and "subagents" not in rel.parts
+                    and "chunks" not in rel.parts
+                ):
                     files.append(p)
 
     # De-duplicate files
     unique_files = list(set(files))
-    return sorted(unique_files, key=lambda x: x.stat().st_mtime, reverse=True)
+
+    def _get_mtime(p: Path) -> float:
+        try:
+            return p.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    return sorted(unique_files, key=_get_mtime, reverse=True)
 
 
 def _is_agy_path(path: Path) -> bool:
-    return path.name == "transcript.jsonl" or "brain" in path.parts
+    return path.name == "transcript.jsonl" or any("brain" in part for part in path.parts)
 
 
 def load_session(path: Path) -> NormalizedSession | None:
@@ -104,7 +150,7 @@ def process_single_session(
 
     cache_key = str(session.source_file)
     if fingerprint is None:
-        fingerprint = source_fingerprint(session.source_files)
+        fingerprint = source_fingerprint(session_source_files(session.source_file))
 
     # Check cache
     if not force and skip_cache.is_skipped(cache_key, fingerprint):
@@ -144,24 +190,42 @@ def process_single_session(
     dest_dir = output_dir / "transcripts" / year_month
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Render all outputs
-    md, html, json_sidecar = render_session_to_all_formats(
-        session, slug, started_at, last_modified, ended_at, has_user, correlation, insights
-    )
-    full_md = render_to_full_markdown(
-        session, slug, started_at, last_modified, ended_at, has_user, correlation, insights
+    # Render all 4 text tiers + JSON sidecar
+    controller_md, full_md, md, html, json_sidecar = render_session_to_all_formats(
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user,
+        correlation,
+        insights,
+        source_content_hash=fingerprint,
     )
 
-    # Write files. Redaction is applied here, at the single write chokepoint,
-    # rather than inside each renderer: these four artifacts are the only
-    # things that leave the machine, so scrubbing here means a new renderer
-    # cannot accidentally ship an unredacted format. The two Markdown renders
-    # and the HTML are final text and get the text pass; the sidecar is still
-    # data at this point and gets the structural pass, then is serialised —
-    # redacting its serialised form corrupts it. See
-    # transcripts/domain/secret_redaction.py for what is scrubbed and why.
-    (dest_dir / f"{filename_base}.md").write_text(redact_secrets(md), encoding="utf-8")
+    # Write files. Redaction is applied here, at the write chokepoint, rather
+    # than inside each renderer: these artifacts are the only things that
+    # leave the machine, so a renderer added later inherits a scrub without
+    # having to remember one. It is a backstop, not a guarantee — it sees only
+    # what the renderers hand it, so a renderer that re-encodes text before
+    # this point can put a credential beyond its reach. The contract that
+    # keeps that from happening is "Escaping and redaction" in
+    # specs/transcript-pipeline.md; a renderer that transforms bytes the
+    # patterns match must redact before it transforms.
+    #
+    # 2026-08-07: this was previously claimed to mean "a new renderer cannot
+    # accidentally ship an unredacted format". PR #2373 disproved it — HTML
+    # escaping rewrote `"` as `&quot;` upstream of here and key-named secrets
+    # rode through this pass into all four text tiers.
+    #
+    # The Markdown renders and the HTML are final text and get the text pass;
+    # the sidecar is still data at this point and gets the structural pass,
+    # then is serialised.
+    (dest_dir / f"{filename_base}.controller.md").write_text(
+        redact_secrets(controller_md), encoding="utf-8"
+    )
     (dest_dir / f"{filename_base}.full.md").write_text(redact_secrets(full_md), encoding="utf-8")
+    (dest_dir / f"{filename_base}.md").write_text(redact_secrets(md), encoding="utf-8")
     (dest_dir / f"{filename_base}.html").write_text(redact_secrets(html), encoding="utf-8")
     (dest_dir / f"{filename_base}.json").write_text(
         json.dumps(redact_obj(json_sidecar), indent=2), encoding="utf-8"
@@ -176,6 +240,29 @@ def process_single_session(
         session.total_event_count,
     )
     return True
+
+
+def _process_single_session_worker(args_tuple: tuple[Path, Path, bool]) -> tuple[str, str, bool]:
+    """Top-level worker function for ProcessPoolExecutor parallel batch processing."""
+    path, sessions_dir, force = args_tuple
+    try:
+        fingerprint = source_fingerprint(session_source_files(path))
+        session = load_session(path)
+        if not session or not session.events:
+            return (str(path), fingerprint, False)
+
+        dummy_cache = SkipCache(sessions_dir / ".transcripts_skip_cache.json")
+        ok = process_single_session(
+            session,
+            sessions_dir,
+            dummy_cache,
+            force=force,
+            fingerprint=fingerprint,
+        )
+        return (str(path), fingerprint, ok)
+    except Exception:
+        logger.exception("Failed to process session file %s", path)
+        return (str(path), "", False)
 
 
 def main() -> int:
@@ -232,43 +319,55 @@ def main() -> int:
         return 0
 
     # Batch processing mode
-    session_files = find_session_files()
+    session_files = find_session_files(sessions_dir)
     if not session_files:
         logger.info("No session files found to process")
         return 0
 
-    # Filter recent if requested (default to last 7 days unless --all is set)
+    # Filter recent if requested (default to last 7 days unless --all is set).
+    # (15-minute upper bound buffer commented out per user request)
     if args.recent or not args.all:
-        cutoff = datetime.now(UTC).timestamp() - (7 * 24 * 3600)
-        session_files = [f for f in session_files if f.stat().st_mtime >= cutoff]
+        now_ts = datetime.now(UTC).timestamp()
+        cutoff_old = now_ts - (7 * 24 * 3600)
+        # cutoff_new = now_ts - (15 * 60)
+        session_files = [f for f in session_files if f.stat().st_mtime >= cutoff_old]
+
+    to_process: list[Path] = []
+    for path in session_files:
+        fingerprint = source_fingerprint(session_source_files(path))
+        if not args.force and skip_cache.is_skipped(str(path), fingerprint):
+            logger.debug("Skipping unchanged empty session file %s via cache", path)
+            continue
+        to_process.append(path)
+
+    if not to_process:
+        logger.info("All %d sessions skipped via cache", len(session_files))
+        return 0
+
+    max_workers = max(1, min((os.cpu_count() or 4) // 3, len(to_process)))
+    logger.info(
+        "Processing %d session(s) using %d parallel workers...", len(to_process), max_workers
+    )
 
     processed_count = 0
-    for path in session_files:
-        try:
-            # Fingerprint before parsing: a session known to be empty and
-            # unchanged since costs a couple of stat() calls, not a parse.
-            fingerprint = source_fingerprint(session_source_files(path))
-            if not args.force and skip_cache.is_skipped(str(path), fingerprint):
-                logger.debug("Skipping unchanged empty session file %s via cache", path)
-                continue
-
-            session = load_session(path)
-            if not session:
-                # Parsed to nothing. Record it against the same fingerprint so
-                # the next run skips it until the file changes.
-                logger.debug("No session could be loaded from %s, marking in skip cache", path)
-                skip_cache.mark_empty(str(path), fingerprint)
-                continue
-            if process_single_session(
-                session,
-                sessions_dir,
-                skip_cache,
-                force=args.force,
-                fingerprint=fingerprint,
-            ):
+    if max_workers <= 1:
+        for p in to_process:
+            cache_key, fp, ok = _process_single_session_worker((p, sessions_dir, args.force))
+            if ok:
                 processed_count += 1
-        except Exception:
-            logger.exception("Failed to process session file %s", path)
+                skip_cache.mark_processed(cache_key, fp)
+            elif fp:
+                skip_cache.mark_empty(cache_key, fp)
+    else:
+        worker_args = [(p, sessions_dir, args.force) for p in to_process]
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            results = executor.map(_process_single_session_worker, worker_args)
+            for cache_key, fp, ok in results:
+                if ok:
+                    processed_count += 1
+                    skip_cache.mark_processed(cache_key, fp)
+                elif fp:
+                    skip_cache.mark_empty(cache_key, fp)
 
     logger.info("Batch run complete. Processed %d sessions.", processed_count)
 

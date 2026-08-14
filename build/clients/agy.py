@@ -9,8 +9,7 @@
 - commands/<name>.md    -> skills/cmd-<name>/SKILL.md, frontmatter
   `type: command` rewritten to `type: skill`; the commands/ dir itself is
   dropped (agy has no commands/ concept).
-- agents/<name>.md      -> agents/<name>/agent.json (agy customAgent schema
-  with inline prompt body, toolNames translated, and default includeSections).
+- agents/<name>.md      -> agents/<name>.md (agy's own read format)
 - axioms with `trigger: always_on` -> rules/<source_file>
 """
 
@@ -24,37 +23,18 @@ import yaml
 from build.axioms import load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
+from build.tools import (
+    extract_agy_mcp_servers,
+    load_tool_config,
+    process_agent_tools_agy,
+    validate_agent_name_and_desc,
+)
 
 _PLUGIN_ROOT_RE = re.compile(r'"?\$\{AGY_PLUGIN_ROOT\}/([^"\s]*)"?')
-# The bare, no-trailing-slash form — `--project "${AGY_PLUGIN_ROOT}"` — used to
-# pin a `uv run` invocation to the plugin root rather than name a file inside
-# it. `_PLUGIN_ROOT_RE` above requires a `/` right after the closing brace, so
-# it never matches this form and left it in the shipped hooks.json verbatim: a
-# literal `${AGY_PLUGIN_ROOT}` token that isn't a real shell variable, which
-# agy's shell then expands to nothing, dropping the `--project` value
-# entirely and failing every hook invocation with "a value is required for
-# '--project <PROJECT>' but none was supplied". Since `_handler`'s own
-# guarantee is that agy's cwd for the hook is already the plugin root, the
-# fix is the same relative form the CLI needs elsewhere: `.`.
 _PLUGIN_ROOT_BARE_RE = re.compile(r'"\$\{AGY_PLUGIN_ROOT\}"')
 _COMMAND_TYPE_RE = re.compile(r"(?m)^type:\s*command\s*$")
 _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
-
-_TOOL_MAP = {
-    "Read": "read_file",
-    "Write": "write_file",
-    "Edit": "replace",
-    "Bash": "run_shell_command",
-    "Grep": "grep_search",
-    "Glob": "glob",
-    "AskUserQuestion": "ask_question",
-    "Agent": "invoke_subagent",
-    "WebSearch": "search_web",
-    "WebFetch": "read_url_content",
-    "TodoWrite": "todo_write",
-    "NotebookEdit": "notebook_edit",
-}
 
 # agy's five hook events, split by the structure each one takes. The tool
 # events group their handlers under a `matcher` regex; the rest take a flat
@@ -63,7 +43,6 @@ _TOOL_MAP = {
 # "Hook Spec Fields" and "Supported Event Types" sections define them.
 _GROUPED_EVENTS = ("PreToolUse", "PostToolUse")
 _FLAT_EVENTS = ("PreInvocation", "PostInvocation", "Stop")
-_AGY_INCLUDE_SECTIONS = ["user_information", "skills", "messaging", "mcp_servers"]
 
 
 def adapt(build_dir: Path, ctx: BuildContext) -> None:
@@ -83,12 +62,12 @@ def adapt(build_dir: Path, ctx: BuildContext) -> None:
     # Same rule as hooks: no servers means no file, not an empty one.
     servers = (manifests.get("mcp") or {}).get("mcpServers") or {}
     if servers:
-        mcp_str = json.dumps(servers).replace("${PLUGIN_ROOT}", "${extensionPath}")
+        mcp_str = json.dumps(servers).replace("${PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}")
         servers = json.loads(mcp_str)
         _write_json(build_dir / "mcp_config.json", _checked_mcp(servers, ctx))
 
     _convert_commands_to_skills(build_dir)
-    _adapt_agents(build_dir)
+    _adapt_agents(build_dir, ctx)
 
     always_on = load_always_on_axioms(build_dir / "axioms")
     if always_on:
@@ -150,7 +129,7 @@ def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
 
     `${extensionPath}` and `${CLAUDE_PLUGIN_ROOT}` are the one exception:
     `agy plugin install` copies this plugin to its own on-disk directory
-    inside `~/.gemini/antigravity-cli/plugins/`, and the aops-crew image's
+    inside `~/.gemini/config/plugins/`, and the aops-crew image's
     `docker_gemini_fixups.py fixup-mcp-config-paths` (run from the Dockerfile,
     after install) rewrites either token, wherever it appears in any installed
     plugin's `mcp_config.json`, to that plugin's actual install directory —
@@ -227,22 +206,26 @@ def _convert_commands_to_skills(build_dir: Path) -> None:
     shutil.rmtree(commands_dir)
 
 
-def _translate_tool_name(tool: str) -> str:
-    if tool in _TOOL_MAP:
-        return _TOOL_MAP[tool]
-    if tool.startswith("mcp__"):
-        return tool.replace("__", "_")
-    return tool
+def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
+    """Rewrite each agent under `agents/` into agy's `agents/<name>.md`.
 
-
-def _adapt_agents(build_dir: Path) -> None:
+    agy's runtime reads `<name>.md` — YAML frontmatter plus a Markdown body —
+    the same shape Claude Code agents already ship in; it does not read
+    `agent.json` or subdirectories. So this function is a frontmatter transform,
+    not a format conversion — `tools` gets translated, `model` and an absent
+    `tools:` key get the handling documented below, and the body is carried
+    through unchanged.
+    """
     agents_dir = build_dir / "agents"
     if not agents_dir.is_dir():
         return
 
-    md_files = sorted(agents_dir.glob("*.md"))
+    md_files = sorted(agents_dir.rglob("*.md"))
     if not md_files:
         return
+
+    accepted_tools, tool_map = load_tool_config()
+    plugin_name = ctx.plugin.marketplace_name if ctx else ""
 
     for md_file in md_files:
         content = md_file.read_text(encoding="utf-8")
@@ -258,56 +241,88 @@ def _adapt_agents(build_dir: Path) -> None:
         if not isinstance(frontmatter, dict):
             continue
 
-        name = frontmatter.get("name") or md_file.stem
-        if not re.match(r"^[a-z0-9_-]+$", name):
-            raise BuildError(
-                f"{md_file}: invalid agy agent name {name!r} — must be lowercase letters, numbers, hyphens, or underscores"
-            )
+        name = frontmatter.get("name")
+        if not name:
+            name = md_file.parent.name if md_file.stem == "agent" else md_file.stem
 
         description = frontmatter.get("description")
-        if not description or not str(description).strip():
-            raise BuildError(f"{md_file}: missing required frontmatter field 'description'")
+        name = validate_agent_name_and_desc(name, description, md_file)
 
-        hidden = bool(frontmatter.get("hidden", False))
         body = m.group(2).lstrip("\n")
 
-        raw_tools = frontmatter.get("tools", [])
-        if isinstance(raw_tools, str):
-            raw_tools = [t.strip() for t in raw_tools.split(",") if t.strip()]
-        elif not isinstance(raw_tools, list):
-            raw_tools = []
-
-        tool_names: list[str] = []
-        seen: set[str] = set()
-        for t in raw_tools:
-            if not isinstance(t, str):
-                continue
-            mapped = _translate_tool_name(t)
-            if mapped and mapped not in seen:
-                seen.add(mapped)
-                tool_names.append(mapped)
-
-        new_fm = {
-            "name": name,
-            "description": str(description).strip(),
-            "tools": tool_names,
-            "hidden": hidden,
+        # Carry every source field through except those handled explicitly below:
+        # (name, description, tools, hidden, includeSections, model, disallowedTools, mcpServers).
+        extra_fields: dict = {
+            k: v
+            for k, v in frontmatter.items()
+            if k
+            not in (
+                "name",
+                "description",
+                "tools",
+                "hidden",
+                "includeSections",
+                "model",
+                "disallowedTools",
+                "mcpServers",
+            )
         }
 
+        # `model` names a Claude Code model ("opus", "sonnet", ...); agy silently
+        # drops the agent from `agy agents` when its frontmatter carries an
+        # unrecognized model value. `--agent <name>` then silently falls back
+        # to a full unnamed session with every tool (56 tools). That is a
+        # privilege escalation, not a cosmetic bug. Thus `model` is dropped.
+
+        has_tools_key = "tools" in frontmatter
+        raw_tools = frontmatter.get("tools")
+        has_disallowed_key = "disallowedTools" in frontmatter
+        raw_disallowed = frontmatter.get("disallowedTools")
+
+        processed_tools = process_agent_tools_agy(
+            raw_tools,
+            has_tools_key,
+            name,
+            md_file,
+            accepted_tools,
+            tool_map,
+            plugin_name=plugin_name,
+            raw_disallowed_tools=raw_disallowed,
+            has_disallowed_tools_key=has_disallowed_key,
+        )
+
+        mcp_servers = extract_agy_mcp_servers(frontmatter, plugin_name=plugin_name)
+
+        agy_frontmatter: dict = {
+            "name": name,
+            "description": str(description).strip(),
+            **extra_fields,
+        }
+        if mcp_servers:
+            agy_frontmatter["mcpServers"] = mcp_servers
+        agy_frontmatter["tools"] = processed_tools
+
         if not body.startswith("# Agent System Instructions"):
-            body_content = f"# Agent System Instructions\n\n{body}"
-        else:
-            body_content = body
+            body = f"# Agent System Instructions\n\n{body}"
 
-        fm_yaml = yaml.dump(new_fm, sort_keys=False).strip()
-        new_md_content = f"---\n{fm_yaml}\n---\n\n{body_content}\n"
-
-        agent_dir = agents_dir / name
-        agent_dir.mkdir(parents=True, exist_ok=True)
-        (agent_dir / "agent.md").write_text(new_md_content, encoding="utf-8")
-        md_file.unlink()
+        target = agents_dir / f"{name}.md"
+        _write_agent_md(target, agy_frontmatter, body.strip())
+        if md_file != target:
+            md_file.unlink()
+            if (
+                md_file.parent != agents_dir
+                and md_file.parent.is_dir()
+                and not any(md_file.parent.iterdir())
+            ):
+                md_file.parent.rmdir()
 
 
 def _write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _write_agent_md(path: Path, frontmatter: dict, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fm_text = yaml.safe_dump(frontmatter, allow_unicode=True, sort_keys=False)
+    path.write_text(f"---\n{fm_text}---\n\n{body}\n", encoding="utf-8")

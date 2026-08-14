@@ -1,104 +1,61 @@
 ---
 name: dump
-description: "Session exit — one skill, four paths. Bare `/dump` is the emergency bail: resume task plus a short handover, nothing committed. `/dump full` is the canonical close: commit, push, PR, release. `/dump partial` hands back attempted work with the refused decisions named. `/dump pause` hands control back with the work still in progress."
+description: "Session exit and handover — commit and push your work, release any claimed PKB tasks with a status report, and emit a single final handover message. Invoke whenever a session is ending, being interrupted, or work must be handed off to the next agent."
 ---
 
 # Dump — Session Exit
 
-Every session exit runs through this skill. The first word after `/dump` picks the path; bare `/dump` means **bail**.
+Every session exit must provide a formal handover.
 
-| Path        | When                                            | Commits or PR | Task ends at                         |
-| ----------- | ----------------------------------------------- | ------------- | ------------------------------------ |
-| **bail**    | You need a clean context now                    | No            | Left open, body state rewritten      |
-| **full**    | The task is genuinely done                      | Yes           | Released                             |
-| **partial** | You attempted the rest but refused some choices | Yes, if code  | Released at `partial`                |
-| **pause**   | Mid-flight — waiting on the user, or blocked    | No            | Stays `in_progress`, state rewritten |
+If you have hit an error, exhausted your resources, or have been asked to terminate:
 
-Do not guess. If the task is not actually finished, the path is bail, pause, or partial — never full.
+- you must abort immediately, save any progress, and return with minimal explanation and a simple resume path.
+- you must still provide a handover message.
+- if you have a task claimed, you must release it if you can.
 
-**Every task write on every path is a rewrite, never an append** — the shape is
-[`../../agents/pauli.md`](../../agents/pauli.md)'s (goal, checklist, pointers). Dump's own instance is
-`## Now`: one section, replaced wholesale on every exit, never stacked beside an
-earlier one. A body found carrying a stack of old resume or progress sections
-gets cleaned in passing to that same shape.
+## Handover process
 
-Terminate immediately after emitting the block for your path. Add no trailing text.
+### 1. SAVE AND PUSH YOUR WORK
 
-## Bail — emergency handover
+You are running in an isolated, _ephemeral_ environment. Any files left on your local storage will be DESTROYED.
 
-1. Update the bound task: set the session id, change nothing else in the frontmatter, and rewrite the body's `## Now` section — replacing any previous one — with **State** (one sentence), **Next** (the concrete next action), and **Watch out** (in-flight side effects — uncommitted files, running processes, locks). With no task bound, create one under an appropriate parent carrying the same content.
+- You must commit and push your work if you can.
+- If you are blocked from pushing, you must find another way to save your work in a durable location.
 
-2. Emit:
+### 2. RELEASE YOUR TASKS
+
+For EACH task you have worked, starting with children:
+
+A. **Construct your report in the following format:**
 
 ```markdown
-### Emergency Handover
+### Task: <task-id> (<precis>) — <status: completed | cancelled | failed | in-progress >
 
-- **Resume Task**: `<task-id>` (<short title>)
-- **Branch**: `<branch>` (uncommitted: yes/no)
-- **Next**: <what to do first next session>
+- **Update**: [ 1-3 sentences: what you did, what you learned, what remains ]
+- **Output**: [ reference to any artifacts or work produced: e.g. `<branch>` (uncommitted: yes/no) | `url` | `pkb note id` and title | `filename` (warning: local files will be destroyed on exit)]
+- **Next**: `<task-id>` [ title ] | [ Plain english instructions, with just enough detail to allow the next agent to pick up the work where you left off. ]
 ```
 
-## Full — canonical close
+B. **Release your tasks, children first:** call the PKB's `release_task` MCP tool with your session id and your concise report.
 
-A read-only session (nothing mutated, no task touched) prints `Output: none — read-only Q&A` and exits.
+### 3. EMIT FINAL REPORT
 
-Otherwise:
+Compile each of your reports into a single final message:
 
-1. **Commit, push, and open a pull request** if files changed. Write the body for its reviewer.
-
-2. **Release the task.** Verify every child is terminal first. Release with the session id, whichever of pull-request URL, branch, issue URL, and follow-up tasks apply, and a result-oriented summary under 500 characters that names its specific resources and stands alone.
-
-   Choose the release status deliberately. **Parked on a pull request's review or merge** is not the same as **parked on a human decision**: a reconcile sweep will auto-close the first once the PR merges and will never auto-close the second. Mis-tag a PR-parked task as decision-parked and it is stranded; mis-tag a decision-parked task as PR-parked and it is auto-closed wrongly.
-
-3. **Emit, for each task worked:**
-
-```markdown
-## Tasks worked: <task-id> (<precis>) — <created | updated | completed | cancelled | referenced>
-
-**Outcome**: success | partial | failure
-**Output**: <PR or artefact URL> (description)
-**Accomplishments**: <what you completed, or `none`>
-**Issues filed**: <issue or task URLs, precis only, or `none`>
-
-- **Primary Task**: `<task-id>` (<short title>)
-- **Branch**: `<branch>`
-- **Issue**: <url or "none">
-```
-
-4. **Then the summary:**
-
-```markdown
-## Session handover: (description)
-
-**What you asked**: <the original instruction, with its deliverables and constraints>
-**Summary**: <the release summary>
-**Self-evaluation**: <at most two sentences>
-**Follow-ups**: `<task-id> (<short title>)` — omit if none
-```
-
-Every linked entity carries its stable identifier and a parenthesised precis. `Output` carries a real artefact link, or an explicit `none — <reason>`; neither present means the full path did not run.
-
-## Partial — refuse and attempt
-
-1. Commit what you wrote and push it. If the deliverable is a pull request, open it as a draft.
-2. Update the task: set the session id and rewrite the body so it carries one `## Deliberately deferred` section listing the decisions you refused and the acceptance criteria still unmet — replacing any earlier deferred or resume sections.
-3. Release at `partial` with a summary of what was completed and what was refused. File follow-up tasks for the deferred work and link them.
-4. Emit the full-path blocks, marked `partial`, pointing at the deferred items.
-
-## Pause — hand back, still in progress
-
-The lightweight exit: your work is not done, you need input or you are waiting, and you want to hand control back without concluding anything. Nothing is committed, pushed, released, or reviewed.
-
-Write **one** block for a reader returning with no memory of the session — short bullets, every id and branch named in a handful of words:
-
-```markdown
-### Resume <UTC-timestamp>
+````markdown
+## Handover: <agent> <session-id>
 
 - **You asked**: <the original ask, one sentence>
 - **So far**: <2–4 bullets: what was decided>
-- **I did**: <what you actually did, with evidence references>
+- **Output**: <PR or artefact URL> (description)
 - **Next**: <the single recommended next step, phrased so it can be acted on or approved>
+- **Errors**: <list any errors encountered, precis only, or `none`>
+- **Self-evaluation**: <at most two sentences>
 - **Waiting on / watch out**: <the blocker; any in-flight side effects>
-```
 
-Then rewrite the bound task's `## Now` section to the same content minus the timestamp heading, with the session id set and **the status untouched** — the work is ongoing. The timestamped block belongs to the chat, which is the transcript; the task carries only the current state, exactly one `## Now`, never a stack. With no task bound, skip the write and say so in the block.
+[ Then, for each task, include its concise report from the last step. ]
+
+```markdown
+### Task: ...
+```
+````

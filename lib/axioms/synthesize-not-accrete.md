@@ -1,6 +1,6 @@
 ---
 description: A durable store holds synthesised current state, not accreted history.
-trigger: always_on
+trigger: off
 ---
 
 ## Synthesise, Don't Accrete

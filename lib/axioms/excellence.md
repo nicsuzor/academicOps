@@ -1,6 +1,6 @@
 ---
 description: Excellence is the standard; compliance is the floor.
-trigger: always_on
+trigger: off
 ---
 
 ## The Bar

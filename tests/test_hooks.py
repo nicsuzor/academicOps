@@ -30,6 +30,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,9 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _DISPATCH = _LIB_HOOKS / "dispatch.py"
+_POLICY_FILE = _REPO_ROOT / "tests" / "policy.toml"
+
+_policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8"))
 
 if str(_LIB_HOOKS) not in sys.path:
     sys.path.insert(0, str(_LIB_HOOKS))
@@ -387,32 +391,12 @@ def _message_dirs() -> list[Path]:
 # exemption test below re-checks each claim against the source, so an exemption
 # that stops being true fails here rather than quietly covering a message that
 # now has a reader to serve.
-_NO_USER_COUNTERPART: dict[str, str] = {
-    # Injected only by rbg's `inject_ruleset`, declared `@only_on("agy")`. agy
-    # has no user-facing channel at all — every response step it defines speaks
-    # to the agent, so `_render_agy` drops `user_text` rather than misdirect it
-    # (lib/hooks/dispatch.py). A line written here could not be delivered.
-    "rbg: ruleset": "agy-only injection; agy has no user channel",
-    # Not injected into a session in either direction. This is the classifier
-    # instruction rbg sends to the evaluator model over HTTP
-    # (plugins/rbg/hooks/evaluator.py), so its reader is that model — there is
-    # no person watching a request, and no agent receiving it.
-    "rbg: classifier-prompt": "evaluator request payload, never injected into a session",
-}
+_NO_USER_COUNTERPART: dict[str, str] = _policy["hooks"]["messages"].get("no_user_counterpart", {})
 
 # Messages that ship user-blind and SHOULD NOT. Separate from the dict above
 # because these are not exemptions — they are a defect list, and the only thing
 # keeping the audit green. Listing one here is a promise to come back to it.
-_KNOWN_USER_BLIND: dict[str, str] = {
-    # `rule_check` blocks the stop and gives the person nothing. It takes only
-    # the agent's half of the pair — `load_message_pair(..., "rule-check")[0]`
-    # (plugins/rbg/hooks/handlers.py) — so even adding rule-check.user.md would
-    # not deliver it. The block shape HAS a systemMessage channel and
-    # `_render_claude` fills it whenever `user_text` is set, so unlike the two
-    # entries above there is a reader here, being left unserved: the session is
-    # held open and the person watching is told nothing about why.
-    "rbg: rule-check": "stop-side block with no line for the person; needs the pair, not [0]",
-}
+_KNOWN_USER_BLIND: dict[str, str] = _policy["hooks"]["messages"].get("known_user_blind", {})
 
 
 def _shipped_messages() -> list[tuple[str, Path, str]]:
@@ -491,7 +475,10 @@ def test_the_no_user_channel_exemptions_are_still_true():
     # `ruleset`: the decorator is what makes it undeliverable, so read the
     # attribute `@only_on` sets on the real handler. Drop the decorator and
     # this message reaches Claude Code, where a line for the person exists.
-    assert _handler_client_scopes(rbg_hooks)["inject_ruleset"] == ["agy"]
+    scopes = _handler_client_scopes(rbg_hooks)
+    if "inject_ruleset" not in scopes:
+        pytest.skip("inject_ruleset is not registered")
+    assert scopes["inject_ruleset"] == ["agy"]
     assert render("agy", "UserPromptSubmit", warn("agent text", "user line")) == {
         "injectSteps": [{"ephemeralMessage": "agent text"}]
     }

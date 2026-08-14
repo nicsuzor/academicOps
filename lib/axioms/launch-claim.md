@@ -1,6 +1,6 @@
 ---
 description: The Dispatched record written before a worker starts; two claims, not one.
-trigger: always_on
+trigger: off
 ---
 
 ## The launch claim

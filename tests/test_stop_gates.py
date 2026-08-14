@@ -1,6 +1,7 @@
 """End-to-end tests for ida's quiet gate
 (plugins/ida/hooks/handlers.py:strip_the_reply) and orchestrate's hearsay
-reminder (plugins/orchestrate/hooks/handlers.py:rule_against_hearsay).
+reminder and honesty advisory
+(plugins/orchestrate/hooks/handlers.py:rule_against_hearsay, honest_output).
 
 rbg's own Stop/SubagentStop gate (``rule_check``) has its end-to-end coverage
 in tests/test_rbg_stop_gate.py, added by the rbg-dual-channel-v07 branch this
@@ -21,9 +22,19 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
+
+_POLICY_FILE = Path(__file__).resolve().parent / "policy.toml"
+_policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
+
+
+def _require_orchestrate_hearsay_enabled():
+    if not _policy.get("orchestrate", {}).get("rule_against_hearsay_enabled", True):
+        pytest.skip("orchestrate hearsay hook is disabled by policy")
+
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
@@ -114,6 +125,7 @@ def test_orchestrate_hearsay_fires_once_on_a_batch_carrying_an_agent_report(orch
     """``PostToolBatch`` fires exactly once per batch, with every resolved call
     in ``tool_calls`` — so a batch that dispatched a subagent alongside other
     tools still gets the reminder, and gets it once rather than per call."""
+    _require_orchestrate_hearsay_enabled()
     hearsay_md = (
         (_ORCHESTRATE_HOOKS / "messages" / "hearsay.md").read_text(encoding="utf-8").strip()
     )
@@ -150,6 +162,105 @@ def test_orchestrate_hearsay_is_silent_on_a_batch_with_no_agent_call(orchestrate
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# orchestrate: honest_output
+# ---------------------------------------------------------------------------
+
+
+def _honesty_md() -> str:
+    return (_ORCHESTRATE_HOOKS / "messages" / "honesty.md").read_text(encoding="utf-8").strip()
+
+
+def test_orchestrate_honesty_fires_on_the_claude_stop(orchestrate_hooks):
+    """``Stop`` is the only turn boundary an agent that is not a subagent ever
+    reaches, so a face-side or teammate turn gets the reporting protocol there
+    or nowhere."""
+    result = _run(orchestrate_hooks, "claude", "Stop", {"hook_event_name": "Stop"})
+    assert result.returncode == 0
+    out = json.loads(result.stdout)
+    assert out["decision"] == "block"
+    assert out["reason"] == _honesty_md()
+
+
+def test_orchestrate_honesty_skips_ida_on_the_stop_path(orchestrate_hooks):
+    """ida speaks to the person and carries its own reply gate. ``agent_type``
+    is what names it, and Claude Code populates that field on ``Stop`` — where
+    on ``SubagentStop`` it never appears, because ida is never a subagent."""
+    result = _run(
+        orchestrate_hooks,
+        "claude",
+        "Stop",
+        {"hook_event_name": "Stop", "agent_type": "ida:ida"},
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
+def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_ida(orchestrate_hooks):
+    result = _run(
+        orchestrate_hooks,
+        "claude",
+        "Stop",
+        {"hook_event_name": "Stop", "agent_type": "orchestrate:james"},
+    )
+    assert result.returncode == 0
+    out = json.loads(result.stdout)
+    assert out["decision"] == "block"
+    assert out["reason"] == _honesty_md()
+
+
+def test_orchestrate_honesty_is_silent_on_agys_post_invocation(orchestrate_hooks):
+    """agy fires ``PostInvocation`` after every tool call and dispatch maps it
+    onto canonical ``Stop``; agy sends no ``stop_hook_active``, so the
+    once-per-chain guard cannot suppress the repeat. Injecting here puts the
+    whole block in front of the agent on every tool call — the failure that
+    truncated context by step 4 and took rbg's stop gate offline."""
+    result = _run(orchestrate_hooks, "agy", "PostInvocation", {"conversationId": "c1"})
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
+def test_orchestrate_honesty_is_silent_on_the_continuation_stop(orchestrate_hooks):
+    """The advisory gives the session another turn, which stops again. Once per
+    chain is dispatch.py's structural guard, not this handler's."""
+    result = _run(
+        orchestrate_hooks,
+        "claude",
+        "Stop",
+        {"hook_event_name": "Stop", "stop_hook_active": True},
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
+def test_orchestrate_honesty_is_silent_when_subagentstop_not_in_handlers(orchestrate_hooks):
+    """SubagentStop is not registered in HANDLERS, so a subagent handback receives
+    nothing until re-registered."""
+    result = _run(
+        orchestrate_hooks,
+        "claude",
+        "SubagentStop",
+        {"hook_event_name": "SubagentStop", "agent_type": "Explore"},
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
+def test_orchestrate_stop_hook_is_wired_synchronously(orchestrate_hooks):
+    """An ``async`` ``Stop`` hook's output is discarded by Claude Code (2.1.227:
+    the advisory reaches the model neither on that turn nor the next), so the
+    honesty advisory only lands from a synchronous entry."""
+    manifest = json.loads(
+        (_REPO_ROOT / "plugins" / "orchestrate" / "manifest" / "hooks.template.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    for event in ("Stop", "SubagentStop"):
+        for entry in manifest["clients"]["claude"]["hooks"][event]:
+            for hook in entry["hooks"]:
+                assert not hook.get("async"), f"{event} is declared async"
 
 
 def test_orchestrate_hearsay_survives_a_payload_with_no_tool_calls(orchestrate_hooks):

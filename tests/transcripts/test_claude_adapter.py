@@ -9,12 +9,14 @@ upstream change surfaces here whenever the dependency is upgraded.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
 import pytest
 from transcripts.adapters.claude import (
     KNOWN_ENTRY_TYPES,
+    ROUTINE_RAW_TYPES,
     ClaudeTranscript,
     RawEntry,
     load_claude_transcript,
@@ -54,12 +56,54 @@ def test_unknown_type_preserved_as_raw_not_dropped() -> None:
         assert raw.raw.get("type") == "last-prompt"
 
 
-def test_unknown_type_is_logged(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.WARNING, logger="transcripts.adapters.claude"):
+def test_unknown_type_is_logged(caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:
+    # Routine raw entry types (like last-prompt) are logged at DEBUG
+    with caplog.at_level(logging.DEBUG, logger="transcripts.adapters.claude"):
         load_claude_transcript(CLAUDE_FIXTURE)
 
+    debug_msgs = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any("last-prompt" in message for message in debug_msgs)
+
+    # Unexpected raw entry types produce a WARNING
+    caplog.clear()
+    unknown_file = tmp_path / "unknown.jsonl"
+    unknown_file.write_text('{"type": "totally-unknown-future-type"}\n', encoding="utf-8")
+    with caplog.at_level(logging.WARNING, logger="transcripts.adapters.claude"):
+        load_claude_transcript(unknown_file)
+
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
-    assert any("last-prompt" in message for message in warnings)
+    assert any("totally-unknown-future-type" in message for message in warnings)
+
+
+def test_routine_raw_types_are_logged_at_debug(
+    caplog: pytest.LogCaptureFixture, tmp_path: Path
+) -> None:
+    """Routine raw entry types (progress, file-history-snapshot, agent-color) log at DEBUG, not WARNING."""
+    target_types = {"progress", "file-history-snapshot", "agent-color"}
+    assert target_types.issubset(ROUTINE_RAW_TYPES)
+
+    jsonl_lines = [
+        json.dumps({"type": "progress", "data": "building"}),
+        json.dumps({"type": "file-history-snapshot", "snapshotId": "s1"}),
+        json.dumps({"type": "agent-color", "color": "blue"}),
+    ]
+    jsonl_path = tmp_path / "routine_types.jsonl"
+    jsonl_path.write_text("\n".join(jsonl_lines) + "\n", encoding="utf-8")
+
+    with caplog.at_level(logging.DEBUG, logger="transcripts.adapters.claude"):
+        transcript = load_claude_transcript(jsonl_path)
+
+    raw_types = {raw.type for raw in transcript.raw_entries}
+    assert raw_types == target_types
+    for raw in transcript.raw_entries:
+        assert isinstance(raw, RawEntry)
+
+    warnings = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert not warnings
+
+    debug_msgs = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    for raw_type in target_types:
+        assert any(raw_type in msg for msg in debug_msgs)
 
 
 def test_loader_never_raises_on_malformed_lines(tmp_path: Path) -> None:

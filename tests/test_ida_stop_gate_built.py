@@ -1,6 +1,6 @@
 """ida's Stop gate, proven through the artifact ida actually ships.
 
-The gate is only real if the built plugin wires a `Stop` hook, the shipped
+The gate is only real if the built plugin wires a `PostToolBatch` hook, the shipped
 runtime loads the shipped message file, and the response comes back in the
 shape the client parses. Each of those has failed independently before — a
 message file with no handler, a handler with no hook entry, a hook wired to an
@@ -23,9 +23,19 @@ import json
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
+
+_POLICY_FILE = Path(__file__).resolve().parent / "policy.toml"
+_policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
+
+
+def _require_ida_hooks_enabled():
+    if not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
+        pytest.skip("ida hooks are disabled by policy")
+
 
 from build.build import build_all
 
@@ -69,7 +79,7 @@ def _stop_command(ida_dist: Path, client: str) -> tuple[Path, str]:
     if client == "claude":
         build_dir = ida_dist / "ida-claude"
         config = json.loads((build_dir / "hooks" / "hooks.json").read_text(encoding="utf-8"))
-        entries = config["hooks"]["Stop"]
+        entries = config["hooks"]["PostToolBatch"]
         return build_dir, entries[0]["hooks"][0]["command"]
 
     build_dir = ida_dist / "ida-agy"
@@ -119,6 +129,7 @@ def test_stop_delivers_the_shipped_message_through_the_real_build(ida_dist, clie
     (commit 81e32c09) — only that whichever shape carries the text carries the
     right text.
     """
+    _require_ida_hooks_enabled()
     build_dir, command = _stop_command(ida_dist, client)
     proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
@@ -134,6 +145,7 @@ def test_agy_never_receives_a_blocking_shape(ida_dist, client):
     invocation has already ended by the time the event fires. The same result
     therefore has to reach it as advice or not at all — never as a shape agy
     would drop on the floor while this side recorded a block that happened."""
+    _require_ida_hooks_enabled()
     build_dir, command = _stop_command(ida_dist, client)
     proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
@@ -143,11 +155,44 @@ def test_agy_never_receives_a_blocking_shape(ida_dist, client):
     assert list(out) == ["injectSteps"]
 
 
-def test_claude_stop_tells_the_person_watching(ida_dist):
-    """The gate firing is a fact about the answer they are about to read."""
+def test_the_gate_never_tells_the_person_it_fired(ida_dist):
+    """The gate is silent to the person, and its silence is structural.
+
+    It used to ship a `quiet.user.md` reading "ida: trimming the reply to what you
+    actually need to see." — which made the suppression mechanism itself a mention
+    of the delegated work it was suppressing. Between an instruction and its
+    completion Nic is owed *nothing*, and a line announcing that something is
+    being trimmed is not nothing.
+
+    Asserted two ways on purpose. The absent file is what causes the silence
+    (`load_message_pair` returns `None` for a missing user file, and dispatch.py
+    only sets `systemMessage` when `user_text` is truthy), and the absent response
+    key is the silence itself. Checking only the file would pass if some other
+    handler started emitting one; checking only the response would pass on a
+    payload that happened not to reach the gate.
+    """
+    _require_ida_hooks_enabled()
+    messages = _claude_hooks_dir(ida_dist) / "messages"
+    assert not (messages / "quiet.user.md").exists(), (
+        "quiet.user.md is back — the gate has started announcing itself again"
+    )
+
     build_dir, command = _stop_command(ida_dist, "claude")
     proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
-    assert json.loads(proc.stdout)["systemMessage"] == _shipped_message(ida_dist, "quiet.user.md")
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+    assert "systemMessage" not in json.loads(proc.stdout)
+
+
+def test_no_message_file_in_the_build_reaches_the_person(ida_dist):
+    """No `*.user.md` at all, derived from the build rather than named here.
+
+    A hardcoded exemption list goes stale silently: the next handler to ship a
+    user-visible line would simply never be checked. If a user-visible channel is
+    ever wanted back, this test is the place the decision has to be argued.
+    """
+    messages = _claude_hooks_dir(ida_dist) / "messages"
+    user_facing = sorted(p.name for p in messages.glob("*.user.md"))
+    assert user_facing == [], f"ida ships user-visible hook text: {user_facing}"
 
 
 @pytest.mark.parametrize("client", _CLIENTS)
@@ -164,7 +209,7 @@ def test_stop_is_silent_on_its_own_continuation(ida_dist, client):
 
 def test_subagentstop_is_not_wired_so_the_gate_stays_scoped_to_the_face(ida_dist):
     """What scopes this hook to ida is the event, because the payload carries no
-    per-agent discriminator. `Stop` fires on the session's own turn boundary;
+    per-agent discriminator. `PostToolBatch` fires on the session's own turn boundary;
     a subagent ends on `SubagentStop`. Wiring that too would put the face's
     obligations in front of every worker the session dispatches.
     """
