@@ -427,6 +427,18 @@ def test_the_handler_is_silent_on_every_path(aca_data: Path, monkeypatch):
     importlib.reload(handlers)
     ctx = landed  # any object; the handler reads nothing off it
 
+    # Every other test here drives `sweep` with an explicit `day=DAY`; the handler
+    # is the one caller that asks the clock instead, which is correct in
+    # production and means this test would otherwise only pass on the single real
+    # date DAY names. Freeze the clock the handler reads so it agrees with the
+    # fixture note.
+    class _FrozenDate(date):
+        @classmethod
+        def today(cls) -> date:
+            return DAY
+
+    monkeypatch.setattr(handlers, "date", _FrozenDate)
+
     monkeypatch.setenv("ACA_DATA", str(aca_data))
     _task(aca_data, "aops_hand01", status="done", marker="LANDED: a thing (somewhere)")
     assert handlers.render_landed(ctx) is None

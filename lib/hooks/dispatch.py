@@ -243,7 +243,8 @@ def _render_claude(result: Result, event: str) -> dict:
             # text is still worth delivering; the disposition is not, and a handler
             # must not read silence here as enforcement that happened.
             print(
-                f"dispatch: block() is illegal on event {event!r}",
+                f"dispatch: block() is illegal on event {event!r}; "
+                "degraded to advisory — the text was delivered, the block was not",
                 file=sys.stderr,
             )
 

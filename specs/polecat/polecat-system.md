@@ -30,7 +30,7 @@ the container.
 - [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/ida/agents/pc.md]] — coordinator-side: the launcher agent that builds
+- [[plugins/orchestrate/agents/pc.md]] — coordinator-side: the launcher agent that builds
   the `polecat run` command and starts it under a detached `tmux` session, locally
   or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
   invocation, and nothing stops a caller reaching the CLI directly

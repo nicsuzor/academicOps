@@ -463,7 +463,10 @@ def render_tasks(
             skipped.append(Skipped(task_id, "no task with that id in the graph"))
             continue
         outcome = render_one(path, require_marker=False)
-        (rendered if isinstance(outcome, Rendered) else skipped).append(outcome)  # type: ignore[arg-type]
+        if isinstance(outcome, Rendered):
+            rendered.append(outcome)
+        else:
+            skipped.append(outcome)
     if dry_run:
         return Report(
             note=note_path(aca_data, day or date.today()),

@@ -361,20 +361,21 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     assert "interactive face" in agy_agent["description"]
     assert "hidden" not in agy_agent
     assert "includeSections" not in agy_agent
-    assert agy_agent["mcpServers"] == ["services"]
+    # ida declares no `mcpServers:` and reaches no MCP tool, so the build must
+    # not invent a server for it. The normalisation of a declared list is
+    # covered by test_pauli_agy_frontmatter.
+    assert "mcpServers" not in agy_agent
 
+    # ida's Claude tools are Agent, TodoWrite, Skill, SendMessage and the five
+    # Task* verbs. `TodoWrite` and `Skill` map to nothing on agy, the Task*
+    # verbs all collapse onto the one `manage_task`, and `send_message` is
+    # reached by both Agent and SendMessage — so the translation has to dedupe
+    # rather than repeat it.
     assert agy_agent["tools"] == [
-        "run_command",
-        "ask_question",
         "invoke_subagent",
         "manage_subagents",
         "send_message",
-        "view_file",
-        "list_resources",
-        "mcp_services_pkb_search",
-        "mcp_services_pkb_get_task",
-        "mcp_services_pkb_claim_task",
-        "mcp_services_pkb_status",
+        "manage_task",
     ]
 
     body = body.lstrip("\n")
@@ -1005,7 +1006,16 @@ def test_pauli_agy_frontmatter(tmp_path):
 
     assert agent["name"] == "pauli"
     assert agent["mcpServers"] == ["services"]
-    assert agent["tools"] == ["view_file", "list_resources", "mcp_services_*"]
+    # pauli declares Bash, Skill, Read, ToolSearch, ListMcpResourcesTool and the
+    # pkb server wildcard. `Skill` and `ToolSearch` have no agy counterpart and
+    # drop out; the plugin-qualified wildcard normalises onto the `services`
+    # server it resolves to.
+    assert agent["tools"] == [
+        "run_command",
+        "view_file",
+        "list_resources",
+        "mcp_services_*",
+    ]
     assert "hidden" not in agent
     assert "includeSections" not in agent
     assert "call_mcp_tool" not in agent["tools"]

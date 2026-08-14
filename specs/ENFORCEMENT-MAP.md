@@ -196,7 +196,7 @@ nowhere) · `unbuilt` · `external`.
 
 [^l]: agy's `PostInvocation` — its only hook event mapped onto canonical `Stop` — fires after every tool call, and agy sends no `stop_hook_active`, so dispatch's once-per-chain guard cannot suppress the repeat. `honest_output` returns `None` when `ctx.event` is `Stop` and `ctx.client` is not `claude`, so agy workers get no honesty reminder on any path (#2413).
 
-[^m]: The carrier was the `dispatch` skill in the orchestrate plugin, deleted in `7f095a88d` ("update ida permissions and calling procedures"), whose message gives no reason for dropping these three obligations. The launcher that took over the surface, `plugins/ida/agents/pc.md`, is scoped to building and starting one `polecat run` command; graph reading, payload shaping, and route exclusivity were never in that scope and landed nowhere.
+[^m]: The carrier was the `dispatch` skill in the orchestrate plugin, deleted in `7f095a88d` ("update ida permissions and calling procedures"), whose message gives no reason for dropping these three obligations. The launcher that took over the surface, `plugins/orchestrate/agents/pc.md`, is scoped to building and starting one `polecat run` command; graph reading, payload shaping, and route exclusivity were never in that scope and landed nowhere.
 
 ## Active rules
 
