@@ -1276,7 +1276,7 @@ def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task,
 
     for attempt in range(1, max_attempts + 1):
         suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
-        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd[:3])} ...", err=True)
+        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd)}", err=True)
         returncode = subprocess.run(cmd).returncode
 
         if not verify_seed:
