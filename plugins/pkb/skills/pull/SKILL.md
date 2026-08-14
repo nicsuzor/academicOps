@@ -7,7 +7,7 @@ description: Claim a queued task, execute it, record the result on the task, and
 
 Claim a task from the Personal Knowledge Base (PKB) and manage an appropriately sized team of subagents to achieve the goal in line with the parameters and acceptance criteria.
 
-## Dispatch procedure
+## EXECUTION PROCEDURE (MANDATORY)
 
 You have a strong team of subagents available. Your job is to delegate to them and manage complex tasks to completion. The standard we are aiming for is nothing short of excellence.
 
@@ -40,7 +40,7 @@ Work through your ToDo list, delegating to and managing subagents as required.
 - **Do not poll, sleep, or loop to wait for your agents**!
 - **Stop after dispatch**; you will be awakened by a callback when tasks finish or need your intervention.
 
-**4. Consolidate results quietly as they arrive:**
+### 4. Consolidate results quietly as they arrive:**
 
 - Do not assemble interim reports.
 - Once all work has been completed, prepare a consolidated and synthesized report for the user.
@@ -48,7 +48,7 @@ Work through your ToDo list, delegating to and managing subagents as required.
 - If a particular step proves impossible to complete (due to incomplete design or tooling limitations), you should **clearly state the work NOT done**; you should still complete any steps that do not rely on the failed work.
 - Stop again if your background tasks are still running.
 
-**5. Validate your report:**
+### 5. Validate your report:**
 
 Check your work against the literal requirements and acceptance criteria set out in the task.
 
@@ -67,7 +67,7 @@ Check your work against the literal requirements and acceptance criteria set out
 - **You do not have authority** to repair work by changing the task instructions, acceptance criteria, or the pre-determined required workflow processes that you were initially provided.
 - **Impossible tasks** must be marked 'failed' to signal that they must be _escalated_ for re-design or the error repaired before they can be re-dispatched.
 
-**6. Handover (land the plane): Invoke `dump` Skill**
+### 6. Handover (land the plane): Invoke `dump` Skill**
 
 Conclude by invoking the `dump` skill to hand over. It records your work and lets the task proceed to the next stage.
 
