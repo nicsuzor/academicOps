@@ -906,24 +906,15 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
-#: The persona a dispatched worker boots as when the caller names none. Both
-#: agent CLIs take `--agent <name>`, so one constant serves both branches — a
-#: second literal would be a second place to change it.
-DEFAULT_AGENT = "james"
 
-
-def _default_agent_args(extra_args, agent_override=None):
-    """`--agent <agent_name>`, or nothing when the caller already named one in extra_args.
-
-    Precedence is caller-wins: `--agent` takes a value, so contributing a second
-    one leaves the container holding two conflicting personas. Polecat only
-    fills the gap when extra_args carries no `--agent` in either spelling.
-    """
+def _agent_args(extra_args, agent=None):
+    """`--agent <agent_name>`, or nothing when no agent was specified."""
+    if not agent:
+        return []
     caller_chose_agent = any(arg == "--agent" or arg.startswith("--agent=") for arg in extra_args)
     if caller_chose_agent:
         return []
-    agent_name = agent_override or DEFAULT_AGENT
-    return ["--agent", agent_name]
+    return ["--agent", agent]
 
 
 def _build_inner_command(
@@ -949,7 +940,7 @@ def _build_inner_command(
             "claude",
             "--permission-mode=auto",
             "--setting-sources=user,project",
-            *_default_agent_args(extra_args, agent),
+            *_agent_args(extra_args, agent),
         ]
         if output_format:
             inner_cmd.extend(["--output-format", output_format])
@@ -966,7 +957,7 @@ def _build_inner_command(
             "--dangerously-skip-permissions",
             "--log-file",
             "/home/worker/.gemini/antigravity-cli/cli.log",
-            *_default_agent_args(extra_args, agent),
+            *_agent_args(extra_args, agent),
         ]
         if output_format:
             inner_cmd.extend(["--output-format", output_format])
@@ -1340,7 +1331,7 @@ def main():
 @click.option(
     "--agent",
     "-a",
-    help="Agent persona to run inside container (default: james).",
+    help="Agent persona to run inside container.",
 )
 @click.option(
     "--output-format",

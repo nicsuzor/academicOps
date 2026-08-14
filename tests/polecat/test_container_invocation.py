@@ -220,8 +220,6 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--agent",
-        "james",
         "--print",
         "/pull task_abc123",
     ]
@@ -229,13 +227,13 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 
 
 # --------------------------------------------------------------------------
-# Default agent
+# Agent persona selection
 # --------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
-def test_all_clients_boot_as_the_default_agent(client, tmp_path, monkeypatch):
-    """A dispatched worker with no agent named must boot as DEFAULT_AGENT (james) on all clients."""
+def test_no_default_agent_passed_when_unspecified(client, tmp_path, monkeypatch):
+    """When no agent is named, --agent is not passed to the container."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -243,14 +241,13 @@ def test_all_clients_boot_as_the_default_agent(client, tmp_path, monkeypatch):
     )
     inner = _inner_cmd(cmd)
 
-    assert inner.count("--agent") == 1
-    assert inner[inner.index("--agent") + 1] == cli.DEFAULT_AGENT
+    assert "--agent" not in inner
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
 @pytest.mark.parametrize("flag", ["--agent", "-a"])
-def test_cli_agent_option_overrides_default_agent(client, flag, tmp_path, monkeypatch):
-    """The --agent / -a Click option allows changing the agent persona on all clients."""
+def test_cli_agent_option_sets_agent(client, flag, tmp_path, monkeypatch):
+    """The --agent / -a Click option passes --agent on all clients."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -260,7 +257,6 @@ def test_cli_agent_option_overrides_default_agent(client, flag, tmp_path, monkey
 
     assert inner.count("--agent") == 1
     assert inner[inner.index("--agent") + 1] == "pauli"
-    assert cli.DEFAULT_AGENT not in inner
 
 
 @pytest.mark.parametrize("agent_cmd", ["shell", "bash", "sleep", "some-other-tool"])
@@ -272,10 +268,9 @@ def test_non_agent_commands_never_get_the_agent_flag(agent_cmd, tmp_path, monkey
     inner = _inner_cmd(cmd)
 
     assert "--agent" not in inner
-    assert cli.DEFAULT_AGENT not in inner
 
 
-def test_caller_supplied_agent_wins_over_the_default_for_claude(tmp_path, monkeypatch):
+def test_caller_supplied_agent_in_extra_args_for_claude(tmp_path, monkeypatch):
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -285,10 +280,9 @@ def test_caller_supplied_agent_wins_over_the_default_for_claude(tmp_path, monkey
 
     assert inner.count("--agent") == 1
     assert inner[inner.index("--agent") + 1] == "rbg"
-    assert cli.DEFAULT_AGENT not in inner
 
 
-def test_caller_supplied_agent_wins_over_the_default_for_agy(tmp_path, monkeypatch):
+def test_caller_supplied_agent_in_extra_args_for_agy(tmp_path, monkeypatch):
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -298,7 +292,6 @@ def test_caller_supplied_agent_wins_over_the_default_for_agy(tmp_path, monkeypat
 
     assert inner.count("--agent") == 1
     assert inner[inner.index("--agent") + 1] == "rbg"
-    assert cli.DEFAULT_AGENT not in inner
 
 
 def test_caller_supplied_agent_in_equals_form_is_not_duplicated(tmp_path, monkeypatch):
@@ -312,15 +305,6 @@ def test_caller_supplied_agent_in_equals_form_is_not_duplicated(tmp_path, monkey
 
     assert inner.count("--agent") == 1
     assert inner[inner.index("--agent") + 1] == "rbg"
-    assert cli.DEFAULT_AGENT not in inner
-
-
-def test_the_default_agent_name_appears_once_in_the_source():
-    """One constant, two branches. A second literal is a second place to change
-    it and a chance for the two clients to drift apart."""
-    source = (_REPO_ROOT / "lib" / "polecat" / "cli.py").read_text()
-
-    assert source.count(f'"{cli.DEFAULT_AGENT}"') == 1
 
 
 # --------------------------------------------------------------------------
@@ -517,8 +501,6 @@ def test_agy_output_format_and_prompt_options(monkeypatch, tmp_path):
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--agent",
-        "james",
         "--output-format",
         "stream-json",
         "--prompt",
@@ -548,8 +530,6 @@ def test_agy_output_format_with_positional_prompt(monkeypatch, tmp_path):
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--agent",
-        "james",
         "--output-format",
         "stream-json",
         "--print",
@@ -580,8 +560,6 @@ def test_claude_output_format_and_prompt_options(monkeypatch, tmp_path):
         "claude",
         "--permission-mode=auto",
         "--setting-sources=user,project",
-        "--agent",
-        "james",
         "--output-format",
         "json",
         "hello claude",
