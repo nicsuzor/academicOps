@@ -334,6 +334,20 @@ def _find_transcript_path(data: dict, session_id: str) -> str | None:
     value in hook ``data`` can change mid-session when Claude Code writes
     entries to a *different* project directory (e.g. after ``gh pr create``
     in a worktree context).
+
+    Duplicates the ``~/.claude/projects`` discovery in
+    ``lib/py/transcripts/runner.py`` (``find_session_files``), and the
+    assistant/``usage`` parsing below duplicates
+    ``lib/py/transcripts/adapters/claude.py``. Reuse is blocked by packaging,
+    not by taste: hooks run as ``uv run --project "${CLAUDE_PLUGIN_ROOT}"``
+    against the plugin's own dist environment, which has no path to ``lib/py``
+    and none of the transcripts pipeline's third-party dependencies (the
+    adapter is a wrapper around ``claude_code_log``). The pipeline is reached
+    only by shelling out to a source checkout at ``AOPS_SRC_DIR``, which a hook
+    on the hot path of every tool call cannot rely on being set. Collapsing
+    the two needs a dependency-free discovery helper in ``lib/`` that the build
+    injects into plugin hook directories the way it injects ``dispatch.py``.
+    Known duplication, 2026-08-12; not yet tracked by an issue.
     """
     candidates: list[str] = []
 
@@ -759,6 +773,12 @@ def _otel_imports():
     )
 
 
+# Span export runs inside the hook, on the hot path of every tool call. The SDK
+# default of 10s lets a dead collector retry three times and add ~7s of latency
+# per call; this caps one failed export at roughly a second.
+_EXPORT_TIMEOUT_S = 2
+
+
 def _create_exporter(
     endpoint: str,
     headers: dict | None = None,
@@ -790,6 +810,7 @@ def _create_exporter(
                 endpoint=endpoint,
                 headers=headers if headers else None,
                 insecure=insecure,
+                timeout=_EXPORT_TIMEOUT_S,
             )
         except Exception as e:
             log.debug(
@@ -804,7 +825,11 @@ def _create_exporter(
         )
 
         log.debug("Initializing OTLP HTTP span exporter for endpoint %s", endpoint)
-        return HTTPSpanExporter(endpoint=endpoint, headers=headers if headers else None)
+        return HTTPSpanExporter(
+            endpoint=endpoint,
+            headers=headers if headers else None,
+            timeout=_EXPORT_TIMEOUT_S,
+        )
     except Exception as e:
         log.debug(
             "HTTP OTLPSpanExporter unavailable or failed to initialize (%s); falling back to ConsoleSpanExporter",
@@ -1096,7 +1121,7 @@ def _build_and_export_spans(
             if rec.get("force_span_id"):
                 id_generator = _make_fixed_id_generator(rec["span_id_hex"])
 
-            kwargs = {"resource": resource}
+            kwargs: dict[str, Any] = {"resource": resource}
             if id_generator:
                 kwargs["id_generator"] = id_generator
 

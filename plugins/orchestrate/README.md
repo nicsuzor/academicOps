@@ -5,7 +5,7 @@ Dispatch, review, and the contract that binds what comes back. James briefs work
 ```mermaid
 flowchart TD
     IN(["substantive work arrives<br/>(from ida, or directly)"]) --> J["james<br/>agents/james.md"]
-    J --> B["compose the brief:<br/>goal + why · criteria · evidence accepted<br/>(agents/james.md, 'Delegate, don't dictate')"]
+    J --> B["compose the brief:<br/>goal + why · criteria · evidence accepted"]
     B --> S{"size the unit"}
 
     S -->|small| SUB["in-session subagents,<br/>cheapest model per effort type;<br/>commit to the branch and push"]

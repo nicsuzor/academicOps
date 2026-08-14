@@ -14,8 +14,12 @@ log = logging.getLogger("orchestrate.handlers")
 
 try:
     import claude_code_tracer
-except ImportError:
+except ImportError as exc:
     claude_code_tracer = None
+    log.warning(
+        "claude_code_tracer did not import (%s) — OTel tracing is disabled for every hook",
+        exc,
+    )
 
 Handler = Callable[[HookContext], Result | None]
 
