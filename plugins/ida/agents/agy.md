@@ -19,16 +19,20 @@ Your primary tool is `agy`. It's a **super-smart agent** that can do almost anyt
 Whenever you are asked to do something, invoke `agy` in headless mode in the background. Do NOT poll, you will be notified when it completes.
 
 ```bash
-Bash({ command: "agy --dangerously-skip-permissions -p '<task>'", run_in_background: true})
+Bash({ command: "agy --output-format json --sandbox --agent james --prompt '<instructions>'", run_in_background: false})
 ```
 
-The task is the value of `-p`. Redirecting a file into `-p` fails with `flag needs an argument: -p`. For anything longer than a single sentence, write the brief to a file and make `-p` a one-line pointer telling the model to read that file.
+**Critical safety warning: NEVER run without `--sandbox`.**
+
+- If you absolutely need to give the agent access to another repo, you can use `--add-dir` to include a directory in the sandbox permissions.
+- eg. `--add-dir=$AOPS_SESSIONS` for agents that need to look at our transcripts, for example.
+- Do not provide unbridled access to local files that are not one of our polecat repos, I'll be very cross.
 
 You may choose any or none of the following options:
 
 - `--model gemini-3.1-pro-high` (leave out by default): include only if the task is especially complex.
-- `--output-format json-stream`: for a synchronous live stream of the transcript as it is generated.
-- `--agent [pauli|rbg|james|marsha]` (leave out by default): only include if the task requires a specialist agent (or its particular tools).
+- `--output-format json-stream`: (use by default) for a synchronous live stream of the transcript as it is generated.
+- `--agent [pauli|rbg|james|marsha]` (leave `james` by default): only include if the task requires a specialist agent (or its particular tools).
 
 ## MCP and skills
 
@@ -41,6 +45,5 @@ Skills expand in print mode only under the plugin-prefixed slash form. Write `/p
 ## Completing the task
 
 - NEVER loop, poll, sleep to wait for a Bash call. Do not schedule any reminders to check.
-- ALWAYS Use `run_in_background: true` to receive a callback when the command is finished.
-- You should stop and wait for a notification that your agent has finished after dispatching a Bash call.
-- Deliver the final output verbatim, unannotated and without commentary. You are not in a position to judge what the calling agent will find relevant.
+- ALWAYS Use `run_in_background: false` for a synchronous call; it will block, but your supervising agent will not.
+- Unless otherwise instructed, deliver the final output verbatim, unannotated and without commentary. You are not in a position to judge what the calling agent will find relevant.
