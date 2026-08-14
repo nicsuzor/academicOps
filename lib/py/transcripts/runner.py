@@ -192,7 +192,15 @@ def process_single_session(
 
     # Render all 4 text tiers + JSON sidecar
     controller_md, full_md, md, html, json_sidecar = render_session_to_all_formats(
-        session, slug, started_at, last_modified, ended_at, has_user, correlation, insights
+        session,
+        slug,
+        started_at,
+        last_modified,
+        ended_at,
+        has_user,
+        correlation,
+        insights,
+        source_content_hash=fingerprint,
     )
 
     # Write files. Redaction is applied here, at the write chokepoint, rather
@@ -316,10 +324,13 @@ def main() -> int:
         logger.info("No session files found to process")
         return 0
 
-    # Filter recent if requested (default to last 7 days unless --all is set)
+    # Filter recent if requested (default to last 7 days unless --all is set).
+    # (15-minute upper bound buffer commented out per user request)
     if args.recent or not args.all:
-        cutoff = datetime.now(UTC).timestamp() - (7 * 24 * 3600)
-        session_files = [f for f in session_files if f.stat().st_mtime >= cutoff]
+        now_ts = datetime.now(UTC).timestamp()
+        cutoff_old = now_ts - (7 * 24 * 3600)
+        # cutoff_new = now_ts - (15 * 60)
+        session_files = [f for f in session_files if f.stat().st_mtime >= cutoff_old]
 
     to_process: list[Path] = []
     for path in session_files:
@@ -344,6 +355,7 @@ def main() -> int:
             cache_key, fp, ok = _process_single_session_worker((p, sessions_dir, args.force))
             if ok:
                 processed_count += 1
+                skip_cache.mark_processed(cache_key, fp)
             elif fp:
                 skip_cache.mark_empty(cache_key, fp)
     else:
@@ -353,6 +365,7 @@ def main() -> int:
             for cache_key, fp, ok in results:
                 if ok:
                     processed_count += 1
+                    skip_cache.mark_processed(cache_key, fp)
                 elif fp:
                     skip_cache.mark_empty(cache_key, fp)
 

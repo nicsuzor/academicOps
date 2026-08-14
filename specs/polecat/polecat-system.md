@@ -30,9 +30,10 @@ the container.
 - [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/orchestrate/skills/dispatch/SKILL.md]] — coordinator-side: the mandatory
-  pathway to a polecat container; a raw `polecat run` outside this skill bypasses
-  the dispatch contract
+- [[plugins/ida/agents/pc.md]] — coordinator-side: the launcher agent that builds
+  the `polecat run` command and starts it under a detached `tmux` session, locally
+  or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
+  invocation, and nothing stops a caller reaching the CLI directly
 - [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
   `polecat run` container interactively via tmux (see
   [[tmux-interactive-driving]])
@@ -47,7 +48,8 @@ the container.
    `<polecat_home>/local.yaml`'s `paths` map.
 3. Unless `--repo-dir` was given, clones the resolved repo (`git clone --local
    --no-checkout`) into `$POLECAT_HOME/worktrees/<session-id>`, checks out
-   `polecat/<session-id>` at the host repo's current `HEAD`, and repoints `origin`
+   `polecat/<session-id>` at the commit specified by `--base` (defaulting to the
+   `branch` key in `polecat.yaml`, or `HEAD`), and repoints `origin`
    at the host repo's own remote — so a push from inside the container reaches the
    real remote and nothing the container does is visible in the host checkout
    until pushed. This clone is deleted again when `run` exits, success or failure.
@@ -91,10 +93,11 @@ the container.
    delivered); the workspace must have no uncommitted changes, and if `HEAD`
    moved, the new commit must be present on the remote. A delivery-guard failure
    exits non-zero naming the task. Polecat detects; it does not repair. Writing
-   to the knowledge base belongs to its sole writer, so the task is reopened by
-   the dispatcher through pauli ([[plugins/orchestrate/skills/dispatch/SKILL.md]] §6) —
-   the guarantee is that a caught delivery loss never leaves a terminal status
-   standing, and it takes both halves to hold.
+   to the knowledge base belongs to its sole writer, so the task must be reopened
+   by the dispatcher through pauli — which is what the delivery-guard failure
+   message tells the caller to do. A caught delivery loss only avoids leaving a
+   terminal status standing if the dispatcher acts on that message; nothing
+   enforces the second half.
 
 ## Seed delivery verification
 
@@ -128,8 +131,9 @@ the two cases apart.
    `run` cannot repair it without holding a client for another plugin's tool
    namespace. The repair is the dispatcher's — it reopens the task through
    pauli on a non-zero exit for a `done` or `partial` unit. Nothing enforces
-   that half; the obligation sits on the dispatcher, in
-   [`dispatch`](../../plugins/orchestrate/skills/dispatch/SKILL.md) §6.
+   that half. `run`'s own failure text names it ("the dispatcher must reopen it
+   (via pauli) before filing a fix subtask or re-dispatching"), and no agent or
+   skill body carries it.
 4. **No registry drift.** `run` never pulls the image; it fails loudly if the
    named image isn't already present locally.
 5. **One plugin path.** Plugins load only from the image's own plugin cache. No
@@ -142,8 +146,10 @@ the two cases apart.
    host-side instruction files is live in the next `run` with no rebuild. A
    certifying run therefore needs both a clean committed tree and a fresh
    `make docker-build`, which builds `dist/` from the working tree rather than
-   from `HEAD`. Nothing enforces either; the obligation sits on the dispatcher,
-   in [`dispatch`](../../plugins/orchestrate/skills/dispatch/SKILL.md) §3.
+   from `HEAD`. Nothing enforces either, and nothing on the launch path checks
+   image freshness. The obligation is carried project-locally by
+   [`debug`](../../.agents/skills/debug/SKILL.md) — build the image, then
+   dispatch against it — and by no shipped surface.
 
 ## What `run` does not do
 

@@ -49,15 +49,14 @@ def built_orchestrate(tmp_path_factory) -> Path:
 
 
 def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
-    """James invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` via
-    `skills/dispatch` (`plugins/orchestrate/agents/james.md`,
-    `plugins/orchestrate/skills/dispatch/SKILL.md`), and that path is true only
-    because `plugins/orchestrate/manifest/plugin.toml` injects it from
-    `lib/polecat/`.
+    """The polecat launcher agent (`plugins/ida/agents/pc.md`) invokes
+    `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
+    root at all is `plugins/orchestrate/manifest/plugin.toml`, which injects it
+    from `lib/polecat/`.
 
-    Drop those `[[shared]]` stanzas and nothing fails at build time. Dispatch
-    fails at runtime, inside a container, with file-not-found. This is the check
-    that turns that into a build-time failure instead.
+    Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
+    fails at runtime, with file-not-found. This is the check that turns that into
+    a build-time failure instead.
     """
     for client in ("claude", "agy"):
         polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
@@ -360,25 +359,22 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     agy_agent = yaml.safe_load(fm)
     assert agy_agent["name"] == "ida"
     assert "interactive face" in agy_agent["description"]
-    assert agy_agent["hidden"] is False
+    assert "hidden" not in agy_agent
+    assert "includeSections" not in agy_agent
+    assert agy_agent["mcpServers"] == ["services"]
 
-    # plugins/ida/agents/ida.md sets [Bash, AskUserQuestion, Agent, Monitor, TodoWrite, ToolSearch, Skill, TaskStop, SendMessage]
-    # Bash -> run_command
-    # AskUserQuestion -> ask_question
-    # Agent -> invoke_subagent, manage_subagents, send_message
-    # Monitor -> [] (dropped)
-    # TodoWrite -> [] (dropped)
-    # ToolSearch -> [] (dropped)
-    # Skill -> [] (dropped)
-    # TaskStop -> manage_task
-    # SendMessage -> send_message
     assert agy_agent["tools"] == [
         "run_command",
         "ask_question",
         "invoke_subagent",
         "manage_subagents",
         "send_message",
-        "manage_task",
+        "view_file",
+        "list_resources",
+        "mcp_services_pkb_search",
+        "mcp_services_pkb_get_task",
+        "mcp_services_pkb_claim_task",
+        "mcp_services_pkb_status",
     ]
 
     body = body.lstrip("\n")
@@ -423,8 +419,7 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert agy_fm["tools"] == accepted_tools
-    assert len(agy_fm["tools"]) == 54
+    assert agy_fm["tools"] == ["*"]
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
@@ -913,7 +908,7 @@ def test_disallowed_tools_subtraction(tmp_path):
         t for t in accepted_tools if t not in ("write_to_file", "replace_file_content")
     ]
     assert res2["tools"] == expected_tools
-    assert len(res2["tools"]) == 52
+    assert len(res2["tools"]) == len(expected_tools)
     assert "disallowedTools" not in res2
 
     # Case 3: claude retains disallowedTools unchanged
@@ -986,4 +981,31 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     )
     adapt_agy(plugin_dir, ctx_agy)
     res_agy = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
-    assert "mcpServers" not in res_agy
+    assert res_agy["mcpServers"] == ["services", "pkb"]
+    assert "hidden" not in res_agy
+    assert "includeSections" not in res_agy
+
+
+def test_pauli_agy_frontmatter(tmp_path):
+    import yaml
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["pkb"],
+        version=VERSION,
+    )
+
+    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
+    assert pauli_md.is_file()
+    fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
+    agent = yaml.safe_load(fm)
+
+    assert agent["name"] == "pauli"
+    assert agent["mcpServers"] == ["services"]
+    assert agent["tools"] == ["view_file", "list_resources", "mcp_services_*"]
+    assert "hidden" not in agent
+    assert "includeSections" not in agent
+    assert "call_mcp_tool" not in agent["tools"]

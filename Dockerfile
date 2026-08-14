@@ -169,7 +169,7 @@ USER worker
 
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
-    PATH="/home/worker/go/bin:/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
+    PATH="/home/worker/go/bin:/usr/local/go/bin:/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
     ANTIGRAVITY_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 \
@@ -237,6 +237,18 @@ RUN umask 000 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
 ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
 COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
 RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
+
+# No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
+# scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
+# `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
+#
+# Warm uv's cache with that command's dependencies. Cold, `uvx --from
+# fastmcp-slim[server]` resolves and downloads 67 packages on first use, which
+# runs past the window a client waits for an MCP server to hand back its tool
+# list — the server is left starting, no tools are declared, and the agent
+# reports the MCP server as unavailable rather than as slow. Resolving them at
+# build time makes the runtime start a cache hit. No URL is involved.
+RUN uvx --from 'fastmcp-slim[server]' fastmcp --version
 
 # Pre-create every dir the --chmod'd config COPYs below land in, in one
 # layer. Without this BuildKit auto-creates the intermediate dirs and applies

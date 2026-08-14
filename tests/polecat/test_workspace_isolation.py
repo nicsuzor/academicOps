@@ -199,3 +199,80 @@ def test_non_git_directory_is_not_isolated_but_flagged(tmp_path):
 
     # Must be a no-op, not an error.
     cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_respects_base_option(fake_canonical_repo, tmp_path):
+    """The isolated workspace must create its private branch from the commit specified by base."""
+    initial_branch = _run(
+        "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
+    ).strip()
+    # Create a feature branch with a second commit
+    _run("git", "checkout", "-b", "feature-branch", cwd=fake_canonical_repo)
+    (fake_canonical_repo / "feature.txt").write_text("feature content\n")
+    _run("git", "add", "feature.txt", cwd=fake_canonical_repo)
+    _run("git", "commit", "-m", "feature commit", cwd=fake_canonical_repo)
+    feature_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
+    _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
+
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo, "session-base-opt", polecat_home, base="feature-branch"
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == feature_sha
+    assert (isolated_path / "feature.txt").read_text() == "feature content\n"
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_defaults_to_config_branch(fake_canonical_repo, tmp_path):
+    """When base is None, isolated workspace must default to the branch specified in polecat.yaml config."""
+    initial_branch = _run(
+        "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
+    ).strip()
+    _run("git", "checkout", "-b", "dev", cwd=fake_canonical_repo)
+    (fake_canonical_repo / "dev.txt").write_text("dev content\n")
+    _run("git", "add", "dev.txt", cwd=fake_canonical_repo)
+    _run("git", "commit", "-m", "dev commit", cwd=fake_canonical_repo)
+    dev_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
+    _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
+
+    polecat_home = tmp_path / "polecat-home"
+    config = {"branch": "dev"}
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo, "session-base-cfg", polecat_home, base=None, config=config
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == dev_sha
+    assert (isolated_path / "dev.txt").read_text() == "dev content\n"
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_defaults_to_head_when_unconfigured(fake_canonical_repo, tmp_path):
+    """When base and config['branch'] are unset, isolated workspace defaults to HEAD."""
+    head_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo, "session-base-head", polecat_home, base=None, config={}
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == head_sha
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_respects_custom_branch_option(fake_canonical_repo, tmp_path):
+    """When branch is passed explicitly, the isolated clone checks out that custom branch name."""
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo, "session-custom-branch", polecat_home, branch="feat/custom-override"
+    )
+
+    branch_name = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=isolated_path).strip()
+    assert branch_name == "feat/custom-override"
+
+    cleanup_isolated_workspace(cleanup_info)

@@ -16,6 +16,7 @@ import os
 import shutil
 from pathlib import Path
 
+import pytest
 from transcripts import runner
 from transcripts.domain.cache import SkipCache, is_session_empty, source_fingerprint
 from transcripts.model import NormalizedEvent, NormalizedSession
@@ -97,30 +98,58 @@ def test_new_subagent_file_invalidates_the_entry(tmp_path: Path) -> None:
     assert not cache.is_skipped(key, source_fingerprint(runner.session_source_files(trunk)))
 
 
-def test_unchanged_empty_session_stays_skipped(tmp_path: Path) -> None:
-    """The cache's legitimate purpose: a finished, empty session costs nothing."""
+def test_mtime_touch_with_same_content_remains_skipped(tmp_path: Path) -> None:
+    """Content hash based fingerprinting: touching mtime without changing content stays skipped (e.g. git pull)."""
     source = tmp_path / "session.jsonl"
-    source.write_text("", encoding="utf-8")
-    cache_file = tmp_path / "cache.json"
+    source.write_text("same content", encoding="utf-8")
+    cache = SkipCache(tmp_path / "cache.json")
     key = str(source)
 
-    SkipCache(cache_file).mark_empty(key, source_fingerprint([source]))
+    cache.mark_empty(key, source_fingerprint([source]))
+    _touch_later(source)
 
-    # A later run, fresh process, same untouched file.
-    assert SkipCache(cache_file).is_skipped(key, source_fingerprint([source]))
+    assert cache.is_skipped(key, source_fingerprint([source]))
 
 
-def test_legacy_cache_without_fingerprints_is_discarded(tmp_path: Path) -> None:
-    """A cache written before fingerprints cannot prove anything; re-examine instead."""
-    cache_file = tmp_path / "cache.json"
-    cache_file.write_text(json.dumps([PARENT_SESSION_ID]), encoding="utf-8")
+def test_skip_cache_expiration_after_30_days(tmp_path: Path) -> None:
+    """Cache entries expire after 30 days (1 month)."""
     source = tmp_path / "session.jsonl"
     source.write_text("", encoding="utf-8")
+    cache = SkipCache(tmp_path / "cache.json")
+    key = str(source)
+    fp = source_fingerprint([source])
 
-    cache = SkipCache(cache_file)
+    cache.mark_empty(key, fp)
+    assert cache.is_skipped(key, fp)
 
-    assert cache.empty_sessions == {}
-    assert not cache.is_skipped(PARENT_SESSION_ID, source_fingerprint([source]))
+    # Fast forward cache entry timestamp by 31 days
+    from datetime import UTC, datetime
+
+    old_ts = datetime.now(UTC).timestamp() - (31 * 24 * 3600)
+    cache.empty_sessions[key]["ts"] = old_ts
+    cache.save()
+
+    # Re-load cache and verify key is expired
+    reloaded = SkipCache(tmp_path / "cache.json")
+    assert not reloaded.is_skipped(key, fp)
+
+
+def test_json_sidecar_contains_source_content_hash(tmp_path: Path) -> None:
+    """The JSON sidecar contains source_content_hash for remote consumers."""
+    source = tmp_path / f"{PARENT_SESSION_ID}.jsonl"
+    shutil.copy(CLAUDE_FIXTURE, source)
+    output_dir = tmp_path / "sessions"
+    cache = SkipCache(tmp_path / "cache.json")
+
+    session = runner.load_session(source)
+    assert session is not None
+    assert runner.process_single_session(session, output_dir, cache)
+
+    json_files = list(output_dir.glob("transcripts/**/*.json"))
+    assert json_files
+    data = json.loads(json_files[0].read_text(encoding="utf-8"))
+    assert "source_content_hash" in data
+    assert data["source_content_hash"] == source_fingerprint([source])
 
 
 # --- End-to-end through the runner --------------------------------------------
@@ -221,3 +250,45 @@ def test_missing_aops_sessions_fails_loudly(tmp_path: Path, monkeypatch, caplog)
     assert "AOPS_SESSIONS" in caplog.text
     # Nothing may have been written to the path that used to be guessed.
     assert not list((tmp_path / "src" / "sessions").iterdir())
+
+
+@pytest.mark.skip(reason="15-minute buffer disabled per user request")
+def test_recent_filter_excludes_files_newer_than_15_minutes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Batch --recent excludes sessions modified < 15m ago to let active sessions settle."""
+    from datetime import UTC, datetime
+
+    home = tmp_path / "home"
+    claude_projects = home / ".claude" / "projects" / "-home-user-src-aops"
+    claude_projects.mkdir(parents=True)
+
+    # File 1: Modified 5 minutes ago
+    too_new = claude_projects / "too_new.jsonl"
+    shutil.copy(CLAUDE_FIXTURE, too_new)
+    now_ts = datetime.now(UTC).timestamp()
+    os.utime(too_new, (now_ts - 300, now_ts - 300))
+
+    # File 2: Modified 30 minutes ago
+    just_right = claude_projects / "just_right.jsonl"
+    shutil.copy(CLAUDE_FIXTURE, just_right)
+    os.utime(just_right, (now_ts - 1800, now_ts - 1800))
+
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(exist_ok=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
+    monkeypatch.setattr(runner.sys, "argv", ["transcripts.runner", "--recent", "--no-sync"])
+
+    processed: list[Path] = []
+    real_load = runner.load_session
+
+    def tracking_load(path: Path):
+        processed.append(path)
+        return real_load(path)
+
+    monkeypatch.setattr(runner, "load_session", tracking_load)
+
+    assert runner.main() == 0
+    assert just_right in processed
+    assert too_new in processed

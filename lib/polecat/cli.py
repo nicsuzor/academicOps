@@ -566,9 +566,15 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
     return True, None
 
 
-def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
+def resolve_isolated_workspace(
+    canonical_dir, session_id, polecat_home, base=None, config=None, branch=None
+):
     """Create a per-session standalone clone of `canonical_dir` and return the
     path to mount, so a container never writes to a shared checkout.
+
+    The clone is created from the commit specified in `base` if provided,
+    otherwise falling back to the `branch` key in `config` (polecat.yaml),
+    and defaulting to HEAD if neither is set.
 
     The clone is standalone rather than a linked worktree: a linked worktree's
     `.git` is a pointer to an admin directory on the host that the container
@@ -604,18 +610,26 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     clones_dir = Path(polecat_home) / "worktrees"
     clones_dir.mkdir(parents=True, exist_ok=True)
     clone_path = clones_dir / session_id
-    branch_name = f"polecat/{session_id}"
+    branch_name = branch or f"polecat/{session_id}"
 
-    # Clone from the commit the canonical checkout (canonical_dir) currently has
-    # checked out (HEAD), not from its default branch.
-    head_result = subprocess.run(
-        ["git", "-C", str(canonical_dir), "rev-parse", "HEAD"],
+    config = config or {}
+    base_ref = base or config.get("branch") or "HEAD"
+
+    # Resolve the base commit SHA from base_ref (base option, polecat.yaml branch, or HEAD)
+    base_result = subprocess.run(
+        ["git", "-C", str(canonical_dir), "rev-parse", f"{base_ref}^{{commit}}"],
         capture_output=True,
         text=True,
     )
-    if head_result.returncode != 0:
-        fail(f"failed to resolve HEAD in {canonical_dir}:\n{head_result.stderr}")
-    head_sha = head_result.stdout.strip()
+    if base_result.returncode != 0:
+        base_result = subprocess.run(
+            ["git", "-C", str(canonical_dir), "rev-parse", base_ref],
+            capture_output=True,
+            text=True,
+        )
+    if base_result.returncode != 0:
+        fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{base_result.stderr}")
+    base_sha = base_result.stdout.strip()
 
     origin_result = subprocess.run(
         ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
@@ -644,14 +658,14 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
         )
 
     checkout_result = subprocess.run(
-        ["git", "-C", str(clone_path), "checkout", "-B", branch_name, head_sha],
+        ["git", "-C", str(clone_path), "checkout", "-B", branch_name, base_sha],
         capture_output=True,
         text=True,
     )
     if checkout_result.returncode != 0:
         shutil.rmtree(clone_path, ignore_errors=True)
         fail(
-            f"failed to check out {head_sha} as {branch_name!r} in "
+            f"failed to check out {base_sha} (from base {base_ref!r}) as {branch_name!r} in "
             f"{clone_path}:\n{checkout_result.stderr}"
         )
 
@@ -815,7 +829,7 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
         )
 
 
-def _reject_bad_agent_cmd(agent_cmd, extra_args):
+def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None):
     """Catch the shapes that would otherwise fail deep inside the container,
     after a clone and an image check, with an error naming neither polecat nor
     the flag's replacement."""
@@ -828,7 +842,7 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args):
             "positional: claude, agy, shell, bash, or sleep."
         )
 
-    if agent_cmd == "ida":
+    if agent_cmd == "ida" or agent == "ida":
         fail(
             "ida is the interactive face plugin and is not installed in polecat containers. "
             "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg) via "
@@ -898,18 +912,23 @@ AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 DEFAULT_AGENT = "james"
 
 
-def _default_agent_args(extra_args):
-    """`--agent <DEFAULT_AGENT>`, or nothing when the caller already named one.
+def _default_agent_args(extra_args, agent_override=None):
+    """`--agent <agent_name>`, or nothing when the caller already named one in extra_args.
 
     Precedence is caller-wins: `--agent` takes a value, so contributing a second
     one leaves the container holding two conflicting personas. Polecat only
     fills the gap when extra_args carries no `--agent` in either spelling.
     """
     caller_chose_agent = any(arg == "--agent" or arg.startswith("--agent=") for arg in extra_args)
-    return [] if caller_chose_agent else ["--agent", DEFAULT_AGENT]
+    if caller_chose_agent:
+        return []
+    agent_name = agent_override or DEFAULT_AGENT
+    return ["--agent", agent_name]
 
 
-def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headless, task):
+def _build_inner_command(
+    agent_cmd, extra_args, is_interactive, explicit_headless, task, agent=None
+):
     """The command run inside the container, and the container path that agent
     writes its session state to.
 
@@ -923,7 +942,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             "claude",
             "--permission-mode=auto",
             "--setting-sources=user,project",
-            *_default_agent_args(extra_args),
+            *_default_agent_args(extra_args, agent),
         ]
         if not is_interactive and not explicit_headless:
             # Headless one-shot mode is `--print`, and it is the only one claude
@@ -938,29 +957,7 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             "--dangerously-skip-permissions",
             "--log-file",
             "/home/worker/.gemini/antigravity-cli/cli.log",
-            # TEMPORARY MITIGATION for #2387 — remove when it closes.
-            #
-            # A dispatched worker is supposed to boot as DEFAULT_AGENT on every
-            # client; that is what claude does two branches up, and it is what
-            # gives a worker this framework's doctrine instead of a stock
-            # assistant. It does not hold on agy today: every agent this repo
-            # builds — james, rbg and pauli were tested — comes up under
-            # `--agent <name>` with a fixed toolset (`find_by_name`,
-            # `generate_image`, `grep_search`, `list_dir`, `read_url_content`,
-            # `schedule`, `search_web`, `send_message`, `view_file`) and no
-            # `call_mcp_tool`, no write, no shell. Defaulting agy to james
-            # therefore shipped a worker that reached no MCP server and changed
-            # nothing.
-            #
-            # Whether the cause is agy's `--agent` handling or our own build
-            # adapter is NOT established: no agy-native agent definition was
-            # tested, and the `includeSections` whitelist injected by
-            # `build/clients/agy.py` is an untested suspect.
-            #
-            # So agy is left on its own default agent, which has the full tool
-            # set but none of our persona. That is a downgrade we are carrying,
-            # not the intended contract. When #2387 closes this branch takes
-            # `*_default_agent_args(extra_args)` like claude's.
+            *_default_agent_args(extra_args, agent),
         ]
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
@@ -1021,6 +1018,8 @@ def _build_docker_argv(
     config,
     docker_args,
     session_id=None,
+    with_sessions=False,
+    sessions_base=None,
 ):
     """The full `docker run` argv. Also pre-creates the bind-mount targets
     under `session_dir` — see below for why that cannot wait until launch."""
@@ -1090,6 +1089,12 @@ def _build_docker_argv(
             cmd.extend(["--group-add", str(Path("/var/run/docker.sock").stat().st_gid)])
         except Exception:
             pass
+
+    if with_sessions and sessions_base:
+        transcripts_path = (sessions_base / "transcripts").resolve()
+        transcripts_path.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
+        env["AOPS_SESSIONS"] = "/sessions"
 
     cmd.extend(docker_args)
     for key, value in env.items():
@@ -1294,14 +1299,45 @@ def main():
     "-t",
     help="Task id to work. With no explicit prompt, seeds '/pull <task-id>'.",
 )
+@click.option(
+    "--base",
+    help="Base commit or branch to create private branch from (default: branch in polecat.yaml).",
+)
+@click.option(
+    "--branch",
+    "-b",
+    help="Custom branch name to check out in isolated clone (default: polecat/<session-id>).",
+)
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
+@click.option(
+    "--agent",
+    "-a",
+    help="Agent persona to run inside container (default: james).",
+)
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
-def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
+def run(
+    agent_cmd,
+    project,
+    repo_dir,
+    session_name,
+    mcp_url,
+    task,
+    base,
+    branch,
+    with_sessions,
+    agent,
+    extra_args,
+):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
 
     Anything after AGENT_CMD that is not one of this command's own options is
     forwarded verbatim to the inner invocation.
     """
-    _reject_bad_agent_cmd(agent_cmd, extra_args)
+    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=agent)
 
     if project:
         project = _sanitize_path_component(project)
@@ -1326,7 +1362,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     clone_cleanup = None
     if repo_dir is None:
         workspace_dir, clone_cleanup = resolve_isolated_workspace(
-            workspace_dir, session_id, polecat_home
+            workspace_dir, session_id, polecat_home, base=base, config=config, branch=branch
         )
 
     initial_head = _get_git_head(workspace_dir)
@@ -1364,6 +1400,17 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         if mcp_url:
             env["PKB_MCP_URL"] = mcp_url
 
+        if branch:
+            env["AOPS_POLECAT_BRANCH"] = branch
+
+        has_sessions_access = False
+        if with_sessions:
+            has_sessions_access = True
+        elif config.get("sessions_access"):
+            has_sessions_access = True
+        elif project and config.get("projects", {}).get(project, {}).get("sessions_access"):
+            has_sessions_access = True
+
         docker_args = []
         explicit_headless = bool(HEADLESS_FLAGS.intersection(extra_args))
         is_interactive = not explicit_headless and sys.stdin.isatty()
@@ -1378,7 +1425,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             env["CLAUDE_NON_INTERACTIVE"] = "1"
 
         inner_cmd, container_session_path, seeded_from_task, seeded_prompt = _build_inner_command(
-            agent_cmd, extra_args, is_interactive, explicit_headless, task
+            agent_cmd, extra_args, is_interactive, explicit_headless, task, agent=agent
         )
 
         env["AOPS_POLECAT_CONTAINER"] = "1"
@@ -1404,6 +1451,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             config=config,
             docker_args=docker_args,
             session_id=session_id,
+            with_sessions=has_sessions_access,
+            sessions_base=sessions_base,
         )
 
         click.echo(f"Workspace: {workspace_dir}")
