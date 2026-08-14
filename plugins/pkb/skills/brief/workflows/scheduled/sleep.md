@@ -34,7 +34,8 @@ Compare the extracted facts from the Seed Note against the Context Notes:
 - **Confirmation / Augmentation**: New evidence supports an existing note -> Expand the prose in the living note to incorporate the new nuance.
 - **Supersede / Contradiction**: New evidence directly contradicts an existing note (e.g., "We now use Rust for PKB" vs "PKB is written in Python"):
   - Update the living note to reflect the **new state**.
-  - Move the old state to a brief `## Evolution & Lineage` section if the historical shift is valuable; otherwise overwrite it.
+  - Do NOT keep outdated information in the PKB.
+  - Do NOT leave logs or references to prior state or explanations of what changed.
   - Do NOT leave contradicting statements co-existing in the same durable note.
 
 ### Phase 3: Consolidation & Densification
@@ -75,6 +76,6 @@ Before finalizing any edit:
 1. **Uncertainty Escalation**: If the Seed Note contradicts a Context Note and you cannot determine which is more recent or accurate, do NOT guess. Create a `status: needs-clarification` tag and flag it for human review.
 1. Be sure to Commit your changes
 
-## WARNING! Commit and push often!
+## WARNING! Commit and push often
 
 **CRITICAL**: ensure that you commit and push your work as you go; you may be interrupted at any time, and your session is otherwise EPHEMERAL.

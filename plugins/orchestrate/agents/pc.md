@@ -22,6 +22,8 @@ If you encounter ANY infrastructure or tooling problems, you must HALT immediate
 
 ## Fire-and-forget: when you have a Task ID
 
+If you have a Task ID, you can dispatch in the background and return immediately.
+
 ```bash
 HEAD=$(git rev-parse HEAD)
 NAME="dispatch-<task-id>"
@@ -31,11 +33,16 @@ tmux new-session -d -s "$NAME" "$CMD"
 
 ## Synchronous run (for short prompts)
 
+To run a specific prompt, you must dispatch synchronously -- **DO NOT** make the Bash call in the background or background the agent. You must block while the agent works. You should set a timeout (default 5 minutes for simple tasks; 20 minutes for more complex tasks).
+
 ```bash
 HEAD=$(git rev-parse HEAD)
 NAME="dispatch-<task-id>"
-CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s $NAME --base $HEAD --output-format=stream-json <prompt>"
+CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s $NAME --base $HEAD -o --prompt <prompt>"
 ```
+
+- `-o` runs in headless mode and ensures that the output is streamed synchronously to stdout
+- `--prompt <prompt>` **MUST** be the last argument you pass. Everything after it is treated as part of the prompt.
 
 ## Prompt format
 
