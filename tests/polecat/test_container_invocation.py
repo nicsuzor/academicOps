@@ -578,7 +578,7 @@ def test_claude_output_format_and_prompt_options(monkeypatch, tmp_path):
 
     assert inner == [
         "claude",
-        "--permission-mode=auto",
+        "--dangerously-skip-permissions",
         "--setting-sources=user,project",
         "--agent",
         "james",
@@ -587,3 +587,16 @@ def test_claude_output_format_and_prompt_options(monkeypatch, tmp_path):
         "hello claude",
     ]
     assert "-it" not in cmd
+
+
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_dangerously_skip_permissions_is_passed_inside_container(client, tmp_path, monkeypatch):
+    """Both claude and agy must be launched with --dangerously-skip-permissions inside the container."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", client, "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--dangerously-skip-permissions" in inner

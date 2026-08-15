@@ -944,7 +944,7 @@ def _build_inner_command(
         container_session_path = claude_session_path
         inner_cmd = [
             "claude",
-            "--permission-mode=auto",
+            "--dangerously-skip-permissions",
             "--setting-sources=user,project",
             *_agent_args(extra_args, agent),
         ]
