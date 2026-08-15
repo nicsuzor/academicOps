@@ -149,7 +149,7 @@ delivered on `Stop` (Hooks, below). The receiver's half reaches an agent through
 that agent's own body alone —
 [`plugins/ida/agents/ida.md`](../plugins/ida/agents/ida.md) under "The rule
 against hearsay" and "You must evaluate logical completeness of reports", and
-[`plugins/orchestrate/agents/james.claude.md`](../plugins/orchestrate/agents/james.claude.md) and [`james.agy.md`](../plugins/orchestrate/agents/james.agy.md)
+[`plugins/orchestrate/agents/james.md`](../plugins/orchestrate/agents/james.md)
 under "REMEMBER: TRUST AND VERIFY".
 [`plugins/orchestrate/hooks/messages/hearsay.md`](../plugins/orchestrate/hooks/messages/hearsay.md)
 ships, but no registered event delivers it.
@@ -343,13 +343,13 @@ Stages, in order:
 - `agents/<name>.md` → `agents/<name>.md`, frontmatter rewritten. An agent's
   `tools:` list is translated into agy's accepted vocabulary through
   [`build/tool_map.toml`](../build/tool_map.toml); `mcp__server__tool` becomes
-  `mcp_<server>_<tool>`, and a wildcard collapses to `mcp_<server>_*`. An
-  `mcpServers:` list of canonical server names is emitted, derived from both the
-  source `mcpServers` key and any `mcp__` tool names — this is the whole of a
-  named agy agent's MCP access. `call_mcp_tool` is not in the vocabulary;
-  `hidden` and `includeSections` are not emitted — `test_pauli_agy_frontmatter`
-  in [`tests/test_build.py`](../tests/test_build.py) holds the whole shape
-  against pauli's emitted frontmatter. A name starting `mcp_`
+  `mcp_<server>_<tool>`, and a wildcard collapses to `mcp_<server>_*`. `mcpServers`
+  is omitted because agy expects structured server definitions under `mcpServers`
+  and drops agents whose frontmatter provides string server names; agy agents access
+  MCP tools through `tools:` and workspace-level MCP configs. `call_mcp_tool` is
+  not in the vocabulary; `hidden` and `includeSections` are not emitted —
+  `test_pauli_agy_frontmatter` in [`tests/test_build.py`](../tests/test_build.py)
+  holds the whole shape against pauli's emitted frontmatter. A name starting `mcp_`
   bypasses the accepted-vocabulary check in `build/tools.py`, so a wrong MCP
   name passes the build and fails at agy runtime.
 - `axioms/*.md` with `trigger: always_on` → `rules/*.md`

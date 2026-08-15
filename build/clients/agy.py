@@ -25,7 +25,6 @@ from build.axioms import load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
 from build.tools import (
-    extract_agy_mcp_servers,
     load_tool_config,
     process_agent_tools_agy,
     validate_agent_name_and_desc,
@@ -294,15 +293,11 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
             has_disallowed_tools_key=has_disallowed_key,
         )
 
-        mcp_servers = extract_agy_mcp_servers(frontmatter, plugin_name=plugin_name)
-
         agy_frontmatter: dict = {
             "name": name,
             "description": str(description).strip(),
             **extra_fields,
         }
-        if mcp_servers:
-            agy_frontmatter["mcpServers"] = mcp_servers
         agy_frontmatter["tools"] = processed_tools
 
         if not body.startswith("# Agent System Instructions"):

@@ -225,14 +225,14 @@ def process_agent_tools_agy(
                 rejected.add(tool_name)
 
     denied_set = set(denied_tools)
-    accepted_set = set(initial_tools) - rejected - denied_set
-    final_tools = list(accepted_set)
+    rejected_set = set(rejected)
+    final_tools = [t for t in initial_tools if t not in rejected_set and t not in denied_set]
 
     if not final_tools:
         raise BuildError(f"{file_path}: agent {agent_name!r} tool expansion yielded 0 tools")
 
     for t in final_tools:
-        if t not in accepted_set and not t.startswith("mcp_"):
+        if t not in accepted_tools and not t.startswith("mcp_"):
             raise BuildError(
                 f"{file_path}: agent {agent_name!r} emitted tool {t!r} which is not in agy accepted tool vocabulary"
             )
