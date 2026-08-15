@@ -106,11 +106,12 @@ instead of "no tool calls permitted."
 **The same inversion held for `subagents` until this was ruled on: four of the
 five agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
-whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
-(`plugins/orchestrate/agents/james.md`) declares the explicit list
-`["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
-three reviewers his own description names, plus the plain worker surface his own
-fan-out requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
+whatever worker type a task needs, and declares `subagents: ["*"]`. `james` ships one file per client
+(`plugins/orchestrate/agents/james.md.claude`, `james.md.agy`) and **declares
+`subagents` in neither** — the explicit list
+`["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` this
+paragraph previously recorded is no longer present in either file, so james is
+a second outstanding row alongside marsha. `rbg` (`plugins/rbg/agents/rbg.md`) declares
 `subagents: []`: its own description does not involve spawning, since it
 returns a verdict. `ida` (`plugins/ida/agents/ida.md`) declares the explicit
 list `["orchestrate:james", "pkb:pauli"]`, matching the only two delegation
@@ -124,8 +125,11 @@ commitments rather than checked ones). The claim at "No implicit orchestrator
 privilege" below — that each orchestrator lists its `subagents` explicitly —
 is true of every orchestrating agent in the tree; marsha orchestrates nothing.
 
-`plugins/orchestrate/agents/james.md` omits `tools` for the materialization
-reason above, as does `plugins/orchestrate/agents/marsha.md`;
+`plugins/orchestrate/agents/marsha.md` omits `tools` for the materialization
+reason above. The two james files each declare an explicit `tools` list in
+their own client's vocabulary — Claude names in `james.md.claude`, agy names in
+`james.md.agy` — which is the point of shipping per-client files: neither list
+is translated, so neither can be mistranslated.
 `plugins/pkb/agents/pauli.md` and `plugins/rbg/agents/rbg.md` declare the
 wildcard `tools: ["*"]` rather than an explicit allowlist, to the same end.
 Each of the four needs `mcp__services__pkb__*` (or broader) to function at

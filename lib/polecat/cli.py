@@ -906,6 +906,12 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
+#: Default agent persona per client. Used when neither --agent nor --no-agent is given.
+DEFAULT_AGENTS: dict[str, str] = {
+    "claude": "james",
+    "agy": "james",
+}
+
 
 def _agent_args(extra_args, agent=None):
     """`--agent <agent_name>`, or nothing when no agent was specified."""
@@ -1331,7 +1337,14 @@ def main():
 @click.option(
     "--agent",
     "-a",
-    help="Agent persona to run inside container.",
+    default=None,
+    help="Agent persona to run inside container (defaults to 'james' for claude and agy).",
+)
+@click.option(
+    "--no-agent",
+    is_flag=True,
+    default=False,
+    help="Run without an agent persona, disabling the default agent.",
 )
 @click.option(
     "--output-format",
@@ -1354,6 +1367,7 @@ def run(
     branch,
     with_sessions,
     agent,
+    no_agent,
     output_format,
     prompt,
     extra_args,
@@ -1363,7 +1377,14 @@ def run(
     Anything after AGENT_CMD that is not one of this command's own options is
     forwarded verbatim to the inner invocation.
     """
-    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=agent)
+    if no_agent:
+        effective_agent = None
+    elif agent is not None:
+        effective_agent = agent
+    else:
+        effective_agent = DEFAULT_AGENTS.get(agent_cmd)
+
+    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent)
 
     if project:
         project = _sanitize_path_component(project)
@@ -1459,7 +1480,7 @@ def run(
             is_interactive,
             explicit_headless,
             task,
-            agent=agent,
+            agent=effective_agent,
             output_format=output_format,
             prompt=prompt,
         )

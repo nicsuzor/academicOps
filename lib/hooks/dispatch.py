@@ -112,6 +112,7 @@ CANONICAL_EVENTS = (
     # ``tool_calls`` — the one event that sees a whole batch rather than a
     # single call. Claude Code only; agy has no wire equivalent.
     "PostToolBatch",
+    "SubagentStart",
     "Stop",
     "SubagentStop",
 )

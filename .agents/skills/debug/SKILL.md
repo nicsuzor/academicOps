@@ -13,7 +13,7 @@ Mechanics and gotchas for the container surface: [`specs/polecat/tmux-interactiv
 
 Pick the cheapest surface that answers the question, and name it in your report — a result is only interpretable against the surface that produced it.
 
-- **Headless `claude` or `agy`** for simple, low-risk work, with results returned to your own shell. To watch a local agent read-only: `agy --output-format stream-json --agent james --print "<prompt>"`.
+- **Headless `claude` or `agy`** for simple, low-risk work, with results returned to your own shell. To watch a local agent read-only: `agy --output-format stream-json --agent james --print "<prompt>" > <run-log>.jsonl 2>&1`, then read the log. Redirect; never pipe through `tail` or any other filter — a filter buffers until exit, so a running job and a hung one look the same. And read the reported `status`, not the exit code: `agy` exits `0` even when it returns `{"status":"ERROR","response":""}`.
 - **A polecat container** when the work needs isolation. Driving one interactively is the rest of this file.
 - **The `pc` launcher with a task id** for complex work you will not supervise. It is fire-and-forget: results do not come back to you and you get no notification of completion, successful or otherwise.
 
@@ -114,13 +114,13 @@ uv run python lib/polecat/cli.py run -p <project> -s <session> agy -- -p "call p
 
 The two agent clients exhibit significant operational and diagnostic asymmetries:
 
-| Dimension                       | Claude Code (`claude`)                                              | Antigravity CLI (`agy`)                                                                                                             |
-| ------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Authentication & Staging**    | Configured via `.claude/settings.json` and API keys in environment. | Requires `$GEMINI_CONFIG_DIR` staging via `setup_staging()` (`antigravity-oauth-token`). Without it, boots into OAuth wall.         |
-| **Startup Rendering Race**      | Immediate rendering of model banner and `❯` input prompt.           | Renders `⚠ Verifying your account...` for 2–3 seconds before header plan name (`nic.suzor@gmail.com (Google AI Ultra)`) appears.    |
-| **Logging Surface**             | Native stdout/stderr output visible via `docker logs <container>`.  | Redirects output to internal log files. `docker logs` returns **empty**. Host logs land at `$AOPS_SESSIONS/.../agy-cli.log`.        |
-| **Agent Definition Mitigation** | Supports `--agent <name>` (e.g. `@orchestrate:james`).              | Issue #2387: Passing `--agent <name>` to `agy` strips MCP tools and write capabilities. `agy` currently defaults to its base agent. |
-| **Default Prompt Flag**         | Accepts positional prompt strings.                                  | Requires explicit `-i`/`--prompt-interactive` or `-p`/`--print` flags for non-interactive prompts.                                  |
+| Dimension                    | Claude Code (`claude`)                                              | Antigravity CLI (`agy`)                                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Authentication & Staging** | Configured via `.claude/settings.json` and API keys in environment. | Requires `$GEMINI_CONFIG_DIR` staging via `setup_staging()` (`antigravity-oauth-token`). Without it, boots into OAuth wall.      |
+| **Startup Rendering Race**   | Immediate rendering of model banner and `❯` input prompt.           | Renders `⚠ Verifying your account...` for 2–3 seconds before header plan name (`nic.suzor@gmail.com (Google AI Ultra)`) appears. |
+| **Logging Surface**          | Native stdout/stderr output visible via `docker logs <container>`.  | Redirects output to internal log files. `docker logs` returns **empty**. Host logs land at `$AOPS_SESSIONS/.../agy-cli.log`.     |
+| **Agent Definition**         | Supports `--agent <name>` (e.g. `@orchestrate:james`).              | Supports `--agent <name>` (e.g. `james`). Headless `agy --agent <name>` + MCP verified working end-to-end (commit `250921f8d`).  |
+| **Default Prompt Flag**      | Accepts positional prompt strings.                                  | Requires explicit `-i`/`--prompt-interactive` or `-p`/`--print` flags for non-interactive prompts.                               |
 
 ## Interact & Readiness Protocol
 

@@ -7,7 +7,7 @@ from = "hooks"
 to = "hooks"
 
 # The polecat launcher, invoked as `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` by the
-# `pc` agent (`plugins/ida/agents/pc.md`). Only the runtime modules are
+# `pc` agent (`plugins/orchestrate/agents/pc.md`). Only the runtime modules are
 # injected: `defaults/` and `entrypoint.sh` under lib/polecat/ are inputs to
 # the image build (Dockerfile), not files a plugin ever reads.
 [[shared]]
