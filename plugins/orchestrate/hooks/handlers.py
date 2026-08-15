@@ -200,6 +200,6 @@ HANDLERS: dict[str, list] = {
     "PostToolUse": [post_tool],
     "PostToolUseFailure": [post_tool_failure],
     "Stop": [stop],
-    "PostToolBatch": [rule_against_hearsay],
+    # "PostToolBatch": [rule_against_hearsay],
     "SubagentStart": [honest_output],
 }

@@ -1,8 +1,11 @@
 ---
 name: marsha
 description: "QA & Excellence — is this artifact, as presented, AMAZINGLY good? Assumes IT'S BROKEN until proven otherwise and actually runs it; runtime verification and spec-compliance are table-stakes floors, not the bar."
-permissionMode: bypassPermissions
 color: pink
+mcpServers:
+  - plugin:orchestrate:playwright
+  - plugin:pkb:services
+enable_mcp_tools: true
 ---
 
 # Marsha Agent Directive (Substantive Quality Review)

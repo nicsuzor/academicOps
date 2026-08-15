@@ -5,6 +5,32 @@ enable_mcp_tools: true
 mcpServers:
   - services
   - plugin:pkb:services
+disallowedTools:
+  - Grep
+  - Glob
+  - Bash
+allowedTools:
+  - define_subagent
+  - invoke_subagent
+  - manage_subagents
+  - send_message
+  - view_file
+  - grep_search
+  - find_by_name
+  - list_dir
+  - run_command
+  - Agent
+  - SendMessage
+  - Skill
+  - Read
+  - TodoWrite
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
+  - TaskStop
+  - ToolSearch
+  - mcp__plugin_pkb_services__*
 tools:
   - define_subagent
   - invoke_subagent
@@ -17,11 +43,8 @@ tools:
   - run_command
   - Agent
   - SendMessage
-  - Bash
   - Skill
   - Read
-  - Grep
-  - Glob
   - TodoWrite
   - TaskCreate
   - TaskGet
@@ -29,6 +52,7 @@ tools:
   - TaskUpdate
   - TaskStop
   - ToolSearch
+  - mcp__plugin_pkb_services__*
 ---
 
 # James — The Orchestrator

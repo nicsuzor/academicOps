@@ -1,6 +1,6 @@
 ---
 name: agy
-description: Delegate a task to a full-featured flagship Gemini models (cheaper, faster, but still very powerful)
+description: Simple wrapper agent that invokes full-featured flagship Gemini models (cheaper, faster, but still very powerful) with full read/write/tool access within a workspace-scoped sandbox.
 color: blue
 allowedTools:
   - Bash(agy --sandbox *)
