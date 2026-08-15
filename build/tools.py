@@ -173,6 +173,11 @@ def process_agent_tools_agy(
                         f"warning: {prefix}{agent_name}: '{tool_name}' scope dropped for agy; {unrestricted_name} is unrestricted"
                     )
                 expanded.extend(mapped)
+            elif base_name in accepted_tools:
+                # Already agy-native. A `<name>.md.agy` variant writes its
+                # frontmatter in agy's own vocabulary precisely so nothing has to
+                # translate it; a name agy already accepts passes through as-is.
+                expanded.append(base_name)
             else:
                 raise BuildError(
                     f"{file_path}: agent {agent_name!r} has unknown/unmappable tool {tool_name!r}"

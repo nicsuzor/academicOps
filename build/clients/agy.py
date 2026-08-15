@@ -20,6 +20,7 @@ from pathlib import Path
 
 import yaml
 
+from build.agents import resolve_client_agents
 from build.axioms import load_always_on_axioms
 from build.context import BuildContext
 from build.errors import BuildError
@@ -219,6 +220,8 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
     agents_dir = build_dir / "agents"
     if not agents_dir.is_dir():
         return
+
+    resolve_client_agents(agents_dir, "agy")
 
     md_files = sorted(agents_dir.rglob("*.md"))
     if not md_files:

@@ -10,13 +10,11 @@ tools:
   - invoke_subagent
   - manage_subagents
   - send_message
-  - read_file
+  - view_file
   - grep_search
   - find_by_name
-  - view_code_item
   - list_dir
   - run_command
-  - call_mcp_tool
 ---
 
 # James — The Orchestrator
