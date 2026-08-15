@@ -139,6 +139,9 @@ def process_agent_tools_agy(
     has_disallowed_tools_key: bool = False,
 ) -> list[str]:
     """Translates source agent frontmatter 'tools' and 'disallowedTools' into agy's accepted tool list."""
+
+    rejected: set[str] = set()
+
     if not has_tools_key:
         # Absence semantics: emit the full accepted vocabulary explicitly
         initial_tools = list(accepted_tools)
@@ -157,6 +160,7 @@ def process_agent_tools_agy(
             )
 
         expanded: list[str] = []
+
         for tool_name in tools_list:
             has_scope = "(" in tool_name
             base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
@@ -179,9 +183,7 @@ def process_agent_tools_agy(
                 # translate it; a name agy already accepts passes through as-is.
                 expanded.append(base_name)
             else:
-                raise BuildError(
-                    f"{file_path}: agent {agent_name!r} has unknown/unmappable tool {tool_name!r}"
-                )
+                rejected.add(tool_name)
 
         seen: set[str] = set()
         initial_tools = []
@@ -220,17 +222,15 @@ def process_agent_tools_agy(
                     )
                 denied_tools.extend(mapped)
             else:
-                raise BuildError(
-                    f"{file_path}: agent {agent_name!r} has unknown/unmappable tool {tool_name!r}"
-                )
+                rejected.add(tool_name)
 
     denied_set = set(denied_tools)
-    final_tools = [t for t in initial_tools if t not in denied_set]
+    accepted_set = set(initial_tools) - rejected - denied_set
+    final_tools = list(accepted_set)
 
     if not final_tools:
         raise BuildError(f"{file_path}: agent {agent_name!r} tool expansion yielded 0 tools")
 
-    accepted_set = set(accepted_tools)
     for t in final_tools:
         if t not in accepted_set and not t.startswith("mcp_"):
             raise BuildError(
@@ -247,7 +247,10 @@ def process_agent_tools_claude(
     file_path: Path,
     tool_map: dict[str, list[str]],
 ) -> list[str] | None:
-    """Validates and formats source agent frontmatter 'tools' for Claude Code."""
+    """Validates and formats source agent frontmatter 'tools' for Claude Code.
+
+    Ignores unknown tools.
+    """
     if not has_tools_key:
         # Absence semantics: leave unset (inherits everything)
         return None
@@ -263,6 +266,8 @@ def process_agent_tools_claude(
 
     final_tools: list[str] = []
     seen: set[str] = set()
+    rejected: set[str] = set()
+
     for tool_name in tools_list:
         base_name = tool_name.split("(", 1)[0].strip() if "(" in tool_name else tool_name
         if base_name.startswith("mcp__") or base_name in tool_map:
@@ -270,9 +275,10 @@ def process_agent_tools_claude(
                 seen.add(tool_name)
                 final_tools.append(tool_name)
         else:
-            raise BuildError(
-                f"{file_path}: agent {agent_name!r} has unknown/unmappable tool {tool_name!r}"
-            )
+            rejected.add(tool_name)
+
+    if rejected:
+        print(f"{file_path}: agent {agent_name!r} has unknown/unmappable tools {list(rejected)}")
 
     if not final_tools:
         raise BuildError(f"{file_path}: agent {agent_name!r} tool expansion yielded 0 tools")
