@@ -2,7 +2,7 @@
 <id>hearsay.md</id>
 <title>Validate the logical integrity of reports you recieve</title>
 <warning>DO NOT accept reports that are not logically complete!</warning>
-<note>When your subagents complete, remember ot undertake an adversarial review: is the evidence sufficient? was the methodology for gathering the evidence sound and exhasutive to completely answer the question it addressed? are the inferences warranted? what assumptions were left implied? are there plausible alternate hypotheses that were not considered?
+<note>When your subagents complete, remember to undertake an adversarial review: is the evidence sufficient? was the methodology for gathering the evidence sound and exhasutive to completely answer the question it addressed? are the inferences warranted? what assumptions were left implied? are there plausible alternate hypotheses that were not considered?
 
 It is critical that you **avoid adopting or passing on incomplete or unsubstantiated claims**:
 
