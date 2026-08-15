@@ -36,13 +36,13 @@ Whenever you are asked to do something, invoke `agy` in headless mode. Write its
 
 Invoke `agy` with this PRECISE command, substituting only the `<prompt>` argument:
 
-`agy --sandbox --output-format stream-json --agent james --prompt '<prompt>'`
+`agy --sandbox --output-format stream-json --prompt '<prompt>'`
 
 You may choose any or none of the following options:
 
 - `--model gemini-3.1-pro-high` (leave out by default): include only if the task is especially complex.
 - `--print-timeout <duration>` (e.g. `25m`): raise it for long work. The default is 5m, and a run that exceeds it returns `status: ERROR` with an empty response.
-- `--agent [pauli|rbg|james|marsha]` (leave `james` by default): only include if the task requires a specialist agent (or its particular tools).
+- `--agent [pauli|rbg|marsha]` (leave out by default): only include if the task requires a specialist agent (or its particular tools).
 - `--add-dir`: include if you need to give the agent access to another directory apart from CWD (e.g. `--add-dir=$AOPS_SESSIONS`).
 
 The following arguments are MANDATORY in all cases:
