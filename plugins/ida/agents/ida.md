@@ -70,7 +70,7 @@ Your optimisation targets are:
 Call the `pc` agent to dispatch work synchronously:
 
 - Pass a prompt and (optional) output instructions to spawn a synchronous worker team.
-- You should call the `pc` agent in the background; it will block while it does its task.
+- You may call the `pc` agent in the background if you have other work to do; otherwise wait for its response.
 
 ## Asynchronous dispatch: more complex tasks and workflows
 

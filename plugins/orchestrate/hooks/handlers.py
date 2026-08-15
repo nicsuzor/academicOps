@@ -8,7 +8,7 @@ import shlex
 from collections.abc import Callable
 from typing import Any
 
-from dispatch import HookContext, Result, block, load_message_pair, warn
+from dispatch import HookContext, Result, load_message_pair, warn
 
 log = logging.getLogger("orchestrate.handlers")
 
@@ -97,27 +97,14 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind agents to present substantiating evidence with their claims.
 
-    ## When enabled:
+    When enabled, injects a reminder at the start of a subagent's turn
+    to provide evidence sufficient to support its claims.
 
-    Registered on both stop events:
-    - ``SubagentStop`` binds a worker at handback;
-    - ``Stop`` binds every other agent at its own turn boundary, which is the only
-    moment an agent that is not a subagent ever reaches.
-    - ida is the single exemption — it speaks to the person and its reply is governed by its own gate.
-
-    Once per stop chain, not once per fire: dispatch.py drops the
-    ``stop_hook_active`` re-entry before any handler loads.
-
-    This fires blocking, because we need the harness to set the flag
-    stop_hook_active so that we don't run it more than oncel
     """
     if ctx.agent_type == "ida:ida":
         return None
 
-    if ctx.event == "Stop" and ctx.client != "claude":
-        return None
-
-    return block(*load_message_pair(ctx.hooks_dir, "honesty"))
+    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
@@ -212,7 +199,7 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [pre_tool],
     "PostToolUse": [post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, honest_output],
+    "Stop": [stop],
     "PostToolBatch": [rule_against_hearsay],
-    # "SubagentStop": [honest_output],
+    "SubagentStart": [honest_output],
 }

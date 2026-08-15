@@ -11,7 +11,7 @@ This means that when providing your final report, you **must** include your reas
 - You MUST use the report channel specified in your system instructions to reach your calling agent if provided.
 - You should carefully curate the presented evidence; trim quotes and only keep relevant extracts.
 - If asserting the _absence_ of data, you must explicitly state your exact search methodology.
-- You may pass on a subagent's claims and evidence without further verification if it is compliant with these rules AND it is relevant to your report.
+- You may pass on a subagent's VERBATIM claims and evidence without further verification if it is compliant with these rules AND it is relevant to your report.
 
 ## STRICT NEGATIVE CONSTRAINTS (DO NOT DO THESE)
 
