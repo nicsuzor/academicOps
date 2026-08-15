@@ -220,6 +220,8 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        "james",
         "--print",
         "/pull task_abc123",
     ]
@@ -232,12 +234,26 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
-def test_no_default_agent_passed_when_unspecified(client, tmp_path, monkeypatch):
-    """When no agent is named, --agent is not passed to the container."""
+def test_default_agent_is_james_when_unspecified(client, tmp_path, monkeypatch):
+    """When no agent is named, --agent james is passed to the container by default."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
         ["run", client, "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner.count("--agent") == 1
+    assert inner[inner.index("--agent") + 1] == "james"
+
+
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_no_agent_flag_disables_default_agent(client, tmp_path, monkeypatch):
+    """When --no-agent is passed, no --agent flag is passed to the container."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", client, "-d", str(tmp_path / "repo"), "--no-agent", "-t", "task_abc123"],
     )
     inner = _inner_cmd(cmd)
 
@@ -501,6 +517,8 @@ def test_agy_output_format_and_prompt_options(monkeypatch, tmp_path):
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        "james",
         "--output-format",
         "stream-json",
         "--prompt",
@@ -530,6 +548,8 @@ def test_agy_output_format_with_positional_prompt(monkeypatch, tmp_path):
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--agent",
+        "james",
         "--output-format",
         "stream-json",
         "--print",
@@ -560,6 +580,8 @@ def test_claude_output_format_and_prompt_options(monkeypatch, tmp_path):
         "claude",
         "--permission-mode=auto",
         "--setting-sources=user,project",
+        "--agent",
+        "james",
         "--output-format",
         "json",
         "hello claude",
