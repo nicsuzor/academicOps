@@ -651,6 +651,59 @@ def test_agent_invalid_name_raises_build_error(tmp_path):
         adapt_claude(plugin_dir, ctx_claude)
 
 
+def test_resolve_client_agents_renames_matching_and_deletes_other(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "james.claude.md").write_text("claude content", encoding="utf-8")
+    (agents_dir / "james.agy.md").write_text("agy content", encoding="utf-8")
+    (agents_dir / "shared.md").write_text("shared content", encoding="utf-8")
+
+    resolve_client_agents(agents_dir, "claude")
+
+    assert (agents_dir / "james.md").read_text(encoding="utf-8") == "claude content"
+    assert not (agents_dir / "james.claude.md").exists()
+    assert not (agents_dir / "james.agy.md").exists()
+    assert (agents_dir / "shared.md").read_text(encoding="utf-8") == "shared content"
+
+
+def test_resolve_client_agents_for_agy(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "james.claude.md").write_text("claude content", encoding="utf-8")
+    (agents_dir / "james.agy.md").write_text("agy content", encoding="utf-8")
+
+    resolve_client_agents(agents_dir, "agy")
+
+    assert (agents_dir / "james.md").read_text(encoding="utf-8") == "agy content"
+    assert not (agents_dir / "james.claude.md").exists()
+    assert not (agents_dir / "james.agy.md").exists()
+
+
+def test_resolve_client_agents_collision_raises(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "james.md").write_text("base", encoding="utf-8")
+    (agents_dir / "james.claude.md").write_text("claude", encoding="utf-8")
+
+    with pytest.raises(BuildError, match="both james.md and james.claude.md exist"):
+        resolve_client_agents(agents_dir, "claude")
+
+
+def test_resolve_client_agents_unknown_client_raises(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    with pytest.raises(BuildError, match="unknown client"):
+        resolve_client_agents(agents_dir, "unknown")
+
+
 def test_agent_tools_serialised_as_yaml_list(built):
     claude_raw = (built / "fixture-alpha-claude" / "agents" / "alpha-agent.md").read_text()
     agy_raw = (built / "fixture-alpha-agy" / "agents" / "alpha-agent.md").read_text()

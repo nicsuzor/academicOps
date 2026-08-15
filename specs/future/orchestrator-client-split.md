@@ -10,7 +10,7 @@ created: 2026-08-15
 # Plan — split james, default it into polecat containers, lock ida to `pc`
 
 > **Superseded in part.** Nic decided 2026-08-15 that there is **no `james`/`jim`
-> split**: one agent, authored as `james.md.agy` + `james.md.claude`, accepting
+> split**: one agent, authored as `james.agy.md` + `james.claude.md`, accepting
 > slight body duplication. See
 > [orchestrator-client-split-review.md](orchestrator-client-split-review.md) for
 > the reconciled verdict, which supersedes this document wherever they conflict.

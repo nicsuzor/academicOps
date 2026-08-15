@@ -107,7 +107,7 @@ instead of "no tool calls permitted."
 five agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james` ships one file per client
-(`plugins/orchestrate/agents/james.md.claude`, `james.md.agy`) and **declares
+(`plugins/orchestrate/agents/james.claude.md`, `james.agy.md`) and **declares
 `subagents` in neither** — the explicit list
 `["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` this
 paragraph previously recorded is no longer present in either file, so james is
@@ -127,8 +127,8 @@ is true of every orchestrating agent in the tree; marsha orchestrates nothing.
 
 `plugins/orchestrate/agents/marsha.md` omits `tools` for the materialization
 reason above. The two james files each declare an explicit `tools` list in
-their own client's vocabulary — Claude names in `james.md.claude`, agy names in
-`james.md.agy` — which is the point of shipping per-client files: neither list
+their own client's vocabulary — Claude names in `james.claude.md`, agy names in
+`james.agy.md` — which is the point of shipping per-client files: neither list
 is translated, so neither can be mistranslated.
 `plugins/pkb/agents/pauli.md` and `plugins/rbg/agents/rbg.md` declare the
 wildcard `tools: ["*"]` rather than an explicit allowlist, to the same end.

@@ -149,7 +149,7 @@ delivered on `Stop` (Hooks, below). The receiver's half reaches an agent through
 that agent's own body alone —
 [`plugins/ida/agents/ida.md`](../plugins/ida/agents/ida.md) under "The rule
 against hearsay" and "You must evaluate logical completeness of reports", and
-[`plugins/orchestrate/agents/james.md.claude`](../plugins/orchestrate/agents/james.md.claude) and [`james.md.agy`](../plugins/orchestrate/agents/james.md.agy)
+[`plugins/orchestrate/agents/james.claude.md`](../plugins/orchestrate/agents/james.claude.md) and [`james.agy.md`](../plugins/orchestrate/agents/james.agy.md)
 under "REMEMBER: TRUST AND VERIFY".
 [`plugins/orchestrate/hooks/messages/hearsay.md`](../plugins/orchestrate/hooks/messages/hearsay.md)
 ships, but no registered event delivers it.

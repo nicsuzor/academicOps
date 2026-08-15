@@ -95,7 +95,7 @@ This is pauli's recommendation (§4b) adopted. Consequences:
 ### Superseded again, same day — per-client agent FILES, not conditional prose
 
 Nic's final call: **stop translating difficult frontmatter.** Author the agent as
-two files, `plugins/orchestrate/agents/james.md.agy` and `james.md.claude`,
+two files, `plugins/orchestrate/agents/james.agy.md` and `james.claude.md`,
 accepting slight body duplication because the launch syntax genuinely differs.
 `@ref`-style inclusion of common chunks is acceptable later if wanted.
 
@@ -124,18 +124,18 @@ dist/ida-claude/agents/  →  agy.md.disable (2.5K), ida.md
 dist/ida-agy/agents/     →  agy.md.disable (2.5K), ida.md
 ```
 
-So `james.md.agy` today would be adapted by neither client and shipped to **both**
+So `james.agy.md` today would be adapted by neither client and shipped to **both**
 as a stray file, with no error.
 
 **Required change (~10 lines per adapter):**
 
-1. Glob `*.md` **plus** this client's suffix (`*.md.claude` / `*.md.agy`).
+1. Glob `*.md` **plus** this client's suffix (`*.claude.md` / `*.agy.md`).
 2. Strip the suffix when writing, so both land as `agents/james.md`.
 3. **Delete the other client's suffixed file from the build dir** — without this
    the convention "works" while leaking the other client's agent definition into
    every artifact, exactly as `agy.md.disable` does today.
 4. Build error if one name resolves from two sources (`james.md` _and_
-   `james.md.agy` both present) — otherwise precedence is undefined.
+   `james.agy.md` both present) — otherwise precedence is undefined.
 5. Tests for all four.
 
 #### `@ref` will not work as a build feature
