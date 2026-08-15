@@ -106,7 +106,8 @@ how a plugin's handlers merge — belong to that runtime and are stated in
   transcript, and it never grades what the agent did with the turn it was given.
 - **A block withholds a stop, never a tool call.** It is legal only where the
   question is a fact about the session — did the check happen — rather than a
-  model's reading of a rule.
+  model's reading of a rule. Honoured only on Claude Code on `BLOCKABLE_EVENTS`
+  (`Stop`, `SubagentStop`); no handler is permitted to emit a blocking disposition on `agy`.
 - **Injection budget scales inversely with firing frequency.** Per-tool-call and
   per-turn events get a line or two; stop events, guarded to once per chain, can
   afford a full instruction.
