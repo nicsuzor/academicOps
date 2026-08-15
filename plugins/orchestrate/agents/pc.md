@@ -33,16 +33,20 @@ tmux new-session -d -s "$NAME" "$CMD"
 
 ## Synchronous run (for short prompts)
 
-To run a specific prompt, you must dispatch synchronously -- **DO NOT** make the Bash call in the background or background the agent. You must block while the agent works. You should set a timeout (default 5 minutes for simple tasks; 20 minutes for more complex tasks).
+To run a specific prompt, dispatch and let it block. Set a timeout: 5 minutes for simple tasks, 20 minutes for complex ones.
 
 ```bash
 HEAD=$(git rev-parse HEAD)
 NAME="dispatch-<task-id>"
-CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s $NAME --base $HEAD -o --prompt <prompt>"
+uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
+  -p <project> -s "$NAME" --base "$HEAD" -o stream-json \
+  --prompt '<prompt>' > "<run-log>.jsonl" 2>&1
 ```
 
-- `-o` runs in headless mode and ensures that the output is streamed synchronously to stdout
-- `--prompt <prompt>` **MUST** be the last argument you pass. Everything after it is treated as part of the prompt.
+- `-o` / `--output-format` takes a value — `text`, `json`, or `stream-json`. It is not a headless switch: headless is already implied for an `agy` dispatch that carries no interactive flag. Use `stream-json` so events reach the log as they occur.
+- `--prompt <prompt>` **MUST** be the last option you pass. Everything after it is treated as part of the prompt.
+- **Redirect to a file; never pipe.** A pipe through `tail`, `head`, `less` or any other filter buffers the whole stream and writes nothing until exit, so a live run and a hung one look identical. `> <file> 2>&1`, then read the file.
+- **Check the reported status, not the exit code.** `agy` exits `0` on failure; a run that lost its response or was denied a permission returns `{"status":"ERROR","response":""}` and still exits `0`. Any run whose status is not `SUCCESS`, or whose response is empty, has failed — report it, do not retry silently.
 
 ## Prompt format
 
@@ -55,8 +59,8 @@ Polecats are not guaranteed to recognise your specific tool names or naming conv
 - **Use `-p <project>` for target repos:** Never use `-d` with a linked git worktree, only full checkouts (worktree `.git` files point outside container mounts and break git commands).
 - **No interactive flags:** Never add interactive flags to autonomous dispatches; doing so causes workers to idle at prompts indefinitely.
 - **Environment defaults:** Do not pass paths, images, or git credentials manually—Polecat loads these directly from the host environment.
-- NEVER loop, poll, sleep to wait for an asynchronous call.
-- ALWAYS Use `run_in_background: false` for a synchronous call; it will block, but your supervising agent will not.
+- NEVER `sleep`, loop, or poll to wait for a call, and never schedule a reminder to check back. Foreground or background is your choice; waiting by hand is not one of them.
+- **Never pipe a dispatch through a filter.** Redirect to a file. `tail`, `head`, `less` and friends buffer until exit and make a running job indistinguishable from a hung one.
 
 ## Report
 
