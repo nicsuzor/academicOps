@@ -2,25 +2,6 @@
 name: rbg
 description: "The Judge: rule-compliance reviewer. Applies the axioms and local rules with rigorous logical judgment and returns a verdict."
 color: red
-permissionMode: "dontAsk"
-allowedTools:
-  - Skill
-  - SendMessage
-  - TaskStop
-  - TaskCreate
-  - TaskGet
-  - TaskList
-  - TaskUpdate
-  - mcp__plugin_pkb_services__*
-tools:
-  - Skill
-  - SendMessage
-  - TaskStop
-  - TaskCreate
-  - TaskGet
-  - TaskList
-  - TaskUpdate
-  - mcp__plugin_pkb_services__*
 mcpServers:
   - services
   - plugin:pkb:services
