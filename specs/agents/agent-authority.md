@@ -107,7 +107,7 @@ instead of "no tool calls permitted."
 five agent files now declare it, each per its actual role.** `pauli`
 (`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
 whatever worker type a task needs, and declares `subagents: ["*"]`. `james` ships one file per client
-(`plugins/orchestrate/agents/james.claude.md`, `james.agy.md`) and **declares
+(`plugins/orchestrate/agents/james.md`) and **declares
 `subagents` in neither** — the explicit list
 `["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` this
 paragraph previously recorded is no longer present in either file, so james is

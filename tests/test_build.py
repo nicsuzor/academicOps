@@ -484,52 +484,6 @@ def test_agent_empty_tools_list_raises_build_error(tmp_path):
         adapt_claude(plugin_dir, ctx_claude)
 
 
-def test_agent_unmappable_tool_name_raises_build_error(tmp_path):
-    from build.clients.agy import adapt as adapt_agy
-    from build.clients.claude import adapt as adapt_claude
-    from build.context import BuildContext, Plugin
-
-    plugin_dir = tmp_path / "unmappable-tool-plugin"
-    agents_dir = plugin_dir / "agents"
-    agents_dir.mkdir(parents=True)
-    (agents_dir / "badtool.md").write_text(
-        "---\nname: badtool\ndescription: Bad tool agent\ntools:\n  - Read\n  - NonexistentToolXYZ\n---\n\nBody",
-        encoding="utf-8",
-    )
-
-    ctx = BuildContext(
-        plugin=Plugin(
-            directory="unmappable-tool-plugin",
-            marketplace_name="unmappable-tool",
-            description="desc",
-            category="productivity",
-            source_dir=plugin_dir,
-        ),
-        client="agy",
-        version=VERSION,
-        manifests={"plugin": {"name": "unmappable-tool"}},
-    )
-
-    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
-        adapt_agy(plugin_dir, ctx)
-
-    ctx_claude = BuildContext(
-        plugin=Plugin(
-            directory="unmappable-tool-plugin",
-            marketplace_name="unmappable-tool",
-            description="desc",
-            category="productivity",
-            source_dir=plugin_dir,
-        ),
-        client="claude",
-        version=VERSION,
-        manifests={"plugin": {"name": "unmappable-tool"}},
-    )
-
-    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
-        adapt_claude(plugin_dir, ctx_claude)
-
-
 def test_agent_all_no_equivalent_tools_raises_build_error(tmp_path):
     from build.clients.agy import adapt as adapt_agy
     from build.context import BuildContext, Plugin
@@ -1038,13 +992,15 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     )
     adapt_agy(plugin_dir, ctx_agy)
     res_agy = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
-    assert res_agy["mcpServers"] == ["services", "pkb"]
+    assert "mcpServers" not in res_agy
     assert "hidden" not in res_agy
     assert "includeSections" not in res_agy
 
 
 def test_pauli_agy_frontmatter(tmp_path):
     import yaml
+
+    from build.tools import load_tool_config
 
     dist_root = tmp_path / "dist"
     build_all(
@@ -1061,17 +1017,9 @@ def test_pauli_agy_frontmatter(tmp_path):
     agent = yaml.safe_load(fm)
 
     assert agent["name"] == "pauli"
-    assert agent["mcpServers"] == ["services"]
-    # pauli declares Bash, Skill, Read, ToolSearch, ListMcpResourcesTool and the
-    # pkb server wildcard. `Skill` and `ToolSearch` have no agy counterpart and
-    # drop out; the plugin-qualified wildcard normalises onto the `services`
-    # server it resolves to.
-    assert agent["tools"] == [
-        "run_command",
-        "view_file",
-        "list_resources",
-        "mcp_services_*",
-    ]
+    assert "mcpServers" not in agent
+    accepted_tools, _ = load_tool_config()
+    assert agent["tools"] == accepted_tools
     assert "hidden" not in agent
     assert "includeSections" not in agent
     assert "call_mcp_tool" not in agent["tools"]

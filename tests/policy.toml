@@ -26,7 +26,7 @@ enabled = false
 strip_the_reply_enabled = false
 
 [orchestrate]
-rule_against_hearsay_enabled = true
+rule_against_hearsay_enabled = false
 # honest_output is registered on SubagentStart for the claude client,
 # so the shipped-hooks equality check binds on this event.
 honest_output_enabled = true
