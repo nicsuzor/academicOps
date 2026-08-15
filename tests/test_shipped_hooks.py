@@ -970,7 +970,7 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
             if not p.get("rule_against_hearsay_enabled", True):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):
-                allowed_missing.update(_wires_for("Stop"))
+                allowed_missing.update(_wires_for("SubagentStart"))
         elif name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
             allowed_missing.update(_wires_for("PreToolUse"))
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
@@ -1131,3 +1131,37 @@ def test_rbg_does_not_wire_claude_userpromptsubmit(dist_root):
     wired = {wire for wire, _ in _hook_commands("claude", dist_root / "rbg-claude")}
     assert "UserPromptSubmit" not in wired
     assert "PreToolUse" in wired
+
+
+def test_no_handler_blocks_on_agy(dist_root):
+    """No handler is permitted to return a blocking disposition on agy.
+
+    Policy-as-code invariant from tests/policy.toml [hooks.blocking].allow_blocking_agy.
+    """
+    allow_blocking_agy = (
+        _policy.get("hooks", {}).get("blocking", {}).get("allow_blocking_agy", False)
+    )
+    if allow_blocking_agy:
+        pytest.skip("blocking on agy is explicitly allowed by policy")
+
+    for name, client, build_dir in _build_dirs(dist_root):
+        if client != "agy":
+            continue
+        hooks_dir = build_dir / "hooks"
+        if not (hooks_dir / "handlers.py").is_file():
+            continue
+        for wire_event, cmd in _hook_commands("agy", build_dir):
+            canonical = _canonical_or_none("agy", wire_event)
+            payload = _PAYLOADS.get(canonical or wire_event, {"conversationId": "test-session"})
+            proc = _run_shipped_hook("agy", build_dir, cmd, payload)
+            assert proc.returncode == 0, (
+                f"{name}-agy {wire_event}: hook failed with stderr {proc.stderr!r}"
+            )
+            if proc.stdout.strip():
+                try:
+                    data = json.loads(proc.stdout)
+                    assert data.get("decision") != "deny", (
+                        f"{name}-agy {wire_event} emitted blocking decision: {data}"
+                    )
+                except json.JSONDecodeError:
+                    pass

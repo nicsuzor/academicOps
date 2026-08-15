@@ -26,7 +26,11 @@ enabled = false
 strip_the_reply_enabled = false
 
 [orchestrate]
-rule_against_hearsay_enabled = false
-# honest_output is registered on Stop and SubagentStop and wired on both for the
-# claude client, so the shipped-hooks equality check binds on those events.
+rule_against_hearsay_enabled = true
+# honest_output is registered on SubagentStart for the claude client,
+# so the shipped-hooks equality check binds on this event.
 honest_output_enabled = true
+
+[hooks.blocking]
+# No handler is permitted to return a blocking disposition on agy.
+allow_blocking_agy = false

@@ -173,26 +173,25 @@ def _honesty_md() -> str:
     return (_ORCHESTRATE_HOOKS / "messages" / "honesty.md").read_text(encoding="utf-8").strip()
 
 
-def test_orchestrate_honesty_fires_on_the_claude_stop(orchestrate_hooks):
-    """``Stop`` is the only turn boundary an agent that is not a subagent ever
-    reaches, so a face-side or teammate turn gets the reporting protocol there
-    or nowhere."""
-    result = _run(orchestrate_hooks, "claude", "Stop", {"hook_event_name": "Stop"})
+def test_orchestrate_honesty_fires_on_claude_subagent_start(orchestrate_hooks):
+    """SubagentStart is where honest_output is registered, providing an advisory
+    evidence reminder at the start of a subagent's turn."""
+    result = _run(
+        orchestrate_hooks, "claude", "SubagentStart", {"hook_event_name": "SubagentStart"}
+    )
     assert result.returncode == 0
     out = json.loads(result.stdout)
-    assert out["decision"] == "block"
-    assert out["reason"] == _honesty_md()
+    assert out["hookSpecificOutput"]["hookEventName"] == "SubagentStart"
+    assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
 
 
-def test_orchestrate_honesty_skips_ida_on_the_stop_path(orchestrate_hooks):
-    """ida speaks to the person and carries its own reply gate. ``agent_type``
-    is what names it, and Claude Code populates that field on ``Stop`` — where
-    on ``SubagentStop`` it never appears, because ida is never a subagent."""
+def test_orchestrate_honesty_skips_ida_on_subagent_start(orchestrate_hooks):
+    """ida speaks to the person and is exempt from the subagent honesty reminder."""
     result = _run(
         orchestrate_hooks,
         "claude",
-        "Stop",
-        {"hook_event_name": "Stop", "agent_type": "ida:ida"},
+        "SubagentStart",
+        {"hook_event_name": "SubagentStart", "agent_type": "ida:ida"},
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
@@ -202,13 +201,20 @@ def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_ida(orchestrate
     result = _run(
         orchestrate_hooks,
         "claude",
-        "Stop",
-        {"hook_event_name": "Stop", "agent_type": "orchestrate:james"},
+        "SubagentStart",
+        {"hook_event_name": "SubagentStart", "agent_type": "orchestrate:james"},
     )
     assert result.returncode == 0
     out = json.loads(result.stdout)
-    assert out["decision"] == "block"
-    assert out["reason"] == _honesty_md()
+    assert out["hookSpecificOutput"]["hookEventName"] == "SubagentStart"
+    assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
+
+
+def test_orchestrate_stop_returns_nothing_on_claude_stop(orchestrate_hooks):
+    """Stop only runs tracer stop (which returns None)."""
+    result = _run(orchestrate_hooks, "claude", "Stop", {"hook_event_name": "Stop"})
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
 
 
 def test_orchestrate_honesty_is_silent_on_agys_post_invocation(orchestrate_hooks):
