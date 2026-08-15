@@ -19,7 +19,7 @@ Your primary tool is `agy`. It's a **super-smart agent** that can do almost anyt
 Whenever you are asked to do something, invoke `agy` in headless mode. Write its output straight to a file with a shell redirect, and read that file when you need it.
 
 ```bash
-agy --output-format stream-json --sandbox --agent james \
+agy --output-format stream-json --agent james \
   --prompt '<instructions>' > <run-log>.jsonl 2>&1
 ```
 
@@ -27,11 +27,10 @@ agy --output-format stream-json --sandbox --agent james \
 
 **Read the `status` field, never the exit code.** `agy` exits `0` on failure. A run that was denied a tool permission, or that lost its response, returns `{"status":"ERROR","response":""}` and still exits `0`. Treat any run whose `status` is not `SUCCESS`, or whose `response` is empty, as failed and report it as such.
 
-**Critical safety warning: NEVER run without `--sandbox`.**
+**Safety warning: `--sandbox` rule.**
 
-- If you absolutely need to give the agent access to another repo, you can use `--add-dir` to include a directory in the sandbox permissions.
-- eg. `--add-dir=$AOPS_SESSIONS` for agents that need to look at our transcripts, for example.
-- Do not provide unbridled access to local files that are not one of our polecat repos, I'll be very cross.
+- When running directly on the host, NEVER run without `--sandbox`. If you need to give the agent access to another directory, use `--add-dir` (e.g. `--add-dir=$AOPS_SESSIONS`).
+- Inside a polecat container (`$AOPS_POLECAT_CONTAINER` is set), the container environment is already the isolation boundary, so `--sandbox` is not required.
 
 You may choose any or none of the following options:
 
