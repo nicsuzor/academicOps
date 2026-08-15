@@ -420,7 +420,7 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert agy_fm["tools"] == ["*"]
+    assert agy_fm["tools"] == accepted_tools
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
@@ -429,11 +429,14 @@ def test_agy_agent_drops_claude_model_name(built_orchestrate):
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
-    assert agy_fm["color"] == "orange"
 
     claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "james.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert claude_fm.get("model") == "opus" or "model" not in claude_fm
+
+    agy_marsha = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
+    agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
+    assert agy_marsha_fm["color"] == "pink"
 
 
 def test_agent_empty_tools_list_raises_build_error(tmp_path):

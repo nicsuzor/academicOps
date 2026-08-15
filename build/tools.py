@@ -140,11 +140,8 @@ def process_agent_tools_agy(
 ) -> list[str]:
     """Translates source agent frontmatter 'tools' and 'disallowedTools' into agy's accepted tool list."""
     if not has_tools_key:
-        if not has_disallowed_tools_key or raw_disallowed_tools is None:
-            # Absence semantics: emit a single wildcard for agy
-            initial_tools = ["*"]
-        else:
-            initial_tools = list(accepted_tools)
+        # Absence semantics: emit the full accepted vocabulary explicitly
+        initial_tools = list(accepted_tools)
     else:
         tools_list: list[str] = []
         if isinstance(raw_tools, str):
@@ -230,7 +227,7 @@ def process_agent_tools_agy(
 
     accepted_set = set(accepted_tools)
     for t in final_tools:
-        if t not in accepted_set and not t.startswith("mcp_") and t != "*":
+        if t not in accepted_set and not t.startswith("mcp_"):
             raise BuildError(
                 f"{file_path}: agent {agent_name!r} emitted tool {t!r} which is not in agy accepted tool vocabulary"
             )

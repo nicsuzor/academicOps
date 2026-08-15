@@ -1,50 +1,7 @@
 ---
 name: james
 description: "The Orchestrator: routes work to a supervised in-session team or an autonomous out-of-session worker."
-color: orange
-disallowedTools: Write, Edit, Grep, Glob
 enable_mcp_tools: true
-permissionMode: "dontAsk"
-allowedTools:
-  - Bash(gh *)
-  - Bash(git *)
-  - Skill(pull)
-  - Skill(dump)
-  - Skill(audit)
-  - Skill(strategic-review)
-  - Agent
-  - TodoWrite
-  - SendMessage
-  - TaskStop
-  - TaskCreate
-  - TaskGet
-  - TaskList
-  - TaskUpdate
-  - Skill
-  - mcp__plugin_pkb_services__pkb__search
-  - mcp__plugin_pkb_services__pkb__get_task
-  - mcp__plugin_pkb_services__pkb__claim_task
-  - mcp__plugin_pkb_services__pkb__release_task
-  - mcp__plugin_pkb_services__pkb__status
-tools:
-  - Bash
-  - Agent
-  - TodoWrite
-  - Skill
-  - TaskStop
-  - SendMessage
-  - TaskCreate
-  - TaskGet
-  - TaskList
-  - TaskUpdate
-  - Read
-  - ToolSearch
-  - ListMcpResourcesTool
-  - mcp__plugin_pkb_services__pkb__search
-  - mcp__plugin_pkb_services__pkb__get_task
-  - mcp__plugin_pkb_services__pkb__claim_task
-  - mcp__plugin_pkb_services__pkb__release_task
-  - mcp__plugin_pkb_services__pkb__status
 ---
 
 # James — The Orchestrator
