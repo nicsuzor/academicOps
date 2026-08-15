@@ -23,9 +23,9 @@ the container.
 - [[lib/polecat/entrypoint.sh]] — container entrypoint: sets git identity,
   installs a token-based credential helper, merges staged per-session config over
   the image defaults, then execs the agent CLI
-- [[lib/polecat/defaults/]] — baked container defaults (`claude-settings.json`,
-  `claude-config.json`, `ccstatusline-settings.json`, `agystatusline-settings.json`, `agy-onboarding.json`,
-  `docker_gemini_fixups.py`)
+- [[lib/polecat/defaults/]] — baked container defaults (`claude-config.json`,
+  `agy-settings.json`, `agy-onboarding.json`, `ccstatusline-settings.json`,
+  `agystatusline-settings.json`, `docker_gemini_fixups.py`)
 - [[Dockerfile]] — the image `run` executes inside
 - [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the

@@ -310,11 +310,6 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 # in the same pass — `marketplace add` records the build-time $MP_ROOT there,
 # a path deleted before this layer ends. The marketplace's durable registration
 # is known_marketplaces.json, repointed by fixup-marketplace-cache below.
-#
-# .claude is pre-created (in the batched mkdir above) so BuildKit doesn't
-# auto-create it while applying --chmod, which would leave it 0644 and
-# non-traversable.
-COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
     && MP_NAME=academicOps \
@@ -330,6 +325,7 @@ RUN umask 000 \
     && claude plugin marketplace add "$MP_ROOT" \
     && claude plugin marketplace update "$MP_NAME" \
     && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME"; done \
+    && { [ -f /home/worker/.claude/settings.json ] || echo '{}' > /home/worker/.claude/settings.json; } \
     && jq --arg mp "$MP_NAME" --arg plugins "$PLUGINS" \
         '.enabledPlugins = ($plugins | split("\n") | map(select(length > 0)) | map({key: (. + "@" + $mp), value: true}) | from_entries) | del(.extraKnownMarketplaces)' \
         /home/worker/.claude/settings.json > /tmp/settings.json \
@@ -354,14 +350,14 @@ RUN umask 000 \
 # Register the rtk PreToolUse hook in the worker's settings.json — this is
 # the half of rtk that actually delivers token savings (see the rtk install
 # above). Run rtk's own installer rather than hand-writing the JSON: it
-# merges into the existing file (preserving statusLine/enabledPlugins written
+# merges into the existing file (preserving enabledPlugins written
 # above it) instead of overwriting it, which is exactly how the hook got into
 # ~/.claude/settings.json on the host (`rtk init --global --agent claude`,
 # verified by diffing the host's settings.json against a fresh --dry-run of
 # this same command). --hook-only skips writing RTK.md (its meta-commands
 # doc) into the image; --auto-patch skips the interactive confirmation this
 # non-interactive build can't answer. Must run after the plugin-install block
-# above, which COPYs settings.json in and then overwrites it wholesale via
+# above, which creates settings.json and writes enabledPlugins via
 # jq — running rtk init before that would have its hook clobbered.
 RUN umask 000 \
     && rtk init --global --agent claude --auto-patch --hook-only \
@@ -381,9 +377,7 @@ RUN umask 000 \
 # build time makes the runtime start a cache hit. No URL is involved.
 RUN uvx --from 'fastmcp-slim[server]' fastmcp --version >/dev/null 2>&1 || true
 
-# Install the default ccstatusline config. Claude Code's own settings.json is
-# installed before the plugin install above, which then writes the generated
-# `enabledPlugins` into it.
+# Install the default ccstatusline config.
 # These defaults are overridden at runtime if the host stages replacements.
 # This and the seeds below stay BELOW the plugin install: `claude plugin
 # install` / `agy plugin install` write into ~/.claude, ~/.claude.json and
@@ -407,7 +401,7 @@ COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-config.json /
 # agy analog of the Claude `hasCompletedOnboarding` seed above. Its cache dir
 # is pre-created in the batched mkdir further up.
 COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
-COPY --chown=worker:worker --chmod=666 build/docker/antigravity-cli-settings.json /home/worker/.gemini/antigravity-cli/settings.json
+COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agy-settings.json /home/worker/.gemini/antigravity-cli/settings.json
 
 # Copy entrypoint script
 COPY --chown=worker:worker --chmod=777 lib/polecat/entrypoint.sh /home/worker/entrypoint.sh
