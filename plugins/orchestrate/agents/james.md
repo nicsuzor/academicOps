@@ -25,7 +25,7 @@ The trick is to minimise the traffic between the orchestrator and the subagents.
 
 Spawn with the `Agent` tool, following your harness instructions.
 
-- For the `claude code` harness, **passing `name:` is what makes a team.** A named agent is addressable: you can interrogate it mid-run with `SendMessage({to: "<name>"})`, narrow its brief, hand it a finding another member surfaced, and it can push results back as they land. But you must warn the agent to use `SendMessage` to report; otherwise you will never see its completed work.
+- For the `claude code` harness, **passing `name:` is what makes a team.** A named agent is addressable: you can interrogate it mid-run with `SendMessage({to: "<name>"})`, narrow its brief, hand it a finding another member surfaced, and it can push results back as they land. But you must warn the agent to use `SendMessage` to report; otherwise you will never see its completed work. You must ALSO tell the agent the name you have given it and **your** name and address to enable it to report back to you.
 - Spawn agents independently in **one message** or **combined tool call** so that the team runs concurrently.
 - Members that do not depend on each other must never run in series.
 - A member that has gone quiet has not necessarily finished. Ask it before you conclude anything about it.
