@@ -1,5 +1,76 @@
 # Changelog
 
+## [0.7.3](https://github.com/nicsuzor/academicOps/compare/v0.7.2...v0.7.3) (2026-08-16)
+
+
+### Features
+
+* agent build variants, polecat runner options, transcript caching, orchestration hooks & skills ([7e33d95](https://github.com/nicsuzor/academicOps/commit/7e33d95490818c4ac31dc460899d74c2cf248551))
+* **build:** resolve per-client agent variants, and let agy frontmatter be native ([4f1125c](https://github.com/nicsuzor/academicOps/commit/4f1125c91ccf5058e4fe4f9fdc4398dd16af1e3e))
+* **ida:** re-enable agy.md agent with conditional sandbox rule ([2b2af3a](https://github.com/nicsuzor/academicOps/commit/2b2af3a288081ae4ecd3e331c4e36973e52f7be5))
+* **ida:** render the completion line into the daily note, and stop announcing the gate ([201c21f](https://github.com/nicsuzor/academicOps/commit/201c21fa7187aeca29152c5f7c8933452d17b8d6))
+* **ida:** the completion line — render it from the graph, and stop announcing the gate ([3195dba](https://github.com/nicsuzor/academicOps/commit/3195dba4eab813c8aab9867bac7c99829b6a29f6))
+* **orchestrate,pkb:** refine james instructions, enable hearsay batch hook, and format pull skill headers ([bd58f6d](https://github.com/nicsuzor/academicOps/commit/bd58f6d71fd1460cb6843ac04caf1aee251c0cc1))
+* **orchestrate:** add session id, datetime+tz, host, cwd to SessionStart hook ([aea98c1](https://github.com/nicsuzor/academicOps/commit/aea98c19a53c884465b5eff153393a8ddc0fc82d))
+* **orchestrate:** add session id, datetime+tz, host, cwd to SessionStart hook ([952990a](https://github.com/nicsuzor/academicOps/commit/952990a2af71e031f91cb669bdbcc3d69b0d16b2))
+* **orchestrate:** split james into per-client files, both team-oriented ([36a940d](https://github.com/nicsuzor/academicOps/commit/36a940d4c085feb69d200d7be832be19b9cde3a8))
+* **polecat,orchestrate:** default agent james, --no-agent flag, james rewrite with client-conditional sections and pkb mcpServers ([a0c3176](https://github.com/nicsuzor/academicOps/commit/a0c3176f3b5148f1a2d40642829f08d75086aa96))
+* **polecat:** reintegrate sessions mount and --branch override capabilities ([1ba6888](https://github.com/nicsuzor/academicOps/commit/1ba68885a319a719370809dfa649509fdb61beac))
+* **polecat:** reintegrate sessions mount and --branch override capabilities ([abbf5f8](https://github.com/nicsuzor/academicOps/commit/abbf5f8905d4c0c3c2d4cf7c62ca8c8fa19edd63))
+* **polecat:** remove default agent; only pass --agent when specified ([3dac085](https://github.com/nicsuzor/academicOps/commit/3dac085f24533db5b8061b4d88632357d6f2458e))
+* **polecat:** set CLAUDE_CODE_ENABLE_TODO_TOOLS=1 in containers ([2ec494d](https://github.com/nicsuzor/academicOps/commit/2ec494da4187e1465aea5cfc8394d5d3abb05bb9))
+* **polecat:** set CLAUDE_CODE_ENABLE_TODO_TOOLS=1 in containers ([30f7219](https://github.com/nicsuzor/academicOps/commit/30f7219da8b0ded87baf51bf2174a8caac113cd8))
+* **polecat:** support --output-format and --prompt options with clean stdout ([f98e31f](https://github.com/nicsuzor/academicOps/commit/f98e31fc51b1178e095110deff8c85aa71ca3040))
+
+
+### Bug Fixes
+
+* **agents,specs:** standardize agent frontmatter, reconcile authority spec, and cleanup docs ([5682508](https://github.com/nicsuzor/academicOps/commit/5682508d768ff45c7e87709ef6ba9c7edac799f7))
+* **agents,specs:** standardize agent frontmatter, reconcile authority spec, and cleanup docs ([4951ada](https://github.com/nicsuzor/academicOps/commit/4951ada68dd8c6f815c02f8e352bf5c105f991a9))
+* **agents:** dispatch agy by redirect, never through a pipe ([12800a3](https://github.com/nicsuzor/academicOps/commit/12800a377f4236fa7b8bae3918c0dca42fe0b9e2))
+* **agents:** restore allowedTools, disallowedTools, and permissionMode in agent frontmatter ([88e8069](https://github.com/nicsuzor/academicOps/commit/88e80696381b03f35c394ce0eb53c4cf6e22b71d))
+* **build/agy:** restore full tool vocabulary fallback for agents omitting tools: ([250921f](https://github.com/nicsuzor/academicOps/commit/250921f8db5ab9d70c38c335207276d26d9a3c4d))
+* **build:** add ListAgents to the tool_map vocabulary ([42bdb80](https://github.com/nicsuzor/academicOps/commit/42bdb80c9bc72bb7f670ed8f1ce3d9cce81c8ec2))
+* **build:** add ListAgents to the tool_map vocabulary ([2e67764](https://github.com/nicsuzor/academicOps/commit/2e67764bc723b4add2a4d98f6e867483b009266d))
+* **build:** omit mcpServers string list in agy agent frontmatter ([9edb529](https://github.com/nicsuzor/academicOps/commit/9edb52973f802a46dc38ec090054199c3b92e046))
+* **build:** omit mcpServers string list in agy agent frontmatter ([f7f5335](https://github.com/nicsuzor/academicOps/commit/f7f53355d72ba2818caec4a23369e9eb7ea2734b))
+* **hooks,spec:** reconcile canonical hook events, honesty on SubagentStart, and debug skill agy MCP status ([1e0153a](https://github.com/nicsuzor/academicOps/commit/1e0153aca9502e56b3b162bfacba1d2324b34c8a))
+* **orchestrate:** fix pc.md citation in plugin.toml and expand allowedTools in pc.md ([5990337](https://github.com/nicsuzor/academicOps/commit/5990337e21884b249830e1911814eeba0b35360a))
+* **pc:** add pc to bashScopes to match allowedTools Bash(pc *) ([cf93b77](https://github.com/nicsuzor/academicOps/commit/cf93b772cd2afd5b60b4c7fcc5a3c887ebeda518))
+* **polecat:** keep credential values off the docker command line ([cce3c16](https://github.com/nicsuzor/academicOps/commit/cce3c1613f4ba165f7d0291c17477c545f34868e))
+* **polecat:** keep credential values off the docker command line ([84d1b76](https://github.com/nicsuzor/academicOps/commit/84d1b76da862a1bf909630715b227443652d83ea))
+* **polecat:** output full inner_cmd without truncation on Running stderr message ([334f6a5](https://github.com/nicsuzor/academicOps/commit/334f6a5d7440452ac896d5698b77e6bc6fb857c8))
+* **polecat:** stop the new tests leaking real credentials, require run_env ([caaf8f9](https://github.com/nicsuzor/academicOps/commit/caaf8f948792c0bc7aee21359d686874314c1f71))
+* repair the 12 failing tests and the type-check gate ([4e482cb](https://github.com/nicsuzor/academicOps/commit/4e482cb98717a8623debc62926201d1480a50833))
+* stop-gate blocks again (drop async on rbg stop hooks); preserve workspace on failed dispatch ([542e519](https://github.com/nicsuzor/academicOps/commit/542e519fb5af0d1942ce1f0fb757872c077c2c54))
+
+
+### Code Refactoring
+
+* **build:** expect &lt;name&gt;.&lt;client&gt;.md instead of &lt;name&gt;.md.&lt;client&gt; ([75bc6ed](https://github.com/nicsuzor/academicOps/commit/75bc6edb62648609e3cad83b2be171d0169c44f5))
+* **polecat:** consolidate claude and agy container default configurations ([6d53df2](https://github.com/nicsuzor/academicOps/commit/6d53df2a8b9e2e4e48aff639aaa3caa0fd03aa39))
+* **polecat:** remove env var fallback for branch override in favor of strict CLI option ([ab15746](https://github.com/nicsuzor/academicOps/commit/ab15746b1fc22428dabde07ee53fd709deeaad47))
+
+
+### Documentation
+
+* **core:** require a live-client field test, owned by marsha, for every plugin change ([1e6af5c](https://github.com/nicsuzor/academicOps/commit/1e6af5c8f14db31e966fa993d3628be429424ba9))
+* **enforcement:** clarify blocking hooks policy across Claude Code and agy ([b93b134](https://github.com/nicsuzor/academicOps/commit/b93b13460d38f2fa60071a7f9236a04000ab1f71))
+* **ida:** extend hearsay rule to require observed/inferred labelling ([f44bbcd](https://github.com/nicsuzor/academicOps/commit/f44bbcd178f2435b377111a79e441f58b333ba94))
+* **ida:** extend hearsay rule to require observed/inferred labelling ([a94949f](https://github.com/nicsuzor/academicOps/commit/a94949f61b5760f7c9d58e0cc155eb807754d100))
+* **james:** make agent naming an obligation, not advice ([65ddb54](https://github.com/nicsuzor/academicOps/commit/65ddb542fcaae02711bc252408c2b8a52414ab21))
+* **james:** make agent naming an obligation, not advice ([d2c44af](https://github.com/nicsuzor/academicOps/commit/d2c44af9cf1c4c409350e534e52382a836ecd870))
+* **peer-review:** framing pass, no pre-committed results, scribe length budget ([3c6d22f](https://github.com/nicsuzor/academicOps/commit/3c6d22f5520da9645aa092635d9ff72eab6209fa))
+* **specs/future:** orchestrator client-split plan, reconciled review verdict, and teammate-return defect evidence ([70cd597](https://github.com/nicsuzor/academicOps/commit/70cd5975fff8b5fb6ccb7d5cc8f141c08cf2680f))
+* **specs:** document allowedTools/hooks/memory/initialPrompt as valid agent frontmatter ([edd6fb2](https://github.com/nicsuzor/academicOps/commit/edd6fb2ea9b353239256079071cff4fa7b49775b))
+* **specs:** record q's allowed-tools row in the enforcement register ([7c4009d](https://github.com/nicsuzor/academicOps/commit/7c4009d08abe2b2c932102026b29acac7e643860))
+* **triage:** point trend-mode prompt mining at live transcript sidecars ([8ddb364](https://github.com/nicsuzor/academicOps/commit/8ddb36404e33f46e4c537a5c3340fe9fc8f8c19f))
+
+
+### Build System
+
+* **agy:** translate mcp tools, format mcpServers, strip redundant frontmatter, and output wildcard for absent tools ([d1d9fea](https://github.com/nicsuzor/academicOps/commit/d1d9fea02515f1564e2d8d59f5603bdd2345334e))
+
 ## [0.7.2](https://github.com/nicsuzor/academicOps/compare/v0.7.1...v0.7.2) (2026-08-12)
 
 ### Features
