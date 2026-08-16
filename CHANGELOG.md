@@ -62,6 +62,11 @@
 - **specs:** record q's allowed-tools row in the enforcement register ([7c4009d](https://github.com/nicsuzor/academicOps/commit/7c4009d08abe2b2c932102026b29acac7e643860))
 - **triage:** point trend-mode prompt mining at live transcript sidecars ([8ddb364](https://github.com/nicsuzor/academicOps/commit/8ddb36404e33f46e4c537a5c3340fe9fc8f8c19f))
 
+### CI/CD
+
+- run PR Pipeline for pull requests based on agenttools ([2f59208](https://github.com/nicsuzor/academicOps/commit/2f59208a1ac0e0ee40657ef06eaf8072610e6f10))
+- run PR Pipeline for pull requests based on agenttools ([56e8b56](https://github.com/nicsuzor/academicOps/commit/56e8b56a0d532753ed6543848cdeaf63a3edde01))
+
 ### Build System
 
 - **agy:** translate mcp tools, format mcpServers, strip redundant frontmatter, and output wildcard for absent tools ([d1d9fea](https://github.com/nicsuzor/academicOps/commit/d1d9fea02515f1564e2d8d59f5603bdd2345334e))
