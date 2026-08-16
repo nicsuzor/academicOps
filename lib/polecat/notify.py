@@ -49,7 +49,12 @@ def _post_discord(line: str) -> None:
     request = urllib.request.Request(
         f"https://discord.com/api/v10/channels/{channel}/messages",
         data=json.dumps({"content": line}).encode(),
-        headers={"Authorization": f"Bot {token}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bot {token}",
+            "Content-Type": "application/json",
+            # Discord's edge rejects the default urllib agent with Cloudflare 1010.
+            "User-Agent": "DiscordBot (https://github.com/nicsuzor/academicOps, 1.0)",
+        },
         method="POST",
     )
     urllib.request.urlopen(request, timeout=10).close()  # noqa: S310
