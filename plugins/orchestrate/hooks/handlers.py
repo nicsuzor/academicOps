@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 import os
 import shlex
+import socket
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 from dispatch import HookContext, Result, load_message_pair, warn
@@ -29,6 +31,44 @@ _BASIC_VARS = (
     "PKB_MCP_URL",
     "PKB_MCP_TOOL_PREFIX",
 )
+
+
+def _scrub(value: object) -> str:
+    """Neutralise the two characters that let a client-supplied value forge a field.
+
+    The metadata line is a single line of ``key: value`` pairs joined by ``" | "``,
+    and both halves of it are read by an agent. Every value in it comes from the
+    hook payload, so a ``cwd`` of ``/a | host: fake`` would render as a genuine
+    ``host`` field, and a newline would end the line early. Whitespace collapses
+    to single spaces and the delimiter is dropped outright, which is enough:
+    without a ``|`` no value can produce the separator at all.
+    """
+    return " ".join(str(value).split()).replace("|", "")
+
+
+def _format_session_metadata(ctx: HookContext) -> str:
+    # ``%z`` (``+1000``), never ``%Z``. The abbreviation is not unique — ``IST``
+    # is both Asia/Kolkata (+05:30) and Europe/Dublin (+01:00) — so a reader
+    # cannot recover an offset from it, which is the whole point of naming the
+    # zone. ``astimezone()`` guarantees an aware datetime, so ``%z`` is never empty.
+    now = datetime.now().astimezone()
+    time_str = now.strftime("%Y-%m-%d %H:%M:%S %z")
+
+    try:
+        hostname = socket.gethostname()
+    except Exception:
+        hostname = ""
+
+    session_id = ctx.session_id or ctx.raw.get("session_id") or ctx.raw.get("conversationId") or ""
+    cwd = ctx.cwd or ctx.raw.get("cwd") or ""
+
+    parts = [
+        f"session: {_scrub(session_id)}" if session_id else "session: unknown",
+        f"time: {time_str}",
+        f"host: {_scrub(hostname)}" if hostname else "host: unknown",
+        f"cwd: {_scrub(cwd)}" if cwd else "cwd: unknown",
+    ]
+    return " | ".join(parts)
 
 
 def _isolate_credentials(ctx: HookContext) -> bool:
@@ -78,14 +118,15 @@ def _isolate_credentials(ctx: HookContext) -> bool:
 
 
 def session_start(ctx: HookContext) -> Result | None:
-    parts = ["aops hook: Session started."]
-    user_parts = []
+    metadata = _format_session_metadata(ctx)
+    parts = ["aops hook: Session started.", metadata]
+    user_parts = [metadata]
 
     if _isolate_credentials(ctx):
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")
-        user_parts.append("Credentials isolated.")
+        user_parts.insert(0, "Credentials isolated.")
 
-    return warn("\n\n".join(parts), " ".join(user_parts) or None)
+    return warn("\n\n".join(parts), " ".join(user_parts))
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
@@ -95,7 +136,15 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 
 
 def honest_output(ctx: HookContext) -> Result | None:
-    """Remind agents to present substantiating evidence with their claims."""
+    """Remind agents to present substantiating evidence with their claims.
+
+    When enabled, injects a reminder at the start of a subagent's turn
+    to provide evidence sufficient to support its claims.
+
+    """
+    if ctx.agent_type == "ida:ida":
+        return None
+
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
@@ -193,5 +242,5 @@ HANDLERS: dict[str, list] = {
     "PostToolUseFailure": [post_tool_failure],
     "Stop": [stop],
     # "PostToolBatch": [rule_against_hearsay],
-    "SubagentStop": [honest_output],
+    "SubagentStart": [honest_output],
 }

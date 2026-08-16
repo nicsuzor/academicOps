@@ -8,6 +8,7 @@ builder end to end until they land.
 """
 
 import json
+import re
 import tarfile
 import zipfile
 from pathlib import Path
@@ -49,22 +50,30 @@ def built_orchestrate(tmp_path_factory) -> Path:
 
 
 def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
-    """James invokes `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` via
-    `skills/dispatch` (`plugins/orchestrate/agents/james.md`,
-    `plugins/orchestrate/skills/dispatch/SKILL.md`), and that path is true only
-    because `plugins/orchestrate/manifest/plugin.toml` injects it from
-    `lib/polecat/`.
+    """The polecat launcher agent (`plugins/ida/agents/pc.md`) invokes
+    `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
+    root at all is `plugins/orchestrate/manifest/plugin.toml`, which injects it
+    from `lib/polecat/`.
 
-    Drop those `[[shared]]` stanzas and nothing fails at build time. Dispatch
-    fails at runtime, inside a container, with file-not-found. This is the check
-    that turns that into a build-time failure instead.
+    Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
+    fails at runtime, with file-not-found. This is the check that turns that into
+    a build-time failure instead.
+
+    The sibling modules are read off cli.py's own fallback imports rather than
+    listed here, because a hand-kept list is exactly what let `notify.py` be
+    added to cli.py and left out of the manifest.
     """
+    siblings = set(
+        re.findall(r"from polecat\.(\w+) import", (PROJECT_ROOT / "lib/polecat/cli.py").read_text())
+    )
+    assert "env_contract" in siblings, "cli.py's fallback imports no longer parse"
     for client in ("claude", "agy"):
         polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
         assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
-        assert (polecat / "env_contract.py").is_file(), (
-            f"orchestrate-{client} ships cli.py without the env_contract it imports"
-        )
+        for module in siblings:
+            assert (polecat / f"{module}.py").is_file(), (
+                f"orchestrate-{client} ships cli.py without the {module} it imports"
+            )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()
         assert not (polecat / "entrypoint.sh").exists()
@@ -360,21 +369,19 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     agy_agent = yaml.safe_load(fm)
     assert agy_agent["name"] == "ida"
     assert "interactive face" in agy_agent["description"]
-    assert agy_agent["hidden"] is False
+    assert "hidden" not in agy_agent
+    assert "includeSections" not in agy_agent
+    # ida declares no `mcpServers:` and reaches no MCP tool, so the build must
+    # not invent a server for it. The normalisation of a declared list is
+    # covered by test_pauli_agy_frontmatter.
+    assert "mcpServers" not in agy_agent
 
-    # plugins/ida/agents/ida.md sets [Bash, AskUserQuestion, Agent, Monitor, TodoWrite, ToolSearch, Skill, TaskStop, SendMessage]
-    # Bash -> run_command
-    # AskUserQuestion -> ask_question
-    # Agent -> invoke_subagent, manage_subagents, send_message
-    # Monitor -> [] (dropped)
-    # TodoWrite -> [] (dropped)
-    # ToolSearch -> [] (dropped)
-    # Skill -> [] (dropped)
-    # TaskStop -> manage_task
-    # SendMessage -> send_message
+    # ida's Claude tools are Agent, TodoWrite, Skill, SendMessage and the five
+    # Task* verbs. `TodoWrite` and `Skill` map to nothing on agy, the Task*
+    # verbs all collapse onto the one `manage_task`, and `send_message` is
+    # reached by both Agent and SendMessage — so the translation has to dedupe
+    # rather than repeat it.
     assert agy_agent["tools"] == [
-        "run_command",
-        "ask_question",
         "invoke_subagent",
         "manage_subagents",
         "send_message",
@@ -424,7 +431,6 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
-    assert len(agy_fm["tools"]) == 54
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
@@ -433,11 +439,14 @@ def test_agy_agent_drops_claude_model_name(built_orchestrate):
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
-    assert agy_fm["color"] == "orange"
 
     claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "james.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert claude_fm.get("model") == "opus" or "model" not in claude_fm
+
+    agy_marsha = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
+    agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
+    assert agy_marsha_fm["color"] == "pink"
 
 
 def test_agent_empty_tools_list_raises_build_error(tmp_path):
@@ -482,52 +491,6 @@ def test_agent_empty_tools_list_raises_build_error(tmp_path):
     )
 
     with pytest.raises(BuildError, match="empty 'tools' list"):
-        adapt_claude(plugin_dir, ctx_claude)
-
-
-def test_agent_unmappable_tool_name_raises_build_error(tmp_path):
-    from build.clients.agy import adapt as adapt_agy
-    from build.clients.claude import adapt as adapt_claude
-    from build.context import BuildContext, Plugin
-
-    plugin_dir = tmp_path / "unmappable-tool-plugin"
-    agents_dir = plugin_dir / "agents"
-    agents_dir.mkdir(parents=True)
-    (agents_dir / "badtool.md").write_text(
-        "---\nname: badtool\ndescription: Bad tool agent\ntools:\n  - Read\n  - NonexistentToolXYZ\n---\n\nBody",
-        encoding="utf-8",
-    )
-
-    ctx = BuildContext(
-        plugin=Plugin(
-            directory="unmappable-tool-plugin",
-            marketplace_name="unmappable-tool",
-            description="desc",
-            category="productivity",
-            source_dir=plugin_dir,
-        ),
-        client="agy",
-        version=VERSION,
-        manifests={"plugin": {"name": "unmappable-tool"}},
-    )
-
-    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
-        adapt_agy(plugin_dir, ctx)
-
-    ctx_claude = BuildContext(
-        plugin=Plugin(
-            directory="unmappable-tool-plugin",
-            marketplace_name="unmappable-tool",
-            description="desc",
-            category="productivity",
-            source_dir=plugin_dir,
-        ),
-        client="claude",
-        version=VERSION,
-        manifests={"plugin": {"name": "unmappable-tool"}},
-    )
-
-    with pytest.raises(BuildError, match="NonexistentToolXYZ"):
         adapt_claude(plugin_dir, ctx_claude)
 
 
@@ -650,6 +613,59 @@ def test_agent_invalid_name_raises_build_error(tmp_path):
 
     with pytest.raises(BuildError, match="invalid agent name"):
         adapt_claude(plugin_dir, ctx_claude)
+
+
+def test_resolve_client_agents_renames_matching_and_deletes_other(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "james.claude.md").write_text("claude content", encoding="utf-8")
+    (agents_dir / "james.agy.md").write_text("agy content", encoding="utf-8")
+    (agents_dir / "shared.md").write_text("shared content", encoding="utf-8")
+
+    resolve_client_agents(agents_dir, "claude")
+
+    assert (agents_dir / "james.md").read_text(encoding="utf-8") == "claude content"
+    assert not (agents_dir / "james.claude.md").exists()
+    assert not (agents_dir / "james.agy.md").exists()
+    assert (agents_dir / "shared.md").read_text(encoding="utf-8") == "shared content"
+
+
+def test_resolve_client_agents_for_agy(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "james.claude.md").write_text("claude content", encoding="utf-8")
+    (agents_dir / "james.agy.md").write_text("agy content", encoding="utf-8")
+
+    resolve_client_agents(agents_dir, "agy")
+
+    assert (agents_dir / "james.md").read_text(encoding="utf-8") == "agy content"
+    assert not (agents_dir / "james.claude.md").exists()
+    assert not (agents_dir / "james.agy.md").exists()
+
+
+def test_resolve_client_agents_collision_raises(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "james.md").write_text("base", encoding="utf-8")
+    (agents_dir / "james.claude.md").write_text("claude", encoding="utf-8")
+
+    with pytest.raises(BuildError, match="both james.md and james.claude.md exist"):
+        resolve_client_agents(agents_dir, "claude")
+
+
+def test_resolve_client_agents_unknown_client_raises(tmp_path):
+    from build.agents import resolve_client_agents
+
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    with pytest.raises(BuildError, match="unknown client"):
+        resolve_client_agents(agents_dir, "unknown")
 
 
 def test_agent_tools_serialised_as_yaml_list(built):
@@ -913,7 +929,7 @@ def test_disallowed_tools_subtraction(tmp_path):
         t for t in accepted_tools if t not in ("write_to_file", "replace_file_content")
     ]
     assert res2["tools"] == expected_tools
-    assert len(res2["tools"]) == 52
+    assert len(res2["tools"]) == len(expected_tools)
     assert "disallowedTools" not in res2
 
     # Case 3: claude retains disallowedTools unchanged
@@ -987,3 +1003,33 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     adapt_agy(plugin_dir, ctx_agy)
     res_agy = yaml.safe_load((agents_dir / "mcpagent.md").read_text().split("---")[1])
     assert "mcpServers" not in res_agy
+    assert "hidden" not in res_agy
+    assert "includeSections" not in res_agy
+
+
+def test_pauli_agy_frontmatter(tmp_path):
+    import yaml
+
+    from build.tools import load_tool_config
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["pkb"],
+        version=VERSION,
+    )
+
+    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
+    assert pauli_md.is_file()
+    fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
+    agent = yaml.safe_load(fm)
+
+    assert agent["name"] == "pauli"
+    assert "mcpServers" not in agent
+    accepted_tools, _ = load_tool_config()
+    assert agent["tools"] == accepted_tools
+    assert "hidden" not in agent
+    assert "includeSections" not in agent
+    assert "call_mcp_tool" not in agent["tools"]

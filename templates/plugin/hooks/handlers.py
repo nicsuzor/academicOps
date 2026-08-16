@@ -32,7 +32,7 @@ def remind_to_be_honest(ctx: HookContext) -> Result | None:
     (for the agent) and optionally `messages/honest.user.md` (the one-liner the
     user sees in their terminal).
     """
-    return warn(*load_message_pair(ctx.hooks_dir, "honest"))
+    return warn(*load_message_pair(ctx.hooks_dir, "example"))
 
 
 # Map canonical event names to lists of handler functions.

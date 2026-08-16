@@ -26,7 +26,13 @@ import yaml
 # specs/ARCHITECTURE.md plus the rest. One definition, shared with the `docker*`
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
-    from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV, format_otel_resource_attributes
+    from .env_contract import (
+        CONTAINER_SET_ENV,
+        FORWARDED_ENV,
+        docker_env_args,
+        format_otel_resource_attributes,
+    )
+    from .notify import notify_run_complete
 except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
@@ -34,8 +40,10 @@ except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     from polecat.env_contract import (
         CONTAINER_SET_ENV,
         FORWARDED_ENV,
+        docker_env_args,
         format_otel_resource_attributes,
     )
+    from polecat.notify import notify_run_complete
 
 
 # A trailing flag that means the caller has already asked for headless, so
@@ -566,9 +574,15 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
     return True, None
 
 
-def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
+def resolve_isolated_workspace(
+    canonical_dir, session_id, polecat_home, base=None, config=None, branch=None
+):
     """Create a per-session standalone clone of `canonical_dir` and return the
     path to mount, so a container never writes to a shared checkout.
+
+    The clone is created from the commit specified in `base` if provided,
+    otherwise falling back to the `branch` key in `config` (polecat.yaml),
+    and defaulting to HEAD if neither is set.
 
     The clone is standalone rather than a linked worktree: a linked worktree's
     `.git` is a pointer to an admin directory on the host that the container
@@ -604,18 +618,26 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
     clones_dir = Path(polecat_home) / "worktrees"
     clones_dir.mkdir(parents=True, exist_ok=True)
     clone_path = clones_dir / session_id
-    branch_name = f"polecat/{session_id}"
+    branch_name = branch or f"polecat/{session_id}"
 
-    # Clone from the commit the canonical checkout (canonical_dir) currently has
-    # checked out (HEAD), not from its default branch.
-    head_result = subprocess.run(
-        ["git", "-C", str(canonical_dir), "rev-parse", "HEAD"],
+    config = config or {}
+    base_ref = base or config.get("branch") or "HEAD"
+
+    # Resolve the base commit SHA from base_ref (base option, polecat.yaml branch, or HEAD)
+    base_result = subprocess.run(
+        ["git", "-C", str(canonical_dir), "rev-parse", f"{base_ref}^{{commit}}"],
         capture_output=True,
         text=True,
     )
-    if head_result.returncode != 0:
-        fail(f"failed to resolve HEAD in {canonical_dir}:\n{head_result.stderr}")
-    head_sha = head_result.stdout.strip()
+    if base_result.returncode != 0:
+        base_result = subprocess.run(
+            ["git", "-C", str(canonical_dir), "rev-parse", base_ref],
+            capture_output=True,
+            text=True,
+        )
+    if base_result.returncode != 0:
+        fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{base_result.stderr}")
+    base_sha = base_result.stdout.strip()
 
     origin_result = subprocess.run(
         ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
@@ -644,14 +666,14 @@ def resolve_isolated_workspace(canonical_dir, session_id, polecat_home):
         )
 
     checkout_result = subprocess.run(
-        ["git", "-C", str(clone_path), "checkout", "-B", branch_name, head_sha],
+        ["git", "-C", str(clone_path), "checkout", "-B", branch_name, base_sha],
         capture_output=True,
         text=True,
     )
     if checkout_result.returncode != 0:
         shutil.rmtree(clone_path, ignore_errors=True)
         fail(
-            f"failed to check out {head_sha} as {branch_name!r} in "
+            f"failed to check out {base_sha} (from base {base_ref!r}) as {branch_name!r} in "
             f"{clone_path}:\n{checkout_result.stderr}"
         )
 
@@ -815,7 +837,7 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
         )
 
 
-def _reject_bad_agent_cmd(agent_cmd, extra_args):
+def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None):
     """Catch the shapes that would otherwise fail deep inside the container,
     after a clone and an image check, with an error naming neither polecat nor
     the flag's replacement."""
@@ -828,7 +850,7 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args):
             "positional: claude, agy, shell, bash, or sleep."
         )
 
-    if agent_cmd == "ida":
+    if agent_cmd == "ida" or agent == "ida":
         fail(
             "ida is the interactive face plugin and is not installed in polecat containers. "
             "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg) via "
@@ -892,28 +914,37 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
-#: The persona a dispatched worker boots as when the caller names none. Both
-#: agent CLIs take `--agent <name>`, so one constant serves both branches — a
-#: second literal would be a second place to change it.
-DEFAULT_AGENT = "james"
+#: Default agent persona per client. Used when neither --agent nor --no-agent is given.
+DEFAULT_AGENTS: dict[str, str] = {
+    "claude": "james",
+    "agy": "james",
+}
 
 
-def _default_agent_args(extra_args):
-    """`--agent <DEFAULT_AGENT>`, or nothing when the caller already named one.
-
-    Precedence is caller-wins: `--agent` takes a value, so contributing a second
-    one leaves the container holding two conflicting personas. Polecat only
-    fills the gap when extra_args carries no `--agent` in either spelling.
-    """
+def _agent_args(extra_args, agent=None):
+    """`--agent <agent_name>`, or nothing when no agent was specified."""
+    if not agent:
+        return []
     caller_chose_agent = any(arg == "--agent" or arg.startswith("--agent=") for arg in extra_args)
-    return [] if caller_chose_agent else ["--agent", DEFAULT_AGENT]
+    if caller_chose_agent:
+        return []
+    return ["--agent", agent]
 
 
-def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headless, task):
+def _build_inner_command(
+    agent_cmd,
+    extra_args,
+    is_interactive,
+    explicit_headless,
+    task,
+    agent=None,
+    output_format=None,
+    prompt=None,
+):
     """The command run inside the container, and the container path that agent
     writes its session state to.
 
-    Returns (inner_cmd, container_session_path, seeded_from_task).
+    Returns (inner_cmd, container_session_path, seeded_from_task, seeded_prompt).
     """
     claude_session_path = CLAUDE_SESSION_PATH
 
@@ -921,10 +952,12 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
         container_session_path = claude_session_path
         inner_cmd = [
             "claude",
-            "--permission-mode=auto",
+            "--dangerously-skip-permissions",
             "--setting-sources=user,project",
-            *_default_agent_args(extra_args),
+            *_agent_args(extra_args, agent),
         ]
+        if output_format:
+            inner_cmd.extend(["--output-format", output_format])
         if not is_interactive and not explicit_headless:
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
@@ -938,30 +971,10 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
             "--dangerously-skip-permissions",
             "--log-file",
             "/home/worker/.gemini/antigravity-cli/cli.log",
-            # TEMPORARY MITIGATION for #2387 — remove when it closes.
-            #
-            # A dispatched worker is supposed to boot as DEFAULT_AGENT on every
-            # client; that is what claude does two branches up, and it is what
-            # gives a worker this framework's doctrine instead of a stock
-            # assistant. It does not hold on agy today: every agent this repo
-            # builds — james, rbg and pauli were tested — comes up under
-            # `--agent <name>` with a fixed toolset (`find_by_name`,
-            # `generate_image`, `grep_search`, `list_dir`, `read_url_content`,
-            # `schedule`, `search_web`, `send_message`, `view_file`) and no
-            # `call_mcp_tool`, no write, no shell. Defaulting agy to james
-            # therefore shipped a worker that reached no MCP server and changed
-            # nothing.
-            #
-            # Whether the cause is agy's `--agent` handling or our own build
-            # adapter is NOT established: no agy-native agent definition was
-            # tested, and the `includeSections` whitelist injected by
-            # `build/clients/agy.py` is an untested suspect.
-            #
-            # So agy is left on its own default agent, which has the full tool
-            # set but none of our persona. That is a downgrade we are carrying,
-            # not the intended contract. When #2387 closes this branch takes
-            # `*_default_agent_args(extra_args)` like claude's.
+            *_agent_args(extra_args, agent),
         ]
+        if output_format:
+            inner_cmd.extend(["--output-format", output_format])
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
         inner_cmd = ["bash"]
@@ -972,38 +985,51 @@ def _build_inner_command(agent_cmd, extra_args, is_interactive, explicit_headles
         container_session_path = claude_session_path
         inner_cmd = [agent_cmd]
 
-    seeded_from_task = bool(task) and not extra_args
-    if seeded_from_task:
-        extra_args = (f"/pull {task}",)
-
-    seeded_prompt = (
-        f"/pull {task}" if seeded_from_task else (" ".join(extra_args) if extra_args else None)
-    )
-
-    if extra_args:
-        agy_prompt_flags = {
-            "-p",
-            "--print",
-            "--prompt",
-            "-i",
-            "--prompt-interactive",
-            "-c",
-            "--continue",
-            "--conversation",
-        }
-        if agent_cmd == "agy" and not agy_prompt_flags.intersection(extra_args):
-            # Autonomous dispatch runs headless so the agent completes its loop
-            # and exits; an interactive prompt would leave a live container
-            # idling forever. The print timeout must precede --print with
-            # nothing between --print and its prompt value: a value-taking flag
-            # consumes the next token whatever it is, so an interposed flag
-            # becomes the prompt and the real one is silently dropped.
-            print_timeout = os.environ.get("POLECAT_PRINT_TIMEOUT")
-            if print_timeout:
-                inner_cmd.extend(["--print-timeout", print_timeout])
-            inner_cmd.extend(["--print", extra_args[0], *extra_args[1:]])
+    seeded_from_task = bool(task) and not extra_args and not prompt
+    if prompt:
+        seeded_prompt = prompt
+        if agent_cmd == "agy":
+            inner_cmd.extend(["--prompt", prompt])
+        elif agent_cmd == "claude":
+            inner_cmd.append(prompt)
+        elif extra_args:
+            inner_cmd.extend(extra_args)
+    elif seeded_from_task:
+        seeded_prompt = f"/pull {task}"
+        if agent_cmd == "agy":
+            inner_cmd.extend(["--print", f"/pull {task}"])
+        else:
+            inner_cmd.append(f"/pull {task}")
+    elif extra_args:
+        seeded_prompt = " ".join(extra_args)
+        if agent_cmd == "agy":
+            agy_prompt_flags = {
+                "-p",
+                "--print",
+                "--prompt",
+                "-i",
+                "--prompt-interactive",
+                "-c",
+                "--continue",
+                "--conversation",
+            }
+            if not agy_prompt_flags.intersection(extra_args):
+                # Autonomous dispatch runs headless so the agent completes its loop
+                # and exits; an interactive prompt would leave a live container
+                # idling forever. The print timeout must precede --print with
+                # nothing between --print and its prompt value: a value-taking flag
+                # consumes the next token whatever it is, so an interposed flag
+                # becomes the prompt and the real one is silently dropped.
+                print_timeout = os.environ.get("POLECAT_PRINT_TIMEOUT")
+                if print_timeout:
+                    inner_cmd.extend(["--print-timeout", print_timeout])
+                inner_cmd.extend(["--print", extra_args[0], *extra_args[1:]])
+            else:
+                inner_cmd.extend(extra_args)
         else:
             inner_cmd.extend(extra_args)
+    else:
+        seeded_prompt = None
 
     return inner_cmd, container_session_path, seeded_from_task, seeded_prompt
 
@@ -1021,9 +1047,26 @@ def _build_docker_argv(
     config,
     docker_args,
     session_id=None,
+    with_sessions=False,
+    sessions_base=None,
 ):
-    """The full `docker run` argv. Also pre-creates the bind-mount targets
-    under `session_dir` — see below for why that cannot wait until launch."""
+    """The full `docker run` argv, and the environment to launch it with.
+
+    Returns `(argv, run_env)`. The argv carries **no** variable values: every
+    name in `env` is passed as a valueless `-e NAME` flag and its value is
+    handed to the `docker` process itself through `run_env`, which the caller
+    must pass to `subprocess.run(..., env=run_env)`. Values on argv are
+    world-readable in the host process table (`ps`, `/proc/<pid>/cmdline`) for
+    the whole life of the container, which put live GitHub and agent-API
+    tokens in front of every local process. `-e NAME` reads the value out of
+    docker's own environment instead, so nothing lands on the command line.
+
+    `CONTAINER_SET_ENV` names are the one exception and keep their value on
+    argv — they are container-internal paths and flags, never credentials —
+    which is exactly the split `env_contract.docker_env_args()` already makes.
+
+    Also pre-creates the bind-mount targets under `session_dir` — see below
+    for why that cannot wait until launch."""
     # Pre-create the bind-mount targets as the invoking user. Docker
     # auto-creates a missing bind source as root, which the container's non-root
     # user cannot write, silently losing logs and conversation state.
@@ -1091,12 +1134,27 @@ def _build_docker_argv(
         except Exception:
             pass
 
+    if with_sessions and sessions_base:
+        transcripts_path = (sessions_base / "transcripts").resolve()
+        transcripts_path.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
+        env["AOPS_SESSIONS"] = "/sessions"
+
     cmd.extend(docker_args)
-    for key, value in env.items():
-        cmd.extend(["-e", f"{key}={value}"])
+    # Valueless `-e NAME` flags: the values travel in `run_env`, not on argv.
+    cmd.extend(docker_env_args(tuple(env)))
     cmd.append(image)
     cmd.extend(inner_cmd)
-    return cmd
+
+    # docker resolves each valueless `-e NAME` against its *own* environment,
+    # so every name flagged above has to be set here or the container silently
+    # loses it. Several are synthesised by get_env_forwards() and have no host
+    # counterpart at all (the AOPS_BOT_GH_TOKEN -> GH_TOKEN/GITHUB_TOKEN
+    # fan-out, resolve_cope_evaluator, resolve_telemetry, CONTAINER_SET_ENV),
+    # and where a name does exist on the host the polecat-side value must win.
+    # Hence os.environ first, `env` last.
+    run_env = {**os.environ, **{k: str(v) for k, v in env.items()}}
+    return cmd, run_env
 
 
 def _get_image_digest(image: str) -> str | None:
@@ -1233,13 +1291,23 @@ def write_run_record(
     return out_path
 
 
-def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task, verify_seed):
+def _execute_with_seed_verification(
+    cmd, *, image, inner_cmd, session_dir, task, verify_seed, run_env
+):
     """Run the container, and for a seeded dispatch confirm the agent actually
     saw the task before letting a clean exit stand as success.
 
     A clean exit is not evidence the task was worked: the seed can be dropped
     before delivery, which leaves a clean workspace the delivery guard reads as
     a pass. Retry once, then fail rather than report an unverified success.
+
+    `run_env` carries the values behind the valueless `-e NAME` flags in `cmd`,
+    and is required rather than defaulted. Defaulting it to None would make
+    `subprocess.run(cmd, env=None)` inherit os.environ, under which host-set
+    names still arrive but every synthesised one — the AOPS_BOT_GH_TOKEN
+    fan-out, resolve_telemetry, AOPS_SESSIONS, AOPS_POLECAT_BRANCH — vanishes
+    silently at exit 0. That is the failure this whole path exists to prevent,
+    so it must not be reachable by forgetting an argument.
     """
     max_attempts = 2 if verify_seed else 1
     returncode = 1
@@ -1247,8 +1315,8 @@ def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task,
 
     for attempt in range(1, max_attempts + 1):
         suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
-        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd[:3])} ...")
-        returncode = subprocess.run(cmd).returncode
+        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd)}", err=True)
+        returncode = subprocess.run(cmd, env=run_env).returncode
 
         if not verify_seed:
             break
@@ -1294,14 +1362,71 @@ def main():
     "-t",
     help="Task id to work. With no explicit prompt, seeds '/pull <task-id>'.",
 )
+@click.option(
+    "--base",
+    help="Base commit or branch to create private branch from (default: branch in polecat.yaml).",
+)
+@click.option(
+    "--branch",
+    "-b",
+    help="Custom branch name to check out in isolated clone (default: polecat/<session-id>).",
+)
+@click.option(
+    "--with-sessions",
+    is_flag=True,
+    help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
+)
+@click.option(
+    "--agent",
+    "-a",
+    default=None,
+    help="Agent persona to run inside container (defaults to 'james' for claude and agy).",
+)
+@click.option(
+    "--no-agent",
+    is_flag=True,
+    default=False,
+    help="Run without an agent persona, disabling the default agent.",
+)
+@click.option(
+    "--output-format",
+    "-o",
+    help="Output format for print/headless mode (e.g. text, json, stream-json).",
+)
+@click.option(
+    "--prompt",
+    help="Prompt string for print/headless mode.",
+)
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
-def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
+def run(
+    agent_cmd,
+    project,
+    repo_dir,
+    session_name,
+    mcp_url,
+    task,
+    base,
+    branch,
+    with_sessions,
+    agent,
+    no_agent,
+    output_format,
+    prompt,
+    extra_args,
+):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
 
     Anything after AGENT_CMD that is not one of this command's own options is
     forwarded verbatim to the inner invocation.
     """
-    _reject_bad_agent_cmd(agent_cmd, extra_args)
+    if no_agent:
+        effective_agent = None
+    elif agent is not None:
+        effective_agent = agent
+    else:
+        effective_agent = DEFAULT_AGENTS.get(agent_cmd)
+
+    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent)
 
     if project:
         project = _sanitize_path_component(project)
@@ -1326,7 +1451,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     clone_cleanup = None
     if repo_dir is None:
         workspace_dir, clone_cleanup = resolve_isolated_workspace(
-            workspace_dir, session_id, polecat_home
+            workspace_dir, session_id, polecat_home, base=base, config=config, branch=branch
         )
 
     initial_head = _get_git_head(workspace_dir)
@@ -1337,6 +1462,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
     staging_dir = Path(tempfile.mkdtemp(prefix="staging-", dir=staging_base))
     os.chmod(staging_dir, 0o700)
 
+    preserve_workspace = False
     started_at = datetime.now(UTC)
     returncode = None
     delivery_ok = True
@@ -1364,8 +1490,21 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
         if mcp_url:
             env["PKB_MCP_URL"] = mcp_url
 
+        if branch:
+            env["AOPS_POLECAT_BRANCH"] = branch
+
+        has_sessions_access = False
+        if with_sessions:
+            has_sessions_access = True
+        elif config.get("sessions_access"):
+            has_sessions_access = True
+        elif project and config.get("projects", {}).get(project, {}).get("sessions_access"):
+            has_sessions_access = True
+
         docker_args = []
-        explicit_headless = bool(HEADLESS_FLAGS.intersection(extra_args))
+        explicit_headless = (
+            bool(HEADLESS_FLAGS.intersection(extra_args)) or bool(output_format) or bool(prompt)
+        )
         is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
@@ -1378,7 +1517,14 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             env["CLAUDE_NON_INTERACTIVE"] = "1"
 
         inner_cmd, container_session_path, seeded_from_task, seeded_prompt = _build_inner_command(
-            agent_cmd, extra_args, is_interactive, explicit_headless, task
+            agent_cmd,
+            extra_args,
+            is_interactive,
+            explicit_headless,
+            task,
+            agent=effective_agent,
+            output_format=output_format,
+            prompt=prompt,
         )
 
         env["AOPS_POLECAT_CONTAINER"] = "1"
@@ -1392,7 +1538,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             task_id=task,
         )
 
-        cmd = _build_docker_argv(
+        cmd, run_env = _build_docker_argv(
             image=image,
             inner_cmd=inner_cmd,
             workspace_dir=workspace_dir,
@@ -1404,10 +1550,12 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             config=config,
             docker_args=docker_args,
             session_id=session_id,
+            with_sessions=has_sessions_access,
+            sessions_base=sessions_base,
         )
 
-        click.echo(f"Workspace: {workspace_dir}")
-        click.echo(f"Session logs: {session_dir}")
+        click.echo(f"Workspace: {workspace_dir}", err=True)
+        click.echo(f"Session logs: {session_dir}", err=True)
 
         returncode = _execute_with_seed_verification(
             cmd,
@@ -1420,8 +1568,8 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             # same way whichever one ran it. `shell`/`sleep`/other run no agent
             # CLI and have no conversation to check.
             verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
+            run_env=run_env,
         )
-
         cidfile = session_dir / "container.cid"
         if cidfile.exists():
             try:
@@ -1431,10 +1579,16 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
             except OSError:
                 pass
 
+        if returncode != 0:
+            preserve_workspace = True
+            click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
+
         if returncode == 0:
             delivery_ok, delivery_err = _verify_workspace_delivery(
                 workspace_dir, initial_head=initial_head
             )
+            if not delivery_ok:
+                preserve_workspace = True
 
     finally:
         cidfile = session_dir / "container.cid"
@@ -1459,7 +1613,7 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
                 else "container execution failed",
             }
 
-        write_run_record(
+        run_record_path = write_run_record(
             session_dir=session_dir,
             session_id=session_id,
             container_id=container_id,
@@ -1482,17 +1636,32 @@ def run(agent_cmd, project, repo_dir, session_name, mcp_url, task, extra_args):
 
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
-        cleanup_isolated_workspace(clone_cleanup)
+        if not preserve_workspace:
+            cleanup_isolated_workspace(clone_cleanup)
+
+        # Last, so a slow or interrupted POST cannot delay or skip the cleanup
+        # above: a Ctrl-C during the request raises out of this `finally:`.
+        try:
+            notify_run_complete(run_record_path, sessions_base)
+        except Exception:
+            pass
 
     if returncode != 0:
         sys.exit(returncode)
 
     if not delivery_ok:
+        # Detection ends here; repair belongs to the dispatcher, which owns
+        # the graph this task lives in (dispatch/SKILL.md section 6). A
+        # launcher carrying its own client for the knowledge base would be a
+        # second copy of that plugin's job, so the exit code and this message
+        # are the whole of the handoff. The workspace is the only copy of
+        # whatever the failed run left uncommitted, so it outlives the exit.
         fail(
             f"delivery guard failed for {task or 'session'!r}:\n{delivery_err}\n"
             "Refusing to report success. If this task is in a terminal status, "
             "the dispatcher must reopen it (via pauli) before filing a fix "
-            "subtask or re-dispatching."
+            "subtask or re-dispatching.\n"
+            f"Workspace preserved for inspection: {workspace_dir}"
         )
 
 

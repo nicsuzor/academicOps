@@ -155,12 +155,44 @@ def test_agy_never_receives_a_blocking_shape(ida_dist, client):
     assert list(out) == ["injectSteps"]
 
 
-def test_claude_stop_tells_the_person_watching(ida_dist):
-    """The gate firing is a fact about the answer they are about to read."""
+def test_the_gate_never_tells_the_person_it_fired(ida_dist):
+    """The gate is silent to the person, and its silence is structural.
+
+    It used to ship a `quiet.user.md` reading "ida: trimming the reply to what you
+    actually need to see." — which made the suppression mechanism itself a mention
+    of the delegated work it was suppressing. Between an instruction and its
+    completion Nic is owed *nothing*, and a line announcing that something is
+    being trimmed is not nothing.
+
+    Asserted two ways on purpose. The absent file is what causes the silence
+    (`load_message_pair` returns `None` for a missing user file, and dispatch.py
+    only sets `systemMessage` when `user_text` is truthy), and the absent response
+    key is the silence itself. Checking only the file would pass if some other
+    handler started emitting one; checking only the response would pass on a
+    payload that happened not to reach the gate.
+    """
     _require_ida_hooks_enabled()
+    messages = _claude_hooks_dir(ida_dist) / "messages"
+    assert not (messages / "quiet.user.md").exists(), (
+        "quiet.user.md is back — the gate has started announcing itself again"
+    )
+
     build_dir, command = _stop_command(ida_dist, "claude")
     proc = _run(build_dir, command, {"session_id": "stop-gate-test"})
-    assert json.loads(proc.stdout)["systemMessage"] == _shipped_message(ida_dist, "quiet.user.md")
+    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
+    assert "systemMessage" not in json.loads(proc.stdout)
+
+
+def test_no_message_file_in_the_build_reaches_the_person(ida_dist):
+    """No `*.user.md` at all, derived from the build rather than named here.
+
+    A hardcoded exemption list goes stale silently: the next handler to ship a
+    user-visible line would simply never be checked. If a user-visible channel is
+    ever wanted back, this test is the place the decision has to be argued.
+    """
+    messages = _claude_hooks_dir(ida_dist) / "messages"
+    user_facing = sorted(p.name for p in messages.glob("*.user.md"))
+    assert user_facing == [], f"ida ships user-visible hook text: {user_facing}"
 
 
 @pytest.mark.parametrize("client", _CLIENTS)

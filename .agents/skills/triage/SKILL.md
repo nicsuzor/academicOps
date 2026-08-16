@@ -89,7 +89,7 @@ Produce a review in this exact format. Keep text concise:
 Review multiple sessions to identify systemic effectiveness and trends.
 
 > **Corpus selection — prompt mining vs trend reading.**
-> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **structured summaries corpus** at `$AOPS_SESSIONS/summaries/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`) or filter `timeline_events[type="user_prompt"]` to `system_injected=false` — across ALL clients, no client-name filter needed. This is faster and more reliable than grepping raw transcripts. Read the field set off a sidecar itself; there is no schema doc. Raw transcripts (`$AOPS_SESSIONS/transcripts/`) are the fallback for content the sidecars don't capture (agent reasoning, tool calls).
+> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **per-session JSON sidecars** at `$AOPS_SESSIONS/transcripts/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`); harness-injected text is held out of it in the sibling `injected_prompts` array — across ALL clients, no client-name filter needed. Narrow to human-driven sessions with the `has_user_context` boolean. This is faster and more reliable than grepping raw transcripts. Read the field set off a sidecar itself; there is no schema doc. The rendered transcripts beside them (`*.full.md` in the same directory) are the fallback for content the sidecars don't capture (agent reasoning, tool calls).
 
 ### 1. Sampling & Reading
 

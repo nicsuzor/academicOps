@@ -10,7 +10,7 @@ stop_events = []
 
 [hooks.messages]
 # Messages that ship with no .user.md because they have no second reader
-no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session" }
+no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session", "ida: quiet" = "the silence gate; a systemMessage here would itself be the mention of delegated work the gate exists to withhold" }
 # Messages that ship user-blind and SHOULD NOT (defect list)
 known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
 
@@ -27,4 +27,10 @@ strip_the_reply_enabled = false
 
 [orchestrate]
 rule_against_hearsay_enabled = false
-honest_output_enabled = false
+# honest_output is registered on SubagentStart for the claude client,
+# so the shipped-hooks equality check binds on this event.
+honest_output_enabled = true
+
+[hooks.blocking]
+# No handler is permitted to return a blocking disposition on agy.
+allow_blocking_agy = false

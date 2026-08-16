@@ -25,20 +25,20 @@ user. This spec records where each half of that charter now lives, and why.
 | Identity, the user-facing proxy role, and the two required workflows                                                                                                         | `.agents/agents/rex.md`                                   | Uniquely rex. Everything else is now a pointer.                                                                                            |
 | The standard, referenced so `ida` holds it                                                                                                                                   | `plugins/ida/agents/ida.md` § "Dogfood duty"              | A pointer only. `ida` is shipped, so it names the skill rather than a project-local path.                                                  |
 
-## Why the execution material went to `debug` and not `dispatch`
+## Why the execution material lives in `debug` and not on the shipped launcher
 
 The user delegated this call ("wherever it fits best"). Three things decided it.
 
-1. **Shipped versus project-local.** `plugins/orchestrate/skills/dispatch/` is a
-   shipped, project-agnostic plugin. Rex's execution material names
+1. **Shipped versus project-local.** The launcher, `plugins/orchestrate/agents/pc.md`, is
+   shipped and project-agnostic. Rex's execution material names
    `make docker-build`, the gitignored `dist/`, aops PKB task statuses and
    `agy --agent james` — academicOps specifics that must not ship inside a
    project-agnostic surface. `.agents/skills/debug/` is project-local, as is
    `rex.md` itself.
-2. **`dispatch` is scoped narrowly.** The authoritative wired map scopes it to
-   spawning a polecat, locally or over ssh. Rex's material is broader: choosing
-   among headless `claude`/`agy`, a container, and fire-and-forget dispatch, then
-   verifying which surface actually executed.
+2. **The launcher is scoped narrowly.** It does one thing: spawn a polecat,
+   locally or over ssh, and halt on anything else. Rex's material is broader:
+   choosing among headless `claude`/`agy`, a container, and fire-and-forget
+   dispatch, then verifying which surface actually executed.
 3. **Genre.** `debug` already carries the doctrine that a capability is scored on
    the instrumented tool-call record and never on what an agent says. Rex's
    execution material is the same genre of instruction.

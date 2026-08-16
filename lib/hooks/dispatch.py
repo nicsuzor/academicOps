@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
@@ -27,6 +27,12 @@ class HookContext:
     tool: str = ""
     command: str = ""
     session_id: str = ""
+    agent_type: str = ""
+    agent_id: str = ""
+    prompt_id: str = ""
+    transcript_path: str = ""
+    cwd: str = ""
+    hook_event_name: str = ""
     # PostToolBatch only: every tool call in the resolved batch, each a
     # ``{tool_name, tool_input, tool_use_id, tool_response}`` mapping. Empty on
     # every other event, so a handler can read it without guarding the event.
@@ -106,6 +112,7 @@ CANONICAL_EVENTS = (
     # ``tool_calls`` — the one event that sees a whole batch rather than a
     # single call. Claude Code only; agy has no wire equivalent.
     "PostToolBatch",
+    "SubagentStart",
     "Stop",
     "SubagentStop",
 )
@@ -161,18 +168,13 @@ def _log_fire(ctx: HookContext) -> None:
     log_path = os.environ.get("AOPS_HOOK_LOG_PATH")
     if not log_path:
         return
-    record = {
-        "ts": datetime.now(UTC).isoformat(),
-        "client": ctx.client,
-        "event": ctx.event,
-        "session_id": ctx.session_id,
-        "tool": ctx.tool,
-    }
+    record = asdict(ctx)
+    record["ts"] = datetime.now(UTC).isoformat()
     try:
         path = Path(log_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record) + "\n")
+            f.write(json.dumps(record, default=str) + "\n")
     except OSError:
         pass
 
@@ -228,27 +230,24 @@ def _merge(results: list[Result | None]) -> Result | None:
 
 
 def _render_claude(result: Result, event: str) -> dict:
-    if result.kind is Kind.BLOCK and event in BLOCKABLE_EVENTS:
-        # The one shape Claude Code reads as "do not stop": a top-level
-        # decision, not nested under hookSpecificOutput.
-        blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
-        if result.user_text:
-            blocked["systemMessage"] = result.user_text
-        return blocked
-
     if result.kind is Kind.BLOCK:
-        # A block only means something on Stop/SubagentStop — Claude Code has no
-        # "block" shape for any other event. A handler that returns one here is
-        # a wiring bug: report it loudly and degrade to an advisory rather than
-        # emit a shape that corrupts the response or silently does nothing. The
-        # text is still worth delivering; the disposition is not, and a handler
-        # must not read silence here as enforcement that happened.
-        print(
-            f"dispatch: block() is illegal on event {event!r} (Claude Code only "
-            "reads a block decision on Stop/SubagentStop) — degrading to an "
-            "advisory instead of corrupting the hook response",
-            file=sys.stderr,
-        )
+        if event in BLOCKABLE_EVENTS:
+            # The one shape Claude Code reads as "do not stop": a top-level
+            # decision, not nested under hookSpecificOutput.
+            blocked: dict[str, Any] = {"decision": "block", "reason": result.inject_text}
+            if result.user_text:
+                blocked["systemMessage"] = result.user_text
+            return blocked
+
+        else:
+            # Block only means something on certain events; in case of misconfiguration
+            # text is still worth delivering; the disposition is not, and a handler
+            # must not read silence here as enforcement that happened.
+            print(
+                f"dispatch: block() is illegal on event {event!r}; "
+                "degraded to advisory — the text was delivered, the block was not",
+                file=sys.stderr,
+            )
 
     if result.kind is Kind.REFUSE:
         specific = {
@@ -296,16 +295,23 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
     tool_calls = (
         tuple(c for c in raw_calls if isinstance(c, dict)) if isinstance(raw_calls, list) else ()
     )
-    return HookContext(
+
+    valid_keys = {f.name for f in fields(HookContext)}
+    kwargs = {k: v for k, v in raw.items() if k in valid_keys and v is not None}
+
+    kwargs.update(
         client=client,
         event=event,
-        tool=raw.get("tool_name") or raw.get("toolName") or "",
+        tool=raw.get("tool_name") or raw.get("toolName") or kwargs.get("tool", ""),
         command=command,
-        session_id=raw.get("session_id") or raw.get("conversationId") or "",
+        session_id=raw.get("session_id")
+        or raw.get("conversationId")
+        or kwargs.get("session_id", ""),
         tool_calls=tool_calls,
         raw=raw,
         hooks_dir=hooks_dir,
     )
+    return HookContext(**kwargs)
 
 
 # The operator-visible switch for OTel emission. Read here only to decide
@@ -400,9 +406,7 @@ def main(argv: list[str]) -> int:
     if event is None:
         return 0
 
-    # Structural self-loop guard: no-op before any handler is loaded or run,
-    # and before normalize() / _log_fire() — no state is touched, nothing is
-    # printed. See is_continuation()'s docstring for what this guards against.
+    # Do not fire if we have already prevented a stop event this turn
     if is_continuation(event, raw):
         return 0
 

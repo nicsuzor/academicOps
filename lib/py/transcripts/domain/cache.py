@@ -14,36 +14,66 @@ import hashlib
 import json
 import logging
 from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from transcripts.model import NormalizedSession
 
 logger = logging.getLogger(__name__)
 
+EXPIRATION_SECONDS = 30 * 24 * 3600  # 30 days (~1 month)
+
+
+def _file_content_hash(path: Path) -> str:
+    """Hash a single file based on st_size + sha256(first_1KB + last_1KB).
+
+    Immune to filesystem timestamp changes (e.g. git pull, checkout, or touch).
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return f"{path}:missing"
+
+    size = stat.st_size
+    if size == 0:
+        return f"{path}:0:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+    try:
+        with path.open("rb") as f:
+            if size <= 2048:
+                chunk = f.read()
+            else:
+                head = f.read(1024)
+                f.seek(-1024, 2)
+                tail = f.read(1024)
+                chunk = head + tail
+            digest = hashlib.sha256(chunk).hexdigest()
+            return f"{path}:{size}:{digest}"
+    except OSError:
+        return f"{path}:error"
+
 
 def source_fingerprint(paths: Iterable[Path]) -> str:
     """Fingerprint the source files a session was reconstructed from.
 
-    Any append, truncation, or newly added subagent log changes the digest and
-    therefore invalidates the cache entry.
+    Uses st_size + sha256(first_1KB + last_1KB) content hashing, making the digest
+    invariant across git pull, git checkout, or filesystem timestamp touches.
     """
-    parts: list[str] = []
-    for path in sorted(paths, key=str):
-        try:
-            stat = path.stat()
-        except OSError:
-            parts.append(f"{path}:missing")
-        else:
-            parts.append(f"{path}:{stat.st_mtime_ns}:{stat.st_size}")
+    parts = [_file_content_hash(p) for p in sorted(paths, key=str)]
     return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
 
 class SkipCache:
-    """Skip sessions that rendered to nothing, until their source files change."""
+    """Skip sessions that rendered to nothing, until their source files change.
 
-    def __init__(self, cache_file: Path) -> None:
+    Entries expire after 30 days (1 month).
+    """
+
+    def __init__(self, cache_file: Path, expiration_seconds: float = EXPIRATION_SECONDS) -> None:
         self.cache_file = cache_file
-        self.empty_sessions: dict[str, str] = {}
+        self.expiration_seconds = expiration_seconds
+        self.empty_sessions: dict[str, dict[str, Any]] = {}
         self.load()
 
     def load(self) -> None:
@@ -56,15 +86,22 @@ class SkipCache:
             self.empty_sessions = {}
             return
 
+        now = datetime.now(UTC).timestamp()
         if isinstance(data, dict):
-            self.empty_sessions = {
-                str(key): str(value) for key, value in data.items() if isinstance(value, str)
-            }
+            cleaned: dict[str, dict[str, Any]] = {}
+            for key, val in data.items():
+                if isinstance(val, str):
+                    # Legacy string fingerprint format: convert to dict with current timestamp
+                    cleaned[str(key)] = {"fingerprint": val, "ts": now}
+                elif isinstance(val, dict) and "fingerprint" in val:
+                    ts = float(val.get("ts", now))
+                    if now - ts < self.expiration_seconds:
+                        cleaned[str(key)] = {"fingerprint": str(val["fingerprint"]), "ts": ts}
+            self.empty_sessions = cleaned
         else:
-            # A cache written before entries carried a fingerprint cannot say
-            # whether its sessions have since grown. Drop it and re-examine.
+            # Legacy cache format: drop and re-examine
             logger.info(
-                "skip-cache at %s has no source fingerprints; re-examining every session once",
+                "skip-cache at %s has legacy format; re-examining every session once",
                 self.cache_file,
             )
             self.empty_sessions = {}
@@ -79,11 +116,29 @@ class SkipCache:
             logger.exception("Failed to save skip-cache to %s", self.cache_file)
 
     def is_skipped(self, key: str, fingerprint: str) -> bool:
-        """True only if `key` was recorded empty and its sources are unchanged since."""
-        return self.empty_sessions.get(key) == fingerprint
+        """True only if `key` was recorded empty, unchanged, and not expired."""
+        entry = self.empty_sessions.get(key)
+        if not entry:
+            return False
+        if entry.get("fingerprint") != fingerprint:
+            return False
+        ts = float(entry.get("ts", 0))
+        now = datetime.now(UTC).timestamp()
+        if now - ts >= self.expiration_seconds:
+            self.empty_sessions.pop(key, None)
+            self.save()
+            return False
+        return True
 
     def mark_empty(self, key: str, fingerprint: str) -> None:
-        self.empty_sessions[key] = fingerprint
+        now = datetime.now(UTC).timestamp()
+        self.empty_sessions[key] = {"fingerprint": fingerprint, "ts": now}
+        self.save()
+
+    def mark_processed(self, key: str, fingerprint: str) -> None:
+        """Record a successfully rendered session so unchanged runs skip re-parsing."""
+        now = datetime.now(UTC).timestamp()
+        self.empty_sessions[key] = {"fingerprint": fingerprint, "ts": now}
         self.save()
 
     def forget(self, key: str) -> None:

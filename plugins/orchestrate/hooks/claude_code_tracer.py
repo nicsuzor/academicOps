@@ -693,7 +693,9 @@ def _extract_llm_spans_for_turn(
             if not usage:
                 continue
 
-            msg_id = msg.get("id", "") or id(entry)  # fall back to object id
+            # Falls back to the entry's object id, as a string: this is only ever a
+            # grouping key compared against `current_group_id`, which is `str | None`.
+            msg_id = msg.get("id", "") or str(id(entry))
             model = msg.get("model", "claude")
             content_blocks = msg.get("content", [])
             ts = entry.get("timestamp", "")
@@ -755,9 +757,15 @@ def _extract_llm_spans_for_turn(
 def _otel_imports():
     from opentelemetry import trace
     from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import SpanContext, TracerProvider
+    from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-    from opentelemetry.trace import NonRecordingSpan, SpanKind, StatusCode, TraceFlags
+    from opentelemetry.trace import (
+        NonRecordingSpan,
+        SpanContext,
+        SpanKind,
+        StatusCode,
+        TraceFlags,
+    )
 
     return (
         trace,

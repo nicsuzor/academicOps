@@ -6,6 +6,11 @@
     "accountUuid": "00000000-0000-0000-0000-000000000001",
     "emailAddress": "polecat-worker@headless.local"
   },
+  "permissions": {
+    "allow": [
+      "Bash(agy:*)"
+    ]
+  },
   "projects": {
     "/workspace": {
       "hasTrustDialogAccepted": true,
@@ -14,5 +19,10 @@
       "hasClaudeMdExternalIncludesWarningShown": true,
       "projectOnboardingSeenCount": 0
     }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "ccstatusline",
+    "padding": 0
   }
 }

@@ -59,38 +59,73 @@ model: <string>              # "inherit" | "haiku" | "sonnet" | "opus" | concret
 tools: <list<string>>        # Tool allowlist (canonical names above). Empty list = no tools.
 ```
 
-**Optional:**
+**Optional — harness fields.** Valid in any agent or sub-agent file. All but
+`allowedTools` appear in the Claude Code agent-frontmatter schema itself
+(`tools`, `disallowedTools`, `color`, `effort`, `permissionMode`, `mcpServers`,
+`hooks`, `maxTurns`, `skills`, `initialPrompt`, `memory`, `background`,
+`isolation`); `allowedTools` is carried in the same frontmatter in the
+permission-rule syntax described below.
 
 ```yaml
 color: <string>              # Display hint; no authority semantics
-mcpServers: <list<string>>   # MCP servers the agent may use. Implicitly grants every mcp__<server>__* tool. Use disallowedTools to narrow this set.
-disallowedTools: <list<string>>  # Explicit denylist. Overrides grants from `tools` and `mcpServers`.
-bashScopes: <list<string>>   # Named command families (e.g. git:read, gh:write, pytest). REQUIRED when `Bash` ∈ tools — see Bash Scopes below.
-fileAccess:                  # Repo-relative read/write globs. REQUIRED when any of Read/Write/Edit/NotebookEdit/Glob/Grep ∈ tools — see Filesystem Paths below.
-  read: <list<glob>>
-  write: <list<glob>>        # optional; omit if no write needed
+mcpServers: <list<string>>   # MCP servers the agent may use. Implicitly grants every mcp__<server>__* tool.
+allowedTools: <list<string>> # Permission rules in Tool(pattern) form — e.g. Agent(pauli), Skill(q), Bash(git *).
+                             # Narrows *how* a granted tool may be called; `tools` grants the tool at all.
+disallowedTools: <list<string>>  # Explicit denylist. Narrows the default set; the harness ignores it when `tools` is also set.
 skills: <list<string>>       # Skill allowlist. If present, agent may invoke only these via the Skill tool. If omitted, no skill invocation is permitted.
-subagents: <list<string>>    # Sub-agent allowlist for the Agent tool. If omitted, no subagent spawning is permitted.
-permissionMode: <string>     # "default" | "bypassPermissions" | "plan". Default: "default".
+hooks: <map>                 # PreToolUse / PostToolUse / Stop hooks scoped to this agent's lifetime.
+memory: <string>             # Persistent memory scope: "user" | "project" | "local".
+initialPrompt: <string>      # Auto-submitted first message when the agent runs as the main session (via --agent). Not read when spawned as a sub-agent.
+permissionMode: <string>     # "default" | "dontAsk" | "acceptEdits" | "auto" | "bypassPermissions" | "plan". Default: "default".
 maxTurns: <int | false>      # Turn budget. false = unlimited (orchestrator-class only).
-effort: <string>             # "low" | "medium" | "high". Advisory only.
+effort: <string>             # "low" | "medium" | "high" | "max" | integer. Advisory only.
 background: <bool>           # Default execution mode. Advisory.
 isolation: <bool | "worktree">  # Default isolation mode. Advisory.
 ```
 
+**Optional — academicOps-local.** Declared in the same frontmatter, consumed by
+this spec's lint and by the polecat sandbox rather than by the harness:
+
+```yaml
+bashScopes: <list<string>>   # Named command families (e.g. git:read, gh:write, pytest). REQUIRED when `Bash` ∈ tools — see Bash Scopes below.
+fileAccess:                  # Repo-relative read/write globs. REQUIRED when any of Read/Write/Edit/NotebookEdit/Glob/Grep ∈ tools — see Filesystem Paths below.
+  read: <list<glob>>
+  write: <list<glob>>        # optional; omit if no write needed
+subagents: <list<string>>    # Sub-agent allowlist for the Agent tool. If omitted, no subagent spawning is permitted.
+```
+
+`tools`, `allowedTools`, and `disallowedTools` are three distinct surfaces, not
+variants of one field. `tools` is the capability grant. `allowedTools` is the
+approval rule set, in the same `Tool(pattern)` syntax the CLI's `--allowedTools`
+flag and `permissions.allow` in settings accept — it is what makes a granted
+call proceed without a prompt under `permissionMode: dontAsk`. `disallowedTools`
+is the denylist. Removing any of the three changes what an agent may do, or what
+it must stop and ask about, and none of them is a legacy alias for another.
+
+Open question, flagged rather than assumed: `allowedTools` does not appear in
+the harness's own agent-definition schema, and `build/` has no reader for it
+either, so which component consumes an agent file's `allowedTools` is not
+established here. It is a declared commitment on the same footing as
+`bashScopes` and `subagents` until a runtime trial confirms otherwise. Nothing
+in this spec licenses stripping it.
+
 ### Deny-by-default grid
 
-| Field             | Omitted means                                              |
-| ----------------- | ---------------------------------------------------------- |
-| `tools`           | No tool calls permitted                                    |
-| `mcpServers`      | No MCP servers                                             |
-| `bashScopes`      | No bash — even with `Bash` in `tools`; lint rejects this   |
-| `fileAccess`      | No filesystem access — lint rejects if `tools` requires it |
-| `skills`          | No skill invocation                                        |
-| `subagents`       | No sub-agent spawning                                      |
-| `disallowedTools` | No explicit overrides                                      |
-| `permissionMode`  | `"default"`                                                |
-| `maxTurns`        | Harness default                                            |
+| Field             | Omitted means                                                         |
+| ----------------- | --------------------------------------------------------------------- |
+| `tools`           | No tool calls permitted                                               |
+| `mcpServers`      | No MCP servers                                                        |
+| `bashScopes`      | No bash — even with `Bash` in `tools`; lint rejects this              |
+| `fileAccess`      | No filesystem access — lint rejects if `tools` requires it            |
+| `skills`          | No skill invocation                                                   |
+| `subagents`       | No sub-agent spawning                                                 |
+| `allowedTools`    | No pre-approved call patterns; every call falls through to the prompt |
+| `disallowedTools` | No explicit overrides                                                 |
+| `permissionMode`  | `"default"`                                                           |
+| `hooks`           | No agent-scoped hooks                                                 |
+| `memory`          | No persistent memory                                                  |
+| `initialPrompt`   | No auto-submitted first turn                                          |
+| `maxTurns`        | Harness default                                                       |
 
 ### Known exception: `tools` omitted (harness materialization defect)
 
@@ -103,40 +138,16 @@ confirmed to deliver the full tool pool, including MCP servers, is omitting
 `tools` entirely — the agent then inherits its parent's complete effective set
 instead of "no tool calls permitted."
 
-**The same inversion held for `subagents` until this was ruled on: four of the
-five agent files now declare it, each per its actual role.** `pauli`
-(`plugins/pkb/agents/pauli.md`) is an open-ended dispatcher that routes to
-whatever worker type a task needs, and declares `subagents: ["*"]`. `james`
-(`plugins/orchestrate/agents/james.md`) declares the explicit list
-`["rbg:rbg", "pkb:pauli", "orchestrate:marsha", "general-purpose"]` — the
-three reviewers his own description names, plus the plain worker surface his
-dispatch skill requires. `rbg` (`plugins/rbg/agents/rbg.md`) declares
-`subagents: []`: its own description does not involve spawning, since it
-returns a verdict. `ida` (`plugins/ida/agents/ida.md`) declares the explicit
-list `["orchestrate:james", "pkb:pauli"]`, matching the only two delegation
-targets named in its own file. **`marsha`
-(`plugins/orchestrate/agents/marsha.md`) is the outstanding one** — her
-frontmatter carries neither `subagents` nor `tools`, so the grid row still
-describes an absent gate for her alone. Nothing enforces membership against
-any of the four either (see Lint Rules below: the frontmatter lint that would
-check `subagents` membership does not exist, so these remain declared
-commitments rather than checked ones). The claim at "No implicit orchestrator
-privilege" below — that each orchestrator lists its `subagents` explicitly —
-is true of every orchestrating agent in the tree; marsha orchestrates nothing.
+**Current state across the core agents:**
 
-`plugins/orchestrate/agents/james.md` omits `tools` for the materialization
-reason above, as does `plugins/orchestrate/agents/marsha.md`;
-`plugins/pkb/agents/pauli.md` and `plugins/rbg/agents/rbg.md` declare the
-wildcard `tools: ["*"]` rather than an explicit allowlist, to the same end.
-Each of the four needs `mcp__services__pkb__*` (or broader) to function at
-all, so an unenforced grant is preferable to a materialized set of six
-built-ins. `plugins/ida/agents/ida.md` keeps its declared `tools` list — its
-restriction is deliberate, but see the runtime finding below: declaring it does
-not currently mean it is enforced. Consequence: RBG's ultra-vires review (L4
-below) has no frontmatter ground truth for these four agents until the harness
-is fixed and `tools` is restored. Restore `tools` on all four the moment
-upstream ships a fix that lets an explicit allowlist materialize MCP tools
-again.
+- The four core worker/backend agents — `james` (`plugins/orchestrate/agents/james.md`), `marsha` (`plugins/orchestrate/agents/marsha.md`), `pauli` (`plugins/pkb/agents/pauli.md`), and `rbg` (`plugins/rbg/agents/rbg.md`) — omit `tools` entirely from their frontmatter for this materialization reason. Each declares its required `mcpServers` (e.g. `services`, `plugin:pkb:services`, `plugin:orchestrate:playwright`), allowing the harness to materialize the full MCP namespace without hitting the allowlist truncation defect.
+- `ida` (`plugins/ida/agents/ida.md`), as the interactive face, declares an explicit `tools` allowlist (`[Agent, Skill, TodoWrite, SendMessage, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop]`) alongside `disallowedTools: [Bash, Grep, Glob, Read, Edit, Write, WebFetch, WebSearch]`, and `permissionMode: "dontAsk"` with the matching `allowedTools` rules (`Agent(pauli)`, `Agent(james)`, `Agent(pc)`, `Skill(q)`, `Skill(strategize)`, `Skill(enqueue)`, `Skill(tick)`, `Skill(remember)`, `Skill(learn)`, and the `Task*`/`SendMessage`/`TodoWrite` bare names) so her permitted calls run unprompted. She declares her delegation targets under `subagents: ["orchestrate:james", "pkb:pauli", "orchestrate:pc"]` and her permitted skills under `skills: ["q", "strategize", "enqueue", "tick", "remember", "learn"]`.
+- `pc` (`plugins/orchestrate/agents/pc.md`) declares `tools: [Bash, Skill]` with explicit `bashScopes: [tmux, uv, git, ssh]`, and pairs `permissionMode: "dontAsk"` with `allowedTools: [Bash(tmux *), Bash(uv run *), Bash(git *), Bash(pc *), Bash(ssh *)]`.
+- `agy` (`plugins/orchestrate/agents/agy.claude.md`) declares `tools: [Bash]`, `bashScopes: [agy]`, `permissionMode: dontAsk`, and `allowedTools: [Bash(agy --sandbox *)]`.
+- `enable_mcp_tools` is a legacy key with no reader in the harness or in `build/`; it is purged. `allowedTools`, `disallowedTools`, `permissionMode: dontAsk`, `hooks`, `memory`, and `initialPrompt` are **not** in that category — they are supported frontmatter and must not be stripped.
+- For agents requiring client-specific instructions or frontmatter, the build system supports native per-client files via `build/agents.py` (`<name>.<client>.md`, e.g. `agy.claude.md`), resolved in place by `resolve_client_agents` without error-prone mechanical translation.
+
+Restore explicit `tools` allowlists on all agents the moment upstream ships a harness fix that allows explicit allowlists to reliably materialize MCP tools.
 
 **Re-verified: the prior 9/9 pauli failure did not reproduce, and the
 previously-untested ida → pauli path works.** Five fresh trials against the
@@ -151,46 +162,44 @@ path this row exists to answer, previously untested — and both also reached
 `ToolSearch`, resolved the same tool, and completed the same live call: 2/2
 PASS. The hypothesis that ida's restricted `tools` declaration (no MCP grant)
 would propagate to a spawned pauli and starve it of tools too is refuted by
-direct observation. No cause for the reversal from 9/9 FAIL to 5/5 PASS is
-confirmed — the plugin-scoped `.mcp.json` collision named as the leading
-suspect in the prior record remains untested either way, and nothing here
-rules it in or out. Prior PKB records (`aops_b2b3e821`, `task_2c737b81`)
-describe this symptom as nondeterministic; this session's 5/5 PASS is
-consistent with that framing rather than with the intervening 21-trial
-session's fully deterministic split — treat pauli's PKB reachability as flaky
-across sessions until a run reproduces a failure and identifies what varies
-between runs. On this session's evidence, the reconcile-on-engagement design
-this row exists to gate is operable on its intended path.
+direct observation.
 
 **New finding, not previously documented: ida's declared `tools` restriction
 did not hold at runtime.** One of the two ida-parent trials reported ida's own
-tool set directly: despite `plugins/ida/agents/ida.md` declaring
-`tools: [Read, Skill, Agent, AskUserQuestion]`, the spawned ida's actual
-top-level set was `Agent, Artifact, Bash, Edit, Read, Skill, ToolSearch, Write`
-plus the full deferred `mcp__plugin_aops-pkb_services__*` namespace — Bash,
-Edit, Write, and unrestricted PKB MCP access, none of which its frontmatter
-grants. This is a different failure mode from the one this section otherwise
+tool set directly: despite `plugins/ida/agents/ida.md` declaring a `tools`
+allowlist that grants no filesystem, shell, or MCP tool at all, and denying
+`Bash`, `Grep`, `Glob`, `Read`, `Edit`, `Write`, `WebFetch`, and `WebSearch`
+again in `disallowedTools`, the spawned ida's actual top-level set was
+`Agent, Artifact, Bash, Edit, Read, Skill, ToolSearch, Write` plus the full
+deferred `mcp__plugin_aops-pkb_services__*` namespace — Bash, Edit, Write, and
+unrestricted PKB MCP access, none of which its frontmatter grants and four of
+which it explicitly denies. This is a different failure mode from the one this section otherwise
 documents: that failure mode collapses an explicit allowlist to _fewer_ tools
 (the harness's six built-ins, no MCP); this is an explicit allowlist being
 ignored in favour of _more_ — the full parent session's effective set, the same
 behaviour this section documents above for agents that omit `tools` entirely.
 If declaring `tools` does not restrict a spawned agent when its parent holds a
 broader set, no agent's declared allowlist is trustworthy ground truth for
-RBG's review, not only the four that omit it. This needs its own investigation
-and is out of scope for what this session verified; flagged here rather than
-silently patched around, per this spec's own evidentiary standard.
+RBG's review, not only the four that omit it. Flagged here per this spec's own evidentiary standard.
 
-### Wildcards
+### Wildcards and Bounded Delegation
 
-`skills` and `subagents` accept the single-element wildcard list `["*"]` meaning "any installed skill" / "any defined agent". The wildcard is an explicit, auditable declaration — the lint treats `["*"]` as a signal that the agent is intentionally open, not as a missing gate. Tools do not accept a wildcard: the `tools` list is always explicit.
+- `skills` accepts the single-element wildcard list `["*"]` meaning "any installed skill". The wildcard is an explicit, auditable declaration indicating that the agent is intentionally open to all skills.
+- `subagents` in core plugin agents must be explicitly bounded (enumerated list or omitted / empty `[]`). Wildcard `subagents: ["*"]` is strictly prohibited in core agents (`test_agent_declares_a_bounded_subagent_set`) to prevent unbounded recursive fan-out cycles across nested subagent spawns.
+- `tools` does not accept a wildcard: the `tools` list is always explicit or omitted (under the harness materialization workaround).
 
 ### Effective tool set
 
 ```
-effective = (tools ∪ expand(mcpServers)) ∖ disallowedTools
+effective  = (tools ∪ expand(mcpServers)) ∖ disallowedTools
+unprompted = { calls matching allowedTools }              # under permissionMode: dontAsk
 ```
 
-where `expand(mcpServers)` is every `mcp__<server>__*` tool surfaced by those servers at load time.
+where `expand(mcpServers)` is every `mcp__<server>__*` tool surfaced by those
+servers at load time. `effective` is what the agent may do; `unprompted` is the
+subset it may do without stopping for approval. An agent that declares both
+`tools` and `disallowedTools` states the intersection this spec holds it to,
+irrespective of which of the two the harness reads first.
 
 ## Permissions Model
 
@@ -248,28 +257,23 @@ Translation is mechanical. Source files are never hand-edited to target form. Ta
 
 ## AGY permissions
 
-The permission engine inside agy (Jetski) checks tool requests against rules configured under permissions in ~/.gemini/antigravity-\
-cli/settings.json.
+The permission engine inside agy (Jetski) checks tool requests against rules configured under `permissions` in `~/.gemini/antigravity-cli/settings.json`.
 
-Rule entries follow the pattern:
+Rule entries follow the pattern: `<action_type>(<target_or_pattern>)`
 
-<action_type>(<target_or_pattern>)
+### Action Categories & Syntax
 
-### Complete List of Action Categories & Syntax
+| Action Type        | Scope / Usage                                        | Examples                                                                        |
+| ------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `mcp(...)`         | Model Context Protocol server/tool calls             | `mcp(services/pkb__status)`, `mcp(services/pkb__*)`, `mcp(services/*)`          |
+| `read_file(...)`   | Reading files or directories (recursive for folders) | `read_file(/workspace/src/*)`, `read_file(/workspace/*.md)`                     |
+| `write_file(...)`  | Creating, editing, or deleting files/directories     | `write_file(/workspace/dist/*)`, `write_file(/workspace/plugins/orchestrate/*)` |
+| `command(...)`     | Executing shell commands via `run_shell_command`     | `command(git status*)`, `command(pytest*)`, `command(make build*)`              |
+| `read_url(...)`    | Fetching web content via `read_url_content` / HTTP   | `read_url(https://antigravity.google/*)`                                        |
+| `execute_url(...)` | Remote script/action execution via web endpoints     | `execute_url(https://api.github.com/*)`                                         |
+| `unsandboxed(...)` | Commands running outside container boundaries        | `unsandboxed(docker *)`                                                         |
 
-| Action Type      | Scope / Usage                                        | Examples                                                       |
-| ---------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
-| mcp(...)         | Model Context Protocol server/tool calls             | mcp(services/pkb__status) mcp(services/pkb___) mcp(services/_) |
-| read_file(...)   | Reading files or directories (recursive for folders) | read_file(/workspace/src/_)read_file(/workspace/_.md)          |
-| write_file(...)  | Creating, editing, or deleting files/directories     | write_file(/workspace/dist/*)write_file(/workspace/plugins/o   |
-|                  | rchestrate/*)                                        |                                                                |
-| command(...)     | Executing shell commands via run_shell_command       | command(git status*)command(pytest*)command(make build*)       |
-| read_url(...)    | Fetching web content via read_url_content / HTTP     | read_url(https://antigravity.google/*)                         |
-| execute_url(...) | Remote script/action execution via web endpoints     | execute_url(https://api.github.com/*)                          |
-| unsandboxed(...) | Commands running outside container boundaries        | unsandboxed(docker *)                                          |
-| ──────           |                                                      |                                                                |
-
-### Global agy settings - settings.json
+### Global agy settings — settings.json
 
 ```json
 {
@@ -292,33 +296,32 @@ Rule entries follow the pattern:
 
 ### Agent Frontmatter Declarations (Agent Level)
 
-As specified in agent-authority.md, individual agent files (e.g. plugins/orchestrate/agents/james.md) can restrict their authority\
-envelope in YAML frontmatter:
+As specified in this document, individual agent files (e.g. `plugins/orchestrate/agents/james.md`) can restrict their authority envelope in YAML frontmatter:
 
-```markdown
-    ---                                                                                                                                      
-    name: james                                                                                                                              
-    description: "The Orchestrator: routes work to a supervised in-session team"                                                             
-    color: orange                                                                                                                            
-    permissionMode: default                                                                                                                  
-                                                                                                                                             
-    # 1. Scope file paths (read/write globs)                                                                                                 
-    fileAccess:
-      read:
-        - "plugins/**"
-        - "specs/**"
-      write:
-        - "dist/**"
+```yaml
+---
+name: james
+description: "The Orchestrator: routes work to a supervised in-session team"
+color: orange
+permissionMode: default
 
-    # 2. Scope shell command families
-    bashScopes:
-      - "git:read"
-      - "pytest"
+# 1. Scope file paths (read/write globs)
+fileAccess:
+  read:
+    - "plugins/**"
+    - "specs/**"
+  write:
+    - "dist/**"
 
-    # 3. Explicitly deny sensitive tools
-    disallowedTools:
-      - "write_file"
-    ---
+# 2. Scope shell command families
+bashScopes:
+  - "git:read"
+  - "pytest"
+
+# 3. Explicitly deny sensitive tools
+disallowedTools:
+  - "write_file"
+---
 ```
 
 ## Lint Rules
@@ -362,7 +365,7 @@ The enforcement layers, from softest to hardest:
 | L4    | Ultra-vires enforcer (RBG)     | Post-session review | Flag, surface, escalate |
 | L5    | Policy hooks, polecat sandbox  | Pre-execution       | Hard block              |
 
-L5 is the hard edge — a declaration cannot re-open a path an L5 hook blocks. An agent operating outside its declaration is flagged even if no hook caught it; the declaration is a binding commitment, not a configuration hint. (L3/L4/L5 here is a _local_ scheme for this spec; the former framework-wide enforcement pyramid's L0–L7 numbering was retired along with `ENFORCEMENT-MAP.md`, so there is no longer a numbered scheme to cross-reference it against.)
+L5 is the hard edge — a declaration cannot re-open a path an L5 hook blocks. An agent operating outside its declaration is flagged even if no hook caught it; the declaration is a binding commitment, not a configuration hint. (L3/L4/L5 here is a _local_ scheme for this spec. The framework-wide L0–L7 numbering it once mapped onto was retired; [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) remains the live state register of every enforcement mechanism, but it now indexes mechanisms by name rather than by layer number, so there is no numbered scheme to cross-reference these three against.)
 
 **Funnel/chokepoint pattern** (last resort only): deny a capability to all agents and grant it to exactly one that must invoke a specific skill (e.g. ida declares no PKB tools at all, so she reaches the graph only by commissioning `pkb:pauli`). Architecturally unforgeable but imposes a coordination tax on every gated call — deploy only after cheaper rungs (instruction → deterministic gate → post-hoc enforcer) demonstrably fail.
 
@@ -374,5 +377,5 @@ Related: **`specs/enforcement/enforcement.md`** (frontmatter is L3, lint is L4, 
 - **Rate or quota limits.** Handled by harness budgets.
 - **Prompt content review.** Handled by rbg and the enforcer.
 - **Per-operation timeouts.** Harness-level concern.
-- **Runtime user approval prompts.** `permissionMode` is an interactive-UX hint, orthogonal to the declarative permissions defined here.
+- **Runtime user approval mechanics.** `permissionMode` and `allowedTools` decide which permitted calls stop for approval — `dontAsk` runs the `allowedTools` patterns unprompted. Both are real, load-bearing frontmatter; what is out of scope here is the prompting machinery itself, not the fields. They govern _how_ a call is approved, never _whether_ it is within the envelope this spec declares.
 - **Cross-repo permissions.** Each repo's agent files are scoped to that repo; multi-repo coordination happens through the polecat dispatch layer.

@@ -30,7 +30,7 @@ flowchart TD
     MAR --> OUT
 
     ANY(["any agent about to stop"]) --> H2["Stop / SubagentStop<br/>→ handlers.py: honest_output"]
-    H2 --> MSG2["messages/honesty.md<br/>advisory, declared async"]
+    H2 --> MSG2["messages/honesty.md<br/>blocking via block()"]
 
     SS(["session start"]) --> H3["handlers.py: session_start<br/>→ appends credentials and paths<br/>to CLAUDE_ENV_FILE"]
 ```
@@ -43,16 +43,17 @@ Asynchronous work has no return path here by design. James's responsibility ends
 
 ## What it provides
 
-| Kind  | Name                  | Purpose                                                                                                             |
-| ----- | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Agent | `james`               | Briefs and dispatches work; bounces reports that arrive without proof. Never instructs method, never re-does work.  |
-| Agent | `marsha`              | QA. Judges whether an artifact is outstanding, and runs it to find out.                                             |
-| Skill | `strategic-review`    | Deploys rbg, pauli, and marsha in parallel and reconciles their findings into one verdict. Bound to james.          |
-| Skill | `verify`              | Marsha's QA pass: assume it is broken, then prove otherwise. Bound to marsha; commissioned, never invoked directly. |
-| Hook  | `PostToolUse`         | The handback doctrine, delivered to the receiver when a subagent's report lands.                                    |
-| Hook  | `Stop`/`SubagentStop` | The handback doctrine plus the worker-side register, delivered to an agent about to hand back.                      |
-| Hook  | `SessionStart`        | Writes session credentials and paths into `CLAUDE_ENV_FILE`.                                                        |
-| CLI   | polecat               | The container launcher, at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.                                                  |
+| Kind  | Name               | Purpose                                                                                                             |
+| ----- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Agent | `james`            | Briefs and dispatches work; bounces reports that arrive without proof. Never instructs method, never re-does work.  |
+| Agent | `marsha`           | QA. Judges whether an artifact is outstanding, and runs it to find out.                                             |
+| Skill | `strategic-review` | Deploys rbg, pauli, and marsha in parallel and reconciles their findings into one verdict. Bound to james.          |
+| Skill | `verify`           | Marsha's QA pass: assume it is broken, then prove otherwise. Bound to marsha; commissioned, never invoked directly. |
+| Hook  | `PostToolBatch`    | The handback doctrine (rule against hearsay), delivered to the receiver when a subagent's report lands.             |
+| Hook  | `SubagentStart`    | The handback doctrine (honesty / evidence reminder), delivered to a subagent starting its turn.                     |
+| Hook  | `SessionStart`     | Writes session credentials and paths into `CLAUDE_ENV_FILE`.                                                        |
+| Hook  | `Stop`             | Closes session tracing and telemetry.                                                                               |
+| CLI   | polecat            | The container launcher, at `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.                                                  |
 
 No commands.
 
@@ -71,5 +72,5 @@ No endpoint, host, registry, account or credential is written into anything this
 ## Depends on
 
 - `lib/hooks/` for the hook runtime, and `lib/polecat/` for the container launcher, both injected at build time (`manifest/plugin.toml`).
-- The `rbg` and `pkb` plugins at runtime, for `rbg:rbg` and `pkb:pauli`, whom `strategic-review` always deploys.
+- The `rbg` and `pkb` plugins at runtime, for `rbg:rbg` and `pkb:pauli`, whom `strategic-review` always deploys, and for the `services` MCP server provided by `pkb` (`plugins/pkb/manifest/mcp.template.json`) which `james` accesses via `mcpServers: [services, plugin:pkb:services]`.
 - Docker, and an image built from this repository, for the polecat containers.

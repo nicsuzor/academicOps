@@ -19,6 +19,9 @@ correction.
 
 ## Core Rules
 
+- **Framing Precedes Defects**: Before any criterion-by-criterion pass, establish what the
+  document is trying to be and whether that is the right thing to be. The highest-value
+  points live here and cannot be reached by probing against criteria.
 - **Evidence-Based**: Every claim must cite the application (page, section, line, or quote).
 - **Absent Evidence Is Feedback**: A missing required element is a scoreable weakness, not
   an omission to skip silently — but say where you looked (a documented grep with synonyms),
@@ -29,6 +32,9 @@ correction.
   academic's. The agent prepares evidence-mapped drafts with **scores left blank**. This is
   how funding-body GenAI policies (e.g. ARC's ban on AI-generated assessor text) are
   satisfied _structurally_ — not by refusing to help draft.
+- **Never Pre-Commit the Author's Results**: Do not propose a finding, headline claim, or
+  framing asserting what an unrun study will show — suggest evaluating how well something
+  works, never demonstrating that it fails. An integrity rule, not a style preference.
 - **No Integrity Allegations in Comments**: Route suspected research-integrity breaches to
   the scheme's integrity office separately (see [[platform-instructions]]).
 - **One Living Draft in Git**: One draft per review, versioned by **git history** — no
@@ -150,6 +156,13 @@ For reviewing draft papers / proposals written by colleagues before submission:
    numbers, plus a raw judgement block.
 3. Draft feedback in the academic's voice ([[voice-and-detemplating]]). The author is in the
    room — be direct but constructive; the academic provides the judgment, the agent supports.
+4. Budget length by the author's remaining time, not by your thoroughness — ask or infer
+   how long they have; a day left means about a page. Volume reads as thoroughness to the
+   writer and as noise to the reader.
+5. Lead with what works, then the one structural idea, then detail — enthusiasm first, one
+   big idea, done.
+6. Never paraphrase what the academic previously said into a label — check the primary source
+   and quote their words.
 
 ## References
 

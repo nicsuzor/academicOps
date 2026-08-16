@@ -66,7 +66,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     ca-certificates \
     openssh-client \
-    golang-go \
+    && GO_ARCH=$(dpkg --print-architecture) \
+    && curl -fsSL "https://go.dev/dl/go1.24.0.linux-${GO_ARCH}.tar.gz" | tar -C /usr/local -xz \
+    && ln -s /usr/local/go/bin/* /usr/local/bin/ \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -81,6 +83,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
     && ln -s /usr/bin/batcat /usr/local/bin/bat
+
+# Install rtk (Rust Token Killer) — the token-optimizing CLI proxy documented
+# in ~/.claude/RTK.md on the host. The binary alone is inert: the savings
+# come from the PreToolUse hook (`rtk hook claude`, installed for the worker
+# user further down, after the plugin-install step writes the rest of
+# settings.json) that rewrites commands in place before execution.
+#
+# Ships as the static musl build, not the .deb the host uses: the .deb
+# Depends: libc6 (>= 2.39), but this image's base (python:3.12-slim-bookworm)
+# ships glibc 2.36 — confirmed by hand: `dpkg -i` half-installs and the
+# resulting binary fails at runtime with "GLIBC_2.39 not found". The musl
+# build has no glibc dependency at all (`ldd` reports "statically linked")
+# and runs identically here. Same amd64 arch as the host binary either way —
+# this image is linux/amd64, and a host binary of the wrong arch would not be
+# portable, but the musl tarball is fetched fresh from the same GitHub
+# release the host's .deb came from, not copied off the host, so arch is
+# whatever this build targets.
+#
+# Version pinned to match what's on the host (`dpkg -l rtk` on nicwin,
+# 2026-08-13: 0.43.0-1). Bump deliberately via --build-arg RTK_VERSION, not
+# by fetching "latest" — an unpinned hook that changes rewrite behavior under
+# a worker mid-flight is worse than a stale one.
+ARG RTK_VERSION=0.43.0
+RUN RTK_URL="https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/rtk-x86_64-unknown-linux-musl.tar.gz" \
+    && curl -fsSL -o /tmp/rtk.tar.gz "$RTK_URL" \
+    && tar -xzf /tmp/rtk.tar.gz -C /tmp \
+    && install -m 755 /tmp/rtk /usr/local/bin/rtk \
+    && rm -rf /tmp/rtk.tar.gz /tmp/rtk \
+    && rtk --version
 
 # Pre-install Playwright's Chromium browser and its system dependencies.
 # Marsha and other workers run browser verification via `playwright`; without
@@ -138,7 +169,7 @@ USER worker
 
 # Now set HOME and PATH for the worker user
 ENV HOME=/home/worker \
-    PATH="/home/worker/go/bin:/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
+    PATH="/home/worker/go/bin:/usr/local/go/bin:/home/worker/.local/bin:/home/worker/.cargo/bin:$PATH" \
     ANTIGRAVITY_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENABLE_TELEMETRY=1 \
     CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 \
@@ -207,6 +238,18 @@ ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
 COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
 RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
 
+# No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
+# scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
+# `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
+#
+# Warm uv's cache with that command's dependencies. Cold, `uvx --from
+# fastmcp-slim[server]` resolves and downloads 67 packages on first use, which
+# runs past the window a client waits for an MCP server to hand back its tool
+# list — the server is left starting, no tools are declared, and the agent
+# reports the MCP server as unavailable rather than as slow. Resolving them at
+# build time makes the runtime start a cache hit. No URL is involved.
+RUN uvx --from 'fastmcp-slim[server]' fastmcp --version
+
 # Pre-create every dir the --chmod'd config COPYs below land in, in one
 # layer. Without this BuildKit auto-creates the intermediate dirs and applies
 # the COPY's --chmod to them, producing 0644 (non-traversable) via umask:
@@ -267,11 +310,6 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 # in the same pass — `marketplace add` records the build-time $MP_ROOT there,
 # a path deleted before this layer ends. The marketplace's durable registration
 # is known_marketplaces.json, repointed by fixup-marketplace-cache below.
-#
-# .claude is pre-created (in the batched mkdir above) so BuildKit doesn't
-# auto-create it while applying --chmod, which would leave it 0644 and
-# non-traversable.
-COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-settings.json /home/worker/.claude/settings.json
 COPY --from=aops-dist --chown=worker:worker /aops-dist /tmp/aops-dist
 RUN umask 000 \
     && MP_NAME=academicOps \
@@ -287,6 +325,7 @@ RUN umask 000 \
     && claude plugin marketplace add "$MP_ROOT" \
     && claude plugin marketplace update "$MP_NAME" \
     && for p in $PLUGINS; do claude plugin install "$p@$MP_NAME"; done \
+    && { [ -f /home/worker/.claude/settings.json ] || echo '{}' > /home/worker/.claude/settings.json; } \
     && jq --arg mp "$MP_NAME" --arg plugins "$PLUGINS" \
         '.enabledPlugins = ($plugins | split("\n") | map(select(length > 0)) | map({key: (. + "@" + $mp), value: true}) | from_entries) | del(.extraKnownMarketplaces)' \
         /home/worker/.claude/settings.json > /tmp/settings.json \
@@ -308,6 +347,24 @@ RUN umask 000 \
     # keep for now && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
 
+# Register the rtk PreToolUse hook in the worker's settings.json — this is
+# the half of rtk that actually delivers token savings (see the rtk install
+# above). Run rtk's own installer rather than hand-writing the JSON: it
+# merges into the existing file (preserving enabledPlugins written
+# above it) instead of overwriting it, which is exactly how the hook got into
+# ~/.claude/settings.json on the host (`rtk init --global --agent claude`,
+# verified by diffing the host's settings.json against a fresh --dry-run of
+# this same command). --hook-only skips writing RTK.md (its meta-commands
+# doc) into the image; --auto-patch skips the interactive confirmation this
+# non-interactive build can't answer. Must run after the plugin-install block
+# above, which creates settings.json and writes enabledPlugins via
+# jq — running rtk init before that would have its hook clobbered.
+RUN umask 000 \
+    && rtk init --global --agent claude --auto-patch --hook-only \
+    && rm -f /home/worker/.claude/settings.json.bak \
+    && jq -e '.hooks.PreToolUse[0].hooks[0].command == "rtk hook claude"' /home/worker/.claude/settings.json >/dev/null \
+    && chmod -R a+rwX /home/worker/.claude
+
 # No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
 # scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
 # `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
@@ -320,9 +377,7 @@ RUN umask 000 \
 # build time makes the runtime start a cache hit. No URL is involved.
 RUN uvx --from 'fastmcp-slim[server]' fastmcp --version >/dev/null 2>&1 || true
 
-# Install the default ccstatusline config. Claude Code's own settings.json is
-# installed before the plugin install above, which then writes the generated
-# `enabledPlugins` into it.
+# Install the default ccstatusline config.
 # These defaults are overridden at runtime if the host stages replacements.
 # This and the seeds below stay BELOW the plugin install: `claude plugin
 # install` / `agy plugin install` write into ~/.claude, ~/.claude.json and
@@ -346,7 +401,7 @@ COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/claude-config.json /
 # agy analog of the Claude `hasCompletedOnboarding` seed above. Its cache dir
 # is pre-created in the batched mkdir further up.
 COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agy-onboarding.json /home/worker/.gemini/antigravity-cli/cache/onboarding.json
-COPY --chown=worker:worker --chmod=666 build/docker/antigravity-cli-settings.json /home/worker/.gemini/antigravity-cli/settings.json
+COPY --chown=worker:worker --chmod=666 lib/polecat/defaults/agy-settings.json /home/worker/.gemini/antigravity-cli/settings.json
 
 # Copy entrypoint script
 COPY --chown=worker:worker --chmod=777 lib/polecat/entrypoint.sh /home/worker/entrypoint.sh

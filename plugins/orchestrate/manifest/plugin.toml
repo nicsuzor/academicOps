@@ -6,8 +6,8 @@
 from = "hooks"
 to = "hooks"
 
-# The polecat launcher, which james invokes as
-# `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. Only the runtime modules are
+# The polecat launcher, invoked as `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` by the
+# `pc` agent (`plugins/orchestrate/agents/pc.md`). Only the runtime modules are
 # injected: `defaults/` and `entrypoint.sh` under lib/polecat/ are inputs to
 # the image build (Dockerfile), not files a plugin ever reads.
 [[shared]]
@@ -21,3 +21,7 @@ to = "polecat/cli.py"
 [[shared]]
 from = "polecat/env_contract.py"
 to = "polecat/env_contract.py"
+
+[[shared]]
+from = "polecat/notify.py"
+to = "polecat/notify.py"

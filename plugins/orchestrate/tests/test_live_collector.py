@@ -38,9 +38,20 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _endpoint() -> str:
+    """The configured endpoint, narrowed to `str`.
+
+    `pytestmark` skips this whole module when the endpoint is unset, so no test
+    body here ever runs with `None` — the assert states that invariant rather
+    than defending against it.
+    """
+    assert TARGET_ENDPOINT is not None
+    return TARGET_ENDPOINT
+
+
 def test_live_collector_create_exporter():
     """Verify _create_exporter initializes successfully against the live target endpoint."""
-    endpoint = TARGET_ENDPOINT
+    endpoint = _endpoint()
     protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "")
 
     exporter = claude_code_tracer._create_exporter(
@@ -52,7 +63,7 @@ def test_live_collector_create_exporter():
 
 def test_live_collector_build_and_export_spans():
     """Verify _build_and_export_spans sends span to live collector endpoint."""
-    endpoint = TARGET_ENDPOINT
+    endpoint = _endpoint()
     protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "")
     service_name = "orchestrate-live-integration-test"
     span_name = "live_collector_verification_span"
@@ -86,7 +97,7 @@ def test_live_collector_build_and_export_spans():
 
 def test_live_collector_standard_tracer_handlers():
     """Verify standard tracer handlers execute against the live collector endpoint with required parameters."""
-    endpoint = TARGET_ENDPOINT
+    endpoint = _endpoint()
     protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "")
     service_name = "orchestrate-live-integration-test"
     span_name = "live_collector_verification_span"
