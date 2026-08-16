@@ -17,6 +17,7 @@ bashScopes:
   - tmux
   - uv
   - git
+  - pc
   - ssh
 ---
 
