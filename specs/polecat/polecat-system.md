@@ -68,7 +68,13 @@ the container.
    variable falls back to the operator's polecat config file's own `cope:` block
    (`resolve_cope_evaluator`) rather than depending only on what happened to be
    exported in the invoking shell. Absent both, cope runs unconfigured in the
-   container — a legitimate no-op, not a fault.
+   container — a legitimate no-op, not a fault. Every one of these names is
+   passed as a valueless `docker run -e NAME`, with the value supplied through
+   the `docker` process's own environment: argv is world-readable in the host
+   process table for the life of the container, so a value on the command line
+   is a value published to every local process. Only `CONTAINER_SET_ENV` — the
+   container-internal paths and flags, never a credential — carries its value
+   on argv.
 6. Runs `docker run --rm --pull=never` as the invoking host UID, with the
    workspace mounted at `/workspace`, the staging dir read-only, and the session
    log directory bind-mounted straight into the agent's own session-state path so
