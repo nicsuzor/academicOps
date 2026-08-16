@@ -26,6 +26,8 @@ import yaml
 # specs/ARCHITECTURE.md plus the rest. One definition, shared with the `docker*`
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
+    from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV, format_otel_resource_attributes
+    from .notify import notify_run_complete
     from .env_contract import (
         CONTAINER_SET_ENV,
         FORWARDED_ENV,
@@ -42,6 +44,7 @@ except ImportError:  # run directly as <plugin-root>/polecat/cli.py
         docker_env_args,
         format_otel_resource_attributes,
     )
+    from polecat.notify import notify_run_complete
 
 
 # A trailing flag that means the caller has already asked for headless, so
@@ -1611,7 +1614,7 @@ def run(
                 else "container execution failed",
             }
 
-        write_run_record(
+        run_record_path = write_run_record(
             session_dir=session_dir,
             session_id=session_id,
             container_id=container_id,
@@ -1636,6 +1639,13 @@ def run(
             shutil.rmtree(staging_dir)
         if not preserve_workspace:
             cleanup_isolated_workspace(clone_cleanup)
+
+        # Last, so a slow or interrupted POST cannot delay or skip the cleanup
+        # above: a Ctrl-C during the request raises out of this `finally:`.
+        try:
+            notify_run_complete(run_record_path, sessions_base)
+        except Exception:
+            pass
 
     if returncode != 0:
         sys.exit(returncode)

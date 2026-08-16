@@ -78,3 +78,7 @@ def ensure_test_environment(monkeypatch, tmp_path):
     for key in list(os.environ.keys()):
         if key.startswith("AOPS_GATE_FILE_") or key in scrub_keys:
             monkeypatch.delenv(key, raising=False)
+
+    # No test may post to the developer's real Discord channel. Tests that care
+    # about the notification patch this themselves.
+    monkeypatch.setattr("lib.polecat.notify._post_discord", lambda line: None)

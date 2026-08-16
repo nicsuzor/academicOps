@@ -8,6 +8,7 @@ builder end to end until they land.
 """
 
 import json
+import re
 import tarfile
 import zipfile
 from pathlib import Path
@@ -57,13 +58,22 @@ def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
     Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
     fails at runtime, with file-not-found. This is the check that turns that into
     a build-time failure instead.
+
+    The sibling modules are read off cli.py's own fallback imports rather than
+    listed here, because a hand-kept list is exactly what let `notify.py` be
+    added to cli.py and left out of the manifest.
     """
+    siblings = set(
+        re.findall(r"from polecat\.(\w+) import", (PROJECT_ROOT / "lib/polecat/cli.py").read_text())
+    )
+    assert "env_contract" in siblings, "cli.py's fallback imports no longer parse"
     for client in ("claude", "agy"):
         polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
         assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
-        assert (polecat / "env_contract.py").is_file(), (
-            f"orchestrate-{client} ships cli.py without the env_contract it imports"
-        )
+        for module in siblings:
+            assert (polecat / f"{module}.py").is_file(), (
+                f"orchestrate-{client} ships cli.py without the {module} it imports"
+            )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()
         assert not (polecat / "entrypoint.sh").exists()
