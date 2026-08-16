@@ -1593,15 +1593,17 @@ def run(
             degraded=degraded,
         )
 
-        try:
-            notify_run_complete(run_record_path, sessions_base)
-        except Exception:
-            pass
-
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
         if not preserve_workspace:
             cleanup_isolated_workspace(clone_cleanup)
+
+        # Last, so a slow or interrupted POST cannot delay or skip the cleanup
+        # above: a Ctrl-C during the request raises out of this `finally:`.
+        try:
+            notify_run_complete(run_record_path, sessions_base)
+        except Exception:
+            pass
 
     if returncode != 0:
         sys.exit(returncode)

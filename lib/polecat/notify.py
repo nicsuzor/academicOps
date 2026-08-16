@@ -1,11 +1,4 @@
-"""One-line dispatch-completion notification: Discord, plus an appended log file.
-
-Deliberately minimal. It formats a single line from the run record and writes it
-to two places. Nothing here may ever break or block a dispatch, so every failure
-is swallowed.
-"""
-
-from __future__ import annotations
+"""The dispatch-completion notification: one line, two sinks, never fatal."""
 
 import json
 import os
@@ -15,40 +8,32 @@ from pathlib import Path
 CHANNEL_DIR = Path.home() / ".claude" / "channels" / "discord"
 
 
-def _discord_config() -> tuple[str, str] | None:
-    """Bot token and channel id, from the environment or the provisioned files."""
-    token = os.environ.get("DISCORD_BOT_TOKEN")
-    if not token:
-        for raw in (CHANNEL_DIR / ".env").read_text().splitlines():
-            key, _, value = raw.partition("=")
-            if key.strip() == "DISCORD_BOT_TOKEN":
-                token = value.strip().strip("\"'")
-    channel = os.environ.get("DISCORD_CHANNEL_ID")
-    if not channel:
-        groups = json.loads((CHANNEL_DIR / "access.json").read_text()).get("groups") or {}
-        channel = next(iter(groups), "")
-    return (token, channel) if token and channel else None
-
-
 def format_line(record: dict) -> str:
     """One short line: what finished, and whether it succeeded."""
-    seconds = record.get("duration_seconds")
-    duration = f", {int(seconds)}s" if isinstance(seconds, int | float) else ""
     return (
-        f"polecat {record.get('agent') or '?'} "
-        f"{record.get('task_id') or record.get('session_id') or '?'} "
-        f"{record.get('status') or '?'} (exit {record.get('exit_code')}{duration})"
+        f"polecat {record['agent']} "
+        f"{record['task_id'] or record['session_id']} "
+        f"{record['status']} (exit {record['exit_code']}, {record['duration_seconds']}s)"
     )
 
 
 def _post_discord(line: str) -> None:
-    config = _discord_config()
-    if not config:
+    """POST the line to the paired channel. A module-level seam the tests patch."""
+    token = os.environ.get("DISCORD_BOT_TOKEN")
+    if not token:
+        # `/discord:configure` writes one unquoted `DISCORD_BOT_TOKEN=<token>` line.
+        env = (CHANNEL_DIR / ".env").read_text()
+        token = env.partition("DISCORD_BOT_TOKEN=")[2].partition("\n")[0].strip()
+    channel = os.environ.get("DISCORD_CHANNEL_ID")
+    if not channel:
+        groups = json.loads((CHANNEL_DIR / "access.json").read_text()).get("groups") or {}
+        channel = next(iter(groups), "")
+    if not (token and channel):
         return
-    token, channel = config
     request = urllib.request.Request(
         f"https://discord.com/api/v10/channels/{channel}/messages",
-        data=json.dumps({"content": line}).encode(),
+        # `--task` reaches the line unsanitized, so parse no mentions out of it.
+        data=json.dumps({"content": line, "allowed_mentions": {"parse": []}}).encode(),
         headers={
             "Authorization": f"Bot {token}",
             "Content-Type": "application/json",

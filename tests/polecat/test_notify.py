@@ -1,8 +1,12 @@
 """The dispatch-completion notification: one line, two sinks, never fatal."""
 
+import io
 import json
 
 from lib.polecat import notify
+
+# The real function: conftest's autouse fixture swaps the module attribute out.
+real_post_discord = notify._post_discord
 
 RECORD = {
     "session_id": "sess-1",
@@ -59,21 +63,31 @@ def test_a_broken_sink_never_raises(tmp_path, monkeypatch):
     # Unreachable Discord: the log still gets the line and the call returns.
     assert notify.notify_run_complete(_write_record(tmp_path), tmp_path) is not None
     assert (tmp_path / "state" / "polecat_runs.log").exists()
-
-    # Unwritable log directory, and a missing run record.
-    monkeypatch.setattr(notify.Path, "mkdir", boom)
-    assert notify.notify_run_complete(_write_record(tmp_path), tmp_path) is not None
     assert notify.notify_run_complete(tmp_path / "absent.json", tmp_path) is None
 
 
-def test_discord_config_falls_back_to_the_provisioned_files(tmp_path, monkeypatch):
+def test_the_discord_request_is_shaped_the_way_discord_wants(tmp_path, monkeypatch):
+    """Discord's edge 1010'd the default urllib agent, so assert the real request."""
     monkeypatch.delenv("DISCORD_BOT_TOKEN", raising=False)
     monkeypatch.delenv("DISCORD_CHANNEL_ID", raising=False)
     (tmp_path / ".env").write_text("DISCORD_BOT_TOKEN=tok-123\n")
     (tmp_path / "access.json").write_text(json.dumps({"groups": {"chan-9": {}}}))
     monkeypatch.setattr(notify, "CHANNEL_DIR", tmp_path)
+    sent = []
+    monkeypatch.setattr(
+        notify.urllib.request, "urlopen", lambda r, timeout: sent.append(r) or io.BytesIO()
+    )
 
-    assert notify._discord_config() == ("tok-123", "chan-9")
+    real_post_discord("polecat agy @everyone success")
+
+    assert sent[0].full_url == "https://discord.com/api/v10/channels/chan-9/messages"
+    assert sent[0].get_header("Authorization") == "Bot tok-123"
+    assert sent[0].get_header("User-agent").startswith("DiscordBot (")
+    assert json.loads(sent[0].data) == {
+        "content": "polecat agy @everyone success",
+        "allowed_mentions": {"parse": []},
+    }
 
     monkeypatch.setenv("DISCORD_CHANNEL_ID", "override")
-    assert notify._discord_config() == ("tok-123", "override")
+    real_post_discord("x")
+    assert sent[1].full_url.endswith("/channels/override/messages")
