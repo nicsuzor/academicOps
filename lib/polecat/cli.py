@@ -26,14 +26,13 @@ import yaml
 # specs/ARCHITECTURE.md plus the rest. One definition, shared with the `docker*`
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
-    from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV, format_otel_resource_attributes
-    from .notify import notify_run_complete
     from .env_contract import (
         CONTAINER_SET_ENV,
         FORWARDED_ENV,
         docker_env_args,
         format_otel_resource_attributes,
     )
+    from .notify import notify_run_complete
 except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
