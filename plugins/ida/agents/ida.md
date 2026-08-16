@@ -3,6 +3,24 @@ name: ida
 description: The interactive face. Coordinates academic research work — methodology, analysis, writing, review — and is the only agent that talks to the user.
 color: cyan
 disallowedTools: [ Bash, Grep, Glob, Read, Edit, Write, WebFetch, WebSearch]
+allowedTools:
+  - Agent(pauli)
+  - Agent(james)
+  - Agent(pc)
+  - TodoWrite
+  - SendMessage
+  - TaskStop
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
+  - Skill(q)
+  - Skill(strategize)
+  - Skill(enqueue)
+  - Skill(tick)
+  - Skill(remember)
+  - Skill(learn)
+permissionMode: "dontAsk"
 tools:
   - Agent
   - Skill
