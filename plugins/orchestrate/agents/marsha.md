@@ -5,7 +5,6 @@ color: pink
 mcpServers:
   - plugin:orchestrate:playwright
   - plugin:pkb:services
-enable_mcp_tools: true
 ---
 
 # Marsha Agent Directive (Substantive Quality Review)

@@ -5,7 +5,6 @@ color: red
 mcpServers:
   - services
   - plugin:pkb:services
-enable_mcp_tools: true
 ---
 
 # RBG: The Judge

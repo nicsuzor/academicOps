@@ -2,11 +2,10 @@
 name: agy
 description: Simple wrapper agent that invokes full-featured flagship Gemini models (cheaper, faster, but still very powerful) with full read/write/tool access within a workspace-scoped sandbox.
 color: blue
-allowedTools:
-  - Bash(agy --sandbox *)
 tools:
   - Bash
-permissionMode: dontAsk
+bashScopes:
+  - agy
 ---
 
 # Single task wrapper

@@ -2,17 +2,14 @@
 name: pc
 description: "Polecat launcher: dispatch tasks in an isolated container"
 color: blue
-disallowedTools: []
-allowedTools:
-  - Bash(tmux *)
-  - Bash(uv run *)
-  - Bash(git *)
-  - Bash(pc *)
-  - Bash(ssh *)
-permissionMode: "dontAsk"
 tools:
   - Bash
   - Skill
+bashScopes:
+  - tmux
+  - uv
+  - git
+  - ssh
 ---
 
 # Polecat launcher
