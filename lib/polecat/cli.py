@@ -27,6 +27,7 @@ import yaml
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
     from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV, format_otel_resource_attributes
+    from .notify import notify_run_complete
 except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
@@ -36,6 +37,7 @@ except ImportError:  # run directly as <plugin-root>/polecat/cli.py
         FORWARDED_ENV,
         format_otel_resource_attributes,
     )
+    from polecat.notify import notify_run_complete
 
 
 # A trailing flag that means the caller has already asked for headless, so
@@ -1570,7 +1572,7 @@ def run(
                 else "container execution failed",
             }
 
-        write_run_record(
+        run_record_path = write_run_record(
             session_dir=session_dir,
             session_id=session_id,
             container_id=container_id,
@@ -1590,6 +1592,11 @@ def run(
             worker_model=worker_model,
             degraded=degraded,
         )
+
+        try:
+            notify_run_complete(run_record_path, sessions_base)
+        except Exception:
+            pass
 
         if os.path.exists(staging_dir):
             shutil.rmtree(staging_dir)
