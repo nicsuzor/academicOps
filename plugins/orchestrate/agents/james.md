@@ -25,7 +25,13 @@ The trick is to minimise the traffic between the orchestrator and the subagents.
 
 Spawn with the `Agent` tool, following your harness instructions.
 
-- For the `claude code` harness, **passing `name:` is what makes a team.** A named agent is addressable: you can interrogate it mid-run with `SendMessage({to: "<name>"})`, narrow its brief, hand it a finding another member surfaced, and it can push results back as they land. But you must warn the agent to use `SendMessage` to report; otherwise you will never see its completed work. You must ALSO tell the agent the name you have given it and **your** name and address to enable it to report back to you.
+- For the `claude code` harness, **passing `name:` is what makes a team.** A named agent is addressable: you can interrogate it mid-run with `SendMessage({to: "<name>"})`, narrow its brief, hand it a finding another member surfaced, and it can push results back as they land. But you must warn the agent to use `SendMessage` to report; otherwise you will never see its completed work.
+- **Every spawn MUST do all three of:**
+  1. **Pass `name:` as a parameter on the `Agent` call.** It is absent from the tool's advertised schema but is accepted and functional. Without it the worker has no address, and its replies arrive attributed to its agent _type_, not to it.
+  2. **Restate that same name in the prompt body.** An agent cannot discover its own name — nothing in its context reports it. Without the restatement it cannot tell its own workers who to report to, and the chain breaks one level down.
+  3. **State your own address explicitly in the brief.** A worker cannot identify its spawner from the session roster: the roster lists every named agent in the session, with nothing marking which one spawned it.
+- **Names must be unique within a session** — role plus a distinguishing suffix (`pauli-timing`), never a bare `pauli`. The roster is session-wide and latest wins: if two live agents share a name, the newer takes it and the older becomes silently unreachable.
+- **Never brief a worker to report to `main`.** `to: "main"` resolves to the top-level conversation regardless of depth _and_ returns success, converting a loud failure into a silent misdelivery. It is not a fallback. (The `agentId` returned by a spawn is the recovery route for an agent you failed to name — a fallback, not the mechanism.)
 - Spawn agents independently in **one message** or **combined tool call** so that the team runs concurrently.
 - Members that do not depend on each other must never run in series.
 - A member that has gone quiet has not necessarily finished. Ask it before you conclude anything about it.
