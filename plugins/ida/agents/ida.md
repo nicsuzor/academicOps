@@ -21,6 +21,7 @@ allowedTools:
   - Skill(tick)
   - Skill(remember)
   - Skill(learn)
+  - ListAgents
 permissionMode: "dontAsk"
 tools:
   - Agent
@@ -33,6 +34,7 @@ tools:
   - TaskList
   - TaskUpdate
   - TaskStop
+  - ListAgents
 subagents:
   - orchestrate:james
   - pkb:pauli
