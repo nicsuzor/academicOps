@@ -98,13 +98,18 @@ def _base_mocks(monkeypatch, tmp_path, config):
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 
-def _capture_docker_cmd(monkeypatch, tmp_path, argv, config):
+def _capture_docker_run(monkeypatch, tmp_path, argv, config):
+    """`(argv, env)` for the `docker run` polecat built.
+
+    Values now reach docker through its own environment rather than on argv,
+    so the env half is what proves a variable was forwarded rather than lost.
+    """
     _base_mocks(monkeypatch, tmp_path, config)
     captured = []
 
     def fake_run(cmd, *a, **kw):
         if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
-            captured.append(list(cmd))
+            captured.append((list(cmd), kw.get("env")))
         return subprocess.CompletedProcess(cmd, 0)
 
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
@@ -114,6 +119,11 @@ def _capture_docker_cmd(monkeypatch, tmp_path, argv, config):
     assert result.exit_code == 0, result.output
     assert len(captured) == 1, f"expected one docker run, got {len(captured)}"
     return captured[0]
+
+
+def _capture_docker_cmd(monkeypatch, tmp_path, argv, config):
+    """The `docker run` argv alone, for assertions that do not touch env."""
+    return _capture_docker_run(monkeypatch, tmp_path, argv, config)[0]
 
 
 def _mount_targets(docker_cmd):
@@ -428,7 +438,7 @@ def test_format_otel_resource_attributes_overrides_existing_polecat_keys():
 
 
 def test_run_injects_polecat_otel_resource_attributes(tmp_path, monkeypatch):
-    cmd = _capture_docker_cmd(
+    cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
         [
@@ -445,9 +455,9 @@ def test_run_injects_polecat_otel_resource_attributes(tmp_path, monkeypatch):
         ],
         {},
     )
-    otel_env_arg = [arg for arg in cmd if arg.startswith("OTEL_RESOURCE_ATTRIBUTES=")]
-    assert len(otel_env_arg) == 1
-    val = otel_env_arg[0].split("=", 1)[1]
+    assert "OTEL_RESOURCE_ATTRIBUTES" in cmd
+    assert cmd[cmd.index("OTEL_RESOURCE_ATTRIBUTES") - 1] == "-e"
+    val = docker_env["OTEL_RESOURCE_ATTRIBUTES"]
     assert "polecat.session_id=mysess" in val
     assert "polecat.project=myproj" in val
     assert "polecat.task_id=mytask" in val

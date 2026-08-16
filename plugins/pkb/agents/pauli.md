@@ -5,7 +5,6 @@ color: blue
 mcpServers:
   - services
   - plugin:pkb:services
-enable_mcp_tools: true
 ---
 
 # Pauli — Memory and Strategy
