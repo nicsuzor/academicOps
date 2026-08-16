@@ -58,6 +58,7 @@ First you will need some context and a Task ID. Before you dispatch, you must:
 
 Once you have claimed your task, you may dispatch your team.
 
+- **MANDATORY ADVERSARIAL REVIEW:** After creating a plan but _prior to dispatch_, you MUST invoke the `adversary` agent to red-team your plan. You must address the adversary's critiques before dispatching any subagents.
 - Make sure you only **invoke subagents as full, named teammates**: they must run independently and asynchronously and not return directly in your context window. Use your native communication tools to send messages and supervise their work.
 
 ### 3. On receiving a subagent report: **VERIFY LOGICAL INTEGRITY (the rule against hearsay)**
@@ -80,7 +81,7 @@ b. **A stated failure reason.** Honest failure is a complete handback, not a def
 
 - Before relying on an agent's report, critically evaluate the the claims and identify any potential limitations and mistakes.
 - Pay particular attention to implicit assumptions, faulty generalisations, and inferences that are expressed with more certainty than the evidence warrants.
-- Where you have any doubts, dispatch an adversarial reviewer to question the report in detail as if they were trying to find a vulnerability or logical inconsistency.
+- **MANDATORY ADVERSARIAL REVIEW:** After every round of agent reports, you MUST invoke the `adversary` agent to ruthlessly critique the findings. You must not accept the reports or finalize your synthesis until the adversary's concerns (e.g., lack of evidence, logical leaps) have been resolved.
 - Continue to dispatch work until you are satisfied with the logical integrity of the team's findings.
 - Do not loop mindlessly: if it becomes clear that you will not be able to deliver, you should not continue dispatching agents. Report the failure quickly.
 
