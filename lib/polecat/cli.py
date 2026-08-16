@@ -1290,7 +1290,7 @@ def write_run_record(
 
 
 def _execute_with_seed_verification(
-    cmd, *, image, inner_cmd, session_dir, task, verify_seed, run_env=None
+    cmd, *, image, inner_cmd, session_dir, task, verify_seed, run_env
 ):
     """Run the container, and for a seeded dispatch confirm the agent actually
     saw the task before letting a clean exit stand as success.
@@ -1299,9 +1299,13 @@ def _execute_with_seed_verification(
     before delivery, which leaves a clean workspace the delivery guard reads as
     a pass. Retry once, then fail rather than report an unverified success.
 
-    `run_env` carries the values behind the valueless `-e NAME` flags in `cmd`;
-    without it docker has nothing to resolve them against and the container
-    starts with none of them.
+    `run_env` carries the values behind the valueless `-e NAME` flags in `cmd`,
+    and is required rather than defaulted. Defaulting it to None would make
+    `subprocess.run(cmd, env=None)` inherit os.environ, under which host-set
+    names still arrive but every synthesised one — the AOPS_BOT_GH_TOKEN
+    fan-out, resolve_telemetry, AOPS_SESSIONS, AOPS_POLECAT_BRANCH — vanishes
+    silently at exit 0. That is the failure this whole path exists to prevent,
+    so it must not be reachable by forgetting an argument.
     """
     max_attempts = 2 if verify_seed else 1
     returncode = 1

@@ -21,6 +21,8 @@ start a container.
 """
 
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
@@ -406,6 +408,22 @@ def _e_flag_values(cmd):
     ]
 
 
+def test_the_test_environment_itself_holds_no_real_credential():
+    """conftest's scrub is what makes every other assertion here safe to fail.
+
+    These tests inspect `{**os.environ, **env}`. Unscrubbed, one rendered dict
+    in a failure diff publishes every credential the developer's shell exports
+    — to their terminal and to CI. Pin the scrub, not just the intent.
+    """
+    leftover = [
+        name
+        for name in os.environ
+        if re.search(r"TOKEN|SECRET|PASSWORD|API_KEY|OAUTH", name, re.IGNORECASE)
+        and not os.environ[name].startswith("sentinel-")
+    ]
+    assert leftover == [], f"real credential names still in the test environment: {leftover}"
+
+
 def test_no_secret_value_reaches_the_docker_command_line(monkeypatch, tmp_path):
     """argv is world-readable in the host process table.
 
@@ -447,13 +465,23 @@ def test_secrets_still_reach_the_container_through_dockers_environment(monkeypat
     flagged = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "-e" and i + 1 < len(cmd)]
     bare = [name for name in flagged if "=" not in name]
     assert bare, "nothing is being forwarded by bare name at all"
-    for name in bare:
-        assert name in docker_env, f"-e {name} has no value for docker to resolve"
+
+    # Compare and report NAMES, never values. `docker_env` is os.environ plus
+    # polecat's own, so letting pytest render it on failure would print every
+    # credential the developer's shell exports. conftest strips those; this
+    # keeps the assertion harmless even if a name shape slips past it.
+    unresolvable = [name for name in bare if name not in docker_env]
+    assert unresolvable == [], f"-e flags with no value for docker to resolve: {unresolvable}"
 
     # The AOPS_BOT_GH_TOKEN -> three-name fan-out has no host counterpart for
     # two of its three names, so it only survives via the subprocess env.
-    for name in ("AOPS_BOT_GH_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
-        assert docker_env[name] == _SECRET_SENTINELS["AOPS_BOT_GH_TOKEN"]
+    expected = _SECRET_SENTINELS["AOPS_BOT_GH_TOKEN"]
+    wrong = [
+        n
+        for n in ("AOPS_BOT_GH_TOKEN", "GH_TOKEN", "GITHUB_TOKEN")
+        if docker_env.get(n) != expected
+    ]
+    assert wrong == [], f"fan-out did not reach docker's environment for: {wrong}"
 
 
 def test_ssh_auth_sock_is_still_blanked_not_forwarded(monkeypatch, tmp_path):
