@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """The environment contract for containerised agent sessions.
 
-One definition, consumed by every surface that starts a container: `cli.py`
-turns it into `docker run -e KEY=VALUE`, and the `docker*` Makefile targets
-emit `-e KEY` flags from it via `--docker-args`.
+One definition, consumed by every surface that starts a container: the
+`docker*` Makefile targets emit `-e KEY` flags from it via `--docker-args`,
+and `cli.py` calls `docker_env_args()` directly for the same flags. Neither
+puts a value on the command line, because argv is world-readable in the host
+process table for as long as the container runs.
 
 Names in `FORWARDED_ENV` and `CONTAINER_AUTH_ENV` are forwarded, never set.
 `docker run -e KEY` (no value) propagates the host's value only when there is

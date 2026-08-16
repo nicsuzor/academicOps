@@ -21,6 +21,8 @@ start a container.
 """
 
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
@@ -56,8 +58,12 @@ def _base_mocks(monkeypatch, tmp_path):
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 
-def _capture_docker_cmd(monkeypatch, tmp_path, argv):
-    """Invoke `polecat run ...` and return the `docker run` argv it built.
+def _capture_docker_run(monkeypatch, tmp_path, argv):
+    """Invoke `polecat run ...` and return `(argv, env)` for the `docker run`.
+
+    The env matters as much as the argv now: variable values are passed to
+    docker through its own environment rather than on the command line, so a
+    test that only reads the argv cannot tell "forwarded" from "dropped".
 
     CliRunner's stdin is never a tty, so this is exactly the piped/headless
     path that failed live.
@@ -67,7 +73,7 @@ def _capture_docker_cmd(monkeypatch, tmp_path, argv):
 
     def fake_run(cmd, *a, **kw):
         if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
-            captured.append(list(cmd))
+            captured.append((list(cmd), kw.get("env")))
         return subprocess.CompletedProcess(cmd, 0)
 
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
@@ -77,6 +83,11 @@ def _capture_docker_cmd(monkeypatch, tmp_path, argv):
     assert result.exit_code == 0, result.output
     assert len(captured) == 1, f"expected one docker run, got {len(captured)}"
     return captured[0]
+
+
+def _capture_docker_cmd(monkeypatch, tmp_path, argv):
+    """The `docker run` argv alone, for assertions that do not touch env."""
+    return _capture_docker_run(monkeypatch, tmp_path, argv)[0]
 
 
 def _inner_cmd(docker_cmd, image="test-image:latest"):
@@ -375,6 +386,122 @@ def test_docker_run_passes_the_env_file(tmp_path, monkeypatch):
 
 
 # --------------------------------------------------------------------------
+# No credential value on the command line
+# --------------------------------------------------------------------------
+
+#: Sentinels that must never appear anywhere in the `docker run` argv. Each is
+#: distinct so a failure names the variable that leaked.
+_SECRET_SENTINELS = {
+    "AOPS_BOT_GH_TOKEN": "sentinel-bot-gh-token",
+    "CLAUDE_CODE_OAUTH_TOKEN": "sentinel-cc-oauth-token",
+    "GEMINI_API_KEY": "sentinel-gemini-key",
+    "PKB_MCP_TOKEN": "sentinel-pkb-token",
+}
+
+
+def _e_flag_values(cmd):
+    """Every `-e` argument that carries an inline `NAME=VALUE`."""
+    return [
+        cmd[i + 1]
+        for i, arg in enumerate(cmd)
+        if arg == "-e" and i + 1 < len(cmd) and "=" in cmd[i + 1]
+    ]
+
+
+def test_the_test_environment_itself_holds_no_real_credential():
+    """conftest's scrub is what makes every other assertion here safe to fail.
+
+    These tests inspect `{**os.environ, **env}`. Unscrubbed, one rendered dict
+    in a failure diff publishes every credential the developer's shell exports
+    — to their terminal and to CI. Pin the scrub, not just the intent.
+    """
+    leftover = [
+        name
+        for name in os.environ
+        if re.search(r"TOKEN|SECRET|PASSWORD|API_KEY|OAUTH", name, re.IGNORECASE)
+        and not os.environ[name].startswith("sentinel-")
+    ]
+    assert leftover == [], f"real credential names still in the test environment: {leftover}"
+
+
+def test_no_secret_value_reaches_the_docker_command_line(monkeypatch, tmp_path):
+    """argv is world-readable in the host process table.
+
+    `docker run -e KEY=VALUE` published every forwarded token to `ps` and
+    `/proc/<pid>/cmdline` for any local process, for the whole life of the
+    container. The values must travel in docker's own environment instead.
+    """
+    for name, value in _SECRET_SENTINELS.items():
+        monkeypatch.setenv(name, value)
+
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo")]
+    )
+
+    joined = " ".join(cmd)
+    for name, value in _SECRET_SENTINELS.items():
+        assert value not in joined, f"{name} value is on the docker command line"
+
+    # And the only inline values left are the container-internal constants.
+    for inline in _e_flag_values(cmd):
+        name = inline.split("=", 1)[0]
+        assert name in CONTAINER_SET_ENV, f"{name} carries its value on argv"
+
+
+def test_secrets_still_reach_the_container_through_dockers_environment(monkeypatch, tmp_path):
+    """The other half: hidden must not mean dropped.
+
+    A dispatch that forwards nothing is a regression, not a fix. Every name
+    flagged `-e NAME` has to be resolvable from the environment `docker` is
+    launched with, or the container silently starts without it.
+    """
+    for name, value in _SECRET_SENTINELS.items():
+        monkeypatch.setenv(name, value)
+
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo")]
+    )
+
+    flagged = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "-e" and i + 1 < len(cmd)]
+    bare = [name for name in flagged if "=" not in name]
+    assert bare, "nothing is being forwarded by bare name at all"
+
+    # Compare and report NAMES, never values. `docker_env` is os.environ plus
+    # polecat's own, so letting pytest render it on failure would print every
+    # credential the developer's shell exports. conftest strips those; this
+    # keeps the assertion harmless even if a name shape slips past it.
+    unresolvable = [name for name in bare if name not in docker_env]
+    assert unresolvable == [], f"-e flags with no value for docker to resolve: {unresolvable}"
+
+    # The AOPS_BOT_GH_TOKEN -> three-name fan-out has no host counterpart for
+    # two of its three names, so it only survives via the subprocess env.
+    expected = _SECRET_SENTINELS["AOPS_BOT_GH_TOKEN"]
+    wrong = [
+        n
+        for n in ("AOPS_BOT_GH_TOKEN", "GH_TOKEN", "GITHUB_TOKEN")
+        if docker_env.get(n) != expected
+    ]
+    assert wrong == [], f"fan-out did not reach docker's environment for: {wrong}"
+
+
+def test_ssh_auth_sock_is_still_blanked_not_forwarded(monkeypatch, tmp_path):
+    """`get_env_forwards` sets SSH_AUTH_SOCK="" to deny the container every
+    agent-backed git credential path. Resolving `-e SSH_AUTH_SOCK` against the
+    operator's ambient environment would hand it a live agent socket instead —
+    the exact inversion of that intent. polecat's value has to win over the
+    host's in the environment docker is launched with."""
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/run/user/1000/keyring/ssh")
+
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo")]
+    )
+
+    assert "SSH_AUTH_SOCK" in cmd
+    assert docker_env["SSH_AUTH_SOCK"] == ""
+    assert "/run/user/1000/keyring/ssh" not in " ".join(cmd)
+
+
+# --------------------------------------------------------------------------
 # Environment contract
 # --------------------------------------------------------------------------
 
@@ -440,7 +567,7 @@ def test_polecat_typechecks_clean():
 
 def test_sessions_mount_via_with_sessions_flag(monkeypatch, tmp_path):
     """Passing --with-sessions mounts transcripts ro and sets AOPS_SESSIONS=/sessions."""
-    docker_cmd = _capture_docker_cmd(
+    docker_cmd, docker_env = _capture_docker_run(
         monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo"), "--with-sessions"]
     )
     sessions_dir = tmp_path / "sessions"
@@ -448,8 +575,9 @@ def test_sessions_mount_via_with_sessions_flag(monkeypatch, tmp_path):
 
     assert "-v" in docker_cmd
     assert expected_mount in docker_cmd
-    assert "-e" in docker_cmd
-    assert "AOPS_SESSIONS=/sessions" in docker_cmd
+    assert "AOPS_SESSIONS" in docker_cmd
+    assert docker_cmd[docker_cmd.index("AOPS_SESSIONS") - 1] == "-e"
+    assert docker_env["AOPS_SESSIONS"] == "/sessions"
 
 
 def test_sessions_mount_via_project_config(monkeypatch, tmp_path):
@@ -467,7 +595,7 @@ def test_sessions_mount_via_project_config(monkeypatch, tmp_path):
 
     def fake_run(cmd, *a, **kw):
         if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
-            captured.append(list(cmd))
+            captured.append((list(cmd), kw.get("env")))
         return subprocess.CompletedProcess(cmd, 0)
 
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
@@ -475,23 +603,26 @@ def test_sessions_mount_via_project_config(monkeypatch, tmp_path):
 
     result = CliRunner().invoke(cli.main, ["run", "claude", "-d", str(tmp_path / "repo")])
     assert result.exit_code == 0, result.output
-    docker_cmd = captured[0]
+    docker_cmd, docker_env = captured[0]
 
     sessions_dir = tmp_path / "sessions"
     expected_mount = f"{(sessions_dir / 'transcripts').resolve()}:/sessions/transcripts:ro"
 
     assert expected_mount in docker_cmd
-    assert "AOPS_SESSIONS=/sessions" in docker_cmd
+    assert "AOPS_SESSIONS" in docker_cmd
+    assert docker_env["AOPS_SESSIONS"] == "/sessions"
 
 
 def test_branch_option_sets_env_var(monkeypatch, tmp_path):
     """Passing --branch sets AOPS_POLECAT_BRANCH in container env."""
-    docker_cmd = _capture_docker_cmd(
+    docker_cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
         ["run", "claude", "-d", str(tmp_path / "repo"), "--branch", "feature/test-branch"],
     )
-    assert "AOPS_POLECAT_BRANCH=feature/test-branch" in docker_cmd
+    assert "AOPS_POLECAT_BRANCH" in docker_cmd
+    assert docker_cmd[docker_cmd.index("AOPS_POLECAT_BRANCH") - 1] == "-e"
+    assert docker_env["AOPS_POLECAT_BRANCH"] == "feature/test-branch"
 
 
 def test_agy_output_format_and_prompt_options(monkeypatch, tmp_path):

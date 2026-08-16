@@ -26,7 +26,12 @@ import yaml
 # specs/ARCHITECTURE.md plus the rest. One definition, shared with the `docker*`
 # Makefile targets; polecat forwards these names and sets none of them.
 try:  # imported as part of the installed package
-    from .env_contract import CONTAINER_SET_ENV, FORWARDED_ENV, format_otel_resource_attributes
+    from .env_contract import (
+        CONTAINER_SET_ENV,
+        FORWARDED_ENV,
+        docker_env_args,
+        format_otel_resource_attributes,
+    )
 except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
@@ -34,6 +39,7 @@ except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     from polecat.env_contract import (
         CONTAINER_SET_ENV,
         FORWARDED_ENV,
+        docker_env_args,
         format_otel_resource_attributes,
     )
 
@@ -1042,8 +1048,23 @@ def _build_docker_argv(
     with_sessions=False,
     sessions_base=None,
 ):
-    """The full `docker run` argv. Also pre-creates the bind-mount targets
-    under `session_dir` — see below for why that cannot wait until launch."""
+    """The full `docker run` argv, and the environment to launch it with.
+
+    Returns `(argv, run_env)`. The argv carries **no** variable values: every
+    name in `env` is passed as a valueless `-e NAME` flag and its value is
+    handed to the `docker` process itself through `run_env`, which the caller
+    must pass to `subprocess.run(..., env=run_env)`. Values on argv are
+    world-readable in the host process table (`ps`, `/proc/<pid>/cmdline`) for
+    the whole life of the container, which put live GitHub and agent-API
+    tokens in front of every local process. `-e NAME` reads the value out of
+    docker's own environment instead, so nothing lands on the command line.
+
+    `CONTAINER_SET_ENV` names are the one exception and keep their value on
+    argv — they are container-internal paths and flags, never credentials —
+    which is exactly the split `env_contract.docker_env_args()` already makes.
+
+    Also pre-creates the bind-mount targets under `session_dir` — see below
+    for why that cannot wait until launch."""
     # Pre-create the bind-mount targets as the invoking user. Docker
     # auto-creates a missing bind source as root, which the container's non-root
     # user cannot write, silently losing logs and conversation state.
@@ -1118,11 +1139,20 @@ def _build_docker_argv(
         env["AOPS_SESSIONS"] = "/sessions"
 
     cmd.extend(docker_args)
-    for key, value in env.items():
-        cmd.extend(["-e", f"{key}={value}"])
+    # Valueless `-e NAME` flags: the values travel in `run_env`, not on argv.
+    cmd.extend(docker_env_args(tuple(env)))
     cmd.append(image)
     cmd.extend(inner_cmd)
-    return cmd
+
+    # docker resolves each valueless `-e NAME` against its *own* environment,
+    # so every name flagged above has to be set here or the container silently
+    # loses it. Several are synthesised by get_env_forwards() and have no host
+    # counterpart at all (the AOPS_BOT_GH_TOKEN -> GH_TOKEN/GITHUB_TOKEN
+    # fan-out, resolve_cope_evaluator, resolve_telemetry, CONTAINER_SET_ENV),
+    # and where a name does exist on the host the polecat-side value must win.
+    # Hence os.environ first, `env` last.
+    run_env = {**os.environ, **{k: str(v) for k, v in env.items()}}
+    return cmd, run_env
 
 
 def _get_image_digest(image: str) -> str | None:
@@ -1259,13 +1289,23 @@ def write_run_record(
     return out_path
 
 
-def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task, verify_seed):
+def _execute_with_seed_verification(
+    cmd, *, image, inner_cmd, session_dir, task, verify_seed, run_env
+):
     """Run the container, and for a seeded dispatch confirm the agent actually
     saw the task before letting a clean exit stand as success.
 
     A clean exit is not evidence the task was worked: the seed can be dropped
     before delivery, which leaves a clean workspace the delivery guard reads as
     a pass. Retry once, then fail rather than report an unverified success.
+
+    `run_env` carries the values behind the valueless `-e NAME` flags in `cmd`,
+    and is required rather than defaulted. Defaulting it to None would make
+    `subprocess.run(cmd, env=None)` inherit os.environ, under which host-set
+    names still arrive but every synthesised one — the AOPS_BOT_GH_TOKEN
+    fan-out, resolve_telemetry, AOPS_SESSIONS, AOPS_POLECAT_BRANCH — vanishes
+    silently at exit 0. That is the failure this whole path exists to prevent,
+    so it must not be reachable by forgetting an argument.
     """
     max_attempts = 2 if verify_seed else 1
     returncode = 1
@@ -1274,7 +1314,7 @@ def _execute_with_seed_verification(cmd, *, image, inner_cmd, session_dir, task,
     for attempt in range(1, max_attempts + 1):
         suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
         click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd)}", err=True)
-        returncode = subprocess.run(cmd).returncode
+        returncode = subprocess.run(cmd, env=run_env).returncode
 
         if not verify_seed:
             break
@@ -1496,7 +1536,7 @@ def run(
             task_id=task,
         )
 
-        cmd = _build_docker_argv(
+        cmd, run_env = _build_docker_argv(
             image=image,
             inner_cmd=inner_cmd,
             workspace_dir=workspace_dir,
@@ -1526,6 +1566,7 @@ def run(
             # same way whichever one ran it. `shell`/`sleep`/other run no agent
             # CLI and have no conversation to check.
             verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
+            run_env=run_env,
         )
         cidfile = session_dir / "container.cid"
         if cidfile.exists():
