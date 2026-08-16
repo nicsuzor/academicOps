@@ -6,6 +6,8 @@ allowedTools:
   - Bash(agy --sandbox *)
 tools:
   - Bash
+bashScopes:
+  - agy
 permissionMode: dontAsk
 ---
 

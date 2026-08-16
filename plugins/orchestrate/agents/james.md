@@ -1,7 +1,6 @@
 ---
 name: james
 description: "If you want a job done well, give it to James. James is the Orchestrator: forms a team, fans work out across it, and certifies synthesized results."
-enable_mcp_tools: true
 mcpServers:
   - services
   - plugin:pkb:services

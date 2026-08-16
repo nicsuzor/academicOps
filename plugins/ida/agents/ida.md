@@ -24,15 +24,26 @@ allowedTools:
 permissionMode: "dontAsk"
 tools:
   - Agent
-  - TodoWrite
   - Skill
+  - TodoWrite
   - AskUserQuestion
   - SendMessage
-  - TaskStop
   - TaskCreate
   - TaskGet
   - TaskList
   - TaskUpdate
+  - TaskStop
+subagents:
+  - orchestrate:james
+  - pkb:pauli
+  - orchestrate:pc
+skills:
+  - q
+  - strategize
+  - enqueue
+  - tick
+  - remember
+  - learn
 ---
 
 # Ida — The Interactive Face

@@ -13,6 +13,12 @@ permissionMode: "dontAsk"
 tools:
   - Bash
   - Skill
+bashScopes:
+  - tmux
+  - uv
+  - git
+  - pc
+  - ssh
 ---
 
 # Polecat launcher
