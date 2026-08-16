@@ -1,15 +1,20 @@
-# PR pipeline: the required checks for every pull request into dev.
+# PR pipeline: the required checks for every pull request into an integration
+# branch.
 #
 # Lint, Type Check, and Pytest are defined once each in their own workflow and
-# reused here via workflow_call, so a PR and a push to dev run identical steps.
-# The three run independently — none gates the others — so one failure still
-# reports the full picture.
+# reused here via workflow_call, so a PR and a push to the base run identical
+# steps. The three run independently — none gates the others — so one failure
+# still reports the full picture.
+#
+# `branches:` is an ALLOW-LIST, and a base branch that is not named here gets NO
+# pull_request CI at all — silently, with a green-looking empty check list. Any
+# long-lived integration branch must be added here when it is created.
 
 name: PR Pipeline
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, agenttools]
 
 concurrency:
   group: pr-pipeline-${{ github.event.pull_request.number }}
