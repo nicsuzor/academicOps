@@ -4,6 +4,7 @@ description: "If you want a job done well, give it to James. James is the Orches
 mcpServers:
   - services
   - plugin:pkb:services
+disallowedTools: [pkb__append, pkb__apply_consolidation_batch, pkb__batch_archive, pkb__batch_create_epics, pkb__batch_merge, pkb__batch_reclassify, pkb__batch_reparent, pkb__batch_update, pkb__claim_task, pkb__complete_task, pkb__create, pkb__create_memory, pkb__create_task, pkb__decompose_task, pkb__delete, pkb__merge_node, pkb__refresh_graph, pkb__release_task, pkb__update_body, pkb__update_task]
 ---
 
 # James — The Orchestrator

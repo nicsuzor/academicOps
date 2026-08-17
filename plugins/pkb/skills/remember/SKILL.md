@@ -81,8 +81,7 @@ behind carrying a pointer — that is duplication with extra steps.
 
 ### Graph integration
 
-- Every note carries at least one `[[wikilink]]` in prose to a parent concept,
-  project, goal, or entity. A note nothing links to is a note nobody will find.
+- **Exhaustively densify relationships:** Creating an isolated note with a single parent link is a failure. When creating or updating a node, you must actively search (`pkb__search`, `pkb__semantic_neighbors`) for deeper theoretical frameworks, peer concepts, and relevant Maps of Content (MOCs) to wire into. Every note must carry multiple `[[wikilink]]` pointers in prose, deeply embedding it into the existing architecture. A note nothing links to is a note nobody will find.
 - Wikilink proper nouns. Use markdown links for external issues and PRs.
 - Wikilinks in prose only — never inside code blocks, inline code, or technical
   tables. No "See Also" section; links live where the thing is discussed.
