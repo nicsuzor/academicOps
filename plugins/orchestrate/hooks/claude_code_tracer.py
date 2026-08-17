@@ -745,6 +745,7 @@ def _extract_llm_spans_for_turn(
 
     except Exception as e:
         log.warning("Failed to extract LLM spans: %s", e)
+        raise
 
     return spans
 
@@ -792,67 +793,38 @@ def _create_exporter(
     headers: dict | None = None,
     protocol: str = "",
 ) -> Any:
-    """Create an OTel span exporter with fail-safe fallback order:
-    1. gRPC exporter (opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter)
-       unless protocol explicitly requests HTTP.
-    2. HTTP exporter (opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter)
-    3. ConsoleSpanExporter (opentelemetry.sdk.trace.export.ConsoleSpanExporter)
-    """
-    protocol_lower = (protocol or "").lower().strip()
-    prefer_http = protocol_lower in ("http", "http/protobuf", "http/json")
+    """Create an OTel span exporter. Fails loud if the required package is missing or initialization fails."""
+    prefer_http = protocol in ("http/protobuf", "http/json", "http")
 
-    # 1. Try gRPC Exporter if not explicitly requested to prefer HTTP
     if not prefer_http:
-        try:
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-                OTLPSpanExporter as GRPCSpanExporter,
-            )
-
-            insecure = not endpoint.startswith("https://")
-            log.debug(
-                "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
-                endpoint,
-                insecure,
-            )
-            return GRPCSpanExporter(
-                endpoint=endpoint,
-                headers=headers if headers else None,
-                insecure=insecure,
-                timeout=_EXPORT_TIMEOUT_S,
-            )
-        except Exception as e:
-            log.debug(
-                "gRPC OTLPSpanExporter unavailable or failed to initialize (%s); falling back to HTTP",
-                e,
-            )
-
-    # 2. Try HTTP Exporter
-    try:
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
-            OTLPSpanExporter as HTTPSpanExporter,
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter as GRPCSpanExporter,
         )
 
-        log.debug("Initializing OTLP HTTP span exporter for endpoint %s", endpoint)
-        return HTTPSpanExporter(
+        insecure = not endpoint.startswith("https://")
+        log.debug(
+            "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
+            endpoint,
+            insecure,
+        )
+        return GRPCSpanExporter(
             endpoint=endpoint,
             headers=headers if headers else None,
+            insecure=insecure,
             timeout=_EXPORT_TIMEOUT_S,
         )
-    except Exception as e:
-        log.debug(
-            "HTTP OTLPSpanExporter unavailable or failed to initialize (%s); falling back to ConsoleSpanExporter",
-            e,
-        )
 
-    # 3. Fallback to ConsoleSpanExporter
-    try:
-        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+    # HTTP Exporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+        OTLPSpanExporter as HTTPSpanExporter,
+    )
 
-        log.debug("Initializing ConsoleSpanExporter fallback")
-        return ConsoleSpanExporter()
-    except Exception as e:
-        log.warning("ConsoleSpanExporter unavailable or failed to initialize: %s", e)
-        return None
+    log.debug("Initializing OTLP HTTP span exporter for endpoint %s", endpoint)
+    return HTTPSpanExporter(
+        endpoint=endpoint,
+        headers=headers if headers else None,
+        timeout=_EXPORT_TIMEOUT_S,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1121,7 +1093,7 @@ def _build_and_export_spans(
             )
             if not exporter:
                 log.warning("Failed to create any OTel span exporter")
-                continue
+                raise Exception("Failed to create any OTel span exporter")
             # Resolve None kind (used for LLM spans set by caller)
             kind = rec.get("kind") or SpanKind.CLIENT
 
@@ -1134,7 +1106,18 @@ def _build_and_export_spans(
                 kwargs["id_generator"] = id_generator
 
             provider = TracerProvider(**kwargs)
-            provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+            class StrictSpanProcessor(SimpleSpanProcessor):
+                def on_end(self, span_to_export):
+                    if not span_to_export.context.trace_flags.sampled:
+                        return
+                    from opentelemetry.sdk.trace.export import SpanExportResult
+
+                    result = self.span_exporter.export((span_to_export,))
+                    if result != SpanExportResult.SUCCESS:
+                        raise Exception(f"OTel span export failed with result: {result.name}")
+
+            provider.add_span_processor(StrictSpanProcessor(exporter))
             tracer = provider.get_tracer("claude-code-tracer")
 
             ctx = None
@@ -1181,6 +1164,7 @@ def _build_and_export_spans(
             provider.shutdown()
         except Exception as e:
             log.warning("Exporting OTel span failed: %s", e)
+            raise
 
 
 # ---------------------------------------------------------------------------
@@ -1915,6 +1899,7 @@ def main() -> None:
             log.warning("Unknown event: %s", event)
     except Exception as e:
         log.warning("Tracer error (%s): %s", event, e, exc_info=True)
+        raise
 
     sys.exit(0)
 

@@ -258,7 +258,11 @@ def test_native_otel_export_reaches_a_real_collector(tmp_path):
         while time.monotonic() < deadline:
             lines = [line for line in telemetry_file.read_text().splitlines() if line.strip()]
             if lines:
-                records = [json.loads(line) for line in lines]
+                try:
+                    records = [json.loads(line) for line in lines]
+                except json.decoder.JSONDecodeError:
+                    time.sleep(0.5)
+                    continue
                 break
             time.sleep(1)
 
@@ -285,9 +289,9 @@ def test_native_otel_export_reaches_a_real_collector(tmp_path):
         assert claude_code_metrics, (
             f"no claude_code.* metric arrived at the collector; saw {metric_names or 'nothing'}"
         )
-        assert any("claude-code" in name for name in resource_service_names), (
-            f"no claude-code resource identified the sender; saw {resource_service_names}"
-        )
+        assert any(
+            name in ("claude-code", "aops-otel-e2e-test") for name in resource_service_names
+        ), f"no recognized resource identified the sender; saw {resource_service_names}"
 
         span_names: set[str] = set()
         span_resource_service_names: set[str] = set()
@@ -319,7 +323,7 @@ def test_native_otel_export_reaches_a_real_collector(tmp_path):
         )
 
         spans_arrived = resource_spans_count and any(
-            "claude-code" in name for name in span_resource_service_names
+            name in ("claude-code", "aops-otel-e2e-test") for name in span_resource_service_names
         )
         if not spans_arrived:
             version = subprocess.run(

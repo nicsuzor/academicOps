@@ -175,6 +175,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_user_prompt_submit(data, config)
     except Exception as exc:
         log.warning("user_prompt_submit tracer failed: %s", exc)
+        raise
     return None
 
 
@@ -189,6 +190,7 @@ def pre_tool(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_pre_tool(data, config)
     except Exception as exc:
         log.warning("pre_tool tracer failed: %s", exc)
+        raise
     return None
 
 
@@ -203,6 +205,7 @@ def post_tool(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_post_tool(data, config)
     except Exception as exc:
         log.warning("post_tool tracer failed: %s", exc)
+        raise
     return None
 
 
@@ -217,6 +220,7 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_post_tool_failure(data, config)
     except Exception as exc:
         log.warning("post_tool_failure tracer failed: %s", exc)
+        raise
     return None
 
 
@@ -231,6 +235,7 @@ def stop(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_stop(data, config)
     except Exception as exc:
         log.warning("stop tracer failed: %s", exc)
+        raise
     return None
 
 

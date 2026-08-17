@@ -304,6 +304,7 @@ def record_tool_plumbing_error(
         span.end(end_time=time.time_ns())
     except Exception as exc:
         print(f"rbg otel trace: error recording tool plumbing error: {exc!r}", file=sys.stderr)
+        raise
 
 
 def detect_agent_idle_timeout(ctx: HookContext) -> str | None:
@@ -363,6 +364,7 @@ def record_agent_idle_timeout(
         span.end(end_time=time.time_ns())
     except Exception as exc:
         print(f"rbg otel trace: error recording agent idle/timeout: {exc!r}", file=sys.stderr)
+        raise
 
 
 def record_send_message(
@@ -417,7 +419,7 @@ def record_send_message(
         return new_traceparent
     except Exception as exc:
         print(f"rbg otel trace: error recording SendMessage: {exc!r}", file=sys.stderr)
-        return None
+        raise
 
 
 def record_subagent_stop(
@@ -474,6 +476,7 @@ def record_subagent_stop(
         span.end(end_time=time.time_ns())
     except Exception as exc:
         print(f"rbg otel trace: error recording SubagentStop: {exc!r}", file=sys.stderr)
+        raise
 
 
 def sink_for(
@@ -518,7 +521,7 @@ def sink_for(
         tracer = _get_tracer(config)
     except Exception as exc:
         print(f"rbg otel trace: error initializing tracer: {exc!r}", file=sys.stderr)
-        return None
+        raise
 
     if sweep_id is None:
         sweep_id = uuid.uuid4().hex[:12]
@@ -567,12 +570,13 @@ def sink_for(
             else:
                 span.set_status(Status(StatusCode.OK))
             span.end(end_time=end_ns)
-        except Exception as exc:  # fail-open: a span failure never fails the tool call
+        except Exception as exc:
             if not reported_failure:
                 print(
                     f"rbg otel trace: could not emit span to {config.path}: {exc!r}",
                     file=sys.stderr,
                 )
                 reported_failure = True
+            raise
 
     return _on_outcome
