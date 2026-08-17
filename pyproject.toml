@@ -310,3 +310,4 @@ markers = [
 
 [project.scripts]
 polecat = "lib.polecat.cli:main" # resolves via [tool.hatch.build.targets.wheel] packages = ["lib", ...]
+aops-trace = "scripts.phoenix_trace:main" # resolves via [tool.hatch.build.targets.wheel] packages = [..., "scripts"]
