@@ -293,7 +293,36 @@ def agy_post_tool(ctx: HookContext) -> Result | None:
 
 
 def agy_stop(ctx: HookContext) -> Result | None:
+    """OTel turn-close for agy. Guarded to the genuine end-of-turn payload.
+
+    agy's wire ``PostInvocation`` and ``Stop`` both canonicalize to this
+    ``"Stop"`` key (``dispatch.py``'s ``TO_CANONICAL["agy"]``, kept as-is —
+    other plugins and ``tests/test_hooks.py``,
+    ``tests/test_dispatch_gate.py`` rely on that alias for their own,
+    unrelated Stop-side advisories). But the two wire events are NOT the same
+    moment: live instrumentation (headless agy 1.1.13, single user prompt,
+    ``AOPS_HOOK_LOG_PATH`` + a wire-level probe on each hook command) showed
+    ``PostInvocation`` fires once per internal invocation/tool-call
+    round-trip — three fires for a three-tool-call turn — while ``Stop``
+    fires exactly once, when agy is truly idle. Treating every
+    ``PostInvocation``-sourced Stop as a real turn-end made ``handle_stop``
+    below build and export a CHAIN span, then delete ``current_trace``,
+    after the *first* invocation — before the model had produced its final
+    response — so a multi-step turn emitted several incomplete, fragmented
+    traces instead of one. The ``current_trace`` guard inside
+    ``agy_tracer.handle_stop`` only stops a literal double-emit; it does not
+    stop this premature-emit-then-rebuild cycle.
+
+    Only agy's genuine ``Stop`` wire payload carries ``terminationReason``/
+    ``fullyIdle`` (session-idle state); ``PostInvocation`` payloads never do
+    (they carry ``invocationNum``/``initialNumSteps`` instead). That is the
+    one reliable signal available in the normalized payload for which wire
+    event actually fired, since dispatch.py's canonicalization already
+    collapses the wire event name itself before handlers run.
+    """
     if agy_tracer is None or ctx.client != "agy":
+        return None
+    if "terminationReason" not in ctx.raw and "fullyIdle" not in ctx.raw:
         return None
     try:
         config = agy_tracer.discover_config()
