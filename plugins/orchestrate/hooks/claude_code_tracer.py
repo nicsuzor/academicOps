@@ -74,6 +74,80 @@ def discover_config() -> dict | None:
     return cfg
 
 
+def resolve_session_id(
+    data: dict,
+    payload_key: str,
+    *,
+    prefer_env: bool = False,
+) -> str | None:
+    """Resolve a session identifier for a hook event, or None.
+
+    ``session.id`` is the OpenInference span attribute Phoenix groups traces
+    by (docs/phoenix/tracing/concepts-tracing/otel-openinference/context-managers.mdx:
+    "The `using_session` context manager sets the `session.id` attribute on
+    every span within its scope, which is used by Phoenix to group traces
+    into sessions."). A fabricated fallback like ``"unknown"`` silently
+    merges every session lacking an id into one bucket — the opposite of
+    groupability, and a "No defaults" axiom violation.
+
+    Two distinct identifiers are in play and this function resolves either,
+    selected by ``prefer_env``:
+
+    - **State key** (``prefer_env=False``, the default): the hook payload's
+      own id (``session_id`` for claude, ``conversationId`` for agy).
+      Subagent-tool dispatches get their OWN distinct payload session id
+      (verified empirically — see field test in PR #2461/#2462 discussion:
+      subagent hook payloads carry a UUID different from the parent's), so
+      this value MUST stay per-process to avoid two concurrent subagents
+      clobbering one state file (``_state_path`` keys the state file, and
+      ``_session_lock`` keys the lock, by exactly this value).
+    - **Phoenix grouping id** (``prefer_env=True``): the id stamped on the
+      ``session.id`` span attribute so a whole multi-agent working session —
+      root turn plus every subagent it dispatches — lands in ONE Phoenix
+      session. ``$AOPS_SESSION_ID`` is written once, at the root session's
+      SessionStart, into ``CLAUDE_ENV_FILE`` (handlers.py:_isolate_credentials)
+      and inherited via the environment by every descendant subagent
+      process — empirically confirmed: a live subagent process in this
+      session has ``AOPS_SESSION_ID`` in its environment equal to
+      ``CLAUDE_CODE_SESSION_ID`` of the root session, even though its own
+      hook payload's ``session_id`` is a different UUID. Preferring it here
+      is what makes subagent spans group under the root session instead of
+      each subagent appearing as its own disconnected session.
+
+    Either way, payload and env are the only two sources: there is no third,
+    state-file fallback for the state-key role, since the state file is
+    itself keyed by the id being resolved (``_state_path``) — it cannot
+    supply the id needed to look itself up.
+
+    Returns None when no real id is available at all; callers must skip
+    span emission and log a warning naming the missing field rather than
+    proceeding with a magic string.
+    """
+    payload_value = data.get(payload_key)
+    env_value = os.environ.get("AOPS_SESSION_ID")
+    if prefer_env:
+        if env_value:
+            return env_value
+        if payload_value:
+            return str(payload_value)
+        return None
+    if payload_value:
+        return str(payload_value)
+    if env_value:
+        return env_value
+    return None
+
+
+def _phoenix_session_id(state: dict) -> str:
+    """Return the Phoenix-grouping session id cached on *state* at init.
+
+    Falls back to the state-key ``session_id`` for state files written
+    before ``phoenix_session_id`` existed, so old in-flight sessions still
+    export rather than crashing mid-turn.
+    """
+    return state.get("phoenix_session_id") or state["session_id"]
+
+
 # ---------------------------------------------------------------------------
 # State file helpers
 # ---------------------------------------------------------------------------
@@ -136,98 +210,6 @@ def _new_span_id() -> str:
     import secrets
 
     return secrets.token_hex(8)
-
-
-# ---------------------------------------------------------------------------
-# Subagent trace-context propagation
-# ---------------------------------------------------------------------------
-
-# How long to wait for a subagent to claim the context file before giving up.
-_PENDING_AGENT_TIMEOUT_S = 30
-_PENDING_AGENT_DIR = STATE_DIR / "pending_agent"
-
-
-def _write_pending_agent_context(
-    parent_session_id: str,
-    parent_trace_id: str,
-    parent_span_id: str,
-    agent_prompt: str = "",
-) -> None:
-    """Write a side-channel file so the next subagent can inherit this trace.
-
-    Called from handle_pre_tool when an Agent tool invocation is detected.
-    The file is keyed by session+span so parallel agent invocations in the
-    same session each get their own file.  ``agent_prompt`` is stored so that
-    ``_claim_pending_agent_context`` can match the exact context for a given
-    subagent when multiple agents are running in parallel.
-    """
-    _PENDING_AGENT_DIR.mkdir(parents=True, exist_ok=True)
-    path = _PENDING_AGENT_DIR / f"{parent_session_id}_{parent_span_id}.json"
-    path.write_text(
-        json.dumps(
-            {
-                "parent_session_id": parent_session_id,
-                "parent_trace_id": parent_trace_id,
-                "parent_span_id": parent_span_id,
-                "created_ns": time.time_ns(),
-                "agent_prompt": agent_prompt,
-            },
-        ),
-    )
-
-
-def _claim_pending_agent_context(prompt: str = "") -> dict | None:
-    """Claim the pending subagent context that matches this session, if any.
-
-    Called from handle_user_prompt_submit when a new session is initialised.
-    Returns the context dict (with ``parent_trace_id`` and ``parent_span_id``)
-    or None.  Claiming removes the file so no other session can use it.
-
-    When ``prompt`` is provided (the subagent's own prompt text) we first try
-    to find an exact match against ``agent_prompt`` stored in each context
-    file.  This prevents parallel agent invocations from claiming each other's
-    contexts.  If no exact match is found we fall back to newest-first so that
-    contexts written by older tracer versions (which lack ``agent_prompt``) are
-    still claimed.
-    """
-    if not _PENDING_AGENT_DIR.exists():
-        return None
-
-    deadline_ns = time.time_ns() - _PENDING_AGENT_TIMEOUT_S * 1_000_000_000
-    candidates: list[tuple[int, Path, dict]] = []
-    for p in _PENDING_AGENT_DIR.glob("*.json"):
-        try:
-            ctx = json.loads(p.read_text())
-            if ctx.get("created_ns", 0) >= deadline_ns:
-                candidates.append((ctx["created_ns"], p, ctx))
-        except Exception:
-            continue
-
-    if not candidates:
-        return None
-
-    # Sort newest-first once; used by both the prompt-match pass and fallback.
-    candidates.sort(key=lambda x: x[0], reverse=True)
-
-    # Pass 1: exact prompt match — eliminates parallel-agent races.
-    if prompt:
-        for _, path, ctx in candidates:
-            if ctx.get("agent_prompt", "") == prompt:
-                try:
-                    path.unlink()
-                    return ctx
-                except FileNotFoundError:
-                    # Another process claimed it first; keep scanning.
-                    continue
-
-    # Pass 2: fallback — newest unclaimed (handles legacy files without agent_prompt).
-    for _, path, ctx in candidates:
-        try:
-            path.unlink()
-            return ctx
-        except FileNotFoundError:
-            continue
-    return None
 
 
 @contextlib.contextmanager
@@ -1168,7 +1150,7 @@ def _emit_pending_llm_spans(
 
     _build_and_export_spans(
         config=config,
-        session_id=state["session_id"],
+        session_id=_phoenix_session_id(state),
         username=state.get("username", "unknown"),
         span_records=new_spans,
     )
@@ -1201,15 +1183,16 @@ def _complete_turn(
     turn_number = current_trace.get("turn_number", 1)
     prompt_preview = current_trace.get("prompt_preview", "")
     final_output = current_trace.get("last_llm_output", "")
-    # For the first turn of a subagent the CHAIN span is a child of the parent's
-    # Agent tool span, making all subagent work visible inside the parent trace.
-    parent_agent_span_id = current_trace.get("parent_agent_span_id")
 
-    # Root CHAIN span
+    # Root CHAIN span. Always a genuine trace root — including for subagent
+    # turns, which are NOT nested inside the dispatching session's trace (see
+    # the comment on the Agent/Task branch in handle_pre_tool). Subagent and
+    # parent are connected instead via the shared "session.id" attribute.
     username = state.get("username", "unknown")
+    phoenix_session_id = _phoenix_session_id(state)
     root_attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
-        "session.id": state["session_id"],
+        "session.id": phoenix_session_id,
         "user.id": username,
         "arthur.turn_number": turn_number,
     }
@@ -1222,13 +1205,12 @@ def _complete_turn(
 
     _build_and_export_spans(
         config=config,
-        session_id=state["session_id"],
+        session_id=phoenix_session_id,
         username=username,
         span_records=[
             {
                 "trace_id_hex": trace_id,
                 "span_id_hex": root_span_id,
-                "parent_span_id_hex": parent_agent_span_id,
                 "name": "claude-code-turn",
                 "kind": SpanKind.INTERNAL,
                 "start_ns": turn_start_ns,
@@ -1346,7 +1328,13 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     Fires before Claude processes the prompt, giving an accurate turn_start_ns
     and the exact prompt text without transcript parsing.
     """
-    session_id = data.get("session_id", "unknown")
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        log.warning(
+            "handle_user_prompt_submit: no session id in payload ('session_id' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     prompt = data.get("prompt", "")
     now_ns = time.time_ns()
 
@@ -1355,6 +1343,16 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     # Initialize session on first event
     if not state.get("session_id"):
         state["session_id"] = session_id
+        # Grouping id for the "session.id" span attribute — the root session's
+        # id when this is a subagent (see resolve_session_id docstring),
+        # falling back to this process's own id when there is no root to
+        # inherit from (e.g. AOPS_SESSION_ID unset). Cached once at init so
+        # every span this session-state-file ever emits agrees.
+        state["phoenix_session_id"] = resolve_session_id(
+            data,
+            "session_id",
+            prefer_env=True,
+        )
         state["session_start_ns"] = now_ns
         state["username"] = os.environ.get(
             "USER",
@@ -1363,30 +1361,11 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         state["human_msg_count"] = 0
         state["turn_number"] = 0
 
-        # If a parent session pre-registered an Agent invocation, inherit its
-        # trace context so this subagent's spans are nested inside the parent trace.
-        # Pass the prompt so parallel agents can each claim their own context.
-        parent_ctx = _claim_pending_agent_context(prompt=prompt)
-        if parent_ctx:
-            state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
-            state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
-
     # Complete the previous turn's trace if one is in progress.
     # Use the cached transcript path from state so that any mid-session
     # project-dir changes (e.g. gh pr create writing to a worktree dir) do
     # not silently redirect us to a shadow transcript file.
-    _carry_trace_id = None
-    _carry_parent_span = None
     if state.get("current_trace"):
-        # When handle_pre_tool fires first for a new subagent session it claims
-        # the pending parent context and stores it inside current_trace.  Save
-        # those values before completing the old trace so the real first turn
-        # (created below) inherits the same trace ID and parent span — otherwise
-        # UPS would generate a fresh trace ID and sever the subagent connection.
-        _old_ct = state["current_trace"]
-        if _old_ct.get("_pretool_created") and _old_ct.get("parent_agent_span_id"):
-            _carry_trace_id = _old_ct["trace_id"]
-            _carry_parent_span = _old_ct["parent_agent_span_id"]
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _complete_turn(state, config, transcript_path, now_ns)
@@ -1405,32 +1384,26 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     state["turn_number"] = turn_number
     state["human_msg_count"] = current_human_count
 
-    # Use the inherited trace ID if this session was spawned as a subagent, so
-    # all spans land in the parent's trace.  Also consume the parent agent span
-    # ID (used only for the first CHAIN span so it becomes a child of the Agent
-    # tool span in the parent trace).
-    # _carry_* values are non-None only when handle_pre_tool fired before UPS
-    # and already placed the inherited context inside current_trace; in that
-    # case state-level keys were already consumed by the pre_tool fallback.
-    trace_id = state.pop("inherited_trace_id", None) or _carry_trace_id or _new_trace_id()
-    parent_agent_span_id = state.pop("parent_agent_span_id", None) or _carry_parent_span
-
     state["current_trace"] = {
-        "trace_id": trace_id,
+        "trace_id": _new_trace_id(),
         "root_span_id": _new_span_id(),
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "human_count_at_start": current_human_count,
         "prompt_preview": _truncate(prompt) if prompt else "",
-        # Non-None only for the first turn of a subagent; cleared after _complete_turn
-        "parent_agent_span_id": parent_agent_span_id,
     }
 
     _save_state(session_id, state)
 
 
 def handle_pre_tool(data: dict, config: dict) -> None:
-    session_id = data.get("session_id", "unknown")
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        log.warning(
+            "handle_pre_tool: no session id in payload ('session_id' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
     now_ns = time.time_ns()
@@ -1440,6 +1413,14 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     # Initialize session on first call
     if not state.get("session_id"):
         state["session_id"] = session_id
+        # See the matching comment in handle_user_prompt_submit: this is the
+        # root-session grouping id stamped on "session.id", not the per-process
+        # state key.
+        state["phoenix_session_id"] = resolve_session_id(
+            data,
+            "session_id",
+            prefer_env=True,
+        )
         state["session_start_ns"] = now_ns
         state["username"] = os.environ.get(
             "USER",
@@ -1447,15 +1428,6 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         )
         state["human_msg_count"] = 0
         state["turn_number"] = 0
-
-        # Claim any pending parent context in case UserPromptSubmit didn't fire
-        # for this subagent (e.g. Explore-type agents that are spawned
-        # programmatically bypass the UserPromptSubmit hook).  prompt="" triggers
-        # the newest-first fallback since the prompt text is not available here.
-        parent_ctx = _claim_pending_agent_context(prompt="")
-        if parent_ctx:
-            state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
-            state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
 
     # Detect context continuation: Claude Code compresses context and continues
     # without firing UserPromptSubmit for the resumption message. The symptom is
@@ -1487,13 +1459,8 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         state["turn_number"] = turn_number
         state["human_msg_count"] = current_human_count
 
-        # Consume any inherited parent context stored by the session init block
-        # (or by a UserPromptSubmit that ran in a prior hook invocation).
-        trace_id = state.pop("inherited_trace_id", None) or _new_trace_id()
-        parent_agent_span_id = state.pop("parent_agent_span_id", None)
-
         state["current_trace"] = {
-            "trace_id": trace_id,
+            "trace_id": _new_trace_id(),
             "root_span_id": _new_span_id(),
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
@@ -1503,11 +1470,6 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             # current_human_count-th human message.
             "human_count_at_start": max(0, current_human_count - 1),
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
-            "parent_agent_span_id": parent_agent_span_id,
-            # Sentinel so handle_user_prompt_submit can detect that this trace
-            # was created by the pre_tool fallback path (before UPS fired) and
-            # carry the inherited context forward to the real first turn.
-            "_pretool_created": True,
         }
 
     pending_entry: dict[str, Any] = {
@@ -1516,23 +1478,25 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         "start_ns": now_ns,
     }
 
-    # For Agent/Task tool calls, pre-allocate the span ID and write a side-channel
-    # file so the spawned subagent can inherit this trace.
+    # For Agent/Task tool calls, pre-allocate the span ID so any INLINE
+    # subagent activity (tool calls that land in this same session's
+    # pending_tools while the Agent/Task call is still open — see
+    # _find_active_agent_span_id) is parented under the Agent span rather
+    # than the CHAIN root. Genuinely out-of-process subagents (dispatched via
+    # the Agent/Task tool as a separate Claude process) get their own,
+    # distinct session id and state file — confirmed empirically: 25 distinct
+    # per-subagent state files observed in ~/.claude/tracer/, none sharing
+    # the dispatching session's id — so they cannot be nested by trace here.
+    # They are grouped instead via the shared "session.id" span attribute
+    # (resolve_session_id(..., prefer_env=True), sourced from
+    # $AOPS_SESSION_ID). A prior side-channel mechanism attempted trace-level
+    # nesting for this case (a pending_agent JSON file written here, claimed
+    # by the subagent's first hook) but never once succeeded across 29
+    # historical state files, leaving 21 orphaned side-channel files; removed.
     current_trace = state.get("current_trace")
     if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
         pending_entry["pre_allocated_span_id"] = agent_span_id
-        if isinstance(tool_input, dict):
-            # "Agent" uses "prompt"; "Task" may use "description"
-            agent_prompt = tool_input.get("prompt", tool_input.get("description", ""))
-        else:
-            agent_prompt = ""
-        _write_pending_agent_context(
-            parent_session_id=session_id,
-            parent_trace_id=current_trace["trace_id"],
-            parent_span_id=agent_span_id,
-            agent_prompt=agent_prompt,
-        )
         # Key by span_id so parallel Agent/Task calls in the same session don't
         # overwrite each other — post_tool finds the right entry by tool_input match.
         pending_key = f"{tool_name}#{agent_span_id}"
@@ -1623,7 +1587,13 @@ def _find_active_agent_span_id(
 
 
 def handle_post_tool(data: dict, config: dict) -> None:
-    session_id = data.get("session_id", "unknown")
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        log.warning(
+            "handle_post_tool: no session id in payload ('session_id' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     end_ns = time.time_ns()
 
     # Read state once to build the tool span (no mutation needed).
@@ -1669,7 +1639,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
     # I/O and does not mutate state, so it is safe to run outside the lock.
     _build_and_export_spans(
         config=config,
-        session_id=session_id,
+        session_id=_phoenix_session_id(state),
         username=state.get("username", "unknown"),
         span_records=[span_record],
     )
@@ -1694,7 +1664,13 @@ def handle_post_tool(data: dict, config: dict) -> None:
 
 def handle_post_tool_failure(data: dict, config: dict) -> None:
     """Handle PostToolUseFailure: emit an error TOOL/RETRIEVER/AGENT span."""
-    session_id = data.get("session_id", "unknown")
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        log.warning(
+            "handle_post_tool_failure: no session id in payload ('session_id' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     end_ns = time.time_ns()
 
     state = _load_state(session_id)
@@ -1742,7 +1718,7 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
 
     _build_and_export_spans(
         config=config,
-        session_id=session_id,
+        session_id=_phoenix_session_id(state),
         username=state.get("username", "unknown"),
         span_records=[span_record],
     )
@@ -1758,7 +1734,13 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
 
 
 def handle_stop(data: dict, config: dict) -> None:
-    session_id = data.get("session_id", "unknown")
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        log.warning(
+            "handle_stop: no session id in payload ('session_id' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     end_ns = time.time_ns()
 
     with _session_lock(session_id):

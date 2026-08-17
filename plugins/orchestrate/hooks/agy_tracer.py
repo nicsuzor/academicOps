@@ -7,8 +7,11 @@ agy's native hook lifecycle (PreInvocation, PostInvocation, Stop) to traces.
 """
 
 import json
+import logging
 import os
 import time
+
+log = logging.getLogger("orchestrate.agy_tracer")
 
 from claude_code_tracer import (
     _build_and_export_spans,
@@ -17,9 +20,11 @@ from claude_code_tracer import (
     _load_state,
     _new_span_id,
     _new_trace_id,
+    _phoenix_session_id,
     _save_state,
     _session_lock,
     _truncate,
+    resolve_session_id,
 )
 from claude_code_tracer import discover_config as discover_config  # re-exported for handlers.py
 
@@ -117,7 +122,13 @@ def _extract_llm_spans_for_turn_agy(
 
 def handle_pre_invocation(data: dict, config: dict) -> None:
     """Handle PreInvocation (turn start)."""
-    session_id = data.get("conversationId", "unknown")
+    session_id = resolve_session_id(data, "conversationId")
+    if session_id is None:
+        log.warning(
+            "handle_pre_invocation: no session id in payload ('conversationId' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     invocation_num = data.get("invocationNum")
     now_ns = time.time_ns()
 
@@ -127,6 +138,15 @@ def handle_pre_invocation(data: dict, config: dict) -> None:
         # Turn boundary: invocationNum == 0 or no active trace
         if invocation_num == 0 or not state.get("current_trace"):
             state["session_id"] = session_id
+            # Root-session grouping id for the "session.id" span attribute —
+            # see resolve_session_id's docstring in claude_code_tracer.py.
+            # Cached once (not re-resolved every turn) so it stays stable for
+            # the lifetime of this state file.
+            state["phoenix_session_id"] = state.get("phoenix_session_id") or resolve_session_id(
+                data,
+                "conversationId",
+                prefer_env=True,
+            )
             state["session_start_ns"] = state.get("session_start_ns") or now_ns
 
             transcript_path = data.get("transcriptPath", "")
@@ -173,7 +193,13 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     if not tool_call:
         return
 
-    session_id = data.get("conversationId", "unknown")
+    session_id = resolve_session_id(data, "conversationId")
+    if session_id is None:
+        log.warning(
+            "handle_pre_tool: no session id in payload ('conversationId' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     now_ns = time.time_ns()
 
     with _session_lock(session_id):
@@ -206,7 +232,13 @@ def handle_post_tool(data: dict, config: dict) -> None:
     if not tool_call:
         return
 
-    session_id = data.get("conversationId", "unknown")
+    session_id = resolve_session_id(data, "conversationId")
+    if session_id is None:
+        log.warning(
+            "handle_post_tool: no session id in payload ('conversationId' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     end_ns = time.time_ns()
 
     with _session_lock(session_id):
@@ -239,7 +271,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
 
         _build_and_export_spans(
             config=config,
-            session_id=session_id,
+            session_id=_phoenix_session_id(state),
             username=state.get("username", "unknown"),
             span_records=[span_record],
         )
@@ -252,7 +284,13 @@ def handle_post_tool(data: dict, config: dict) -> None:
 
 def handle_stop(data: dict, config: dict) -> None:
     """Handle Stop event (turn end)."""
-    session_id = data.get("conversationId", "unknown")
+    session_id = resolve_session_id(data, "conversationId")
+    if session_id is None:
+        log.warning(
+            "handle_stop: no session id in payload ('conversationId' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
     end_ns = time.time_ns()
 
     with _session_lock(session_id):
@@ -296,7 +334,7 @@ def handle_stop(data: dict, config: dict) -> None:
             "force_span_id": True,
             "attributes": {
                 "openinference.span.kind": "CHAIN",
-                "session.id": session_id,
+                "session.id": _phoenix_session_id(state),
             },
         }
 
@@ -310,7 +348,7 @@ def handle_stop(data: dict, config: dict) -> None:
 
         _build_and_export_spans(
             config=config,
-            session_id=session_id,
+            session_id=_phoenix_session_id(state),
             username=state.get("username", "unknown"),
             span_records=records,
         )
