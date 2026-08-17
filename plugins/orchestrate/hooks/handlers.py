@@ -171,8 +171,14 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
 
 
 def user_prompt_submit(ctx: HookContext) -> Result | None:
-    """Tracer hook handler for UserPromptSubmit."""
-    if claude_code_tracer is None:
+    """Tracer hook handler for canonical UserPromptSubmit, Claude Code side.
+
+    Registered alongside ``agy_user_prompt_submit`` under the same canonical
+    ``"UserPromptSubmit"`` key (see ``HANDLERS`` below) — each guards on
+    ``ctx.client`` so exactly one tracer stack emits per client, the same
+    split already used for ``pre_tool``/``agy_pre_tool``.
+    """
+    if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
         config = claude_code_tracer.discover_config()
@@ -181,7 +187,26 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_user_prompt_submit(data, config)
     except Exception as exc:
         log.warning("user_prompt_submit tracer failed: %s", exc)
-        raise
+    return None
+
+
+def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
+    """Tracer hook handler for canonical UserPromptSubmit, agy side.
+
+    agy's wire event is ``PreInvocation``; ``lib/hooks/dispatch.py`` maps it
+    onto canonical ``UserPromptSubmit`` before handler lookup, so this must be
+    registered under that canonical key — not under a ``"PreInvocation"`` key,
+    which dispatch never looks up and would never fire.
+    """
+    if agy_tracer is None or ctx.client != "agy":
+        return None
+    try:
+        config = agy_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            agy_tracer.handle_pre_invocation(data, config)
+    except Exception as exc:
+        log.warning("agy_user_prompt_submit tracer failed: %s", exc)
     return None
 
 
@@ -196,7 +221,6 @@ def pre_tool(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_pre_tool(data, config)
     except Exception as exc:
         log.warning("pre_tool tracer failed: %s", exc)
-        raise
     return None
 
 
@@ -211,7 +235,6 @@ def post_tool(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_post_tool(data, config)
     except Exception as exc:
         log.warning("post_tool tracer failed: %s", exc)
-        raise
     return None
 
 
@@ -226,7 +249,6 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_post_tool_failure(data, config)
     except Exception as exc:
         log.warning("post_tool_failure tracer failed: %s", exc)
-        raise
     return None
 
 
@@ -241,33 +263,6 @@ def stop(ctx: HookContext) -> Result | None:
             claude_code_tracer.handle_stop(data, config)
     except Exception as exc:
         log.warning("stop tracer failed: %s", exc)
-        raise
-    return None
-
-
-def agy_pre_invocation(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
-        return None
-    try:
-        config = agy_tracer.discover_config()
-        if config is not None:
-            data = _prepare_tracer_data(ctx)
-            agy_tracer.handle_pre_invocation(data, config)
-    except Exception as exc:
-        log.warning("agy_pre_invocation tracer failed: %s", exc)
-    return None
-
-
-def agy_post_invocation(ctx: HookContext) -> Result | None:
-    if agy_tracer is None or ctx.client != "agy":
-        return None
-    try:
-        config = agy_tracer.discover_config()
-        if config is not None:
-            data = _prepare_tracer_data(ctx)
-            agy_tracer.handle_post_invocation(data, config)
-    except Exception as exc:
-        log.warning("agy_post_invocation tracer failed: %s", exc)
     return None
 
 
@@ -312,13 +307,16 @@ def agy_stop(ctx: HookContext) -> Result | None:
 
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
-    "UserPromptSubmit": [user_prompt_submit],
+    # Both clients register here: agy's wire event is PreInvocation, which
+    # dispatch.py's TO_CANONICAL maps onto this canonical key before handler
+    # lookup runs — a "PreInvocation" registration here would never fire.
+    "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit],
     "PreToolUse": [pre_tool, agy_pre_tool],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
+    # Both clients register here too: agy's wire event is PostInvocation,
+    # which TO_CANONICAL maps onto this canonical key for the same reason.
     "Stop": [stop, agy_stop],
-    "PreInvocation": [agy_pre_invocation],
-    "PostInvocation": [agy_post_invocation],
     # "PostToolBatch": [rule_against_hearsay],
     "SubagentStart": [honest_output],
 }

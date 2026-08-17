@@ -21,6 +21,7 @@ from claude_code_tracer import (
     _session_lock,
     _truncate,
 )
+from claude_code_tracer import discover_config as discover_config  # re-exported for handlers.py
 
 
 def _find_pending_tool_entry_for_agy(state: dict, tool_name: str) -> tuple[dict, str]:
