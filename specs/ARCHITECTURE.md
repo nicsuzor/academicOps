@@ -288,11 +288,12 @@ plugins/rbg/README.md, "As OTel spans, in OTLP JSON"), as an additional sink
 alongside its own JSON Lines trace, using `opentelemetry-sdk` and
 `opentelemetry-exporter-otlp-json-file`'s `FileSpanExporter` to write real
 OTLP JSON straight to a file path rather than a network endpoint. This
-dependency is declared in `plugins/rbg/pyproject.toml` — the first
-plugin-owned `pyproject.toml` in the tree, rather than the shared
-`templates/plugin/pyproject.template.toml` every other plugin still builds
-from — because it is the first plugin whose hooks need a dependency the
-generic template does not carry.
+dependency is declared in the shared
+`templates/plugin/pyproject.template.toml` — every plugin's `pyproject.toml`
+is generated from this template at build time, so `rbg` carries the same
+`opentelemetry-sdk` and OTel exporter dependencies as `orchestrate`, whose
+`claude_code_tracer.py` and `agy_tracer.py` emit spans to a network endpoint
+rather than a file.
 
 ## Build
 

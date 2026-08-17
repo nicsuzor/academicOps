@@ -16,7 +16,9 @@ dependencies = [
   "pdfminer-six>=20260107",
   "streamlit>=1.54.0",
   "claude-code-log>=1.5.0",
-  # rbg's own OTel span emission (plugins/rbg/pyproject.toml, plugins/rbg/hooks/evaluator_otel_trace.py) —
+  # OTel span emission, declared for every plugin in
+  # templates/plugin/pyproject.template.toml (see plugins/rbg/hooks/evaluator_otel_trace.py,
+  # plugins/orchestrate/hooks/claude_code_tracer.py, plugins/orchestrate/hooks/agy_tracer.py) —
   # duplicated here, like every other plugin-scoped dependency, so the shared
   # dev venv basedpyright and pytest run under can resolve it too.
   "opentelemetry-sdk>=1.40.0",
