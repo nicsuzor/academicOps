@@ -1006,22 +1006,16 @@ def test_hook_bearing_plugins_all_present(dist_root):
 
 
 def test_rbg_wires_preinvocation_on_agy(dist_root):
-    """agy has no PreToolUse equivalent, so rbg has no tool call to send its
-    evaluator there. It still ships a hook: PreInvocation carries the prompt,
+    """It ships a hook: PreInvocation carries the prompt,
     which is enough to state the live rule set for the turn."""
-    assert _canonical_or_none("agy", "PreToolUse") is None
     wired = {wire for wire, _ in _hook_commands("agy", dist_root / "rbg-agy")}
     assert wired == {"PreInvocation", "PostInvocation"}
 
 
-def test_rbg_wires_claude_pretooluse_and_agy_does_not(dist_root):
-    """The evaluator check is Claude-only by necessity, not by choice: agy has
-    no wire event that maps to PreToolUse, so wiring one there would spawn a
-    process that finds no tool call to judge."""
+def test_rbg_wires_claude_pretooluse(dist_root):
+    """The evaluator check is currently tested against Claude only."""
     claude_wired = {wire for wire, _ in _hook_commands("claude", dist_root / "rbg-claude")}
     assert "PreToolUse" in claude_wired
-
-    assert _canonical_or_none("agy", "PreToolUse") is None
     agy_wired = {wire for wire, _ in _hook_commands("agy", dist_root / "rbg-agy")}
     assert "PreToolUse" not in agy_wired
 

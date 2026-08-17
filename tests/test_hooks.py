@@ -75,7 +75,7 @@ def test_agy_known_event_aliases():
     assert to_canonical("agy", "PostInvocation") == "Stop"
 
 
-@pytest.mark.parametrize("event", ["SessionStart", "PreToolUse", "SubagentStop"])
+@pytest.mark.parametrize("event", ["SessionStart", "SubagentStop"])
 def test_agy_has_no_wire_equivalent_for_these_architecture_events(event):
     """No confirmed agy wire equivalent exists for these, so the table has no
     row for them. Asserted against the table itself: `to_canonical` cannot
@@ -192,7 +192,6 @@ def test_render_agy_refusal_is_a_deny_decision_with_a_reason():
     and wrong-by-omission is how a silent no-op ships."""
     out = render("agy", "PreToolUse", refuse("nobody is here to answer"))
     assert out == {"decision": "deny", "reason": "nobody is here to answer"}
-    assert "PreToolUse" not in TO_CANONICAL["agy"]
 
 
 def test_render_advisory_never_carries_a_blocking_field_on_either_client():

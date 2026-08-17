@@ -385,7 +385,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         "invoke_subagent",
         "manage_subagents",
         "send_message",
-        "manage_task",
+        "ask_question",
     ]
 
     body = body.lstrip("\n")

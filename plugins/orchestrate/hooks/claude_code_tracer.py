@@ -556,7 +556,7 @@ def _extract_llm_spans_for_turn(
             # Per OpenInference spec, message.content carries text only; tool calls
             # go in structured tool_calls attributes (not serialised into content).
             output_message_content = (
-                _truncate("".join(group_text_parts)) if group_text_parts else ""
+                _truncate("".join(group_text_parts)) if group_text_parts else None
             )
 
             start_ns = _iso_to_ns(group_ts)
@@ -577,10 +577,11 @@ def _extract_llm_spans_for_turn(
                 "input.value": snap.get("value", ""),
                 "input.mime_type": snap.get("mime", "text/plain"),
                 "llm.output_messages.0.message.role": "assistant",
-                "llm.output_messages.0.message.content": output_message_content,
                 "output.value": output_value,
                 "output.mime_type": output_mime,
             }
+            if output_message_content:
+                attrs["llm.output_messages.0.message.content"] = output_message_content
 
             # Structured tool_calls attributes (OpenInference spec)
             for i, tc in enumerate(group_tool_use_parts):
@@ -1084,7 +1085,7 @@ def _build_and_export_spans(
                             k, v = item.split(":", 1)
                             headers[k.strip()] = v.strip()
                 else:
-                    headers["Authorization"] = f"Bearer {api_key_str}"
+                    headers["authorization"] = f"Bearer {api_key_str}"
 
             exporter = _create_exporter(
                 endpoint=config["endpoint"],

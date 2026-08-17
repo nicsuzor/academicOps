@@ -23,6 +23,12 @@ except ImportError as exc:
         exc,
     )
 
+try:
+    import agy_tracer
+except ImportError as exc:
+    agy_tracer = None
+    log.warning("agy_tracer did not import (%s)", exc)
+
 Handler = Callable[[HookContext], Result | None]
 
 _BASIC_VARS = (
@@ -181,7 +187,7 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
 
 def pre_tool(ctx: HookContext) -> Result | None:
     """Tracer hook handler for PreToolUse."""
-    if claude_code_tracer is None:
+    if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
         config = claude_code_tracer.discover_config()
@@ -196,7 +202,7 @@ def pre_tool(ctx: HookContext) -> Result | None:
 
 def post_tool(ctx: HookContext) -> Result | None:
     """Tracer hook handler for PostToolUse."""
-    if claude_code_tracer is None:
+    if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
         config = claude_code_tracer.discover_config()
@@ -211,7 +217,7 @@ def post_tool(ctx: HookContext) -> Result | None:
 
 def post_tool_failure(ctx: HookContext) -> Result | None:
     """Tracer hook handler for PostToolUseFailure."""
-    if claude_code_tracer is None:
+    if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
         config = claude_code_tracer.discover_config()
@@ -226,7 +232,7 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
 
 def stop(ctx: HookContext) -> Result | None:
     """Tracer hook handler for Stop."""
-    if claude_code_tracer is None:
+    if claude_code_tracer is None or ctx.client == "agy":
         return None
     try:
         config = claude_code_tracer.discover_config()
@@ -239,13 +245,80 @@ def stop(ctx: HookContext) -> Result | None:
     return None
 
 
+def agy_pre_invocation(ctx: HookContext) -> Result | None:
+    if agy_tracer is None or ctx.client != "agy":
+        return None
+    try:
+        config = agy_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            agy_tracer.handle_pre_invocation(data, config)
+    except Exception as exc:
+        log.warning("agy_pre_invocation tracer failed: %s", exc)
+    return None
+
+
+def agy_post_invocation(ctx: HookContext) -> Result | None:
+    if agy_tracer is None or ctx.client != "agy":
+        return None
+    try:
+        config = agy_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            agy_tracer.handle_post_invocation(data, config)
+    except Exception as exc:
+        log.warning("agy_post_invocation tracer failed: %s", exc)
+    return None
+
+
+def agy_pre_tool(ctx: HookContext) -> Result | None:
+    if agy_tracer is None or ctx.client != "agy":
+        return None
+    try:
+        config = agy_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            agy_tracer.handle_pre_tool(data, config)
+    except Exception as exc:
+        log.warning("agy_pre_tool tracer failed: %s", exc)
+    return None
+
+
+def agy_post_tool(ctx: HookContext) -> Result | None:
+    if agy_tracer is None or ctx.client != "agy":
+        return None
+    try:
+        config = agy_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            agy_tracer.handle_post_tool(data, config)
+    except Exception as exc:
+        log.warning("agy_post_tool tracer failed: %s", exc)
+    return None
+
+
+def agy_stop(ctx: HookContext) -> Result | None:
+    if agy_tracer is None or ctx.client != "agy":
+        return None
+    try:
+        config = agy_tracer.discover_config()
+        if config is not None:
+            data = _prepare_tracer_data(ctx)
+            agy_tracer.handle_stop(data, config)
+    except Exception as exc:
+        log.warning("agy_stop tracer failed: %s", exc)
+    return None
+
+
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
     "UserPromptSubmit": [user_prompt_submit],
-    "PreToolUse": [pre_tool],
-    "PostToolUse": [post_tool],
+    "PreToolUse": [pre_tool, agy_pre_tool],
+    "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop],
+    "Stop": [stop, agy_stop],
+    "PreInvocation": [agy_pre_invocation],
+    "PostInvocation": [agy_post_invocation],
     # "PostToolBatch": [rule_against_hearsay],
     "SubagentStart": [honest_output],
 }

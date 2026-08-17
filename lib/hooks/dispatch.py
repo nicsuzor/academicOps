@@ -153,6 +153,9 @@ TO_CANONICAL = {
     "agy": {
         "PreInvocation": "UserPromptSubmit",
         "PostInvocation": "Stop",
+        "PreToolUse": "PreToolUse",
+        "PostToolUse": "PostToolUse",
+        "Stop": "Stop",
     },
 }
 
