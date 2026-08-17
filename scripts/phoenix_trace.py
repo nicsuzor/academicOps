@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Dump every span belonging to a session's traces from a Phoenix instance.
 
-A subagent carries its own ``session.id`` but inherits the parent's
-``trace_id``. Filtering on ``session.id`` alone therefore returns the parent's
-spans and silently drops every subagent span in the same trace. This tool
-resolves the session to the set of trace ids it appears in, then fetches *all*
-spans in those traces regardless of which session they claim, and reports the
-narrow set and the full trees separately.
+A session id identifies traces, not spans. Filtering spans on ``session.id``
+returns whichever spans happen to carry that attribute — an arbitrary slice of
+each trace, with parents and children missing at random, so the result cannot
+be read as a tree. This tool instead resolves the session to the set of trace
+ids its spans belong to, then fetches *every* span in those traces, so the
+caller sees complete parent/child structure rather than a filtered subset. The
+narrow set and the full trees are reported separately and labelled.
+
+The two sets may well be identical: on the evidence measured so far,
+``narrow_spans == full_spans`` for every session checked, because the spans
+sharing a trace also share its ``session.id``. A degenerate split is the
+expected reading, not a symptom of a broken query.
 
 Configuration is environment-only, per specs/ARCHITECTURE.md "No defaults":
 
@@ -238,7 +244,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--narrow",
         action="store_true",
-        help="Emit only spans carrying this session.id, omitting inherited-trace siblings.",
+        help="Emit only spans carrying this session.id, omitting the rest of their traces.",
     )
     parser.add_argument(
         "--summary",
