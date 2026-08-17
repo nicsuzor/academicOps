@@ -18,9 +18,7 @@ Hook events:
 
 Config priority (highest first):
   1. Env vars: GENAI_ENGINE_API_KEY, GENAI_ENGINE_TASK_ID, GENAI_ENGINE_TRACE_ENDPOINT
-  2. Project config: $CLAUDE_PROJECT_DIR/.claude/arthur_config.json
-  3. Global config: ~/.claude/arthur_config.json
-  4. Silent no-op if nothing configured
+  2. Silent no-op if nothing configured
 """
 
 import contextlib
@@ -65,45 +63,7 @@ def discover_config() -> dict | None:
     api_key = os.environ.get("GENAI_ENGINE_API_KEY", "")
     task_id = os.environ.get("GENAI_ENGINE_TASK_ID", "")
     endpoint = os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT", "")
-    protocol = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "") or os.environ.get(
-        "OTEL_EXPORTER_OTLP_PROTOCOL", ""
-    )
-
-    if not (api_key and task_id and endpoint):
-        project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
-        project_cfg = _load_config_file(
-            Path(project_dir) / ".claude" / "arthur_config.json",
-        )
-        api_key = api_key or project_cfg.get("api_key", "")
-        task_id = task_id or project_cfg.get("task_id", "")
-        endpoint = endpoint or project_cfg.get("endpoint", "")
-        protocol = protocol or project_cfg.get("protocol", "")
-
-    if not (api_key and task_id and endpoint):
-        global_cfg = _load_config_file(Path.home() / ".claude" / "arthur_config.json")
-        api_key = api_key or global_cfg.get("api_key", "")
-        task_id = task_id or global_cfg.get("task_id", "")
-        endpoint = endpoint or global_cfg.get("endpoint", "")
-        protocol = protocol or global_cfg.get("protocol", "")
-
-    if not (api_key and task_id and endpoint):
-        # Support standard OpenTelemetry environment variables as fallback
-        endpoint = (
-            endpoint
-            or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
-            or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-        )
-        task_id = task_id or os.environ.get("OTEL_SERVICE_NAME", "") or "claude-code"
-        api_key = (
-            api_key
-            or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
-            or os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "")
-        )
-        protocol = (
-            protocol
-            or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "")
-            or os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "")
-        )
+    protocol = os.environ.get("GENAI_ENGINE_TRACE_PROTOCOL", "")
 
     if not endpoint:
         return None
@@ -1094,7 +1054,8 @@ def _build_and_export_spans(
             )
             if not exporter:
                 log.warning("Failed to create any OTel span exporter")
-                raise Exception("Failed to create any OTel span exporter")
+                continue
+
             # Resolve None kind (used for LLM spans set by caller)
             kind = rec.get("kind") or SpanKind.CLIENT
 
@@ -1108,17 +1069,7 @@ def _build_and_export_spans(
 
             provider = TracerProvider(**kwargs)
 
-            class StrictSpanProcessor(SimpleSpanProcessor):
-                def on_end(self, span_to_export):
-                    if not span_to_export.context.trace_flags.sampled:
-                        return
-                    from opentelemetry.sdk.trace.export import SpanExportResult
-
-                    result = self.span_exporter.export((span_to_export,))
-                    if result != SpanExportResult.SUCCESS:
-                        raise Exception(f"OTel span export failed with result: {result.name}")
-
-            provider.add_span_processor(StrictSpanProcessor(exporter))
+            provider.add_span_processor(SimpleSpanProcessor(exporter))
             tracer = provider.get_tracer("claude-code-tracer")
 
             ctx = None

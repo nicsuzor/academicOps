@@ -34,23 +34,6 @@ def discover_config() -> dict | None:
     )
 
     if not (api_key and task_id and endpoint):
-        project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
-        project_cfg = _load_config_file(
-            Path(project_dir) / ".claude" / "arthur_config.json",
-        )
-        api_key = api_key or project_cfg.get("api_key", "")
-        task_id = task_id or project_cfg.get("task_id", "")
-        endpoint = endpoint or project_cfg.get("endpoint", "")
-        protocol = protocol or project_cfg.get("protocol", "")
-
-    if not (api_key and task_id and endpoint):
-        global_cfg = _load_config_file(Path.home() / ".claude" / "arthur_config.json")
-        api_key = api_key or global_cfg.get("api_key", "")
-        task_id = task_id or global_cfg.get("task_id", "")
-        endpoint = endpoint or global_cfg.get("endpoint", "")
-        protocol = protocol or global_cfg.get("protocol", "")
-
-    if not (api_key and task_id and endpoint):
         endpoint = (
             endpoint
             or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
