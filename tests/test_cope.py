@@ -1313,7 +1313,7 @@ def test_both_trace_sinks_write_independently_when_both_configured(
     assert len(_otlp_spans(otel_path)) == len(live)
 
 
-def test_otel_trace_destination_that_cannot_be_written_does_not_break_the_tool_call(
+def test_otel_trace_destination_that_cannot_be_written_breaks_the_tool_call(
     monkeypatch, transport, hooks_dir_with_axioms, tmp_path
 ):
     hooks, cwd = hooks_dir_with_axioms
@@ -1326,9 +1326,8 @@ def test_otel_trace_destination_that_cannot_be_written_does_not_break_the_tool_c
     blocker.write_text("not a directory")
     monkeypatch.setenv("COPE_EVALUATOR_OTEL_TRACE_PATH", str(blocker / "sub" / "trace.jsonl"))
 
-    result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
-    assert result is not None
-    assert "halt-on-failure" in result.inject_text
+    with pytest.raises(NotADirectoryError):
+        handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
 
 
 def test_no_evaluator_configured_means_no_otel_span_is_attempted(
