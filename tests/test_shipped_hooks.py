@@ -1007,9 +1007,15 @@ def test_hook_bearing_plugins_all_present(dist_root):
 
 def test_rbg_wires_preinvocation_on_agy(dist_root):
     """It ships a hook: PreInvocation carries the prompt,
-    which is enough to state the live rule set for the turn."""
+    which is enough to state the live rule set for the turn.
+
+    PostInvocation is no longer wired: dispatch.py's
+    TO_CANONICAL["agy"]["PostInvocation"] is now None (aops_73e25af2 — it
+    fired once per internal invocation/tool-call round-trip, not once per
+    turn), and rbg's own Stop-side handler is commented out anyway, so
+    there was nothing left for it to reach."""
     wired = {wire for wire, _ in _hook_commands("agy", dist_root / "rbg-agy")}
-    assert wired == {"PreInvocation", "PostInvocation"}
+    assert wired == {"PreInvocation"}
 
 
 def test_rbg_wires_claude_pretooluse(dist_root):

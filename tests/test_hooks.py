@@ -72,7 +72,21 @@ def test_claude_events_are_identity_mapped_for_the_full_architecture_table():
 
 def test_agy_known_event_aliases():
     assert to_canonical("agy", "PreInvocation") == "UserPromptSubmit"
-    assert to_canonical("agy", "PostInvocation") == "Stop"
+
+
+def test_agy_postinvocation_is_a_known_but_unmapped_event():
+    """PostInvocation is a deliberate no-op, not a missing row.
+
+    It used to alias onto canonical "Stop", but live instrumentation showed
+    it fires once per internal invocation/tool-call round-trip rather than
+    once per turn (aops_73e25af2) — every Stop-registered handler on every
+    plugin saw N+1 fires per turn. `TO_CANONICAL["agy"]["PostInvocation"]` is
+    explicitly `None` so `main()` short-circuits before `_log_fire` or any
+    handler lookup — distinct from `test_an_unmapped_event_passes_through_
+    under_its_own_name` below, where an event with no row at all passes
+    through under its own name and still reaches `_load_handlers`."""
+    assert "PostInvocation" in TO_CANONICAL["agy"]
+    assert to_canonical("agy", "PostInvocation") is None
 
 
 @pytest.mark.parametrize("event", ["SessionStart", "SubagentStop"])
@@ -728,20 +742,24 @@ def test_dispatch_agy_userpromptsubmit_via_preinvocation_alias(injected_plugin):
     assert json.loads(result.stdout) == {"injectSteps": [{"ephemeralMessage": "hydrate first"}]}
 
 
-def test_dispatch_agy_stop_via_postinvocation_alias(injected_plugin):
+def test_dispatch_agy_postinvocation_is_a_clean_no_op(injected_plugin):
+    """agy's PostInvocation used to alias onto canonical Stop, but it fires
+    once per internal invocation/tool-call round-trip rather than once per
+    turn (aops_73e25af2) — every Stop-registered handler on every plugin saw
+    N+1 fires per turn from it. TO_CANONICAL["agy"]["PostInvocation"] is now
+    explicitly None, so a Stop handler must never see it."""
     _write_handlers(
         injected_plugin,
         "from dispatch import warn\n"
         "\n"
         "def _handover(ctx):\n"
-        "    assert ctx.event == 'Stop'\n"
         "    return warn('hand it over')\n"
         "\n"
         "HANDLERS = {'Stop': [_handover]}\n",
     )
     result = _run_dispatch(injected_plugin, "agy", "PostInvocation", {})
     assert result.returncode == 0
-    assert json.loads(result.stdout) == {"injectSteps": [{"ephemeralMessage": "hand it over"}]}
+    assert result.stdout.strip() == ""
 
 
 _RAISING_AND_ADVISING = (

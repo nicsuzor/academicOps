@@ -152,7 +152,22 @@ TO_CANONICAL = {
     "claude": {name: name for name in CANONICAL_EVENTS},
     "agy": {
         "PreInvocation": "UserPromptSubmit",
-        "PostInvocation": "Stop",
+        # Deliberately unmapped, not merely omitted: live instrumentation
+        # (headless agy 1.1.13, AOPS_HOOK_LOG_PATH plus a wire-level probe on
+        # the hook command itself) showed PostInvocation fires once per
+        # internal model invocation/tool-call round-trip — three times for a
+        # three-tool-call turn — not once per turn. It previously aliased
+        # onto "Stop", so every Stop-registered handler on every plugin saw
+        # N+1 fires per turn; orchestrate's own agy OTel tracer built and
+        # exported a CHAIN span, then deleted its trace state, after each
+        # premature fire, fragmenting one turn into several incomplete
+        # traces (aops_73e25af2). None of PreToolUse/PostToolUse/Stop/
+        # SubagentStop covers "one invocation step finished, possibly not
+        # the last" — agy has no wire event at that granularity mapped here,
+        # and no currently-live handler (across aops-debug, orchestrate,
+        # rbg, ida) depends on receiving it, so it is a no-op rather than a
+        # guess at some other canonical event.
+        "PostInvocation": None,
         "PreToolUse": "PreToolUse",
         "PostToolUse": "PostToolUse",
         "Stop": "Stop",

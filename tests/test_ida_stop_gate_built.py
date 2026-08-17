@@ -195,12 +195,18 @@ def test_no_message_file_in_the_build_reaches_the_person(ida_dist):
     assert user_facing == [], f"ida ships user-visible hook text: {user_facing}"
 
 
-@pytest.mark.parametrize("client", _CLIENTS)
+@pytest.mark.parametrize("client", ["claude"])
 def test_stop_is_silent_on_its_own_continuation(ida_dist, client):
     """Injecting on a stop gives the session another turn, which stops again.
     Without the `stop_hook_active` guard this handler re-fires against its own
     continuation and the session cannot end. The guard is dispatch.py's, so this
-    proves it survives the build rather than proving the handler checks it."""
+    proves it survives the build rather than proving the handler checks it.
+
+    claude only: ida ships no agy hooks.json at all now. Its only prior agy
+    wiring was PostInvocation, which dispatch.py no longer maps to anything
+    (aops_73e25af2 — it fired once per internal invocation/tool-call
+    round-trip, not once per turn), so there is no agy stop-equivalent event
+    left to test silence for."""
     build_dir, command = _stop_command(ida_dist, client)
     proc = _run(build_dir, command, {"session_id": "stop-gate-test", "stop_hook_active": True})
     assert proc.returncode == 0, f"stderr: {proc.stderr!r}"

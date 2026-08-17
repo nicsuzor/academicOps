@@ -293,36 +293,19 @@ def agy_post_tool(ctx: HookContext) -> Result | None:
 
 
 def agy_stop(ctx: HookContext) -> Result | None:
-    """OTel turn-close for agy. Guarded to the genuine end-of-turn payload.
+    """OTel turn-close for agy.
 
-    agy's wire ``PostInvocation`` and ``Stop`` both canonicalize to this
-    ``"Stop"`` key (``dispatch.py``'s ``TO_CANONICAL["agy"]``, kept as-is —
-    other plugins and ``tests/test_hooks.py``,
-    ``tests/test_dispatch_gate.py`` rely on that alias for their own,
-    unrelated Stop-side advisories). But the two wire events are NOT the same
-    moment: live instrumentation (headless agy 1.1.13, single user prompt,
-    ``AOPS_HOOK_LOG_PATH`` + a wire-level probe on each hook command) showed
-    ``PostInvocation`` fires once per internal invocation/tool-call
-    round-trip — three fires for a three-tool-call turn — while ``Stop``
-    fires exactly once, when agy is truly idle. Treating every
-    ``PostInvocation``-sourced Stop as a real turn-end made ``handle_stop``
-    below build and export a CHAIN span, then delete ``current_trace``,
-    after the *first* invocation — before the model had produced its final
-    response — so a multi-step turn emitted several incomplete, fragmented
-    traces instead of one. The ``current_trace`` guard inside
-    ``agy_tracer.handle_stop`` only stops a literal double-emit; it does not
-    stop this premature-emit-then-rebuild cycle.
-
-    Only agy's genuine ``Stop`` wire payload carries ``terminationReason``/
-    ``fullyIdle`` (session-idle state); ``PostInvocation`` payloads never do
-    (they carry ``invocationNum``/``initialNumSteps`` instead). That is the
-    one reliable signal available in the normalized payload for which wire
-    event actually fired, since dispatch.py's canonicalization already
-    collapses the wire event name itself before handlers run.
+    Fires only from agy's genuine ``Stop`` wire event now: ``dispatch.py``'s
+    ``TO_CANONICAL["agy"]["PostInvocation"]`` no longer aliases onto this
+    canonical ``"Stop"`` key (see the comment there for why — it fired once
+    per internal invocation/tool-call round-trip, not once per turn, and
+    every extra fire made ``handle_stop`` below build and export a CHAIN
+    span, then delete ``current_trace``, before the model had produced its
+    final response, fragmenting one turn into several incomplete traces —
+    aops_73e25af2). No payload-shape guard is needed here any more: a
+    premature, per-invocation fire is no longer reachable.
     """
     if agy_tracer is None or ctx.client != "agy":
-        return None
-    if "terminationReason" not in ctx.raw and "fullyIdle" not in ctx.raw:
         return None
     try:
         config = agy_tracer.discover_config()
@@ -343,8 +326,9 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [pre_tool, agy_pre_tool],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    # Both clients register here too: agy's wire event is PostInvocation,
-    # which TO_CANONICAL maps onto this canonical key for the same reason.
+    # Both clients register here: agy's wire event is its own "Stop" (not
+    # PostInvocation — dispatch.py's TO_CANONICAL no longer aliases that
+    # one onto anything; see the comment there).
     "Stop": [stop, agy_stop],
     # "PostToolBatch": [rule_against_hearsay],
     "SubagentStart": [honest_output],

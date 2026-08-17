@@ -175,26 +175,35 @@ def _agy_hook_events(plugin_dir_name: str) -> set[str]:
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
-def test_rbg_ships_the_stop_gate_on_claude_and_agy():
+def test_rbg_ships_the_stop_gate_on_claude_only():
+    """rbg's Stop-side ``rule_check`` handler is entirely commented out
+    (plugins/rbg/hooks/handlers.py — "TEMPORARY... do not delete the
+    entries", pending aops_d27c7aea), so there is nothing on agy for it to
+    advise. agy's ``PostInvocation`` — the only wire event that used to
+    alias onto canonical ``Stop`` — no longer maps to anything at all
+    (aops_73e25af2: it fired once per internal invocation/tool-call
+    round-trip, not once per turn), so rbg no longer registers it."""
     assert {"Stop", "SubagentStop"} <= _claude_hook_events("rbg-claude")
-    # agy's wire name is PostInvocation; dispatch.py maps it onto canonical
-    # Stop, where it can only ever advise.
-    assert "PostInvocation" in _agy_hook_events("rbg-agy")
+    assert "PostInvocation" not in _agy_hook_events("rbg-agy")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
-def test_ida_ships_the_quiet_gate_on_claude_stop_only():
+def test_ida_ships_the_quiet_gate_on_claude_only():
     """ida's quiet gate directs the face to strip its own reply before it
-    speaks to the person. Registered on claude ``PostToolBatch`` and agy
-    ``PostInvocation`` (which dispatch.py maps onto canonical ``Stop``) only:
+    speaks to the person. Registered on claude ``PostToolBatch`` only:
     claude ``SubagentStop`` fires on the *stopping subagent's* own context, so
     wiring it there would nag a worker about a reply it never sends to the
     person — the fix for the defect the superseded gate-wiring-v07 branch
-    shipped."""
+    shipped. ida ships no agy hooks.json at all: its only prior agy wiring was
+    ``PostInvocation``, which dispatch.py no longer maps to anything
+    (aops_73e25af2 — it fired once per internal invocation/tool-call
+    round-trip, not once per turn), and ``be_quiet`` was never wired to
+    canonical ``Stop`` in the first place (only to the commented-out
+    ``PostToolBatch`` key), so nothing on agy was ever live."""
     events = _claude_hook_events("ida-claude")
     assert "PostToolBatch" in events
     assert "SubagentStop" not in events
-    assert "PostInvocation" in _agy_hook_events("ida-agy")
+    assert not (DIST_ROOT / "ida-agy" / "hooks.json").exists()
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
@@ -217,10 +226,19 @@ def test_orchestrate_ships_the_handback_reminders():
     The receiver-side reminder rides ``PostToolBatch`` rather than
     ``PostToolUse``: the batch event fires once after every call in a batch has
     resolved, so a turn that dispatched several subagents is reminded once
-    rather than once per report."""
+    rather than once per report.
+
+    Neither reminder is wired to canonical ``Stop`` in
+    ``plugins/orchestrate/hooks/handlers.py`` today (``PostToolBatch`` ->
+    ``rule_against_hearsay`` is commented out; ``HANDLERS["Stop"]`` holds
+    only the two OTel tracer handlers) — the claude-side manifest wiring
+    ships ahead of the feature. agy no longer registers ``PostInvocation``
+    at all: it was the only wire event aliasing onto canonical ``Stop``, and
+    that alias is gone (aops_73e25af2 — PostInvocation fires once per
+    internal invocation/tool-call round-trip, not once per turn), so there
+    is nothing left for it to reach on agy."""
     assert {"PostToolBatch", "Stop", "SubagentStop"} <= _claude_hook_events("orchestrate-claude")
-    # agy's wire name is PostInvocation; dispatch.py maps it onto canonical Stop.
-    assert "PostInvocation" in _agy_hook_events("orchestrate-agy")
+    assert "PostInvocation" not in _agy_hook_events("orchestrate-agy")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")

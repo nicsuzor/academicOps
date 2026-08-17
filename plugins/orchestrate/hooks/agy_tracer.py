@@ -104,7 +104,8 @@ def _extract_llm_spans_for_turn_agy(
                             "end_ns": start_ns + 1_000_000,  # Fake 1ms duration
                             "trace_id_hex": trace_id_hex,
                             "span_id_hex": _new_span_id(),
-                            "attrs": attrs,
+                            "parent_span_id_hex": root_span_id_hex,
+                            "attributes": attrs,
                         }
                     )
             except Exception:
@@ -293,7 +294,7 @@ def handle_stop(data: dict, config: dict) -> None:
             "trace_id_hex": trace_id,
             "span_id_hex": root_span_id,
             "force_span_id": True,
-            "attrs": {
+            "attributes": {
                 "openinference.span.kind": "CHAIN",
                 "session.id": session_id,
             },
@@ -302,9 +303,9 @@ def handle_stop(data: dict, config: dict) -> None:
         records = [chain_span]
         for span in llm_spans:
             # agy doesn't have usage attributes, remove them if we want to be clean
-            for k in list(span["attrs"].keys()):
+            for k in list(span["attributes"].keys()):
                 if k.startswith("llm.token_count"):
-                    del span["attrs"][k]
+                    del span["attributes"][k]
             records.append(span)
 
         _build_and_export_spans(

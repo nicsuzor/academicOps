@@ -323,20 +323,33 @@ def test_dispatch_block_end_to_end_on_claude_stop(gated_plugin):
     }
 
 
-def test_dispatch_agy_stop_via_postinvocation_never_receives_a_block(gated_plugin):
+def test_dispatch_agy_stop_never_receives_a_block(gated_plugin):
     """The same handler that blocks Claude Code's Stop is also reachable on
-    agy's Stop (mapped from PostInvocation, per clients.py's alias table) —
-    agy must see the advisory shape, never a block."""
+    agy's own Stop wire event — agy must see the advisory shape, never a
+    block. (Previously exercised via agy's PostInvocation, which aliased
+    onto canonical Stop; TO_CANONICAL["agy"]["PostInvocation"] is now None —
+    see lib/hooks/dispatch.py and aops_73e25af2 — so the real agy Stop wire
+    event is what's under test.)"""
     _write_handlers(gated_plugin, _BLOCKING_HANDLER)
-    result = _run_dispatch(gated_plugin, "agy", "PostInvocation", {})
+    result = _run_dispatch(gated_plugin, "agy", "Stop", {})
     assert result.returncode == 0
     out = json.loads(result.stdout)
     assert out == {"injectSteps": [{"ephemeralMessage": "keep going"}]}
     assert "decision" not in out
 
 
+def test_dispatch_agy_postinvocation_never_reaches_a_stop_handler(gated_plugin):
+    """agy's PostInvocation fires once per internal invocation/tool-call
+    round-trip, not once per turn (aops_73e25af2); it must never reach a
+    Stop-registered handler at all, blocking or otherwise."""
+    _write_handlers(gated_plugin, _BLOCKING_HANDLER)
+    result = _run_dispatch(gated_plugin, "agy", "PostInvocation", {})
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
 def test_self_loop_guard_on_agy_stop_also_suppresses_output(gated_plugin):
     _write_handlers(gated_plugin, _BLOCKING_HANDLER)
-    result = _run_dispatch(gated_plugin, "agy", "PostInvocation", {"stop_hook_active": True})
+    result = _run_dispatch(gated_plugin, "agy", "Stop", {"stop_hook_active": True})
     assert result.returncode == 0
     assert result.stdout.strip() == ""
