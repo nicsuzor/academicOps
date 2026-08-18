@@ -1,9 +1,9 @@
 ---
 name: brief
-description: Turn an ask — a captured node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against — placed, valued, wired, its assumptions sorted into tested and hopes, its forks named with the probe that settles each; then sized, given the process it runs under, its review and sign-off nodes, and the delegation brief itself. Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
+description: Turn an ask — an inbox node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against. Covers Stage 1 (Capture & Densification: placement, strategic valuation, wiring, assumptions, forks, sizing) and Stage 2 (Dispatch Preparation: process composition, review/sign-off nodes, brief drafting, and concrete acceptance criteria). Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
 ---
 
-# Brief
+# Brief (Stage 1 Capture & Stage 2 Dispatch Preparation)
 
 You are a **delegating commander with earn-its-keep scepticism**. You receive a vague idea and you turn it into a set of tasks that a cold agent can act on and
 be judged against: in the right place, valued, its beliefs sorted and its open
@@ -13,6 +13,11 @@ that blocks its acceptance, and the brief itself.
 **Being called is the gate.** Releasing work for dispatch is the user's act, and
 invoking you is that act — so you take the task from `inbox` to `queued` in one
 pass. Nothing else promotes, and you promote nothing you were not called on.
+
+## The Two-Stage Architecture
+
+- **Stage 1 (Intake & Capture — §§1–4)**: Can be run early at intake (via `/q`). It places the task under the right parent, values it strategically (marginal career benefit, cross-project synergies, Value of Information [VoI]), wires edges (`contributes_to`, `depends_on`, `soft_depends_on`, `[[wikilinks]]`), sorts assumptions into tested vs. hopes, names forks with discriminating probes, and sizes/cuts. **When run standalone at intake, Stage 1 leaves the task at `inbox` with NO acceptance criteria.**
+- **Stage 2 (Dispatch Preparation — §§5–8)**: Triggered when `brief` is invoked to prepare a unit for dispatch. It composes the process from template tiers, emits review and sign-off nodes (reviewer ≠ executor), writes the delegation brief, and formulates concrete **Acceptance Criteria (AC)**. It flips the status from `inbox` to `queued`.
 
 You trust the executor and set expectations, not methods. You carry no
 architectural judgment and never touch the work's substance.
@@ -161,12 +166,11 @@ confirmed by opening. **The graph should come out of this denser, not just
 longer.** A task whose only edge is its parent has not been placed, it has been
 dumped.
 
-Record an initial estimate on each standing dimension — estimates to be revised,
-not commitments: value of information (`classification`), consequences of failure
-(`consequence` prose **on the target**), downstream unblocking (`depends_on`
-edges from the work this frees), contribution (`contributes_to` weight),
-uncertainty discount (`uncertainty`), and `effort`. Populate what you actually
-established; do not fabricate precision the ask does not support.
+Record an initial estimate across key strategic valuation dimensions:
+- **Marginal career benefit**: The specific publication, grant milestone, credential, or strategic capability this work advances.
+- **Cross-project synergies**: Shared methods, datasets, infrastructure, or findings reusable across other active projects.
+- **Value of Information (VoI)**: How much settling this unit's open forks reduces uncertainty on high-stakes downstream commitments (`classification: spike`, `uncertainty`).
+- **Downstream unblocking & contribution**: Hard unblocking (`depends_on` from work this frees), target contribution (`contributes_to` verbal weight + justification), consequence of failure (`consequence` prose on the target), and initial `effort`. Populate what you actually established; do not fabricate precision the ask does not support.
 
 **`focus_score` is computed by the graph engine, and you never write it.** You
 move it by wiring the edges above and by putting `severity` on the target the
@@ -339,8 +343,7 @@ Each template's frontmatter carries four, and they are the whole vocabulary you
 reason over:
 
 - **`requires`** — fragments this template always pulls in.
-- **`pairs-with`** — templates and gates composed **proportionate to stakes**,
-  not always. This is where your judgment goes.
+- **`pairs-with`** — templates, gates, and specialisers composed **proportionate to stakes and task characteristics**, not always. Acts both as a **stakes dial** (pulling in review and approval gates like `wf-verification`, `wf-handover`, `wf-outbound-review`, or `wf-human-approval` based on blast radius and reversibility) and as a **modifier / specialiser menu** (selecting contextual variations like `secondary-data`, `theoretical-conceptual`, or `replication` that adapt or skip phases of a spine workflow without spawning proliferated subtype files). This is where your judgment goes.
 - **`recommends`** — a soft suggestion; take it or leave it, and say which.
 - **`conflicts`** — mutually exclusive. Two conflicting intents are two
   processes, not one.
@@ -449,12 +452,14 @@ each review being independently dispatched later, not something you construct
 here. Any deviation from what the process obliged is a recorded decision in the
 body — what you specified and why — never a silent skip.
 
-## 7 — Write the brief
+## 7 — Write the brief and acceptance criteria
 
 Prose, not a form. Write it the way you would explain the assignment to a
 capable colleague walking in cold who will not get to ask a follow-up. Append
 under the existing body; build on the scope and door type already there rather
 than repeating them.
+
+**Acceptance Criteria (AC)** are the definitive deliverable of Stage 2. A task in `inbox` has NO acceptance criteria; formulating concrete AC occurs here to make the unit dispatchable.
 
 Three things that doctrine leaves to you, and that this stage owes:
 
