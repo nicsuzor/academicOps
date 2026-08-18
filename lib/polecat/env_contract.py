@@ -20,6 +20,7 @@ Telemetry names are the OpenTelemetry contract in specs/ARCHITECTURE.md.
 """
 
 import argparse
+from urllib.parse import urlsplit, urlunsplit
 
 TELEMETRY_ENV = (
     "GENAI_ENGINE_TASK_ID",
@@ -40,6 +41,11 @@ FORWARDED_ENV = (
     "COPE_EVALUATOR_MODEL",
     "COPE_EVALUATOR_API_KEY",
     "COPE_EVALUATOR_TIMEOUT",
+    "GENAI_ENGINE_TRACE_ENDPOINT",
+    "GENAI_ENGINE_API_KEY",
+    "GENAI_ENGINE_TASK_ID",
+    "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+    "OTEL_EXPORTER_OTLP_PROTOCOL",
     "GIT_AUTHOR_NAME",
     "GIT_AUTHOR_EMAIL",
     "GIT_COMMITTER_NAME",
@@ -75,6 +81,77 @@ CONTAINER_SET_ENV = {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
 }
+
+#: Host tokens that mean "this machine" on the host and "this container" inside
+#: one. Forwarded verbatim they resolve to the container's own empty loopback.
+#: Bare hosts, never endpoints: no scheme, no port, nothing dialable. They exist
+#: to be *detected and replaced*, which is the opposite of a compiled-in default.
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"})
+
+#: The gateway alias back to the host. `_build_docker_argv` always passes
+#: `--add-host host.docker.internal:host-gateway`, so this resolves on plain
+#: Linux Docker too, not only where Docker Desktop provides it natively.
+_CONTAINER_HOST_ALIAS = "host.docker.internal"
+
+
+def _rehost_loopback_urls(env):
+    """Point loopback URLs and endpoints at the host, not at the container's own loopback.
+
+    A URL whose host is a loopback token names a service on the operator's own
+    machine. Forwarded unchanged it names that port *inside the container*,
+    where nothing listens — so the dependent feature degrades instead of
+    working, while the operator sees a service they can curl by hand.
+
+    Rewrites loopback URLs and endpoints (e.g. COPE_EVALUATOR_URL,
+    GENAI_ENGINE_TRACE_ENDPOINT, OTEL_EXPORTER_OTLP_ENDPOINT, BETA_TRACING_ENDPOINT)
+    with or without scheme from loopback hosts to host.docker.internal.
+    """
+    rehosted = {}
+    for key, value in env.items():
+        if not isinstance(value, str):
+            continue
+        if "://" in value:
+            parsed = urlsplit(value)
+            if parsed.hostname is None or parsed.hostname.lower() not in _LOOPBACK_HOSTS:
+                continue
+            netloc = _CONTAINER_HOST_ALIAS
+            if parsed.port is not None:
+                netloc = f"{netloc}:{parsed.port}"
+            if parsed.username:
+                credentials = parsed.username
+                if parsed.password:
+                    credentials = f"{credentials}:{parsed.password}"
+                netloc = f"{credentials}@{netloc}"
+            rehosted[key] = urlunsplit(parsed._replace(netloc=netloc))
+        elif key.endswith(("_ENDPOINT", "_URL")) or key in (
+            "GENAI_ENGINE_TRACE_ENDPOINT",
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+            "BETA_TRACING_ENDPOINT",
+            "COPE_EVALUATOR_URL",
+            "PKB_MCP_URL",
+        ):
+            parsed = urlsplit("//" + value)
+            if parsed.hostname is None or parsed.hostname.lower() not in _LOOPBACK_HOSTS:
+                continue
+            netloc = _CONTAINER_HOST_ALIAS
+            if parsed.port is not None:
+                netloc = f"{netloc}:{parsed.port}"
+            if parsed.username:
+                credentials = parsed.username
+                if parsed.password:
+                    credentials = f"{credentials}:{parsed.password}"
+                netloc = f"{credentials}@{netloc}"
+            rehosted_val = netloc
+            if parsed.path:
+                rehosted_val = f"{rehosted_val}{parsed.path}"
+            if parsed.query:
+                rehosted_val = f"{rehosted_val}?{parsed.query}"
+            if parsed.fragment:
+                rehosted_val = f"{rehosted_val}#{parsed.fragment}"
+            rehosted[key] = rehosted_val
+
+    env.update(rehosted)
+    return env
 
 
 def docker_env_args(names=None):

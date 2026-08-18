@@ -261,12 +261,20 @@ def test_isolated_workspace_defaults_to_head_when_unconfigured(fake_canonical_re
 
     isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
     assert isolated_sha == head_sha
+    branch_name = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=isolated_path).strip()
+    assert branch_name == "polecat/session-base-head"
 
     cleanup_isolated_workspace(cleanup_info)
 
 
 def test_isolated_workspace_respects_custom_branch_option(fake_canonical_repo, tmp_path):
     """When branch is passed explicitly, the isolated clone checks out that custom branch name."""
+    initial_branch = _run(
+        "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
+    ).strip()
+    _run("git", "checkout", "-b", "feat/custom-override", cwd=fake_canonical_repo)
+    _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
+
     polecat_home = tmp_path / "polecat-home"
     isolated_path, cleanup_info = resolve_isolated_workspace(
         fake_canonical_repo, "session-custom-branch", polecat_home, branch="feat/custom-override"
@@ -276,3 +284,163 @@ def test_isolated_workspace_respects_custom_branch_option(fake_canonical_repo, t
     assert branch_name == "feat/custom-override"
 
     cleanup_isolated_workspace(cleanup_info)
+
+
+def test_clone_passes_no_checkout(fake_canonical_repo, tmp_path, monkeypatch):
+    """Verify that git clone is invoked with --no-checkout for speedup."""
+    real_run = subprocess.run
+    clone_commands = []
+
+    def tracking_run(cmd, *args, **kwargs):
+        if isinstance(cmd, list) and len(cmd) > 1 and cmd[0] == "git" and cmd[1] == "clone":
+            clone_commands.append(cmd)
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", tracking_run)
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo, "session-no-checkout", polecat_home
+    )
+
+    assert len(clone_commands) == 1
+    assert "--no-checkout" in clone_commands[0]
+    assert "--local" in clone_commands[0]
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_branch_sets_base_ref(fake_canonical_repo, tmp_path):
+    """When branch is passed and base is not, base_ref resolves to that branch instead of config or HEAD."""
+    initial_branch = _run(
+        "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
+    ).strip()
+    _run("git", "checkout", "-b", "feat/my-feature", cwd=fake_canonical_repo)
+    (fake_canonical_repo / "feature.txt").write_text("feature content\n")
+    _run("git", "add", "feature.txt", cwd=fake_canonical_repo)
+    _run("git", "commit", "-m", "feature commit", cwd=fake_canonical_repo)
+    feature_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
+    _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
+
+    polecat_home = tmp_path / "polecat-home"
+    # Even if config specifies another branch like main, branch option takes precedence for base ref
+    config = {"branch": initial_branch}
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo,
+        "session-branch-base",
+        polecat_home,
+        base=None,
+        config=config,
+        branch="feat/my-feature",
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    branch_name = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == feature_sha
+    assert branch_name == "feat/my-feature"
+    assert (isolated_path / "feature.txt").read_text() == "feature content\n"
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_base_precedes_branch(fake_canonical_repo, tmp_path):
+    """When both base and branch are passed, base sets the commit SHA while branch sets the branch name."""
+    initial_branch = _run(
+        "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
+    ).strip()
+
+    _run("git", "checkout", "-b", "base-branch", cwd=fake_canonical_repo)
+    (fake_canonical_repo / "base.txt").write_text("base content\n")
+    _run("git", "add", "base.txt", cwd=fake_canonical_repo)
+    _run("git", "commit", "-m", "base commit", cwd=fake_canonical_repo)
+    base_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
+
+    _run("git", "checkout", "-b", "target-branch", cwd=fake_canonical_repo)
+    (fake_canonical_repo / "target.txt").write_text("target content\n")
+    _run("git", "add", "target.txt", cwd=fake_canonical_repo)
+    _run("git", "commit", "-m", "target commit", cwd=fake_canonical_repo)
+    target_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
+
+    _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
+
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        fake_canonical_repo,
+        "session-base-precedence",
+        polecat_home,
+        base="base-branch",
+        branch="custom-feature-branch",
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    branch_name = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=isolated_path).strip()
+
+    assert isolated_sha == base_sha
+    assert isolated_sha != target_sha
+    assert branch_name == "custom-feature-branch"
+    assert (isolated_path / "base.txt").read_text() == "base content\n"
+    assert not (isolated_path / "target.txt").exists()
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_resolves_origin_remote_fallback(tmp_path):
+    """When a ref is not found locally, resolve_isolated_workspace falls back to origin/<ref>."""
+    # Create upstream repository
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    # Create canonical checkout and push to upstream
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("main\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "HEAD:main", cwd=canonical)
+
+    # Another dev pushes a remote branch to upstream
+    other_dev = tmp_path / "other-dev"
+    other_dev.mkdir()
+    _run("git", "clone", str(upstream), str(other_dev), cwd=tmp_path)
+    _run("git", "config", "user.email", "test@example.com", cwd=other_dev)
+    _run("git", "config", "user.name", "Test", cwd=other_dev)
+    _run("git", "checkout", "-b", "remote-feature", cwd=other_dev)
+    (other_dev / "remote.txt").write_text("remote feature content\n")
+    _run("git", "add", "remote.txt", cwd=other_dev)
+    _run("git", "commit", "-m", "remote commit", cwd=other_dev)
+    remote_sha = _run("git", "rev-parse", "HEAD", cwd=other_dev).strip()
+    _run("git", "push", "origin", "remote-feature", cwd=other_dev)
+
+    # Canonical checkout fetches so origin/remote-feature exists, but no local remote-feature branch
+    _run("git", "fetch", "origin", cwd=canonical)
+    local_branches = _run("git", "branch", "--list", "remote-feature", cwd=canonical).strip()
+    assert local_branches == ""
+
+    # Resolving with base="remote-feature" should fall back to origin/remote-feature
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-origin-fallback", polecat_home, base="remote-feature"
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == remote_sha
+    assert (isolated_path / "remote.txt").read_text() == "remote feature content\n"
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_fails_on_unresolvable_ref(fake_canonical_repo, tmp_path):
+    """When base ref cannot be resolved locally or on origin, resolve_isolated_workspace fails with SystemExit."""
+    polecat_home = tmp_path / "polecat-home"
+    with pytest.raises(SystemExit):
+        resolve_isolated_workspace(
+            fake_canonical_repo,
+            "session-bad-ref",
+            polecat_home,
+            base="nonexistent-branch-xyz",
+        )
+

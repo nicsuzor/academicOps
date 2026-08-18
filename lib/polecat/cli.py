@@ -17,7 +17,6 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn
-from urllib.parse import urlsplit, urlunsplit
 
 import click
 import yaml
@@ -29,6 +28,7 @@ try:  # imported as part of the installed package
     from .env_contract import (
         CONTAINER_SET_ENV,
         FORWARDED_ENV,
+        _rehost_loopback_urls,
         docker_env_args,
         format_otel_resource_attributes,
     )
@@ -40,6 +40,7 @@ except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     from polecat.env_contract import (
         CONTAINER_SET_ENV,
         FORWARDED_ENV,
+        _rehost_loopback_urls,
         docker_env_args,
         format_otel_resource_attributes,
     )
@@ -223,6 +224,8 @@ def resolve_telemetry(config):
     if telemetry.get("endpoint"):
         env["BETA_TRACING_ENDPOINT"] = str(telemetry["endpoint"])
         env["OTEL_EXPORTER_OTLP_ENDPOINT"] = str(telemetry["endpoint"])
+    if telemetry.get("trace_endpoint"):
+        env["GENAI_ENGINE_TRACE_ENDPOINT"] = str(telemetry["trace_endpoint"])
     if telemetry.get("resource_attributes"):
         env["OTEL_RESOURCE_ATTRIBUTES"] = str(telemetry["resource_attributes"])
     return env
@@ -315,58 +318,6 @@ def get_env_forwards(config=None):
     env.update(CONTAINER_SET_ENV)
 
     return _rehost_loopback_urls(env)
-
-
-#: Host tokens that mean "this machine" on the host and "this container" inside
-#: one. Forwarded verbatim they resolve to the container's own empty loopback.
-#: Bare hosts, never endpoints: no scheme, no port, nothing dialable. They exist
-#: to be *detected and replaced*, which is the opposite of a compiled-in default.
-_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"})
-
-#: The gateway alias back to the host. `_build_docker_argv` always passes
-#: `--add-host host.docker.internal:host-gateway`, so this resolves on plain
-#: Linux Docker too, not only where Docker Desktop provides it natively.
-_CONTAINER_HOST_ALIAS = "host.docker.internal"
-
-
-def _rehost_loopback_urls(env):
-    """Point loopback URLs at the host, not at the container's own loopback.
-
-    A URL whose host is a loopback token names a service on the operator's own
-    machine. Forwarded unchanged it names that port *inside the container*,
-    where nothing listens — so the dependent feature degrades instead of
-    working, while the operator sees a service they can curl by hand.
-
-    That is not hypothetical: rbg's ``COPE_EVALUATOR_URL`` is normally a local
-    model endpoint, and a loopback value silently turned every containerised
-    session's turn-by-turn rule evaluation into a no-op. The hook reported the
-    outage once per session and proceeded unchecked, so autonomous container
-    workers — the least supervised surface there is — ran with no turn-by-turn
-    enforcement at all.
-
-    This rewrites the *host* only, and only when it is a loopback token. It
-    invents no endpoint, supplies no default, and leaves a URL the operator
-    pointed at a real host or a tailnet name exactly as given.
-    """
-    rehosted = {}
-    for key, value in env.items():
-        if not isinstance(value, str) or "://" not in value:
-            continue
-        parsed = urlsplit(value)
-        if parsed.hostname is None or parsed.hostname.lower() not in _LOOPBACK_HOSTS:
-            continue
-        netloc = _CONTAINER_HOST_ALIAS
-        if parsed.port is not None:
-            netloc = f"{netloc}:{parsed.port}"
-        if parsed.username:
-            credentials = parsed.username
-            if parsed.password:
-                credentials = f"{credentials}:{parsed.password}"
-            netloc = f"{credentials}@{netloc}"
-        rehosted[key] = urlunsplit(parsed._replace(netloc=netloc))
-
-    env.update(rehosted)
-    return env
 
 
 #: Claude Code names each conversation transcript `<session-uuid>.jsonl`. Matched
@@ -581,8 +532,8 @@ def resolve_isolated_workspace(
     path to mount, so a container never writes to a shared checkout.
 
     The clone is created from the commit specified in `base` if provided,
-    otherwise falling back to the `branch` key in `config` (polecat.yaml),
-    and defaulting to HEAD if neither is set.
+    otherwise falling back to `branch`, then the `branch` key in `config`
+    (polecat.yaml), and defaulting to HEAD if none is set.
 
     The clone is standalone rather than a linked worktree: a linked worktree's
     `.git` is a pointer to an admin directory on the host that the container
@@ -622,23 +573,34 @@ def resolve_isolated_workspace(
     branch_name = branch or f"polecat/{session_id}"
 
     config = config or {}
-    base_ref = base or config.get("branch") or "HEAD"
+    base_ref = base or branch or config.get("branch") or "HEAD"
 
-    # Resolve the base commit SHA from base_ref (base option, polecat.yaml branch, or HEAD)
-    base_result = subprocess.run(
-        ["git", "-C", str(canonical_dir), "rev-parse", f"{base_ref}^{{commit}}"],
-        capture_output=True,
-        text=True,
-    )
-    if base_result.returncode != 0:
+    # Resolve the base commit SHA from base_ref (base option, branch option, polecat.yaml branch, or HEAD)
+    base_sha = None
+    last_err = ""
+    refs_to_try = [base_ref]
+    if not base_ref.startswith("origin/"):
+        refs_to_try.append(f"origin/{base_ref}")
+
+    for ref_to_try in refs_to_try:
         base_result = subprocess.run(
-            ["git", "-C", str(canonical_dir), "rev-parse", base_ref],
+            ["git", "-C", str(canonical_dir), "rev-parse", f"{ref_to_try}^{{commit}}"],
             capture_output=True,
             text=True,
         )
-    if base_result.returncode != 0:
-        fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{base_result.stderr}")
-    base_sha = base_result.stdout.strip()
+        if base_result.returncode != 0:
+            base_result = subprocess.run(
+                ["git", "-C", str(canonical_dir), "rev-parse", ref_to_try],
+                capture_output=True,
+                text=True,
+            )
+        if base_result.returncode == 0:
+            base_sha = base_result.stdout.strip()
+            break
+        last_err = base_result.stderr
+
+    if not base_sha:
+        fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{last_err}")
 
     origin_result = subprocess.run(
         ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
@@ -652,6 +614,7 @@ def resolve_isolated_workspace(
             "git",
             "clone",
             "--local",
+            "--no-checkout",
             "-c",
             "push.autoSetupRemote=true",
             str(repo_root),
@@ -1555,6 +1518,18 @@ def run(
             project=project,
             task_id=task,
         )
+
+        task_identifier = None
+        if project and task:
+            task_identifier = f"{project}-{task}"
+        elif task:
+            task_identifier = task
+        elif project:
+            task_identifier = project
+
+        if task_identifier is not None:
+            env["GENAI_ENGINE_TASK_ID"] = task_identifier
+            env["OTEL_SERVICE_NAME"] = task_identifier
 
         cmd, run_env = _build_docker_argv(
             image=image,
