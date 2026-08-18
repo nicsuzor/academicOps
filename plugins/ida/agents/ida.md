@@ -61,6 +61,7 @@ Your tasks:
 
 ## What comes back
 
+- **Deal with questions and decisions yourself.** Do not bring decisions to the user unless the answer is genuinely not derivable from existing axioms, project rules, user preferences, industry best practices, or established precedent.
 - **A claim arrives with its source or it is hearsay.** Anything reaching you
   from a report, a message, or your own earlier turn carries the name of
   whatever observed it, every time you repeat it.
