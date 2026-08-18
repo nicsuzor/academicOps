@@ -575,7 +575,7 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
 
 
 def resolve_isolated_workspace(
-    canonical_dir, session_id, polecat_home, base=None, config=None, branch=None
+    canonical_dir, session_id, polecat_home, base=None, config=None, branch=None, quiet=False
 ):
     """Create a per-session standalone clone of `canonical_dir` and return the
     path to mount, so a container never writes to a shared checkout.
@@ -602,11 +602,12 @@ def resolve_isolated_workspace(
         text=True,
     )
     if toplevel.returncode != 0:
-        click.echo(
-            f"Warning: {canonical_dir} is not inside a git repository — mounting "
-            "it directly; no per-task isolation is possible.",
-            err=True,
-        )
+        if not quiet:
+            click.echo(
+                f"Warning: {canonical_dir} is not inside a git repository — mounting "
+                "it directly; no per-task isolation is possible.",
+                err=True,
+            )
         return canonical_dir, None
 
     repo_root = Path(toplevel.stdout.strip()).resolve()
@@ -1292,7 +1293,7 @@ def write_run_record(
 
 
 def _execute_with_seed_verification(
-    cmd, *, image, inner_cmd, session_dir, task, verify_seed, run_env
+    cmd, *, image, inner_cmd, session_dir, task, verify_seed, run_env, quiet=False
 ):
     """Run the container, and for a seeded dispatch confirm the agent actually
     saw the task before letting a clean exit stand as success.
@@ -1315,7 +1316,8 @@ def _execute_with_seed_verification(
 
     for attempt in range(1, max_attempts + 1):
         suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
-        click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd)}", err=True)
+        if not quiet:
+            click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd)}", err=True)
         returncode = subprocess.run(cmd, env=run_env).returncode
 
         if not verify_seed:
@@ -1323,7 +1325,7 @@ def _execute_with_seed_verification(
         seed_ok = returncode == 0 and _seed_confirmed(session_dir, task)
         if seed_ok:
             break
-        if attempt < max_attempts:
+        if attempt < max_attempts and not quiet:
             click.echo(
                 f"Warning: could not confirm the agent processed seeded task "
                 f"{task!r} (exit={returncode}). Retrying once.",
@@ -1397,6 +1399,15 @@ def main():
     "--prompt",
     help="Prompt string for print/headless mode.",
 )
+@click.option(
+    "--quiet",
+    "-q",
+    is_flag=True,
+    default=False,
+    help="Suppress polecat's own progress output on stderr. This also hides the "
+    "'Workspace:' and 'Session logs:' lines, so it is not recommended when "
+    "debugging interactively. Errors are always reported.",
+)
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
 def run(
     agent_cmd,
@@ -1412,6 +1423,7 @@ def run(
     no_agent,
     output_format,
     prompt,
+    quiet,
     extra_args,
 ):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
@@ -1451,7 +1463,13 @@ def run(
     clone_cleanup = None
     if repo_dir is None:
         workspace_dir, clone_cleanup = resolve_isolated_workspace(
-            workspace_dir, session_id, polecat_home, base=base, config=config, branch=branch
+            workspace_dir,
+            session_id,
+            polecat_home,
+            base=base,
+            config=config,
+            branch=branch,
+            quiet=quiet,
         )
 
     initial_head = _get_git_head(workspace_dir)
@@ -1554,8 +1572,9 @@ def run(
             sessions_base=sessions_base,
         )
 
-        click.echo(f"Workspace: {workspace_dir}", err=True)
-        click.echo(f"Session logs: {session_dir}", err=True)
+        if not quiet:
+            click.echo(f"Workspace: {workspace_dir}", err=True)
+            click.echo(f"Session logs: {session_dir}", err=True)
 
         returncode = _execute_with_seed_verification(
             cmd,
@@ -1569,6 +1588,7 @@ def run(
             # CLI and have no conversation to check.
             verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
             run_env=run_env,
+            quiet=quiet,
         )
         cidfile = session_dir / "container.cid"
         if cidfile.exists():
@@ -1581,7 +1601,8 @@ def run(
 
         if returncode != 0:
             preserve_workspace = True
-            click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
+            if not quiet:
+                click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
 
         if returncode == 0:
             delivery_ok, delivery_err = _verify_workspace_delivery(

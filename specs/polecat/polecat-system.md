@@ -156,6 +156,12 @@ the two cases apart.
    image freshness. The obligation is carried project-locally by
    [`debug`](../../.agents/skills/debug/SKILL.md) — build the image, then
    dispatch against it — and by no shipped surface.
+7. **Stream separation.** Polecat's own prose goes to stderr, never stdout, so a
+   caller can pipe the inner agent's output unmodified. `--quiet`/`-q`
+   suppresses that prose, including the `Workspace:` and `Session logs:` lines
+   that locate a run's state. `fail()` output is exempt: an exit code alone is
+   not a reliable failure signal here — agy can exit 0 on internal error — so
+   error text must survive `--quiet`.
 
 ## What `run` does not do
 
