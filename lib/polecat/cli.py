@@ -532,8 +532,8 @@ def resolve_isolated_workspace(
     path to mount, so a container never writes to a shared checkout.
 
     The clone is created from the commit specified in `base` if provided,
-    otherwise falling back to the `branch` key in `config` (polecat.yaml),
-    and defaulting to HEAD if neither is set.
+    otherwise falling back to `branch`, then the `branch` key in `config`
+    (polecat.yaml), and defaulting to HEAD if none is set.
 
     The clone is standalone rather than a linked worktree: a linked worktree's
     `.git` is a pointer to an admin directory on the host that the container
@@ -572,23 +572,34 @@ def resolve_isolated_workspace(
     branch_name = branch or f"polecat/{session_id}"
 
     config = config or {}
-    base_ref = base or config.get("branch") or "HEAD"
+    base_ref = base or branch or config.get("branch") or "HEAD"
 
-    # Resolve the base commit SHA from base_ref (base option, polecat.yaml branch, or HEAD)
-    base_result = subprocess.run(
-        ["git", "-C", str(canonical_dir), "rev-parse", f"{base_ref}^{{commit}}"],
-        capture_output=True,
-        text=True,
-    )
-    if base_result.returncode != 0:
+    # Resolve the base commit SHA from base_ref (base option, branch option, polecat.yaml branch, or HEAD)
+    base_sha = None
+    last_err = ""
+    refs_to_try = [base_ref]
+    if not base_ref.startswith("origin/"):
+        refs_to_try.append(f"origin/{base_ref}")
+
+    for ref_to_try in refs_to_try:
         base_result = subprocess.run(
-            ["git", "-C", str(canonical_dir), "rev-parse", base_ref],
+            ["git", "-C", str(canonical_dir), "rev-parse", f"{ref_to_try}^{{commit}}"],
             capture_output=True,
             text=True,
         )
-    if base_result.returncode != 0:
-        fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{base_result.stderr}")
-    base_sha = base_result.stdout.strip()
+        if base_result.returncode != 0:
+            base_result = subprocess.run(
+                ["git", "-C", str(canonical_dir), "rev-parse", ref_to_try],
+                capture_output=True,
+                text=True,
+            )
+        if base_result.returncode == 0:
+            base_sha = base_result.stdout.strip()
+            break
+        last_err = base_result.stderr
+
+    if not base_sha:
+        fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{last_err}")
 
     origin_result = subprocess.run(
         ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
@@ -602,6 +613,7 @@ def resolve_isolated_workspace(
             "git",
             "clone",
             "--local",
+            "--no-checkout",
             "-c",
             "push.autoSetupRemote=true",
             str(repo_root),
