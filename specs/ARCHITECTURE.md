@@ -21,7 +21,7 @@ plugins/                Plugin sources. Only what a client needs.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.
   ida/                  ida — the interactive face; pc — the polecat launcher.
   orchestrate/          james — the container worker; marsha — QA; adversary;
-                        agy; the review skills; the handback hooks.
+                        the review skills; the handback hooks.
   rbg/                  rbg — rule enforcement: an advisory turn-by-turn evaluator plus a
                         stop-side rule-check gate.
   ts/                   Tailscale bring-up.
@@ -73,7 +73,7 @@ marketplace name and is the single source of truth for the built plugin set.
 | --------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
 | `plugins/pkb`         | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.                    |
 | `plugins/ida`         | `ida`            | ida, the interactive face; pc, her polecat launcher; polecat; `strategize`, her own thinking pass. |
-| `plugins/orchestrate` | `orchestrate`    | james, the container worker; marsha, QA; adversary; agy; the review skills; the handback hooks.    |
+| `plugins/orchestrate` | `orchestrate`    | james, the container worker; marsha, QA; adversary; the review skills; the handback hooks.         |
 | `plugins/rbg`         | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate.                |
 | `plugins/ts`          | `ts`             | Tailscale bring-up for remote sessions.                                                            |
 | `plugins/tools`       | `tools`          | Domain research skills.                                                                            |
@@ -110,10 +110,12 @@ only what needs their judgment. She reaches exactly two agents, `pkb:pauli` and
 `ida:pc`, and nothing else.
 
 **pc** ships here, because launching containers is how ida gets work done and
-nothing else in the framework dispatches on her behalf. It takes a task id and
-starts a detached `polecat run agy` under tmux, then returns. There is no
-synchronous mode and no return path: the worker writes its result to the task
-record and pushes its branch. `lib/polecat/` is injected into this plugin
+nothing else in the framework dispatches on her behalf. Every polecat runs the
+`agy` client. Two modes: a task id starts a detached run under tmux and returns
+immediately, with no return path — the worker writes its result to the task
+record and pushes its branch; a prompt runs synchronously to a redirected
+`stream-json` log, which is the only route by which anything reaches an agent's
+turn while it is still open. `lib/polecat/` is injected into this plugin
 (`plugins/ida/manifest/plugin.toml`) and read as
 `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.
 
@@ -128,10 +130,6 @@ He does not talk to the user.
 
 **adversary** ships alongside him: a red-team reviewer, commissioned when a
 claim needs refuting or a plan needs attacking, never scheduled by mandate.
-
-**agy** also ships here: a wrapper subagent that runs the `agy` Gemini CLI
-headless, so a claude-side agent can push reading, writing, searching, and
-testing onto a cheaper, faster model instead of spending its own turn on it.
 
 **marsha** judges whether an artifact is outstanding. She runs it. Her `verify`
 skill is bound to her and ships alongside her.

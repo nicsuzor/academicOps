@@ -57,7 +57,6 @@ instructions about it went stale faster than they earned their length.
 | Agent | `james`            | Takes a unit of work through to a verified result. Bounces reports that arrive without proof; never re-does work.   |
 | Agent | `marsha`           | QA. Judges whether an artifact is outstanding, and runs it to find out.                                             |
 | Agent | `adversary`        | Red-team review: attacks the evidence, the logic, and the scope. Never builds or fixes.                             |
-| Agent | `agy`              | Thin wrapper that runs one task through the `agy` Gemini CLI and returns its output verbatim.                       |
 | Skill | `strategic-review` | Deploys rbg, pauli, and marsha in parallel and reconciles their findings into one verdict. Bound to james.          |
 | Skill | `verify`           | Marsha's QA pass: assume it is broken, then prove otherwise. Bound to marsha; commissioned, never invoked directly. |
 | Hook  | `PostToolBatch`    | The handback doctrine (rule against hearsay), delivered to the receiver when a subagent's report lands.             |
