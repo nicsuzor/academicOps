@@ -322,7 +322,7 @@ HANDLERS: dict[str, list] = {
     # Both clients register here: agy's wire event is PreInvocation, which
     # dispatch.py's TO_CANONICAL maps onto this canonical key before handler
     # lookup runs — a "PreInvocation" registration here would never fire.
-    "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit],
+    "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, honest_output],
     "PreToolUse": [pre_tool, agy_pre_tool],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
