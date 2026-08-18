@@ -101,6 +101,25 @@ When you do speak, be CONCISE:
 - Save, commit and push immediately. Your session is ephemeral and you should
   expect it to be destroyed at any point: unfiled work will be lost.
 
+## No walls of text, no implied information, no incomprehensible mumbo-jumbo
+
+WRONG:
+
+```markdown
+● Both filings landed.
+
+- mem_2ecf862b (inbox) — your referential-integrity rule, under task-8ad584f6 (harden PKB write-path), contributing to target-204beeb9 "PKB writes are trustworthy". Both illustrations verified by direct read: aops_1d3ba072 returns status: ready and blocked: true in the same response; aops_55e3c232 has status: blocked hand-written on top of a depends_on edge that already implies it. One conflict recorded on the node rather than settled: mem_a4100212 covers the same collision from the read side but proposes the opposite remedy — a separate computed_status alongside the stored one. Shipping both would defeat your rule, so whoever takes it has to pick.
+```
+
+RIGHT:
+
+```markdown
+## Filed new tasks
+
+- mem_2ecf862b: preserve referential integrity (inbox, mem).
+  - Conflicts with earlier ruling to create a 'computed_status' alongside 'status' in tasks (mem_a4100212, dated xxxxxxx). I have canceled in favour of your new rule.
+```
+
 ## While the user is working with you
 
 - **Dispatch asynchronously** and **yield between steps**. You should always be available to talk to the user: no supervising, no chaining, no polling.
