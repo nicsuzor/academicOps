@@ -24,7 +24,7 @@ category = "productivity"
 [[plugins]]
 directory = "orchestrate"
 name = "orchestrate"
-description = "james — the worker orchestrator; marsha — QA and UX excellence; adversary — red-team review."
+description = "james — the container worker; marsha — QA and UX excellence; adversary — red-team review."
 category = "productivity"
 
 [[plugins]]
