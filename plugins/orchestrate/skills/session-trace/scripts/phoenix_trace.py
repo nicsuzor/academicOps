@@ -17,6 +17,17 @@ Two output shapes are produced from one span fetch:
     Its ``meta`` names every count twice — ``session_*`` for the whole session,
     ``controller_*`` for the trunk this document actually contains.
 
+Spans are selected on ``session.id`` and never on trace id: one trace can hold two
+sessions, because OTel context propagates across an inter-agent message. That fact is
+*reported* rather than acted on — ``meta.trace_contamination`` names the traces this
+session shares with another, and ``--resolve-orphan-parents`` fetches the foreign parent
+spans an orphan points at into a ``foreign_parents`` bucket of their own. Neither widens
+the exported set.
+
+Configuration is environment-only, per ``specs/ARCHITECTURE.md`` "No defaults": the base
+URL comes from ``--base-url`` or ``$PHOENIX_BASE_URL`` / ``$PHOENIX_COLLECTOR_ENDPOINT``,
+and the project from ``--project`` or ``$PHOENIX_PROJECT_NAME``. Both fail loudly.
+
 Standard library only, so the skill can invoke it as ``python3 scripts/phoenix_trace.py``.
 """
 
@@ -35,7 +46,10 @@ from pathlib import Path
 from typing import Any
 
 BASE_URL_ENV_VARS = ("PHOENIX_BASE_URL", "PHOENIX_COLLECTOR_ENDPOINT")
+PROJECT_ENV_VAR = "PHOENIX_PROJECT_NAME"
 PAGE_LIMIT = 1000
+# `trace_id` and `span_id` are repeatable query filters; batching keeps the URL bounded.
+ID_BATCH = 25
 PREVIEW_CHARS = 2000
 DEFAULT_TOLERANCE_MS = 500
 HTTP_TIMEOUT = 60
@@ -121,15 +135,47 @@ def resolve_base_url(explicit: str | None) -> str:
     return candidate.rstrip("/")
 
 
+def list_projects(base_url: str) -> list[dict[str, Any]]:
+    payload = get_json(f"{base_url}/v1/projects")
+    return payload.get("data", []) if isinstance(payload, dict) else []
+
+
+def project_names(projects: list[dict[str, Any]]) -> str:
+    return ", ".join(str(p.get("name")) for p in projects) or "(none)"
+
+
+def resolve_project_name(explicit: str | None, base_url: str | None) -> str:
+    """The project to query, from ``--project`` then the environment, or a loud failure.
+
+    No project name is baked in: ``specs/ARCHITECTURE.md`` "No defaults" forbids a
+    shipped artifact carrying an endpoint, host, or identifier of its own. The error
+    names both ways of supplying one and, when the server is reachable, the projects it
+    actually holds — the question "which of these did you mean" is the useful one.
+    """
+    candidate = (explicit or os.environ.get(PROJECT_ENV_VAR, "")).strip()
+    if candidate:
+        return candidate
+    known = ""
+    if base_url:
+        try:
+            known = f" Projects on this server: {project_names(list_projects(base_url))}."
+        except ConfigError:
+            known = ""
+    raise ConfigError(
+        f"no Phoenix project. Pass --project, or set {PROJECT_ENV_VAR}; "
+        f"no default is baked in.{known}"
+    )
+
+
 def resolve_project(base_url: str, wanted: str) -> tuple[str, str]:
     """Return ``(project_id, project_name)``; ``wanted`` may be either."""
-    payload = get_json(f"{base_url}/v1/projects")
-    projects = payload.get("data", []) if isinstance(payload, dict) else []
+    projects = list_projects(base_url)
     for project in projects:
         if wanted in (project.get("name"), project.get("id")):
             return str(project.get("id")), str(project.get("name"))
-    known = ", ".join(str(p.get("name")) for p in projects) or "(none)"
-    raise ConfigError(f"project {wanted!r} not found. Projects on this server: {known}")
+    raise ConfigError(
+        f"project {wanted!r} not found. Projects on this server: {project_names(projects)}"
+    )
 
 
 def fetch_spans(
@@ -140,16 +186,20 @@ def fetch_spans(
     Returns ``(spans, pages_fetched)``. ``page_limit`` is exposed as ``--page-limit``
     so the paging loop is exercisable without a thousand-span session.
     """
+    return page_spans(base_url, project_id, [("attribute", f"session.id:{session_id}")], page_limit)
+
+
+def page_spans(
+    base_url: str, project_id: str, filters: list[tuple[str, str]], page_limit: int
+) -> tuple[list[Span], int]:
+    """Page ``/v1/projects/{id}/spans`` under arbitrary repeatable query filters."""
     spans: list[Span] = []
     cursor: str | None = None
     pages = 0
     while True:
-        query = {
-            "attribute": f"session.id:{session_id}",
-            "limit": str(page_limit),
-        }
+        query = [*filters, ("limit", str(page_limit))]
         if cursor:
-            query["cursor"] = cursor
+            query.append(("cursor", cursor))
         url = (
             f"{base_url}/v1/projects/{urllib.parse.quote(project_id, safe='')}"
             f"/spans?{urllib.parse.urlencode(query)}"
@@ -159,8 +209,28 @@ def fetch_spans(
         spans.extend(payload.get("data", []))
         cursor = payload.get("next_cursor")
         if not cursor:
-            break
-    return spans, pages
+            return spans, pages
+
+
+def fetch_spans_by(
+    base_url: str,
+    project_id: str,
+    parameter: str,
+    values: list[str],
+    page_limit: int = PAGE_LIMIT,
+) -> list[Span]:
+    """Fetch spans by repeated ``trace_id=`` or ``span_id=`` filter, batched.
+
+    Both filters are declared as arrays by the Phoenix OpenAPI schema
+    (``GET /v1/projects/{project_identifier}/spans``), so a batch of ids costs one
+    query rather than one per id. Batching by :data:`ID_BATCH` bounds the URL length.
+    """
+    out: list[Span] = []
+    for start in range(0, len(values), ID_BATCH):
+        batch = values[start : start + ID_BATCH]
+        found, _ = page_spans(base_url, project_id, [(parameter, v) for v in batch], page_limit)
+        out.extend(found)
+    return out
 
 
 def fetch_sessions(base_url: str, project_id: str) -> list[dict[str, Any]]:
@@ -182,7 +252,12 @@ def fetch_sessions(base_url: str, project_id: str) -> list[dict[str, Any]]:
     return sessions
 
 
-def load_spans_from_file(path: Path, session_id: str) -> list[Span]:
+def load_spans_from_file(path: Path) -> list[Span]:
+    """Every span in a saved payload, unfiltered. The caller selects the session.
+
+    The unfiltered set is also the offline stand-in for the trace universe, so
+    contamination and orphan-parent resolution work against ``--from-file`` too.
+    """
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -192,7 +267,102 @@ def load_spans_from_file(path: Path, session_id: str) -> list[Span]:
     raw = payload.get("data", []) if isinstance(payload, dict) else payload
     if not isinstance(raw, list):
         raise ConfigError(f"{path} holds neither a span list nor an object with 'data'")
-    return [s for s in raw if s.get("attributes", {}).get("session.id") == session_id]
+    return raw
+
+
+def session_id_of(span: Span) -> str:
+    return str(span.get("attributes", {}).get("session.id") or "")
+
+
+# --- contamination ---------------------------------------------------------
+
+
+def trace_contamination(
+    spans: list[Span], trace_spans: list[Span], session_id: str, method: str
+) -> dict[str, Any]:
+    """Report which of this session's traces also carry another session's spans.
+
+    One trace can hold two sessions: OTel context propagates across an inter-agent
+    message, so the receiving session continues the sender's trace. Any exporter that
+    resolves session -> traces -> *all spans in those traces* therefore merges a
+    foreign session's work into the output. This is the same instrument — count the
+    owning sessions per trace — applied as a report rather than as a query strategy.
+
+    Purely diagnostic. The exported spans are still exactly those filtered on
+    ``session.id``; nothing here widens the set.
+    """
+    ours: dict[str, int] = {}
+    for span in spans:
+        ours[trace_id_of(span)] = ours.get(trace_id_of(span), 0) + 1
+
+    foreign: dict[str, dict[str, int]] = {trace: {} for trace in ours}
+    for span in trace_spans:
+        trace = trace_id_of(span)
+        owner = session_id_of(span)
+        if trace not in foreign or owner == session_id:
+            continue
+        foreign[trace][owner or "<none>"] = foreign[trace].get(owner or "<none>", 0) + 1
+
+    entries: list[dict[str, Any]] = []
+    for trace in sorted(ours):
+        owners = foreign[trace]
+        entries.append(
+            {
+                "trace_id": trace,
+                "in_session_spans": ours[trace],
+                "foreign_span_count": sum(owners.values()),
+                "foreign_session_ids": sorted(owners),
+            }
+        )
+    return {
+        "method": method,
+        "contaminated_trace_count": sum(1 for e in entries if e["foreign_span_count"]),
+        "foreign_span_count": sum(int(e["foreign_span_count"]) for e in entries),
+        "traces": entries,
+    }
+
+
+# --- orphan parents --------------------------------------------------------
+
+
+def resolve_orphan_parents(
+    orphans: list[Span], parent_spans: list[Span], session_id: str, method: str
+) -> dict[str, Any]:
+    """Attach the parent spans our orphans point at, in a bucket of their own.
+
+    A span whose ``parent_id`` names a span in another session is the visible edge of
+    the same context-propagation fact. Resolving it explains the orphan; merging it
+    into ``roots`` or ``orphans`` would smuggle a foreign session's span into a
+    document that claims to hold one session, so the resolved parents stay separate
+    and each carries the ``session.id`` that actually owns it.
+    """
+    wanted: dict[str, list[str]] = {}
+    for orphan in orphans:
+        if orphan.get("orphan_reason") != "parent_not_in_fetch":
+            continue
+        wanted.setdefault(str(orphan.get("parent_id") or ""), []).append(span_id_of(orphan))
+
+    by_id = {span_id_of(s): s for s in parent_spans}
+    resolved: list[Span] = []
+    for parent_id in sorted(wanted):
+        span = by_id.get(parent_id)
+        if span is None:
+            continue
+        owner = session_id_of(span)
+        resolved.append(
+            {
+                **span,
+                "owning_session_id": owner or None,
+                "is_foreign_session": bool(owner) and owner != session_id,
+                "orphan_span_ids": sorted(wanted[parent_id]),
+            }
+        )
+    return {
+        "method": method,
+        "requested_parent_ids": sorted(wanted),
+        "resolved": resolved,
+        "unresolved_parent_ids": sorted(p for p in wanted if p not in by_id),
+    }
 
 
 # --- transcript ------------------------------------------------------------
@@ -427,6 +597,7 @@ def build_meta(
     base_url: str | None,
     transcript: dict[str, str] | None,
     fetch_pages: int | None = None,
+    contamination: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Session-scoped meta. Correct as-is on the ``full`` export, which holds the
     whole session; the controller export re-labels these under ``session_*``."""
@@ -437,6 +608,9 @@ def build_meta(
         "fetched_at": datetime.now(UTC).isoformat(),
         "fetch_pages": fetch_pages,
         **span_metrics(spans),
+        # Diagnostic only; `null` when the check was skipped, never confused with a
+        # clean result, which is an entry per trace with zero foreign spans.
+        "trace_contamination": contamination,
         "transcript": transcript or None,
     }
 
@@ -748,7 +922,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--mode", choices=("full", "controller", "both"), default="both", help="output shape"
     )
     parser.add_argument("--out", help="output directory")
-    parser.add_argument("--project", default="default", help="Phoenix project name or id")
+    parser.add_argument(
+        "--project",
+        help=f"Phoenix project name or id; falls back to ${PROJECT_ENV_VAR}. Required.",
+    )
     parser.add_argument("--base-url", help="Phoenix base URL (overrides the environment)")
     parser.add_argument("--transcript", help="path to <base>.controller.md for the join")
     parser.add_argument(
@@ -767,6 +944,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--from-file", help="read spans from a saved JSON payload instead of the server"
     )
     parser.add_argument(
+        "--no-contamination-check",
+        action="store_true",
+        help="skip the meta.trace_contamination report (one extra batched span query)",
+    )
+    parser.add_argument(
+        "--resolve-orphan-parents",
+        action="store_true",
+        help=(
+            "fetch the parent spans that parent_not_in_fetch orphans point at and report "
+            "them, with their owning session.id, under foreign_parents in the full export"
+        ),
+    )
+    parser.add_argument(
         "--list-sessions", action="store_true", help="list the sessions the server still retains"
     )
     return parser
@@ -775,7 +965,9 @@ def build_parser() -> argparse.ArgumentParser:
 def run(args: argparse.Namespace) -> int:
     if args.list_sessions:
         base_url = resolve_base_url(args.base_url)
-        project_id, project_name = resolve_project(base_url, args.project)
+        project_id, project_name = resolve_project(
+            base_url, resolve_project_name(args.project, base_url)
+        )
         print_sessions(base_url, project_id, project_name)
         return 0
 
@@ -787,12 +979,16 @@ def run(args: argparse.Namespace) -> int:
 
     if args.from_file:
         base_url = None
-        project_name = args.project
+        project_id = ""
+        project_name = resolve_project_name(args.project, None)
         pages = None
-        spans = load_spans_from_file(Path(args.from_file).expanduser(), args.session_id)
+        universe = load_spans_from_file(Path(args.from_file).expanduser())
+        spans = [s for s in universe if session_id_of(s) == args.session_id]
     else:
         base_url = resolve_base_url(args.base_url)
-        project_id, project_name = resolve_project(base_url, args.project)
+        project_name = resolve_project_name(args.project, base_url)
+        project_id, project_name = resolve_project(base_url, project_name)
+        universe = []
         spans, pages = fetch_spans(base_url, project_id, args.session_id, args.page_limit)
 
     if not spans:
@@ -806,7 +1002,29 @@ def run(args: argparse.Namespace) -> int:
 
     spans.sort(key=sort_key)
     transcript = find_transcript(args.session_id, args.transcript)
-    meta = build_meta(spans, args.session_id, project_name, base_url, transcript, pages)
+
+    contamination = None
+    if not args.no_contamination_check:
+        trace_ids = sorted({trace_id_of(s) for s in spans if trace_id_of(s)})
+        if base_url is None:
+            trace_spans, method = universe, "from-file"
+        else:
+            trace_spans = fetch_spans_by(
+                base_url, project_id, "trace_id", trace_ids, args.page_limit
+            )
+            method = "trace-id-fetch"
+        contamination = trace_contamination(spans, trace_spans, args.session_id, method)
+
+    meta = build_meta(
+        spans, args.session_id, project_name, base_url, transcript, pages, contamination
+    )
+    if contamination and contamination["contaminated_trace_count"]:
+        print(
+            f"contamination: {contamination['contaminated_trace_count']} of "
+            f"{len(contamination['traces'])} trace(s) also carry other sessions' spans "
+            f"({contamination['foreign_span_count']} foreign spans); the export is still "
+            "filtered strictly on session.id"
+        )
 
     out_dir = Path(args.out).expanduser() if args.out else default_out_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -814,7 +1032,31 @@ def run(args: argparse.Namespace) -> int:
 
     if args.mode in ("full", "both"):
         roots, orphans = build_forest(spans)
-        document = {"meta": meta, "roots": roots, "orphans": orphans}
+        foreign_parents = None
+        if args.resolve_orphan_parents:
+            wanted = sorted(
+                {
+                    str(o.get("parent_id") or "")
+                    for o in orphans
+                    if o.get("orphan_reason") == "parent_not_in_fetch"
+                }
+            )
+            if base_url is None:
+                parent_spans, method = universe, "from-file"
+            else:
+                parent_spans = fetch_spans_by(
+                    base_url, project_id, "span_id", wanted, args.page_limit
+                )
+                method = "span-id-fetch"
+            foreign_parents = resolve_orphan_parents(orphans, parent_spans, args.session_id, method)
+        document = {
+            "meta": meta,
+            "roots": roots,
+            "orphans": orphans,
+            # A separate bucket, never merged into roots/orphans: these spans belong to
+            # other sessions and this document holds one session.
+            "foreign_parents": foreign_parents,
+        }
         path = out_dir / f"{args.session_id}.trace.json"
         path.write_text(json.dumps(document, indent=2, ensure_ascii=False), encoding="utf-8")
         written.append(path)

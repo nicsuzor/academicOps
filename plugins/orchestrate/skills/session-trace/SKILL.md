@@ -22,6 +22,7 @@ Two shapes come out of one fetch:
 
 ```bash
 export PHOENIX_BASE_URL=<phoenix-base-url>
+export PHOENIX_PROJECT_NAME=<phoenix-project>
 
 # What the server still holds
 python3 scripts/phoenix_trace.py --list-sessions
@@ -34,28 +35,43 @@ python3 scripts/phoenix_trace.py <session-id> --mode controller --out ./traces
 
 # Both, the default
 python3 scripts/phoenix_trace.py <session-id> --out ./traces
+
+# A one-off project, without touching the environment
+python3 scripts/phoenix_trace.py <session-id> --project <phoenix-project> --out ./traces
+
+# Explain the orphans: fetch the parent spans they point at, tagged with their owner
+python3 scripts/phoenix_trace.py <session-id> --mode full --resolve-orphan-parents --out ./traces
 ```
+
+Both `PHOENIX_BASE_URL` (or `--base-url`) and `PHOENIX_PROJECT_NAME` (or `--project`) are
+required. Neither has a default: the exporter exits non-zero naming the flag and the variable,
+and — when the server is reachable — the projects it actually holds.
 
 Written as `<session-id>.trace.json` and `<session-id>.trace.controller.json`.
 
 ## Options
 
-| Flag              | Effect                                                                       |
-| ----------------- | ---------------------------------------------------------------------------- |
-| `--mode`          | `full`, `controller`, or `both` (default `both`)                             |
-| `--out`           | output directory; defaults to `$AOPS_SESSIONS/traces/`, else the working dir |
-| `--project`       | Phoenix project name or id (default `default`)                               |
-| `--base-url`      | Phoenix base URL, overriding the environment                                 |
-| `--transcript`    | explicit path to the session's `<base>.controller.md`                        |
-| `--tolerance-ms`  | transcript join window in milliseconds (default `500`)                       |
-| `--page-limit`    | spans requested per API page (default `1000`); lower it to exercise paging   |
-| `--from-file`     | read spans from a saved JSON payload instead of the server                   |
-| `--list-sessions` | list retained sessions with start, end, and trace count                      |
+| Flag                       | Effect                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| `--mode`                   | `full`, `controller`, or `both` (default `both`)                                 |
+| `--out`                    | output directory; defaults to `$AOPS_SESSIONS/traces/`, else the working dir     |
+| `--project`                | Phoenix project name or id; required, falls back to `$PHOENIX_PROJECT_NAME`      |
+| `--base-url`               | Phoenix base URL, overriding the environment                                     |
+| `--transcript`             | explicit path to the session's `<base>.controller.md`                            |
+| `--tolerance-ms`           | transcript join window in milliseconds (default `500`)                           |
+| `--page-limit`             | spans requested per API page (default `1000`); lower it to exercise paging       |
+| `--from-file`              | read spans from a saved JSON payload instead of the server                       |
+| `--no-contamination-check` | skip `meta.trace_contamination`, saving one batched span query                   |
+| `--resolve-orphan-parents` | fetch the parents `parent_not_in_fetch` orphans point at, into `foreign_parents` |
+| `--list-sessions`          | list retained sessions with start, end, and trace count                          |
 
 ## Environment
 
 - `PHOENIX_BASE_URL` — the Phoenix server. `PHOENIX_COLLECTOR_ENDPOINT` is read as a fallback.
   Without one of these, or `--base-url`, the script exits non-zero.
+- `PHOENIX_PROJECT_NAME` — the Phoenix project, by name or id. Without it, or `--project`, the
+  script exits non-zero and names both, plus the projects the server holds. No project name is
+  baked into the artifact.
 - `AOPS_SESSIONS` — the transcripts repository. Supplies the default output directory and the
   markdown transcript that controller attribution needs.
 
@@ -91,6 +107,22 @@ at a parent's `context.span_id`.
 
 `roots + orphans` is always a partition of the fetched spans: walking down from them reaches every
 span exactly once. The exporter fails loudly rather than emit a document that lost any.
+
+`meta.trace_contamination` names the traces this session shares with another. One entry per trace
+the session's spans appear in — `trace_id`, `in_session_spans`, `foreign_span_count`,
+`foreign_session_ids` — plus the rollup `contaminated_trace_count` and `foreign_span_count`, and
+the `method` that produced it. `null` means the check was skipped, which is not the same as a clean
+result: clean is an entry per trace with `foreign_span_count: 0`. **It is a report, never a
+widening** — the export is filtered strictly on `session.id` whatever the report says. A non-zero
+`foreign_span_count` is the reason not to trust any tool that resolves session → traces → all spans
+in those traces: that query returns another session's work as if it were yours.
+
+`foreign_parents` (full export, `--resolve-orphan-parents` only, otherwise `null`) explains the
+`parent_not_in_fetch` orphans. Each entry under `resolved` is the parent span verbatim plus
+`owning_session_id`, `is_foreign_session`, and the `orphan_span_ids` that pointed at it;
+`unresolved_parent_ids` lists the parents the server no longer holds. These spans stay in their own
+bucket and are never merged into `roots` or `orphans`, because they belong to other sessions and
+this document holds one.
 
 Where the detail lives, by span kind:
 
@@ -129,28 +161,33 @@ Field names below are the **controller** export's. In the full export drop the `
    the subset the controller document itself contains; the difference is subagent errors, which
    are only visible in the full export.
 2. `orphans` (full export) — check `orphan_reason`. `parent_not_in_fetch` usually means a turn was
-   still running at export time, so re-export once the session ends. `parent_cycle` means the
-   tracer emitted a `parent_id` loop and is a bug in the instrumentation, not in the session.
-3. `meta.session_token_totals` — compare `cache_read` against `prompt`. A low cache-read ratio on
+   still running at export time, so re-export once the session ends — or the parent belongs to
+   another session, which `--resolve-orphan-parents` settles by naming its owner in
+   `foreign_parents`. `parent_cycle` means the tracer emitted a `parent_id` loop and is a bug in
+   the instrumentation, not in the session.
+3. `meta.trace_contamination.contaminated_trace_count` — non-zero means another session's spans
+   share a trace with this one. Nothing is wrong with the export; it is a warning about any
+   trace-scoped reading of the same data, and about correlating this session with a trace id.
+4. `meta.session_token_totals` — compare `cache_read` against `prompt`. A low cache-read ratio on
    a long session means the context is being rebuilt each turn. `controller_token_totals` isolates
    the controller's own spend from its subagents'.
-4. `subagents[]` — rank by `collapsed_span_count`, which is the proxy that works: it counts the
+5. `subagents[]` — rank by `collapsed_span_count`, which is the proxy that works: it counts the
    spans the dispatch actually produced, so the largest marks the expensive branch. **Only read
    `duration_ms` where `duration_is_dispatch_only` is `false`.** A `teammate_spawned` dispatch's
    AGENT span closes on the spawn acknowledgement, so its `duration_ms` is on the order of 100 ms
    no matter how long the subagent ran — sorting a `teammate_spawned` set by `duration_ms` ranks
    nothing but spawn latency. Then check `status` and `status_code` for dispatches that did not
    complete.
-5. `meta.controller_span_count` against the controller transcript's event count — like for like,
+6. `meta.controller_span_count` against the controller transcript's event count — like for like,
    and they should be close. `meta.session_span_count` is the whole session and will exceed it by
    the subagent work; that excess is expected, not a finding. A shortfall on the _controller_
    figure means spans were dropped or the exporter ran mid-session.
-6. `meta.attribution` — `unmatched` splits into two causes that need opposite responses.
+7. `meta.attribution` — `unmatched` splits into two causes that need opposite responses.
    `collisions` counts calls that lost an in-window span to a nearer call; widening
    `--tolerance-ms` makes those worse. The remainder found no candidate at all, and only those may
    warrant a wider window. `warnings` is capped at the first 20 lines plus a suppressed count. A
    high `unattributed_span_count` means subagent work could not be tied to a dispatch.
-7. The largest `input_chars` / `output_chars` in `events[]` — the spans worth opening in the full
+8. The largest `input_chars` / `output_chars` in `events[]` — the spans worth opening in the full
    export for their untruncated values.
 
 ## Limits
@@ -184,7 +221,9 @@ Field names below are the **controller** export's. In the full export drop the `
   root. (A side-channel that once tried to reparent subagent roots onto the dispatching Agent span
   was removed in `cde7211d2` after never succeeding; spans predating that commit may still show it.)
 - One trace can span two sessions, because OTel context propagates across inter-agent messages.
-  Filter by session id, never by trace id.
+  Filter by session id, never by trace id. `meta.trace_contamination` measures how often that
+  happened for this session, and `--resolve-orphan-parents` names the owner of a parent span that
+  sits outside it. Both report; neither changes what is exported.
 - Instrumentation is not uniform. Some runs — container-dispatched ones especially — emit `CHAIN`
   spans only, with no tool, LLM, or agent spans. The export still succeeds, the missing kinds show
   as zero in `meta.span_kind_counts`, and the transcript join short-circuits to a single warning

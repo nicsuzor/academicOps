@@ -1,6 +1,24 @@
 {
   "data": [
     {
+      "id": "U3BhbjoxNA==",
+      "name": "Agent",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "ffff0000deadbeef" },
+      "span_kind": "AGENT",
+      "parent_id": null,
+      "start_time": "2026-01-02T00:00:19.000000+00:00",
+      "end_time": "2026-01-02T00:00:21.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "99999999-9999-9999-9999-999999999999",
+        "agent.name": "general-purpose",
+        "input.value": "dispatch from the other session sharing this trace",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
       "id": "U3BhbjoxMw==",
       "name": "Bash",
       "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "aaaa000000000013" },

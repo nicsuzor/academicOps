@@ -46,10 +46,19 @@ slug: 11111111
 """
 
 
-def run_script(*args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:
-    """Invoke the exporter with a clean environment; no test may reach the network."""
+def run_script(
+    *args: str, expect: int = 0, project: str | None = "default"
+) -> subprocess.CompletedProcess[str]:
+    """Invoke the exporter with a clean environment; no test may reach the network.
+
+    ``project`` supplies ``PHOENIX_PROJECT_NAME``, which the script now requires.
+    Pass ``project=None`` to exercise the unset case.
+    """
     env = {k: v for k, v in os.environ.items() if k not in ("AOPS_SESSIONS", "PHOENIX_BASE_URL")}
     env["PHOENIX_COLLECTOR_ENDPOINT"] = ""
+    env.pop("PHOENIX_PROJECT_NAME", None)
+    if project is not None:
+        env["PHOENIX_PROJECT_NAME"] = project
     result = subprocess.run(
         [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, env=env
     )
@@ -79,10 +88,14 @@ class _PhoenixStub(BaseHTTPRequestHandler):
     """A minimal Phoenix API over loopback, so paging is exercisable without a server.
 
     Serves the sample fixture's spans one page at a time, honouring ``limit`` and
-    ``cursor`` exactly as the real endpoint does.
+    ``cursor`` exactly as the real endpoint does, and filtering on ``attribute``,
+    ``trace_id`` and ``span_id`` — the three filters the exporter issues. ``trace_id``
+    and ``span_id`` are repeatable arrays in the Phoenix OpenAPI schema, so the stub
+    matches against every value given.
     """
 
     spans: list[dict[str, object]] = []
+    queries: list[dict[str, list[str]]] = []
 
     def log_message(self, *args: object) -> None:  # noqa: A003 - silence the access log
         pass
@@ -104,17 +117,41 @@ class _PhoenixStub(BaseHTTPRequestHandler):
         if parsed.path.endswith("/sessions"):
             self._send({"data": [{"session_id": SESSION, "traces": [1, 2]}], "next_cursor": None})
             return
+        self.queries.append(query)
+        matched = list(self.spans)
+        for clause in query.get("attribute", []):
+            key, _, value = clause.partition(":")
+            matched = [s for s in matched if _attributes(s).get(key) == value]
+        if "trace_id" in query:
+            matched = [s for s in matched if _context(s)["trace_id"] in query["trace_id"]]
+        if "span_id" in query:
+            matched = [s for s in matched if _context(s)["span_id"] in query["span_id"]]
+
         limit = int(query.get("limit", ["1000"])[0])
         offset = int(query.get("cursor", ["0"])[0])
-        page = self.spans[offset : offset + limit]
+        page = matched[offset : offset + limit]
         nxt = offset + limit
-        self._send({"data": page, "next_cursor": str(nxt) if nxt < len(self.spans) else None})
+        self._send({"data": page, "next_cursor": str(nxt) if nxt < len(matched) else None})
+
+
+def _attributes(span: dict[str, object]) -> dict[str, object]:
+    value = span.get("attributes", {})
+    assert isinstance(value, dict)
+    return value
+
+
+def _context(span: dict[str, object]) -> dict[str, str]:
+    value = span.get("context", {})
+    assert isinstance(value, dict)
+    return value
 
 
 @pytest.fixture
 def phoenix_stub() -> Iterator[str]:
     payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    _PhoenixStub.spans = [s for s in payload["data"] if s["attributes"]["session.id"] == SESSION]
+    # The whole fixture, other sessions included: the stub filters, as the server does.
+    _PhoenixStub.spans = payload["data"]
+    _PhoenixStub.queries = []
     server = ThreadingHTTPServer(("127.0.0.1", 0), _PhoenixStub)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -585,6 +622,196 @@ def test_controller_mode_falls_back_without_transcript(tmp_path: Path):
         "aaaa000000000004",
         "aaaa000000000008",
     ]
+
+
+def test_missing_project_names_the_flag_and_the_env_var(tmp_path: Path):
+    """No project is baked in (specs/ARCHITECTURE.md "No defaults"); it fails loudly."""
+    result = run_script(
+        SESSION,
+        "--from-file",
+        str(FIXTURE),
+        "--out",
+        str(tmp_path),
+        project=None,
+        expect=2,
+    )
+    assert "no Phoenix project" in result.stderr
+    assert "--project" in result.stderr
+    assert "PHOENIX_PROJECT_NAME" in result.stderr
+    assert not list(tmp_path.glob("*.json"))
+
+
+def test_missing_project_lists_what_the_server_holds(tmp_path: Path, phoenix_stub: str):
+    """With a reachable server the error answers 'which one did you mean'."""
+    result = run_script(
+        SESSION,
+        "--base-url",
+        phoenix_stub,
+        "--out",
+        str(tmp_path),
+        project=None,
+        expect=2,
+    )
+    assert "PHOENIX_PROJECT_NAME" in result.stderr
+    assert "Projects on this server: default" in result.stderr
+
+
+def test_trace_contamination_is_reported_without_widening_the_export(tmp_path: Path):
+    """One trace carries two sessions; the report says so and the export does not grow."""
+    result = run_script(
+        SESSION, "--mode", "full", "--from-file", str(FIXTURE), "--out", str(tmp_path)
+    )
+    doc = load(tmp_path / f"{SESSION}.trace.json")
+    meta = doc["meta"]
+    assert isinstance(meta, dict)
+    report = meta["trace_contamination"]
+    assert isinstance(report, dict)
+
+    assert report["method"] == "from-file"
+    assert report["contaminated_trace_count"] == 1
+    assert report["foreign_span_count"] == 2
+    assert report["traces"] == [
+        {
+            "trace_id": "trace0000000000000000000000000001",
+            "in_session_spans": 7,
+            "foreign_span_count": 0,
+            "foreign_session_ids": [],
+        },
+        {
+            "trace_id": "trace0000000000000000000000000002",
+            "in_session_spans": 5,
+            "foreign_span_count": 2,
+            "foreign_session_ids": ["99999999-9999-9999-9999-999999999999"],
+        },
+    ]
+    assert "1 of 2 trace(s) also carry other sessions' spans" in result.stdout
+
+    # A report, not a widening: the exported set is still exactly the session's spans.
+    assert meta["span_count"] == 12
+    roots = doc["roots"]
+    orphans = doc["orphans"]
+    assert isinstance(roots, list)
+    assert isinstance(orphans, list)
+    exported: set[str] = set()
+    stack = [*roots, *orphans]
+    while stack:
+        node = stack.pop()
+        exported.add(node["context"]["span_id"])
+        stack.extend(node["children"])
+    assert len(exported) == 12
+    assert "aaaa000000000013" not in exported
+    assert "ffff0000deadbeef" not in exported
+
+
+def test_contamination_check_queries_the_server_by_trace_id(tmp_path: Path, phoenix_stub: str):
+    """Over HTTP the check is one batched trace_id query, not one request per trace."""
+    run_script(SESSION, "--mode", "full", "--base-url", phoenix_stub, "--out", str(tmp_path))
+    doc = load(tmp_path / f"{SESSION}.trace.json")
+    meta = doc["meta"]
+    assert isinstance(meta, dict)
+    report = meta["trace_contamination"]
+    assert isinstance(report, dict)
+
+    assert report["method"] == "trace-id-fetch"
+    assert report["contaminated_trace_count"] == 1
+    assert report["foreign_span_count"] == 2
+    assert meta["span_count"] == 12
+
+    by_trace = [q for q in _PhoenixStub.queries if "trace_id" in q]
+    assert len(by_trace) == 1, "both trace ids must be batched into one request"
+    assert sorted(by_trace[0]["trace_id"]) == [
+        "trace0000000000000000000000000001",
+        "trace0000000000000000000000000002",
+    ]
+    # The session fetch still sends the bare, unquoted attribute filter.
+    session_queries = [q for q in _PhoenixStub.queries if "attribute" in q]
+    assert session_queries[0]["attribute"] == [f"session.id:{SESSION}"]
+
+
+def test_contamination_check_can_be_skipped(tmp_path: Path):
+    """Skipped is null, never confused with checked-and-clean."""
+    run_script(
+        SESSION,
+        "--mode",
+        "full",
+        "--from-file",
+        str(FIXTURE),
+        "--no-contamination-check",
+        "--out",
+        str(tmp_path),
+    )
+    doc = load(tmp_path / f"{SESSION}.trace.json")
+    meta = doc["meta"]
+    assert isinstance(meta, dict)
+    assert meta["trace_contamination"] is None
+
+
+def test_orphan_parents_are_left_unresolved_by_default(tmp_path: Path):
+    run_script(SESSION, "--mode", "full", "--from-file", str(FIXTURE), "--out", str(tmp_path))
+    doc = load(tmp_path / f"{SESSION}.trace.json")
+    assert doc["foreign_parents"] is None
+
+
+def test_resolve_orphan_parents_keeps_them_out_of_roots_and_orphans(tmp_path: Path):
+    """The orphan's parent belongs to another session, so it gets its own bucket."""
+    run_script(
+        SESSION,
+        "--mode",
+        "full",
+        "--from-file",
+        str(FIXTURE),
+        "--resolve-orphan-parents",
+        "--out",
+        str(tmp_path),
+    )
+    doc = load(tmp_path / f"{SESSION}.trace.json")
+    bucket = doc["foreign_parents"]
+    assert isinstance(bucket, dict)
+    resolved = bucket["resolved"]
+    assert isinstance(resolved, list)
+
+    assert bucket["method"] == "from-file"
+    assert bucket["requested_parent_ids"] == ["ffff0000deadbeef"]
+    assert bucket["unresolved_parent_ids"] == []
+    assert len(resolved) == 1
+    parent = resolved[0]
+    assert parent["context"]["span_id"] == "ffff0000deadbeef"
+    assert parent["owning_session_id"] == "99999999-9999-9999-9999-999999999999"
+    assert parent["is_foreign_session"] is True
+    assert parent["orphan_span_ids"] == ["aaaa000000000010"]
+
+    # Never merged in as if it were ours.
+    roots = doc["roots"]
+    orphans = doc["orphans"]
+    assert isinstance(roots, list)
+    assert isinstance(orphans, list)
+    assert all(r["context"]["span_id"] != "ffff0000deadbeef" for r in roots)
+    assert [o["context"]["span_id"] for o in orphans] == ["aaaa000000000010"]
+    meta = doc["meta"]
+    assert isinstance(meta, dict)
+    assert meta["span_count"] == 12
+
+
+def test_resolve_orphan_parents_over_http_fetches_by_span_id(tmp_path: Path, phoenix_stub: str):
+    run_script(
+        SESSION,
+        "--mode",
+        "full",
+        "--base-url",
+        phoenix_stub,
+        "--resolve-orphan-parents",
+        "--out",
+        str(tmp_path),
+    )
+    doc = load(tmp_path / f"{SESSION}.trace.json")
+    bucket = doc["foreign_parents"]
+    assert isinstance(bucket, dict)
+    resolved = bucket["resolved"]
+    assert isinstance(resolved, list)
+
+    assert bucket["method"] == "span-id-fetch"
+    assert [q["span_id"] for q in _PhoenixStub.queries if "span_id" in q] == [["ffff0000deadbeef"]]
+    assert resolved[0]["owning_session_id"] == "99999999-9999-9999-9999-999999999999"
 
 
 def test_both_modes_write_both_files(tmp_path: Path, transcript: Path):
