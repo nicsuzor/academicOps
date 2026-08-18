@@ -60,6 +60,7 @@ As a domain-specific extension of the core decomposition and review workflows, t
 ### 2. Low-Friction Interaction (The Seedling Experience)
 
 - **Respect for Immaturity**: In Seedling mode, the system must NOT force formal structure (no Gantt charts, no complex task IDs). The user expects a "loose" conversation that helps clarify the "intellectual bet" without the overhead of project management.
+- **Stage 1 Stopping Rule**: Seedling Mode acts as the explicit stopping rule for Stage 1 (Intake & Capture) research work. It forbids generating full task graphs, time estimates, dependency chains, MVC definitions, or Mermaid diagrams during intake, keeping the idea at `inbox` without acceptance criteria until the researcher chooses to develop it into Stage 2 (Forest Mode).
 - **Means-First Thinking**: Following the effectual planning principle, the system should ask "what do you have?" (data access, relationships, expertise) to help shape the question, rather than demanding a perfect question before planning starts.
 
 ### 3. High-Signal Review (The Convergence)
@@ -293,13 +294,15 @@ Seedling mode produces exactly five items:
 
 ### What Seedling Does NOT Produce
 
+Seedling mode operates as the strict **stopping rule for Stage 1 intake**:
+
 - No task graph
 - No time estimates
 - No dependency chains
 - No MVC definition
 - No Mermaid diagrams
 
-Seedling mode respects the idea's immaturity. Producing formal structure for a half-formed thought creates false precision and discourages the kind of loose, exploratory thinking that generates good research questions.
+Seedling mode respects the idea's immaturity. Producing formal structure for a half-formed thought creates false precision and discourages the kind of loose, exploratory thinking that generates good research questions. It guarantees that Stage 1 intake captures the bet without crossing into Stage 2 dispatch composition or writing premature acceptance criteria.
 
 ### Transition to Forest
 

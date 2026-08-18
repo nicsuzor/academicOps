@@ -18,30 +18,32 @@ stage, `strategize`, in `plugins/ida/skills/`. Nothing here restates them.
 ## The map
 
 ```
-/q capture ──► hydrate ──► one inbox node, and stop
+/q (Stage 1: Intake & Capture) ──► hydrate ──► one inbox node (NO AC), and stop
+   ├─► placed under the right parent, valued (marginal career benefit, synergies, VoI)
+   ├─► densely wired: contributes_to, depends_on, [[wikilinks]]
+   ├─► assumptions sorted: tested vs hopes
+   ├─► forks named, each with the probe that would settle it
+   ├─► sizing: default no cut; cut only at an unresolved fork or boundary
+   └─► status: inbox with NO acceptance criteria (non-dispatchable)
                               │
                               ▼
 ===================================================================
 BREAKPOINT 1 — the user calls brief on an inbox node, or on a raw ask that
 brief captures itself first. Being called is the gate.
 ===================================================================
-brief (composes only — never dispatches) ──► status: queued
-   ├─► placed under the right parent, valued, densely wired
-   ├─► assumptions sorted: tested vs hopes
-   ├─► forks named, each with the probe that would settle it
-   ├─► decision list for the user
-   ├─► sizing: default no cut; cut only at an unresolved fork or a
-   │   responsibility boundary
-   ├─► a fork blocked on information makes the probe the unit
+brief (Stage 2: Dispatch Preparation — composes only) ──► status: queued
+   ├─► validates / refines Stage 1 placement, valuation, and fork map
    ├─► process composed from the three template layers, risk-proportionate
    │   · steps this worker takes in this session ──► the task checklist
    ├─► anything a different owner does ──► its own child node on the graph
    │   · review obligations are nodes: reviewer ≠ executor
    │   · empty review set ──► halt, task blocked, no brief written
    │   · one-way or ambiguous door ──► sign-off node, uncomposed
-   └─► brief written to the task body ──► STOP
+   ├─► brief written to task body + concrete Acceptance Criteria (AC)
+   └─► flips status: inbox ──► queued (ready for dispatch) ──► STOP
 ===================================================================
 orchestrate's dispatch reads the task BY ID and routes it
+(Inboxes without Acceptance Criteria are non-dispatchable by engine invariant)
 the unit executes ──► PR lands, or closes
 ===================================================================
 reconcile (return channel, facts only)
@@ -55,24 +57,23 @@ BREAKPOINT 2 — the user: PR review and merge, plus the one-way-door sign-offs
 
 ## Why the stages are cut here
 
-**Capture is hydrate plus one write, and nothing else.** `/q` gets the shortlist
-and records one `inbox` node under the parent it belongs to — the task or epic
-the shortlist already surfaced, else the task this session holds, else one
-question. Placement is the only judgment it makes, because `create_task` places
-the node whether you choose a parent or not: an unparented node is an orphan,
-and a catch-all parent is an orphan that does not show up as one. Everything
-else — value, edges, assumptions, forks, decisions — waits, because every
-judgment made at capture is made on the thinnest context anyone will ever have
-about the ask, and a fragment that costs more than a few seconds to capture is a
-fragment that stops being captured.
+**Stage 1 (Intake, Placement & Densification) belongs to `/q`.** `/q` gets the shortlist
+from `hydrate`, records one `inbox` node under the parent it belongs to, wires
+`contributes_to` and `depends_on` relationships, densifies the neighbourhood with `[[wikilinks]]`,
+and applies initial strategic valuation (marginal career benefit, cross-project synergies, Value of Information [VoI]).
+Placement and densification happen here because a node without a parent is an orphan, and a task with no edges is dumped rather than placed.
+Crucially, **Stage 1 writes NO acceptance criteria and leaves the status at `inbox`**. Very fast, raw notes can be captured via incoming capture first before being situated under `/q`.
 
-**`brief` captures too, when it is handed prose rather than an id.** The ask a
-user pastes straight into the call has no node behind it, and the executor reads
-the body rather than the invocation, so the node has to exist before there is
-anything to brief. `brief` writes the same one `inbox` node `/q` would have, then
-proceeds — it is already reading the neighbourhood, so the placement judgment
-capture defers is one it is about to make anyway. The gate is the call, never
-which surface wrote the node.
+**The Engine Readiness Invariant.**
+An `inbox` node without Acceptance Criteria is strictly non-dispatchable.
+Dispatchers and worker agents pull only `queued` nodes that carry completed Stage 2 briefs and concrete Acceptance Criteria.
+Leaving tasks in `inbox` with no AC ensures intake cannot accidentally trigger autonomous worker dispatch.
+
+**Stage 2 (Dispatch Preparation) belongs to `brief`.**
+When the user explicitly invokes `brief` on an `inbox` node (or raw note), it validates Stage 1 placement,
+composes the process across template layers, emits blocking review and sign-off nodes, drafts the brief,
+and formulates concrete **Acceptance Criteria (AC)**. Once AC and review nodes are present, `brief` flips
+the node from `inbox` to `queued`.
 
 **Hydrate points; it does not read.** It runs on every ask, which is the widest
 point in the funnel, so it does the cheap half: a few differently-worded
@@ -170,8 +171,8 @@ the target the work serves.
 | Stage            | Owns                                                                                                                                                                                          |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `hydrate`        | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                                                                                                                   |
-| `/q`             | One `inbox` node carrying the ask and that shortlist. No judgment of any kind.                                                                                                                |
-| `brief`          | Placement, valuation, wiring, assumptions, forks, probes, decisions; then sizing, process composition, review and sign-off nodes, the brief. `inbox` to `queued`. Composes; never dispatches. |
+| `/q`             | Stage 1 Intake & Capture: placement under parent, wiring contributes_to/depends_on, [[wikilinks]], strategic valuation (career benefit, synergies, VoI). Status: `inbox` with NO AC.       |
+| `brief`          | Stage 2 Dispatch Preparation: process composition, review & sign-off nodes, brief & Acceptance Criteria (AC). Flips `inbox` to `queued`. Composes; never dispatches.                         |
 | `pull`           | Claim, execute, record, hand over.                                                                                                                                                            |
 | `reconcile`      | What is true about in-flight and finished work. Facts only; returns re-planning to `inbox`.                                                                                                   |
 | `ida:strategize` | An on-demand lens, ida's: fix the altitude, route each piece to the stage that owns it.                                                                                                       |

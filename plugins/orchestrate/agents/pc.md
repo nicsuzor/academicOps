@@ -36,9 +36,11 @@ If you have a Task ID, you can dispatch in the background and return immediately
 ```bash
 HEAD=$(git rev-parse HEAD)
 NAME="dispatch-<task-id>"
-CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME --base $HEAD"
+CMD="POLECAT_PRINT_TIMEOUT=30m uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME --base $HEAD"
 tmux new-session -d -s "$NAME" "$CMD"
 ```
+
+- **Timeout convention**: For asynchronous container dispatches, specify timeouts using `POLECAT_PRINT_TIMEOUT` formatted as a Go-duration string (e.g. `30m`, `1h`; bare integers fail). Pass in `CMD` when non-default execution limits are required.
 
 ## Synchronous run (for short prompts)
 

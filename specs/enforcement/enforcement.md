@@ -54,7 +54,7 @@ cooperation. The register lists every mechanism in each.
 - **Structural prevention** — holds without cooperation. Container and credential
   isolation, the delivery and seed guards, no-defaults config, model pins.
 - **Instructions** — agent personas and skills. The largest band by far, and the
-  one the design principles below say to reach for first.
+  one the design principles below say to reach for first (including bounded capture floors for routine maintenance, e.g. Pauli's 0/1 write rate, 0-create constraint, and suppression against hydrate's shortlist).
 - **The rule channel** — axioms, project rules, and user rules, in three layers
   where a later one may only add obligations and never weakens the floor. Three
   independent delivery paths carry them, and any rule can be on one and off the

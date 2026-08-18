@@ -37,6 +37,8 @@ Capture continuously, as facts emerge. If the user has to say "can you save
 that?", you have already failed. Do not announce it, do not interrupt to ask, do
 not wait for the end of the session.
 
+For turn-level and session handover routine capture, the bounded capture floor defined in Pauli ([`../../agents/pauli.md`](../../agents/pauli.md)) governs as a subordinate special case: hard-capped at 0 or 1 `update_body` on an existing note from the hydrate shortlist without initiating new searches or creating new notes, and suppressed unless naming an existing note ID and specific outdated sentence or gap.
+
 What earns a write: decisions and their reasoning, facts about systems and people
 and processes, techniques, patterns that recur across sources, constraints,
 strategic insight, and ideas ruled out with the reason why. What does not:
