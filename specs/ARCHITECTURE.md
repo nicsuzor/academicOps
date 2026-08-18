@@ -19,9 +19,9 @@ lib/                    Shared source, never shipped as-is. Most of it is inject
 build/                  Build system.
 plugins/                Plugin sources. Only what a client needs.
   pkb/                  pauli, memory, planning, workflow composition, MCP client config.
-  ida/                  ida — the interactive face.
-  orchestrate/          james — dispatch; marsha — QA; the review skills; the
-                        handback hooks; the polecat container launcher.
+  ida/                  ida — the interactive face; pc — the polecat launcher.
+  orchestrate/          james — the container worker; marsha — QA; adversary;
+                        agy; the review skills; the handback hooks.
   rbg/                  rbg — rule enforcement: an advisory turn-by-turn evaluator plus a
                         stop-side rule-check gate.
   ts/                   Tailscale bring-up.
@@ -61,7 +61,7 @@ academicOps is structured around **4 core pillars**:
 
 1. **Prompt Situation (`pkb`):** Ground incoming prompts in strategic PKB history via `UserPromptSubmit` hook + `hydrate`/`brief`.
 2. **Workflow Composition (`pkb`):** Select task-appropriate assurance and review levels (`brief`) matching risk and blast radius. Routing an ask to its template is a separate job — a direct read of [`plugins/pkb/workflows/INDEX.md`](../plugins/pkb/workflows/INDEX.md) by whichever agent holds the ask.
-3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `orchestrate`), writing results back to the PKB task record, committing changes, and pushing.
+3. **Containerized Execution & Dispatch (`ida`):** Dispatch tasks to isolated Docker containers (`lib/polecat`, injected into `ida`, launched by `pc`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Turn-by-turn local model evaluation of tool calls (`PreToolUse`), plus a stop gate that blocks once per stop-chain and directs the agent to run the RBG rule compliance check (`axioms/` + project + local rules) before stopping (`Stop` / `SubagentStop`).
 
 ## Plugins
@@ -69,15 +69,15 @@ academicOps is structured around **4 core pillars**:
 Directory names are short. `build/marketplace.toml` maps directory →
 marketplace name and is the single source of truth for the built plugin set.
 
-| Directory             | Marketplace name | Owns                                                                                                               |
-| --------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `plugins/pkb`         | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.                                    |
-| `plugins/ida`         | `ida`            | ida, the interactive face; agy, her delegation wrapper around the Gemini CLI; `strategize`, her own thinking pass. |
-| `plugins/orchestrate` | `orchestrate`    | james, dispatch; marsha, QA; the review skills; the handback hooks; polecat.                                       |
-| `plugins/rbg`         | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate.                                |
-| `plugins/ts`          | `ts`             | Tailscale bring-up for remote sessions.                                                                            |
-| `plugins/tools`       | `tools`          | Domain research skills.                                                                                            |
-| `plugins/aops-debug`  | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                                                         |
+| Directory             | Marketplace name | Owns                                                                                               |
+| --------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| `plugins/pkb`         | `pkb`            | pauli. Memory, effectual planning, workflow composition, PKB MCP client config.                    |
+| `plugins/ida`         | `ida`            | ida, the interactive face; pc, her polecat launcher; polecat; `strategize`, her own thinking pass. |
+| `plugins/orchestrate` | `orchestrate`    | james, the container worker; marsha, QA; adversary; agy; the review skills; the handback hooks.    |
+| `plugins/rbg`         | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate.                |
+| `plugins/ts`          | `ts`             | Tailscale bring-up for remote sessions.                                                            |
+| `plugins/tools`       | `tools`          | Domain research skills.                                                                            |
+| `plugins/aops-debug`  | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                                         |
 
 ### pkb
 
@@ -103,23 +103,35 @@ given session holds.
 ### ida
 
 The interactive face, and the only agent that talks to the user. Academic
-integrity is non-negotiable. Ida holds between steps, answers what it can
-answer, delegates everything substantive to james, and filters what comes back so
-the user sees only what needs their judgment.
+integrity is non-negotiable. Ida has three jobs and no others: plan, by
+commissioning `pkb:pauli`; launch polecats, through `pc`; and track what is in
+flight. She holds between steps and filters what comes back so the user sees
+only what needs their judgment. She reaches exactly two agents, `pkb:pauli` and
+`ida:pc`, and nothing else.
 
-**agy** ships here too: a wrapper subagent whose job is to run the `agy` Gemini
-CLI headless in the background. It exists so ida can push reading, writing,
-searching, and testing onto a cheaper, faster model rather than spending her own
-turn on detail work.
+**pc** ships here, because launching containers is how ida gets work done and
+nothing else in the framework dispatches on her behalf. It takes a task id and
+starts a detached `polecat run agy` under tmux, then returns. There is no
+synchronous mode and no return path: the worker writes its result to the task
+record and pushes its branch. `lib/polecat/` is injected into this plugin
+(`plugins/ida/manifest/plugin.toml`) and read as
+`${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.
 
 ### orchestrate
 
-Ships **james**, who dispatches. He briefs work — goal and why, constraints,
-evidence bar — and routes it to a supervised in-session agent team or to an
-asynchronous polecat container. He does not instruct method, and he does not
-re-do the work when it comes back. He commissions review agents, interrogates
-their output, and resolves conflicting verdicts into one judgment. Ida delegates
-to james; james never talks to the user.
+Ships **james**, the persona a polecat container boots into
+(`lib/polecat/cli.py`, `DEFAULT_AGENT`). He takes one unit of work and sees it
+through: hydrate, claim the task, do the work with whatever his harness gives
+him, and hand back a report carrying its receipts. How he uses his harness —
+subagents, naming, messaging — is his own affair and is not instructed here.
+He does not talk to the user.
+
+**adversary** ships alongside him: a red-team reviewer, commissioned when a
+claim needs refuting or a plan needs attacking, never scheduled by mandate.
+
+**agy** also ships here: a wrapper subagent that runs the `agy` Gemini CLI
+headless, so a claude-side agent can push reading, writing, searching, and
+testing onto a cheaper, faster model instead of spending its own turn on it.
 
 **marsha** judges whether an artifact is outstanding. She runs it. Her `verify`
 skill is bound to her and ships alongside her.
@@ -147,10 +159,10 @@ carries it. The worker's half is
 [`plugins/orchestrate/hooks/messages/honesty.md`](../plugins/orchestrate/hooks/messages/honesty.md),
 delivered on `Stop` (Hooks, below). The receiver's half reaches an agent through
 that agent's own body alone —
-[`plugins/ida/agents/ida.md`](../plugins/ida/agents/ida.md) under "The rule
-against hearsay" and "You must evaluate logical completeness of reports", and
+[`plugins/ida/agents/ida.md`](../plugins/ida/agents/ida.md) under "What comes
+back", and
 [`plugins/orchestrate/agents/james.md`](../plugins/orchestrate/agents/james.md)
-under "REMEMBER: TRUST AND VERIFY".
+under "What you accept".
 [`plugins/orchestrate/hooks/messages/hearsay.md`](../plugins/orchestrate/hooks/messages/hearsay.md)
 ships, but no registered event delivers it.
 The split it encodes is that proof is attached by the **worker**, because a
