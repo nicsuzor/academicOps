@@ -2,7 +2,7 @@
 title: Daily Skill
 type: spec
 category: spec
-status: implemented
+status: superseded
 permalink: daily-skill
 tags:
   - spec
@@ -11,12 +11,13 @@ tags:
   - task-management
   - email
   - productivity
+  - superseded
 ---
 
 # Daily Skill
 
-**Status**: Implemented
-See [[skills/daily/SKILL.md]] for full implementation.
+**Status**: Superseded (Per [[task_daily_conflict]], daily note generation is governed by canonical template [[tpl-daily]], not a `/daily` skill)
+See [[tpl-daily]] for canonical template instructions.
 
 ## Workflow
 
