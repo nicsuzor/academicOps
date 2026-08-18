@@ -998,6 +998,26 @@ def _build_inner_command(
     return inner_cmd, container_session_path, seeded_from_task, seeded_prompt
 
 
+def _drain_cidfile(session_dir):
+    """Remove the `--cidfile` docker writes, returning the id it held.
+
+    Docker will not start a container when the cidfile path already exists, so
+    the file has to be gone before *every* invocation that uses it. Returning
+    the contents first keeps the id of an already-finished container
+    recoverable, since `--rm` has by then reaped the container itself."""
+    cidfile = Path(session_dir) / "container.cid"
+    cid = None
+    try:
+        cid = cidfile.read_text().strip() or None
+    except OSError:
+        pass
+    try:
+        cidfile.unlink()
+    except OSError:
+        pass
+    return cid
+
+
 def _build_docker_argv(
     *,
     image,
@@ -1039,11 +1059,7 @@ def _build_docker_argv(
     (session_dir / "agy-logs").mkdir(parents=True, exist_ok=True)
 
     cidfile = session_dir / "container.cid"
-    if cidfile.exists():
-        try:
-            cidfile.unlink()
-        except OSError:
-            pass
+    _drain_cidfile(session_dir)
 
     # We use --cidfile to capture the container ID because docker writes the container ID
     # to the cidfile immediately upon creation, ensuring it is preserved even when --rm
@@ -1277,10 +1293,19 @@ def _execute_with_seed_verification(
     returncode = 1
     seed_ok = not verify_seed
 
+    last_cid = None
+
     for attempt in range(1, max_attempts + 1):
         suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
         if not quiet:
             click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd)}", err=True)
+        # `cmd` is prebuilt once and reused, so the same --cidfile path is
+        # passed on every attempt. Docker refuses to start when that file
+        # already exists ("container ID file found", exit 125), which would
+        # make the retry unable to ever succeed after a first-attempt
+        # container failure. Drain it before each attempt, keeping whatever
+        # id it held so a failed attempt's container is still reportable.
+        last_cid = _drain_cidfile(session_dir) or last_cid
         returncode = subprocess.run(cmd, env=run_env).returncode
 
         if not verify_seed:
@@ -1294,6 +1319,17 @@ def _execute_with_seed_verification(
                 f"{task!r} (exit={returncode}). Retrying once.",
                 err=True,
             )
+
+    # The caller reads container.cid after this returns. If the last attempt
+    # never got far enough for docker to write one, restore the most recent id
+    # seen so run.json still reports a container instead of silently dropping
+    # the evidence a draining retry collected.
+    cidfile = Path(session_dir) / "container.cid"
+    if last_cid and not cidfile.exists():
+        try:
+            cidfile.write_text(last_cid + "\n")
+        except OSError:
+            pass
 
     if not seed_ok:
         fail(
