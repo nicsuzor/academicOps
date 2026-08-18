@@ -156,6 +156,15 @@ the two cases apart.
    image freshness. The obligation is carried project-locally by
    [`debug`](../../.agents/skills/debug/SKILL.md) — build the image, then
    dispatch against it — and by no shipped surface.
+7. **Stream separation.** Polecat's own prose goes to stderr, never stdout, so a
+   caller can pipe the inner agent's output unmodified. `--quiet`/`-q`
+   suppresses that prose, including the `Workspace:` and `Session logs:` lines
+   that locate a run's state. `fail()` output is exempt: an exit code alone is
+   not a reliable failure signal here — agy can exit 0 on internal error — so
+   error text must survive `--quiet`. The `Workspace:`/`Session logs:`/`Running:`
+   lines are the evidence [`debug`](../../.agents/skills/debug/SKILL.md) requires
+   a run to report, so `--quiet` and that skill are mutually exclusive by
+   construction: the flag is off by default and no debug procedure passes it.
 
 ## What `run` does not do
 
@@ -183,3 +192,7 @@ container.
 6. **One plugin path** — Test: a plugin edited on the host but not built into the
    image has no effect inside a `run`. The converse does not hold and is not
    claimed: host instruction files reach the agent through the workspace mount.
+7. **Stream separation** — Test: a `run` writes none of its own prose to stdout;
+   with `--quiet` its stderr carries no progress, workspace, or session-log line,
+   and with a value missing that `fail()` reports, the error still reaches stderr
+   under `--quiet`.
