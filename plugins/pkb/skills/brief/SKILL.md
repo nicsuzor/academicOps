@@ -1,23 +1,13 @@
 ---
 name: brief
-description: Turn an ask — an inbox node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against. Covers Stage 1 (Capture & Densification: placement, strategic valuation, wiring, assumptions, forks, sizing) and Stage 2 (Dispatch Preparation: process composition, review/sign-off nodes, brief drafting, and concrete acceptance criteria). Takes a task from `inbox` to `queued`. Composes only. Never dispatches, never executes.
+description: Turn an ask — an inbox node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against. Covers Stage 1 (Capture & Densification: placement, strategic valuation, wiring, assumptions, forks, sizing) and Stage 2 (Dispatch Preparation: process composition, review/sign-off nodes, brief drafting, and concrete acceptance criteria). Composes and sets task to 'queued'; never dispatches, never executes.
 ---
 
-# Brief (Stage 1 Capture & Stage 2 Dispatch Preparation)
+# Brief: Prepare a task for dispatch
 
-You are a **delegating commander with earn-its-keep scepticism**. You receive a vague idea and you turn it into a set of tasks that a cold agent can act on and
-be judged against: in the right place, valued, its beliefs sorted and its open
-questions named, at the right size, with the process it runs under, the review
-that blocks its acceptance, and the brief itself.
+You receive a vague idea and you turn it into a set of tasks that a cold agent can act on and be judged against: in the right place, valued, its beliefs sorted and its open questions named, at the right size, with the process it runs under, the review that blocks its acceptance, and the brief itself.
 
-**Being called is the gate.** Releasing work for dispatch is the user's act, and
-invoking you is that act — so you take the task from `inbox` to `queued` in one
-pass. Nothing else promotes, and you promote nothing you were not called on.
-
-## The Two-Stage Architecture
-
-- **Stage 1 (Intake & Capture — §§1–4)**: Can be run early at intake (via `/q`). It places the task under the right parent, values it strategically (marginal career benefit, cross-project synergies, Value of Information [VoI]), wires edges (`contributes_to`, `depends_on`, `soft_depends_on`, `[[wikilinks]]`), sorts assumptions into tested vs. hopes, names forks with discriminating probes, and sizes/cuts. **When run standalone at intake, Stage 1 leaves the task at `inbox` with NO acceptance criteria.**
-- **Stage 2 (Dispatch Preparation — §§5–8)**: Triggered when `brief` is invoked to prepare a unit for dispatch. It composes the process from template tiers, emits review and sign-off nodes (reviewer ≠ executor), writes the delegation brief, and formulates concrete **Acceptance Criteria (AC)**. It flips the status from `inbox` to `queued`.
+You compose a task's required process from template tiers, sequence and separate tasks and review stages, write the delegation brief, and formulate concrete **Acceptance Criteria (AC)**. When a task is briefed, you flip the status to `queued`.
 
 You trust the executor and set expectations, not methods. You carry no
 architectural judgment and never touch the work's substance.
@@ -141,72 +131,7 @@ soften to fit what the unit already does. Promoting a unit asserts it is worth
 dispatching against the standard that will judge it; an uncovered requirement
 nobody names is the one that surfaces after the work has been accepted.
 
-## 2 — Place it, value it, wire it
-
-One task, under the right parent.
-
-| Signal                                       | Level                                          |
-| -------------------------------------------- | ---------------------------------------------- |
-| Desired future state, identity-scale         | Goal — outside the tree                        |
-| Countable milestone, done or not done        | Target — outside the tree, carries the stakes  |
-| Bounded body of work with real sub-structure | Epic, parented to the epic or area it serves   |
-| One verifiable unit, one session             | Task, parented to the epic it belongs to       |
-| High uncertainty, information needed first   | Task with `classification: spike`, same parent |
-
-`project` comes from the parent. Where re-parenting moves the node to a different
-project, move the slug with it. If the right parent is genuinely ambiguous
-between two live candidates — not merely unclear at a glance — that is a SURFACE
-case (§3). Do not flip a coin.
-
-Add a `contributes_to` edge to the target this work actually serves, with a
-verbal weight and one sentence of justification. Then densify: `depends_on` for
-true hard blockers, `soft_depends_on` for context-only relations, `supersedes`
-where this replaces prior work, and body `[[wikilinks]]` to the neighbours you
-confirmed by opening. **The graph should come out of this denser, not just
-longer.** A task whose only edge is its parent has not been placed, it has been
-dumped.
-
-Record an initial estimate across key strategic valuation dimensions:
-- **Marginal career benefit**: The specific publication, grant milestone, credential, or strategic capability this work advances.
-- **Cross-project synergies**: Shared methods, datasets, infrastructure, or findings reusable across other active projects.
-- **Value of Information (VoI)**: How much settling this unit's open forks reduces uncertainty on high-stakes downstream commitments (`classification: spike`, `uncertainty`).
-- **Downstream unblocking & contribution**: Hard unblocking (`depends_on` from work this frees), target contribution (`contributes_to` verbal weight + justification), consequence of failure (`consequence` prose on the target), and initial `effort`. Populate what you actually established; do not fabricate precision the ask does not support.
-
-**`focus_score` is computed by the graph engine, and you never write it.** You
-move it by wiring the edges above and by putting `severity` on the target the
-work serves — not by writing the number, and not through `priority`, which is the
-user's intent and never an estimate.
-
-## 3 — Sort the assumptions, name the forks, route the unknowns
-
-Start from the **means**: what actually exists — what is built, what is known,
-who is available, which constraints are real. The work is what those afford, not
-what the goal demands.
-
-Under `## Assumptions`, name what must be true for this task to matter, split in
-two: **Tested** — you have evidence, cited by node id, commit, or run; and
-**Hopes** — you do not, said plainly. A bullet moves from hopes to tested when a
-citation arrives, never because it has come to feel obvious. A citation carries
-the age of whatever it points at: where it rests on a claim about the world that
-§1 has not confirmed still holds, the bullet is a hope however firmly the cited
-node stated it. The hopes list is where all the information value is.
-
-A **fork** is a point where the work cannot proceed without a choice you cannot
-make on present information. Exactly two kinds, routed differently: **blocked on
-information** — design the probe; **blocked on the user's judgment** — it goes on
-the decision list. Anything else is not a fork: decide it, record the call as one
-bullet, move on. A "fork" you could have settled by reading one file is a
-decision you declined to make.
-
-Rank what is open by information value — `downstream_weight ×
-assumption_criticality`, the first read off the graph, the second off your own
-hopes list. High on both is what the next dispatch should settle. High downstream
-weight resting on a _tested_ assumption is just execution.
-
-**For every fork blocked on information, design the discriminating probe**: the
-cheapest experiment separating "the hope holds" from "it does not", plus one
-sentence on what each outcome changes. A probe with no decision attached is not a
-probe, it is curiosity with a budget. You design it; you do not run it.
+## 3 Route the unknowns
 
 Route each remaining unknown:
 
@@ -242,12 +167,6 @@ Nothing else earns a cut. Splitting because a unit "feels large" adds subtask
 tracking, review nodes, and dependency edges that some surface now has to
 maintain, in exchange for process theatre. Trust depth, throttle width: give one
 worker a substantive chunk rather than micro-decomposing for them.
-
-**Where a fork is blocked on information, the unit is the probe** — the
-discriminating experiment you designed in §3, not the work waiting behind it.
-Leave that work as one coarse placeholder with a one-line scope and a dependency
-back to the probe, to be re-briefed once the probe has landed and its result is
-on the graph.
 
 If you do cut, take dependencies off the boundaries you just drew: `depends_on`
 only where one unit's _start_ genuinely needs another's _output_. Everything
@@ -300,104 +219,36 @@ obligation in, and where a row resolves to nothing, that row is the finding.
 
 ### The Dual-Tier Library Architecture
 
-Resolved in this order; later tiers win by **template name** — the filename on
-disk, the permalink in the PKB.
+1. **Universal Core Workflows (`aops` Core)** — `../../workflows/`. These set minimum standards that cannot be derogated from. Process templates in `process/`, catalogued by `../../workflows/INDEX.md`, which also carries the routing tree naming the template for this class of work. These are universal, immutable, and version-controlled.
+2. **User-Specific Workflows & Templates (`pkb`)** — dynamic templates stored directly in the PKB. Read the central registration index `pkb-workflow-index`, then use `get_document` each template listed there that looks applicable.
 
-1. **Default Core Workflows (`aops` Core)** — `../../workflows/`. Process
-   templates in `process/`, catalogued by
-   `../../workflows/INDEX.md`, which also carries
-   the routing tree naming the template for this class of work. These are universal, immutable, and version-controlled.
-2. **User-Specific Workflows & Templates (`pkb`)** — dynamic templates stored directly in the PKB.
-   - **Universal PKB Templates** (`wf-template`): Portable workflow definitions.
-   - **Custom Repo-Infrastructure Templates** (`custom-template`): Non-portable workflows tied to specific repository setups.
+**DO NOT GUESS.** Read and critically apply each template at composition time, every time.
 
-   Read the central registration index `pkb-workflow-index` (and custom templates index `inde_1c34dd83`), then `get_document` each template listed there that looks applicable.
-
-A template from either tier is the same kind of thing: one namespace
-resolved by name, later tiers winning. The `wf-*` obligation templates are a
-naming convention inside that namespace, not a privileged set — treat one
-discovered in the PKB exactly as you treat a shipped `process/` file.
-
-Load them at composition time, every time. Do not carry a process in your own
-text, assume the shipped library is the whole of it, or reach for a familiar
-template without reading the tiers that may have replaced it.
-
-Every name in the shipped library is written as it resolves: a `process/`
-template by its bare filename, a PKB obligation by its `wf-` permalink. A name
-that resolves in no tier is a gap.
-
-Reconcile the PKB tier once per composition: `list_documents(tag="wf-template")`
-against the index's entries. A template tagged but unlisted, or listed but
-unresolvable, is an index defect — **report it, do not repair it here and do not
-route around it.** The index carries its own standing instruction to correct
-drift on sight; that binds an agent maintaining the store, not a composing pass.
-Report what you found and compose on. If the index document itself does not
-exist, compose from the tag enumeration and report the missing index.
-
-If a template you need exists in neither tier, that is a library gap.
-**Name it. Do not freelance a process to fill it.**
-
-### The four hints
-
-Each template's frontmatter carries four, and they are the whole vocabulary you
-reason over:
-
-- **`requires`** — fragments this template always pulls in.
-- **`pairs-with`** — templates, gates, and specialisers composed **proportionate to stakes and task characteristics**, not always. Acts both as a **stakes dial** (pulling in review and approval gates like `wf-verification`, `wf-handover`, `wf-outbound-review`, or `wf-human-approval` based on blast radius and reversibility) and as a **modifier / specialiser menu** (selecting contextual variations like `secondary-data`, `theoretical-conceptual`, or `replication` that adapt or skip phases of a spine workflow without spawning proliferated subtype files). This is where your judgment goes.
-- **`recommends`** — a soft suggestion; take it or leave it, and say which.
-- **`conflicts`** — mutually exclusive. Two conflicting intents are two
-  processes, not one.
-
-**Door type is expressed as which templates get composed in.** There is no
-separate reversibility mechanism — a one-way step is one that pulls in the
-approval and review templates, a two-way step is one that does not. When
-reversibility is ambiguous, treat it as one-way.
+**HALT IF THERE IS NO PROCESS.** If a template you need exists in neither tier, that is a library gap. Name it. Do not freelance a process to fill it.
 
 ### Proportion
 
 Proportion is the whole of this step. The same work under a heavier process than
-its stakes warrant is process theatre; under a lighter one, it ships unreviewed.
+its stakes warrant is process theatre; under a lighter one, an unmitigated risk.
 Pick against real consequence, and say in one sentence why you picked what you
 picked.
 
-- **Wide blast radius, hard to reverse** — per-chunk instances of each review
-  obligation, each blocking at its own juncture.
-- **Narrow blast radius, cheap to undo** — the worker self-assesses, plus one
-  consolidated pass at the final deliverable.
-
-The invariant is only that the composed set blocks acceptance, however you
-distribute it.
-
 ### Emit the composed process
 
-Write it onto the task as its checklist: one `- [ ] <step>` line per composed
-step, in order, plus one pointer bullet naming the templates and the
-one-sentence proportionality call — never a paragraph describing the process.
-This is the task-body shape [`../../agents/pauli.md`](../../agents/pauli.md)
-states canonically, and it applies to an atomic task only: an epic's children
-already carry their own status, so its checklist is the graph, not a markdown
-restatement.
+Write each step as a sub-task or a child task under the main task epic.
 
-A process referred to vaguely ("the usual review") is not composed; nobody
-downstream can check it was followed, and a checklist line nobody can point at a
-template for has nothing to audit against. State it once, as the current
-checklist. When the process changes, rewrite the checklist in place — do not
-leave the superseded version beside the new one.
+- Subtasks are for the 'inner' loop: work that can be done by one worker or team.
+- Child tasks are for the 'outer' loop: decision nodes, independent review, or procedurally separate stages that must be tracked independently.
 
-**The checklist is for steps one worker takes in one sitting.** Sequenced work
+**INNER LOOP:** steps one worker takes in one sitting. Sequenced work
 inside the unit — its own ordering, its own intermediate deliverables — is the
 owner's to track, and the checklist is where it lands. It is not a gate and
 nothing outside the session reads it.
 
-**Anything that is genuinely different work becomes a node instead.** A step
+**OUTER LOOP:** anything that is genuinely different work becomes a node instead. A step
 belonging to a different owner, a different evaluator identity, or work this
 unit blocks on but does not itself do, is not a checklist line — it is its own
-task, placed on the graph where a dispatcher can find it and an owner can be
-held to it. That is exactly why the review obligations in §6 are nodes: reviewer
-≠ executor means a different identity, so review was never this unit's work.
-
-The test is not whether a step blocks. It is whether the same worker does it in
-the same session. If yes, it is a checklist line. If no, it is a node.
+task, placed on the graph where it belongs (not necessarily in the same tree.)
 
 ## 6 — Emit the review and sign-off nodes
 
@@ -411,46 +262,10 @@ override, and a review the composed process obliges but no layer defines is a
 library gap: name it and stop.
 
 **Which obligations become nodes.** Sort each one the composed process named by
-**who discharges it**, using §5's test: an obligation the executor satisfies
+**who discharges it**: an obligation the executor satisfies
 inside its own session is a checklist line, and one that needs a different
 evaluator identity is a node. Only the second kind blocks acceptance, because
 only the second kind is something the executor cannot mark done itself.
-
-**A review set with no node in it is a gap, however it came to be empty.**
-Nothing surfaces, because nothing blocks, and the record reads complete — so
-this is the one branch you have to look for rather than notice. Where the
-composed process named no obligation that a separate identity discharges, name
-_that_ as the gap and **halt**: record it on the task body, leave the task
-`blocked`, and write no brief. Templates that named nothing, a layer that would
-not load, a composition that never ran, or a set that turned out to be entirely
-self-check — the cause changes what you report, never whether you halt.
-
-**Human sign-off is the one node you emit uncomposed.** Where the unit's door is
-one-way — the `one-way-door` axiom's list governs, and you need no second list
-here — emit a sign-off node whether or not a template named one, and **treat
-ambiguous reversibility as one-way**. The axiom binds the agent that crosses;
-this node is what leaves the obligation in the graph, where a reviewer can see
-it was owed and whether it was met. An obligation with no node behind it is one
-that fails silently.
-
-**The review-task body points; it does not prescribe.** Each carries the subject
-and the name of the obligation it discharges — nothing else. Do not restate,
-narrow, expand, or invent criteria, and do not design a bespoke review cycle:
-the standard lives in the obligation's own template, and the node's whole job is
-to send the reviewer to it. You do not need to know what that standard says, and
-you must not summarise it here; naming it is the entire contract. Use this shape:
-
-```markdown
-Review <unit id — one line on what it is> against <the obligation the composed
-process named, by the name it resolves under>. Apply that template's standard as
-written; add no criteria here.
-```
-
-You emit these nodes and wire their edges. You never dispatch them, run them, or
-tell the executor anything about review. Reviewer ≠ executor is emergent from
-each review being independently dispatched later, not something you construct
-here. Any deviation from what the process obliged is a recorded decision in the
-body — what you specified and why — never a silent skip.
 
 ## 7 — Write the brief and acceptance criteria
 
@@ -459,47 +274,12 @@ capable colleague walking in cold who will not get to ask a follow-up. Append
 under the existing body; build on the scope and door type already there rather
 than repeating them.
 
-**Acceptance Criteria (AC)** are the definitive deliverable of Stage 2. A task in `inbox` has NO acceptance criteria; formulating concrete AC occurs here to make the unit dispatchable.
+- **Acceptance Criteria (AC)** are the definitive deliverable of a prepared task. Concrete AC make the unit dispatchable.
+- **Prescribe the goal, not the implementation**
 
-Three things that doctrine leaves to you, and that this stage owes:
+## 8 Write the entire task as a single unit and set status to 'queued'
 
-- **Lead acceptance with the outcome to verify, not the edit you imagine
-  produces it.** Name the concrete check run against the real surface — a test, a
-  screenshot, a before-and-after diff — so "done" means observed-changed, not
-  merely edited. For a probe, "done" is the fork settled and the discriminating
-  result recorded, whichever way it came out; a probe that returns "the hope did
-  not hold" has succeeded.
-- **Emit for evaluation.** Beyond the evidence bar itself, name the **quality
-  rubric** for this deliverable sized to the door type, the **claim-provenance
-  rule** — observed kept separate from inferred, a claim without a citable check
-  is not evidence — and the **procedural record**, which steps of the composed
-  process were actually followed. Thin evidence here is itself a fail condition.
-- **Effort and door type.** Carry the classification forward from §4 and §5.
-  Reclassify only if something you learned while composing changed the
-  reversibility call, and say what changed if you do.
-
-Give the executor permission to follow the worker contract: attempt everything
-derivable, refuse choices they cannot confidently make, hand back `partial`.
-
-## Never prescribe the implementation
-
-**If you must name a file, mark it unverified**: "confirm this is actually the
-code path that runs before editing it." A brief once said "change the exponent
-in `focusEmphasis.ts` from 0.7 to 2.5"; the worker did exactly that, but the
-real code read hardcoded constants in a different file. The edit had zero
-effect, and the prescription masked the actual code path. "High-focus nodes
-should be visibly more emphasised; screenshot before and after to confirm" would
-have surfaced it on the first check.
-
-The one exception is a strict read-then-do sequence, and only where the work is
-genuinely order-critical or dangerous — irreversible operations, sequencing that
-matters for correctness rather than habit.
-
-## 8 — Set the status, and stop
-
-`append` the brief to the unit's body — append only, never overwriting. The
-checklist from §5 and the nodes from §6 are already written. Then set the status
-and stop:
+You must consider existing material already recorded on a task, but the shape of the final task is YOUR decision, YOUR responsibility. Rewrite the entire task, cut any unecessary information, remove event logs, delete inconsistent directions. Then set the status and stop.
 
 - Every fork either settled or carrying a designed probe, every hard dependency
   identified, the decision list written, the brief on the body → **`queued`**.
@@ -516,18 +296,9 @@ a spike and stop.
 
 - Dispatch, spawn a worker, or begin the work. You compose; another surface
   routes what you wrote.
-- Write a brief when §6 halted, or when a decision this work depends on is
-  unresolved. A unit without its review nodes is worse than none.
 - Cut on size, on a hunch, or to make a unit feel manageable.
 - Run the probe you designed, investigate inline, or answer the question the
   task exists to answer. Frame the question; do not answer it.
-- Write `priority`. New work sits at the default band unless the user directed
-  otherwise in this turn. To give work weight, reach for `contributes_to` weight
-  and target `severity`.
-- Put non-zero `severity` on anything that is not a `type: target` node, or
-  write `focus_score`.
-- Manufacture a `due` date to carry urgency. `due` means a real external
-  deadline.
 - Parse, evaluate, or solve a template. Read it.
 - Invent a process step that exists in no template because the work "seems
   risky". Under-coverage is a gap to name.
