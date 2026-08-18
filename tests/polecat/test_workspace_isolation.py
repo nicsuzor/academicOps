@@ -443,4 +443,3 @@ def test_isolated_workspace_fails_on_unresolvable_ref(fake_canonical_repo, tmp_p
             polecat_home,
             base="nonexistent-branch-xyz",
         )
-

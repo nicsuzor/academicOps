@@ -168,13 +168,13 @@ the target the work serves.
 
 ## Stage ownership
 
-| Stage            | Owns                                                                                                                                                                                          |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hydrate`        | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                                                                                                                   |
-| `/q`             | Stage 1 Intake & Capture: placement under parent, wiring contributes_to/depends_on, [[wikilinks]], strategic valuation (career benefit, synergies, VoI). Status: `inbox` with NO AC.       |
-| `brief`          | Stage 2 Dispatch Preparation: process composition, review & sign-off nodes, brief & Acceptance Criteria (AC). Flips `inbox` to `queued`. Composes; never dispatches.                         |
-| `pull`           | Claim, execute, record, hand over.                                                                                                                                                            |
-| `reconcile`      | What is true about in-flight and finished work. Facts only; returns re-planning to `inbox`.                                                                                                   |
-| `ida:strategize` | An on-demand lens, ida's: fix the altitude, route each piece to the stage that owns it.                                                                                                       |
+| Stage            | Owns                                                                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `hydrate`        | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                                                                                                          |
+| `/q`             | Stage 1 Intake & Capture: placement under parent, wiring contributes_to/depends_on, [[wikilinks]], strategic valuation (career benefit, synergies, VoI). Status: `inbox` with NO AC. |
+| `brief`          | Stage 2 Dispatch Preparation: process composition, review & sign-off nodes, brief & Acceptance Criteria (AC). Flips `inbox` to `queued`. Composes; never dispatches.                 |
+| `pull`           | Claim, execute, record, hand over.                                                                                                                                                   |
+| `reconcile`      | What is true about in-flight and finished work. Facts only; returns re-planning to `inbox`.                                                                                          |
+| `ida:strategize` | An on-demand lens, ida's: fix the altitude, route each piece to the stage that owns it.                                                                                              |
 
 Each runs, then stops. No stage fires the next.

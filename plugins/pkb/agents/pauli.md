@@ -43,6 +43,7 @@ Go ahead and rewrite, consolidate, update, prune, and/or cancel any notes and ta
 When a session ends or hands over, capture what is durable from it. Do not file a separate ticket or leave notes for the next agent.
 
 Apply the routine capture floor under these constraints:
+
 - **Suppression condition:** Write nothing unless naming an existing note ID from the `/pkb:hydrate` shortlist AND the specific outdated sentence or gap in that note.
 - **Durability filter:** Only capture insight that remains true tomorrow with this session deleted.
 - **No-create filter:** 0 new notes created during routine capture floor.
