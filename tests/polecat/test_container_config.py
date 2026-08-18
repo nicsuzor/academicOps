@@ -461,3 +461,137 @@ def test_run_injects_polecat_otel_resource_attributes(tmp_path, monkeypatch):
     assert "polecat.session_id=mysess" in val
     assert "polecat.project=myproj" in val
     assert "polecat.task_id=mytask" in val
+
+
+# ---------------------------------------------------------------------------
+# GenAI engine & OTEL traces protocol forwarding and task identifier
+# ---------------------------------------------------------------------------
+
+
+def test_get_env_forwards_carries_genai_engine_and_otel_protocol_env(monkeypatch):
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://traces.example.com/v1/traces")
+    monkeypatch.setenv("GENAI_ENGINE_API_KEY", "engine-key-xyz")
+    monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "engine-task-99")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "http/protobuf")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
+
+    config = {"git_identity": {"name": "botnicbot", "email": "bot@users.noreply.github.com"}}
+    env = cli.get_env_forwards(config)
+
+    assert env["GENAI_ENGINE_TRACE_ENDPOINT"] == "http://traces.example.com/v1/traces"
+    assert env["GENAI_ENGINE_API_KEY"] == "engine-key-xyz"
+    assert env["GENAI_ENGINE_TASK_ID"] == "engine-task-99"
+    assert env["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] == "http/protobuf"
+    assert env["OTEL_EXPORTER_OTLP_PROTOCOL"] == "http/protobuf"
+
+
+def test_get_env_forwards_rehosts_loopback_genai_engine_trace_endpoint(monkeypatch):
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://127.0.0.1:8000/v1/traces")
+    config = {"git_identity": {"name": "botnicbot", "email": "bot@users.noreply.github.com"}}
+    env = cli.get_env_forwards(config)
+    assert env["GENAI_ENGINE_TRACE_ENDPOINT"] == "http://host.docker.internal:8000/v1/traces"
+
+
+def test_resolve_telemetry_supports_trace_endpoint():
+    env = cli.resolve_telemetry(
+        {
+            "telemetry": {
+                "trace_endpoint": "http://otel.example.com:4318/v1/traces",
+            }
+        }
+    )
+    assert env.get("GENAI_ENGINE_TRACE_ENDPOINT") == "http://otel.example.com:4318/v1/traces"
+
+
+def test_run_constructs_task_id_and_service_name_with_project_and_task(tmp_path, monkeypatch):
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-p",
+            "academicOps",
+            "-t",
+            "aops_ded39198",
+            "-d",
+            str(tmp_path / "repo"),
+        ],
+        {},
+    )
+    assert "GENAI_ENGINE_TASK_ID" in cmd
+    assert cmd[cmd.index("GENAI_ENGINE_TASK_ID") - 1] == "-e"
+    assert docker_env["GENAI_ENGINE_TASK_ID"] == "academicOps-aops_ded39198"
+    assert "OTEL_SERVICE_NAME" in cmd
+    assert docker_env["OTEL_SERVICE_NAME"] == "academicOps-aops_ded39198"
+
+
+def test_run_constructs_task_id_and_service_name_with_task_only(tmp_path, monkeypatch):
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-t",
+            "aops_ded39198",
+            "-d",
+            str(tmp_path / "repo"),
+        ],
+        {},
+    )
+    assert docker_env["GENAI_ENGINE_TASK_ID"] == "aops_ded39198"
+    assert docker_env["OTEL_SERVICE_NAME"] == "aops_ded39198"
+
+
+def test_run_constructs_task_id_and_service_name_with_project_only(tmp_path, monkeypatch):
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-p",
+            "academicOps",
+            "-d",
+            str(tmp_path / "repo"),
+        ],
+        {},
+    )
+    assert docker_env["GENAI_ENGINE_TASK_ID"] == "academicOps"
+    assert docker_env["OTEL_SERVICE_NAME"] == "academicOps"
+
+
+def test_run_preserves_ambient_genai_engine_task_id_when_neither_project_nor_task(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "ambient_task_id")
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+        ],
+        {},
+    )
+    assert docker_env["GENAI_ENGINE_TASK_ID"] == "ambient_task_id"
+
+
+def test_run_leaves_genai_engine_task_id_unset_when_unprovided(tmp_path, monkeypatch):
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID", raising=False)
+    cmd, docker_env = _capture_docker_run(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+        ],
+        {},
+    )
+    assert "GENAI_ENGINE_TASK_ID" not in docker_env
+
