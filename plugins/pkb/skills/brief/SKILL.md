@@ -1,6 +1,6 @@
 ---
 name: brief
-description: Turn an ask — an inbox node or a raw note handed straight to you — into one unit a cold agent can be dispatched onto and judged against. Covers Stage 1 (Capture & Densification: placement, strategic valuation, wiring, assumptions, forks, sizing) and Stage 2 (Dispatch Preparation: process composition, review/sign-off nodes, brief drafting, and concrete acceptance criteria). Composes and sets task to 'queued'; never dispatches, never executes.
+description: Prepares tasks for dispatch -- composes workflows, sets acceptance criteria, sets task to 'queued'. Never dispatches, never executes.
 ---
 
 # Brief: Prepare a task for dispatch
