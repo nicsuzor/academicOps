@@ -21,25 +21,11 @@ Telemetry names are the OpenTelemetry contract in specs/ARCHITECTURE.md.
 
 import argparse
 
-# Claude Code's native OpenTelemetry export. Session-scoped: enabling it once
-# covers every plugin.
 TELEMETRY_ENV = (
-    "CLAUDE_CODE_ENABLE_TELEMETRY",
-    "CLAUDE_CODE_ENHANCED_TELEMETRY_BETA",
-    "ANTIGRAVITY_ENABLE_TELEMETRY",
-    "OTEL_METRICS_EXPORTER",
-    "OTEL_LOGS_EXPORTER",
-    "OTEL_TRACES_EXPORTER",
-    "OTEL_EXPORTER_OTLP_ENDPOINT",
-    "OTEL_EXPORTER_OTLP_PROTOCOL",
-    "OTEL_RESOURCE_ATTRIBUTES",
-    "OTEL_LOG_USER_PROMPTS",
-    "OTEL_LOG_RAW_API_BODIES",
-    "OTEL_LOG_TOOL_DETAILS",
-    "OTEL_LOG_ASSISTANT_RESPONSES",
-    "OTEL_METRIC_EXPORT_INTERVAL",
-    "OTEL_LOGS_EXPORT_INTERVAL",
-    "OTEL_TRACES_EXPORT_INTERVAL",
+    "GENAI_ENGINE_TASK_ID",
+    "GENAI_ENGINE_TRACE_ENDPOINT",
+    "GENAI_ENGINE_API_KEY",
+    "GENAI_ENGINE_TRACE_PROTOCOL",
 )
 
 # Everything else forwarded verbatim when set on the host.

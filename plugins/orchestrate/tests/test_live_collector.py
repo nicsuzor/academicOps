@@ -25,9 +25,7 @@ from dispatch import HookContext
 
 
 def _get_target_endpoint() -> str | None:
-    return os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get(
-        "GENAI_ENGINE_TRACE_ENDPOINT"
-    )
+    return os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
 
 
 TARGET_ENDPOINT = _get_target_endpoint()
@@ -52,7 +50,7 @@ def _endpoint() -> str:
 def test_live_collector_create_exporter():
     """Verify _create_exporter initializes successfully against the live target endpoint."""
     endpoint = _endpoint()
-    protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "")
+    protocol = os.environ.get("GENAI_ENGINE_TRACE_PROTOCOL", "")
 
     exporter = claude_code_tracer._create_exporter(
         endpoint=endpoint,
@@ -64,7 +62,7 @@ def test_live_collector_create_exporter():
 def test_live_collector_build_and_export_spans():
     """Verify _build_and_export_spans sends span to live collector endpoint."""
     endpoint = _endpoint()
-    protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "")
+    protocol = os.environ.get("GENAI_ENGINE_TRACE_PROTOCOL", "")
     service_name = "orchestrate-live-integration-test"
     span_name = "live_collector_verification_span"
     attributes = {"test.marker": "live_collector_verification_test"}
