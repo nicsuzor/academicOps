@@ -1,0 +1,179 @@
+{
+  "data": [
+    {
+      "id": "Q3ljOlI=",
+      "name": "claude-code-turn",
+      "context": { "trace_id": "trace0000000000000000000000000003", "span_id": "cccc00000000000r" },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-01-03T00:00:00.000000+00:00",
+      "end_time": "2026-01-03T00:00:10.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "22222222-2222-2222-2222-222222222222",
+        "input.value": "a turn whose sibling spans form a parent cycle",
+        "input.mime_type": "text/plain"
+      },
+      "events": []
+    },
+    {
+      "id": "Q3ljOkE=",
+      "name": "Bash",
+      "context": { "trace_id": "trace0000000000000000000000000003", "span_id": "cccc00000000000a" },
+      "span_kind": "TOOL",
+      "parent_id": "cccc00000000000b",
+      "start_time": "2026-01-03T00:00:01.000000+00:00",
+      "end_time": "2026-01-03T00:00:01.500000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "22222222-2222-2222-2222-222222222222",
+        "tool.name": "Bash",
+        "input.value": "{\"command\": \"echo a\"}"
+      },
+      "events": []
+    },
+    {
+      "id": "Q3ljOkI=",
+      "name": "Bash",
+      "context": { "trace_id": "trace0000000000000000000000000003", "span_id": "cccc00000000000b" },
+      "span_kind": "TOOL",
+      "parent_id": "cccc00000000000a",
+      "start_time": "2026-01-03T00:00:02.000000+00:00",
+      "end_time": "2026-01-03T00:00:02.500000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "22222222-2222-2222-2222-222222222222",
+        "tool.name": "Bash",
+        "input.value": "{\"command\": \"echo b\"}"
+      },
+      "events": []
+    },
+    {
+      "id": "Q3ljOlM=",
+      "name": "Read",
+      "context": { "trace_id": "trace0000000000000000000000000003", "span_id": "cccc00000000000s" },
+      "span_kind": "TOOL",
+      "parent_id": "cccc00000000000a",
+      "start_time": "2026-01-03T00:00:03.000000+00:00",
+      "end_time": "2026-01-03T00:00:03.400000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "22222222-2222-2222-2222-222222222222",
+        "tool.name": "Read",
+        "input.value": "{\"file_path\": \"stranded.md\"}"
+      },
+      "events": []
+    },
+    {
+      "id": "Q2huOjE=",
+      "name": "claude-code-turn",
+      "context": { "trace_id": "trace0000000000000000000000000004", "span_id": "dddd000000000001" },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-01-04T00:00:00.000000+00:00",
+      "end_time": "2026-01-04T00:00:30.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "33333333-3333-3333-3333-333333333333",
+        "input.value": "turn-level instrumentation only",
+        "input.mime_type": "text/plain"
+      },
+      "events": []
+    },
+    {
+      "id": "Q2huOjI=",
+      "name": "claude-code-turn",
+      "context": { "trace_id": "trace0000000000000000000000000005", "span_id": "dddd000000000002" },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-01-04T00:01:00.000000+00:00",
+      "end_time": "2026-01-04T00:01:30.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "33333333-3333-3333-3333-333333333333",
+        "input.value": "a second turn, still no tool spans",
+        "input.mime_type": "text/plain"
+      },
+      "events": []
+    },
+    {
+      "id": "U3B3bjox",
+      "name": "claude-code-turn",
+      "context": { "trace_id": "trace0000000000000000000000000006", "span_id": "eeee000000000001" },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-01-05T00:00:00.000000+00:00",
+      "end_time": "2026-01-05T01:11:00.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "44444444-4444-4444-4444-444444444444",
+        "input.value": "dispatch two teammates",
+        "input.mime_type": "text/plain"
+      },
+      "events": []
+    },
+    {
+      "id": "U3B3bjoy",
+      "name": "Agent",
+      "context": { "trace_id": "trace0000000000000000000000000006", "span_id": "eeee000000000002" },
+      "span_kind": "AGENT",
+      "parent_id": "eeee000000000001",
+      "start_time": "2026-01-05T00:00:05.000000+00:00",
+      "end_time": "2026-01-05T00:00:05.091100+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "44444444-4444-4444-4444-444444444444",
+        "tool.name": "Agent",
+        "agent.name": "pauli",
+        "input.value": "{\"prompt\": \"orient\"}",
+        "output.value": "{\"status\": \"teammate_spawned\"}"
+      },
+      "events": []
+    },
+    {
+      "id": "U3B3bjoz",
+      "name": "Agent",
+      "context": { "trace_id": "trace0000000000000000000000000006", "span_id": "eeee000000000003" },
+      "span_kind": "AGENT",
+      "parent_id": "eeee000000000001",
+      "start_time": "2026-01-05T00:00:06.000000+00:00",
+      "end_time": "2026-01-05T00:03:38.445600+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "44444444-4444-4444-4444-444444444444",
+        "tool.name": "Agent",
+        "agent.name": "general-purpose",
+        "input.value": "{\"prompt\": \"do the work\"}",
+        "output.value": "{\"status\": \"completed\"}"
+      },
+      "events": []
+    },
+    {
+      "id": "U3B3bjo0",
+      "name": "Grep",
+      "context": { "trace_id": "trace0000000000000000000000000006", "span_id": "eeee000000000004" },
+      "span_kind": "TOOL",
+      "parent_id": "eeee000000000003",
+      "start_time": "2026-01-05T00:00:20.000000+00:00",
+      "end_time": "2026-01-05T00:00:20.200000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "44444444-4444-4444-4444-444444444444",
+        "tool.name": "Grep",
+        "input.value": "{\"pattern\": \"x\"}"
+      },
+      "events": []
+    }
+  ],
+  "next_cursor": null
+}

@@ -1,0 +1,299 @@
+{
+  "data": [
+    {
+      "id": "U3BhbjoxNA==",
+      "name": "Agent",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "ffff0000deadbeef" },
+      "span_kind": "AGENT",
+      "parent_id": null,
+      "start_time": "2026-01-02T00:00:19.000000+00:00",
+      "end_time": "2026-01-02T00:00:21.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "99999999-9999-9999-9999-999999999999",
+        "agent.name": "general-purpose",
+        "input.value": "dispatch from the other session sharing this trace",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMw==",
+      "name": "Bash",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "aaaa000000000013" },
+      "span_kind": "TOOL",
+      "parent_id": "aaaa000000000008",
+      "start_time": "2026-01-02T00:00:20.100000+00:00",
+      "end_time": "2026-01-02T00:00:20.400000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "99999999-9999-9999-9999-999999999999",
+        "tool.name": "Bash",
+        "input.value": "{\"command\": \"echo other-session\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"stdout\": \"other-session\"}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMg==",
+      "name": "Write",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "aaaa000000000012" },
+      "span_kind": "TOOL",
+      "parent_id": "aaaa000000000008",
+      "start_time": "2026-01-02T00:00:14.080000+00:00",
+      "end_time": "2026-01-02T00:00:14.300000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Write",
+        "input.value": "{\"file_path\": \"notes.md\", \"content\": \"summary\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"ok\": true}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMQ==",
+      "name": "ChatCompletion",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "aaaa000000000011" },
+      "span_kind": "LLM",
+      "parent_id": "aaaa000000000008",
+      "start_time": "2026-01-02T00:00:12.000000+00:00",
+      "end_time": "2026-01-02T00:00:13.500000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "llm.model_name": "test-model-2",
+        "llm.system": "anthropic",
+        "llm.finish_reason": "end_turn",
+        "llm.token_count.prompt": 400,
+        "llm.token_count.completion": 40,
+        "llm.token_count.total": 440,
+        "llm.token_count.prompt_details.cache_read": 300,
+        "llm.token_count.prompt_details.cache_write": 20,
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxMA==",
+      "name": "Grep",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "aaaa000000000010" },
+      "span_kind": "TOOL",
+      "parent_id": "ffff0000deadbeef",
+      "start_time": "2026-01-02T00:00:11.000000+00:00",
+      "end_time": "2026-01-02T00:00:11.250000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Grep",
+        "input.value": "{\"pattern\": \"orphaned\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"matches\": 0}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo5",
+      "name": "Edit",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "aaaa000000000009" },
+      "span_kind": "TOOL",
+      "parent_id": "aaaa000000000008",
+      "start_time": "2026-01-02T00:00:10.060000+00:00",
+      "end_time": "2026-01-02T00:00:10.200000+00:00",
+      "status_code": "ERROR",
+      "status_message": "String to replace not found in file.",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Edit",
+        "input.value": "{\"file_path\": \"missing.py\", \"old_string\": \"absent\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"error\": \"String to replace not found in file.\"}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo4",
+      "name": "claude-code-turn",
+      "context": { "trace_id": "trace0000000000000000000000000002", "span_id": "aaaa000000000008" },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-01-02T00:00:09.000000+00:00",
+      "end_time": "2026-01-02T00:00:15.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "arthur.turn_number": 2,
+        "input.value": "now write the summary",
+        "input.mime_type": "text/plain",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo3",
+      "name": "Bash",
+      "context": { "trace_id": "trace0000000000000000000000000001", "span_id": "aaaa000000000007" },
+      "span_kind": "TOOL",
+      "parent_id": "aaaa000000000005",
+      "start_time": "2026-01-02T00:00:07.000000+00:00",
+      "end_time": "2026-01-02T00:00:07.500000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Bash",
+        "input.value": "{\"command\": \"ls docs\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"stdout\": \"index.md\"}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo2",
+      "name": "Grep",
+      "context": { "trace_id": "trace0000000000000000000000000001", "span_id": "aaaa000000000006" },
+      "span_kind": "TOOL",
+      "parent_id": "aaaa000000000004",
+      "start_time": "2026-01-02T00:00:06.000000+00:00",
+      "end_time": "2026-01-02T00:00:06.400000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Grep",
+        "input.value": "{\"pattern\": \"retention\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"matches\": 3}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo1",
+      "name": "Read",
+      "context": { "trace_id": "trace0000000000000000000000000001", "span_id": "aaaa000000000005" },
+      "span_kind": "TOOL",
+      "parent_id": "aaaa000000000004",
+      "start_time": "2026-01-02T00:00:05.000000+00:00",
+      "end_time": "2026-01-02T00:00:05.300000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Read",
+        "input.value": "{\"file_path\": \"docs/index.md\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"content\": \"# Index\"}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjo0",
+      "name": "Agent",
+      "context": { "trace_id": "trace0000000000000000000000000001", "span_id": "aaaa000000000004" },
+      "span_kind": "AGENT",
+      "parent_id": "aaaa000000000001",
+      "start_time": "2026-01-02T00:00:04.120000+00:00",
+      "end_time": "2026-01-02T00:00:08.000000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Agent",
+        "agent.name": "general-purpose",
+        "input.value": "{\"prompt\": \"survey the docs directory and report\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"status\": \"completed\"}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3Bhbjoz",
+      "name": "Bash",
+      "context": { "trace_id": "trace0000000000000000000000000001", "span_id": "aaaa000000000003" },
+      "span_kind": "TOOL",
+      "parent_id": "aaaa000000000001",
+      "start_time": "2026-01-02T00:00:03.090000+00:00",
+      "end_time": "2026-01-02T00:00:03.400000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "tool.name": "Bash",
+        "input.value": "{\"command\": \"git status\"}",
+        "input.mime_type": "application/json",
+        "output.value": "{\"stdout\": \"clean\"}",
+        "output.mime_type": "application/json",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoyCg==",
+      "name": "ChatCompletion",
+      "context": { "trace_id": "trace0000000000000000000000000001", "span_id": "aaaa000000000002" },
+      "span_kind": "LLM",
+      "parent_id": "aaaa000000000001",
+      "start_time": "2026-01-02T00:00:01.500000+00:00",
+      "end_time": "2026-01-02T00:00:02.900000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "llm.model_name": "test-model-1",
+        "llm.system": "anthropic",
+        "llm.finish_reason": "tool_use",
+        "llm.token_count.prompt": 1000,
+        "llm.token_count.completion": 120,
+        "llm.token_count.total": 1120,
+        "llm.token_count.prompt_details.cache_read": 800,
+        "llm.token_count.prompt_details.cache_write": 50,
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    },
+    {
+      "id": "U3BhbjoxCg==",
+      "name": "claude-code-turn",
+      "context": { "trace_id": "trace0000000000000000000000000001", "span_id": "aaaa000000000001" },
+      "span_kind": "CHAIN",
+      "parent_id": null,
+      "start_time": "2026-01-02T00:00:00.000000+00:00",
+      "end_time": "2026-01-02T00:00:08.500000+00:00",
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {
+        "session.id": "11111111-2222-3333-4444-555555555555",
+        "arthur.turn_number": 1,
+        "input.value": "survey the docs and summarise",
+        "input.mime_type": "text/plain",
+        "arthur_span_version": "arthur_span_v1"
+      },
+      "events": []
+    }
+  ],
+  "next_cursor": null
+}
