@@ -83,12 +83,12 @@ Request
 
 ### Academic
 
-| Template             | Routes                                                     | Requires      | Pairs with                                           |
-| -------------------- | ---------------------------------------------------------- | ------------- | ---------------------------------------------------- |
-| [[academic-paper]]   | Academic paper lifecycle from idea through submission      | task-tracking | [[wf-outbound-review]], [[wf-human-approval]]        |
-| [[reference-letter]] | Request, draft, review, send                               | task-tracking | [[wf-handover]]                                      |
-| [[finalize-report]]  | Revise a report after reviewer or stakeholder feedback     | task-tracking | [[wf-outbound-review]]                               |
-| [[review-response]]  | Threaded docx replies showing how each comment was handled | task-tracking | —                                                    |
+| Template             | Routes                                                     | Requires      | Pairs with                                    |
+| -------------------- | ---------------------------------------------------------- | ------------- | --------------------------------------------- |
+| [[academic-paper]]   | Academic paper lifecycle from idea through submission      | task-tracking | [[wf-outbound-review]], [[wf-human-approval]] |
+| [[reference-letter]] | Request, draft, review, send                               | task-tracking | [[wf-handover]]                               |
+| [[finalize-report]]  | Revise a report after reviewer or stakeholder feedback     | task-tracking | [[wf-outbound-review]]                        |
+| [[review-response]]  | Threaded docx replies showing how each comment was handled | task-tracking | —                                             |
 
 Reviewing a submission is the `peer-review` skill's job, not a template's — it
 owns the scheme criteria and the platform mechanics both.

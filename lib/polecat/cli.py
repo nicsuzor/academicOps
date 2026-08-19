@@ -895,6 +895,49 @@ def _agent_args(extra_args, agent=None):
     return ["--agent", agent]
 
 
+#: agy parses `--print-timeout` with Go's `time.ParseDuration`, so the value has
+#: to be one or more `<number><unit>` segments. A bare integer is a hard parse
+#: failure that kills the container before the agent ever starts:
+#:   invalid value "900" for flag -print-timeout: time: missing unit in
+#:   duration "900"   (exit 2)
+_GO_DURATION_UNITS = "ns|us|µs|μs|ms|s|m|h"
+_GO_DURATION_RE = re.compile(rf"^[+-]?(\d+(\.\d+)?({_GO_DURATION_UNITS}))+$")
+_BARE_NUMBER_RE = re.compile(r"^\d+(\.\d+)?$")
+
+
+def _print_timeout_args():
+    """`--print-timeout <duration>`, or nothing when the operator set no timeout.
+
+    One definition for every headless agy branch — the seeded-from-task
+    dispatch, the `--prompt` dispatch and the positional-prompt dispatch all
+    read the env var through here, so raising the timeout works wherever it is
+    set rather than only on the path that happened to implement it.
+
+    A bare number is read as seconds and given the unit Go requires, rather than
+    being forwarded verbatim into a run-killing parse error. Anything that is
+    neither a number nor a Go duration is dropped with a warning: shipping it
+    would fail the whole run at flag parsing, and dropping it silently would
+    leave the operator believing a timeout they set is in force.
+
+    claude has no equivalent flag (`claude --help` lists no timeout option), so
+    this applies to agy only.
+    """
+    raw = os.environ.get("POLECAT_PRINT_TIMEOUT")
+    if not raw or not raw.strip():
+        return []
+    value = raw.strip()
+    if _BARE_NUMBER_RE.match(value):
+        value = f"{value}s"
+    elif not _GO_DURATION_RE.match(value):
+        click.echo(
+            f"Warning: ignoring POLECAT_PRINT_TIMEOUT={raw!r} — not a Go duration "
+            "(e.g. '30m', '1h30m', '900s'); the run uses the agent's default timeout.",
+            err=True,
+        )
+        return []
+    return ["--print-timeout", value]
+
+
 def _build_inner_command(
     agent_cmd,
     extra_args,
@@ -953,7 +996,10 @@ def _build_inner_command(
     if prompt:
         seeded_prompt = prompt
         if agent_cmd == "agy":
-            inner_cmd.extend(["--prompt", prompt])
+            # agy's `--prompt` is an alias for `--print`, so this is headless too
+            # and honours the same timeout. The flag must precede the prompt-
+            # bearing flag with nothing between it and its value.
+            inner_cmd.extend([*_print_timeout_args(), "--prompt", prompt])
         elif agent_cmd == "claude":
             inner_cmd.append(prompt)
         elif extra_args:
@@ -961,7 +1007,11 @@ def _build_inner_command(
     elif seeded_from_task:
         seeded_prompt = f"/pull {task}"
         if agent_cmd == "agy":
-            inner_cmd.extend(["--print", f"/pull {task}"])
+            # `-t` is the canonical production dispatch, so the operator's
+            # timeout has to reach it: reading the env var only on the
+            # extra_args branch left every seeded run pinned to agy's 5m
+            # default no matter what POLECAT_PRINT_TIMEOUT said.
+            inner_cmd.extend([*_print_timeout_args(), "--print", f"/pull {task}"])
         else:
             inner_cmd.append(f"/pull {task}")
     elif extra_args:
@@ -984,10 +1034,9 @@ def _build_inner_command(
                 # nothing between --print and its prompt value: a value-taking flag
                 # consumes the next token whatever it is, so an interposed flag
                 # becomes the prompt and the real one is silently dropped.
-                print_timeout = os.environ.get("POLECAT_PRINT_TIMEOUT")
-                if print_timeout:
-                    inner_cmd.extend(["--print-timeout", print_timeout])
-                inner_cmd.extend(["--print", extra_args[0], *extra_args[1:]])
+                inner_cmd.extend(
+                    [*_print_timeout_args(), "--print", extra_args[0], *extra_args[1:]]
+                )
             else:
                 inner_cmd.extend(extra_args)
         else:
@@ -996,6 +1045,26 @@ def _build_inner_command(
         seeded_prompt = None
 
     return inner_cmd, container_session_path, seeded_from_task, seeded_prompt
+
+
+def _drain_cidfile(session_dir):
+    """Remove the `--cidfile` docker writes, returning the id it held.
+
+    Docker will not start a container when the cidfile path already exists, so
+    the file has to be gone before *every* invocation that uses it. Returning
+    the contents first keeps the id of an already-finished container
+    recoverable, since `--rm` has by then reaped the container itself."""
+    cidfile = Path(session_dir) / "container.cid"
+    cid = None
+    try:
+        cid = cidfile.read_text().strip() or None
+    except OSError:
+        pass
+    try:
+        cidfile.unlink()
+    except OSError:
+        pass
+    return cid
 
 
 def _build_docker_argv(
@@ -1039,11 +1108,7 @@ def _build_docker_argv(
     (session_dir / "agy-logs").mkdir(parents=True, exist_ok=True)
 
     cidfile = session_dir / "container.cid"
-    if cidfile.exists():
-        try:
-            cidfile.unlink()
-        except OSError:
-            pass
+    _drain_cidfile(session_dir)
 
     # We use --cidfile to capture the container ID because docker writes the container ID
     # to the cidfile immediately upon creation, ensuring it is preserved even when --rm
@@ -1277,10 +1342,19 @@ def _execute_with_seed_verification(
     returncode = 1
     seed_ok = not verify_seed
 
+    last_cid = None
+
     for attempt in range(1, max_attempts + 1):
         suffix = f" (attempt {attempt}/{max_attempts})" if max_attempts > 1 else ""
         if not quiet:
             click.echo(f"Running{suffix}: {image} {' '.join(inner_cmd)}", err=True)
+        # `cmd` is prebuilt once and reused, so the same --cidfile path is
+        # passed on every attempt. Docker refuses to start when that file
+        # already exists ("container ID file found", exit 125), which would
+        # make the retry unable to ever succeed after a first-attempt
+        # container failure. Drain it before each attempt, keeping whatever
+        # id it held so a failed attempt's container is still reportable.
+        last_cid = _drain_cidfile(session_dir) or last_cid
         returncode = subprocess.run(cmd, env=run_env).returncode
 
         if not verify_seed:
@@ -1294,6 +1368,17 @@ def _execute_with_seed_verification(
                 f"{task!r} (exit={returncode}). Retrying once.",
                 err=True,
             )
+
+    # The caller reads container.cid after this returns. If the last attempt
+    # never got far enough for docker to write one, restore the most recent id
+    # seen so run.json still reports a container instead of silently dropping
+    # the evidence a draining retry collected.
+    cidfile = Path(session_dir) / "container.cid"
+    if last_cid and not cidfile.exists():
+        try:
+            cidfile.write_text(last_cid + "\n")
+        except OSError:
+            pass
 
     if not seed_ok:
         fail(
