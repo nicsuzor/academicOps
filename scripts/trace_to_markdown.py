@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import uuid
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -56,7 +57,7 @@ def format_tokens(n: int) -> str:
 class SpanNode:
     def __init__(self, raw: dict[str, Any]):
         self.raw = raw
-        self.span_id = raw.get("context", {}).get("span_id", "")
+        self.span_id = raw.get("context", {}).get("span_id") or f"gen-span-{uuid.uuid4().hex}"
         self.trace_id = raw.get("context", {}).get("trace_id", "")
         self.parent_id = raw.get("parent_id")
         self.name = raw.get("name", "unnamed")
@@ -147,10 +148,12 @@ class TraceReconciler:
                 "span_kind": "CHAIN",
                 "status_code": "UNSET",
                 "context": {"span_id": f"synth-{tid[:8]}", "trace_id": tid},
-                "start_time": min(x.start_time_str for x in o_list if x.start_time_str)
-                if o_list
-                else "",
-                "end_time": max(x.end_time_str for x in o_list if x.end_time_str) if o_list else "",
+                "start_time": min(
+                    (x.start_time_str for x in o_list if x.start_time_str), default=""
+                ),
+                "end_time": max(
+                    (x.end_time_str for x in o_list if x.end_time_str), default=""
+                ),
                 "attributes": {
                     "input.value": f"(Orphan turn - {len(o_list)} spans outside primary trace roots)",
                     "session.id": self.session_id,

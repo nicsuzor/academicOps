@@ -828,5 +828,87 @@ def test_both_modes_write_both_files(tmp_path: Path, transcript: Path):
     )
     assert (tmp_path / f"{SESSION}.trace.json").is_file()
     assert (tmp_path / f"{SESSION}.trace.controller.json").is_file()
+    assert not (tmp_path / f"{SESSION}.controller.md").is_file()
     assert "12 spans, 2 roots, 1 orphans" in result.stdout
     assert "method=transcript-join, matched=4" in result.stdout
+
+
+def test_markdown_mode_writes_controller_md(tmp_path: Path):
+    result = run_script(
+        SESSION,
+        "--mode",
+        "markdown",
+        "--from-file",
+        str(FIXTURE),
+        "--out",
+        str(tmp_path),
+    )
+    md_path = tmp_path / f"{SESSION}.controller.md"
+    assert md_path.is_file()
+    assert not (tmp_path / f"{SESSION}.trace.json").is_file()
+    assert not (tmp_path / f"{SESSION}.trace.controller.json").is_file()
+    content = md_path.read_text(encoding="utf-8")
+    assert len(content) > 0
+    assert f"markdown: {md_path}" in result.stdout
+
+
+def test_all_mode_writes_all_three_files(tmp_path: Path, transcript: Path):
+    result = run_script(
+        SESSION,
+        "--mode",
+        "all",
+        "--from-file",
+        str(FIXTURE),
+        "--transcript",
+        str(transcript),
+        "--out",
+        str(tmp_path),
+    )
+    assert (tmp_path / f"{SESSION}.trace.json").is_file()
+    assert (tmp_path / f"{SESSION}.trace.controller.json").is_file()
+    md_path = tmp_path / f"{SESSION}.controller.md"
+    assert md_path.is_file()
+    content = md_path.read_text(encoding="utf-8")
+    assert len(content) > 0
+    assert "12 spans, 2 roots, 1 orphans" in result.stdout
+    assert "method=transcript-join, matched=4" in result.stdout
+    assert f"markdown: {md_path}" in result.stdout
+
+
+def test_span_node_fallback_unique_id():
+    from scripts.trace_to_markdown import SpanNode
+
+    node1 = SpanNode({})
+    node2 = SpanNode({})
+    assert node1.span_id != ""
+    assert node2.span_id != ""
+    assert node1.span_id != node2.span_id
+
+
+def test_trace_reconciler_orphan_turn_empty_timestamps():
+    from scripts.trace_to_markdown import MarkdownRenderer, TraceReconciler
+
+    trace_doc = {
+        "meta": {"session_id": "test-session"},
+        "roots": [],
+        "orphans": [
+            {
+                "name": "orphan-1",
+                "span_kind": "TOOL",
+                "context": {"span_id": "o1", "trace_id": "t1"},
+                "orphan_reason": "parent_not_in_fetch",
+            },
+            {
+                "name": "orphan-2",
+                "span_kind": "TOOL",
+                "context": {"span_id": "o2", "trace_id": "t1"},
+                "orphan_reason": "parent_not_in_fetch",
+            },
+        ],
+    }
+    reconciler = TraceReconciler(trace_doc)
+    renderer = MarkdownRenderer(reconciler)
+    md = renderer.render_controller_transcript()
+    assert "test-session" in md
+
+

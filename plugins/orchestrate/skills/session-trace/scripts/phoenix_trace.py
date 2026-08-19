@@ -919,7 +919,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("session_id", nargs="?", help="session.id to export")
     parser.add_argument(
-        "--mode", choices=("full", "controller", "both"), default="both", help="output shape"
+        "--mode",
+        choices=("full", "controller", "markdown", "both", "all"),
+        default="both",
+        help="output shape",
     )
     parser.add_argument("--out", help="output directory")
     parser.add_argument(
@@ -1030,7 +1033,7 @@ def run(args: argparse.Namespace) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
-    if args.mode in ("full", "both"):
+    if args.mode in ("full", "both", "all"):
         roots, orphans = build_forest(spans)
         foreign_parents = None
         if args.resolve_orphan_parents:
@@ -1065,11 +1068,11 @@ def run(args: argparse.Namespace) -> int:
             f"{meta['error_count']} errors)"
         )
 
-    if args.mode in ("markdown", "all", "both"):
+    if args.mode in ("markdown", "all"):
         try:
             from scripts.trace_to_markdown import MarkdownRenderer, TraceReconciler
         except ImportError:
-            sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+            sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
             from scripts.trace_to_markdown import MarkdownRenderer, TraceReconciler
 
         roots, orphans = build_forest(spans)
