@@ -425,7 +425,7 @@ def test_agy_agent_tool_names_are_translated(built):
 def test_agent_no_tools_key_semantics(built_orchestrate):
     """marsha.md sets no `tools:` key in source frontmatter.
     Claude: leaves tools unset (inherits everything).
-    agy: emits full 54 accepted tools vocabulary.
+    agy: emits full 21 accepted tools vocabulary.
     """
     import yaml
 
