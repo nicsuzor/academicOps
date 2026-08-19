@@ -137,15 +137,13 @@ def process_agent_tools_agy(
     plugin_name: str = "",
     raw_disallowed_tools: Any = None,
     has_disallowed_tools_key: bool = False,
-) -> list[str] | None:
+) -> list[str]:
     """Translates source agent frontmatter 'tools' and 'disallowedTools' into agy's accepted tool list."""
 
     rejected: set[str] = set()
 
     if not has_tools_key:
-        if not (has_disallowed_tools_key and raw_disallowed_tools is not None):
-            return None
-        # Disallowed tools without explicit tools: start from full vocabulary and subtract
+        # Absence semantics: emit the full accepted vocabulary explicitly
         initial_tools = list(accepted_tools)
     else:
         tools_list: list[str] = []
