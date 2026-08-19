@@ -298,8 +298,7 @@ def _adapt_agents(build_dir: Path, ctx: BuildContext | None = None) -> None:
             "description": str(description).strip(),
             **extra_fields,
         }
-        if processed_tools is not None:
-            agy_frontmatter["tools"] = processed_tools
+        agy_frontmatter["tools"] = processed_tools
 
         if not body.startswith("# Agent System Instructions"):
             body = f"# Agent System Instructions\n\n{body}"
