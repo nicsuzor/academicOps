@@ -34,9 +34,7 @@ from lib.polecat import cli
 
 def _base_mocks(monkeypatch, tmp_path, config=None):
     monkeypatch.setattr(cli, "_image_available_locally", lambda image: True)
-    cfg = {
-        "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}
-    }
+    cfg = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
     if config:
         cfg.update(config)
     monkeypatch.setattr(cli, "load_config", lambda: cfg)
