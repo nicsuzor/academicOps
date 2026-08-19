@@ -12,7 +12,10 @@
     "soft_deny": [
       "$defaults",
       "Never modify files under ~/brain",
-      "Never modify generated distribution files (e.g. ./dist/*)"
+      "Never modify generated distribution files (e.g. ./dist/*)",
+      "Do not use 'sleep' or any loops to wait for a process; dispatch it asynchronously in the background instead",
+      "Do not invoke tools with `| tail` or `| head` pipes; allow your native tools to capture output instead.",
+      "Do not use a loop with a potentially non-finite end condition (e.g. `until grep -q expected_result; ...` where `expected_result` may never appear)"
     ],
     "hard_deny": [
       "$defaults",
