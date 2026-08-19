@@ -29,6 +29,11 @@ export GITHUB_TOKEN="$AOPS_BOT_GH_TOKEN"
 git config --global credential.helper \
     "!f() { echo username=x-access-token; echo \"password=\$GH_TOKEN\"; }; f"
 
+if [ -z "${GENAI_ENGINE_TRACE_ENDPOINT:-}" ]; then
+    echo "FATAL: GENAI_ENGINE_TRACE_ENDPOINT is not set. Polecat requires a trace endpoint for container telemetry." >&2
+    exit 1
+fi
+
 # No SSH agent, no interactive prompt: auth resolves from the token or fails.
 export SSH_AUTH_SOCK=""
 export GIT_TERMINAL_PROMPT=0

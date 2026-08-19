@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Use when driving a framework run you intend to score — choosing a surface, dispatching a worker, or when asked to "debug a polecat", "run a polecat container interactively", "attach to a polecat session", "check polecat logs", or to verify that a change to plugins, hooks, lib/, skills, or the Dockerfile actually works inside a real container. Spins up a `polecat run` container under tmux for live interaction, says where the durable host-side session state lands, and walks the layered check that separates "installed in the image" from "actually fires".
+description: Use when driving a framework run you intend to score — choosing a surface, dispatching a worker, or when asked to "debug a polecat", "run a polecat container interactively", "attach to a polecat session", "check polecat logs", or to verify that a change to plugins, hooks, lib/, skills, or the Dockerfile actually works inside a real container. Spins up a `polecat run` container under tmux for live interaction, leverages the Phoenix MCP server for authoritative telemetry and session debugging, and walks the layered check that separates "installed in the image" from "actually fires".
 ---
 
 # Driving a framework run — surfaces, dispatch, and interactive debugging
@@ -44,15 +44,16 @@ Read what you find as an observation with a date on it, not as fact: it was true
 
 Before driving any Polecat container, verify all required host environment variables are set. `entrypoint.sh` and `lib/polecat/cli.py` enforce these requirements on startup:
 
-| Variable            | Mandatory For      | Typical Host Value / Source            | Consequence if Missing / Invalid                                                |
-| ------------------- | ------------------ | -------------------------------------- | ------------------------------------------------------------------------------- |
-| `POLECAT_HOME`      | All container runs | `$HOME/.polecat` or `/home/nic/.aops`  | Container launcher exits immediately: `Error: no polecat home configured`       |
-| `POLECAT_IMAGE`     | All container runs | `ghcr.io/nicsuzor/aops-crew:latest`    | Container launcher exits immediately: `Error: no container image configured`    |
-| `AOPS_SESSIONS`     | All container runs | `/home/nic/src/sessions`               | Container launcher exits: `Error: no sessions root configured`                  |
-| `GEMINI_CONFIG_DIR` | `agy` runs         | `$HOME/.gemini` or `/home/nic/.gemini` | `agy` boots into an unanswerable Google OAuth login prompt inside the container |
-| `AOPS_BOT_GH_TOKEN` | All container runs | `gh-token-placeholder` or bot PAT      | Container `entrypoint.sh` aborts with `Missing AOPS_BOT_GH_TOKEN`               |
-| `GIT_AUTHOR_NAME`   | All container runs | `AcademicOps Bot`                      | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_NAME`                 |
-| `GIT_AUTHOR_EMAIL`  | All container runs | `bot@academicops.org`                  | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_EMAIL`                |
+| Variable                      | Mandatory For      | Typical Host Value / Source                               | Consequence if Missing / Invalid                                                      |
+| ----------------------------- | ------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `POLECAT_HOME`                | All container runs | `$HOME/.polecat` or `/home/nic/.aops`                     | Container launcher exits immediately: `Error: no polecat home configured`             |
+| `POLECAT_IMAGE`               | All container runs | `ghcr.io/nicsuzor/aops-crew:latest`                       | Container launcher exits immediately: `Error: no container image configured`          |
+| `AOPS_SESSIONS`               | All container runs | `/home/nic/src/sessions`                                  | Container launcher exits: `Error: no sessions root configured`                        |
+| `GEMINI_CONFIG_DIR`           | `agy` runs         | `$HOME/.gemini` or `/home/nic/.gemini`                    | `agy` boots into an unanswerable Google OAuth login prompt inside the container       |
+| `AOPS_BOT_GH_TOKEN`           | All container runs | `gh-token-placeholder` or bot PAT                         | Container `entrypoint.sh` aborts with `Missing AOPS_BOT_GH_TOKEN`                     |
+| `GIT_AUTHOR_NAME`             | All container runs | `AcademicOps Bot`                                         | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_NAME`                       |
+| `GIT_AUTHOR_EMAIL`            | All container runs | `bot@academicops.org`                                     | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_EMAIL`                      |
+| `GENAI_ENGINE_TRACE_ENDPOINT` | All container runs | `http://services-new.stoat-musical.ts.net:4318/v1/traces` | Container `entrypoint.sh` aborts with `FATAL: GENAI_ENGINE_TRACE_ENDPOINT is not set` |
 
 ## Scripted probes
 
@@ -63,15 +64,7 @@ Before driving any Polecat container, verify all required host environment varia
 - **Absent or empty → silent starvation.** agy restricts the agent to ten read-only tools and boots normally. Nothing errors; the agent simply has no `write_to_file`, `run_command` or `invoke_subagent`, improvises with what is left, and reports a plausible failure of its own. Ask the agent to list its own callable tools as step one of any probe — a ten-name list is the tell.
 - **Naming a tool agy does not register → hard failure.** The pane shows only `⚠ Agent execution terminated due to error.` with an error ID; the real message is in `agy-cli.log`: `failed to resolve components: unknown component: tool "<name>" not found in registry`. One bad name kills the whole agent, so always read that log before concluding anything from the pane.
 
-**Never score a capability on what the agent says.** Ask an agent for a server's output and it will grep that output out of any file lying around — including the logs, task outputs and transcripts your own probing leaves behind — and report it as though it had made the call. Score the tool-call record instead — `tool_calls` entries in agy's `transcript_full.jsonl`, `tool_use` records in claude's session jsonl — which is what `matrix-probe.sh`'s MCP cell does.
-
-An agy MCP call is recorded as an ordinary tool call named `call_mcp_tool`, carrying the server and the tool it reached in its arguments:
-
-```
-"name":"call_mcp_tool","args":{"Arguments":{...},"ServerName":"services","ToolName":"pkb__task_search"}
-```
-
-Grep for `call_mcp_tool` and read `ServerName`/`ToolName` off it. A subagent gets its own conversation directory, so the call lands in the _subagent's_ `transcript_full.jsonl`, not the caller's — enumerate every `agy-brain/<uuid>/` under the session dir before concluding a call was never made.
+**Never score a capability on what the agent says.** Ask an agent for a server's output and it will grep that output out of any file lying around — including the logs, task outputs and transcripts your own probing leaves behind — and report it as though it had made the call. Score the tool-call record instead — via Phoenix MCP SQL telemetry (`executeSql`), `tool_calls` in agy's `transcript_full.jsonl`, or `tool_use` in claude's session jsonl — which is what `matrix-probe.sh`'s MCP cell does.
 
 ## Spin Up: Launch Script Pattern & Driving Harness
 
@@ -160,19 +153,132 @@ tmux capture-pane -t "$TMUX_NAME" -p -S -2000
 
 This reflects what an attached user sees. It is an ephemeral buffer that dies when the tmux session is killed.
 
-## Read Durable State & Authoritative Record Inspection
+## Authoritative Telemetry & Session Forensics (Phoenix MCP)
 
-Session logs persist live on the host filesystem under:
+Phoenix is the authoritative, durable telemetry store for session traces. Unlike local markdown transcripts that truncate large tool inputs and outputs after ~300 characters, Phoenix stores **untruncated payload attributes**, **exact millisecond latencies**, and **full OpenTelemetry span call trees**.
 
+Use the **`phoenix` MCP server** tools (`executeSql`, `getSpans`, `listProjectTraces`, `execute`) to perform instant, high-fidelity forensics on any session.
+
+### 1. Direct Analytics SQL (`executeSql`) Recipes
+
+Query the allowlisted SQLite database backend directly using standard SQL with JSON extraction operators (`->>` or `JSON_EXTRACT`):
+
+#### A. Fast Session Discovery & Error Check
+
+Find recent sessions, total span counts, error counts, and activity windows:
+
+```sql
+SELECT JSON_EXTRACT(attributes, '$.session.id') AS session_id,
+       COUNT(*) AS span_count,
+       SUM(CASE WHEN status_code = 'ERROR' THEN 1 ELSE 0 END) AS error_count,
+       MIN(start_time) AS first_seen,
+       MAX(start_time) AS last_seen
+FROM spans
+WHERE JSON_EXTRACT(attributes, '$.session.id') LIKE '%<SESSION_SLUG_OR_UUID>%'
+GROUP BY session_id
+ORDER BY last_seen DESC
+LIMIT 10
 ```
-$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/workspace/
+
+#### B. Chronological Execution & Turn Sequence
+
+Walk the full chronological execution flow of a session with computed latencies and input previews:
+
+```sql
+SELECT span_id, parent_id, name, span_kind, status_code, latency_ms,
+       SUBSTRING(attributes->>'input.value', 1, 120) AS input_preview,
+       SUBSTRING(attributes->>'output.value', 1, 120) AS output_preview
+FROM spans
+WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
+ORDER BY start_time ASC
 ```
 
-### Authoritative Shell Inspection Commands (`jq` / `grep` / `pytest`)
+#### C. Isolate Errors & Tool Failures
 
-Never rely solely on visual pane capture. Always audit the host-side record files using these authoritative commands:
+Instantly extract all failed tool executions or LLM exceptions with their untruncated error payloads:
 
-#### 1. Audit Session Execution Manifest (`run.json` Schema v1)
+```sql
+SELECT span_id, name, span_kind, status_message, latency_ms,
+       attributes->>'input.value' AS full_input,
+       attributes->>'output.value' AS full_output
+FROM spans
+WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
+  AND status_code = 'ERROR'
+ORDER BY start_time ASC
+```
+
+#### D. Verify Tool Execution vs Hallucination
+
+Prove whether an agent actually called tools or hallucinated/grepped disk files:
+
+```sql
+SELECT name, COUNT(*) AS invocations,
+       ROUND(AVG(latency_ms), 1) AS avg_ms,
+       MAX(latency_ms) AS max_ms
+FROM spans
+WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
+  AND span_kind = 'TOOL'
+GROUP BY name
+ORDER BY invocations DESC
+```
+
+#### E. Token Accounting & Prompt Cache Ratio
+
+Inspect LLM token usage and cache efficiency across turns:
+
+```sql
+SELECT name,
+       SUM(llm_token_count_prompt) AS prompt_tokens,
+       SUM(llm_token_count_completion) AS completion_tokens,
+       SUM(CAST(JSON_EXTRACT(attributes, '$.\"llm.prompt_details.cache_read\"') AS INTEGER)) AS cache_read_tokens
+FROM spans
+WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
+  AND span_kind = 'LLM'
+GROUP BY name
+```
+
+### 2. Single-Pass Programmatic Diagnostics via `execute` (Code-Mode)
+
+Instead of multiple round-trips, run a complete forensic evaluation script inside Phoenix's `execute` runtime:
+
+```python
+# Async execution block in Phoenix MCP `execute`
+session_uuid = "<SESSION_UUID>"
+
+summary = await call_tool("executeSql", {
+    "sql": f"""
+    SELECT COUNT(*) as total_spans,
+           SUM(CASE WHEN status_code = 'ERROR' THEN 1 ELSE 0 END) as errors,
+           SUM(CASE WHEN span_kind = 'TOOL' THEN 1 ELSE 0 END) as tool_calls,
+           SUM(CASE WHEN span_kind = 'LLM' THEN 1 ELSE 0 END) as llm_calls
+    FROM spans WHERE JSON_EXTRACT(attributes, '$.session.id') = '{session_uuid}'
+    """
+})
+
+errors = await call_tool("executeSql", {
+    "sql": f"""
+    SELECT name, status_message, attributes->>'output.value' as output
+    FROM spans WHERE JSON_EXTRACT(attributes, '$.session.id') = '{session_uuid}' AND status_code = 'ERROR'
+    """
+})
+
+return {"summary": summary, "errors": errors}
+```
+
+### 3. Critical Telemetry Invariants & Rules
+
+- **Filter strictly on `attributes->>'session.id'` (or `session_identifier`), NEVER on `trace_id` alone**: OpenTelemetry context propagates across inter-agent messages, meaning a single trace can span multiple sessions. Filtering on `trace_id` pulls foreign session work into your diagnostic view.
+- **Short Slug Matching**: When given a short session slug (e.g. `9456cfd1`), use substring matching (`LIKE '%<slug>%'`) because Phoenix indexes full UUIDs.
+- **Turn Counter Ordering**: `arthur.turn_number` is scoped per-tracer-state and resets across subagents. Always sort by `start_time` for session-wide chronology.
+- **Container Telemetry Coverage**: If a container run emits only `CHAIN` spans (`claude-code-turn`) with zero `TOOL`/`LLM` spans, check `GENAI_ENGINE_TRACE_ENDPOINT` forwarding in the container's environment.
+
+---
+
+## Host Filesystem Inspection (Secondary Audit)
+
+When inspecting host-side container artifacts (located at `$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/workspace/`):
+
+### 1. Audit Session Execution Manifest (`run.json` Schema v1)
 
 ```bash
 SESS_DIR="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$TMUX_NAME/workspace"
@@ -187,7 +293,7 @@ jq '{schema_version, status, exit_code, delivery_guard, transcript, degraded}' "
 - `.delivery_guard.ok == true`
 - `.transcript.found == true` (with `event_count > 0`)
 
-#### 2. Audit Shared Hook Telemetry (`polecat-session-hooks.jsonl`)
+### 2. Audit Shared Hook Telemetry (`polecat-session-hooks.jsonl`)
 
 ```bash
 jq -c '.' "$SESS_DIR/polecat-session-hooks.jsonl" | head -n 10
@@ -195,23 +301,13 @@ jq -c '.' "$SESS_DIR/polecat-session-hooks.jsonl" | head -n 10
 
 **Pass Assertions**: Each line must strictly conform to the 5-field schema: `ts` (ISO 8601 with microsecond UTC), `client` (`claude`|`agy`), `event`, `session_id`, `tool`.
 
-#### 3. Inspect Native Raw Transcript Files
-
-```bash
-# For Claude Code (JSONL format):
-jq -c '.message.content[]? | select(.type=="tool_use" or .type=="text")' "$SESS_DIR"/[0-9a-f]*.jsonl | head -n 10
-
-# For Antigravity (agy-brain directory):
-grep -i "event" "$SESS_DIR/agy-brain"/*/.system_generated/logs/transcript_full.jsonl | head -n 10
-```
-
-#### 4. Run Transcript Discovery Unit Tests
+### 3. Run Transcript Discovery Unit Tests
 
 ```bash
 uv run pytest tests/transcripts/test_polecat_discovery.py -v
 ```
 
-**Pass Assertions**: All tests pass (e.g. `8 passed in 3.37s`), confirming that the transcript discovery engine correctly parses logs for both `claude` and `agy` while excluding internal `subagents/` and hook files.
+---
 
 ## Clean Up
 
@@ -223,83 +319,7 @@ tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 
 Container cleanup is automatic because `lib/polecat/cli.py` invokes `docker run --rm`.
 
-## Verbatim Proof Excerpts from Empirical Acceptance Runs
-
-Your final report must include verbatim terminal pane excerpts and host log snippets proving test execution.
-
-### 1. Verbatim Terminal Pane Output (`claude` Session Boot)
-
-```text
-Workspace: /home/nic/src/academicOps
-Session logs: /home/nic/src/sessions/logs/20260811/polecat-accept-m1/workspace
-Running: ghcr.io/nicsuzor/aops-crew:latest claude --permission-mode=auto ...
- ▐▛███▜▌   Claude Code v2.1.223
-▝▜█████▛▘  Opus 5 · Claude API
-  ▘▘ ▝▝    @orchestrate:james · /workspace
-
- ▎ Using Opus 5 (from .claude/settings.json) · /model
-
-● Auto mode lets Claude handle permission prompts automatically...
-
-───────────────────────────────────────────────────────────────────────────────────────── orchestrate:james ──
-❯ 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  Model: Opus 5 | Ctx: 0 | ⎇ v0.7.2 | (+0,-0)                                               ● high · /effort
-  ⏵⏵ auto mode on (shift+tab to cycle) · ← for agents
-```
-
-### 2. Verbatim Terminal Pane Output (`agy` Session Boot)
-
-```text
-    ▄▀▀▄        Antigravity CLI 1.1.10
-   ▀▀▀▀▀▀       nic.suzor@gmail.com (Google AI Ultra)
-  ▀▀▀▀▀▀▀▀      Gemini 3.6 Flash (High)
- ▄▀▀    ▀▀▄     /workspace
-▄▀▀      ▀▀▄
-```
-
-### 3. Verbatim Host Session Manifest (`run.json` Schema v1 Output)
-
-```json
-{
-  "schema_version": 1,
-  "session_id": "polecat-accept-m1",
-  "container_id": "9665cf4c5cc4273ffe9c7cb4893e08fba2fafb4990aa60647634ef664a129e27",
-  "container_name": "polecat-polecat-accept-m1",
-  "agent": "claude",
-  "task_id": null,
-  "seeded_prompt": null,
-  "image_ref": "ghcr.io/nicsuzor/aops-crew:latest",
-  "image_digest": "sha256:3c8bf2e249f182938b87eda62aa60fc049cf63a90cf4445d4ed5af42b15a5cdf",
-  "workspace_dir": "/home/nic/src/academicOps",
-  "session_dir": "/home/nic/src/sessions/logs/20260811/polecat-accept-m1/workspace",
-  "commit_start": "560fce7c461f931e04b1767209e9fc558bb9b2e1",
-  "commit_end": "560fce7c461f931e04b1767209e9fc558bb9b2e1",
-  "exit_code": 0,
-  "status": "success",
-  "delivery_guard": {
-    "ok": true,
-    "error": null
-  },
-  "transcript": {
-    "found": true,
-    "path": "/home/nic/src/sessions/logs/20260811/polecat-accept-m1/workspace/ce3d9c89-a5ee-4440-9c76-c878d75d9b86.jsonl",
-    "bytes": 25378,
-    "count": 2,
-    "event_count": 28
-  },
-  "started_at": "2026-08-10T22:11:03Z",
-  "ended_at": "2026-08-10T22:11:27Z",
-  "duration_seconds": 24,
-  "worker_model": null,
-  "degraded": [
-    {
-      "what": "worker_model",
-      "why": "not selectable or observable from the host launcher"
-    }
-  ]
-}
-```
+---
 
 ## Validate a Dev Change (6-Stage Verification Walk)
 
@@ -309,7 +329,7 @@ Run this protocol after modifying any framework code (`plugins/*/hooks`, `lib/`,
 
 - **Dual-Client Verification**: Run the verification walk twice — once with `claude`, once with `agy`.
 - **Sequential Evaluation**: Walk the layers in order. Stop at the first failure.
-- **Verbatim Evidence Mandatory**: Include verbatim excerpts from `tmux capture-pane` and session log files in your final report.
+- **Verbatim Evidence Mandatory**: Include verbatim excerpts from `tmux capture-pane`, session log files, and Phoenix MCP query outputs in your final report.
 
 ### Step-by-Step Walk:
 
@@ -321,20 +341,28 @@ Run this protocol after modifying any framework code (`plugins/*/hooks`, `lib/`,
    - `agy`: Confirm 2–3s auth race clears and plan name (`nic.suzor@gmail.com`) renders in header block.
 5. **§3 First Prompt & Model Output Assertion**: Send prompt (e.g. `"call pkb get_status() and return results"`) and capture pane. **You MUST assert the model output string or tool call record** (e.g. PKB status / tool execution results) in the captured pane or session transcript. Merely rendering the prompt box is NOT proof of success.
 6. **§4 Exercise Changed Path**: Invoke the specific changed skill, hook, or tool call and capture the visible execution output.
-7. **§5 Observability & Authoritative Audit**: Audit `run.json` (`status: "success"`, `delivery_guard.ok: true`), verify `polecat-session-hooks.jsonl` events, and run `pytest tests/transcripts/test_polecat_discovery.py`.
+7. **§5 Observability & Authoritative Audit (Phoenix MCP + Host Audit)**:
+   - Run `executeSql` against Phoenix MCP to verify span emission:
+     ```sql
+     SELECT count(*) FROM spans WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
+     ```
+   - Assert that `TOOL` spans exist and `status_code != 'ERROR'`.
+   - Audit `run.json` (`status: "success"`, `delivery_guard.ok: true`), verify `polecat-session-hooks.jsonl` events, and run `pytest tests/transcripts/test_polecat_discovery.py`.
 8. **§6 Clean Teardown**: Send `/exit`, wait `sleep 2`, kill session.
+
+---
 
 ## Diagnostic Gotchas & Reference
 
-| Symptom / Error                                                                     | Root Cause                                                                              | Immediate Fix / Remediation                                                                                                                        |
-| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `no server running on /tmp/tmux-...`                                                | Inline tmux command failed in `/bin/sh -c` due to quoting or missing PATH exports       | Use launch script wrapper file `/tmp/launch-$SESSION.sh`                                                                                           |
-| Session log directory named after prompt string                                     | Passed `-p` option after `run` without `--` separator; Click parsed `-p` as `--project` | Place `--` (double-dash) before agent flags and prompts                                                                                            |
-| `agy` stuck at Google OAuth login prompt                                            | `GEMINI_CONFIG_DIR` missing or lacks `antigravity-oauth-token`                          | Set `GEMINI_CONFIG_DIR=~/.gemini` and ensure token exists                                                                                          |
-| `docker logs <container>` returns empty for `agy`                                   | `agy` redirects logs to internal log files                                              | Read host bind-mounted file `$AOPS_SESSIONS/.../agy-cli.log`                                                                                       |
-| `fatal: not a git repository` in container                                          | `-d` passed a linked git worktree directory                                             | Use full git clone directory for `-d` or pass `-p <project>`                                                                                       |
-| Premature boot failure report for `agy`                                             | Captured pane during 2–3s `⚠ Verifying your account...` auth rendering race             | Wait 2–3 seconds for header plan name to render before inspecting                                                                                  |
-| MCP tool calls missing in agent response                                            | Agent grepped answers from host disk files rather than executing tools                  | Inspect native transcript JSONL (`transcript_full.jsonl` / `<uuid>.jsonl`) for `call_mcp_tool` / `tool_use` records, across every conversation dir |
-| `⚠ Agent execution terminated due to error` + an error ID, nothing else in the pane | agy agent frontmatter names a tool absent from its registry                             | `grep "not found in registry" <session>/agy-cli.log`; drop the offending names from `build/tool_map.toml`'s `accepted_tools`                       |
-| Headless `agy` returns `"error":"context canceled"` with work half-done             | Job outran `--print-timeout` (default `5m0s`)                                           | Compare `duration_seconds` against the timeout; re-run with an explicit `--print-timeout`                                                          |
-| `delivery_guard_failed` after a probe that wrote files                              | The probe's own artefacts are uncommitted in the workspace                              | Expected for a write probe — not a framework defect; confirm the named files are the probe's before treating it as one                             |
+| Symptom / Error                                                                     | Root Cause                                                                              | Immediate Fix / Remediation                                                                                                                      |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `no server running on /tmp/tmux-...`                                                | Inline tmux command failed in `/bin/sh -c` due to quoting or missing PATH exports       | Use launch script wrapper file `/tmp/launch-$SESSION.sh`                                                                                         |
+| Session log directory named after prompt string                                     | Passed `-p` option after `run` without `--` separator; Click parsed `-p` as `--project` | Place `--` (double-dash) before agent flags and prompts                                                                                          |
+| `agy` stuck at Google OAuth login prompt                                            | `GEMINI_CONFIG_DIR` missing or lacks `antigravity-oauth-token`                          | Set `GEMINI_CONFIG_DIR=~/.gemini` and ensure token exists                                                                                        |
+| `docker logs <container>` returns empty for `agy`                                   | `agy` redirects logs to internal log files                                              | Read host bind-mounted file `$AOPS_SESSIONS/.../agy-cli.log`                                                                                     |
+| `fatal: not a git repository` in container                                          | `-d` passed a linked git worktree directory                                             | Use full git clone directory for `-d` or pass `-p <project>`                                                                                     |
+| Premature boot failure report for `agy`                                             | Captured pane during 2–3s `⚠ Verifying your account...` auth rendering race             | Wait 2–3 seconds for header plan name to render before inspecting                                                                                |
+| MCP tool calls missing in agent response                                            | Agent grepped answers from host disk files rather than executing tools                  | Inspect Phoenix MCP SQL `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` to verify real tool execution |
+| `⚠ Agent execution terminated due to error` + an error ID, nothing else in the pane | agy agent frontmatter names a tool absent from its registry                             | `grep "not found in registry" <session>/agy-cli.log`; drop the offending names from `build/tool_map.toml`'s `accepted_tools`                     |
+| Headless `agy` returns `"error":"context canceled"` with work half-done             | Job outran `--print-timeout` (default `5m0s`)                                           | Compare `duration_seconds` against the timeout; re-run with an explicit `--print-timeout`                                                        |
+| `delivery_guard_failed` after a probe that wrote files                              | The probe's own artefacts are uncommitted in the workspace                              | Expected for a write probe — not a framework defect; confirm the named files are the probe's before treating it as one                           |

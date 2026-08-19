@@ -635,3 +635,45 @@ def test_run_leaves_genai_engine_task_id_unset_when_unprovided(tmp_path, monkeyp
         {},
     )
     assert "GENAI_ENGINE_TASK_ID" not in cmd
+
+
+def test_entrypoint_fails_loudly_when_trace_endpoint_unset(tmp_path):
+    entrypoint = _REPO_ROOT / "lib" / "polecat" / "entrypoint.sh"
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(home),
+        "GIT_AUTHOR_NAME": "Bot",
+        "GIT_AUTHOR_EMAIL": "bot@example.com",
+        "AOPS_BOT_GH_TOKEN": "test_token",
+    }
+    result = subprocess.run(
+        ["bash", str(entrypoint), "true"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "FATAL: GENAI_ENGINE_TRACE_ENDPOINT is not set" in result.stderr
+
+
+def test_entrypoint_succeeds_when_trace_endpoint_set(tmp_path):
+    entrypoint = _REPO_ROOT / "lib" / "polecat" / "entrypoint.sh"
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(home),
+        "GIT_AUTHOR_NAME": "Bot",
+        "GIT_AUTHOR_EMAIL": "bot@example.com",
+        "AOPS_BOT_GH_TOKEN": "test_token",
+        "GENAI_ENGINE_TRACE_ENDPOINT": "http://collector:4318/v1/traces",
+    }
+    result = subprocess.run(
+        ["bash", str(entrypoint), "true"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
