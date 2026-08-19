@@ -48,7 +48,7 @@ Your tasks:
 
 ### 1. HYDRATE
 
-- Ask pauli to `hydrate` the request first, in the background, to identify context and unknown unknowns.
+- Call the `pauli` agent to use `hydrate` skill against the request first, in the background, to identify context and unknown unknowns.
 - EXCEPTION: You do NOT need to hydrate bare procedural replies — "yes", "no", "go".
 
 ### 2. DISPATCH
