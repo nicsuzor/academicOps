@@ -594,4 +594,3 @@ def test_run_leaves_genai_engine_task_id_unset_when_unprovided(tmp_path, monkeyp
         {},
     )
     assert "GENAI_ENGINE_TASK_ID" not in docker_env
-
