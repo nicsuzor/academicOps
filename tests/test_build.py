@@ -390,17 +390,12 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     # covered by test_pauli_agy_frontmatter.
     assert "mcpServers" not in agy_agent
 
-    # ida's Claude tools are Agent, TodoWrite, Skill, SendMessage and the five
-    # Task* verbs. `TodoWrite` and `Skill` map to nothing on agy, the Task*
-    # verbs all collapse onto the one `manage_task`, and `send_message` is
-    # reached by both Agent and SendMessage — so the translation has to dedupe
-    # rather than repeat it.
-    assert agy_agent["tools"] == [
-        "invoke_subagent",
-        "manage_subagents",
-        "send_message",
-        "ask_question",
-    ]
+    # pc declares tools: [Bash] which translates to run_command for agy
+    agy_pc_md = dist_root / "ida-agy" / "agents" / "pc.md"
+    assert agy_pc_md.is_file()
+    pc_fm, _, _ = agy_pc_md.read_text().partition("---\n")[2].partition("---\n")
+    agy_pc = yaml.safe_load(pc_fm)
+    assert agy_pc["tools"] == ["run_command"]
 
     body = body.lstrip("\n")
     assert body.startswith("# Agent System Instructions")
@@ -430,13 +425,9 @@ def test_agy_agent_tool_names_are_translated(built):
 def test_agent_no_tools_key_semantics(built_orchestrate):
     """marsha.md sets no `tools:` key in source frontmatter.
     Claude: leaves tools unset (inherits everything).
-    agy: emits full 54 accepted tools vocabulary.
+    agy: leaves tools unset (inherits everything).
     """
     import yaml
-
-    from build.tools import load_tool_config
-
-    accepted_tools, _ = load_tool_config()
 
     claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
@@ -444,7 +435,7 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert agy_fm["tools"] == accepted_tools
+    assert "tools" not in agy_fm
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
@@ -1024,8 +1015,6 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
 def test_pauli_agy_frontmatter(tmp_path):
     import yaml
 
-    from build.tools import load_tool_config
-
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
@@ -1042,8 +1031,6 @@ def test_pauli_agy_frontmatter(tmp_path):
 
     assert agent["name"] == "pauli"
     assert "mcpServers" not in agent
-    accepted_tools, _ = load_tool_config()
-    assert agent["tools"] == accepted_tools
+    assert "tools" not in agent
     assert "hidden" not in agent
     assert "includeSections" not in agent
-    assert "call_mcp_tool" not in agent["tools"]
