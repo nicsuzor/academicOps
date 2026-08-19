@@ -194,6 +194,11 @@ Field names below are the **controller** export's. In the full export drop the `
 
 - Retention is bounded by the server's storage configuration, and an instance may hold only a short
   window. Run `--list-sessions` before concluding a session is missing.
+- **Session Identification & Short Slugs**: Users frequently identify a session by its short slug
+  (e.g. `413914d7`) rather than the full UUID. When resolving or searching for a session from user
+  input, search using substring match (`slug in session_id`) across `--list-sessions` or local
+  transcripts rather than assuming an exact match, because Phoenix stores and queries full UUIDs for
+  `session.id`.
 - An out-of-process subagent runs its own tracer with its own state file and its own traces — it
   does not nest inside the dispatching session's trace. Its spans are **deliberately** grouped
   under the **root** session's `session.id`, so one fetch returns the controller and every
