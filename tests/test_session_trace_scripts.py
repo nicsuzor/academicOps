@@ -910,5 +910,3 @@ def test_trace_reconciler_orphan_turn_empty_timestamps():
     renderer = MarkdownRenderer(reconciler)
     md = renderer.render_controller_transcript()
     assert "test-session" in md
-
-

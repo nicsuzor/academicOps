@@ -151,9 +151,7 @@ class TraceReconciler:
                 "start_time": min(
                     (x.start_time_str for x in o_list if x.start_time_str), default=""
                 ),
-                "end_time": max(
-                    (x.end_time_str for x in o_list if x.end_time_str), default=""
-                ),
+                "end_time": max((x.end_time_str for x in o_list if x.end_time_str), default=""),
                 "attributes": {
                     "input.value": f"(Orphan turn - {len(o_list)} spans outside primary trace roots)",
                     "session.id": self.session_id,
