@@ -132,7 +132,7 @@ def session_start(ctx: HookContext) -> Result | None:
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")
         user_parts.insert(0, "Credentials isolated.")
 
-    return warn("\n\n".join(parts), " ".join(user_parts))
+    return warn("\n\n".join(parts), "\n\n".join(user_parts))
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
