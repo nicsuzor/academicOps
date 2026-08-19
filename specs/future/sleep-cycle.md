@@ -194,7 +194,7 @@ Checks: sources in frontmatter, synthesis cites 2+ observations, wikilinks valid
 
 Re-run `graph_stats` and `pkb_orphans` and compare against the Phase 0 baseline. Note what changed.
 
-Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already handled by `repo-sync-cron.sh` but making it explicit as the final phase ensures the sleep cycle's outputs are durable.
+Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already handled by `session sync` but making it explicit as the final phase ensures the sleep cycle's outputs are durable.
 
 **Skip condition**: Never — always runs.
 
