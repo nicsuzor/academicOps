@@ -1,14 +1,18 @@
 {
   "trustedWorkspaces": [
-    "/workspace"
+    "/workspace",
+    "/tmp",
+    "/home/worker"
   ],
   "permissions": {
     "allow": [
-      "mcp(services/*)",
-      "read_file(/workspace/*)",
-      "write_file(/workspace/*)",
-      "command(git *)",
-      "command(make *)"
+      "mcp(*)",
+      "read_file(*)",
+      "write_file(*)",
+      "command(*)",
+      "read_url(*)",
+      "execute_url(*)",
+      "unsandboxed(*)"
     ]
   },
   "statusLine": {
