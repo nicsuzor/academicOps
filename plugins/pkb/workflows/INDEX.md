@@ -50,6 +50,7 @@ Request
   |       +-- Finalise a report after feedback? ---------------> [[finalize-report]]
   |       +-- Reply to docx review comments? ------------------> [[review-response]]
   +-- Bug or issue?
+  |       +-- Only reproducible in the deployed runtime -------> [[live-fix-loop]]
   |       +-- Cause established by a read, not assumed --------> [[feature-dev]]
   |       +-- Anything else (a trigger is not a cause) --------> [[investigation]]
   +-- Planning or designing known work? -----------------------> [[feature-dev]] or [[develop-specification]]
@@ -72,6 +73,7 @@ Request
 | ----------------- | --------------------------------------------------- | ------------------ | ------------------------------------ |
 | [[feature-dev]]   | Test-first feature or known-cause bug, idea to ship | task-tracking, tdd | [[wf-verification]], [[wf-handover]] |
 | [[investigation]] | Hypothesis, probe, conclude — unknown cause         | —                  | [[wf-verification]]                  |
+| [[live-fix-loop]] | Defect only reproducible in the deployed runtime    | —                  | investigation, [[wf-verification]]   |
 
 ### Email and communications
 

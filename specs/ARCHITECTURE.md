@@ -357,12 +357,28 @@ Stages, in order:
   `mcp_<server>_<tool>`, and a wildcard collapses to `mcp_<server>_*`. `mcpServers`
   is omitted because agy expects structured server definitions under `mcpServers`
   and drops agents whose frontmatter provides string server names; agy agents access
-  MCP tools through `tools:` and workspace-level MCP configs. `call_mcp_tool` is
-  not in the vocabulary; `hidden` and `includeSections` are not emitted —
+  MCP tools through workspace-level MCP configs and agy's own implicit
+  `call_mcp_tool`, which is granted regardless of `tools:` and so is deliberately
+  absent from the vocabulary. `hidden` and `includeSections` are not emitted —
   `test_pauli_agy_frontmatter` in [`tests/test_build.py`](../tests/test_build.py)
   holds the whole shape against pauli's emitted frontmatter. A name starting `mcp_`
   bypasses the accepted-vocabulary check in `build/tools.py`, so a wrong MCP
   name passes the build and fails at agy runtime.
+
+  **The `tools:` key is always emitted, and every name in it must be one agy
+  registers.** The two clients assign opposite meanings to an absent `tools:` key:
+  Claude Code reads absence as "inherit the full tool pool", agy reads it as
+  "restrict to its ten read-only defaults" (`send_message`, `find_by_name`,
+  `grep_search`, `view_file`, `list_dir`, `read_url_content`, `search_web`,
+  `schedule`, `generate_image`, `manage_task`) — an agent built without the key
+  cannot write, run a command, or dispatch a subagent. Omission is therefore never
+  a safe translation of "unrestricted": the adapter resolves absence to the full
+  accepted vocabulary and emits it. The opposite error is equally fatal — a name
+  agy does not register aborts the agent at construction
+  (`failed to resolve components: unknown component: tool "<name>" not found in
+  registry`), so the vocabulary is the set agy actually registers in the shipped
+  image, not every name agy documents. `[provenance]` in `tool_map.toml` records
+  the agy version it was extracted against; re-extract when that version moves.
 - `axioms/*.md` with `trigger: always_on` → `rules/*.md`
 
 A client adapter is the only place a client-specific workaround may live. Adding a
