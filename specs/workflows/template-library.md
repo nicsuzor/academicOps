@@ -5,7 +5,7 @@ type: spec
 category: workflow
 status: ready
 tags: [spec, workflow, templates, library, composition]
-related: [[workflows-task-pipeline]]
+related: [[workflows-task-pipeline]], [[workflows-three-source-template-discovery]]
 ---
 
 # Workflow Template Library
@@ -21,7 +21,7 @@ A short, clearly-labelled markdown file a smart agent reads and composes **in-co
 
 ## Requirements
 
-1. **Peer location, single index.** The library sits outside any one skill. One index file gives name + one-line routing description per template (the metadata layer agents scan). Project-local extension directories override/extend, as today.
+1. **Peer location, single index.** The library sits outside any one skill. One index file gives name + one-line routing description per template (the metadata layer agents scan). Project-local extension directories override/extend, via the Three-Source Template Discovery Contract ([[workflows-three-source-template-discovery]]).
 2. **Short and composable.** Each template must be small enough that several compose comfortably in a context window (target ≲100 lines). Substance that grows beyond that belongs in a skill the template points to — a template orchestrates, a skill executes (Principle #0 retained).
 3. **Minimal dependency vocabulary.** `requires` / `pairs-with` / `conflicts` / soft `recommends` as frontmatter hints the composer reasons over. No solver, no richer ontology.
 4. **Declared stakes.** Gate templates state the door-type/conditions they exist for and their skip-conditions, so composition proportionate-to-stakes is legible, not folk knowledge.
