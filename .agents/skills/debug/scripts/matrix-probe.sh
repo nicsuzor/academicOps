@@ -61,21 +61,24 @@ cell() {  # name, prompt, success-regex, ticks
 # transcript, never from what it said. Returns 0 only on a real tool-call
 # record.
 mcp_called() {
-  # The log directory is dated in local time, as polecat names it.
-  local dir="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$SESS/workspace"
+  # The log directory is dated in local time, as polecat names it. Its leaf is
+  # the project name under `-p <project>` and `workspace` otherwise, so search
+  # the session directory rather than assuming either.
+  local dir="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$SESS"
   python3 - "$dir" <<'PY'
-import json, pathlib, sys
+import pathlib, sys
 root = pathlib.Path(sys.argv[1])
 n = 0
+# agy records an MCP call as an ordinary tool call named call_mcp_tool, whose
+# args carry ServerName and ToolName. There is no distinct MCP event type.
+# A subagent writes its own agy-brain/<uuid>/, so recurse: a call made by a
+# delegate is absent from the parent conversation's transcript.
 for f in root.rglob("transcript_full.jsonl"):          # agy
     for line in f.open(errors="ignore"):
-        try:
-            if json.loads(line).get("type") == "MCP_TOOL":
-                n += 1
-        except ValueError:
-            pass
-for f in root.glob("*.jsonl"):                          # claude
-    if "hooks" in f.name:
+        if '"call_mcp_tool"' in line:
+            n += 1
+for f in root.rglob("*.jsonl"):                         # claude
+    if "hooks" in f.name or f.name.startswith("transcript"):
         continue
     for line in f.open(errors="ignore"):
         if '"tool_use"' in line and "mcp__" in line:
@@ -106,7 +109,7 @@ echo "##### $CLIENT $* #####"
 # logs and transcripts a probe run leaves behind — and report it as if it had
 # called the server. Scoring reply text turns a broken surface green, and the
 # contamination grows with every run. Score the tool-call record instead:
-# `MCP_TOOL` steps in agy's transcript_full.jsonl, `tool_use` records in
+# `call_mcp_tool` records in agy's transcript_full.jsonl, `tool_use` records in
 # claude's session jsonl. See mcp_cell().
 mcp_cell
 cell SKILLS  "list the names of the skills available to you. just the names, one line." 'dogfood|dispatch|verify|brief|hydrate|remember' 18
