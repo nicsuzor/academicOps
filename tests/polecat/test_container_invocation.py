@@ -738,17 +738,38 @@ def test_dangerously_skip_permissions_is_passed_inside_container(client, tmp_pat
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("flag", ["--port", "--publish", "-P"])
-def test_port_bare_number_maps_to_dynamic_loopback(flag, tmp_path, monkeypatch):
-    """A bare port number maps dynamically to localhost: 127.0.0.1::<port>."""
+def test_dockerfile_exposes_port_8080():
+    """Dockerfile must declare EXPOSE 8080."""
+    dockerfile_path = _REPO_ROOT / "Dockerfile"
+    content = dockerfile_path.read_text()
+    assert re.search(r"^\s*EXPOSE\s+8080\b", content, re.MULTILINE), (
+        "Dockerfile must declare 'EXPOSE 8080'"
+    )
+
+
+def test_default_polecat_run_publishes_port_8080(tmp_path, monkeypatch):
+    """Default polecat run with no CLI flags or config publishes port 8080 dynamically."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
-        ["run", "claude", "-d", str(tmp_path / "repo"), flag, "8080"],
+        ["run", "claude", "-d", str(tmp_path / "repo")],
     )
 
     assert "-p" in cmd
-    assert cmd[cmd.index("-p") + 1] == "127.0.0.1::8080"
+    assert cmd[cmd.index("-p") + 1] == "8080"
+
+
+@pytest.mark.parametrize("flag", ["--port", "--publish", "-P"])
+def test_port_bare_number_maps_dynamically(flag, tmp_path, monkeypatch):
+    """A bare port number passes dynamically (-p <port>) without loopback restriction."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), flag, "3000"],
+    )
+
+    assert "-p" in cmd
+    assert cmd[cmd.index("-p") + 1] == "3000"
 
 
 @pytest.mark.parametrize(
@@ -794,9 +815,9 @@ def test_multiple_ports_are_published_in_order(tmp_path, monkeypatch):
     p_indices = [i for i, arg in enumerate(cmd) if arg == "-p"]
     assert len(p_indices) == 3
     assert [cmd[i + 1] for i in p_indices] == [
-        "127.0.0.1::8080",
+        "8080",
         "3000:3000",
-        "127.0.0.1::9000",
+        "9000",
     ]
 
 
@@ -828,7 +849,7 @@ def test_ports_from_config_file(tmp_path, monkeypatch):
     p_indices = [i for i, arg in enumerate(docker_cmd) if arg == "-p"]
     assert len(p_indices) == 2
     assert [docker_cmd[i + 1] for i in p_indices] == [
-        "127.0.0.1::8080",
+        "8080",
         "3000:3000",
     ]
 
@@ -863,4 +884,4 @@ def test_cli_ports_override_config_ports(tmp_path, monkeypatch):
 
     p_indices = [i for i, arg in enumerate(docker_cmd) if arg == "-p"]
     assert len(p_indices) == 1
-    assert docker_cmd[p_indices[0] + 1] == "127.0.0.1::9090"
+    assert docker_cmd[p_indices[0] + 1] == "9090"

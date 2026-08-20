@@ -264,41 +264,43 @@ def resolve_telemetry(config):
     return env
 
 
+DEFAULT_PORTS = ("8080",)
+
+
 def _format_port_spec(spec: str | int) -> str:
     """Format a port specification for docker run -p.
 
-    A bare integer or numeric string (e.g. 8080 or '8080') maps dynamically
-    to localhost: 127.0.0.1::<port>.
+    A bare integer or numeric string (e.g. 8080 or '8080') maps dynamically:
+    `docker run -p 8080` publishes container port 8080 to an ephemeral host port.
     An explicit mapping (e.g. '8080:8080', '127.0.0.1::8080', '127.0.0.1:8080:8080')
     is passed directly.
     """
-    s = str(spec).strip()
-    if s.isdigit():
-        return f"127.0.0.1::{s}"
-    return s
+    return str(spec).strip()
 
 
 def resolve_ports(
     config: dict | None, cli_ports: tuple[str, ...] | list[str] = ()
 ) -> tuple[str, ...]:
-    """Resolve port specifications from CLI options, falling back to config.
+    """Resolve port specifications from CLI options, falling back to config or default.
 
     Checks CLI `cli_ports` first. If empty, checks `docker.ports` or `ports` in config.
+    If both are empty/unset, defaults to ('8080',) so container port 8080 is always
+    offered as a dynamic host port.
     """
     if cli_ports:
         return tuple(cli_ports)
-    if not config or not isinstance(config, dict):
-        return ()
-    cfg_ports = config.get("docker", {}).get("ports")
-    if cfg_ports is None:
-        cfg_ports = config.get("ports")
-    if cfg_ports is None:
-        return ()
-    if isinstance(cfg_ports, (list, tuple)):
-        return tuple(str(p) for p in cfg_ports if p not in (None, ""))
-    if isinstance(cfg_ports, (str, int)):
-        return (str(cfg_ports),)
-    return ()
+    if config and isinstance(config, dict):
+        cfg_ports = config.get("docker", {}).get("ports")
+        if cfg_ports is None:
+            cfg_ports = config.get("ports")
+        if cfg_ports is not None:
+            if isinstance(cfg_ports, (list, tuple)):
+                resolved = tuple(str(p) for p in cfg_ports if p not in (None, ""))
+                if resolved:
+                    return resolved
+            elif isinstance(cfg_ports, (str, int)) and str(cfg_ports).strip():
+                return (str(cfg_ports).strip(),)
+    return DEFAULT_PORTS
 
 
 def resolve_git_identity(config):
@@ -1552,7 +1554,7 @@ def main():
     "-P",
     "ports",
     multiple=True,
-    help="Publish container port(s) to host. Bare port (e.g. '8080') maps dynamically to 127.0.0.1::<port>. Mappings (e.g. 'HOST:CONTAINER' or '127.0.0.1::8080') pass directly.",
+    help="Publish container port(s) to dynamic host port (defaults to '8080'). Bare port (e.g. '8080') maps dynamically to an ephemeral host port. Mappings (e.g. 'HOST:CONTAINER' or '127.0.0.1::8080') pass directly.",
 )
 @click.option(
     "--quiet",
