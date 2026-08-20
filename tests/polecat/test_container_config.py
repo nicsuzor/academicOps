@@ -608,6 +608,7 @@ def test_run_ignores_ambient_genai_engine_task_id_when_neither_project_nor_task(
     tmp_path, monkeypatch
 ):
     monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "ambient_task_id")
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
     cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
@@ -620,9 +621,13 @@ def test_run_ignores_ambient_genai_engine_task_id_when_neither_project_nor_task(
         {},
     )
     assert "GENAI_ENGINE_TASK_ID" not in cmd
+    assert "OTEL_SERVICE_NAME" not in cmd
+    assert "OTEL_SERVICE_NAME" not in docker_env
 
 
 def test_run_leaves_genai_engine_task_id_unset_when_unprovided(tmp_path, monkeypatch):
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID", raising=False)
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
     cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
@@ -635,6 +640,9 @@ def test_run_leaves_genai_engine_task_id_unset_when_unprovided(tmp_path, monkeyp
         {},
     )
     assert "GENAI_ENGINE_TASK_ID" not in cmd
+    assert "GENAI_ENGINE_TASK_ID" not in docker_env
+    assert "OTEL_SERVICE_NAME" not in cmd
+    assert "OTEL_SERVICE_NAME" not in docker_env
 
 
 def test_entrypoint_fails_loudly_when_trace_endpoint_unset(tmp_path):

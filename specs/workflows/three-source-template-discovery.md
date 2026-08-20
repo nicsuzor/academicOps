@@ -347,5 +347,5 @@ class TestThreeSourceTemplateDiscovery:
 In accordance with `framework-gate` and `develop-specification` step 11:
 
 - This specification contract is delivered via pull request referencing task `aops_50b695bb`.
-- Implementation of skill updates (`brief/SKILL.md`) and engine code is gated by human review and sign-off on [[aops_1f0a5f4c]] by Nic.
+- Implementation of skill updates (`plugins/pkb/skills/brief/SKILL.md`) and engine code is gated by human review and sign-off on [[aops_1f0a5f4c]] by Nic.
 - No implementation PR shall be merged until `aops_1f0a5f4c` is resolved.

@@ -16,7 +16,7 @@ If you are ALREADY running antigravity / `agy`, just do the work using your norm
 
 Your primary tool is `agy`. It's a **super-smart agent** that can do almost anything.
 
-Whenever you are asked to do something, invoke `agy` in headless mode. Write its output straight to a file with a shell redirect, and read that file when you need it.
+Whenever you are asked to do something, invoke `agy` in headless mode.
 
 ```bash
 agy --output-format stream-json --prompt '<instructions>'
@@ -43,5 +43,5 @@ Skills expand in print mode only under the plugin-prefixed slash form. Write `/p
 ## Completing the task
 
 - NEVER `sleep`, loop, or poll to wait for a call, and never schedule a reminder to check back. Foreground or background is your choice; waiting by hand is not one of the options.
-- Run it in the foreground and let it block, or run it in the background and act on the completion notification. Either is fine. What is never fine is a redirection or filter between the command and the file.
+- Run it in the foreground and let it block, or run it in the background and act on the completion notification. Either is fine. What is never fine is piping through a stream filter (such as `tail`, `head`, or `grep`) that buffers output.
 - Unless otherwise instructed, deliver the final output verbatim, unannotated and without commentary. You are not in a position to judge what the calling agent will find relevant.
