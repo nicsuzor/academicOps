@@ -264,6 +264,45 @@ def resolve_telemetry(config):
     return env
 
 
+DEFAULT_PORTS = ("8080",)
+
+
+def _format_port_spec(spec: str | int) -> str:
+    """Format a port specification for docker run -p.
+
+    A bare integer or numeric string (e.g. 8080 or '8080') maps dynamically:
+    `docker run -p 8080` publishes container port 8080 to an ephemeral host port.
+    An explicit mapping (e.g. '8080:8080', '127.0.0.1::8080', '127.0.0.1:8080:8080')
+    is passed directly.
+    """
+    return str(spec).strip()
+
+
+def resolve_ports(
+    config: dict | None, cli_ports: tuple[str, ...] | list[str] = ()
+) -> tuple[str, ...]:
+    """Resolve port specifications from CLI options, falling back to config or default.
+
+    Checks CLI `cli_ports` first. If empty, checks `docker.ports` or `ports` in config.
+    If both are empty/unset, defaults to ('8080',) so container port 8080 is always
+    offered as a dynamic host port.
+    """
+    if cli_ports:
+        return tuple(cli_ports)
+    if config and isinstance(config, dict):
+        cfg_ports = config.get("docker", {}).get("ports")
+        if cfg_ports is None:
+            cfg_ports = config.get("ports")
+        if cfg_ports is not None:
+            if isinstance(cfg_ports, (list, tuple)):
+                resolved = tuple(str(p) for p in cfg_ports if p not in (None, ""))
+                if resolved:
+                    return resolved
+            elif isinstance(cfg_ports, (str, int)) and str(cfg_ports).strip():
+                return (str(cfg_ports).strip(),)
+    return DEFAULT_PORTS
+
+
 def resolve_git_identity(config):
     """Resolve git author/committer identity from polecat config (polecat.yaml).
 
@@ -1140,6 +1179,7 @@ def _build_docker_argv(
     session_id=None,
     with_sessions=False,
     sessions_base=None,
+    ports=(),
 ):
     """The full `docker run` argv, and the environment to launch it with.
 
@@ -1226,6 +1266,9 @@ def _build_docker_argv(
         transcripts_path.mkdir(parents=True, exist_ok=True)
         cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
         env["AOPS_SESSIONS"] = "/sessions"
+
+    for port in ports:
+        cmd.extend(["-p", _format_port_spec(port)])
 
     cmd.extend(docker_args)
     # Valueless `-e NAME` flags: the values travel in `run_env`, not on argv.
@@ -1506,6 +1549,14 @@ def main():
     help="Prompt string for print/headless mode.",
 )
 @click.option(
+    "--port",
+    "--publish",
+    "-P",
+    "ports",
+    multiple=True,
+    help="Publish container port(s) to dynamic host port (defaults to '8080'). Bare port (e.g. '8080') maps dynamically to an ephemeral host port. Mappings (e.g. 'HOST:CONTAINER' or '127.0.0.1::8080') pass directly.",
+)
+@click.option(
     "--quiet",
     "-q",
     is_flag=True,
@@ -1530,6 +1581,7 @@ def run(
     output_format,
     prompt,
     quiet,
+    ports,
     extra_args,
 ):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
@@ -1677,6 +1729,8 @@ def run(
         elif "GENAI_ENGINE_TASK_ID" in env:
             env["OTEL_SERVICE_NAME"] = env["GENAI_ENGINE_TASK_ID"]
 
+        effective_ports = resolve_ports(config, ports)
+
         cmd, run_env = _build_docker_argv(
             image=image,
             inner_cmd=inner_cmd,
@@ -1691,6 +1745,7 @@ def run(
             session_id=session_id,
             with_sessions=has_sessions_access,
             sessions_base=sessions_base,
+            ports=effective_ports,
         )
 
         if not quiet:
