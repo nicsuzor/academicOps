@@ -40,21 +40,6 @@ Search the PKB for a current-state note on the surfaces you are about to test �
 
 Read what you find as an observation with a date on it, not as fact: it was true of the build it names. Re-run the cells you are about to rely on, and when you finish, rewrite that note rather than adding a second one beside it. A stale state note is worse than none, because it reads as current.
 
-## Environment Pre-Flight Matrix
-
-Before driving any Polecat container, verify all required host environment variables are set. `entrypoint.sh` and `lib/polecat/cli.py` enforce these requirements on startup:
-
-| Variable                      | Mandatory For      | Typical Host Value / Source                               | Consequence if Missing / Invalid                                                      |
-| ----------------------------- | ------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `POLECAT_HOME`                | All container runs | `$HOME/.polecat` or `/home/nic/.aops`                     | Container launcher exits immediately: `Error: no polecat home configured`             |
-| `POLECAT_IMAGE`               | All container runs | `ghcr.io/nicsuzor/aops-crew:latest`                       | Container launcher exits immediately: `Error: no container image configured`          |
-| `AOPS_SESSIONS`               | All container runs | `/home/nic/src/sessions`                                  | Container launcher exits: `Error: no sessions root configured`                        |
-| `GEMINI_CONFIG_DIR`           | `agy` runs         | `$HOME/.gemini` or `/home/nic/.gemini`                    | `agy` boots into an unanswerable Google OAuth login prompt inside the container       |
-| `AOPS_BOT_GH_TOKEN`           | All container runs | `gh-token-placeholder` or bot PAT                         | Container `entrypoint.sh` aborts with `Missing AOPS_BOT_GH_TOKEN`                     |
-| `GIT_AUTHOR_NAME`             | All container runs | `AcademicOps Bot`                                         | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_NAME`                       |
-| `GIT_AUTHOR_EMAIL`            | All container runs | `bot@academicops.org`                                     | Container `entrypoint.sh` aborts with `Missing GIT_AUTHOR_EMAIL`                      |
-| `GENAI_ENGINE_TRACE_ENDPOINT` | All container runs | `http://services-new.stoat-musical.ts.net:4318/v1/traces` | Container `entrypoint.sh` aborts with `FATAL: GENAI_ENGINE_TRACE_ENDPOINT is not set` |
-
 ## Scripted probes
 
 [`scripts/probe.sh`](scripts/probe.sh) drives one question; [`scripts/matrix-probe.sh`](scripts/matrix-probe.sh) drives a capability matrix — MCP, skills, subagent dispatch, permissions — and prints PASS/FAIL per cell. Both take the client as their first argument, so the same command covers both surfaces. Run them once per client; a pass on one is no evidence for the other. They cover MCP reachability, skill resolution, subagent dispatch and permissions; whether the plugins are installed at all is `make docker-smoke-test`.
@@ -118,13 +103,13 @@ uv run python lib/polecat/cli.py run -p <project> -s <session> agy -- -p "call p
 
 The two agent clients exhibit significant operational and diagnostic asymmetries:
 
-| Dimension                    | Claude Code (`claude`)                                              | Antigravity CLI (`agy`)                                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Authentication & Staging** | Configured via `.claude/settings.json` and API keys in environment. | Requires `$GEMINI_CONFIG_DIR` staging via `setup_staging()` (`antigravity-oauth-token`). Without it, boots into OAuth wall.      |
-| **Startup Rendering Race**   | Immediate rendering of model banner and `❯` input prompt.           | Renders `⚠ Verifying your account...` for 2–3 seconds before header plan name (`nic.suzor@gmail.com (Google AI Ultra)`) appears. |
-| **Logging Surface**          | Native stdout/stderr output visible via `docker logs <container>`.  | Redirects output to internal log files. `docker logs` returns **empty**. Host logs land at `$AOPS_SESSIONS/.../agy-cli.log`.     |
-| **Agent Definition**         | Supports `--agent <name>` (e.g. `@orchestrate:james`).              | Supports `--agent <name>` (e.g. `james`). Headless `agy --agent <name>` + MCP verified working end-to-end (commit `250921f8d`).  |
-| **Default Prompt Flag**      | Accepts positional prompt strings.                                  | Requires explicit `-i`/`--prompt-interactive` or `-p`/`--print` flags for non-interactive prompts.                               |
+| Dimension                    | Claude Code (`claude`)                                              | Antigravity CLI (`agy`)                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Authentication & Staging** | Configured via `.claude/settings.json` and API keys in environment. | Requires `$GEMINI_CONFIG_DIR` staging via `setup_staging()` (`antigravity-oauth-token`). Without it, boots into OAuth wall.     |
+| **Startup Rendering Race**   | Immediate rendering of model banner and `❯` input prompt.           | Renders `⚠ Verifying your account...` for 2–3 seconds before header plan name (`username (Google AI Ultra)`) appears.           |
+| **Logging Surface**          | Native stdout/stderr output visible via `docker logs <container>`.  | Redirects output to internal log files. `docker logs` returns **empty**. Host logs land at `$AOPS_SESSIONS/.../agy-cli.log`.    |
+| **Agent Definition**         | Supports `--agent <name>` (e.g. `@orchestrate:james`).              | Supports `--agent <name>` (e.g. `james`). Headless `agy --agent <name>` + MCP verified working end-to-end (commit `250921f8d`). |
+| **Default Prompt Flag**      | Accepts positional prompt strings.                                  | Requires explicit `-i`/`--prompt-interactive` or `-p`/`--print` flags for non-interactive prompts.                              |
 
 ## Interact & Readiness Protocol
 
@@ -133,7 +118,7 @@ The two agent clients exhibit significant operational and diagnostic asymmetries
 tmux capture-pane -t "$TMUX_NAME" -p -S -2000
 
 # - For claude: Wait until prompt box with '❯' renders.
-# - For agy: Wait 2-3s for auth race to clear and plan name ('nic.suzor@gmail.com') to render in header.
+# - For agy: Wait 2-3s for auth race to clear and plan name to render in header.
 
 # 2. Send prompt text using -l (literal text flag to prevent tmux key parsing errors)
 tmux send-keys -t "$TMUX_NAME" -l "your prompt text here"
@@ -386,7 +371,7 @@ Run this protocol after modifying any framework code (`plugins/*/hooks`, `lib/`,
 3. **§1 Structural Smoke Test**: Run `make docker-smoke-test` to confirm plugin installation in container image.
 4. **§2 Container Boot Signals**:
    - `claude`: Confirm banner and `❯` input box render inside `/workspace`.
-   - `agy`: Confirm 2–3s auth race clears and plan name (`nic.suzor@gmail.com`) renders in header block.
+   - `agy`: Confirm 2–3s auth race clears and plan name renders in header block.
 5. **§3 First Prompt & Model Output Assertion**: Send prompt (e.g. `"call pkb get_status() and return results"`) and capture pane. **You MUST assert the model output string or tool call record** (e.g. PKB status / tool execution results) in the captured pane or session transcript. Merely rendering the prompt box is NOT proof of success.
 6. **§4 Exercise Changed Path**: Invoke the specific changed skill, hook, or tool call and capture the visible execution output.
 7. **§5 Observability & Authoritative Audit (Phoenix MCP + Host Audit)**:
