@@ -171,6 +171,12 @@ the two cases apart.
    lines are the evidence [`debug`](../../.agents/skills/debug/SKILL.md) requires
    a run to report, so `--quiet` and that skill are mutually exclusive by
    construction: the flag is off by default and no debug procedure passes it.
+8. **Synchronous stream-json stdout contract.** Headless dispatches default to
+   `--output-format stream-json` (`claude` accompanied by `--verbose` as required
+   by the CLI; `agy` using native `--output-format stream-json`). Exactly one
+   well-formed JSON event stream reaches stdout per invocation; polecat prose
+   goes to stderr. On the seed verification retry path, aborted attempt output
+   is buffered and suppressed so callers never receive concatenated streams.
 
 ## What `run` does not do
 
@@ -202,3 +208,6 @@ container.
    with `--quiet` its stderr carries no progress, workspace, or session-log line,
    and with a value missing that `fail()` reports, the error still reaches stderr
    under `--quiet`.
+8. **Synchronous stream-json contract** — Test: a headless `run` invocation (with
+   default options) emits only a well-formed JSON event stream on stdout, and
+   seed verification retries emit exactly one stream to stdout.
