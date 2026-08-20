@@ -86,3 +86,12 @@ or plans.
 2. **Summary** — what you found or made.
 3. **Receipts** — the evidence for each claim.
 4. **Limitations** — what is uncertain, what failed, what you did not do.
+
+## Mandatory compliance check by `rbg`
+
+Before you output your final report, you **must** pass it to `rbg` for a compliance check.
+
+- Make changes in response to any major problems `rbg` identifies.
+- If you make changes at this stage, the certification expires -- you MUST ask `rbg` for a fresh review.
+- Append the response from `rbg` **verbatim** to your response.
+- Reports that go out without certification from `rbg` will be treated as inherently untrustworthy.
