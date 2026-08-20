@@ -33,8 +33,11 @@ python3 scripts/phoenix_trace.py <session-id> --mode full --out ./traces
 # Controller-only export
 python3 scripts/phoenix_trace.py <session-id> --mode controller --out ./traces
 
-# Both, the default
-python3 scripts/phoenix_trace.py <session-id> --out ./traces
+# Markdown transcript generation
+python3 scripts/phoenix_trace.py <session-id> --mode markdown --out ./transcripts
+
+# Full, controller, and markdown export
+python3 scripts/phoenix_trace.py <session-id> --mode all --out ./traces
 
 # A one-off project, without touching the environment
 python3 scripts/phoenix_trace.py <session-id> --project <phoenix-project> --out ./traces
@@ -53,7 +56,7 @@ Written as `<session-id>.trace.json` and `<session-id>.trace.controller.json`.
 
 | Flag                       | Effect                                                                           |
 | -------------------------- | -------------------------------------------------------------------------------- |
-| `--mode`                   | `full`, `controller`, or `both` (default `both`)                                 |
+| `--mode`                   | `full`, `controller`, `markdown`, `all`, or `both` (default `both`)              |
 | `--out`                    | output directory; defaults to `$AOPS_SESSIONS/traces/`, else the working dir     |
 | `--project`                | Phoenix project name or id; required, falls back to `$PHOENIX_PROJECT_NAME`      |
 | `--base-url`               | Phoenix base URL, overriding the environment                                     |
