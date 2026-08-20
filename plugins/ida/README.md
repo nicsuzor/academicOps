@@ -121,7 +121,8 @@ credential.
 The polecat CLI reads its own set, with no defaults: `POLECAT_HOME`,
 `POLECAT_IMAGE` and `AOPS_SESSIONS` are required, and `AOPS_POLECAT_CONFIG`,
 `POLECAT_RULES_DIR`, `POLECAT_AGENT_HOME`, `POLECAT_WORKER_MODEL`,
-`POLECAT_PRINT_TIMEOUT` and `PKB_MCP_URL` are optional. A missing required value
+and `PKB_MCP_URL` are optional (`print_timeout`, `git_identity`, and `telemetry`
+are configured in `polecat.yaml` with no env fallback). A missing required value
 is a loud failure, never a guess.
 
 ## Depends on

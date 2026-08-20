@@ -31,7 +31,7 @@ The default. Launch one tmux session per task and return immediately.
 ```bash
 HEAD=$(git rev-parse HEAD)
 NAME="dispatch-<task-id>"
-CMD="POLECAT_PRINT_TIMEOUT=30m uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME --base $HEAD"
+CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME --base $HEAD"
 tmux new-session -d -s "$NAME" "$CMD"
 ```
 
@@ -67,9 +67,9 @@ uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
 - `-p <project>` names the target repo. Never `-d` with a linked git worktree —
   its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
-- `POLECAT_PRINT_TIMEOUT` is a Go duration (`30m`, `1h`). Bare integers fail.
+- Print timeout is configured in `polecat.yaml` (`print_timeout: 30m` or `agy.print_timeout: 30m`). No env var fallback.
 - Pass no paths, images, or credentials. Polecat reads those from the host
-  environment.
+  environment and `polecat.yaml`.
 - Never `sleep`, loop, or poll while a run is going, and never schedule a check
   back. Block in the foreground or return detached — waiting by hand is not an
   option.

@@ -17,7 +17,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import NoReturn
+from typing import Mapping, NoReturn
 
 import click
 import yaml

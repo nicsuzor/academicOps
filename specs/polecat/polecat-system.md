@@ -92,13 +92,13 @@ the container.
    prompt, seeds `/pull <id>` as the prompt. An `agy` dispatch with no explicit
    interactive/prompt flag runs headless (`--print`) with an optional
    `--print-timeout` so the container exits when the agent's loop completes,
-   rather than idling forever. `POLECAT_PRINT_TIMEOUT` supplies that value on
-   _every_ headless `agy` branch — seeded `--task`, `--prompt`, and a positional
-   prompt alike — and is normalised before it is passed: agy parses it with Go's
-   `time.ParseDuration`, so a bare number is read as seconds (`900` → `900s`)
-   rather than being forwarded into a run-killing `missing unit in duration`
-   parse error, and a value that is neither is dropped with a warning on stderr
-   instead of silently. `claude` has no timeout flag, so none is passed to it.
+   rather than idling forever. `polecat.yaml`'s `print_timeout` (or `agy.print_timeout` /
+   `timeout`) supplies that value on _every_ headless `agy` branch — seeded `--task`,
+   `--prompt`, and a positional prompt alike (with no host environment fallback) — and is
+   normalised before it is passed: agy parses it with Go's `time.ParseDuration`, so a
+   bare number is read as seconds (`900` → `900s`) rather than being forwarded into a
+   run-killing `missing unit in duration` parse error, and an invalid format fails fast
+   during config resolution. `claude` has no timeout flag, so none is passed to it.
 8. On completion, verifies delivery before reporting success: for a seeded `agy`
    dispatch, the agent's own transcript must reference the task id (retried once
    if not, then a hard failure — a clean exit is not evidence the seed was ever
