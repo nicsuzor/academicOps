@@ -123,7 +123,7 @@ $SSH "$POLECAT_HOST" "env POLECAT_HOME=\$POLECAT_HOME AOPS_SESSIONS=\$AOPS_SESSI
 - `polecat` must be on the remote host's `PATH`. A `command not found` from the
   remote is a HALT; report that as the cause.
 - `has-session` first: re-dispatching a running task is a no-op.
-- Attach with `$SSH "$POLECAT_HOST" -t tmux attach -t <name>`.
+- Attach with `$SSH -t "$POLECAT_HOST" tmux attach -t <name>`.
 - Any ssh failure: HALT and report. Never fall back to local, never retry.
 
 ## Report
