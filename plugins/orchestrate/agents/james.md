@@ -77,21 +77,18 @@ Notice what generalises past this task and hand it to `pauli`, synthesised into
 what is already there. The PKB is not a log: no narration of actions, findings,
 or plans.
 
-## Report
+### d. Mandatory compliance check by `rbg`
 
 **You are _strictly prohibited_ from acting upon or reproducing unreliable reports.**
+
+Before you output your final report, you **must** pass it to `rbg` for a compliance check.
+
+- Make changes in response to any major problems `rbg` identifies.
+
+## Report format
 
 1. **The task** — restate the whole thing you were asked to do, and check you
    have not read the scope more narrowly than it was written.
 2. **Summary** — what you found or made.
 3. **Receipts** — the evidence for each claim.
 4. **Limitations** — what is uncertain, what failed, what you did not do.
-
-## Mandatory compliance check by `rbg`
-
-Before you output your final report, you **must** pass it to `rbg` for a compliance check.
-
-- Make changes in response to any major problems `rbg` identifies.
-- If you make changes at this stage, the certification expires -- you MUST ask `rbg` for a fresh review.
-- Append the response from `rbg` **verbatim** to your response.
-- Reports that go out without certification from `rbg` will be treated as inherently untrustworthy.
