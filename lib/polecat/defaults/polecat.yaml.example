@@ -87,5 +87,5 @@
 #   trace_endpoint: http://collector:4318/v1/traces
 #   api_key: your-api-key
 #   protocol: http/protobuf
-#   resource_attributes: deployment.environment=workstation,host.name=nicwin
+#   resource_attributes: deployment.environment=workstation,host.name=your-host-name
 #   task_id: your-task-id
