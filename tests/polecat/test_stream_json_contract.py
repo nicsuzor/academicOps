@@ -12,11 +12,8 @@ Guarantees tested:
 
 import json
 import subprocess
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 from click.testing import CliRunner
 
 from lib.polecat import cli

@@ -1010,7 +1010,12 @@ def _build_inner_command(
                 and "--verbose" not in inner_cmd
             ):
                 inner_cmd.append("--verbose")
-        if not is_interactive and not explicit_headless and "-p" not in extra_args and "--print" not in extra_args:
+        if (
+            not is_interactive
+            and not explicit_headless
+            and "-p" not in extra_args
+            and "--print" not in extra_args
+        ):
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
             # prompt is a positional, so it still arrives from extra_args below,
