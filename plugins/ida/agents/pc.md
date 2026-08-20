@@ -8,6 +8,7 @@ allowedTools:
   - Bash(uv run *)
   - Bash(git *)
   - Bash(ssh *)
+  - Bash(tailscale ssh *)
 permissionMode: "dontAsk"
 tools:
   - Bash
@@ -47,20 +48,14 @@ HEAD=$(git rev-parse HEAD)
 NAME="run-<slug>"
 uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
   -p <project> -s "$NAME" --base "$HEAD" -o stream-json \
-  --prompt '<prompt>' > "<run-log>.jsonl" 2>&1
+  --prompt '<prompt>'
 ```
 
 - `-o` / `--output-format` takes `text`, `json`, or `stream-json` — it is not a
   headless switch, and headless is already implied for an `agy` dispatch with no
   interactive flag. Use `stream-json` so events reach the log as they happen.
 - `--prompt` **must be last**: everything after it is part of the prompt.
-- **Redirect to a file; never pipe.** `tail`, `head`, `less` and friends buffer
-  until exit, so a live run and a hung one look identical. Redirect, then read.
-- **Read the reported status, not the exit code.** `agy` exits `0` on failure: a
-  run that lost its response or was denied a permission returns
-  `{"status":"ERROR","response":""}` and still exits `0`. Any run whose status
-  is not `SUCCESS`, or whose response is empty, has failed. Report it; never
-  retry silently.
+- **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop waiting for output. Your native harness tools will handle the output for you.
 
 ## Both modes
 
@@ -80,50 +75,10 @@ uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
 
 ## Remote host
 
-`POLECAT_HOST` unset — dispatch locally, exactly as above. Set — every dispatch
-goes over SSH to that host instead. Decide on the variable alone: never probe
-for docker, never guess.
+If `$POLECAT_HOST` is set, dispatch using `tailscale ssh`. Decide on the variable alone: never probe for docker, never guess.
 
-No value below has a default. Every one comes from the environment.
-
-| Var                | Required    | Meaning                                                                                                                           |
-| ------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `POLECAT_HOST`     | remote only | `[user@]host` of the machine that runs polecat. Unset means local dispatch.                                                       |
-| `POLECAT_SSH_CMD`  | no          | Remote-shell program, e.g. `ssh` or `tailscale ssh`. A program name only — the host comes from `POLECAT_HOST`. Unset means `ssh`. |
-| `POLECAT_SSH_OPTS` | no          | Extra ssh options, e.g. `-o StrictHostKeyChecking=accept-new`.                                                                    |
-
-The remote side runs polecat inside a host-side tmux session. tmux does not
-inherit the SSH session environment, so forward every host-side variable the run
-needs inside the remote command — escape them so the remote shell, not yours,
-expands them.
-
-```bash
-HEAD=$(git rev-parse HEAD)
-NAME="dispatch-<task-id>"
-SSH="${POLECAT_SSH_CMD:-ssh} ${POLECAT_SSH_OPTS:-}"
-RUN="env POLECAT_HOME=\$POLECAT_HOME AOPS_SESSIONS=\$AOPS_SESSIONS \
-  polecat run agy -p <project> -t <task-id> -s $NAME --base $HEAD"
-$SSH "$POLECAT_HOST" \
-  "tmux has-session -t $NAME 2>/dev/null || tmux new-session -d -s $NAME \"$RUN\""
-```
-
-Synchronous: same remote command without `tmux`, and redirect the **local** ssh
-invocation. A redirect inside the remote command writes the log on the host,
-where you cannot read it.
-
-```bash
-$SSH "$POLECAT_HOST" "env POLECAT_HOME=\$POLECAT_HOME AOPS_SESSIONS=\$AOPS_SESSIONS \
-  polecat run agy -p <project> -s $NAME --base $HEAD -o stream-json \
-  --prompt '<prompt>'" > "<run-log>.jsonl" 2>&1
-```
-
-- Leave `$SSH` unquoted: a two-word program (`tailscale ssh`) must word-split
-  into argv. Two words also need their own frontmatter grant — this agent grants
-  `Bash(ssh *)` only. Without a matching grant, HALT.
 - `polecat` must be on the remote host's `PATH`. A `command not found` from the
   remote is a HALT; report that as the cause.
-- `has-session` first: re-dispatching a running task is a no-op.
-- Attach with `$SSH -t "$POLECAT_HOST" tmux attach -t <name>`.
 - Any ssh failure: HALT and report. Never fall back to local, never retry.
 
 ## Report
