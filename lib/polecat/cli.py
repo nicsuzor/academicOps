@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn
@@ -181,7 +182,7 @@ def resolve_rules_dir(config):
 
 
 def _resolve_section_env(
-    config: dict | None, section: str, mapping: dict[str, str | list[str]]
+    config: dict | None, section: str, mapping: Mapping[str, str | list[str]]
 ) -> dict[str, str]:
     """Map keys from a config section to environment variables in a DRY way."""
     if not config or not isinstance(config, dict):
