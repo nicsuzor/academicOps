@@ -968,12 +968,6 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
-#: Default agent persona per client. Used when neither --agent nor --no-agent is given.
-DEFAULT_AGENTS: dict[str, str] = {
-    "claude": "james",
-    "agy": "james",
-}
-
 
 def _agent_args(extra_args, agent=None):
     """`--agent <agent_name>`, or nothing when no agent was specified."""
@@ -996,18 +990,14 @@ _BARE_NUMBER_RE = re.compile(r"^\d+(\.\d+)?$")
 
 
 def resolve_print_timeout(config=None):
-    """Resolve print timeout duration for headless agy from polecat config (polecat.yaml).
+    """Resolve print timeout duration from polecat config (polecat.yaml).
 
-    Reads `print_timeout` (or `agy.print_timeout` / `timeout`) from polecat config.
+    Reads `timeout` from polecat config.
     No host environment fallback. Bare numbers are normalised to seconds (e.g. 900 -> 900s).
     A missing timeout returns None. An invalid format is a hard failure (fail fast).
     """
     config = config or {}
-    raw = config.get("print_timeout")
-    if raw is None and isinstance(config.get("agy"), dict):
-        raw = config["agy"].get("print_timeout")
-    if raw is None:
-        raw = config.get("timeout")
+    raw = config.get("timeout")
     if raw is None:
         return None
 
@@ -1019,7 +1009,7 @@ def resolve_print_timeout(config=None):
         return f"{value}s"
     if not _GO_DURATION_RE.match(value):
         fail(
-            f"invalid print_timeout {raw!r} in polecat config (polecat.yaml). "
+            f"invalid timeout {raw!r} in polecat config (polecat.yaml). "
             "Must be a Go duration (e.g. '30m', '1h30m', '900s') or bare seconds. "
             "There is no default."
         )
@@ -1531,13 +1521,13 @@ def main():
     "--agent",
     "-a",
     default=None,
-    help="Agent persona to run inside container (defaults to 'james' for claude and agy).",
+    help="Agent persona to run inside container (default: none).",
 )
 @click.option(
     "--no-agent",
     is_flag=True,
     default=False,
-    help="Run without an agent persona, disabling the default agent.",
+    help="Run without an agent persona.",
 )
 @click.option(
     "--output-format",
@@ -1594,7 +1584,7 @@ def run(
     elif agent is not None:
         effective_agent = agent
     else:
-        effective_agent = DEFAULT_AGENTS.get(agent_cmd)
+        effective_agent = None
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent)
 

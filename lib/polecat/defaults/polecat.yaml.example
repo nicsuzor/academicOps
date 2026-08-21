@@ -40,9 +40,9 @@
 #   name: your-bot-name
 #   email: your-bot@users.noreply.github.com
 
-# Print timeout duration for headless agy dispatches (e.g. '30m', '1h', '900s').
+# Timeout duration for dispatches (e.g. '30m', '1h', '900s').
 # Bare integers are treated as seconds. If invalid, polecat fails fast.
-# print_timeout: 30m
+# timeout: 30m
 
 # Per-machine workspace paths are NOT read from this file. They live in
 # <polecat_home>/local.yaml (cli.py, load_local_overlay), which maps a

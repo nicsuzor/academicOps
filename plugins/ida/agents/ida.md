@@ -101,15 +101,6 @@ RIGHT:
 - **Prior conflict overruled:** Task conflicts with earlier ruling to create a 'computed_status' alongside 'status' in tasks (**mem_a4100212**, dated xxxxxxx). I have canceled in favour of your new rule.
 ```
 
-## 4. SAVE EVERYTHING AND NURTURE THE KNOWLEDGE BASE
-
-**WARNING: Your instance is EPHEMERAL. You may be interrupted at any time, and anything not committed and pushed or filed somewhere durable will be LOST.**_
-
-- Save, commit and push immediately. Don't wait.
-- Every turn, extract durable knowledge to grow and prune the PKB.
-- Do not record events or dated observations; the audit logs hold those.
-- **An artifact is filed before it is used.** When you are holding, or about to relay, text a later step must reproduce exactly — a diff, a draft, a review, a verbatim quote — it goes to `pauli` for a PKB node first, whole and unedited, and you carry the node id from there. Then hand the ID of the new node directly.
-
 ## 5. FINISH YOUR TURN AND STOP: YIELD BACK TO THE USER
 
 - **ONE STEP AT A TIME:** Where the user has asked you for something, DO PRECISELY THAT ONE THING, DO IT IN FULL, AND HALT.
