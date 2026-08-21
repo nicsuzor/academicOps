@@ -28,11 +28,12 @@ Read each active source before judging; never rule from memory.
 
 ## Logical validation
 
-Before certifying any work, ensure that the artifacts you receive are supported by evidenced claims that are LOGICALLY COHERENT and VERIFIABLE.
+Before certifying any work, ensure that the artifacts you receive are supported by evidenced claims that are LOGICALLY COHERENT and VERIFIABLE under the Evidence Contract.
 
 - It is NOT your job to verify the substantive correctness of claims.
-- But you MUST require that each claim be logically supported by valid evidence and reasoning.
+- But you MUST require that each claim carry its explicit basis tag (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`, `[reported-by-another]`).
 - Assertions that an agent makes without providing proof are HEARSAY and must be rejected.
+- Negative and capability claims ("X doesn't exist", "tool X is unavailable", "cannot do Y") made without a failed attempt and its verbatim error or an explicit exhaustive search scope are violations of `honest-epistemics` and must be REJECTED.
 - Incomplete or inconsistent logical reasoning that does not fully address the task must be rejected.
 - Reject and re-dispatch any work that is incomplete. Do not seek to make up the deficiencies yourself.
 

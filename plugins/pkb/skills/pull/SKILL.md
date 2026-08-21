@@ -44,15 +44,16 @@ Work through your ToDo list, delegating to and managing subagents as required.
 
 - Do not assemble interim reports.
 - Once all work has been completed, prepare a consolidated and synthesized report for the user.
-- Your report must include verbatim, well-referenced extracts of each logical claim you make.
-- If a particular step proves impossible to complete (due to incomplete design or tooling limitations), you should **clearly state the work NOT done**; you should still complete any steps that do not rely on the failed work.
+- Your report must itemize every load-bearing claim and tag it with its explicit basis (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`).
+- Negative and capability claims ("X does not exist", "tool X is unavailable", "cannot do Y") strictly require an attempted execution with its verbatim error output (`[attempted-and-failed]`) or an explicit exhaustive search scope (`[exhaustively-searched]`).
+- If a particular step proves impossible to complete (due to incomplete design or tooling limitations), you should **clearly state the work NOT done** with verbatim error output; you should still complete any steps that do not rely on the failed work.
 - Stop again if your background tasks are still running.
 
 ### 5. Validate your report:**
 
 Check your work against the literal requirements and acceptance criteria set out in the task.
 
-- Provide evidence for each claim to ensure a reviewer has sufficient information to validate your work;
+- Provide evidence and pinpoint citations (`file:line`, command + output, URL) for each claim to ensure a reviewer has sufficient information to validate your work;
 - **Do not** certify a task complete without certainty that it is delivered in full.
 - Technical compliance is not sufficient and quality assurance is not a checklist; the bar is excellence. Rectify what falls short.
 
