@@ -42,20 +42,13 @@ B. **Release your tasks, children first:** call the PKB's `release_task` MCP too
 
 Compile each of your reports into a single final message:
 
-````markdown
+```markdown
 ## Handover: <agent> <session-id>
 
-- **You asked**: <the original ask, one sentence>
-- **So far**: <2–4 bullets: what was decided>
-- **Output**: <PR or artefact URL> (description)
-- **Next**: <the single recommended next step, phrased so it can be acted on or approved>
-- **Errors**: <list any errors encountered, precis only, or `none`>
-- **Self-evaluation**: <at most two sentences>
-- **Waiting on / watch out**: <the blocker; any in-flight side effects>
-
-[ Then, for each task, include its concise report from the last step. ]
-
-```markdown
-### Task: ...
+1. **The task** — restate the whole thing you were asked to do, and check you
+   have not read the scope more narrowly than it was written.
+2. **Summary** — what you found or made.
+3. **Output**: <PR or artefact URL> (description)
+4. **Receipts** — the evidence for each claim.
+5. **Limitations** — what is uncertain, what failed, what you did not do.
 ```
-````

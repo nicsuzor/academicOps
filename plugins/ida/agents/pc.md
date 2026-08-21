@@ -64,7 +64,7 @@ uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
 - `-p <project>` names the target repo. Never `-d` with a linked git worktree —
   its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
-- Print timeout is configured in `polecat.yaml` (`print_timeout: 30m` or `agy.print_timeout: 30m`). No env var fallback.
+- Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
 - Pass no paths, images, or credentials. Polecat reads those from the host
   environment and `polecat.yaml`.
 - Never `sleep`, loop, or poll while a run is going, and never schedule a check

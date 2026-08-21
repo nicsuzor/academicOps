@@ -1,4 +1,4 @@
-"""Regression tests for `print_timeout` in polecat.yaml reaching agy.
+"""Regression tests for `timeout` in polecat.yaml reaching agy.
 
 Two live-confirmed defects:
 
@@ -17,8 +17,8 @@ Two live-confirmed defects:
    which surfaced as `status: failed`, `exit_code: 2` and a delivery-guard
    error in run.json — before the agent had run at all.
 
-3. Configuration comes strictly from `polecat.yaml` (keys `print_timeout`, `agy.print_timeout`, or `timeout`),
-   with no ambient environment fallback (`POLECAT_PRINT_TIMEOUT`), and fails fast on invalid durations.
+3. Configuration comes strictly from `polecat.yaml` (key: `timeout`),
+   with no ambient environment fallback (`POLECAT_TIMEOUT`), and fails fast on invalid durations.
 
 claude has no timeout flag of any kind (`claude --help` lists none), so the
 handling is agy-only by design.
@@ -91,7 +91,7 @@ def _flag_value(inner, flag):
 
 def test_seeded_task_dispatch_carries_the_print_timeout():
     """`-t` with no explicit prompt is the production path; it must honour configured timeout."""
-    inner = _seeded_inner_cmd(config={"print_timeout": "30m"})
+    inner = _seeded_inner_cmd(config={"timeout": "30m"})
 
     assert _flag_value(inner, "--print-timeout") == "30m"
 
@@ -99,7 +99,7 @@ def test_seeded_task_dispatch_carries_the_print_timeout():
 def test_seeded_dispatch_puts_the_timeout_immediately_before_print():
     """A value-taking flag consumes the next token whatever it is, so nothing
     may sit between `--print` and the prompt it seeds."""
-    inner = _seeded_inner_cmd(task="task_abc123", config={"print_timeout": "30m"})
+    inner = _seeded_inner_cmd(task="task_abc123", config={"timeout": "30m"})
 
     assert inner[-4:] == ["--print-timeout", "30m", "--print", "/pull task_abc123"]
 
@@ -118,7 +118,7 @@ def test_seeded_dispatch_end_to_end_through_the_cli(tmp_path, monkeypatch):
         monkeypatch,
         tmp_path,
         ["run", "agy", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
-        config={"print_timeout": "45m"},
+        config={"timeout": "45m"},
     )
 
     assert inner[-4:] == ["--print-timeout", "45m", "--print", "/pull task_abc123"]
@@ -127,7 +127,7 @@ def test_seeded_dispatch_end_to_end_through_the_cli(tmp_path, monkeypatch):
 def test_claude_seeded_dispatch_gets_no_timeout_flag():
     """claude has no `--print-timeout`; passing one would be an unknown-option
     failure inside the container."""
-    inner = _seeded_inner_cmd(agent_cmd="claude", config={"print_timeout": "30m"})
+    inner = _seeded_inner_cmd(agent_cmd="claude", config={"timeout": "30m"})
 
     assert "--print-timeout" not in inner
 
@@ -142,7 +142,7 @@ def test_explicit_prompt_dispatch_carries_the_print_timeout():
         explicit_headless=False,
         task=None,
         prompt="hello",
-        config={"print_timeout": "30m"},
+        config={"timeout": "30m"},
     )
 
     assert inner[-4:] == ["--print-timeout", "30m", "--prompt", "hello"]
@@ -155,40 +155,36 @@ def test_explicit_prompt_dispatch_carries_the_print_timeout():
 
 def test_bare_integer_is_normalised_to_seconds():
     """`900` alone is normalised to seconds (900s) for Go duration parsing."""
-    assert cli._print_timeout_args({"print_timeout": "900"}) == ["--print-timeout", "900s"]
-    assert cli._print_timeout_args({"print_timeout": 900}) == ["--print-timeout", "900s"]
+    assert cli._print_timeout_args({"timeout": "900"}) == ["--print-timeout", "900s"]
+    assert cli._print_timeout_args({"timeout": 900}) == ["--print-timeout", "900s"]
 
 
 @pytest.mark.parametrize("value", ["30m", "1h", "1h30m", "900s", "500ms", "2.5h"])
 def test_values_that_already_carry_a_unit_pass_through_unchanged(value):
-    assert cli._print_timeout_args({"print_timeout": value}) == ["--print-timeout", value]
+    assert cli._print_timeout_args({"timeout": value}) == ["--print-timeout", value]
 
 
 def test_surrounding_whitespace_is_stripped():
-    assert cli._print_timeout_args({"print_timeout": "  30m  "}) == ["--print-timeout", "30m"]
+    assert cli._print_timeout_args({"timeout": "  30m  "}) == ["--print-timeout", "30m"]
 
 
 @pytest.mark.parametrize("value", ["", "   "])
 def test_empty_value_is_the_same_as_unset(value):
-    assert cli._print_timeout_args({"print_timeout": value}) == []
+    assert cli._print_timeout_args({"timeout": value}) == []
 
 
 def test_unset_value_adds_no_flag():
     assert cli._print_timeout_args({}) == []
 
 
-def test_nested_agy_print_timeout_supported():
-    assert cli._print_timeout_args({"agy": {"print_timeout": "30m"}}) == ["--print-timeout", "30m"]
-
-
 @pytest.mark.parametrize("value", ["30 minutes", "half an hour", "30x", "m30", "-"])
 def test_garbage_fails_fast(value):
     """An unparseable value fails loudly rather than being silently ignored."""
     with pytest.raises(SystemExit):
-        cli._print_timeout_args({"print_timeout": value})
+        cli._print_timeout_args({"timeout": value})
 
 
 def test_ambient_env_var_is_ignored(monkeypatch):
-    """Host POLECAT_PRINT_TIMEOUT is ignored: config is strictly from polecat.yaml."""
-    monkeypatch.setenv("POLECAT_PRINT_TIMEOUT", "30m")
+    """Host POLECAT_TIMEOUT is ignored: config is strictly from polecat.yaml."""
+    monkeypatch.setenv("POLECAT_TIMEOUT", "30m")
     assert cli._print_timeout_args({}) == []
