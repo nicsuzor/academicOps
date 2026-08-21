@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.8.0](https://github.com/nicsuzor/academicOps/compare/v0.7.3...v0.8.0) (2026-08-21)
+
+
+### Features
+
+* **ida:** document SSH dispatch path for pc, host from POLECAT_HOST ([129f987](https://github.com/nicsuzor/academicOps/commit/129f98794621e54faf9cbe7bbdc75098235434fd))
+* **orchestrate:** add session-trace skill for Phoenix span export ([3862271](https://github.com/nicsuzor/academicOps/commit/38622714a4e0ca96a9d4f9815cbfc7fd5cc45352))
+* **orchestrate:** session-trace skill — export a session's Phoenix spans as trees, controller view, and contamination report ([e5b160f](https://github.com/nicsuzor/academicOps/commit/e5b160f0a2ee0bc0d0441f0d1741ad8a1384e270))
+* **pkb,orchestrate:** routine capture floor, pipeline re-cut, academic paper spine, pc timeout convention ([b6b2b33](https://github.com/nicsuzor/academicOps/commit/b6b2b3328f93e6e6fa21abeacb234e42c792edc7))
+* **polecat:** add dynamic host port mapping (-P/--port) for container port 8080 ([5855111](https://github.com/nicsuzor/academicOps/commit/5855111823715ac12ddec80d0e67b8ba1e5f7565))
+* **polecat:** expose container port 8080 and publish dynamic host port by default ([a7130fc](https://github.com/nicsuzor/academicOps/commit/a7130fc45d30818ca86b5ce26c4daf818f513f79))
+* **polecat:** forward GENAI_ENGINE_TRACE_ENDPOINT and protocol from env, set task identifier ([f9e3941](https://github.com/nicsuzor/academicOps/commit/f9e39418b7f7ced64fd2a39fafba92421d7d4f0b))
+* **polecat:** read configs in a DRY way from polecat.yaml with no env var fallback ([b78be37](https://github.com/nicsuzor/academicOps/commit/b78be3785a8576f9000495881775c255357037d1))
+* **polecat:** resolve source branch from --branch, fallback to origin refs, and speed up clones with --no-checkout ([c45c28f](https://github.com/nicsuzor/academicOps/commit/c45c28f528d4bbcd46a0b0bb2d6551fa97a91042))
+* **pre-commit:** reinstall H39 horizontal rule prohibition and R5.6 orphan md gate ([a2b5d20](https://github.com/nicsuzor/academicOps/commit/a2b5d20efd10eeb3743369dcb80d72cba6bbd13a))
+* **telemetry:** leverage Phoenix MCP in debug skill and enforce trace endpoint in entrypoint ([b1119a3](https://github.com/nicsuzor/academicOps/commit/b1119a39841a7985ef9f8c65807185e2540e07ff))
+* **transcripts:** replace legacy transcript pipeline with Phoenix OTel trace renderer ([4f9db74](https://github.com/nicsuzor/academicOps/commit/4f9db749d6f90b7f7c13d531fc97977e5ab150cb))
+* **transcripts:** replace legacy transcript pipeline with Phoenix OTel trace renderer ([987f863](https://github.com/nicsuzor/academicOps/commit/987f863dee643742ed815a6ce975020258e7609c))
+
+
+### Bug Fixes
+
+* address review comments on PR [#2469](https://github.com/nicsuzor/academicOps/issues/2469) and resolve broken doc reference ([c4d4cec](https://github.com/nicsuzor/academicOps/commit/c4d4cec333cfa495faf03f507157bad93b3c61de))
+* **build/agy:** omit tools frontmatter when no tools are specified ([403c97a](https://github.com/nicsuzor/academicOps/commit/403c97a9911b485a0065ad1683b91f64df0a7b29))
+* **build/agy:** restore explicit tools vocabulary emission for agy agents ([c9b2d10](https://github.com/nicsuzor/academicOps/commit/c9b2d10d83dc3f394139e1e0d5d58d8e5054e755))
+* **build/agy:** restrict agy accepted tools to registered set in container ([76c0af7](https://github.com/nicsuzor/academicOps/commit/76c0af74b8af8a5b8e5d79038fb74aee2991a7f9))
+* **ida:** give §2 an arrival-time contract — state + action, not prohibition ([a8a0bcb](https://github.com/nicsuzor/academicOps/commit/a8a0bcb8262d600cd436fd054f8a695db629bc19))
+* **ida:** give §2 an arrival-time contract — state + action, not prohibition ([4ae7f3c](https://github.com/nicsuzor/academicOps/commit/4ae7f3c139c87262d6da3a3ecd3edf1927b90e60))
+* **ida:** ssh -t must precede the destination in pc's attach command ([fde691d](https://github.com/nicsuzor/academicOps/commit/fde691d122dafe0820fce9cb1a59fa9f383baa64))
+* **orchestrate:** delete dead otel_tracer_core.py ([43ab64b](https://github.com/nicsuzor/academicOps/commit/43ab64b078ad73011f290c10519d2e07fc705982))
+* **orchestrate:** fail-fast session.id, share root id with subagents, drop dead trace-inheritance machinery ([cde7211](https://github.com/nicsuzor/academicOps/commit/cde7211d2ffad8d3892bda573e61e46d42ec2837))
+* **orchestrate:** guard agy_stop to the genuine end-of-turn payload ([9e5684c](https://github.com/nicsuzor/academicOps/commit/9e5684c49b1beefbf4dba0b2ca4abadfe7176a48))
+* **orchestrate:** make OTel tracer hooks harness-agnostic, fix agy_tracer.discover_config ([c7f564a](https://github.com/nicsuzor/academicOps/commit/c7f564a64add8ff59b1133302eb14d67b2f9424c))
+* **orchestrate:** remap agy PostInvocation to no-op, fix agy span parentage/kinds ([88564db](https://github.com/nicsuzor/academicOps/commit/88564dbcd9ce7cf6db1bb7e6bf74bfd234b14678))
+* **polecat/permissions:** grant unrestricted permissions and fix session_start handler ([6e4ef8a](https://github.com/nicsuzor/academicOps/commit/6e4ef8aa247a05c7151380a7e7621be045b3aed4))
+* **polecat:** widen mapping annotation in _resolve_section_env to Mapping ([8787ab3](https://github.com/nicsuzor/academicOps/commit/8787ab31c511cdf722dcd790551f00eb88f3f2ba))
+* **polecat:** widen mapping annotation in _resolve_section_env to Mapping ([538c5c6](https://github.com/nicsuzor/academicOps/commit/538c5c63dd37df463c6b0f6958b8f2f3202f8a79))
+* **refs:** repoint stale plugins/rbg/pyproject.toml references ([f973352](https://github.com/nicsuzor/academicOps/commit/f9733529f0cd3c28ea224fc3bde155f8ad989c2a))
+* **transcripts:** address PR [#2470](https://github.com/nicsuzor/academicOps/issues/2470) review comments on trace markdown and CLI modes ([a8083df](https://github.com/nicsuzor/academicOps/commit/a8083df757bfd88ce446866451672215727d228d))
+* untrack otel.txt, patch.diff, tests/test_cope.py.orig ([ff911a6](https://github.com/nicsuzor/academicOps/commit/ff911a69066c11183e092f5a20e9ba676b710316))
+
+
+### Documentation
+
+* **debug skill:** add subagent lifecycle correlation recipes to Phoenix forensics ([035dcb7](https://github.com/nicsuzor/academicOps/commit/035dcb79781e28ec951b4bed6c26d3e0eca2ed7d))
+* **debug:** record agy tool-vocabulary contract, fix MCP scoring, add live-fix-loop ([bb905fb](https://github.com/nicsuzor/academicOps/commit/bb905fb8aa7318b46ae68627aec2bfc240be287d))
+* **pkb:** mark daily-skill spec as superseded by tpl_daily ([23278b0](https://github.com/nicsuzor/academicOps/commit/23278b02650dc76c8adf291ec1cdbe9115d5b26e))
+* **session-trace:** update skill instructions to search sessions by short slug ([6731095](https://github.com/nicsuzor/academicOps/commit/6731095e182aa384b48cf61822ece8ca22b27565))
+* **specs:** pc's recorded grants now include ssh ([570506a](https://github.com/nicsuzor/academicOps/commit/570506a2c9333633921f6a8507eaef9666785b24))
+
+
+### Miscellaneous
+
+* **dev:** release 0.7.3 ([c302af8](https://github.com/nicsuzor/academicOps/commit/c302af8f8e8e0d69d7787a8d361145d87a2baaa3))
+* pin next release to 0.8.0 ([69a8d63](https://github.com/nicsuzor/academicOps/commit/69a8d6385a08200e0cc49de05e4f43d9652593c5))
+
 ## [0.7.3](https://github.com/nicsuzor/academicOps/compare/v0.7.2...v0.7.3) (2026-08-16)
 
 ### Features
