@@ -114,7 +114,7 @@ nothing else in the framework dispatches on her behalf. Every polecat runs the
 `agy` client. Two modes: a task id starts a detached run under tmux and returns
 immediately, with no return path — the worker writes its result to the task
 record and pushes its branch; a prompt runs synchronously to a redirected
-`stream-json` log, which is the only route by which anything reaches an agent's
+log, which is the only route by which anything reaches an agent's
 turn while it is still open. `lib/polecat/` is injected into this plugin
 (`plugins/ida/manifest/plugin.toml`) and read as
 `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.
