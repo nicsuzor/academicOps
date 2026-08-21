@@ -61,7 +61,7 @@ uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
 
 - `--base $HEAD` always: workers branch from the caller's current commit.
 - `-s` must match the tmux session name.
-- `-p <project>` names the target repo. Never `-d` with a linked git worktree —
+- `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`). Never `-d` with a linked git worktree —
   its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
 - Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.

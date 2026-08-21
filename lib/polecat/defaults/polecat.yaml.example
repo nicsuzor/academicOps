@@ -44,6 +44,13 @@
 # Bare integers are treated as seconds. If invalid, polecat fails fast.
 # timeout: 30m
 
+# Project registry. This file ($AOPS_SESSIONS/polecat.yaml) is the canonical
+# enumeration of project slugs across the framework. Agents consult this list
+# before resolving repo names or dispatching with -p <project>.
+#
+# Runtime behaviour: `projects.<slug>.sessions_access: true` gates mounting the
+# read-only sessions transcript directory into the container (cli.py).
+#
 # Per-machine workspace paths are NOT read from this file. They live in
 # <polecat_home>/local.yaml (cli.py, load_local_overlay), which maps a
 # --project name to a checkout on this machine:
@@ -53,6 +60,16 @@
 #
 # Without a mapping, pass --repo-dir. Unresolvable means a loud failure; there
 # is no default workspace.
+#
+# projects:
+#   your-project:
+#     repo: your-repo                 # optional, defaults to slug
+#     default_branch: main            # documentary
+#     sessions_access: false          # optional, mount $AOPS_SESSIONS/logs read-only
+#     mounts:                         # optional, for empirical projects
+#       - host: $AOPS_SESSIONS/secrets/your-project/
+#         container: /run/secrets/project/
+#         mode: ro
 
 # Host directory of user-scoped cope/rbg rules (the same shape as
 # $ACA_DATA/.agents/rules/ on a host session), mounted read-only into every
