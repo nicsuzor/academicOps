@@ -273,8 +273,9 @@ Subagent dispatch and inter-agent messaging operate across containerized executi
 ### Operational Constraints & Roster Discovery
 
 1. **Routing Table Address Format:** `SendMessage` addresses an agent **instance** — by the `name` it was spawned with, by the `agentId` from its spawn result, or by the reserved `"main"`. The instance name is the canonical form and keeps resolving after the agent completes. A `subagent_type` is not an address: `"orchestrate:james"` reaches something only if an instance was actually given that name. Spawn any subagent you intend to message with an explicit `name`.
-2. **Tool Granting & Dynamic Discovery:** System error messages from `SendMessage` suggest calling `ListAgents`. However, `ListAgents` is not included in the default subagent tool configuration in standard sessions. Unless explicitly granted in agent configuration, subagents cannot perform dynamic roster lookups.
-3. **Hierarchy Briefing Protocol:** A child is told neither its parent's name nor its parent's `agentId` on spawn. An orchestrator dispatching sub-subagents that must report back directly has to put one of the two in the brief.
+2. **Subagent Return Channel vs. Teammate Naming:** Passing `name` when `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is enabled converts the spawn into a teammate whose completion notification carries no output. To receive a subagent's result directly in the caller's completion notification turn, omit `name`. Only pass `name` when an agent must be addressable via `SendMessage`.
+3. **Tool Granting & Dynamic Discovery:** System error messages from `SendMessage` suggest calling `ListAgents`. However, `ListAgents` is not included in the default subagent tool configuration in standard sessions. Unless explicitly granted in agent configuration, subagents cannot perform dynamic roster lookups.
+4. **Hierarchy Briefing Protocol:** A child is told neither its parent's name nor its parent's `agentId` on spawn. An orchestrator dispatching sub-subagents that must report back directly has to put one of the two in the brief.
 
 ## Observability & OTEL Tracing
 
