@@ -919,7 +919,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("session_id", nargs="?", help="session.id to export")
     parser.add_argument(
-        "--mode", choices=("full", "controller", "both"), default="both", help="output shape"
+        "--mode",
+        choices=("full", "controller", "markdown", "both", "all"),
+        default="both",
+        help="output shape",
     )
     parser.add_argument("--out", help="output directory")
     parser.add_argument(
@@ -1030,7 +1033,7 @@ def run(args: argparse.Namespace) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
-    if args.mode in ("full", "both"):
+    if args.mode in ("full", "both", "all"):
         roots, orphans = build_forest(spans)
         foreign_parents = None
         if args.resolve_orphan_parents:
@@ -1065,7 +1068,24 @@ def run(args: argparse.Namespace) -> int:
             f"{meta['error_count']} errors)"
         )
 
-    if args.mode in ("controller", "both"):
+    if args.mode in ("markdown", "all"):
+        try:
+            from scripts.trace_to_markdown import MarkdownRenderer, TraceReconciler
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
+            from scripts.trace_to_markdown import MarkdownRenderer, TraceReconciler
+
+        roots, orphans = build_forest(spans)
+        trace_doc = {"meta": meta, "roots": roots, "orphans": orphans}
+        reconciler = TraceReconciler(trace_doc)
+        renderer = MarkdownRenderer(reconciler)
+        md_content = renderer.render_controller_transcript()
+        md_path = out_dir / f"{args.session_id}.controller.md"
+        md_path.write_text(md_content, encoding="utf-8")
+        written.append(md_path)
+        print(f"markdown: {md_path} ({len(md_content)} bytes)")
+
+    if args.mode in ("controller", "both", "all"):
         if transcript and transcript["controller_md"]:
             calls = parse_controller_tool_calls(Path(transcript["controller_md"]))
             attribution = join_transcript(spans, calls, args.tolerance_ms)

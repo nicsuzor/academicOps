@@ -27,6 +27,8 @@ TELEMETRY_ENV = (
     "GENAI_ENGINE_TRACE_ENDPOINT",
     "GENAI_ENGINE_API_KEY",
     "GENAI_ENGINE_TRACE_PROTOCOL",
+    "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+    "OTEL_EXPORTER_OTLP_PROTOCOL",
 )
 
 # Everything else forwarded verbatim when set on the host.

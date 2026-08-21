@@ -18,13 +18,13 @@ category = "productivity"
 [[plugins]]
 directory = "ida"
 name = "ida"
-description = "ida — the interactive face."
+description = "ida — the interactive face; pc — the polecat container launcher."
 category = "productivity"
 
 [[plugins]]
 directory = "orchestrate"
 name = "orchestrate"
-description = "james — synthesis, dispatch, and the polecat container launcher; marsha — QA and UX excellence."
+description = "james — the container worker; marsha — QA and UX excellence; adversary — red-team review."
 category = "productivity"
 
 [[plugins]]

@@ -29,7 +29,7 @@ user. This spec records where each half of that charter now lives, and why.
 
 The user delegated this call ("wherever it fits best"). Three things decided it.
 
-1. **Shipped versus project-local.** The launcher, `plugins/orchestrate/agents/pc.md`, is
+1. **Shipped versus project-local.** The launcher, `plugins/ida/agents/pc.md`, is
    shipped and project-agnostic. Rex's execution material names
    `make docker-build`, the gitignored `dist/`, aops PKB task statuses and
    `agy --agent james` — academicOps specifics that must not ship inside a

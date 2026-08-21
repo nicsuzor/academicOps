@@ -34,6 +34,16 @@
 # Default git branch or ref for isolated container workspaces (used when --base is omitted).
 # branch: main
 
+# Git identity for commits made inside the container (REQUIRED).
+# No host environment fallback.
+# git_identity:
+#   name: your-bot-name
+#   email: your-bot@users.noreply.github.com
+
+# Print timeout duration for headless agy dispatches (e.g. '30m', '1h', '900s').
+# Bare integers are treated as seconds. If invalid, polecat fails fast.
+# print_timeout: 30m
+
 # Per-machine workspace paths are NOT read from this file. They live in
 # <polecat_home>/local.yaml (cli.py, load_local_overlay), which maps a
 # --project name to a checkout on this machine:
@@ -69,9 +79,13 @@
 
 # Telemetry configuration for the container. Standard OpenTelemetry exporter vars
 # are baked into the container image, so only the machine-specific internal
-# endpoints and resource attributes belong here. If not configured, the container
-# falls back to nothing and tracing is effectively disabled (it will export
-# nowhere).
+# endpoints and resource attributes belong here. No fallback to host environment.
+# If not configured, the container falls back to nothing and tracing is
+# effectively disabled (it will export nowhere).
 # telemetry:
-#   endpoint: http://collector:port
-#   resource_attributes: deployment.environment=workstation,host.name=nicwin
+#   endpoint: http://collector:4318
+#   trace_endpoint: http://collector:4318/v1/traces
+#   api_key: your-api-key
+#   protocol: http/protobuf
+#   resource_attributes: deployment.environment=workstation,host.name=your-host-name
+#   task_id: your-task-id

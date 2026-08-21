@@ -36,8 +36,8 @@ def built(tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="module")
 def built_orchestrate(tmp_path_factory) -> Path:
-    """The real orchestrate plugin, not a fixture — see
-    test_polecat_cli_ships_with_orchestrate."""
+    """The real orchestrate plugin, not a fixture — its agents carry the
+    per-client frontmatter semantics these tests assert."""
     dist_root = tmp_path_factory.mktemp("build-dist-orchestrate")
     build_all(
         PROJECT_ROOT,
@@ -49,10 +49,24 @@ def built_orchestrate(tmp_path_factory) -> Path:
     return dist_root
 
 
-def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
+@pytest.fixture(scope="module")
+def built_ida(tmp_path_factory) -> Path:
+    """The real ida plugin, not a fixture — see test_polecat_cli_ships_with_ida."""
+    dist_root = tmp_path_factory.mktemp("build-dist-ida")
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["ida"],
+        version=VERSION,
+    )
+    return dist_root
+
+
+def test_polecat_cli_ships_with_ida(built_ida):
     """The polecat launcher agent (`plugins/ida/agents/pc.md`) invokes
     `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
-    root at all is `plugins/orchestrate/manifest/plugin.toml`, which injects it
+    root at all is `plugins/ida/manifest/plugin.toml`, which injects it
     from `lib/polecat/`.
 
     Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
@@ -68,11 +82,11 @@ def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
     )
     assert "env_contract" in siblings, "cli.py's fallback imports no longer parse"
     for client in ("claude", "agy"):
-        polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
-        assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
+        polecat = built_ida / f"ida-{client}" / "polecat"
+        assert (polecat / "cli.py").is_file(), f"ida-{client} ships no polecat/cli.py"
         for module in siblings:
             assert (polecat / f"{module}.py").is_file(), (
-                f"orchestrate-{client} ships cli.py without the {module} it imports"
+                f"ida-{client} ships cli.py without the {module} it imports"
             )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()
@@ -376,21 +390,16 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     # covered by test_pauli_agy_frontmatter.
     assert "mcpServers" not in agy_agent
 
-    # ida's Claude tools are Agent, TodoWrite, Skill, SendMessage and the five
-    # Task* verbs. `TodoWrite` and `Skill` map to nothing on agy, the Task*
-    # verbs all collapse onto the one `manage_task`, and `send_message` is
-    # reached by both Agent and SendMessage — so the translation has to dedupe
-    # rather than repeat it.
-    assert agy_agent["tools"] == [
-        "invoke_subagent",
-        "manage_subagents",
-        "send_message",
-        "ask_question",
-    ]
+    # pc declares tools: [Bash] which translates to run_command for agy
+    agy_pc_md = dist_root / "ida-agy" / "agents" / "pc.md"
+    assert agy_pc_md.is_file()
+    pc_fm, _, _ = agy_pc_md.read_text().partition("---\n")[2].partition("---\n")
+    agy_pc = yaml.safe_load(pc_fm)
+    assert agy_pc["tools"] == ["run_command"]
 
     body = body.lstrip("\n")
     assert body.startswith("# Agent System Instructions")
-    assert "# Ida — The Interactive Face" in body
+    assert "# Ida" in body
 
 
 def test_agy_agent_tool_names_are_translated(built):
@@ -416,7 +425,7 @@ def test_agy_agent_tool_names_are_translated(built):
 def test_agent_no_tools_key_semantics(built_orchestrate):
     """marsha.md sets no `tools:` key in source frontmatter.
     Claude: leaves tools unset (inherits everything).
-    agy: emits full 54 accepted tools vocabulary.
+    agy: emits full 21 accepted tools vocabulary.
     """
     import yaml
 

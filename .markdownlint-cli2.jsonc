@@ -20,6 +20,6 @@
     "MD040": false,
     "MD041": false
   },
-  "customRules": [],
+  "customRules": [".markdownlint-rules/no-horizontal-rules.js"],
   "ignores": ["node_modules/**", ".git/**", ".agents/**", ".aops/**", ".polecat/**", ".venv/**", ".claude/**", "**/archived/**", "dist/**"]
 }

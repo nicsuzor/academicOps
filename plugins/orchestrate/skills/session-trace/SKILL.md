@@ -33,8 +33,11 @@ python3 scripts/phoenix_trace.py <session-id> --mode full --out ./traces
 # Controller-only export
 python3 scripts/phoenix_trace.py <session-id> --mode controller --out ./traces
 
-# Both, the default
-python3 scripts/phoenix_trace.py <session-id> --out ./traces
+# Markdown transcript generation
+python3 scripts/phoenix_trace.py <session-id> --mode markdown --out ./transcripts
+
+# Full, controller, and markdown export
+python3 scripts/phoenix_trace.py <session-id> --mode all --out ./traces
 
 # A one-off project, without touching the environment
 python3 scripts/phoenix_trace.py <session-id> --project <phoenix-project> --out ./traces
@@ -53,7 +56,7 @@ Written as `<session-id>.trace.json` and `<session-id>.trace.controller.json`.
 
 | Flag                       | Effect                                                                           |
 | -------------------------- | -------------------------------------------------------------------------------- |
-| `--mode`                   | `full`, `controller`, or `both` (default `both`)                                 |
+| `--mode`                   | `full`, `controller`, `markdown`, `all`, or `both` (default `both`)              |
 | `--out`                    | output directory; defaults to `$AOPS_SESSIONS/traces/`, else the working dir     |
 | `--project`                | Phoenix project name or id; required, falls back to `$PHOENIX_PROJECT_NAME`      |
 | `--base-url`               | Phoenix base URL, overriding the environment                                     |
@@ -194,6 +197,11 @@ Field names below are the **controller** export's. In the full export drop the `
 
 - Retention is bounded by the server's storage configuration, and an instance may hold only a short
   window. Run `--list-sessions` before concluding a session is missing.
+- **Session Identification & Short Slugs**: Users frequently identify a session by its short slug
+  (e.g. `413914d7`) rather than the full UUID. When resolving or searching for a session from user
+  input, search using substring match (`slug in session_id`) across `--list-sessions` or local
+  transcripts rather than assuming an exact match, because Phoenix stores and queries full UUIDs for
+  `session.id`.
 - An out-of-process subagent runs its own tracer with its own state file and its own traces — it
   does not nest inside the dispatching session's trace. Its spans are **deliberately** grouped
   under the **root** session's `session.id`, so one fetch returns the controller and every

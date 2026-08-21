@@ -1,80 +1,36 @@
 # Provenance metadata and agy tool map configuration.
 # Documented re-extraction step:
-# 1. Run an agy session with `--output-format stream-json` to extract candidate tool names from the `init` event `tools` array (56 host native tool names).
-# 2. Test each candidate tool name ALONE in an agent's `tools:` frontmatter key and check the exit code of `agy --agent <name>`.
-# 3. Omit `call_mcp_tool` and `delete_knowledge`. Declaring either in an agent's
-#    frontmatter `tools:` list fails executor construction before the model is
-#    invoked — "no tool converter registered for <tool>", exit code 1.
-#    Open defect, 2026-08-12 — agy's `DeclarativeAgentMixin.GetToolConverters()`
-#    resolves only statically-compiled native tools and never calls
-#    `GetMcpToolConverters()`, so nothing can resolve `call_mcp_tool`
-#    (https://github.com/nicsuzor/academicOps/issues/2422). `delete_knowledge`
-#    fails identically, but #2422's evidence does not cover it, so its cause is
-#    observed rather than established. Temporary mitigation: both are held out
-#    of the accepted vocabulary below; when #2422 lands, re-run this extraction
-#    and restore them.
-# 4. Save the 54 accepted tool names below.
+# 1. Test candidate tool names in an agent's `tools:` frontmatter key and check the exit code and logs of `agy --agent <name>`.
+# 2. Omit unregistered tools (e.g. browser tools not registered in the container environment, deprecated tools like multi_replace_file_content, and call_mcp_tool/delete_knowledge).
+# 3. Save the 21 accepted tool names below.
 
 [provenance]
-agy_version = "1.1.11"
-extraction_date = "2026-08-10"
-extraction_command = "Declare each candidate tool name ALONE in agent tools: frontmatter and test agy --agent exit code"
+agy_version = "1.1.13"
+extraction_date = "2026-08-19"
+extraction_command = "Declare candidate tool names in agent tools: frontmatter and test agy execution inside aops-crew container"
 
 [vocabulary]
 accepted_tools = [
   "ask_permission",
   "ask_question",
-  "browser_click_element",
-  "browser_drag_pixel_to_pixel",
-  "browser_get_dom",
-  "browser_get_network_request",
-  "browser_input",
-  "browser_list_network_requests",
-  "browser_mouse_down",
-  "browser_mouse_up",
-  "browser_move_mouse",
-  "browser_press_key",
-  "browser_refresh_page",
-  "browser_resize_window",
-  "browser_scroll",
-  "browser_scroll_dom",
-  "browser_select_option",
-  "browser_subagent",
-  "capture_browser_console_logs",
-  "capture_browser_screenshot",
-  "click_browser_pixel",
-  "command_status",
   "define_subagent",
-  "execute_browser_javascript",
   "find_by_name",
   "finish",
   "generate_image",
   "grep_search",
   "invoke_subagent",
-  "list_browser_pages",
   "list_dir",
-  "list_permissions",
-  "list_resources",
-  "manage_inbox",
   "manage_subagents",
   "manage_task",
-  "multi_replace_file_content",
   "notebook_edit",
-  "notebook_execution",
-  "open_browser_url",
-  "read_browser_page",
-  "read_resource",
   "read_url_content",
   "replace_file_content",
   "run_command",
   "schedule",
   "search_web",
-  "sed_file",
-  "send_command_input",
   "send_message",
   "view_file",
   "wait",
-  "wait_5_seconds",
   "write_to_file",
 ]
 
@@ -98,7 +54,7 @@ TaskUpdate = ["manage_task"]
 TaskStop = ["manage_task"]
 Skill = []
 ToolSearch = []
-ListMcpResourcesTool = ["list_resources"]
+ListMcpResourcesTool = []
 TodoWrite = []
 Monitor = []
 ListAgents = []
