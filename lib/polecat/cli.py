@@ -968,12 +968,6 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
-#: Default agent persona per client. Used when neither --agent nor --no-agent is given.
-DEFAULT_AGENTS: dict[str, str] = {
-    "claude": "james",
-    "agy": "james",
-}
-
 
 def _agent_args(extra_args, agent=None):
     """`--agent <agent_name>`, or nothing when no agent was specified."""
@@ -1531,13 +1525,13 @@ def main():
     "--agent",
     "-a",
     default=None,
-    help="Agent persona to run inside container (defaults to 'james' for claude and agy).",
+    help="Agent persona to run inside container (default: none).",
 )
 @click.option(
     "--no-agent",
     is_flag=True,
     default=False,
-    help="Run without an agent persona, disabling the default agent.",
+    help="Run without an agent persona.",
 )
 @click.option(
     "--output-format",
@@ -1594,7 +1588,7 @@ def run(
     elif agent is not None:
         effective_agent = agent
     else:
-        effective_agent = DEFAULT_AGENTS.get(agent_cmd)
+        effective_agent = None
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent)
 
