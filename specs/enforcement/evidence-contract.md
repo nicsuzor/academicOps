@@ -172,7 +172,7 @@ framework forbids. The obligation is carried two ways: (1) **agentically** —
 `orchestrate`'s `Stop`/`SubagentStop` reminder instructs every stopping agent to
 hand back with checkable evidence or a stated failure reason
 (`plugins/orchestrate/hooks/messages/honesty.md`), returning `block()` so the harness sets `stop_hook_active` to prevent duplicate re-entry; its receiver-side
-half fires on `PostToolBatch` and tells the caller to send back a report that
+half fires on `PostToolBatch` (spec: [subagent-return-hook-spec.md](subagent-return-hook-spec.md)) and tells the caller to send back a report that
 arrived without proof (`plugins/orchestrate/hooks/messages/hearsay.md`). `rbg`'s stop-side rule-check gate (`Stop`/`SubagentStop`) is the one
 that withholds a stop, and it directs the agent to present checkable evidence for
 rule compliance specifically — narrower than the general handback shape. And

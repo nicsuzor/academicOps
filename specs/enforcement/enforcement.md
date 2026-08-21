@@ -177,5 +177,6 @@ answer, not one to settle before them.
 - [workflow.md](workflow.md) — the workflow shape and the review-depth call.
 - [sign-off.md](sign-off.md) — workflow-level review, instantiated as the PR pipeline.
 - [evidence-contract.md](evidence-contract.md) — the universal claim-evidence shape.
+- [subagent-return-hook-spec.md](subagent-return-hook-spec.md) — the deterministic subagent-return evidence check hook specification.
 - [auto-mode-classifier.md](auto-mode-classifier.md) — the harness's own per-action classifier.
 - [agent-authority.md](../agents/agent-authority.md) — the frontmatter permission schema the grants above are expressed in, and the harness defect that forces four core agents to omit `tools` rather than lose MCP access.
