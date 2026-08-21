@@ -88,7 +88,6 @@ claude --agent jim    → dispatches by bash into agy
 ### B. Make the agy invocation non-negotiable
 
 4. Re-enable `plugins/ida/agents/agy.md` (drop `.disable`) and correct it:
-   - `--output-format stream-json` (**F3** — the current text is wrong).
    - `--agent james` as the default (**F10** — already correct, and stays correct
      under the chosen naming).
    - Sandbox rule made conditional: **inside** a polecat container, no `--sandbox`
@@ -115,8 +114,7 @@ claude --agent jim    → dispatches by bash into agy
 9. Rewrite `plugins/orchestrate/agents/pc.md`:
    - **Detached** — `tmux new-session -d -s "$NAME" "<polecat run …>"`; returns
      immediately with the session name and the host-side log path.
-   - **Headless synchronous stream** — foreground, blocking,
-     `--output-format stream-json`, `--prompt` last, explicit timeout.
+   - **Headless synchronous stream** — foreground, blocking, `--prompt` last, explicit timeout.
    - Fix **F11** (command built, never run) and **F4** (`-o` mis-described as a
      headless switch).
 

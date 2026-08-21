@@ -40,7 +40,6 @@ The wrapper:
 | -------------------------------- | --------------------------------------------------------------------- |
 | `-p, --print`                    | Non-interactive mode - print response and exit                        |
 | `-d, --debug [filter]`           | Debug with category filtering (e.g., `api,hooks` or `!statsig,!file`) |
-| `--output-format <format>`       | Output: `text` (default), `json`, `stream-json`                       |
 | `--verbose`                      | Override verbose mode                                                 |
 | `--model <model>`                | Specify model (`sonnet`, `opus`)                                      |
 | `--permission-mode <mode>`       | `default`, `acceptEdits`, `bypassPermissions`, `plan`                 |
@@ -57,14 +56,13 @@ The wrapper:
 
 ## Gemini CLI Flags
 
-| Flag                           | Purpose                               |
-| ------------------------------ | ------------------------------------- |
-| `<query>` (positional)         | Non-interactive prompt                |
-| `-d, --debug`                  | Enable debug mode                     |
-| `-y, --yolo`                   | Auto-approve all tool actions         |
-| `--approval-mode <mode>`       | `default`, `auto_edit`, `yolo`        |
-| `-o, --output-format <format>` | Output: `text`, `json`, `stream-json` |
-| `-m, --model <model>`          | Specify model                         |
+| Flag                     | Purpose                        |
+| ------------------------ | ------------------------------ |
+| `<query>` (positional)   | Non-interactive prompt         |
+| `-d, --debug`            | Enable debug mode              |
+| `-y, --yolo`             | Auto-approve all tool actions  |
+| `--approval-mode <mode>` | `default`, `auto_edit`, `yolo` |
+| `-m, --model <model>`    | Specify model                  |
 
 **Session history**: `~/.gemini/history/` (per-project subdirs)
 
@@ -73,20 +71,14 @@ The wrapper:
 ### Minimal (stdout/stderr only)
 
 ```bash
-scripts/claude-headless.sh -p "prompt" --output-format json 2>&1 | tee output.log
+scripts/claude-headless.sh -p "prompt" 2>&1 | tee output.log
 ```
 
 ### With debug logs
 
 ```bash
-scripts/claude-headless.sh -p "prompt" -d --output-format json 2>&1 | tee output.log
+scripts/claude-headless.sh -p "prompt" -d 2>&1 | tee output.log
 # Debug logs written to ~/.claude/debug/{session-uuid}.txt
-```
-
-### Streaming JSON
-
-```bash
-scripts/claude-headless.sh -p "prompt" --output-format stream-json 2>&1 | tee stream.jsonl
 ```
 
 ## Artifact Structure

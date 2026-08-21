@@ -47,13 +47,10 @@ a timeout of 5 minutes for simple work, 20 for complex.
 HEAD=$(git rev-parse HEAD)
 NAME="run-<slug>"
 uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
-  -p <project> -s "$NAME" --base "$HEAD" -o stream-json \
+  -p <project> -s "$NAME" --base "$HEAD" \
   --prompt '<prompt>'
 ```
 
-- `-o` / `--output-format` takes `text`, `json`, or `stream-json` — it is not a
-  headless switch, and headless is already implied for an `agy` dispatch with no
-  interactive flag. Use `stream-json` so events reach the log as they happen.
 - `--prompt` **must be last**: everything after it is part of the prompt.
 - **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop waiting for output. Your native harness tools will handle the output for you.
 

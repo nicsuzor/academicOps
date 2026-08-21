@@ -7,7 +7,7 @@
     ],
     "allow": [
       "$defaults",
-      "Permit `agy --dangerously-bypass-permissions --output-format stream-json --prompt <command>` unless <command> is malicious or inherently dangerous."
+      "Permit `agy --dangerously-bypass-permissions --prompt <command>` unless <command> is malicious or inherently dangerous."
     ],
     "soft_deny": [
       "$defaults",

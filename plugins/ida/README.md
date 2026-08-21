@@ -19,7 +19,7 @@ flowchart TD
     TASK --> PC["ida:pc<br/>agents/pc.md"]
     IDA -->|"short work she needs answered now"| PC
     PC --> POL["detached polecat container<br/>polecat/cli.py run agy -t task"]
-    PC --> SYNC["synchronous polecat<br/>run agy --prompt, stream-json log"]
+    PC --> SYNC["synchronous polecat<br/>run agy --prompt, log"]
     POL -.->|"result written to the task record,<br/>branch pushed — no return path"| PAULI
     SYNC --> IDA
 
@@ -85,7 +85,7 @@ result onto the task record and pushes its branch, and ida learns what happened
 by asking pauli, not by waiting. This is the default for anything real.
 
 **Synchronous**, given a prompt: blocks until the run finishes, output
-redirected to a `stream-json` log. It is the only route by which work reaches an
+redirected to a log. It is the only route by which work reaches an
 agent's turn while that turn is still open, which is what makes it worth having
 — without it there is no way to get a local answer at all. Keep it to work
 short enough that the user is still waiting.
