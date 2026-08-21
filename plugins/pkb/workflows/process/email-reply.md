@@ -31,6 +31,14 @@ Agent drafts, user sends — never send autonomously.
 3. Create a draft via the reply tool — **never send**.
 4. Task stays `active` until the user confirms it's sent.
 
+## Immediate PKB task update on discovery
+
+When reading correspondence or thread history, if the exchange reveals new information — arrival of a commitment, resolution (acceptance, refusal, cancellation), or changed constraint (deadline moved, assignee changed):
+
+1. **Update the target task node immediately**, whatever else the run is doing. Update `status`, `due`, `assignee`, or body notes on the gating task node.
+2. **Create a task node if none exists** for newly discovered obligations (`pkb__create_task` with a parent). Prose in drafts or notes is not a record.
+3. **Do not defer the write** to the end of the session.
+
 ## Complexity Routing
 
 | Type                   | Action                                      |

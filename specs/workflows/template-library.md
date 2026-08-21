@@ -27,3 +27,4 @@ A short, clearly-labelled markdown file a smart agent reads and composes **in-co
 4. **Declared stakes.** Gate templates state the door-type/conditions they exist for and their skip-conditions, so composition proportionate-to-stakes is legible, not folk knowledge.
 5. **Revisable baselines.** Templates are standardised work, not law: versioned, improved from execution feedback (dogfooding, /learn findings), with the index as the single registration point.
 6. **Authoring bar.** Template prose follows the authoring discipline (intent + AC, no micro-scripting) and is reviewed by `/craft` before registration.
+7. **Immediate External Discovery Propagation.** Workflows that ingest external communications (email triage, capture, reply) must require immediate write-back to gating PKB task nodes upon discovery (creation, status update, date or assignee changes), rather than deferring propagation to wrap-up summaries or daily documents.
