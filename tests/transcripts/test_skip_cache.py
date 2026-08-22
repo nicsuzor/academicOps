@@ -292,3 +292,37 @@ def test_recent_filter_excludes_files_newer_than_15_minutes(
     assert runner.main() == 0
     assert just_right in processed
     assert too_new in processed
+
+
+def test_worker_processes_session_with_only_subagents(tmp_path: Path) -> None:
+    """Worker function processes sessions where trunk events are empty but subagents exist."""
+    trunk = tmp_path / f"{PARENT_SESSION_ID}.jsonl"
+    trunk.write_text("", encoding="utf-8")
+    subagents = tmp_path / PARENT_SESSION_ID / "subagents"
+    subagents.mkdir(parents=True)
+    shutil.copy(SUBAGENT_FIXTURE, subagents / "agent-a270f5ac9ef8b3a95.jsonl")
+
+    output_dir = tmp_path / "sessions"
+    output_dir.mkdir(exist_ok=True)
+
+    cache_key, fp, ok = runner._process_single_session_worker((trunk, output_dir, False))
+    assert ok is True
+    assert cache_key == str(trunk)
+    assert fp == source_fingerprint(runner.session_source_files(trunk))
+    assert list(output_dir.glob("transcripts/**/*.md"))
+
+
+def test_skip_cache_atomic_save(tmp_path: Path) -> None:
+    """SkipCache.save writes atomically and does not leave temporary files behind."""
+    cache_file = tmp_path / "cache.json"
+    cache = SkipCache(cache_file)
+    key = "test_key"
+    fp = "test_fp"
+
+    cache.mark_empty(key, fp)
+    assert cache_file.exists()
+    assert not cache_file.with_suffix(".tmp").exists()
+
+    data = json.loads(cache_file.read_text(encoding="utf-8"))
+    assert key in data
+    assert data[key]["fingerprint"] == fp
