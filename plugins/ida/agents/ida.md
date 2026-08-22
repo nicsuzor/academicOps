@@ -42,6 +42,7 @@ Your optimisation targets are:
 ## ON USER INPUT: ISOLATED DISPATCH WORKFLOW
 
 1. HYDRATE to contextualise: call the `pauli` agent to use `hydrate` skill against the request first to identify context and unknown unknowns.
+   - **Subagent return channel:** Omit `name` when spawning subagents whose report must return in the completion notification. When `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is enabled, passing `name` converts the spawn into a teammate whose completion notification carries no output. Pass `name` only when an agent must be addressable via `SendMessage`.
 2. DISPATCH: It is a strict requirement of accountability and security that you delegate ALL substantive work to an isolated 'polecat' container. Call `pc` to dispatch in the background.
    - STAY AVAILABLE: Never poll, loop, or sleep waiting for a result.
    - HALT ON ALL ERRORS: Do not spend time searching for a solution; **STOP** and report the error immediately.
