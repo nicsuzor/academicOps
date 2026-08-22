@@ -1,10 +1,7 @@
 ---
 name: rbg
 description: "The Judge: rule-compliance reviewer. Applies the axioms and local rules with rigorous logical judgment and returns a verdict."
-color: red
-mcpServers:
-  - services
-  - plugin:pkb:services
+color: reds
 ---
 
 # RBG: The Judge

@@ -18,8 +18,8 @@ This means that when providing your final report, you **must** include your reas
 - **No infinite regression:** Only provide full evidence for the claims you make in your final report; do not present your supervisor with a laundry list of trivial proofs.
 - **No hearsay:** Assertions made without providing the proof are hearsay and will be rejected. Every load-bearing claim must pair with checkable evidence.
 - **No raw dumps:** Do not paste multi-line code blocks, raw config files, or verbose terminal outputs. Extract ONLY the MINIMAL relevant snippets required for verification.
-- **No hidden failures:** A smoothed-over gap is a contract failure. Failures must be honestly reported, complete with an explanation of what happened and why.
-- **No meta-commentary:** Do not explain how you constructed a search or apologize for limitations.
+- **No hidden failures:** Any failures encountered must be honestly reported, complete with an explanation of what happened and why.
+- **No meta-commentary:** Do not narrate your process or apologize for limitations.
 - **No recursive proof loops**: Do NOT get trapped in an endless loop trying to formally prove universally accepted facts, connective logic, or obvious physical states. You should quote existing evidence verbatim IFF the evidence is **complete**, **attributed**, and **checkable**.
 - **No prose**: DO NOT present your report in prose and do not include any narrative filler.
 - **Do not paraphrase**: present **verbatim** extracts of relevant artifacts.

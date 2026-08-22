@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn
@@ -180,55 +181,126 @@ def resolve_rules_dir(config):
     return path
 
 
-def resolve_cope_evaluator(config):
-    """cope's evaluator env for the container, from the operator's polecat.yaml
-    `cope:` block — a configured, intentional path rather than requiring the
-    operator to have exported COPE_EVALUATOR_* in the invoking shell.
-
-    Each variable's host env value, if set, already wins in get_env_forwards()
-    via FORWARDED_ENV; this only fills in what the host environment left
-    unset. No default: an unconfigured session forwards nothing and cope's
-    in-container evaluation stays off, exactly as evaluator.resolve() already
-    treats a fully-absent configuration. A value that lands unusable (a bad
-    protocol, a partial set) is not this layer's concern to validate — it
-    reaches the same fail-loud-once-per-session degradation report that a
-    misconfigured ambient environment already gets (plugins/rbg/hooks/
-    evaluator.py, resolve()); duplicating that check here would be a second
-    copy of rules this plugin does not own.
-    """
-    cope_cfg = config.get("cope") or {}
-    mapping = {
-        "COPE_EVALUATOR_URL": "evaluator_url",
-        "COPE_EVALUATOR_PROTOCOL": "evaluator_protocol",
-        "COPE_EVALUATOR_MODEL": "evaluator_model",
-        "COPE_EVALUATOR_API_KEY": "evaluator_api_key",
-        "COPE_EVALUATOR_TIMEOUT": "evaluator_timeout",
-    }
+def _resolve_section_env(
+    config: dict | None, section: str, mapping: Mapping[str, str | list[str]]
+) -> dict[str, str]:
+    """Map keys from a config section to environment variables in a DRY way."""
+    if not config or not isinstance(config, dict):
+        return {}
+    section_data = config.get(section)
+    if not section_data or not isinstance(section_data, dict):
+        return {}
     env = {}
-    for env_key, cfg_key in mapping.items():
-        value = cope_cfg.get(cfg_key)
-        if value not in (None, ""):
-            env[env_key] = str(value)
+    for cfg_key, env_targets in mapping.items():
+        val = section_data.get(cfg_key)
+        if val not in (None, ""):
+            if isinstance(env_targets, str):
+                env[env_targets] = str(val)
+            else:
+                for target in env_targets:
+                    env[target] = str(val)
     return env
+
+
+COPE_CONFIG_MAP = {
+    "evaluator_url": "COPE_EVALUATOR_URL",
+    "evaluator_protocol": "COPE_EVALUATOR_PROTOCOL",
+    "evaluator_model": "COPE_EVALUATOR_MODEL",
+    "evaluator_api_key": "COPE_EVALUATOR_API_KEY",
+    "evaluator_timeout": "COPE_EVALUATOR_TIMEOUT",
+}
+
+TELEMETRY_CONFIG_MAP = {
+    "endpoint": ["BETA_TRACING_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT"],
+    "trace_endpoint": "GENAI_ENGINE_TRACE_ENDPOINT",
+    "api_key": "GENAI_ENGINE_API_KEY",
+    "protocol": [
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+    ],
+    "trace_protocol": [
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+    ],
+    "resource_attributes": "OTEL_RESOURCE_ATTRIBUTES",
+    "task_id": "GENAI_ENGINE_TASK_ID",
+}
+
+GENAI_CONFIG_MAP = {
+    "trace_endpoint": "GENAI_ENGINE_TRACE_ENDPOINT",
+    "api_key": "GENAI_ENGINE_API_KEY",
+    "protocol": [
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+    ],
+    "trace_protocol": [
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+    ],
+    "task_id": "GENAI_ENGINE_TASK_ID",
+}
+
+
+def resolve_cope_evaluator(config):
+    """cope's evaluator env for the container, from the operator's polecat.yaml `cope:` block."""
+    return _resolve_section_env(config, "cope", COPE_CONFIG_MAP)
 
 
 def resolve_telemetry(config):
-    """Resolve OpenTelemetry config from polecat.yaml `telemetry:` block.
+    """Resolve OpenTelemetry and GenAI engine config from polecat.yaml `telemetry:` block.
 
-    Variables defined here (endpoints, resource attributes) are the only runtime
-    telemetry configuration passed to the container. All other standard tracing
-    options are built into the Dockerfile itself. No fallback to host environment.
+    Variables defined here (endpoints, resource attributes, api keys, trace protocols)
+    are the only runtime telemetry configuration passed to the container. All other
+    standard tracing options are built into the Dockerfile itself. No fallback to host
+    environment.
     """
-    telemetry = config.get("telemetry") or {}
     env = {}
-    if telemetry.get("endpoint"):
-        env["BETA_TRACING_ENDPOINT"] = str(telemetry["endpoint"])
-        env["OTEL_EXPORTER_OTLP_ENDPOINT"] = str(telemetry["endpoint"])
-    if telemetry.get("trace_endpoint"):
-        env["GENAI_ENGINE_TRACE_ENDPOINT"] = str(telemetry["trace_endpoint"])
-    if telemetry.get("resource_attributes"):
-        env["OTEL_RESOURCE_ATTRIBUTES"] = str(telemetry["resource_attributes"])
+    env.update(_resolve_section_env(config, "telemetry", TELEMETRY_CONFIG_MAP))
+    env.update(_resolve_section_env(config, "genai", GENAI_CONFIG_MAP))
     return env
+
+
+DEFAULT_PORTS = ("8080",)
+
+
+def _format_port_spec(spec: str | int) -> str:
+    """Format a port specification for docker run -p.
+
+    A bare integer or numeric string (e.g. 8080 or '8080') maps dynamically:
+    `docker run -p 8080` publishes container port 8080 to an ephemeral host port.
+    An explicit mapping (e.g. '8080:8080', '127.0.0.1::8080', '127.0.0.1:8080:8080')
+    is passed directly.
+    """
+    return str(spec).strip()
+
+
+def resolve_ports(
+    config: dict | None, cli_ports: tuple[str, ...] | list[str] = ()
+) -> tuple[str, ...]:
+    """Resolve port specifications from CLI options, falling back to config or default.
+
+    Checks CLI `cli_ports` first. If empty, checks `docker.ports` or `ports` in config.
+    If both are empty/unset, defaults to ('8080',) so container port 8080 is always
+    offered as a dynamic host port.
+    """
+    if cli_ports:
+        return tuple(cli_ports)
+    if config and isinstance(config, dict):
+        cfg_ports = config.get("docker", {}).get("ports")
+        if cfg_ports is None:
+            cfg_ports = config.get("ports")
+        if cfg_ports is not None:
+            if isinstance(cfg_ports, (list, tuple)):
+                resolved = tuple(str(p) for p in cfg_ports if p not in (None, ""))
+                if resolved:
+                    return resolved
+            elif isinstance(cfg_ports, (str, int)) and str(cfg_ports).strip():
+                return (str(cfg_ports).strip(),)
+    return DEFAULT_PORTS
 
 
 def resolve_git_identity(config):
@@ -266,6 +338,25 @@ def resolve_git_identity(config):
     }
 
 
+CONFIG_ONLY_ENV_KEYS = frozenset(
+    {
+        "GIT_AUTHOR_NAME",
+        "GIT_AUTHOR_EMAIL",
+        "GIT_COMMITTER_NAME",
+        "GIT_COMMITTER_EMAIL",
+        "GENAI_ENGINE_TRACE_ENDPOINT",
+        "GENAI_ENGINE_API_KEY",
+        "GENAI_ENGINE_TASK_ID",
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "BETA_TRACING_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_RESOURCE_ATTRIBUTES",
+    }
+)
+
+
 def get_env_forwards(config=None):
     """Build the environment forwarded into the container."""
     config = config or {}
@@ -289,9 +380,8 @@ def get_env_forwards(config=None):
             if os.environ.get(key):
                 env[key] = os.environ[key]
 
-    git_keys = {"GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"}
     for key in FORWARDED_ENV:
-        if key in git_keys:
+        if key in CONFIG_ONLY_ENV_KEYS:
             continue
         if os.environ.get(key):
             env[key] = os.environ[key]
@@ -878,12 +968,6 @@ def _resolve_workspace(repo_dir, project, polecat_home):
 CLAUDE_SESSION_PATH = "/home/worker/.claude/projects/-workspace"
 AGY_SESSION_PATH = "/home/worker/.gemini/tmp/workspace"
 
-#: Default agent persona per client. Used when neither --agent nor --no-agent is given.
-DEFAULT_AGENTS: dict[str, str] = {
-    "claude": "james",
-    "agy": "james",
-}
-
 
 def _agent_args(extra_args, agent=None):
     """`--agent <agent_name>`, or nothing when no agent was specified."""
@@ -905,35 +989,37 @@ _GO_DURATION_RE = re.compile(rf"^[+-]?(\d+(\.\d+)?({_GO_DURATION_UNITS}))+$")
 _BARE_NUMBER_RE = re.compile(r"^\d+(\.\d+)?$")
 
 
-def _print_timeout_args():
-    """`--print-timeout <duration>`, or nothing when the operator set no timeout.
+def resolve_print_timeout(config=None):
+    """Resolve print timeout duration from polecat config (polecat.yaml).
 
-    One definition for every headless agy branch — the seeded-from-task
-    dispatch, the `--prompt` dispatch and the positional-prompt dispatch all
-    read the env var through here, so raising the timeout works wherever it is
-    set rather than only on the path that happened to implement it.
-
-    A bare number is read as seconds and given the unit Go requires, rather than
-    being forwarded verbatim into a run-killing parse error. Anything that is
-    neither a number nor a Go duration is dropped with a warning: shipping it
-    would fail the whole run at flag parsing, and dropping it silently would
-    leave the operator believing a timeout they set is in force.
-
-    claude has no equivalent flag (`claude --help` lists no timeout option), so
-    this applies to agy only.
+    Reads `timeout` from polecat config.
+    No host environment fallback. Bare numbers are normalised to seconds (e.g. 900 -> 900s).
+    A missing timeout returns None. An invalid format is a hard failure (fail fast).
     """
-    raw = os.environ.get("POLECAT_PRINT_TIMEOUT")
-    if not raw or not raw.strip():
-        return []
-    value = raw.strip()
+    config = config or {}
+    raw = config.get("timeout")
+    if raw is None:
+        return None
+
+    value = str(raw).strip()
+    if not value:
+        return None
+
     if _BARE_NUMBER_RE.match(value):
-        value = f"{value}s"
-    elif not _GO_DURATION_RE.match(value):
-        click.echo(
-            f"Warning: ignoring POLECAT_PRINT_TIMEOUT={raw!r} — not a Go duration "
-            "(e.g. '30m', '1h30m', '900s'); the run uses the agent's default timeout.",
-            err=True,
+        return f"{value}s"
+    if not _GO_DURATION_RE.match(value):
+        fail(
+            f"invalid timeout {raw!r} in polecat config (polecat.yaml). "
+            "Must be a Go duration (e.g. '30m', '1h30m', '900s') or bare seconds. "
+            "There is no default."
         )
+    return value
+
+
+def _print_timeout_args(config=None):
+    """`--print-timeout <duration>`, or nothing when the operator set no timeout."""
+    value = resolve_print_timeout(config)
+    if not value:
         return []
     return ["--print-timeout", value]
 
@@ -947,6 +1033,7 @@ def _build_inner_command(
     agent=None,
     output_format=None,
     prompt=None,
+    config=None,
 ):
     """The command run inside the container, and the container path that agent
     writes its session state to.
@@ -1049,7 +1136,7 @@ def _build_inner_command(
             # agy's `--prompt` is an alias for `--print`, so this is headless too
             # and honours the same timeout. The flag must precede the prompt-
             # bearing flag with nothing between it and its value.
-            inner_cmd.extend([*_print_timeout_args(), "--prompt", prompt])
+            inner_cmd.extend([*_print_timeout_args(config), "--prompt", prompt])
         elif agent_cmd == "claude":
             inner_cmd.append(prompt)
         elif extra_args:
@@ -1058,10 +1145,10 @@ def _build_inner_command(
         seeded_prompt = f"/pull {task}"
         if agent_cmd == "agy":
             # `-t` is the canonical production dispatch, so the operator's
-            # timeout has to reach it: reading the env var only on the
+            # timeout has to reach it: reading the config only on the
             # extra_args branch left every seeded run pinned to agy's 5m
-            # default no matter what POLECAT_PRINT_TIMEOUT said.
-            inner_cmd.extend([*_print_timeout_args(), "--print", f"/pull {task}"])
+            # default.
+            inner_cmd.extend([*_print_timeout_args(config), "--print", f"/pull {task}"])
         else:
             inner_cmd.append(f"/pull {task}")
     elif extra_args:
@@ -1085,7 +1172,7 @@ def _build_inner_command(
                 # consumes the next token whatever it is, so an interposed flag
                 # becomes the prompt and the real one is silently dropped.
                 inner_cmd.extend(
-                    [*_print_timeout_args(), "--print", extra_args[0], *extra_args[1:]]
+                    [*_print_timeout_args(config), "--print", extra_args[0], *extra_args[1:]]
                 )
             else:
                 inner_cmd.extend(extra_args)
@@ -1132,6 +1219,7 @@ def _build_docker_argv(
     session_id=None,
     with_sessions=False,
     sessions_base=None,
+    ports=(),
 ):
     """The full `docker run` argv, and the environment to launch it with.
 
@@ -1218,6 +1306,9 @@ def _build_docker_argv(
         transcripts_path.mkdir(parents=True, exist_ok=True)
         cmd.extend(["-v", f"{transcripts_path}:/sessions/transcripts:ro"])
         env["AOPS_SESSIONS"] = "/sessions"
+
+    for port in ports:
+        cmd.extend(["-p", _format_port_spec(port)])
 
     cmd.extend(docker_args)
     # Valueless `-e NAME` flags: the values travel in `run_env`, not on argv.
@@ -1501,13 +1592,13 @@ def main():
     "--agent",
     "-a",
     default=None,
-    help="Agent persona to run inside container (defaults to 'james' for claude and agy).",
+    help="Agent persona to run inside container (default: none).",
 )
 @click.option(
     "--no-agent",
     is_flag=True,
     default=False,
-    help="Run without an agent persona, disabling the default agent.",
+    help="Run without an agent persona.",
 )
 @click.option(
     "--output-format",
@@ -1517,6 +1608,14 @@ def main():
 @click.option(
     "--prompt",
     help="Prompt string for print/headless mode.",
+)
+@click.option(
+    "--port",
+    "--publish",
+    "-P",
+    "ports",
+    multiple=True,
+    help="Publish container port(s) to dynamic host port (defaults to '8080'). Bare port (e.g. '8080') maps dynamically to an ephemeral host port. Mappings (e.g. 'HOST:CONTAINER' or '127.0.0.1::8080') pass directly.",
 )
 @click.option(
     "--quiet",
@@ -1543,6 +1642,7 @@ def run(
     output_format,
     prompt,
     quiet,
+    ports,
     extra_args,
 ):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
@@ -1555,7 +1655,7 @@ def run(
     elif agent is not None:
         effective_agent = agent
     else:
-        effective_agent = DEFAULT_AGENTS.get(agent_cmd)
+        effective_agent = None
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent)
 
@@ -1662,6 +1762,7 @@ def run(
             agent=effective_agent,
             output_format=output_format,
             prompt=prompt,
+            config=config,
         )
 
         env["AOPS_POLECAT_CONTAINER"] = "1"
@@ -1686,6 +1787,10 @@ def run(
         if task_identifier is not None:
             env["GENAI_ENGINE_TASK_ID"] = task_identifier
             env["OTEL_SERVICE_NAME"] = task_identifier
+        elif "GENAI_ENGINE_TASK_ID" in env:
+            env["OTEL_SERVICE_NAME"] = env["GENAI_ENGINE_TASK_ID"]
+
+        effective_ports = resolve_ports(config, ports)
 
         cmd, run_env = _build_docker_argv(
             image=image,
@@ -1701,6 +1806,7 @@ def run(
             session_id=session_id,
             with_sessions=has_sessions_access,
             sessions_base=sessions_base,
+            ports=effective_ports,
         )
 
         if not quiet:

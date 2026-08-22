@@ -1369,8 +1369,9 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _complete_turn(state, config, transcript_path, now_ns)
-        # Clear the cached path so the new turn resolves it fresh below
+        # Clear the cached path and any lingering pending tools so the new turn starts clean
         state.pop("transcript_path", None)
+        state.pop("pending_tools", None)
 
     # Count human messages for LLM span extraction.
     # UserPromptSubmit fires before Claude processes the prompt, so the new

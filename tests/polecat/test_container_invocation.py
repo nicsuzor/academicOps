@@ -231,10 +231,6 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--agent",
-        "james",
-        "--output-format",
-        "stream-json",
         "--print",
         "/pull task_abc123",
     ]
@@ -247,8 +243,8 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
-def test_default_agent_is_james_when_unspecified(client, tmp_path, monkeypatch):
-    """When no agent is named, --agent james is passed to the container by default."""
+def test_default_agent_is_unspecified(client, tmp_path, monkeypatch):
+    """When no agent is named, no --agent flag is passed to the container by default."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -256,8 +252,7 @@ def test_default_agent_is_james_when_unspecified(client, tmp_path, monkeypatch):
     )
     inner = _inner_cmd(cmd)
 
-    assert inner.count("--agent") == 1
-    assert inner[inner.index("--agent") + 1] == "james"
+    assert "--agent" not in inner
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
@@ -650,8 +645,6 @@ def test_agy_output_format_and_prompt_options(monkeypatch, tmp_path):
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--agent",
-        "james",
         "--output-format",
         "stream-json",
         "--prompt",
@@ -681,8 +674,6 @@ def test_agy_output_format_with_positional_prompt(monkeypatch, tmp_path):
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--agent",
-        "james",
         "--output-format",
         "stream-json",
         "--print",
@@ -713,8 +704,6 @@ def test_claude_output_format_and_prompt_options(monkeypatch, tmp_path):
         "claude",
         "--dangerously-skip-permissions",
         "--setting-sources=user,project",
-        "--agent",
-        "james",
         "--output-format",
         "json",
         "hello claude",
@@ -733,3 +722,157 @@ def test_dangerously_skip_permissions_is_passed_inside_container(client, tmp_pat
     inner = _inner_cmd(cmd)
 
     assert "--dangerously-skip-permissions" in inner
+
+
+# --------------------------------------------------------------------------
+# Port publishing / dynamic host port mapping
+# --------------------------------------------------------------------------
+
+
+def test_dockerfile_exposes_port_8080():
+    """Dockerfile must declare EXPOSE 8080."""
+    dockerfile_path = _REPO_ROOT / "Dockerfile"
+    content = dockerfile_path.read_text()
+    assert re.search(r"^\s*EXPOSE\s+8080\b", content, re.MULTILINE), (
+        "Dockerfile must declare 'EXPOSE 8080'"
+    )
+
+
+def test_default_polecat_run_publishes_port_8080(tmp_path, monkeypatch):
+    """Default polecat run with no CLI flags or config publishes port 8080 dynamically."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo")],
+    )
+
+    assert "-p" in cmd
+    assert cmd[cmd.index("-p") + 1] == "8080"
+
+
+@pytest.mark.parametrize("flag", ["--port", "--publish", "-P"])
+def test_port_bare_number_maps_dynamically(flag, tmp_path, monkeypatch):
+    """A bare port number passes dynamically (-p <port>) without loopback restriction."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), flag, "3000"],
+    )
+
+    assert "-p" in cmd
+    assert cmd[cmd.index("-p") + 1] == "3000"
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "3000:3000",
+        "127.0.0.1::8080",
+        "127.0.0.1:8080:8080",
+        "0.0.0.0:8080:8080",
+    ],
+)
+def test_port_explicit_mapping_is_passed_verbatim(spec, tmp_path, monkeypatch):
+    """Explicit mappings (HOST:CONTAINER, IP::CONTAINER, IP:HOST:CONTAINER) pass directly."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--port", spec],
+    )
+
+    assert "-p" in cmd
+    assert cmd[cmd.index("-p") + 1] == spec
+
+
+def test_multiple_ports_are_published_in_order(tmp_path, monkeypatch):
+    """Multiple --port / -P options produce corresponding -p flags in order."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+            "--port",
+            "8080",
+            "-P",
+            "3000:3000",
+            "--publish",
+            "9000",
+        ],
+    )
+
+    p_indices = [i for i, arg in enumerate(cmd) if arg == "-p"]
+    assert len(p_indices) == 3
+    assert [cmd[i + 1] for i in p_indices] == [
+        "8080",
+        "3000:3000",
+        "9000",
+    ]
+
+
+def test_ports_from_config_file(tmp_path, monkeypatch):
+    """Config `docker.ports` or `ports` publishes ports when no CLI flag is passed."""
+    _base_mocks(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"},
+            "docker": {"ports": [8080, "3000:3000"]},
+        },
+    )
+    captured = []
+
+    def fake_run(cmd, *a, **kw):
+        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+            captured.append((list(cmd), kw.get("env")))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    monkeypatch.setattr(cli, "_seed_confirmed", lambda session_dir, task: True)
+
+    result = CliRunner().invoke(cli.main, ["run", "claude", "-d", str(tmp_path / "repo")])
+    assert result.exit_code == 0, result.output
+    docker_cmd, _ = captured[0]
+
+    p_indices = [i for i, arg in enumerate(docker_cmd) if arg == "-p"]
+    assert len(p_indices) == 2
+    assert [docker_cmd[i + 1] for i in p_indices] == [
+        "8080",
+        "3000:3000",
+    ]
+
+
+def test_cli_ports_override_config_ports(tmp_path, monkeypatch):
+    """CLI --port overrides config ports entirely."""
+    _base_mocks(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: {
+            "git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"},
+            "docker": {"ports": [8080]},
+        },
+    )
+    captured = []
+
+    def fake_run(cmd, *a, **kw):
+        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+            captured.append((list(cmd), kw.get("env")))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    monkeypatch.setattr(cli, "_seed_confirmed", lambda session_dir, task: True)
+
+    result = CliRunner().invoke(
+        cli.main,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--port", "9090"],
+    )
+    assert result.exit_code == 0, result.output
+    docker_cmd, _ = captured[0]
+
+    p_indices = [i for i, arg in enumerate(docker_cmd) if arg == "-p"]
+    assert len(p_indices) == 1
+    assert docker_cmd[p_indices[0] + 1] == "9090"

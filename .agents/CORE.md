@@ -64,3 +64,7 @@ make format         # ruff format + dprint fmt
 
 Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,
 JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for Python files.
+
+## Workspaces and worktrees
+
+- NEVER create git worktrees, clones, or scratch directories inside the repository or under `.agents/`. Use `$POLECAT_HOME/worktrees` instead.

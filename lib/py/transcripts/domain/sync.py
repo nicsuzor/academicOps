@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # A's push lands, and A's push is rejected non-fast-forward exactly as if it
 # had never pulled at all. Bounded retry closes that window. Kept small and
 # fixed (no backoff/sleep) so a contested cycle still finishes well inside the
-# 5-minute window the flock single-instance guard in repo-sync-cron.sh allows
+# 5-minute window the flock single-instance guard in session sync runner allows
 # before a slow run costs the next cycle entirely.
 _MAX_PUSH_ATTEMPTS = 3
 

@@ -8,7 +8,17 @@
   },
   "permissions": {
     "allow": [
-      "Bash(agy:*)"
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Agent(*)",
+      "Skill(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__*"
     ]
   },
   "projects": {

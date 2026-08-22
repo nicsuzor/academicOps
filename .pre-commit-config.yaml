@@ -24,3 +24,19 @@ repos:
         language: system
         types_or: [markdown, json, toml]
         pass_filenames: true
+
+  # Markdown linting (catches issues dprint doesn't fix, including H39)
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.17.2
+    hooks:
+      - id: markdownlint-cli2
+
+  # Block new orphan markdown files (Rule R5.6)
+  - repo: local
+    hooks:
+      - id: check-no-new-orphan-md
+        name: Check no new orphan markdown (R5.6)
+        entry: uv run python scripts/check_no_new_orphan_md.py
+        language: system
+        pass_filenames: false
+        always_run: true

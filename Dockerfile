@@ -413,6 +413,9 @@ COPY --chown=worker:worker --chmod=777 lib/polecat/entrypoint.sh /home/worker/en
 # no recursive walk is needed here.
 RUN chmod 777 /home/worker
 
+# Expose default container port 8080
+EXPOSE 8080
+
 # Default command and entrypoint
 ENTRYPOINT ["/home/worker/entrypoint.sh"]
 CMD ["/bin/bash"]

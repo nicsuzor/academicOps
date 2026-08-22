@@ -191,6 +191,29 @@ container teardown to grab it.
   which fails inside `sh -c` and presents as the same `no server running`
   symptom as the alias failure above. Spell the checkout path explicitly in
   anything that drives a session.
+- **An agy agent whose `tools:` frontmatter names an unregistered tool dies at
+  construction, and the pane does not say why.** The rendered failure is
+  `⚠ Agent execution terminated due to error.` plus an error ID; the actionable
+  message is in `agy-cli.log`
+  (`failed to resolve components: unknown component: tool "<name>" not found in
+  registry`). The registry is what the shipped image registers, which is
+  narrower than what agy documents — the container has no browser tools. Read
+  that log before treating a terminated agent as a boot, credential, or
+  workspace problem. The vocabulary contract is the `build/clients/agy.py`
+  section of [ARCHITECTURE.md](../ARCHITECTURE.md).
+- **An agy MCP call is recorded as `call_mcp_tool`, in the calling
+  conversation's own directory.** `transcript_full.jsonl` records it as an
+  ordinary tool call whose args carry `ServerName` and `ToolName`; there is no
+  distinct MCP event type to grep for. Each subagent gets its own
+  `agy-brain/<uuid>/`, so a call made by a delegate is absent from the parent's
+  transcript — enumerate every conversation directory in the session before
+  concluding a server was never reached.
+- **Headless `agy` abandons work at `--print-timeout` (default `5m0s`).** The
+  run reports `"status":"ERROR","error":"context canceled"` and exits `0`,
+  having left whatever it was doing unfinished and uncommitted. Any driving job
+  that edits files or rebuilds an image needs the flag set explicitly;
+  `duration_seconds` sitting just under the timeout is the tell that this,
+  rather than the work itself, is what failed.
 - **Enter key:** Always send `Enter` as a separate `send-keys` invocation
   after sending literal text with `-l`. Do not embed `\n` in the literal
   string.
