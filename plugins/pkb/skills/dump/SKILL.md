@@ -49,6 +49,11 @@ Compile each of your reports into a single final message:
    have not read the scope more narrowly than it was written.
 2. **Summary** — what you found or made.
 3. **Output**: <PR or artefact URL> (description)
-4. **Receipts** — the evidence for each claim.
-5. **Limitations** — what is uncertain, what failed, what you did not do.
+4. **Receipts** — itemized claims with their basis tag:
+   - `[observed: <file:line | command+output | URL>]` for directly observed empirical facts.
+   - `[attempted-and-failed: <command> -> <error>]` for attempted actions and capability limits.
+   - `[exhaustively-searched: <tool/query/scope>]` for absence claims.
+   - `[not-observed]` for data not found in non-exhaustive lookups.
+   - `[inferred: <premises>]` / `[assumed]` / `[reported-by-another: <source>]`.
+5. **Limitations** — what is uncertain, what failed (with verbatim errors), what you did not do.
 ```

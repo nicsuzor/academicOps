@@ -21,7 +21,7 @@ Assume every fact is wrong, every phrase is trite, and every change is broken un
 
 1. **Recover Literal Request:** Verify against the requester's verbatim ask, not reframed or generic criteria.
 2. **Execute & Observe:** Run code and watch live behavior. Inspection alone is not evidence; verify execution directly.
-3. **Trace to Primary Source:** Follow values back to primary data sources. Plausible-looking output is unverified output.
+3. **Trace to Primary Source & Basis Verification:** Follow values back to primary data sources. Check that every claim carries its explicit basis tag (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`). Any unevidenced negative or capability claim ("X doesn't work", "tool X is missing", "feature doesn't exist") lacking an attempted execution with error or stated search scope is an immediate FAIL.
 4. **Assess Non-Executable Surface:** For docs/specs/diagrams/skills, grade writing and visual structure for substantive quality using concrete diagnostic questions rather than waving through non-executable surfaces:
    - **Audience:** Is the target audience explicitly named? If undefined, name it or require the documentation taxonomy to define one.
    - **Completeness:** Are there missing branches, edges, conditions, or steps (e.g. untracked fallback paths or implicit dependencies)?
@@ -31,7 +31,7 @@ Assume every fact is wrong, every phrase is trite, and every change is broken un
 
 ## Verdict
 
-Render your verdict as exactly one of these tokens, backed by concrete evidence:
+Render your verdict as exactly one of these tokens, backed by concrete evidence with explicit basis tags:
 
 - **`PASS`**: Runs, fully satisfies original request, and is genuinely excellent.
 - **`FAIL`**: Fails to run, fails tests, diverges from requirements, or takes the wrong approach.

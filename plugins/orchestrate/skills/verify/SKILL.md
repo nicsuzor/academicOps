@@ -61,7 +61,7 @@ For a web surface: navigate, wait for page-ready, capture at 1920×1080, and dri
 
 ### Concrete observations
 
-[Observed defects with file paths, line numbers, and verbatim log excerpts]
+[Observed defects with explicit basis tags ([observed], [attempted-and-failed], [exhaustively-searched], [not-observed], [inferred], [assumed]), file paths, line numbers, and verbatim log excerpts]
 
 ### Forcing checks
 

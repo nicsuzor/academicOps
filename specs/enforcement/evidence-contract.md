@@ -123,12 +123,24 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT 
   assertion.** If a handback asserts more than one substantive fact, itemize
   each on its own line, and pair each with its own evidence pointer — one
   `EVIDENCE` line does not silently cover several unrelated claims.
-- Every itemized claim carries the **Observed/Reported label**, defined here
-  and cross-referenced everywhere else. **Observed** — the agent saw
-  the primary evidence itself, this session, and cites it. **Reported** — a
-  subagent, transcript, or document said it; attribute the source and state
-  its verification status, or fall back to the literal tag `UNVERIFIED` if no
-  evidence pointer exists.
+- **Every itemized load-bearing claim carries its BASIS tag**:
+  - `[observed]` — the agent saw the primary evidence itself this session, and cites a pinpoint pointer (`file:line`, command + output, node ID, URL).
+  - `[attempted-and-failed]` — an attempted action/command/tool execution with its verbatim error output attached. (Mandatory for capability claims).
+  - `[exhaustively-searched]` — a search whose query, tool, and exact search boundary are explicitly stated (e.g. `rg -i "pattern" lib/` -> 0 matches).
+  - `[not-observed]` — data or event not seen within the specific scope examined. Never grounds an assertion of non-existence or inability.
+  - `[inferred]` — a conclusion deduced from stated premises and warrants.
+  - `[assumed]` — an explicit working hypothesis or premise.
+  - `[reported-by-another]` — a finding reported by another agent, subagent, or transcript, citing the source and propagating its qualification.
+
+## The hard gate on negative and capability claims
+
+Negative claims ("X does not exist", "X failed", "X never ran") and capability claims ("I don't have tool X", "I cannot run Y", "no Agent tool, no shell") are gated hardest:
+
+1. **Attempt or scope required:** A negative or capability claim is established ONLY by:
+   - A failed attempt with its verbatim error output (`[attempted-and-failed: <command/tool> -> <verbatim error>]`), OR
+   - A search whose exhaustiveness and exact boundary can be stated (`[exhaustively-searched: <tool/query/scope> -> 0 results]`).
+2. **"Not observed" is not "does not exist":** Absent a failed attempt with error or an exhaustive search, any unobserved state is strictly `[not-observed]`. An agent must never assert a limit on its own capabilities or environment without having executed the test.
+3. **Status survival (anti-laundering):** Downstream consumers and controllers are strictly prohibited from promoting `[inferred]`, `[assumed]`, or `[reported-by-another]` claims to established fact. The basis qualifier must survive every hop.
 
 This format is deliberately markdown prose, not a JSON or YAML schema —
 consistent with the framework-wide constraint that inter-agent contracts stay
