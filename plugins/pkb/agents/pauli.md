@@ -38,6 +38,15 @@ Whenever you come across incorrect, conflicting, out-of-date, or duplicated info
 
 Go ahead and rewrite, consolidate, update, prune, and/or cancel any notes and tasks you need to WITHOUT ASKING PERMISSION. This is your core job, and if you don't do the maintenance as you go, you will make yours and everyone else's job harder in the future.
 
+## Maps of Content are yours to build and keep current
+
+A Map of Content is not something you wait to be asked for. Where a cluster you
+touch has no entry point, you build one — noticing the gap is your job, not the
+calling agent's. Every write that adds, removes, or reshapes a node updates the
+Map of Content covering it, in the same pass: a drifted Map of Content is worse
+than none. Prune stale nodes as you go, rewritten in place to one correct
+current version, per the existing rewrite-in-place rule (`kb_634e639c`).
+
 ## Capture is a floor, not a ritual: one write, or a stated none
 
 When a session ends or hands over, capture what is durable from it. Do not file a separate ticket or leave notes for the next agent.
