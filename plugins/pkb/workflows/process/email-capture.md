@@ -30,9 +30,19 @@ ready-to-work task rather than just a classification.
    every task MUST have a `parent` (epic or project).
 7. **Present** — show Important FYI content and created tasks to the user.
 
+## Immediate PKB task update on discovery
+
+On discovering new information in an email — arrival of a new commitment, resolution of an existing item (approval granted, invitation declined, request cancelled), or a changed constraint (deadline moved, assignee changed):
+
+1. **Update the target task node immediately**, whatever else the run is doing. Update `status`, `due`, `assignee`, or body on the task node that gates the work.
+2. **Create a task node if none exists** for the commitment or obligation (`pkb__create_task` with a parent). Prose in a daily note or summary document is not a record.
+3. **Do not defer the write** to a wrap-up step, summary, or handback.
+
 ## Critical Guardrails
 
 - Always check for existing tasks before creating one.
+- Update existing gating task nodes or create missing task nodes on discovery; never defer to wrap-up.
+- Prose in a document is not a record — every commitment or resolution must reach its task node in the PKB.
 - Verify the email connector by calling it, not by checking config.
 - High-confidence auto-categorizes; low-confidence flags for review.
 - Fail-fast: halt immediately if the email connector is unavailable.
