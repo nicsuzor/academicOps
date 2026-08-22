@@ -15,7 +15,7 @@ Run Claude Code or Gemini CLI non-interactively with output and debug log captur
 
 ```bash
 # Run headless session
-cd /path/to/project && claude -p "your prompt" --output-format json --model haiku
+cd /path/to/project && claude -p "your prompt" --model haiku
 
 # Find the session file (most recent)
 ls -lt ~/.claude/projects/-home-<user>-<project>/*.jsonl | head -1
@@ -29,13 +29,12 @@ cd $AOPS && uv run python scripts/session_transcript.py /path/to/session.jsonl
 ### 1. Run Headless Session
 
 ```bash
-claude -p "prompt" --output-format json --model haiku 2>&1 | head -200
+claude -p "prompt" --model haiku 2>&1 | head -200
 ```
 
 **Key flags:**
 
 - `-p "prompt"` - Non-interactive mode with prompt
-- `--output-format json` - Structured output for parsing
 - `--model haiku` - Faster/cheaper for testing (or `sonnet` for complex)
 - `--dangerously-skip-permissions` - Skip permission prompts (use carefully)
 

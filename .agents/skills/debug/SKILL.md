@@ -13,7 +13,7 @@ Mechanics and gotchas for the container surface: [`specs/polecat/tmux-interactiv
 
 Pick the cheapest surface that answers the question, and name it in your report — a result is only interpretable against the surface that produced it.
 
-- **Headless `claude` or `agy`** for simple, low-risk work, with results returned to your own shell. To watch a local agent read-only: `agy --output-format stream-json --agent james --print "<prompt>" > <run-log>.jsonl 2>&1`, then read the log. Redirect; never pipe through `tail` or any other filter — a filter buffers until exit, so a running job and a hung one look the same. And read the reported `status`, not the exit code: `agy` exits `0` even when it returns `{"status":"ERROR","response":""}`. `agy`'s print mode also has its own deadline — `--print-timeout`, default `5m0s` — which kills any longer job mid-work and reports `"status":"ERROR","error":"context canceled"` with the work half-done and nothing committed. That failure is indistinguishable from a real one until you check `duration_seconds` against the timeout, so pass `--print-timeout` explicitly for any job that edits, builds, or rebuilds an image.
+- **Headless `claude` or `agy`** for simple, low-risk work, with results returned to your own shell. To watch a local agent read-only: `agy --agent james --print "<prompt>"`
 - **A polecat container** when the work needs isolation. Driving one interactively is the rest of this file.
 - **The `pc` launcher with a task id** for complex work you will not supervise. It is fire-and-forget: results do not come back to you and you get no notification of completion, successful or otherwise.
 

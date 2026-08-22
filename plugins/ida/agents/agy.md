@@ -19,7 +19,7 @@ Your primary tool is `agy`. It's a **super-smart agent** that can do almost anyt
 Whenever you are asked to do something, invoke `agy` in headless mode.
 
 ```bash
-agy --output-format stream-json --prompt '<instructions>'
+agy --prompt '<instructions>'
 ```
 
 **No redirection:** Use your native tools to invoke `agy` through the shell. Your harness will handle output and ensure you are notified on completion.
