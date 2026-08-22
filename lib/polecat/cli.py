@@ -1042,6 +1042,45 @@ def _build_inner_command(
     """
     claude_session_path = CLAUDE_SESSION_PATH
 
+    # Clean extra_args of any --output-format / -o flags passed after --
+    cleaned_extra_args = list(extra_args)
+    extracted_format = None
+    i = 0
+    while i < len(cleaned_extra_args):
+        arg = cleaned_extra_args[i]
+        if arg in ("-o", "--output-format"):
+            if i + 1 < len(cleaned_extra_args):
+                extracted_format = cleaned_extra_args[i + 1]
+                del cleaned_extra_args[i : i + 2]
+                continue
+        elif arg.startswith("--output-format="):
+            extracted_format = arg.split("=", 1)[1]
+            del cleaned_extra_args[i]
+            continue
+        elif arg.startswith("-o="):
+            extracted_format = arg.split("=", 1)[1]
+            del cleaned_extra_args[i]
+            continue
+        i += 1
+
+    if output_format is None and extracted_format is not None:
+        output_format = extracted_format
+    extra_args = tuple(cleaned_extra_args)
+
+    # Output format handling:
+    # Headless agent dispatches default to "stream-json".
+    # An explicit output_format overrides this default.
+    # Non-agent commands (shell, sleep, etc.) and interactive sessions do not get output format flags.
+    if agent_cmd in ("claude", "agy"):
+        if output_format is not None:
+            effective_output_format = output_format
+        elif not is_interactive or explicit_headless:
+            effective_output_format = "stream-json"
+        else:
+            effective_output_format = None
+    else:
+        effective_output_format = None
+
     if agent_cmd == "claude":
         container_session_path = claude_session_path
         inner_cmd = [
@@ -1050,9 +1089,20 @@ def _build_inner_command(
             "--setting-sources=user,project",
             *_agent_args(extra_args, agent),
         ]
-        if output_format:
-            inner_cmd.extend(["--output-format", output_format])
-        if not is_interactive and not explicit_headless:
+        if effective_output_format:
+            inner_cmd.extend(["--output-format", effective_output_format])
+            if (
+                effective_output_format == "stream-json"
+                and "--verbose" not in extra_args
+                and "--verbose" not in inner_cmd
+            ):
+                inner_cmd.append("--verbose")
+        if (
+            not is_interactive
+            and not explicit_headless
+            and "-p" not in extra_args
+            and "--print" not in extra_args
+        ):
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
             # prompt is a positional, so it still arrives from extra_args below,
@@ -1067,8 +1117,8 @@ def _build_inner_command(
             "/home/worker/.gemini/antigravity-cli/cli.log",
             *_agent_args(extra_args, agent),
         ]
-        if output_format:
-            inner_cmd.extend(["--output-format", output_format])
+        if effective_output_format:
+            inner_cmd.extend(["--output-format", effective_output_format])
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
         inner_cmd = ["bash"]
@@ -1446,12 +1496,24 @@ def _execute_with_seed_verification(
         # container failure. Drain it before each attempt, keeping whatever
         # id it held so a failed attempt's container is still reportable.
         last_cid = _drain_cidfile(session_dir) or last_cid
-        returncode = subprocess.run(cmd, env=run_env).returncode
+        if verify_seed:
+            attempt_stdout_path = Path(session_dir) / f"attempt-{attempt}.stdout"
+            with open(attempt_stdout_path, "wb") as out_f:
+                returncode = subprocess.run(cmd, env=run_env, stdout=out_f).returncode
+        else:
+            returncode = subprocess.run(cmd, env=run_env).returncode
 
         if not verify_seed:
             break
         seed_ok = returncode == 0 and _seed_confirmed(session_dir, task)
         if seed_ok:
+            attempt_stdout_path = Path(session_dir) / f"attempt-{attempt}.stdout"
+            if attempt_stdout_path.exists():
+                try:
+                    sys.stdout.buffer.write(attempt_stdout_path.read_bytes())
+                    sys.stdout.buffer.flush()
+                except OSError:
+                    pass
             break
         if attempt < max_attempts and not quiet:
             click.echo(
@@ -1459,6 +1521,15 @@ def _execute_with_seed_verification(
                 f"{task!r} (exit={returncode}). Retrying once.",
                 err=True,
             )
+
+    if verify_seed and not seed_ok:
+        last_attempt_stdout = Path(session_dir) / f"attempt-{max_attempts}.stdout"
+        if last_attempt_stdout.exists():
+            try:
+                sys.stdout.buffer.write(last_attempt_stdout.read_bytes())
+                sys.stdout.buffer.flush()
+            except OSError:
+                pass
 
     # The caller reads container.cid after this returns. If the last attempt
     # never got far enough for docker to write one, restore the most recent id
