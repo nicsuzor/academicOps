@@ -231,6 +231,8 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--output-format",
+        "stream-json",
         "--print",
         "/pull task_abc123",
     ]
