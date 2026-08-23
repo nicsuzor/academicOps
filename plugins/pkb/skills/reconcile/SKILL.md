@@ -1,6 +1,6 @@
 ---
 name: reconcile
-description: The return channel. Establish what is actually true about work the graph still claims is in flight and about work that finished while nobody was watching, write those facts back, and return the tasks a landed wave touched to `inbox` for re-planning. Truth maintenance only — it never closes work on its own judgment, never prunes, and never scores. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
+description: The return channel. Establish what is actually true about work the graph still claims is in flight and about work that finished while nobody was watching, write those facts back, and return the tasks a landed wave touched to `inbox` for re-planning. Truth maintenance only — it never certifies work complete on its own judgment, never prunes, and never scores, and it cancels only on affirmative evidence that a task's referent is gone or its premise falsified, never on age. Fires on engagement after an absence, inside the consolidation cycle, and on demand.
 ---
 
 # Reconcile
@@ -21,9 +21,15 @@ they resolve against.
 you observed: a pull request merged, a branch went quiet, a named file no longer
 exists, a person wrote a close reason. That is the whole of your authority.
 
-- You **never close work on your own judgment.** Where a close is right, it is
-  because an observable criterion was met or a person said so — never because a
-  task is old, quiet, duplicative, or inconvenient.
+- You **never certify work complete on your own judgment.** Where a `done` is
+  right, it is because an observable criterion was met or a person said so —
+  never because a task is old, quiet, duplicative, or inconvenient.
+- You **do cancel, and only on affirmative evidence.** Cancelling is a different
+  act from completing: it asserts the work is no longer wanted or no longer
+  possible, never that anyone performed it. The trigger is always a fact about
+  the task's referent — the thing it acts on was deleted, a merge mooted its
+  question, its premise is false (§5) — and never elapsed time, a quiet worker,
+  or a lookup you could not resolve.
 - You **never prune.** You do not cancel on age, merge nodes, delete edges, or
   tidy the graph's shape. Structure is not yours.
 - You **never score.** `focus_score` is computed by the graph engine from the
@@ -104,8 +110,11 @@ title substrings is surfaced as _likely closed by_ and **never auto-completes**.
 
 - **Merged** → write the facts first: the pull request, the merge date, the
   branch. Then re-read the task's acceptance criteria against the merged
-  artifact. Every criterion **observably** met → complete it. Any criterion
-  unmet, or met only on a reading that takes judgment → leave the task open and
+  artifact. Every criterion **observably** met → complete it. Merged in a way
+  that settles or moots the task's own question rather than performing it — the
+  fork it existed to decide is now decided on the ground → cancel it on that
+  evidence (§5), never complete it. Any criterion unmet, or met only on a
+  reading that takes judgment → leave the task open and
   surface the criterion, quoted. Surface, do not block, and do not resolve the
   judgment yourself: an acceptance criterion that needs interpreting is exactly
   the case this channel does not decide.
@@ -163,7 +172,7 @@ Exactly one of:
 Record the chosen route, the close reason quoted from where you read it, and any
 node created.
 
-## 5 — Staleness and rot
+## 5 — Staleness, rot, and cancellation
 
 **Aged non-terminal work.** Tasks aged past about ninety days, up to twenty a
 sweep. Read the body, then look for completion evidence — sent mail, calendar
@@ -174,9 +183,43 @@ environment, skip the verification and flag the candidates.
 
 **Artifact rot.** For `ready` and `queued` tasks aged past about a fortnight,
 verify that the files and symbols the task's criteria name still exist where they
-claim to. Where they have rotted, demote the task to `inbox` with an annotation
-saying exactly what no longer exists (§7). Rot triggers demotion; age alone does
-not.
+claim to. Rot triggers a write; age alone does not. Which write depends on what
+you established: a referent you have shown was **deleted** cancels the task
+(below); a referent you merely failed to find where the task said it would be is
+a **demotion** to `inbox` with an annotation saying exactly what no longer
+resolves (§7).
+
+**Cancel on evidence.** Cancel a task when one of these is established:
+
+1. **Referent destroyed.** The file, skill, agent, feature, or interface the task
+   acts on was _deleted_, not relocated. A failed lookup does not establish
+   deletion. Search across every relevant checkout and every relevant ref, by
+   exact path, by path-tail, and by basename, before concluding a thing is gone.
+2. **Superseded by merge.** The gating pull request merged in a way that resolves
+   or moots the task's own question (§3).
+3. **Premise falsified.** A condition the task explicitly assumed — in its
+   `## Assumptions`, in its criteria, or in the gate it names — no longer holds.
+
+**Never cancel on** age or staleness alone; absence of recent activity, or a
+worker gone quiet; a missing path that appears only in narrative, provenance, or
+`## Source` prose rather than in the acceptance criteria or the work itself; or
+any case where relocation and deletion could not be told apart. Where you are
+uncertain, demote and annotate — for the uncertain case that remains the correct
+answer, and unlike a cancellation it costs nothing to be wrong about.
+
+**Every cancellation carries its evidence in the node body**: the affirmative
+fact — path plus the commit or ref that shows the deletion, or the pull request
+number plus its merge timestamp — and how you distinguished deletion from
+relocation, naming the checkouts, refs, and name forms you searched. A
+cancellation nobody can audit from the node is one you do not make.
+
+**A successor question does not die with the node.** Where cancelling settles
+the node's stated question but leaves a live one standing — the classic case
+being a decision to _split_ a pull request that then merged whole, leaving
+"revert it, ratify it, or let it stand" genuinely open — write that surviving
+question into the cancelled node's body and lead with it in §8 as needing a
+person's decision. You do **not** file it as new work and you do not answer it:
+filing and answering are both re-planning, and neither is yours.
 
 ## 6 — Route the completed-but-uncertified
 
@@ -205,6 +248,9 @@ Collect the tasks a fact you wrote actually touched:
 - anything whose `## Assumptions` names a belief the landed work tested — the
   probe that came back is the case this exists for;
 - everything §5 demoted for rot;
+- what a §5 cancellation unblocked or invalidated — the cancelled node is
+  terminal and does not itself return, but its live siblings and anything whose
+  criteria leaned on it do;
 - the investigation tasks §4 filed.
 
 Set that whole set back to `inbox`, annotated with the fact that moved it.
@@ -219,8 +265,12 @@ a per-task feed: a caller who has to read twenty rows to find the two that matte
 has been handed your sweep instead of its outcome.
 
 Lead with what needs a person's decision, then what you changed, then what you
-found and deliberately left alone, then what you returned to `inbox`. Name ids
-for everything completed, requeued, demoted, routed, surfaced, or handed on — a
+found and deliberately left alone, then what you returned to `inbox`. Report
+**cancellations as their own category**, never folded in with demotions or
+completions: for each, the id, which trigger fired — referent destroyed,
+superseded by merge, premise falsified — the affirmative evidence you wrote to
+the node, and any successor question it left standing. Name ids for everything
+completed, cancelled, requeued, demoted, routed, surfaced, or handed on — a
 bare count is not checkable. Close with the one thing the next sweep should pick
 up, and with the window you covered — a result that does not say where you
 stopped leaves the next sweep no way to start.
@@ -229,6 +279,9 @@ stopped leaves the next sweep no way to start.
 
 - Close, cancel, or complete anything because it is old, quiet, or inconvenient.
   Age is a candidacy signal and nothing more.
+- Cancel anything without the affirmative evidence, and the
+  deletion-versus-relocation check, written into the node body (§5). Where the
+  two cannot be told apart, demote instead.
 - Resolve an acceptance criterion that needs interpreting, or supply the
   judgment a person has not made.
 - Prune, restructure, merge, or re-parent anything.
@@ -247,5 +300,6 @@ stopped leaves the next sweep no way to start.
 
 From your result alone — without opening the graph — the caller can say which
 in-flight claims are still live and why, what you changed and on which ids, what
-is now waiting on a person, and which tasks went back to `inbox` and on what
-fact. If any of those needs re-deriving, the sweep is not done.
+you cancelled and on what affirmative evidence, what is now waiting on a person,
+and which tasks went back to `inbox` and on what fact. If any of those needs
+re-deriving, the sweep is not done.
