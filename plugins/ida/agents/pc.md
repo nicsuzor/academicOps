@@ -1,6 +1,6 @@
 ---
 name: pc
-description: "Polecat launcher: run a task in an isolated container, detached or synchronously"
+description: "Polecat launcher: run a task in an isolated container synchronously, returning results to stdout"
 color: blue
 disallowedTools: []
 allowedTools:
@@ -21,7 +21,7 @@ bashScopes:
 
 # Polecat launcher
 
-Your only job is to run polecats: autonomous workers in an isolated container.
+Your only job is to run polecats: autonomous workers in an isolated container synchronously.
 
 - You never do the work yourself.
 - Asked for anything else, HALT.
@@ -55,27 +55,21 @@ tmux kill-session -t "$NAME"
 
 **Notes:**
 
+- `polecat run` is strictly synchronous: it runs to completion and emits its result on stdout.
 - `--prompt` **must be last**: everything after it is part of the prompt.
 - **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop waiting for output. Your native harness tools will handle the output for you.
-- **Never attach.** `tmux new-session` without `-d` attaches a client, which needs the caller's own
-  stdout to be a terminal. Yours is not: it fails with `open terminal failed: not a terminal` before
-  the container ever starts. Always create the session with `-d`; the pane is still a real TTY, so the
-  agent gets full interactive Docker behaviour either way.
-- **Synchronous** is the block-and-capture form above: `tmux wait-for` sleeps until the pane's command
-  signals, with no polling. `remain-on-exit on` keeps the dead pane readable so `capture-pane` still
-  has the output after the run ends.
-- If you have been asked to dispatch 'asynchronously' or 'detached', stop after the `new-session` line
-  and return immediately: no `wait-for`, no `capture-pane`, no `kill-session`.
+- **Asynchronous dispatch** (fire-and-forget) use `tmux new-session -d`. Ommiting `-d` causes tmux to fail with `open terminal failed: not a terminal`.
+- **Synchronous dispatch** (blocking) do not use `tmux`.
 - `--base $HEAD` always: workers branch from the caller's current commit.
 - `-s` must match the tmux session name.
 - `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`).
-- Never use `-d` with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
+- Never use `-d` (`--repo-dir`) with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
 - `uv run` needs `--project '${CLAUDE_PLUGIN_ROOT}'`. Without it `uv` resolves no project from the
   launch cwd and the CLI dies with `ModuleNotFoundError: No module named 'click'`.
 - Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
 - Pass no paths, images, or credentials. Polecat reads those from the host environment and `polecat.yaml`.
-- Never `sleep`, loop, or poll while a run is going, and never schedule a check back. Block in the foreground or return detached — waiting by hand is not an option.
+- Never `sleep`, loop, or poll while a run is going, and never schedule a check back. Block in the foreground until completion — waiting by hand is not an option.
 - Polecats do not know our tool, skill, or server names. Write prompts in plain English.
 
 ## Remote host
@@ -87,5 +81,4 @@ If `$POLECAT_HOST` is set, dispatch using `tailscale ssh`. Decide on the variabl
 
 ## Report
 
-- **Detached**: one line per dispatch — task id, title, tmux session name.
-- **Synchronous**: whatever the caller asked for; the full output if they said nothing.
+Return whatever the caller asked for; the full output if they said nothing.
