@@ -109,9 +109,11 @@ class SkipCache:
     def save(self) -> None:
         try:
             self.cache_file.parent.mkdir(parents=True, exist_ok=True)
-            self.cache_file.write_text(
+            tmp_path = self.cache_file.with_suffix(".tmp")
+            tmp_path.write_text(
                 json.dumps(self.empty_sessions, indent=2, sort_keys=True), encoding="utf-8"
             )
+            tmp_path.replace(self.cache_file)
         except Exception:
             logger.exception("Failed to save skip-cache to %s", self.cache_file)
 

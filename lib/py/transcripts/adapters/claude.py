@@ -652,6 +652,8 @@ def normalize_claude_transcript(transcript: ClaudeTranscript) -> NormalizedSessi
         if entry_session_id:
             session_id = entry_session_id
             break
+    if session_id == "unknown" and transcript.source:
+        session_id = transcript.source.stem
 
     trunk_entries = [entry for entry in transcript.entries if not _is_sidechain_entry(entry)]
     usage_acc = _accumulate_usage(trunk_entries)
@@ -868,8 +870,9 @@ def load_claude_session(jsonl_path: Path) -> NormalizedSession | None:
         )
         return None
 
+    subagent_files = find_subagent_files(jsonl_path)
     transcript = load_claude_transcript(jsonl_path)
-    if not transcript.entries and not transcript.raw_entries:
+    if not transcript.entries and not transcript.raw_entries and not subagent_files:
         return None
 
     session = normalize_claude_transcript(transcript)
