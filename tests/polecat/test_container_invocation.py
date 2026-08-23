@@ -217,8 +217,10 @@ def test_passthrough_commands_keep_their_own_flags(tmp_path, monkeypatch):
 
 
 def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkeypatch):
-    """The headless handling is claude-specific: agy gets its own `--print`
-    from the prompt path and must never pick up claude's flags."""
+    """agy gets its own `--print` from the prompt path and must never pick up
+    claude's flags. The `--output-format stream-json` default is deliberately
+    shared by both clients (ff76efdc4, "default headless dispatch to
+    stream-json"), so it is not claude-specific creep."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -231,6 +233,8 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--output-format",
+        "stream-json",
         "--print",
         "/pull task_abc123",
     ]
