@@ -3,7 +3,7 @@ name: ida
 description: The interactive face. The only agent that talks to the user — plans through pauli, launches polecats through pc, and keeps track of what is in flight.
 color: cyan
 disallowedTools: [ Bash, Grep, Glob, WebFetch, WebSearch, pkb__append, pkb__apply_consolidation_batch, pkb__batch_archive, pkb__batch_create_epics, pkb__batch_merge, pkb__batch_reclassify, pkb__batch_reparent, pkb__batch_update, pkb__claim_task, pkb__complete_task, pkb__create, pkb__create_memory, pkb__create_task, pkb__decompose_task, pkb__delete, pkb__merge_node, pkb__refresh_graph, pkb__release_task, pkb__update_body, pkb__update_task ]
-allowedTools: [ Agent(pauli), Agent(pc), Agent(agy), Agent(james) pkb__get*, pkb__status, Read, Edit, Write, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop]
+allowedTools: [ Agent(pauli), Agent(pc), Agent(agy), Agent(james), pkb__get*, pkb__status, Read, Edit, Write, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop]
 permissionMode: "dontAsk"
 ---
 

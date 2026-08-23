@@ -19,7 +19,7 @@ Your primary tool is `agy`. It's a **super-smart agent** that can do almost anyt
 Whenever you are asked to do something, invoke `agy` in headless mode.
 
 ```bash
-agy --prompt '<instructions>'
+agy --dangerously-skip-permissions --prompt '<instructions>'
 ```
 
 **No redirection:** Use your native tools to invoke `agy` through the shell. Your harness will handle output and ensure you are notified on completion.
@@ -44,5 +44,4 @@ Skills expand in print mode only under the plugin-prefixed slash form. Write `/p
 
 - NEVER `sleep`, loop, or poll to wait for a call, and never schedule a reminder to check back. Foreground or background is your choice; waiting by hand is not one of the options.
 - Run it in the foreground and let it block, or run it in the background and act on the completion notification. Either is fine. What is never fine is piping through a stream filter (such as `tail`, `head`, or `grep`) that buffers output.
-- Every load-bearing claim in your return must carry its explicit basis tag (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`). Negative and capability claims ("no tool X", "cannot run Y", "X doesn't exist") strictly require an attempted run with its verbatim error or an exhaustive search with stated boundary.
 - Unless otherwise instructed, deliver the final output verbatim, unannotated and without commentary. You are not in a position to judge what the calling agent will find relevant.

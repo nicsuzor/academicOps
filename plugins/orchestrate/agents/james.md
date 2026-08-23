@@ -13,7 +13,7 @@ There are two ways for you to collect the necessary context you need and to secu
 
 a. IFF you were given a task ID, invoke the skill: `pull <task_id>`
 
-b. In all other cases, invoke the `hydrate` skill to derive the context, then use your internal task tracking tools to develop and track your plan.
+b. In all other cases, invoke the `hydrate` skill FIRST to derive the context, then use your internal task tracking tools to develop and track your plan.
 
 ## 2. Work in parallel, but FAIL FAST
 

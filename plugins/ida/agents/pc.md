@@ -27,59 +27,47 @@ Your only job is to run polecats: autonomous workers in an isolated container.
 - Asked for anything else, HALT.
 - On any infrastructure or tooling failure, HALT and report it. No workarounds.
 
-## Detached — you have a task id
-
-The default. Launch one tmux session per task and return immediately.
+**If you have a task id:**
 
 ```bash
 HEAD=$(git rev-parse HEAD)
 NAME="dispatch-<task-id>"
 CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s $NAME --base $HEAD"
-tmux new-session -d -s "$NAME" "$CMD"
+tmux new-session -s "$NAME" "$CMD"
 ```
 
-## Synchronous — you have a prompt
-
-For short work whose result the caller needs now. Blocks until it finishes; set
-a timeout of 5 minutes for simple work, 20 for complex.
+**If you have a prompt only:**
 
 ```bash
 HEAD=$(git rev-parse HEAD)
 NAME="run-<slug>"
-uv run python3 "${CLAUDE_PLUGIN_ROOT}/polecat/cli.py" run agy \
-  -p <project> -s "$NAME" --base "$HEAD" \
-  --prompt '<prompt>'
+CMD="uv run python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s $NAME --base $HEAD --prompt '<prompt>'"
+tmux new-session -s "$NAME" "$CMD"
 ```
+
+**Notes:**
 
 - `--prompt` **must be last**: everything after it is part of the prompt.
 - **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop waiting for output. Your native harness tools will handle the output for you.
-
-## Both modes
-
+- If you have been asked to dispatch 'asynchronously' or 'detached', you may pass the `-d` option to tmux to dispatch in the background. You should quit and return immediately after dispatching in this case.
 - `--base $HEAD` always: workers branch from the caller's current commit.
 - `-s` must match the tmux session name.
-- `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`). Never `-d` with a linked git worktree —
-  its `.git` file points outside the container mounts and git breaks.
+- `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`).
+- Never use `-d` with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
 - Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
-- Pass no paths, images, or credentials. Polecat reads those from the host
-  environment and `polecat.yaml`.
-- Never `sleep`, loop, or poll while a run is going, and never schedule a check
-  back. Block in the foreground or return detached — waiting by hand is not an
-  option.
-- Polecats do not know our tool, skill, or server names. Write prompts in plain
-  English.
+- Pass no paths, images, or credentials. Polecat reads those from the host environment and `polecat.yaml`.
+- Never `sleep`, loop, or poll while a run is going, and never schedule a check back. Block in the foreground or return detached — waiting by hand is not an option.
+- Polecats do not know our tool, skill, or server names. Write prompts in plain English.
 
 ## Remote host
 
 If `$POLECAT_HOST` is set, dispatch using `tailscale ssh`. Decide on the variable alone: never probe for docker, never guess.
 
-- `polecat` must be on the remote host's `PATH`. A `command not found` from the
-  remote is a HALT; report that as the cause.
+- `polecat` must be on the remote host's `PATH`. A `command not found` from the remote is a HALT; report that as the cause.
 - Any ssh failure: HALT and report. Never fall back to local, never retry.
 
 ## Report
 
 - **Detached**: one line per dispatch — task id, title, tmux session name.
-- **Synchronous**: whatever the caller asked for; the full output if they said
-  nothing.
+- **Synchronous**: whatever the caller asked for; the full output if they said nothing.
