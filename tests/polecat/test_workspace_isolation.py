@@ -433,6 +433,66 @@ def test_isolated_workspace_resolves_origin_remote_fallback(tmp_path):
     cleanup_isolated_workspace(cleanup_info)
 
 
+def test_isolated_workspace_does_not_fabricate_origin_refs(tmp_path):
+    """`git clone --local` seeds refs/remotes/origin/* from the SOURCE
+    checkout's own local branches, not from any real remote. If the
+    canonical checkout has local commits never pushed upstream, and the
+    isolated clone's remote URL is then repointed at the real GitHub
+    remote, an `origin/<branch>` lookup inside the isolated clone must not
+    silently resolve to the canonical checkout's unpushed local commit —
+    it must fail, since nothing here ever fetched from the real remote.
+    This is the exact defect in aops_1f4c8e02: a container reading
+    `origin/dev` cannot tell a fabricated ref from a real one."""
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("upstream content\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+    # Force the local branch name to "main" so it's independent of the
+    # `git init` default (which varies by git version/config) — the
+    # fabricated ref this test targets is a copy of THIS local branch name.
+    _run("git", "branch", "-m", "main", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "main", cwd=canonical)
+    upstream_sha = _run("git", "rev-parse", "origin/main", cwd=canonical).strip()
+
+    # Canonical checkout now diverges locally, without pushing — the exact
+    # "shared host checkout has drifted ahead of its own origin" scenario.
+    (canonical / "unpushed.txt").write_text("local-only content\n")
+    _run("git", "add", "unpushed.txt", cwd=canonical)
+    _run("git", "commit", "-m", "local commit never pushed", cwd=canonical)
+    canonical_local_sha = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+    assert canonical_local_sha != upstream_sha
+
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-no-fabricated-origin", polecat_home
+    )
+
+    origin_lookup = subprocess.run(
+        ["git", "-C", str(isolated_path), "rev-parse", "origin/main"],
+        capture_output=True,
+        text=True,
+    )
+    assert origin_lookup.returncode != 0, (
+        "origin/main resolved inside the isolated clone to "
+        f"{origin_lookup.stdout.strip()!r} without ever fetching from "
+        "the real remote — this is the fabricated-ref defect."
+    )
+    # In particular, it must not silently equal the canonical checkout's
+    # unpushed local commit under the real remote's name.
+    assert origin_lookup.stdout.strip() != canonical_local_sha
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
 def test_isolated_workspace_fails_on_unresolvable_ref(fake_canonical_repo, tmp_path):
     """When base ref cannot be resolved locally or on origin, resolve_isolated_workspace fails with SystemExit."""
     polecat_home = tmp_path / "polecat-home"

@@ -732,8 +732,21 @@ def resolve_isolated_workspace(
         )
 
     if origin_url:
+        # `git clone --local` seeds refs/remotes/origin/* from the SOURCE
+        # checkout's own local branches (never fetched from any remote), so
+        # simply repointing the URL leaves those fabricated refs resolvable
+        # under the `origin/<branch>` name — indistinguishable from a real
+        # remote-tracking ref once the URL matches GitHub. Removing and
+        # re-adding the remote drops the fabricated refs, so a later
+        # `origin/<branch>` lookup in this clone fails loudly instead of
+        # silently resolving to a value that was never fetched.
         subprocess.run(
-            ["git", "-C", str(clone_path), "remote", "set-url", "origin", origin_url],
+            ["git", "-C", str(clone_path), "remote", "remove", "origin"],
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(clone_path), "remote", "add", "origin", origin_url],
             capture_output=True,
             text=True,
         )
