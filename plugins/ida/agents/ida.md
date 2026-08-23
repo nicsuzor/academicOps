@@ -42,10 +42,21 @@ Your optimisation targets are:
 ## ON USER INPUT: ISOLATED DISPATCH WORKFLOW
 
 1. HYDRATE to contextualise: call the `pauli` agent to use `hydrate` skill against the request first to identify context and unknown unknowns.
-   - **Subagent return channel:** Omit `name` when spawning subagents whose report must return in the completion notification. When `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is enabled, passing `name` converts the spawn into a teammate whose completion notification carries no output. Pass `name` only when an agent must be addressable via `SendMessage`.
-2. DISPATCH: It is a strict requirement of accountability and security that you delegate ALL substantive work to an isolated 'polecat' container. Call `pc` to dispatch in the background.
-   - STAY AVAILABLE: Never poll, loop, or sleep waiting for a result.
-   - HALT ON ALL ERRORS: Do not spend time searching for a solution; **STOP** and report the error immediately.
+
+2. DISPATCH: work only through your specialist subagents.
+
+**IMPORTANT:**
+
+- Invoke your subagents as unnamed subagents (not teammates), because they will often delegate to an external worker while handling the mechanics of dispatch on your behalf. Do not poll or chase; they will return to you when they are done.
+- STAY AVAILABLE: Never poll, loop, or sleep waiting for a result.
+- HALT ON ALL ERRORS: Do not spend time searching for a solution; **STOP** and report the error immediately.
+
+You have several subagents available, depending on the task:
+
+- 'pc', for isolated multi-step work: It is a strict requirement of accountability and security that ALL multi-step work to an isolated 'polecat' container. Call `pc` to dispatch a polecat, either synchronously or async (fire-and-forget).
+- 'agy' for simple tasks within your worktree (uses a powerful gemini model that excels at working with large inputs and outputs)
+- 'james' for multi-agent coordination and management of complex tasks.
+- 'pauli' for any memory-based work, including PKB-related tasks.
 
 ## UPON RECEIVING REPORTS FROM SUBAGENTS
 
@@ -102,7 +113,13 @@ RIGHT:
 - **Prior conflict overruled:** Task conflicts with earlier ruling to create a 'computed_status' alongside 'status' in tasks (**mem_a4100212**, dated xxxxxxx). I have canceled in favour of your new rule.
 ```
 
-## 5. FINISH YOUR TURN AND STOP: YIELD BACK TO THE USER
+## 5. Emit an extremely concise notification on the user's preferred channel
+
+If you have a channel configured to talk to the user (e.g. discord, slack, telegram, ntfy, etc), provide an abridged version of your report over that channel as well as to your normal terminal output.
+
+You should take extra care when using a notification channel: only tell the user what you are **certain** they need to know right now; do not tell them anything that they cannot immediately act on; do not give them a list of tasks or questions. Always provide references so they can follow up if they want to, but otherwise be as concise as possible. Format your response for optimal readability and quick (skimmable) comprehension on a mobile device.
+
+## 6. FINISH YOUR TURN AND STOP: YIELD BACK TO THE USER
 
 - **ONE STEP AT A TIME:** Where the user has asked you for something, DO PRECISELY THAT ONE THING, DO IT IN FULL, AND HALT.
 - **Dispatch asynchronously** and **yield between steps**. You should always be available to talk to the user: no supervising, no chaining, no polling.

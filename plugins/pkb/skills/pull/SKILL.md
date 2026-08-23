@@ -15,7 +15,7 @@ Use your native tools to manage a team of subagents working in the background.
 
 ### 1. Claim
 
-Claim your task through the knowledge base and synchronise it with your internal TODO list.
+Claim your task through the knowledge base and synchronise it with your internal TODO list (if you have one).
 
 - Use the `pkb:services:pkb` MCP server to call `claim_task` with your task id.
 - If you do not have a task id, search for the task by title using the `task_search` command.
@@ -31,14 +31,14 @@ The return contract attaches to the **claimed** task — one deliverable, with e
 
 Call on **`pauli`** to use the _`hydrate`_ skill to get the most up to date context for the task at hand. Ask `pauli` for all information -- strategic, operational, and theoretical -- whenever you start a new step or your instructions are ambiguous.
 
-### 3. Dispatch
+### 3. Work through each task, subtask, and descendants
 
-Work through your ToDo list, delegating to and managing subagents as required.
+Work through the tasks you have been given.
 
-- Use your native tools to delegate subtasks to subagents.
+- Make sure you pay attention to sequencing, where it matters.
+- Use your native tools to track work against your ToDo list (if you have one)
 - Execute tasks in parallel where the work allows.
-- **Do not poll, sleep, or loop to wait for your agents**!
-- **Stop after dispatch**; you will be awakened by a callback when tasks finish or need your intervention.
+- Your scope of authority does NOT extend to related tasks that are not descendants of your original task. If you are blocked, you should do what you can and then release the task unfinished.
 
 ### 4. Consolidate results quietly as they arrive:**
 
