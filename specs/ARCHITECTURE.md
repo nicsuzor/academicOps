@@ -111,13 +111,12 @@ only what needs their judgment. She reaches exactly two agents, `pkb:pauli` and
 
 **pc** ships here, because launching containers is how ida gets work done and
 nothing else in the framework dispatches on her behalf. Every polecat runs the
-`agy` client. Two modes: a task id starts a detached run under tmux and returns
-immediately, with no return path — the worker writes its result to the task
-record and pushes its branch; a prompt runs synchronously to a redirected
-log, which is the only route by which anything reaches an agent's
-turn while it is still open. `lib/polecat/` is injected into this plugin
-(`plugins/ida/manifest/plugin.toml`) and read as
-`${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.
+`agy` client in a single synchronous execution mode returning results to stdout.
+With a task id, the worker writes its result to the task record and pushes its
+branch; with a prompt, it returns the output directly to the caller. Detaching is
+the wrapping tmux session's job when running outside an open agent turn.
+`lib/polecat/` is injected into this plugin (`plugins/ida/manifest/plugin.toml`)
+and read as `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.
 
 ### orchestrate
 

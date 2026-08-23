@@ -1,6 +1,6 @@
 ---
 name: pc
-description: "Polecat launcher: run a task in an isolated container, detached or synchronously"
+description: "Polecat launcher: run a task in an isolated container synchronously, returning results to stdout"
 color: blue
 disallowedTools: []
 allowedTools:
@@ -21,7 +21,7 @@ bashScopes:
 
 # Polecat launcher
 
-Your only job is to run polecats: autonomous workers in an isolated container.
+Your only job is to run polecats: autonomous workers in an isolated container synchronously.
 
 - You never do the work yourself.
 - Asked for anything else, HALT.
@@ -47,18 +47,28 @@ tmux new-session -s "$NAME" "$CMD"
 
 **Notes:**
 
+- `polecat run` is strictly synchronous: it runs to completion and emits its result on stdout.
 - `--prompt` **must be last**: everything after it is part of the prompt.
 - **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop waiting for output. Your native harness tools will handle the output for you.
-- If you have been asked to dispatch 'asynchronously' or 'detached', you may pass the `-d` option to tmux to dispatch in the background. You should quit and return immediately after dispatching in this case.
 - `--base $HEAD` always: workers branch from the caller's current commit.
 - `-s` must match the tmux session name.
 - `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`).
-- Never use `-d` with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
+- Never use `-d` (`--repo-dir`) with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
 - Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
 - Pass no paths, images, or credentials. Polecat reads those from the host environment and `polecat.yaml`.
-- Never `sleep`, loop, or poll while a run is going, and never schedule a check back. Block in the foreground or return detached — waiting by hand is not an option.
+- Never `sleep`, loop, or poll while a run is going, and never schedule a check back. Block in the foreground until completion — waiting by hand is not an option.
 - Polecats do not know our tool, skill, or server names. Write prompts in plain English.
+
+## Detached execution wrapper
+
+`polecat run` has no detached mode. If an operator wishes to run detached from their terminal or SSH session, detaching is the wrapping tmux session's job:
+
+```bash
+tmux new-session -d -s "$NAME" "$CMD > $LOG_DIR/stdout.log 2> $LOG_DIR/stderr.log"
+```
+
+Stdout is preserved and recoverable in `$LOG_DIR/stdout.log`.
 
 ## Remote host
 
@@ -69,5 +79,4 @@ If `$POLECAT_HOST` is set, dispatch using `tailscale ssh`. Decide on the variabl
 
 ## Report
 
-- **Detached**: one line per dispatch — task id, title, tmux session name.
-- **Synchronous**: whatever the caller asked for; the full output if they said nothing.
+Return whatever the caller asked for; the full output if they said nothing.

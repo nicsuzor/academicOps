@@ -31,7 +31,7 @@ the container.
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
 - [[plugins/ida/agents/pc.md]] — coordinator-side: the launcher agent that builds
-  the `polecat run` command and starts it under a detached `tmux` session, locally
+  the `polecat run` command and runs it synchronously (or wrapped under tmux), locally
   or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
   invocation, and nothing stops a caller reaching the CLI directly
 - [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
@@ -174,12 +174,14 @@ the two cases apart.
 
 ## What `run` does not do
 
-There is no `start`, `finish`, `crew`, `nuke`, `swarm`, `list`, `init`, or `sync`
-subcommand, no bare-mirror registry under a `.repos/` directory, no workspace that
-survives past a single invocation, and no claiming, PR-filing, or status-setting
-performed by the CLI itself. Those either don't exist or are the invoked agent's
-own job, driven by the `pull` skill against the PKB task graph from inside the
-container.
+There is no detached container mode (detaching is the wrapping tmux session's
+job: `polecat run` is strictly a single synchronous script returning results on
+stdout, quiet by default). There is no `start`, `finish`, `crew`, `nuke`, `swarm`,
+`list`, `init`, or `sync` subcommand, no bare-mirror registry under a `.repos/`
+directory, no workspace that survives past a single invocation, and no claiming,
+PR-filing, or status-setting performed by the CLI itself. Those either don't exist
+or are the invoked agent's own job, driven by the `pull` skill against the PKB
+task graph from inside the container.
 
 ## User Expectations
 
