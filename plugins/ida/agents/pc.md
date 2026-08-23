@@ -69,7 +69,7 @@ tmux kill-session -t "$NAME"
   launch cwd and the CLI dies with `ModuleNotFoundError: No module named 'click'`.
 - Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
 - Pass no paths, images, or credentials. Polecat reads those from the host environment and `polecat.yaml`.
-- Never `sleep`, loop, or poll while a run is going, and never schedule a check back. Block in the foreground until completion — waiting by hand is not an option.
+- Never `sleep`, loop, or poll while a run is going, and never schedule a check back. Block in the foreground or return detached — waiting by hand is not an option.
 - Polecats do not know our tool, skill, or server names. Write prompts in plain English.
 
 ## Remote host
