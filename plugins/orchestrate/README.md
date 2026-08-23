@@ -5,8 +5,8 @@ who judges whether what he produced is any good; adversary, who tries to knock
 it down; and the two hooks that carry the handback contract to both ends of the
 exchange.
 
-James is the persona a polecat container boots into (`lib/polecat/cli.py`,
-`DEFAULT_AGENT`). Nothing here dispatches containers, and nothing here talks to
+James is the worker persona that polecat containers run when passed `-a james`
+(`lib/polecat/cli.py`). Nothing here dispatches containers, and nothing here talks to
 the user.
 
 ```mermaid
