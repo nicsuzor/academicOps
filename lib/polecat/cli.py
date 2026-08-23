@@ -891,7 +891,7 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
         )
 
 
-def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None):
+def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None, prompt=None):
     """Catch the shapes that would otherwise fail deep inside the container,
     after a clone and an image check, with an error naming neither polecat nor
     the flag's replacement."""
@@ -926,6 +926,15 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None):
             f"{agent_cmd} has no --non-interactive flag and exits immediately when "
             "given one. Headless one-shot mode is --print (-p), which polecat adds "
             "on its own when stdin is not a tty."
+        )
+
+    # Only the agent clients have a prompt to receive. bash, sleep and any
+    # passthrough command would read it as a filename or a stray argument, so a
+    # prompt aimed at one of them is a mistake to name, not a value to drop.
+    if prompt and agent_cmd not in ("claude", "agy"):
+        fail(
+            f"--prompt has no meaning for AGENT_CMD {agent_cmd!r}: only claude and "
+            "agy take a prompt. Drop --prompt, or run claude or agy."
         )
 
 
@@ -1132,15 +1141,18 @@ def _build_inner_command(
     seeded_from_task = bool(task) and not extra_args and not prompt
     if prompt:
         seeded_prompt = prompt
+        # Forwarded args are verbatim passthrough, so they go in ahead of the
+        # prompt: claude reads the prompt as its trailing positional, and agy's
+        # --prompt must come last so no interposed flag can consume its value.
+        # _reject_bad_agent_cmd has already ruled out any other agent_cmd here.
+        inner_cmd.extend(extra_args)
         if agent_cmd == "agy":
             # agy's `--prompt` is an alias for `--print`, so this is headless too
             # and honours the same timeout. The flag must precede the prompt-
             # bearing flag with nothing between it and its value.
             inner_cmd.extend([*_print_timeout_args(config), "--prompt", prompt])
-        elif agent_cmd == "claude":
+        else:
             inner_cmd.append(prompt)
-        elif extra_args:
-            inner_cmd.extend(extra_args)
     elif seeded_from_task:
         seeded_prompt = f"/pull {task}"
         if agent_cmd == "agy":
@@ -1607,7 +1619,7 @@ def main():
 )
 @click.option(
     "--prompt",
-    help="Prompt string for print/headless mode.",
+    help="Prompt string for print/headless mode. claude and agy only.",
 )
 @click.option(
     "--port",
@@ -1657,7 +1669,7 @@ def run(
     else:
         effective_agent = None
 
-    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent)
+    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent, prompt=prompt)
 
     if project:
         project = _sanitize_path_component(project)

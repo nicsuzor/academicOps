@@ -876,3 +876,70 @@ def test_cli_ports_override_config_ports(tmp_path, monkeypatch):
     p_indices = [i for i, arg in enumerate(docker_cmd) if arg == "-p"]
     assert len(p_indices) == 1
     assert docker_cmd[p_indices[0] + 1] == "9090"
+
+
+def test_claude_prompt_option_keeps_forwarded_args(monkeypatch, tmp_path):
+    """`--prompt` composes with forwarded args: the args reach claude verbatim
+    and the prompt stays claude's trailing positional."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+            "--prompt",
+            "hello claude",
+            "--verbose",
+            "--model",
+            "opus",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--verbose" in inner, f"forwarded args dropped: {inner!r}"
+    assert inner[inner.index("--model") + 1] == "opus"
+    assert inner[-1] == "hello claude", "prompt must stay claude's trailing positional"
+
+
+def test_agy_prompt_option_keeps_forwarded_args(monkeypatch, tmp_path):
+    """Same for agy, with --prompt last so nothing can consume its value."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "--prompt",
+            "hello agy",
+            "--verbose",
+            "--model",
+            "opus",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert "--verbose" in inner, f"forwarded args dropped: {inner!r}"
+    assert inner[inner.index("--model") + 1] == "opus"
+    assert inner[-2:] == ["--prompt", "hello agy"], (
+        "agy's --prompt must come last so no interposed flag consumes its value"
+    )
+
+
+@pytest.mark.parametrize("agent_cmd", ["bash", "sleep", "some-other-tool"])
+def test_prompt_is_rejected_for_commands_that_take_no_prompt(agent_cmd, monkeypatch, tmp_path):
+    """bash and sleep have no prompt to receive. Silently dropping one surfaces
+    later as a worker that never got its instructions, so it is rejected up
+    front and no container starts."""
+    result, captured = _invoke_capturing(
+        monkeypatch,
+        tmp_path,
+        ["run", agent_cmd, "-d", str(tmp_path / "repo"), "--prompt", "hello there"],
+    )
+
+    assert result.exit_code != 0
+    assert "--prompt has no meaning for AGENT_CMD" in result.output
+    assert captured == [], "no container may start for an invocation that cannot work"
