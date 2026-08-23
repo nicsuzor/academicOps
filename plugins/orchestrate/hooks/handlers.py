@@ -137,8 +137,13 @@ def session_start(ctx: HookContext) -> Result | None:
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
     """Remind the dispatcher that a subagent's report is not evidence."""
-    if any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
-        return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
+
+    # Only fire on supervisor profiles
+    if ctx.agent_type in ("ida:ida", "orchestrate:james"):
+        if any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
+            return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
+
+    return None
 
 
 def honest_output(ctx: HookContext) -> Result | None:
@@ -149,6 +154,10 @@ def honest_output(ctx: HookContext) -> Result | None:
 
     """
     if ctx.agent_type == "ida:ida":
+        return None
+
+    if ctx.raw.get("background_tasks"):
+        # No need to do anything until the background tasks complete.
         return None
 
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
@@ -330,6 +339,7 @@ HANDLERS: dict[str, list] = {
     # PostInvocation — dispatch.py's TO_CANONICAL no longer aliases that
     # one onto anything; see the comment there).
     "Stop": [stop, agy_stop],
-    # "PostToolBatch": [rule_against_hearsay],
-    "SubagentStart": [honest_output],
+    "PostToolBatch": [rule_against_hearsay],
+    # "SubagentStart": [honest_output],
+    "SubagentSop": [honest_output],
 }

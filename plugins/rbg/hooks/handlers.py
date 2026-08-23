@@ -306,7 +306,7 @@ def rule_check(ctx: HookContext) -> Result | None:
     if ctx.raw.get("background_tasks"):
         return None
 
-    reason = load_message_pair(ctx.hooks_dir, "rule-check")[0]
+    reason, user_text = load_message_pair(ctx.hooks_dir, "rule-check")
     if not reason:
         # A block is an instruction to do something. With no text there is no
         # instruction, and blocking would cost the agent a turn to be told
@@ -317,7 +317,7 @@ def rule_check(ctx: HookContext) -> Result | None:
             file=sys.stderr,
         )
         return None
-    return block(reason)
+    return block(reason, user_text)
 
 
 # TEMPORARY (2026-08-08, v0.7.1) — rbg's hooks are deliberately unregistered.

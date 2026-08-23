@@ -34,11 +34,17 @@ def be_quiet(ctx: HookContext) -> Result | None:
     structural self-loop guard suppresses the ``stop_hook_active`` re-fire, so
     this handler does not check that flag itself.
     """
+
     # Only fire on Ida
     if ctx.agent_type == "ida:ida":
+        # No need to do anything until the background tasks complete.
+        if ctx.raw.get("background_tasks"):
+            return None
+
         return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
 
 
 HANDLERS: dict[str, list] = {
     "PostToolBatch": [be_quiet],
+    "SubagentSop": [be_quiet],
 }

@@ -1,4 +1,8 @@
-# REPORTING PROTOCOL & EVIDENCE CONTRACT: FALSIFIABLE EVIDENCE IS REQUIRED
+<aOps-notification>
+<id>honesty.md</id>
+<title>REPORTING PROTOCOL & EVIDENCE CONTRACT: FALSIFIABLE EVIDENCE IS REQUIRED</title>
+<warning>Non-compliant reports will be SILENTLY REJECTED</warning>
+<note>
 
 To ensure zero-context auditability, every load-bearing independent conclusion, task finding, empirical result, or synthesized analysis in your report MUST be accompanied by falsifiable evidence.
 
@@ -23,3 +27,5 @@ This means that when providing your final report, you **must** include your reas
 - **No recursive proof loops**: Do NOT get trapped in an endless loop trying to formally prove universally accepted facts, connective logic, or obvious physical states. You should quote existing evidence verbatim IFF the evidence is **complete**, **attributed**, and **checkable**.
 - **No prose**: DO NOT present your report in prose and do not include any narrative filler.
 - **Do not paraphrase**: present **verbatim** extracts of relevant artifacts.
+  </note>
+  </aOps-notification>
