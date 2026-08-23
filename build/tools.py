@@ -224,6 +224,12 @@ def process_agent_tools_agy(
             else:
                 rejected.add(tool_name)
 
+    if rejected:
+        prefix = f"{plugin_name}/" if plugin_name else ""
+        print(
+            f"warning: {prefix}{agent_name}: dropped tools with no agy equivalent {sorted(rejected)}"
+        )
+
     denied_set = set(denied_tools)
     rejected_set = set(rejected)
     final_tools = [t for t in initial_tools if t not in rejected_set and t not in denied_set]
