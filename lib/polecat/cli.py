@@ -1120,10 +1120,11 @@ def _build_inner_command(
             ):
                 inner_cmd.append("--verbose")
         if (
-            (bool(task) or not is_interactive)
-            and not explicit_headless
+            not is_interactive
             and "-p" not in extra_args
             and "--print" not in extra_args
+            and not prompt
+            and not task
         ):
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
@@ -1148,6 +1149,23 @@ def _build_inner_command(
         ]
         if effective_output_format:
             inner_cmd.extend(["--output-format", effective_output_format])
+        agy_prompt_flags = {
+            "-p",
+            "--print",
+            "--prompt",
+            "-i",
+            "--prompt-interactive",
+            "-c",
+            "--continue",
+            "--conversation",
+        }
+        if (
+            not is_interactive
+            and not agy_prompt_flags.intersection(extra_args)
+            and not prompt
+            and not task
+        ):
+            inner_cmd.extend([*_print_timeout_args(config), "--print", ""])
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
         inner_cmd = ["bash"]
