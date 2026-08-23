@@ -1120,7 +1120,7 @@ def _build_inner_command(
             ):
                 inner_cmd.append("--verbose")
         if (
-            not is_interactive
+            (bool(task) or not is_interactive)
             and not explicit_headless
             and "-p" not in extra_args
             and "--print" not in extra_args
@@ -1129,6 +1129,13 @@ def _build_inner_command(
             # has: without it claude opens its interactive UI against a pipe. The
             # prompt is a positional, so it still arrives from extra_args below,
             # or from stdin when there is none.
+            #
+            # `task` forces it regardless of the TTY. `-t` *is* the autonomous
+            # task dispatch: the worker runs `/pull <id>` and exits. Gating that
+            # on `sys.stdin.isatty()` meant the identical dispatch launched from
+            # a tmux pane got no `--print`, so claude opened its interactive UI
+            # and idled at the prompt forever instead of working the task. agy
+            # already forced headless on this path; claude now matches it.
             inner_cmd.append("--print")
     elif agent_cmd == "agy":
         container_session_path = AGY_SESSION_PATH
