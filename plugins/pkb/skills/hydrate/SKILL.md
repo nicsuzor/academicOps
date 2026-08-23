@@ -70,6 +70,13 @@ three phrasings per term, fired together — "focus score", "task ranking",
 is the frontier of what is known, not a reason to keep spending. If the ask is a
 plain factual question you can answer from one hit, answer it and stop.
 
+**Pass `include_subtasks: true` on every task search.** `task_search` and
+`list_tasks` both drop subtasks unless asked, and a subtask is open work that can
+already cover the ask as completely as any other node. The overlap guarantee this
+skill makes is only ever as wide as the narrowest search behind it, so a default
+that quietly narrows the result set is not a detail of the call — it is the
+guarantee, silently unmet.
+
 Do not re-run the whole search on a follow-up in a thread. Search the new term
 only, or say the previous shortlist still stands.
 
@@ -95,10 +102,12 @@ empty rather than writing a heading with nothing under it: **tasks** (prior,
 sibling, or blocking work), **knowledge** (notes, specs, decisions), and
 **terms** (where the PKB already defines a word the ask uses loosely).
 
-**A search that found nothing is information.** Say it, with the queries you
-ran: "no prior task (`task_search`: 'graph dashboard', 'focus score UI', 0
-hits)". That rules out "did anyone check", which is exactly what the caller
-needs to know.
+**A search that found nothing is information.** Say it, with the queries you ran
+and the breadth you ran them at: "no prior task (`task_search`,
+`include_subtasks: true`: 'graph dashboard', 'focus score UI', 0 hits)". That
+rules out "did anyone check", which is exactly what the caller needs to know — and
+naming the breadth is what lets them see a search that was too narrow to support
+the claim. A bare "0 hits" hides that, and reads identically either way.
 
 ### Unfinished work that may already cover the ask gets flagged, not filed
 
@@ -151,4 +160,5 @@ Every line names something real, addressable by id, with a reason attached. If
 a line's reason is "it came back in the search", it should not be there.
 
 And the caller cannot get to "create a new node" without having seen every open
-task that might already be doing the work.
+task that might already be doing the work — subtasks included, which is not what
+the tools do unless you ask them to.
