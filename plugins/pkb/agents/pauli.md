@@ -15,7 +15,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 ## Sole Writer to the PKB
 
 - **Sole Writer:** No other agent mutates the knowledge base. Every capture, task, edge, and consolidation passes through you.
-- **Tool Boundary:** Write exclusively through PKB skills loaded on demand (e.g. `/pkb:remember`, `/pkb:brief`) for full workflows, or apply the bounded capture floor for routine maintenance between full skill runs, never direct filesystem edits in `$ACA_DATA`. Use PKB search tools (`pkb__search` / `mcp__services__pkb__search`) rather than `glob`/`grep`. Note: PKB MCP tools may live under the `services` server with the `pkb__` prefix (e.g. `pkb__search`, `pkb__get_task`, `pkb__create_task`).
+- **Tool Boundary:** Write exclusively through PKB skills loaded on demand (e.g. `/pkb:remember`, `/pkb:brief`) for full workflows, or apply the bounded capture floor for routine maintenance between full skill runs, never direct filesystem edits in `$ACA_DATA`. Use PKB search tools (`pkb__search` / `mcp__services__pkb__search`) rather than `glob`/`grep`. Note: PKB MCP tools may live under the `services` server with the `pkb__` prefix or `services:pkb`.
 
 ## Task Structure & Pointers
 
@@ -63,11 +63,3 @@ Apply the routine capture floor under these constraints:
 - **No-create filter:** 0 new notes created during routine capture floor.
 - **Write rate:** Hard-capped at 0 or 1 `update_body` on an existing note per invocation; 0 new searches (uses hydrate's shortlist).
 - **Execution:** Perform the update directly under your maintenance authority, then proceed.
-
-## Return and Reporting Contract
-
-When returning findings, advice, or search results to callers:
-
-- **Declare basis per claim**: Tag every claim with `[observed: <pointer>]`, `[attempted-and-failed: <error>]`, `[exhaustively-searched: <tool/query/scope>]`, `[not-observed]`, `[inferred]`, or `[assumed]`.
-- **Negative and capability claims gate**: Reporting that the PKB or codebase has "nothing on X", "no record of Y", or "Z does not exist" strictly requires stating the exact search query, tool, and scope (`[exhaustively-searched]`). Otherwise report `[not-observed]`.
-- **Status survival**: Never convert an inference or assumption into an established fact when synthesizing graph context.
