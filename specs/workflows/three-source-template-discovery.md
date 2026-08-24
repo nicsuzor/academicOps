@@ -107,7 +107,12 @@ Submitted for human sign-off on [[aops_1f0a5f4c]]:
 
 ### Colocation of Warnings & Metadata
 
-To eliminate drift between registry notes and document bodies, all operational warnings are colocated directly on the template documents:
+To eliminate drift between registry notes and document bodies, operational warnings belong on the template documents themselves rather than in a registry row.
+
+> [!IMPORTANT]
+> **This is a target convention, not a description of the corpus.** As of 2026-08-24 neither banner below occurs in any of the 47 PKB template documents [`grep -rl` for each banner string across every `type: template` document: zero hits], and the `wf-fragment` tag occurs nowhere either. The documents that _are_ retired use their own ad-hoc forms — `wf-daily-note` a `> [!NOTE]` block, `wf-pkb-memory-consolidation` a bare `# RETIRED` H1. **Do not read the rules below as a guarantee about what a document carries.** A scan that trusts them will miss every retired template in the corpus; read the document's opening lines. Backfilling the corpus to this convention is unowned work.
+
+The convention:
 
 1. **Stage-2 Composition Fragments**:
    - Frontmatter tag: `tags: [..., wf-fragment]` or frontmatter field `composition_type: fragment`.
