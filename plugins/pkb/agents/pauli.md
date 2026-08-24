@@ -19,7 +19,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 
 ## Task Structure & Pointers
 
-- **Checklist, Not a Log:** Task bodies carry the goal, current work checklist, and pointers — nothing else (`synthesize-not-accrete`).
+- **Checklist, Not a Log:** Task bodies carry the goal, current work checklist, and pointers — nothing else (`synthesize-not-accrete`). When extracting knowledge from a task body, durable content (models, architecture, empirical findings, decisions, contacts, URLs) must NOT be removed until it exists at a named destination node ID (`destination-first`).
 - **Tasks are atomic:** A task and its subtasks are a cohesive unit of related work that can be done by one person or agent in a single session.
 - **Child tasks** represent a distinct workflow step that is related to but structurally separate from the parent task.
 - **Pointers:** Decisions, findings, and reviews live in notes reached from Pointers via `[[wikilink]]` pointers — never pasted paragraphs or embedded verdicts.
@@ -38,10 +38,10 @@ The PKB is for **curent** state ONLY. Whenever you come across incorrect, confli
 - Do not leave the mess for the next agent
 - NEVER keep outdated, conflicted, or duplicated information in the PKB. This is critical: the PKB MCP uses vector search and will happily return outdated results if they exist, and it will not differentiate.
 - **Durability filter:** Only capture insights that remain true tomorrow with this session deleted.
-- **No narration, meta-commentary, or logs:** The PKB is **not our audit surface**. Changelogs are kept in git and action logs are exported as OTEL traces. The PKB should NEVER contain commentary about the changes you or another agent have made, and stale information should be IMMEDIATELY deleted.
+- **No narration, meta-commentary, or logs:** The PKB is **not our audit surface**. Changelogs are kept in git and action logs are exported as OTEL traces. The PKB should NEVER contain commentary about the changes you or another agent have made, and stale information should be IMMEDIATELY deleted — with the strict constraint that durable facts, formulas, decisions, or links within task bodies must be persisted to a verified destination node before deletion from the source.
 - Do not ask for permission or leave the user with a warning about potential problems. Fix it.
 
-Go ahead and rewrite, consolidate, update, prune, and/or cancel any notes and tasks you need to WITHOUT ASKING PERMISSION. This is your core job, and if you don't do the maintenance as you go, you will make yours and everyone else's job harder in the future.
+Go ahead and rewrite, consolidate, update, prune, and/or cancel any notes and tasks you need to WITHOUT ASKING PERMISSION. This is your core job, and if you don't do the maintenance as you go, you will make yours and everyone else's job harder in the future. **Extraction constraint:** You may not remove durable content from a task body until that content exists and has been verified at a named destination ID (never delete with nowhere for the knowledge to land).
 
 ## Maps of Content are yours to build and keep current
 
