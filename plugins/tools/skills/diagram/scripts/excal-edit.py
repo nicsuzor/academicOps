@@ -2,15 +2,21 @@
 """Editing and layout verification utilities for .excalidraw files. Stdlib + matplotlib for render.
 
 Usage: excal-edit.py FILE fit <id> "<new text>"
-       excal-edit.py FILE overlap
+       excal-edit.py FILE restack [<id>] [--gap GAP]
+       excal-edit.py FILE overlap [--baseline BASELINE]
        excal-edit.py FILE arrows
        excal-edit.py FILE render [OUT.png] [--region X0,Y0,X1,Y1]
 
   fit      recomputes text bounding box for element <id> (text or container)
            with <new text>, center-grows its container if needed to prevent text
            overflow, and saves the file.
-  overlap  checks AABB collisions between non-nested sibling elements (excluding
-           bound text-container pairs and frame-child pairs). Exits 1 on overlap.
+  restack  repositions sibling texts inside a card container (or all card
+           containers if <id> is omitted) vertically so none overprints
+           another, without moving the card. Fails closed if text overflows card.
+  overlap  checks AABB collisions between non-nested sibling elements (including
+           sibling texts inside a card, excluding bound text-container pairs and
+           frame-child pairs). Accepts --baseline <file_or_spec> to allowlist
+           known intentional collisions. Exits 1 on overlap.
   arrows   checks every arrow's polyline against every shape's interior, flagging
            any arrow that cuts through a box it is not bound to at either end
            (the craft rule: route around unrelated boxes, never through them).
@@ -54,6 +60,241 @@ def get_label(e, by_id):
         if b.get("type") == "text" and b["id"] in by_id:
             return element_text(by_id[b["id"]]).replace("\n", " / ")
     return ""
+
+
+def _is_zone_shape(shape, all_shapes):
+    """Detect whether a shape is a background zone containing other shapes."""
+
+    def _fully_contains(outer, inner):
+        if outer is inner:
+            return False
+        ox, oy, ow, oh = outer["x"], outer["y"], outer["width"], outer["height"]
+        ix, iy, iw, ih = inner["x"], inner["y"], inner["width"], inner["height"]
+        return ox <= ix and oy <= iy and ix + iw <= ox + ow and iy + ih <= oy + oh
+
+    return sum(1 for other in all_shapes if _fully_contains(shape, other)) >= 3
+
+
+def get_card_texts(container, els, by_id):
+    """Discover text elements belonging to a card container without assuming naming conventions.
+
+    1. Structural discovery (primary):
+       All live text elements where `text.containerId == container["id"]`
+       or `text.id` is listed in `container.boundElements` (type 'text').
+    2. Geometric fallback:
+       If no structural texts exist and container is not a background zone,
+       find live text elements whose bounding box falls inside this container.
+       If a text falls inside multiple containers, assign to the innermost (smallest area).
+    """
+    cid = container["id"]
+    structural_texts = []
+
+    bound_text_ids = {
+        b["id"]
+        for b in (container.get("boundElements") or [])
+        if b.get("type") == "text" and b["id"] in by_id
+    }
+
+    for e in els:
+        if e.get("type") == "text":
+            if e.get("containerId") == cid or e["id"] in bound_text_ids:
+                if e not in structural_texts:
+                    structural_texts.append(e)
+
+    if structural_texts:
+        return structural_texts
+
+    all_shapes = [
+        e
+        for e in els
+        if e.get("type") in ("rectangle", "diamond", "ellipse")
+        and e.get("width", 0) > 0
+        and e.get("height", 0) > 0
+    ]
+    if _is_zone_shape(container, all_shapes):
+        return []
+
+    cx, cy, cw, ch = container["x"], container["y"], container["width"], container["height"]
+    geom_texts = []
+    for e in els:
+        if e.get("type") == "text" and not e.get("containerId"):
+            tx, ty, tw, th = e.get("x", 0), e.get("y", 0), e.get("width", 0), e.get("height", 0)
+            if tx >= cx - 1 and ty >= cy - 1 and tx + tw <= cx + cw + 1 and ty + th <= cy + ch + 1:
+                # Check innermost container: does another non-zone shape inside `container` contain `e`?
+                nested = False
+                for other in all_shapes:
+                    if other is not container and not _is_zone_shape(other, all_shapes):
+                        ox, oy, ow, oh = other["x"], other["y"], other["width"], other["height"]
+                        if ox >= cx and oy >= cy and ox + ow <= cx + cw and oy + oh <= cy + ch:
+                            if (
+                                tx >= ox - 1
+                                and ty >= oy - 1
+                                and tx + tw <= ox + ow + 1
+                                and ty + th <= oy + oh + 1
+                            ):
+                                nested = True
+                                break
+                if not nested:
+                    geom_texts.append(e)
+    return geom_texts
+
+
+def _element_fingerprint(e):
+    points = tuple(tuple(p) for p in e.get("points", [])) if e.get("points") else None
+    return (
+        e.get("x"),
+        e.get("y"),
+        e.get("width"),
+        e.get("height"),
+        e.get("angle"),
+        e.get("index"),
+        points,
+        e.get("text"),
+        e.get("originalText"),
+        e.get("isDeleted"),
+    )
+
+
+def _restack_container_texts(container, texts, gap=5.0):
+    """Restacks texts inside container vertically. Returns list of restacked text elements or raises ValueError."""
+    if len(texts) < 2:
+        return texts
+
+    sorted_texts = sorted(texts, key=lambda t: (t.get("y", 0), t.get("index", "")))
+
+    total_text_height = sum(t.get("height", 0) for t in sorted_texts) + gap * (
+        len(sorted_texts) - 1
+    )
+    ch = container.get("height", 0)
+    cy = container.get("y", 0)
+
+    if total_text_height > ch:
+        raise ValueError(
+            f"total text height ({total_text_height:.1f}px) overflows container {container['id']!r} height ({ch:.1f}px)"
+        )
+
+    start_y = cy + (ch - total_text_height) / 2.0
+    curr_y = start_y
+
+    for t in sorted_texts:
+        t["y"] = curr_y
+        curr_y += t.get("height", 0) + gap
+
+    return sorted_texts
+
+
+def cmd_restack(doc_path, args):
+    gap = 5.0
+    target_id = None
+
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--gap":
+            if idx + 1 >= len(args):
+                sys.exit("--gap requires a numeric value")
+            gap = float(args[idx + 1])
+            idx += 2
+        elif not arg.startswith("--"):
+            target_id = arg
+            idx += 1
+        else:
+            sys.exit(f"unrecognised option: {arg}")
+
+    with open(doc_path, encoding="utf-8") as f:
+        doc = json.load(f)
+
+    els = doc.get("elements", [])
+    live_els = live_elements(doc)
+    by_id = {e["id"]: e for e in live_els}
+
+    containers_to_restack = []
+
+    if target_id:
+        if target_id not in by_id:
+            sys.exit(f"element id {target_id!r} not found in {doc_path}")
+        target = by_id[target_id]
+        if target.get("type") == "text":
+            cid = target.get("containerId")
+            if cid and cid in by_id:
+                containers_to_restack.append(by_id[cid])
+            else:
+                all_shapes = [
+                    e
+                    for e in live_els
+                    if e.get("type") in ("rectangle", "diamond", "ellipse")
+                    and e.get("width", 0) > 0
+                    and e.get("height", 0) > 0
+                ]
+                matching_containers = [
+                    s for s in all_shapes if target in get_card_texts(s, live_els, by_id)
+                ]
+                if matching_containers:
+                    containers_to_restack.append(matching_containers[0])
+                else:
+                    sys.exit(f"cannot determine container for text element {target_id!r}")
+        else:
+            containers_to_restack.append(target)
+    else:
+        all_shapes = [
+            e
+            for e in live_els
+            if e.get("type") in ("rectangle", "diamond", "ellipse")
+            and e.get("width", 0) > 0
+            and e.get("height", 0) > 0
+        ]
+        for s in all_shapes:
+            card_texts = get_card_texts(s, live_els, by_id)
+            if len(card_texts) >= 2:
+                containers_to_restack.append(s)
+
+    if not containers_to_restack:
+        if target_id:
+            sys.exit(f"cannot determine text membership or no container for {target_id!r}")
+        else:
+            print("OK: no multi-text containers found to restack")
+            return
+
+    # Fail-closed fingerprinting before mutation
+    fp_before = {e["id"]: _element_fingerprint(e) for e in els}
+
+    restacked_any = False
+    restacked_text_ids = set()
+
+    for container in containers_to_restack:
+        card_texts = get_card_texts(container, live_els, by_id)
+        if len(card_texts) < 2:
+            if target_id:
+                sys.exit(f"container {container['id']!r} has fewer than 2 text elements to restack")
+            continue
+
+        try:
+            _restack_container_texts(container, card_texts, gap=gap)
+        except ValueError as err:
+            sys.exit(f"restack failed: {err}")
+
+        for t in card_texts:
+            restacked_text_ids.add(t["id"])
+        restacked_any = True
+        print(f"Restacked {len(card_texts)} text element(s) in container {container['id']!r}")
+
+    # Verify fail-closed invariants: no other elements modified
+    fp_after = {e["id"]: _element_fingerprint(e) for e in els}
+    for eid, fp_b in fp_before.items():
+        fp_a = fp_after[eid]
+        if eid not in restacked_text_ids:
+            if fp_b != fp_a:
+                sys.exit(f"invariant violation: non-restacked element {eid!r} was mutated")
+        else:
+            # For restacked text elements, check that only (x, y) changed, nothing else
+            if fp_b[2:] != fp_a[2:]:
+                sys.exit(
+                    f"invariant violation: immutable properties of restacked text {eid!r} were mutated"
+                )
+
+    if restacked_any:
+        with open(doc_path, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=2)
 
 
 def cmd_fit(doc_path, args):
@@ -171,7 +412,78 @@ def cmd_fit(doc_path, args):
         json.dump(doc, f, indent=2)
 
 
-def cmd_overlap(doc_path):
+def load_baseline(baseline_spec, doc_path):
+    """Load baseline collision pairs from a file path or inline spec.
+
+    Returns a set of frozenset({id1, id2}).
+    """
+    pairs = set()
+    if not baseline_spec:
+        p = Path(doc_path)
+        candidates = [
+            p.with_suffix(".baseline.json"),
+            p.with_name(p.stem + ".baseline.json"),
+            p.with_suffix(".baseline"),
+            p.with_name(p.name + ".baseline"),
+        ]
+        for c in candidates:
+            if c.exists():
+                baseline_spec = str(c)
+                break
+
+    if not baseline_spec:
+        return pairs
+
+    path = Path(baseline_spec)
+    if path.is_file():
+        content = path.read_text(encoding="utf-8").strip()
+        if content.startswith("{") or content.startswith("["):
+            try:
+                data = json.loads(content)
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, list) and len(item) >= 2:
+                            pairs.add(frozenset({str(item[0]), str(item[1])}))
+                        elif isinstance(item, dict):
+                            pair = item.get("pair") or item.get("elements")
+                            if pair and len(pair) >= 2:
+                                pairs.add(frozenset({str(pair[0]), str(pair[1])}))
+                elif isinstance(data, dict):
+                    colls = data.get("collisions") or data.get("baseline") or []
+                    for item in colls:
+                        if isinstance(item, list) and len(item) >= 2:
+                            pairs.add(frozenset({str(item[0]), str(item[1])}))
+                return pairs
+            except json.JSONDecodeError:
+                pass
+
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p for p in line.replace(":", " ").replace(",", " ").split() if p]
+            if len(parts) >= 2:
+                pairs.add(frozenset({parts[0], parts[1]}))
+        return pairs
+
+    for item in baseline_spec.split(","):
+        parts = [p for p in item.replace(":", " ").replace(";", " ").split() if p]
+        if len(parts) >= 2:
+            pairs.add(frozenset({parts[0], parts[1]}))
+    return pairs
+
+
+def cmd_overlap(doc_path, args=None):
+    args = args or []
+    baseline_spec = None
+    if "--baseline" in args:
+        idx = args.index("--baseline")
+        if idx + 1 >= len(args):
+            sys.exit("--baseline requires a file path or inline collision pair string")
+        baseline_spec = args[idx + 1]
+
+    baseline_pairs = load_baseline(baseline_spec, doc_path)
+
     with open(doc_path, encoding="utf-8") as f:
         doc = json.load(f)
 
@@ -193,12 +505,13 @@ def cmd_overlap(doc_path):
             nested_pairs.add((e["id"], fid))
             nested_pairs.add((fid, e["id"]))
 
-    # Filter shapes and free text boxes (ignore arrows, lines, and text bound inside containers)
+    # Filter all 2D elements: shapes and text boxes (ignore arrows and lines)
+    # Container-bound text is included so sibling texts in the same container are checked,
+    # while the text-container pair is excluded via nested_pairs.
     shapes = [
         e
         for e in els
         if e.get("type") not in ("arrow", "line")
-        and not (e.get("type") == "text" and e.get("containerId"))
         and e.get("width", 0) > 0
         and e.get("height", 0) > 0
     ]
@@ -212,6 +525,13 @@ def cmd_overlap(doc_path):
             if (e1["id"], e2["id"]) in nested_pairs:
                 continue
 
+            # If an element is a container-bound text and the other is a non-text shape,
+            # the geometric check belongs to the container vs shape, so skip the redundant sub-pair.
+            if (
+                e1.get("type") == "text" and e1.get("containerId") and e2.get("type") != "text"
+            ) or (e2.get("type") == "text" and e2.get("containerId") and e1.get("type") != "text"):
+                continue
+
             x2, y2, w2, h2 = e2["x"], e2["y"], e2["width"], e2["height"]
 
             overlap_w = min(x1 + w1, x2 + w2) - max(x1, x2)
@@ -220,9 +540,19 @@ def cmd_overlap(doc_path):
             if overlap_w > 1.0 and overlap_h > 1.0:
                 collisions.append((e1, e2, overlap_w, overlap_h))
 
-    if collisions:
-        print(f"FAIL: {len(collisions)} AABB collision(s) detected:")
-        for e1, e2, ow, oh in collisions:
+    active_collisions = []
+    baselined_count = 0
+    for e1, e2, ow, oh in collisions:
+        pair = frozenset({e1["id"], e2["id"]})
+        if pair in baseline_pairs:
+            baselined_count += 1
+        else:
+            active_collisions.append((e1, e2, ow, oh))
+
+    if active_collisions:
+        msg_suffix = f" ({baselined_count} baselined ignored)" if baselined_count > 0 else ""
+        print(f"FAIL: {len(active_collisions)} AABB collision(s) detected{msg_suffix}:")
+        for e1, e2, ow, oh in active_collisions:
             lbl1 = get_label(e1, by_id) or e1["id"]
             lbl2 = get_label(e2, by_id) or e2["id"]
             print(
@@ -230,7 +560,12 @@ def cmd_overlap(doc_path):
             )
         sys.exit(1)
     else:
-        print("OK: no overlapping non-nested sibling elements found")
+        if baselined_count > 0:
+            print(
+                f"OK: no un-baselined overlapping non-nested sibling elements found ({baselined_count} intentional collision(s) ignored)"
+            )
+        else:
+            print("OK: no overlapping non-nested sibling elements found")
 
 
 def _point_in_rect(px, py, x, y, w, h):
@@ -430,14 +765,16 @@ def main():
 
     if mode == "fit":
         cmd_fit(doc_path, args)
+    elif mode == "restack":
+        cmd_restack(doc_path, args)
     elif mode == "overlap":
-        cmd_overlap(doc_path)
+        cmd_overlap(doc_path, args)
     elif mode == "arrows":
         cmd_arrows(doc_path)
     elif mode == "render":
         cmd_render(doc_path, args)
     else:
-        sys.exit(f"unknown mode {mode!r}; expected fit, overlap, arrows, or render")
+        sys.exit(f"unknown mode {mode!r}; expected fit, restack, overlap, arrows, or render")
 
 
 if __name__ == "__main__":
