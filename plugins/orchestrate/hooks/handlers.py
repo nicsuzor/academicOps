@@ -341,5 +341,5 @@ HANDLERS: dict[str, list] = {
     "Stop": [stop, agy_stop],
     "PostToolBatch": [rule_against_hearsay],
     # "SubagentStart": [honest_output],
-    "SubagentSop": [honest_output],
+    "SubagentStop": [honest_output],
 }
