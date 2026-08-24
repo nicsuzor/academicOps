@@ -22,6 +22,15 @@ This specification establishes the **Three-Source Workflow Template Discovery Co
 
 This contract removes the registry gate requirement, specifies the project tier convention, formalizes the resolution order and collision semantics, settles the fate of existing registries, and provides deterministic blind-scanning rules for composing agents.
 
+> [!WARNING]
+> **This spec states some of its targets in the present tense, and a reader cannot tell those lines from the measured ones.** Three instances were found and corrected on 2026-08-24, all of the same shape — a thing proposed, recommended or intended, written as though already true:
+>
+> - §6 row 34 recorded `wf-risk-profiles` as "Retired / Deprecated — Excluded". Its retirement had only been _recommended_, is blocked behind [[aops_1d36fadf]], and had not been performed; the document was live and dispatchable.
+> - §6 Filter 3 keyed fragment detection on a `wf-fragment` tag. That tag occurs in **zero** of the 47 PKB template documents, so the filter could never fire and all eight fragments were classified dispatchable.
+> - §5's colocation rules were introduced with "all operational warnings **are** colocated directly on the template documents". Neither mandated banner occurs anywhere in the corpus.
+>
+> Three is not a series of slips. **When reading any normative statement here, check whether it describes the corpus or prescribes a target**, and verify against the corpus before relying on it. When writing here, put targets in the imperative and attach a date and a measurement to anything stated as fact.
+
 ## 2. Framework Gate Output Block
 
 Per `framework-gate` requirements for modifications to shipped skills and workflow library contracts:
