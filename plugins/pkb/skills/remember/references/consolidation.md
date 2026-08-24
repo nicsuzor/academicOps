@@ -87,8 +87,8 @@ in the permanent PKB store.
 
 ### What moves, what stays, what goes
 
-| Move to a topic note | Keep in the task body | Discard |
-|---|---|---|
+| Move to a topic note                                                                                                                                                                  | Keep in the task body                                                                                               | Discard                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Models and formulas; architecture; behavioural invariants; empirical findings; post-mortems and generalisable lessons; infra constraints and APIs; **contacts, URLs, document links** | One-sentence Goal; completed checklist; backlinks to extracted notes; backlinks to parent/child; PR and commit URLs | Retry loops and terminal spam; intermediate debug output; routine status timestamps; raw transcripts and PIDs; retracted scratchpad proposals |
 
 ### The Four Tests — Every Extraction Passes All Four
@@ -132,6 +132,7 @@ Every knowledge note produced or touched must be checked against these defect cl
 
 A task that contains only ephemeral coordination, routine logs, trivial status, or
 scratchpad proposals contains **nothing durable**.
+
 - In such cases, the worker writes **nothing** to the knowledge layer (no new note,
   no updated note, no `## Key Knowledge` placeholder).
 - A generic or templated bullet (e.g. invented framework rules) is a **FAIL, not a
@@ -150,9 +151,11 @@ Run `graph_stats`. Record `flat_tasks`, `disconnected_epics`,
 `metrics_hash`.
 
 Measure the knowledge layer separately:
+
 ```
 pkb_orphans(types=["note","knowledge","memory"], include_all=true, limit=0)
 ```
+
 Record that total as the convergence baseline. Measure both numbers again at the
 end of the cycle to report the delta.
 
@@ -160,6 +163,7 @@ end of the cycle to report the delta.
 
 Session transcripts hold what agents did not save during sessions.
 Find transcripts with no `mined: <date>` in frontmatter (up to 15 per cycle):
+
 1. Read the transcript, identifying first-class topics, decisions, and patterns.
 2. Route per the extraction method: search for canonical note, augment or create,
    record provenance (`sources: ["Session <id> (<date>)"]`, `confidence: provisional`).
@@ -170,6 +174,7 @@ Find transcripts with no `mined: <date>` in frontmatter (up to 15 per cycle):
 
 Find episodic content not yet consolidated (daily notes, meeting notes with no
 `consolidated:` marker, and closed tasks with substantive bodies):
+
 1. For each source, apply the **Definitive Knowledge-Extraction Method** above:
    - Identify durable facts (models, architecture, decisions, contacts, URLs).
    - If nothing durable: record empty extraction.
@@ -184,20 +189,24 @@ Find episodic content not yet consolidated (daily notes, meeting notes with no
 Fix data quality before structural maintenance. Three activities:
 
 #### Duplicates
+
 `find_duplicates(mode="both")` produces candidates, not verdicts. Always read member
 titles to judge:
+
 - Heterogeneous titles mean not a duplicate set, regardless of score.
 - Merge only when members are the same work restated.
 - Quarantine large/degenerate clusters.
 - Always check that the survivor is the note with the most context.
 
 #### Staleness and Closure
+
 Staleness, unclosed merged tasks, dead claims, and artifact rot are owned by the
 `reconcile` skill (`plugins/pkb/skills/reconcile/SKILL.md`).
 Delegate this stage to `/reconcile` in batch context; do not freelance separate
 closure logic.
 
 #### Misclassification
+
 Identify captures masquerading as tasks (e.g. aged "Email:" prefixes with no
 children, informational prose with no action). Archive or reclassify to memories.
 
@@ -209,6 +218,7 @@ nodes and surface genuine candidates rather than blindly retiring them.
 ### 6 — Process Refiles
 
 Process tasks flagged `refile` by inspecting task body, lineage, and context:
+
 - Correct parentage, consequence, severity, effort, dependencies, and tags.
 - Clear the `refile` flag when complete.
 
@@ -221,6 +231,7 @@ across both layers indicates graph stability.
 ### 8 — Check Your Own Output
 
 Perform a 2-minute audit on notes produced or modified this cycle:
+
 - Does every claim carry `sources:`?
 - Does synthesis cite 2+ observations?
 - Are wikilinks valid?
@@ -232,6 +243,7 @@ Perform a 2-minute audit on notes produced or modified this cycle:
 ## The Cycle Summary
 
 Every consolidation run emits a structured report:
+
 1. **Subagent Halt Count** (at the very top, even if zero): list any `HALT:`
    occurrences with phase and missing tool/error.
 2. **Baseline & Deltas**: initial vs final graph stats and knowledge orphan counts.
