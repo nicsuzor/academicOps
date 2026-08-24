@@ -15,8 +15,8 @@ On 2026-08-23, commit [`71516fc016`](https://github.com/nicsuzor/brain/commit/71
 The specific failure modes observed in that incident are the acceptance evidence this workflow is designed to prevent:
 
 1. **Net destruction without a landing zone:** ~81k lines deleted while producing generic stubs. Deleted prose with nowhere to land is catastrophic.
-2. **Tautological summaries:** `academic-0fbdd4ee` was reduced to *"Completed [[Consider GNI academic membership]]. Consider GNI academic membership"* — echoing the title twice with zero substance.
-3. **Fabricated boilerplate:** Identical invented `## Key Knowledge` bullets (*"Framework components require strict fail-loud verification …"*) were pasted onto unrelated tasks — `academic-0fbdd4ee` (GNI academic membership) and `academic-3a12ff04` (a strategic memo for Kylie) — neither of which touched fail-loud verification.
+2. **Tautological summaries:** `academic-0fbdd4ee` was reduced to _"Completed [[Consider GNI academic membership]]. Consider GNI academic membership"_ — echoing the title twice with zero substance.
+3. **Fabricated boilerplate:** Identical invented `## Key Knowledge` bullets (_"Framework components require strict fail-loud verification …"_) were pasted onto unrelated tasks — `academic-0fbdd4ee` (GNI academic membership) and `academic-3a12ff04` (a strategic memo for Kylie) — neither of which touched fail-loud verification.
 4. **Irreplaceable facts deleted with no destination:**
    - On `academic-1184d18d`: A full ReFrame findings table ($293.9M vs $117.8M), a metric comparison, four strategic options, and two source URLs were permanently erased.
    - On `academic-0fbdd4ee`: Two GNI contact emails and a brochure URL were destroyed.
@@ -47,7 +47,7 @@ A task body is not a primary record, but an in-place rewrite during extraction m
 To avoid unowned gaps and maintain strict architectural boundaries:
 
 1. **Staleness and closure (former §4) is OUT OF SCOPE:**
-   Closure loop logic, staleness sweeps across non-terminal tasks, pull request reconciliation, and artifact rot are owned exclusively by the `/reconcile` skill ([`../../reconcile/SKILL.md`](../../reconcile/SKILL.md)) per [`specs/workflows/reconcile.md`](../../../../specs/workflows/reconcile.md#L102)(../../../../specs/workflows/reconcile.md#L102) (*"No other skill carries closure-loop logic of its own"*). This workflow does not inspect unclosed task claims or execute closure sweeps.
+   Closure loop logic, staleness sweeps across non-terminal tasks, pull request reconciliation, and artifact rot are owned exclusively by the `/reconcile` skill ([`../../reconcile/SKILL.md`](../../reconcile/SKILL.md)) per [`specs/workflows/reconcile.md`](../../../../specs/workflows/reconcile.md#L102)(../../../../specs/workflows/reconcile.md#L102) (_"No other skill carries closure-loop logic of its own"_). This workflow does not inspect unclosed task claims or execute closure sweeps.
 2. **Maintaining graph hierarchy (former §7) is OUT OF SCOPE:**
    Broad structural graph reorganization (reparenting trees, deep container resizing, global metric balancing) is a separate maintenance duty tracked under successor epic [[aops-574a4ff6]]. This workflow focuses solely on knowledge extraction, deduplication, and note synthesis.
 
@@ -57,12 +57,12 @@ To avoid unowned gaps and maintain strict architectural boundaries:
 
 Every extraction must pass all four tests evaluated by **recoverability, not tidiness** (diffing the old body against the new body plus every note it points to):
 
-| Test | Status | Condition |
-|---|---|---|
-| **1. Lossy** | **FAIL** | Any durable fact, number, path, decision, date, contact, link, or supersession statement in the source body is unreachable from the new body within **one `[[wikilink]]` hop**. Deleted prose with nowhere to land fails. |
-| **2. Accretive** | **FAIL** | The source body is pasted verbatim under a dated heading, or a new note is created 1:1 per task. Where a canonical topic note exists, it must be **augmented**, not duplicated. |
-| **3. Fabricated** | **FAIL** | Any bullet, claim, or summary statement is not strictly verifiable against the source body or a cited commit/PR. Fabricating generic platitudes fails. |
-| **4. Good** | **PASS** | Source body remains intact or becomes short and navigational (<1,500 chars) with verified pointers; each extracted fact sits in a canonical topic note beside its siblings; the reader opens **one** topic note instead of walking the task chain. |
+| Test              | Status   | Condition                                                                                                                                                                                                                                          |
+| ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Lossy**      | **FAIL** | Any durable fact, number, path, decision, date, contact, link, or supersession statement in the source body is unreachable from the new body within **one `[[wikilink]]` hop**. Deleted prose with nowhere to land fails.                          |
+| **2. Accretive**  | **FAIL** | The source body is pasted verbatim under a dated heading, or a new note is created 1:1 per task. Where a canonical topic note exists, it must be **augmented**, not duplicated.                                                                    |
+| **3. Fabricated** | **FAIL** | Any bullet, claim, or summary statement is not strictly verifiable against the source body or a cited commit/PR. Fabricating generic platitudes fails.                                                                                             |
+| **4. Good**       | **PASS** | Source body remains intact or becomes short and navigational (<1,500 chars) with verified pointers; each extracted fact sits in a canonical topic note beside its siblings; the reader opens **one** topic note instead of walking the task chain. |
 
 Every extraction report must record an explicit per-extraction verdict against all four tests (`Test 1: PASS/FAIL | Test 2: PASS/FAIL | Test 3: PASS/FAIL | Test 4: PASS/FAIL`).
 
@@ -84,15 +84,15 @@ A reviewer or worker must lint every note against these seven defect classes:
 
 ## Triaging Content: What Moves, What Stays, What Goes
 
-| Move to a Canonical Topic Note | Keep in the Task Body | Discard (Do Not Save) |
-|---|---|---|
+| Move to a Canonical Topic Note                                                                                                                                                                                                                                                                                    | Keep in the Task Body                                                                                                                                                                                   | Discard (Do Not Save)                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | • Conceptual models, formulas, and algorithms<br>• Architecture patterns and invariants<br>• Behavioural rules and constraints<br>• Empirical findings, numbers, and metrics<br>• Post-mortems and generalisable lessons<br>• Infrastructure constraints and APIs<br>• **Contacts, emails, URLs, document links** | • One-sentence Goal statement<br>• Completed checklist items<br>• Backlinks to extracted topic notes (`[[kb_...]]`)<br>• Graph edges (`parent`, `depends_on`, `contributes_to`)<br>• PR and commit URLs | • Retry loops and terminal spam<br>• Intermediate debug traces<br>• Routine status timestamps<br>• Raw transcript dumps and PIDs<br>• Retracted scratchpad proposals |
 
 ---
 
 ## Concrete Step-by-Step Extraction Procedure
 
-Execute this inline method directly. Do not consult or delegate to external documents for the *how*.
+Execute this inline method directly. Do not consult or delegate to external documents for the _how_.
 
 ### Step 1: Candidate Discovery and Batch Bounding
 
@@ -172,6 +172,7 @@ To guarantee that content is never lost, enforce this strict sequence:
 ### Misclassification Sweep
 
 Identify untriaged captures masquerading as tasks:
+
 - `Email:` prefix items with high age and no subtasks/actions.
 - Informational notes filed with `type: task`.
 - Reclassify via `pkb__batch_reclassify` or `pkb__update_task(id=..., type="memory")`.

@@ -16,6 +16,7 @@ tags:
 > [!WARNING]
 > **RETIRED AND SUPERSEDED (2026-08-24):**
 > This monolithic sleep-cycle specification is retired. It is superseded by:
+>
 > 1. The inner knowledge extraction and consolidation workflow: `plugins/pkb/skills/remember/references/consolidation.md` (task [[aops_extract_inner_wf]]).
 > 2. The outer batch driver: [[aops_extract_outer_agy]].
 
