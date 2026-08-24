@@ -13,8 +13,7 @@
 name: Sleep Cycle
 
 on:
-  schedule:
-    - cron: '17 */6 * * *' # Every 6 hours at :17 (off-peak)
+  # Schedule disabled per task aops_extract_inner_wf
   workflow_dispatch:
     inputs:
       focus:
@@ -120,9 +119,9 @@ jobs:
           prompt: |
             You are the Sleep Cycle consolidation agent running in maintenance mode.
             Read the unified memory skill for full instructions:
-              ${{ github.workspace }}/_aops/aops/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/aops/skills/remember/references/maintenance-phases.md
-              ${{ github.workspace }}/_aops/aops/skills/remember/procedures/consolidate.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/references/quality.md
 
             Work through ALL phases in order (0 through 11):
               Phase 0:  Graph Health (baseline)
@@ -160,7 +159,7 @@ jobs:
               reference mcp__services__pkb__* tools. Changes sync to PKB consumers via git push.
             - **Sub-agent dispatch (Phases 2, 4, quality review)**: when you
               delegate to `pkb:pauli` sub-agents, you MUST pass the explicit
-              `tools` list per the "Sub-Agent Dispatch" section in maintenance-phases.md.
+              `tools` list per the "Sub-Agent Dispatch" guidelines in remember/references/consolidation.md.
               Pauli's default profile lacks `Bash`, `Glob`, `Edit`, and the PKB
               MCP tools — without an explicit `tools` arg the sub-agent will only
               see `Read` and `Skill` and cannot do consolidation work. On CI

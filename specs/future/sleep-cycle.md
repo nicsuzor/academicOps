@@ -1,14 +1,23 @@
 ---
-title: "Sleep Cycle: Periodic Consolidation Agent"
+title: "Sleep Cycle: Periodic Consolidation Agent (RETIRED)"
 type: spec
-status: draft
+status: superseded
+superseded_by: "[[aops_extract_inner_wf]]"
 created: 2026-03-09
-task: aops-6e05d69a
+retired: 2026-08-24
+task: aops_extract_inner_wf
 tags:
   - memory
   - consolidation
   - architecture
+  - retired
 ---
+
+> [!WARNING]
+> **RETIRED AND SUPERSEDED (2026-08-24):**
+> This monolithic sleep-cycle specification is retired. It is superseded by:
+> 1. The inner knowledge extraction and consolidation workflow: `plugins/pkb/skills/remember/references/consolidation.md` (task [[aops_extract_inner_wf]]).
+> 2. The outer batch driver: [[aops_extract_outer_agy]].
 
 # Sleep Cycle: Periodic Consolidation Agent
 

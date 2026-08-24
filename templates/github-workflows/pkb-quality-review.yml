@@ -99,8 +99,9 @@ jobs:
 
             ## Instructions
             Read the unified memory skill for quality assessment guidance and knowledge standards:
-              ${{ github.workspace }}/_aops/aops/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/aops/skills/remember/references/maintenance-phases.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/references/quality.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/references/consolidation.md
 
             ## Process
 
@@ -145,7 +146,7 @@ jobs:
             - Time budget: 25 minutes. Exit cleanly when time is up.
             - **Sub-agent dispatch**: if you delegate the qualitative review to
               a `pkb:pauli` sub-agent, you MUST pass the explicit `tools`
-              list per the "Sub-Agent Dispatch" section in maintenance-phases.md. On CI the
+              list per the "Sub-Agent Dispatch" guidelines in remember/references/consolidation.md. On CI the
               toolset is: `Bash, Glob, Grep, Read, Skill` (review is read-only,
               so omit Write/Edit and the PKB MCP tools). Without an explicit
               `tools` arg pauli sees only `Read` and `Skill` and cannot discover
