@@ -41,19 +41,30 @@ Pick from what was asked. Default to `list`.
 Enumerate all three tiers and return one table: **slug · tier · what it covers ·
 status**. One invocation, no follow-up reading required of the reader.
 
-Coverage lines come from the templates, not from a catalogue:
+**Coverage lines come from the templates themselves, never from a catalogue.**
+A catalogue's one-liner is a summary of a summary, written once and never
+re-checked; the template's own `description` is what its author last stood
+behind. The two have already drifted.
 
-- Universal: the file's own frontmatter `description`, else its opening section.
-  `../../workflows/INDEX.md` carries a routing tree and a `Routes / Requires / Pairs with`
-  table — use it for the routing relationships, which live nowhere else, but
-  never as the source of what a template covers, and never as proof one exists.
-- PKB: most documents open with `## What this step does`; its first sentence is
-  the coverage line.
-- Project: frontmatter `description`.
+- Filesystem tiers (project, universal): the frontmatter `description`. One
+  command reads all of them at once — do not open the files one by one and do
+  not reach for the index instead:
+  ```bash
+  for f in <dir>/*.md; do echo "$(basename "$f" .md): $(sed -n 's/^description: //p' "$f")"; done
+  ```
+  A file that prints an empty description has no coverage line. Report it; do
+  not substitute a row from the index or a sentence you compose yourself.
+- PKB tier: most documents open with `## What this step does`; its first
+  sentence is the coverage line.
+
+`../../workflows/INDEX.md` carries the routing tree and a
+`Routes / Requires / Pairs with` table. Use it for the routing relationships,
+which live nowhere else — which templates require or pair with which. Never use
+it to say what a template covers, and never as proof one exists.
 
 Reading ~70 documents will bury your context. **Delegate the PKB tier** to one
-subagent and have it return the table rows only. Do the two filesystem tiers
-inline — they are one command each.
+subagent and have it return the table rows only. The two filesystem tiers are
+one command each; do them inline.
 
 Report these as findings in the same pass, because listing is the only time
 anyone looks:
@@ -104,6 +115,18 @@ section, no dated append, no `.bak` file. Say what changed and why in the commit
 not in the document.
 
 ### retire — take one out of service
+
+**Before writing anything, search the graph for a task that already governs this
+retirement** (`pkb__task_search` on the template's name). Retirement is usually
+already-considered work, and the record routinely carries sequencing the request
+does not: a prerequisite that must land first, a durable lesson that has nowhere
+to go until it does, passages worth salvaging onto another template, and other
+nodes citing this one as a deliverable. Retiring ahead of that order does not
+just skip steps — it destroys the reason the node was still worth reading.
+
+If such a record exists and its prerequisites are unmet, **stop and say so.** The
+retirement is not yours to perform yet. Report what blocks it and what would have
+been lost.
 
 Retirement is a marker on the document, not a deletion. A composing pass excludes
 a template when it carries **either** `status: retired` **or** a `retired` /
