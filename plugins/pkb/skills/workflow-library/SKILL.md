@@ -1,10 +1,10 @@
 ---
-name: workflows
+name: workflow-library
 type: skill
-description: List, read, add, edit, and retire the workflow templates that `brief` composes from. Use when asked what workflows exist, what a workflow covers, whether something is already covered, or to write, change, or retire one. The library spans three tiers and has no registry — this skill is how a person sees and maintains it.
+description: List, read, add, edit, and retire the workflow templates that `brief` composes from. Use whenever asked what workflows or templates exist, what one covers, whether some kind of work is already covered by a template, or to write, change, or retire one — including phrasings like "list our workflows", "show me the workflow library", "what processes do we have", "manage our composable workflows". The library spans three tiers and has no registry, so this skill is the only surface that can see or maintain it. Not to be confused with the harness's built-in `/workflows` progress viewer, which shows running multi-agent jobs and has nothing to do with templates.
 ---
 
-# /workflows: see and maintain the workflow library
+# /workflow-library: see and maintain the workflow library
 
 A workflow template is a short markdown document describing how a class of work
 proceeds. `brief` §5 composes process out of them. Nothing else in the framework

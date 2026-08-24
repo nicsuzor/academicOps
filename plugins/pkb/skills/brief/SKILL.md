@@ -246,7 +246,7 @@ the composition trace which tier each template came from and what it shadowed.
 **HALT IF THERE IS NO PROCESS.** If a template you need exists in none of the three tiers, that is a library gap. Name it. Do not freelance a process to fill it.
 
 The library itself — listing what exists, reading one template, adding, editing
-or retiring one — is the `workflows` skill's job, not yours. You compose from
+or retiring one — is the `workflow-library` skill's job, not yours. You compose from
 the library; you do not maintain it.
 
 ### Proportion

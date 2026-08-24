@@ -149,7 +149,7 @@ carries per-template notes that source-scanning does not reproduce, but it is no
 the discovery mechanism and must not be treated as the authoritative set.
 
 This file does not list them — a second copy of that table drifts. To see the
-whole library across all three tiers, use the `workflows` skill.
+whole library across all three tiers, use the `workflow-library` skill.
 
 `wf-human-approval` is where [[framework-gate]], `wf-outbound-review`,
 [[pr-review]], and [[decision-briefing]] all hand off at their one-way crossing.
