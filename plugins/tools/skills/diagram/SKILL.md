@@ -152,9 +152,10 @@ string-matching Edits against the JSON. In the script or using `scripts/excal-ed
   be unopenable — that is exactly what `check`'s order test catches.
 - **Use helper utilities** (`scripts/excal-edit.py`):
   - `python3 scripts/excal-edit.py FILE fit <id> "<new text>"`: Recomputes text bounding box and grows container centered to prevent text overflow.
-  - `python3 scripts/excal-edit.py FILE overlap`: Flags AABB collisions between non-nested sibling elements (exits 1 if overlap exists).
+  - `python3 scripts/excal-edit.py FILE restack [<id>] [--gap GAP]`: Repositions sibling texts inside a card container (or all cards if `<id>` is omitted) vertically with even spacing to eliminate overprints without moving the card. Fails closed if text exceeds container height.
+  - `python3 scripts/excal-edit.py FILE overlap [--baseline BASELINE]`: Flags AABB collisions between non-nested sibling elements, including sibling text collisions inside cards (exits 1 on collision). Accepts `--baseline` (file path or inline `id1:id2` pairs) to allowlist intentional collisions.
   - `python3 scripts/excal-edit.py FILE arrows`: Flags any arrow whose polyline cuts through a shape it isn't bound to at either end — the check for "route around unrelated boxes, never through them" after moving or rerouting an arrow by hand. Background zone rectangles (a shape fully containing 3+ others) don't count as obstacles. Exits 1 on a hit.
-  - `python3 scripts/excal-edit.py FILE render [OUT.png] [--region X0,Y0,X1,Y1]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates). Pass `--region` to crop to one area — past a couple hundred elements the whole-canvas render is too dense to read.
+  - `uv run --with matplotlib python3 scripts/excal-edit.py FILE render [OUT.png] [--region X0,Y0,X1,Y1]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates). Pass `--region` to crop to one area — past a couple hundred elements the whole-canvas render is too dense to read.
 - **Write both text layers, always.** A text element carries `text` — the
   wrapped copy Excalidraw paints — and `originalText`, the unwrapped source it
   re-wraps from. `originalText` is the one that survives: set `text` alone and
@@ -171,7 +172,7 @@ string-matching Edits against the JSON. In the script or using `scripts/excal-ed
 If a targeted Edit is genuinely simpler (one text swap), extract the exact
 `old_string` with `grep -o` from the raw file so the escaping matches.
 
-To see layout rather than structure, render with `scripts/excal-edit.py FILE render` or matplotlib (`uv run --with matplotlib`, not system python) and read the image.
+To see layout rather than structure, render with `uv run --with matplotlib python3 scripts/excal-edit.py FILE render [OUT.png]` and read the image.
 Say what that proves: geometry and collisions, not Excalidraw's true rendering —
 bound-text wrapping can still differ.
 
