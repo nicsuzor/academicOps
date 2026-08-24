@@ -176,25 +176,27 @@ To see layout rather than structure, render with `uv run --with matplotlib pytho
 Say what that proves: geometry and collisions, not Excalidraw's true rendering —
 bound-text wrapping can still differ.
 
-### Layout
+### Aesthetic Presets and Layout Engines
 
-- **No rigid alignment.** Radial and clustered, spreading in all directions —
-  not a top-to-bottom tree.
-- **Arrows are directional, so a child can sit anywhere around its parent** —
-  360° of freedom. Use it to keep arrows from crossing and overlapping.
-- **Curved multi-point arrows** (click-click-click, not drag), routed _around_
-  unrelated boxes, never through them.
-- **Whitespace is structure.** Macro gaps separate concept groups; micro gaps
-  pad within them. If it feels crowded, it is crowded — add more than you think.
-- **Scale carries hierarchy.** The canvas is unlimited: make the important thing
-  genuinely big and let children shrink.
+When building diagrams mechanically (e.g., via the `batch` JSON DSL or CLI tools), DO NOT attempt to guess manual X,Y pixel coordinates. Instead, use topology and semantic flags:
+- Use layout engines (`--layout radial` for hub-and-spoke ego-networks, or let `layout.rs` use the Sugiyama defaults for pipelines) to place nodes automatically.
+- Use `--preset hero` to emphasize landmark focal nodes.
+- Use `--preset sticky` for human commentary and rationale.
+- Use `--preset zone` for boundary boxes (Scenery).
+- Use `--curved` and `--stroke-style dashed` for non-critical path connections.
+
+### The 5-Layer Composition Model
+
+Construct diagrams conceptually using this model instead of flat arrays of boxes:
+1. **Scenery**: Background boundaries and logical zones (`--preset zone`).
+2. **Spine**: The critical path and focal landmark nodes (`--preset hero`).
+3. **Satellites**: Supporting utility components (default nodes).
+4. **Annotations**: Human commentary via sticky notes (`--preset sticky`).
+5. **Connectors**: Solid flows vs. dashed telemetry (`--curved`, `--stroke-style dashed`).
 
 ### Structure first, then look
 
-Map every component and relationship for accuracy alone, ignoring position and
-style; challenge the connections while doing it. Only then reposition, restyle,
-and balance — without changing what the diagram claims. Doing both at once
-produces diagrams that are pretty and wrong.
+Declare every component and topological relationship (edges) for accuracy alone. Let the backend layout engine (`layout.rs`) handle physical space. Do not output manual `X` and `Y` properties in the JSON generation for mechanical tools; rely on the layout engine. Only specify manual overrides if a layout explicitly fails and needs a microscopic correction.
 
 ### Typography and shapes
 
