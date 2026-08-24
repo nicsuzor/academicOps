@@ -1,0 +1,166 @@
+---
+name: workflows
+type: skill
+description: List, read, add, edit, and retire the workflow templates that `brief` composes from. Use when asked what workflows exist, what a workflow covers, whether something is already covered, or to write, change, or retire one. The library spans three tiers and has no registry — this skill is how a person sees and maintains it.
+---
+
+# /workflows: see and maintain the workflow library
+
+A workflow template is a short markdown document describing how a class of work
+proceeds. `brief` §5 composes process out of them. Nothing else in the framework
+lets a person see what the library holds or change it, so this skill is the only
+surface for both.
+
+You are answering for a reader who has never opened the library. Never send them
+to an index to find out what is covered — an index is a claim about the library,
+and this skill's whole job is to report the library.
+
+## The three tiers
+
+| Tier         | Where                                 | Enumerate with                                 |
+| ------------ | ------------------------------------- | ---------------------------------------------- |
+| 1. Project   | `$CWD/.agents/templates/*.md`         | `ls`; absent directory means empty             |
+| 2. PKB       | graph documents with `type: template` | `pkb__list_documents(type="template")`         |
+| 3. Universal | `../../workflows/process/*.md`        | `ls`, catalogued by `../../workflows/INDEX.md` |
+
+**Resolution: project ≻ PKB ≻ universal.** Slugs match case-insensitively,
+ignoring a `wf-` prefix and `_`/`-` differences: `feature-dev`, `wf-feature-dev`
+and `wf_feature_dev` are one slug. A higher tier shadows a lower one whole; never
+merge two tiers' text. Always name the tier a template came from, and say what it
+shadowed.
+
+Absence of the project directory is the normal case, not a fault. Report it as
+"no project tier here" and move on.
+
+## Modes
+
+Pick from what was asked. Default to `list`.
+
+### list — what does the library cover?
+
+Enumerate all three tiers and return one table: **slug · tier · what it covers ·
+status**. One invocation, no follow-up reading required of the reader.
+
+Coverage lines come from the templates, not from a catalogue:
+
+- Universal: the file's own frontmatter `description`, else its opening section.
+  `../../workflows/INDEX.md` carries a routing tree and a `Routes / Requires / Pairs with`
+  table — use it for the routing relationships, which live nowhere else, but
+  never as the source of what a template covers, and never as proof one exists.
+- PKB: most documents open with `## What this step does`; its first sentence is
+  the coverage line.
+- Project: frontmatter `description`.
+
+Reading ~70 documents will bury your context. **Delegate the PKB tier** to one
+subagent and have it return the table rows only. Do the two filesystem tiers
+inline — they are one command each.
+
+Report these as findings in the same pass, because listing is the only time
+anyone looks:
+
+- A template with no coverage line. It cannot be routed to and is effectively
+  invisible.
+- A catalogue row that resolves to no document, or a document absent from the
+  catalogue.
+- A slug resolving in more than one tier — name the winner and the shadowed.
+- A retired template still carrying no retirement marker (see **retire**).
+
+Filter out, and say how many you filtered: retired documents, datestamped
+instance nodes (`-20260820-1430-`), and templates scoped to a project other than
+this one.
+
+### view — what does this one say?
+
+Resolve the slug through the tiers, read the winner, and show it. State which
+tier won and name every tier the slug also resolved in. If it resolves nowhere,
+say so and list the near-misses rather than guessing which was meant.
+
+### new — add one
+
+First establish it is not already covered: run `list` and check the slug and the
+coverage. Most asks for a new template are asks for one that exists.
+
+Ask which tier it belongs in, because the answer is not derivable:
+
+- **Project** — specific to this repository, versioned with its code.
+- **PKB** — personal to Nic, portable across repositories.
+- **Universal** — a minimum standard every project inherits. This is a framework
+  change: it ships to everyone, so it goes through `framework-gate`.
+
+Write it to the shape the tier uses (see **Shape** below). Keep it under about
+100 lines. A template says what the process obliges; it never explains how to
+perform a step — that is a skill's job, and a template that teaches technique has
+swallowed one.
+
+Do not register it anywhere. Discovery is dynamic; there is no registry to add a
+row to, and adding one recreates the gate the discovery contract repealed. The
+one exception is `../../workflows/INDEX.md`'s routing tree for a universal template, which
+records routing relationships rather than existence.
+
+### edit — change one
+
+Read it first. Change it in place: one correct current version, no changelog
+section, no dated append, no `.bak` file. Say what changed and why in the commit,
+not in the document.
+
+### retire — take one out of service
+
+Retirement is a marker on the document, not a deletion. A composing pass excludes
+a template when it carries **either** `status: retired` **or** a `retired` /
+`superseded` tag, so set both — a document with only one is a document that half
+the passes still compose.
+
+1. Frontmatter: `status: retired`, `superseded_by: <canonical-id>`, and add
+   `retired` to `tags`.
+2. Body, at the top:
+   ```markdown
+   > [!IMPORTANT]
+   > **RETIRED**: superseded by [[<canonical-id>]]. Do not compose.
+   ```
+3. Remove its routing rows from `../../workflows/INDEX.md` if it is a universal template.
+
+Name what supersedes it. A template retired with nothing named in its place
+leaves the work it covered with no process, which `brief` will correctly halt on.
+
+**Retire one named template at a time, and confirm the name with the operator
+before writing.** Never sweep the corpus retiring everything you judge stale. A
+template you think is dead is load-bearing for someone: another agent may be
+halted against its text right now, and changing it under them breaks the halt
+silently.
+
+## Shape
+
+Frontmatter:
+
+```yaml
+---
+title: <human name>
+type: template
+category: process | gate
+description: <one line: when to select this, and when not to>
+tags: [...]
+---
+```
+
+Body: what class of work it covers and when _not_ to select it; the steps or
+obligations; what must be true to exit. A **process** template says how a class of
+work proceeds. A **gate** template is an obligation that blocks acceptance — those
+carry the `wf-` prefix and are composed into other templates.
+
+Some templates are fragments: sub-steps that only make sense composed into
+another process, and that must never be dispatched standalone. Mark one plainly
+in its own body — tags are not reliable enough to carry this, because fragments
+and dispatchable templates share the same tag vocabulary. When classifying, read
+the document; a tag is a hint, never the answer.
+
+## Must not
+
+- Answer "what is covered" from an index, a memory, or a previous listing.
+  Enumerate the tiers.
+- Treat a catalogue row as proof a template exists. Resolve it to a document.
+- Register a new template in a registry, or restore the rule that a PKB template
+  exists only once it is listed.
+- Merge two tiers' versions of one slug. The winner shadows the loser whole.
+- Retire or reclassify a template the operator did not name.
+- Compose a process, brief a task, or dispatch work. This skill maintains the
+  library; `brief` uses it.
