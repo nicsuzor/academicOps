@@ -49,21 +49,19 @@ If an insight doesn't map to one of these consumers, it stays in its episode (ta
 
 ## Architecture
 
-### Schedule
+### Invocation
 
-The sleep cycle runs as a **GitHub Actions scheduled workflow** in the `$ACA_DATA` (brain) repository, every 6 hours. The code lives in `$AOPS` (academicOps) but executes against brain data.
+The sleep cycle workflow runs via **manual dispatch** (`workflow_dispatch`) in the `$ACA_DATA` (brain) repository, or as an on-demand agent session. The code lives in `$AOPS` (academicOps) but executes against brain data.
 
 ```yaml
 # $ACA_DATA/.github/workflows/sleep-cycle.yml
 on:
-  schedule:
-    - cron: '17 */6 * * *'
   workflow_dispatch:
 ```
 
-The workflow checks out both repos: the brain repo (data) and academicOps (code). The orchestrator script runs from academicOps with `ACA_DATA` pointing at the brain checkout.
+The workflow checks out both repos: the brain repo (data) and academicOps (code). The extraction and consolidation procedure is defined once, in `plugins/pkb/skills/remember/references/consolidation.md`.
 
-Manual invocation: `gh workflow run sleep-cycle` or `/sleep` skill in a session.
+Manual invocation: `gh workflow run sleep-cycle` or `/remember` consolidation mode.
 
 The cycle works through phases in order. Each phase is independent and idempotent — if the cycle is interrupted or times out, the next run picks up where it left off. There is no distinction between a "light" and "heavy" run; the agent does what it can each time.
 
