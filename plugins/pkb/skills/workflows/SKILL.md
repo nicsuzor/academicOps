@@ -54,8 +54,14 @@ behind. The two have already drifted.
   ```
   A file that prints an empty description has no coverage line. Report it; do
   not substitute a row from the index or a sentence you compose yourself.
-- PKB tier: most documents open with `## What this step does`; its first
-  sentence is the coverage line.
+- PKB tier: there is no `description` field to read — one document out of 47 has
+  one. Take the first sentence under `## What this step does` where it exists
+  (about half the corpus), or under the `## <slug> — step: …` heading fragments
+  use. **Roughly a third of PKB templates have no coverage line under any
+  convention.** For those, fall back to the first body paragraph, mark the row as
+  having no authored coverage line, and count them in your report. Do not write
+  the missing sentence yourself: an invented coverage line is indistinguishable
+  from an authored one on the next read.
 
 `../../workflows/INDEX.md` carries the routing tree and a
 `Routes / Requires / Pairs with` table. Use it for the routing relationships,
@@ -79,6 +85,14 @@ anyone looks:
 Filter out, and say how many you filtered: retired documents, datestamped
 instance nodes (`-20260820-1430-`), and templates scoped to a project other than
 this one.
+
+**Retirement is not reliably in the frontmatter.** Some templates are retired
+only in their body — an opening `# RETIRED` heading, or a `## Retired —
+superseded by …` section — with no `status` field and no `retired` tag. A filter
+that reads frontmatter alone will compose them. Read each document's opening
+lines, and treat `status: cancelled` as retired too. Where you find one, say so:
+it is a document that needs its marker fixed, and until it is, every other
+composing pass will keep picking it up.
 
 ### view — what does this one say?
 
@@ -113,6 +127,16 @@ records routing relationships rather than existence.
 Read it first. Change it in place: one correct current version, no changelog
 section, no dated append, no `.bak` file. Say what changed and why in the commit,
 not in the document.
+
+> [!WARNING]
+> **Editing a PKB template: `get_document` output is not `update_body` input.**
+> `get_document` returns the title and frontmatter _above_ the body. Passing what
+> it returned back into `update_body` writes a second literal copy of the
+> frontmatter into the prose — and returns success, so nothing tells you it
+> happened. Send only the markdown body, starting below the closing `---`, and
+> read the document back after writing to confirm it has one frontmatter block.
+> Filesystem-tier templates are edited with the ordinary file tools and have no
+> such hazard.
 
 ### retire — take one out of service
 
@@ -171,10 +195,16 @@ work proceeds. A **gate** template is an obligation that blocks acceptance — t
 carry the `wf-` prefix and are composed into other templates.
 
 Some templates are fragments: sub-steps that only make sense composed into
-another process, and that must never be dispatched standalone. Mark one plainly
-in its own body — tags are not reliable enough to carry this, because fragments
-and dispatchable templates share the same tag vocabulary. When classifying, read
-the document; a tag is a hint, never the answer.
+another process, and that must never be dispatched standalone. In the PKB tier
+the `planner-data` tag currently marks exactly the fragment set and nothing else,
+so it is a good first cut — but it is a convention nobody enforces, and the
+fragments also announce themselves in their own first heading
+(`## <slug> — step: …`). Confirm against the document. A tag is a hint, never the
+answer, and a fragment mistaken for a dispatchable template sends a worker at
+half a process.
+
+When you write a new fragment, say so in its body in plain words. Do not rely on
+a reader knowing what a tag means.
 
 ## Must not
 

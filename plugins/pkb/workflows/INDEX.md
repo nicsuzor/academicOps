@@ -141,11 +141,15 @@ Composed into other templates; never routed to directly.
 
 ## Obligation templates
 
-The `wf-*` review and gate obligations are read from the PKB, not from here: the
-current set is enumerated by the `pkb-workflow-index` MoC
-(`get_document("pkb-workflow-index")`), with `list_documents(tag="wf-template")`
-as the reconciliation sweep. This file does not list them — a second copy of that
-table drifts.
+The `wf-*` review and gate obligations live in the PKB, not here. Enumerate them
+with `list_documents(type="template")` — registration in an index is not a
+condition of existence, and a `wf-` name absent from any index is not thereby
+missing. The `pkb-workflow-index` MoC remains useful for human orientation and
+carries per-template notes that source-scanning does not reproduce, but it is not
+the discovery mechanism and must not be treated as the authoritative set.
+
+This file does not list them — a second copy of that table drifts. To see the
+whole library across all three tiers, use the `workflows` skill.
 
 `wf-human-approval` is where [[framework-gate]], `wf-outbound-review`,
 [[pr-review]], and [[decision-briefing]] all hand off at their one-way crossing.
