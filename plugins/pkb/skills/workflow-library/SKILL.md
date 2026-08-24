@@ -32,6 +32,12 @@ shadowed.
 Absence of the project directory is the normal case, not a fault. Report it as
 "no project tier here" and move on.
 
+**Every tier is enumerated by running the command, every time.** Describing what
+a tier would contain, or restating the convention it follows, is not a listing —
+it reads as one and is worth nothing. If you did not run `ls` against the project
+path, you do not know whether it is empty, and you say that rather than calling
+it empty.
+
 ## Modes
 
 Pick from what was asked. Default to `list`.
