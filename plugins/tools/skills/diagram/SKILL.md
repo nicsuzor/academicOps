@@ -9,6 +9,88 @@ Make diagrams that communicate one thing clearly. Mermaid and Excalidraw syntax
 is public knowledge — what follows is the routing rule, the user's taste, and the
 hazards syntax knowledge does not cover.
 
+## Objective and audience — write these before anything else
+
+**A chart is a tool for making a decision. Name the decision first.**
+
+Almost every bad chart is a chart whose author never said who it was for or what
+it was for, and so reached for "make it look nice" — or worse, invented
+structure to fill the space. Before laying anything out, write two sentences and
+keep them with the chart:
+
+- **Objective** — the decision or action this chart makes possible. _"Choose
+  what to do with a free afternoon"_, _"find where the request stalls"_, _"decide
+  whether to merge these two teams"_. Not the subject: _"the projects"_, _"the
+  architecture"_, _"our tasks"_ are topics, not objectives. Test it: if the
+  reader finished looking, what could they now do that they could not before?
+- **Audience** — who reads it, what they already know, what they will do next,
+  where they will read it (phone, laptop, printed, in a meeting), and how long
+  they will look. An expert who knows every node needs _less_ on the page, not
+  more; a newcomer needs orientation and labels.
+
+Ask the user for both when they are not stated. It is a cheap question and it is
+the single highest-leverage thing you can ask about a diagram. Do not guess them
+silently — a wrong objective produces a chart that is beautiful and useless.
+
+Everything downstream is derived from these two:
+
+| Derived decision               | How the objective/audience settles it                                                          |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| What earns a place             | Only what serves the objective. An item the reader can do nothing with is noise, however true. |
+| Which layout family            | See routing table below.                                                                       |
+| Which attributes get a channel | Only the ones the reader acts on. Everything else stays uniform.                               |
+| How much detail                | Expert audience → less. Unfamiliar audience → labels, legend, orientation.                     |
+| Density and size               | Wall poster, laptop, and phone are three different charts.                                     |
+| What may be omitted            | Whatever the objective does not need — but say so; see honest omission.                        |
+
+### Layout family routing
+
+| The reader's question         | Family                       | Notes                                                                                        |
+| ----------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| "What do I do next?"          | Containment + state emphasis | Group by whatever the doer navigates by; make live work and small-enough-to-start items pop. |
+| "How does this work?"         | Flow / sequence              | Needs arrows and direction — usually Mermaid, not Excalidraw.                                |
+| "Where does this fit?"        | Containment / nesting        | Cover the whole space; nesting depth beyond ~3 stops being readable.                         |
+| "How do these compare?"       | **Matrix / grid**            | The one case where a uniform grid is _correct_ — equal cells make cells comparable.          |
+| "What changed / what is off?" | Comparison or anomaly layout | Do not smooth the data; the outliers are the message.                                        |
+| "When does this happen?"      | Timeline                     | Position encodes time; nothing else may.                                                     |
+| "What is central here?"       | Radial / hub                 | One thing at the centre, relationships roughly equal in kind.                                |
+
+A grid is not inherently boring — it is _wrong when the question is not
+comparison_. Reaching for one by default is the failure, not the shape itself.
+
+### Every channel must be backed by a real field
+
+- **Never author structure, weight, or status into a chart.** They come from the
+  source of truth — the task graph, the repo, the dataset. If the source does
+  not carry the value, you have found a gap in the source: fix it there, or say
+  plainly that the chart cannot show it. Inventing a plausible-looking ranking
+  and drawing it is fabrication, and it is indistinguishable from real data once
+  it is on the page.
+- **Check that the field means what its name says** before you bind it to a
+  channel. Computed and propagated fields are the usual trap: a score that sums
+  an unbounded term will rank a trivial item above the goal it serves; an
+  "exposure" flag that propagates up a tree will mark containers that have no
+  exposure of their own. Spot-check the extremes of any field before encoding
+  it, and if it fails, encode something else and file the defect.
+- **One channel, one meaning**, declared in a legend or a companion note.
+- **Unspent channels stay uniform on purpose.** Variation the reader cannot
+  decode is noise wearing a vocabulary's clothes.
+
+### Honest omission
+
+Charts lie most often by omission, and the lie is usually accidental: an author
+draws a useful subset and the result reads as a complete inventory.
+
+- When a container shows fewer children than it has, **say so on the container**
+  ("showing 3 of 12"). `excal-chart.py` emits this automatically from
+  `children_total`; keep that field fed from the source.
+- Reserve "collapsed" for a true chain-of-one. If you drew one branch of a wide
+  tree, that is a subset, not a collapse — **verify the child counts before
+  labelling it either way.**
+- Never dress your own selection up as a property of the data. A group of
+  leftovers from your subset is not "unfiled" or "orphaned" unless the source
+  actually says so.
+
 ## Style routing
 
 - `style="mermaid"` — structured, code-based flowcharts. Use when the diagram
@@ -289,6 +371,34 @@ references, so the output appends straight onto `elements`. Pass the target's
 current max `index` as `--after` (read it from `summary`) and validate with
 `check` afterwards. Older libraries store items unnamed — `lib` gives those a
 `#N` selector.
+
+### Building a containment chart from a spec
+
+For any chart whose job is "show a hierarchy and the state of the things in it"
+— task trees, org charts, service maps, module structure — use
+`scripts/excal-chart.py` rather than writing a new generator. Hand-rolled
+per-chart scripts re-implement, and re-break, the same invariants every time.
+
+```bash
+python3 scripts/excal-chart.py SPEC.json OUT.excalidraw --check   # validate spec
+python3 scripts/excal-chart.py SPEC.json OUT.excalidraw           # build
+```
+
+The spec carries `objective`, `audience`, `nodes` (label, children,
+`children_total`, and a free-form `data` dict), an `encoding` block mapping
+data fields to visual channels, and the composition — where each top-level
+frame sits. **The tool refuses to run without an objective and an audience.**
+
+It handles, so you do not have to: both text layers, fixed-width z-order
+indices in array order, nesting declared at every depth, headers sized to their
+own title, conservative text metrics, automatic subset disclosure, dated backup,
+and a fresh re-parse of what it wrote.
+
+Keep the data pull separate from the chart. The durable shape is a three-step
+pipeline — **snapshot** (a dated dump from the source system) → **adapter**
+(thin project-local glue: snapshot + display labels + composition → spec) →
+**builder** (this tool). The adapter is the only project-specific code, and it
+should contain no facts of its own.
 
 ### Export
 
