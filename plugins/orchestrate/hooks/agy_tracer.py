@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import time
+from typing import Any
 
 log = logging.getLogger("orchestrate.agy_tracer")
 
@@ -43,6 +44,35 @@ def _is_human_message_agy(entry: dict) -> bool:
     return entry.get("type") == "USER_INPUT"
 
 
+def _extract_tool_output_from_transcript_agy(
+    transcript_path: str,
+) -> tuple[Any, bool, str]:
+    """Extract the latest tool execution output from transcript.jsonl.
+
+    Returns (tool_response, is_failure, error_msg).
+    """
+    if not transcript_path or not os.path.exists(transcript_path):
+        return {}, False, ""
+    try:
+        lines = open(transcript_path).read().splitlines()
+        for line in reversed(lines):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+                if entry.get("type") == "GENERIC":
+                    content = entry.get("content", "")
+                    status = entry.get("status", "DONE")
+                    is_err = status == "ERROR"
+                    err_msg = content if is_err else ""
+                    return content, is_err, err_msg
+            except Exception:
+                continue
+    except Exception as e:
+        log.debug("Failed to extract tool output from transcript: %s", e)
+    return {}, False, ""
+
+
 def _extract_llm_spans_for_turn_agy(
     transcript_path: str, human_count_at_start: int, trace_id_hex: str, root_span_id_hex: str
 ) -> list[dict]:
@@ -51,6 +81,12 @@ def _extract_llm_spans_for_turn_agy(
         lines = open(transcript_path).read().splitlines()
         human_count = 0
         in_turn = False
+
+        # Track input for the next LLM call in the turn
+        last_input_value = ""
+        last_input_mime = "text/plain"
+        last_input_role = "user"
+        last_input_content = ""
 
         for line in lines:
             if not line.strip():
@@ -62,10 +98,32 @@ def _extract_llm_spans_for_turn_agy(
                     human_count += 1
                     if human_count == human_count_at_start + 1:
                         in_turn = True
+                        human_text = entry.get("content", "")
+                        last_input_value = json.dumps({"role": "user", "content": human_text[:500]})
+                        last_input_mime = "application/json"
+                        last_input_role = "user"
+                        last_input_content = _truncate(human_text)
                     elif in_turn:
                         break  # Next turn started
+                    continue
 
                 if not in_turn:
+                    continue
+
+                entry_type = entry.get("type", "")
+                entry_source = entry.get("source", "")
+                if entry_type == "GENERIC" or entry_source == "TOOL":
+                    tool_content = entry.get("content", "")
+                    if tool_content:
+                        last_input_value = json.dumps(
+                            {"role": "tool", "content": tool_content[:500]}
+                        )
+                        last_input_mime = "application/json"
+                        last_input_role = "tool"
+                        last_input_content = _truncate(tool_content)
+                    continue
+
+                if entry_type in ("EPHEMERAL_MESSAGE", "CHECKPOINT") or entry_source == "SYSTEM":
                     continue
 
                 if entry.get("source") == "MODEL" and entry.get("type") == "PLANNER_RESPONSE":
@@ -82,6 +140,10 @@ def _extract_llm_spans_for_turn_agy(
                     attrs = {
                         "openinference.span.kind": "LLM",
                         "llm.model_name": "gemini-pro-agent",
+                        "llm.input_messages.0.message.role": last_input_role,
+                        "llm.input_messages.0.message.content": last_input_content,
+                        "input.value": last_input_value,
+                        "input.mime_type": last_input_mime,
                         "llm.output_messages.0.message.role": "assistant",
                     }
                     if content:
@@ -148,6 +210,12 @@ def handle_pre_invocation(data: dict, config: dict) -> None:
                 prefer_env=True,
             )
             state["session_start_ns"] = state.get("session_start_ns") or now_ns
+
+            state["username"] = os.environ.get(
+                "USER",
+                os.environ.get("USERNAME", "unknown"),
+            )
+            state["cwd"] = data.get("cwd") or os.getcwd()
 
             transcript_path = data.get("transcriptPath", "")
             if transcript_path:
@@ -254,12 +322,25 @@ def handle_post_tool(data: dict, config: dict) -> None:
         start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
         span_id = current_tool.get("pre_allocated_span_id") or _new_span_id()
 
+        transcript_path = data.get("transcriptPath") or state.get("transcript_path", "")
+        tool_response = data.get("tool_response") or data.get("toolResponse")
+
         is_failure = bool(error_msg)
+        if not tool_response and not is_failure and transcript_path:
+            tr_out, tr_err, tr_msg = _extract_tool_output_from_transcript_agy(transcript_path)
+            if tr_out:
+                tool_response = tr_out
+            if tr_err:
+                is_failure = True
+                error_msg = tr_msg
+
+        if tool_response is None:
+            tool_response = {"error": error_msg} if is_failure else {}
 
         span_record = _build_tool_span_record(
             tool_name=tool_name,
             tool_input=current_tool.get("tool_input", tool_input),
-            tool_response={"error": error_msg} if is_failure else {},
+            tool_response=tool_response,
             start_ns=start_ns,
             end_ns=end_ns,
             trace_id=state["current_trace"]["trace_id"],

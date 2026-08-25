@@ -26,6 +26,7 @@ import fcntl
 import json
 import logging
 import os
+import socket
 import sys
 import time
 from datetime import datetime
@@ -57,18 +58,88 @@ def _load_config_file(path: Path) -> dict:
     return {}
 
 
-def discover_config() -> dict | None:
-    """Returns config dict with keys: api_key, task_id, endpoint, protocol (optional).
+def resolve_project_name(
+    data: dict | None = None,
+    task_id: str = "",
+) -> str:
+    """Resolve project name from environment, config, hook payload cwd, or starting dirname.
+
+    Priority:
+    1. Explicit task_id / GENAI_ENGINE_TASK_ID if non-empty
+    2. PHOENIX_PROJECT_NAME env var
+    3. OTEL_SERVICE_NAME env var
+    4. Hook payload cwd or CLAUDE_PROJECT_DIR or current working directory basename
+    5. Fallback to 'default'
+    """
+    if task_id:
+        return task_id
+    env_task = os.environ.get("GENAI_ENGINE_TASK_ID", "").strip()
+    if env_task:
+        return env_task
+    env_phoenix = os.environ.get("PHOENIX_PROJECT_NAME", "").strip()
+    if env_phoenix:
+        return env_phoenix
+    env_service = os.environ.get("OTEL_SERVICE_NAME", "").strip()
+    if env_service:
+        return env_service
+
+    # Directory resolution
+    cwd = ""
+    if data and isinstance(data, dict):
+        cwd = str(data.get("cwd") or "")
+    if not cwd:
+        cwd = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
+    if not cwd:
+        try:
+            cwd = os.getcwd()
+        except Exception:
+            cwd = ""
+
+    if cwd:
+        name = Path(cwd).resolve().name
+        if name and name not in ("/", "\\", "."):
+            return name
+
+    return "default"
+
+
+def discover_config(data: dict | None = None) -> dict | None:
+    """Returns config dict with keys: api_key, task_id, endpoint, protocol (optional), project_name.
     Returns None if not configured (silent no-op)."""
-    api_key = os.environ.get("GENAI_ENGINE_API_KEY", "")
-    task_id = os.environ.get("GENAI_ENGINE_TASK_ID", "")
-    endpoint = os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT", "")
-    protocol = os.environ.get("GENAI_ENGINE_TRACE_PROTOCOL", "")
+    api_key = (
+        os.environ.get("GENAI_ENGINE_API_KEY")
+        or os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
+        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
+    )
+    task_id = (
+        os.environ.get("GENAI_ENGINE_TASK_ID")
+        or os.environ.get("OTEL_SERVICE_NAME")
+        or os.environ.get("PHOENIX_PROJECT_NAME", "")
+    )
+    endpoint = (
+        os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+    )
+    protocol = (
+        os.environ.get("GENAI_ENGINE_TRACE_PROTOCOL")
+        or os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL")
+        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "")
+    )
 
     if not endpoint:
         return None
 
-    cfg = {"api_key": api_key, "task_id": task_id, "endpoint": endpoint}
+    project_name = resolve_project_name(data, task_id)
+    if not task_id:
+        task_id = project_name
+
+    cfg = {
+        "api_key": api_key,
+        "task_id": task_id,
+        "endpoint": endpoint,
+        "project_name": project_name,
+    }
     if protocol:
         cfg["protocol"] = protocol
     return cfg
@@ -736,38 +807,52 @@ def _create_exporter(
     headers: dict | None = None,
     protocol: str = "",
 ) -> Any:
-    """Create an OTel span exporter. Fails loud if the required package is missing or initialization fails."""
+    """Create an OTel span exporter. Fails safe if modules are missing or initialization fails."""
     prefer_http = protocol in ("http/protobuf", "http/json", "http")
 
     if not prefer_http:
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-            OTLPSpanExporter as GRPCSpanExporter,
-        )
+        try:
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                OTLPSpanExporter as GRPCSpanExporter,
+            )
 
-        insecure = not endpoint.startswith("https://")
-        log.debug(
-            "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
-            endpoint,
-            insecure,
-        )
-        return GRPCSpanExporter(
-            endpoint=endpoint,
-            headers=headers if headers else None,
-            insecure=insecure,
-            timeout=_EXPORT_TIMEOUT_S,
-        )
+            insecure = not endpoint.startswith("https://")
+            log.debug(
+                "Initializing OTLP gRPC span exporter for endpoint %s (insecure=%s)",
+                endpoint,
+                insecure,
+            )
+            return GRPCSpanExporter(
+                endpoint=endpoint,
+                headers=headers if headers else None,
+                insecure=insecure,
+                timeout=_EXPORT_TIMEOUT_S,
+            )
+        except Exception as e:
+            log.debug("gRPC exporter unavailable (%s), trying HTTP fallback", e)
 
     # HTTP Exporter
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
-        OTLPSpanExporter as HTTPSpanExporter,
-    )
+    try:
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter as HTTPSpanExporter,
+        )
 
-    log.debug("Initializing OTLP HTTP span exporter for endpoint %s", endpoint)
-    return HTTPSpanExporter(
-        endpoint=endpoint,
-        headers=headers if headers else None,
-        timeout=_EXPORT_TIMEOUT_S,
-    )
+        log.debug("Initializing OTLP HTTP span exporter for endpoint %s", endpoint)
+        return HTTPSpanExporter(
+            endpoint=endpoint,
+            headers=headers if headers else None,
+            timeout=_EXPORT_TIMEOUT_S,
+        )
+    except Exception as e:
+        log.debug("HTTP exporter unavailable (%s), trying Console fallback", e)
+
+    try:
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+
+        return ConsoleSpanExporter()
+    except Exception as e:
+        log.debug("Console exporter unavailable (%s)", e)
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -1002,14 +1087,26 @@ def _build_and_export_spans(
     ) = _otel_imports()
 
     service_name = config.get("service_name") or config.get("task_id") or "claude-code"
-    resource = Resource.create(
-        {
-            "service.name": service_name,
-            "arthur.task": config.get("task_id", service_name),
-            "arthur.session": session_id,
-            "arthur.user": username,
-        },
-    )
+    project_name = config.get("project_name") or config.get("task_id") or "default"
+    try:
+        host_name = socket.gethostname()
+    except Exception:
+        host_name = ""
+
+    resource_attrs = {
+        "service.name": service_name,
+        "openinference.project.name": project_name,
+        "project.name": project_name,
+        "arthur.task": config.get("task_id", project_name),
+        "arthur.session": session_id,
+        "arthur.user": username,
+    }
+    if host_name:
+        resource_attrs["host.name"] = host_name
+    if username:
+        resource_attrs["user.id"] = username
+
+    resource = Resource.create(resource_attrs)
 
     for rec in span_records:
         try:
@@ -1028,6 +1125,9 @@ def _build_and_export_spans(
                             headers[k.strip()] = v.strip()
                 else:
                     headers["authorization"] = f"Bearer {api_key_str}"
+
+            if project_name and "openinference-project-name" not in headers:
+                headers["openinference-project-name"] = project_name
 
             exporter = _create_exporter(
                 endpoint=config["endpoint"],
@@ -1088,6 +1188,10 @@ def _build_and_export_spans(
             span.set_attribute("arthur_span_version", "arthur_span_v1")
             span.set_attribute("session.id", session_id)
             span.set_attribute("user.id", username)
+            span.set_attribute("project.name", project_name)
+            span.set_attribute("openinference.project.name", project_name)
+            if host_name:
+                span.set_attribute("host.name", host_name)
             for k, v in rec.get("attributes", {}).items():
                 span.set_attribute(k, v)
 

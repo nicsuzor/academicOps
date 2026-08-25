@@ -261,6 +261,7 @@ bound-text wrapping can still differ.
 ### Aesthetic Presets and Layout Engines
 
 When building diagrams mechanically (e.g., via the `batch` JSON DSL or CLI tools), DO NOT attempt to guess manual X,Y pixel coordinates. Instead, use topology and semantic flags:
+
 - Use layout engines (`--layout radial` for hub-and-spoke ego-networks, or let `layout.rs` use the Sugiyama defaults for pipelines) to place nodes automatically.
 - Use `--preset hero` to emphasize landmark focal nodes.
 - Use `--preset sticky` for human commentary and rationale.
@@ -270,6 +271,7 @@ When building diagrams mechanically (e.g., via the `batch` JSON DSL or CLI tools
 ### The 5-Layer Composition Model
 
 Construct diagrams conceptually using this model instead of flat arrays of boxes:
+
 1. **Scenery**: Background boundaries and logical zones (`--preset zone`).
 2. **Spine**: The critical path and focal landmark nodes (`--preset hero`).
 3. **Satellites**: Supporting utility components (default nodes).

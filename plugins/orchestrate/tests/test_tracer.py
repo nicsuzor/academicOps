@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,6 +32,8 @@ def clean_env(tmp_path, monkeypatch):
         "GENAI_ENGINE_API_KEY",
         "GENAI_ENGINE_TASK_ID",
         "GENAI_ENGINE_TRACE_ENDPOINT",
+        "GENAI_ENGINE_TRACE_PROTOCOL",
+        "PHOENIX_PROJECT_NAME",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
         "OTEL_EXPORTER_OTLP_PROTOCOL",
@@ -85,6 +89,7 @@ def test_discover_config_genai_env_vars(monkeypatch):
         "api_key": "test-key",
         "task_id": "test-task",
         "endpoint": "http://localhost:4318/v1/traces",
+        "project_name": "test-task",
     }
 
 
@@ -99,10 +104,11 @@ def test_discover_config_otel_env_vars_fallback(monkeypatch):
         "api_key": "Authorization=Bearer secret-otel-token",
         "task_id": "custom-claude-service",
         "endpoint": "http://otel-collector:4318/v1/traces",
+        "project_name": "custom-claude-service",
     }
 
 
-def test_discover_config_protocol_env_var(monkeypatch):
+def test_discover_config_protocol_env_var(monkeypatch, tmp_path):
     """Verify discover_config detects OTEL_EXPORTER_OTLP_PROTOCOL."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")
@@ -110,8 +116,9 @@ def test_discover_config_protocol_env_var(monkeypatch):
     cfg = claude_code_tracer.discover_config()
     assert cfg == {
         "api_key": "",
-        "task_id": "claude-code",
+        "task_id": tmp_path.name,
         "endpoint": "http://localhost:4317",
+        "project_name": tmp_path.name,
         "protocol": "grpc",
     }
 
@@ -359,3 +366,239 @@ def test_handlers_collector_unreachable_fail_safe(monkeypatch):
         assert func(ctx) is None, (
             f"Handler for {event} raised or returned non-None on network error"
         )
+
+
+def test_resolve_project_name(monkeypatch, tmp_path):
+    """Verify resolve_project_name respects priority order."""
+    # 1. Explicit task_id
+    assert claude_code_tracer.resolve_project_name(task_id="explicit-task") == "explicit-task"
+
+    # 2. GENAI_ENGINE_TASK_ID
+    monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "env-genai-task")
+    assert claude_code_tracer.resolve_project_name() == "env-genai-task"
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID")
+
+    # 3. PHOENIX_PROJECT_NAME
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "env-phoenix-proj")
+    assert claude_code_tracer.resolve_project_name() == "env-phoenix-proj"
+    monkeypatch.delenv("PHOENIX_PROJECT_NAME")
+
+    # 4. OTEL_SERVICE_NAME
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "env-otel-svc")
+    assert claude_code_tracer.resolve_project_name() == "env-otel-svc"
+    monkeypatch.delenv("OTEL_SERVICE_NAME")
+
+    # 5. Payload cwd
+    payload = {"cwd": "/home/user/code/my-repo"}
+    assert claude_code_tracer.resolve_project_name(payload) == "my-repo"
+
+    # 6. CLAUDE_PROJECT_DIR fallback
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", "/var/projects/awesome-tool")
+    assert claude_code_tracer.resolve_project_name() == "awesome-tool"
+    monkeypatch.delenv("CLAUDE_PROJECT_DIR")
+
+    # 7. Fallback to cwd basename
+    assert claude_code_tracer.resolve_project_name() == Path.cwd().name
+
+
+def test_build_and_export_spans_resource_attributes(monkeypatch):
+    """Verify _build_and_export_spans sets project and host attributes on Resource and Spans."""
+    created_resources = []
+    created_spans = []
+
+    mock_span = MagicMock()
+    created_spans.append(mock_span)
+
+    mock_tracer = MagicMock()
+    mock_tracer.start_span.return_value = mock_span
+
+    mock_provider = MagicMock()
+    mock_provider.get_tracer.return_value = mock_tracer
+
+    def mock_tracer_provider_cls(**kwargs):
+        created_resources.append(kwargs.get("resource"))
+        return mock_provider
+
+    mock_exporter = MagicMock()
+    monkeypatch.setattr(
+        claude_code_tracer, "_create_exporter", lambda *args, **kwargs: mock_exporter
+    )
+
+    # Patch TracerProvider
+    orig_otel_imports = claude_code_tracer._otel_imports
+
+    def mock_otel_imports():
+        imports: list[Any] = list(orig_otel_imports())
+        imports[2] = mock_tracer_provider_cls
+        return tuple(imports)
+
+    monkeypatch.setattr(claude_code_tracer, "_otel_imports", mock_otel_imports)
+
+    config = {
+        "endpoint": "http://localhost:4317",
+        "task_id": "test-project",
+        "project_name": "test-project",
+    }
+    records = [
+        {
+            "trace_id_hex": "11111111111111111111111111111111",
+            "span_id_hex": "2222222222222222",
+            "name": "test-span",
+            "start_ns": 1000,
+            "end_ns": 2000,
+            "attributes": {"custom.attr": "value"},
+        }
+    ]
+
+    claude_code_tracer._build_and_export_spans(
+        config=config,
+        session_id="session-xyz",
+        username="tester",
+        span_records=records,
+    )
+
+    assert len(created_resources) == 1
+    res = created_resources[0]
+    assert res.attributes["openinference.project.name"] == "test-project"
+    assert res.attributes["project.name"] == "test-project"
+    assert res.attributes["arthur.task"] == "test-project"
+    assert res.attributes["arthur.user"] == "tester"
+    assert "host.name" in res.attributes
+
+    # Check span attributes
+    span_calls = {call.args[0]: call.args[1] for call in mock_span.set_attribute.call_args_list}
+    assert span_calls["project.name"] == "test-project"
+    assert span_calls["openinference.project.name"] == "test-project"
+    assert span_calls["session.id"] == "session-xyz"
+    assert span_calls["user.id"] == "tester"
+    assert "host.name" in span_calls
+
+
+def test_agy_extract_llm_spans_inputs(tmp_path):
+    """Verify agy_tracer._extract_llm_spans_for_turn_agy populates input attributes for LLM spans."""
+    import agy_tracer
+
+    transcript = tmp_path / "transcript.jsonl"
+    entries = [
+        {
+            "step_index": 0,
+            "source": "USER_EXPLICIT",
+            "type": "USER_INPUT",
+            "status": "DONE",
+            "content": "What is the weather?",
+        },
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "created_at": "2026-08-25T05:00:00Z",
+            "tool_calls": [{"name": "get_weather", "args": {"location": "Sydney"}}],
+        },
+        {
+            "step_index": 2,
+            "source": "MODEL",
+            "type": "GENERIC",
+            "status": "DONE",
+            "content": "22C and sunny",
+        },
+        {
+            "step_index": 3,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "created_at": "2026-08-25T05:00:02Z",
+            "content": "The weather in Sydney is 22C and sunny.",
+        },
+    ]
+    with open(transcript, "w") as f:
+        for e in entries:
+            f.write(json.dumps(e) + "\n")
+
+    spans = agy_tracer._extract_llm_spans_for_turn_agy(
+        transcript_path=str(transcript),
+        human_count_at_start=0,
+        trace_id_hex="11111111111111111111111111111111",
+        root_span_id_hex="2222222222222222",
+    )
+
+    assert len(spans) == 2
+
+    # Span 1: initial model response to user prompt
+    span1_attrs = spans[0]["attributes"]
+    assert span1_attrs["llm.input_messages.0.message.role"] == "user"
+    assert span1_attrs["llm.input_messages.0.message.content"] == "What is the weather?"
+    assert "What is the weather?" in span1_attrs["input.value"]
+
+    # Span 2: follow-up model response to tool output
+    span2_attrs = spans[1]["attributes"]
+    assert span2_attrs["llm.input_messages.0.message.role"] == "tool"
+    assert span2_attrs["llm.input_messages.0.message.content"] == "22C and sunny"
+    assert "22C and sunny" in span2_attrs["input.value"]
+
+
+def test_agy_post_tool_extracts_output_from_transcript(tmp_path, monkeypatch):
+    """Verify agy_tracer.handle_post_tool extracts tool output from transcript rather than empty {}."""
+    import agy_tracer
+
+    transcript = tmp_path / "transcript.jsonl"
+    entries = [
+        {
+            "step_index": 0,
+            "source": "USER_EXPLICIT",
+            "type": "USER_INPUT",
+            "status": "DONE",
+            "content": "Run ls",
+        },
+        {
+            "step_index": 1,
+            "source": "MODEL",
+            "type": "PLANNER_RESPONSE",
+            "status": "DONE",
+            "created_at": "2026-08-25T05:00:00Z",
+            "tool_calls": [{"name": "Bash", "args": {"command": "ls"}}],
+        },
+        {
+            "step_index": 2,
+            "source": "MODEL",
+            "type": "GENERIC",
+            "status": "DONE",
+            "content": "file1.txt\nfile2.txt",
+        },
+    ]
+    with open(transcript, "w") as f:
+        for e in entries:
+            f.write(json.dumps(e) + "\n")
+
+    exported_records = []
+
+    def mock_export(config, session_id, username, span_records):
+        exported_records.extend(span_records)
+
+    monkeypatch.setattr(agy_tracer, "_build_and_export_spans", mock_export)
+
+    session_id = "session-agy-test"
+    # Pre-invocation to initialize state
+    agy_tracer.handle_pre_invocation(
+        {"conversationId": session_id, "invocationNum": 0, "transcriptPath": str(transcript)},
+        {"endpoint": "http://localhost:4317", "task_id": "test-agy"},
+    )
+    # Pre-tool
+    agy_tracer.handle_pre_tool(
+        {"conversationId": session_id, "toolCall": {"name": "Bash", "args": {"command": "ls"}}},
+        {"endpoint": "http://localhost:4317", "task_id": "test-agy"},
+    )
+    # Post-tool (payload without toolResponse)
+    agy_tracer.handle_post_tool(
+        {
+            "conversationId": session_id,
+            "toolCall": {"name": "Bash", "args": {"command": "ls"}},
+            "transcriptPath": str(transcript),
+        },
+        {"endpoint": "http://localhost:4317", "task_id": "test-agy"},
+    )
+
+    assert len(exported_records) == 1
+    tool_span = exported_records[0]
+    assert tool_span["name"] == "Bash"
+    assert "file1.txt" in tool_span["attributes"]["output.value"]
