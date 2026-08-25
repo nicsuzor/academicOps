@@ -966,3 +966,238 @@ def test_prompt_is_rejected_for_commands_that_take_no_prompt(agent_cmd, monkeypa
     assert result.exit_code != 0
     assert "--prompt has no meaning for AGENT_CMD" in result.output
     assert captured == [], "no container may start for an invocation that cannot work"
+
+
+# --------------------------------------------------------------------------
+# Interactive flag (-i / --interactive) for claude and agy
+# --------------------------------------------------------------------------
+
+
+def test_interactive_flag_claude_prompt_option(monkeypatch, tmp_path):
+    """Passing -i and --prompt to claude drops --prompt/--print and puts prompt as trailing positional."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "--prompt",
+            "hello claude",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--setting-sources=user,project",
+        "hello claude",
+    ]
+    assert "-it" in cmd
+    assert "--print" not in inner
+    assert "--prompt" not in inner
+
+
+def test_interactive_flag_agy_prompt_option(monkeypatch, tmp_path):
+    """Passing -i and --prompt to agy uses --prompt-interactive instead of --print/--prompt."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "--prompt",
+            "hello agy",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "agy",
+        "--dangerously-skip-permissions",
+        "--log-file",
+        "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--prompt-interactive",
+        "hello agy",
+    ]
+    assert "-it" in cmd
+    assert "--print" not in inner
+    assert "--print-timeout" not in inner
+
+
+def test_interactive_flag_claude_positional_prompt(monkeypatch, tmp_path):
+    """Passing -i and a positional prompt to claude leaves prompt as trailing argument without --print."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "hello positional",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--setting-sources=user,project",
+        "hello positional",
+    ]
+    assert "-it" in cmd
+    assert "--print" not in inner
+
+
+def test_interactive_flag_agy_positional_prompt(monkeypatch, tmp_path):
+    """Passing -i and a positional prompt to agy wraps it in --prompt-interactive."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "hello positional",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "agy",
+        "--dangerously-skip-permissions",
+        "--log-file",
+        "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--prompt-interactive",
+        "hello positional",
+    ]
+    assert "-it" in cmd
+    assert "--print" not in inner
+
+
+def test_interactive_flag_claude_task_dispatch(monkeypatch, tmp_path):
+    """Passing -i and -t to claude runs interactively with seeded /pull prompt."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "-t",
+            "task_abc123",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--setting-sources=user,project",
+        "/pull task_abc123",
+    ]
+    assert "-it" in cmd
+    assert "--print" not in inner
+
+
+def test_interactive_flag_agy_task_dispatch(monkeypatch, tmp_path):
+    """Passing -i and -t to agy runs interactively using --prompt-interactive."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "-t",
+            "task_abc123",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "agy",
+        "--dangerously-skip-permissions",
+        "--log-file",
+        "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--prompt-interactive",
+        "/pull task_abc123",
+    ]
+    assert "-it" in cmd
+    assert "--print" not in inner
+
+
+def test_interactive_flag_claude_keeps_forwarded_args(monkeypatch, tmp_path):
+    """Passing -i, --prompt, and extra args places prompt last."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "claude",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "--prompt",
+            "hello claude",
+            "--model",
+            "opus",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--setting-sources=user,project",
+        "--model",
+        "opus",
+        "hello claude",
+    ]
+    assert "-it" in cmd
+
+
+def test_interactive_flag_agy_keeps_forwarded_args(monkeypatch, tmp_path):
+    """Passing -i, --prompt, and extra args places --prompt-interactive last."""
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "-i",
+            "--prompt",
+            "hello agy",
+            "--model",
+            "opus",
+        ],
+    )
+    inner = _inner_cmd(cmd)
+
+    assert inner == [
+        "agy",
+        "--dangerously-skip-permissions",
+        "--log-file",
+        "/home/worker/.gemini/antigravity-cli/cli.log",
+        "--model",
+        "opus",
+        "--prompt-interactive",
+        "hello agy",
+    ]
+    assert "-it" in cmd

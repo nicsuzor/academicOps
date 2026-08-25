@@ -1056,6 +1056,7 @@ def _build_inner_command(
     output_format=None,
     prompt=None,
     config=None,
+    interactive=False,
 ):
     """The command run inside the container, and the container path that agent
     writes its session state to.
@@ -1089,6 +1090,10 @@ def _build_inner_command(
         output_format = extracted_format
     extra_args = tuple(cleaned_extra_args)
 
+    effectively_interactive = interactive or (
+        is_interactive and not task and not prompt and not explicit_headless
+    )
+
     # Output format handling:
     # Headless agent dispatches default to "stream-json".
     # An explicit output_format overrides this default.
@@ -1096,7 +1101,7 @@ def _build_inner_command(
     if agent_cmd in ("claude", "agy"):
         if output_format is not None:
             effective_output_format = output_format
-        elif not is_interactive or explicit_headless:
+        elif not effectively_interactive:
             effective_output_format = "stream-json"
         else:
             effective_output_format = None
@@ -1120,11 +1125,10 @@ def _build_inner_command(
             ):
                 inner_cmd.append("--verbose")
         if (
-            not is_interactive
+            not effectively_interactive
             and "-p" not in extra_args
             and "--print" not in extra_args
             and not prompt
-            and not task
         ):
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
@@ -1160,10 +1164,11 @@ def _build_inner_command(
             "--conversation",
         }
         if (
-            not is_interactive
+            not effectively_interactive
             and not agy_prompt_flags.intersection(extra_args)
             and not prompt
             and not task
+            and not extra_args
         ):
             inner_cmd.extend([*_print_timeout_args(config), "--print", ""])
     elif agent_cmd in ("shell", "bash"):
@@ -1181,25 +1186,31 @@ def _build_inner_command(
         seeded_prompt = prompt
         # Forwarded args are verbatim passthrough, so they go in ahead of the
         # prompt: claude reads the prompt as its trailing positional, and agy's
-        # --prompt must come last so no interposed flag can consume its value.
+        # --prompt/--prompt-interactive must come last so no interposed flag can consume its value.
         # Before this, --prompt and extra_args were mutually exclusive branches
         # and naming both silently dropped the args.
         inner_cmd.extend(extra_args)
         if agent_cmd == "agy":
-            # agy's `--prompt` is an alias for `--print`, so this is headless too
-            # and honours the same timeout. The flag must precede the prompt-
-            # bearing flag with nothing between it and its value.
-            inner_cmd.extend([*_print_timeout_args(config), "--prompt", prompt])
+            if effectively_interactive:
+                inner_cmd.extend(["--prompt-interactive", prompt])
+            else:
+                # agy's `--prompt` is an alias for `--print`, so this is headless too
+                # and honours the same timeout. The flag must precede the prompt-
+                # bearing flag with nothing between it and its value.
+                inner_cmd.extend([*_print_timeout_args(config), "--prompt", prompt])
         else:
             inner_cmd.append(prompt)
     elif seeded_from_task:
         seeded_prompt = f"/pull {task}"
         if agent_cmd == "agy":
-            # `-t` is the canonical production dispatch, so the operator's
-            # timeout has to reach it: reading the config only on the
-            # extra_args branch left every seeded run pinned to agy's 5m
-            # default.
-            inner_cmd.extend([*_print_timeout_args(config), "--print", f"/pull {task}"])
+            if effectively_interactive:
+                inner_cmd.extend(["--prompt-interactive", f"/pull {task}"])
+            else:
+                # `-t` is the canonical production dispatch, so the operator's
+                # timeout has to reach it: reading the config only on the
+                # extra_args branch left every seeded run pinned to agy's 5m
+                # default.
+                inner_cmd.extend([*_print_timeout_args(config), "--print", f"/pull {task}"])
         else:
             inner_cmd.append(f"/pull {task}")
     elif extra_args:
@@ -1216,15 +1227,18 @@ def _build_inner_command(
                 "--conversation",
             }
             if not agy_prompt_flags.intersection(extra_args):
-                # Autonomous dispatch runs headless so the agent completes its loop
-                # and exits; an interactive prompt would leave a live container
-                # idling forever. The print timeout must precede --print with
-                # nothing between --print and its prompt value: a value-taking flag
-                # consumes the next token whatever it is, so an interposed flag
-                # becomes the prompt and the real one is silently dropped.
-                inner_cmd.extend(
-                    [*_print_timeout_args(config), "--print", extra_args[0], *extra_args[1:]]
-                )
+                if effectively_interactive:
+                    inner_cmd.extend(["--prompt-interactive", extra_args[0], *extra_args[1:]])
+                else:
+                    # Autonomous dispatch runs headless so the agent completes its loop
+                    # and exits; an interactive prompt would leave a live container
+                    # idling forever. The print timeout must precede --print with
+                    # nothing between --print and its prompt value: a value-taking flag
+                    # consumes the next token whatever it is, so an interposed flag
+                    # becomes the prompt and the real one is silently dropped.
+                    inner_cmd.extend(
+                        [*_print_timeout_args(config), "--print", extra_args[0], *extra_args[1:]]
+                    )
             else:
                 inner_cmd.extend(extra_args)
         else:
@@ -1661,6 +1675,13 @@ def main():
     help="Prompt string for print/headless mode. claude and agy only.",
 )
 @click.option(
+    "--interactive",
+    "-i",
+    is_flag=True,
+    default=False,
+    help="Run interactively (attaches TTY and opens interactive UI).",
+)
+@click.option(
     "--port",
     "--publish",
     "-P",
@@ -1692,6 +1713,7 @@ def run(
     no_agent,
     output_format,
     prompt,
+    interactive,
     quiet,
     ports,
     extra_args,
@@ -1791,9 +1813,14 @@ def run(
 
         docker_args = []
         explicit_headless = (
-            bool(HEADLESS_FLAGS.intersection(extra_args)) or bool(output_format) or bool(prompt)
+            bool(HEADLESS_FLAGS.intersection(extra_args))
+            or (bool(output_format) and not interactive)
+            or (bool(prompt) and not interactive)
         )
-        is_interactive = not explicit_headless and sys.stdin.isatty()
+        if interactive:
+            is_interactive = True
+        else:
+            is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
         else:
@@ -1814,6 +1841,7 @@ def run(
             output_format=output_format,
             prompt=prompt,
             config=config,
+            interactive=interactive,
         )
 
         env["AOPS_POLECAT_CONTAINER"] = "1"
@@ -1874,7 +1902,7 @@ def run(
             # dir (`_transcript_paths`), so a seeded dispatch is verified the
             # same way whichever one ran it. `shell`/`sleep`/other run no agent
             # CLI and have no conversation to check.
-            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
+            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task and not interactive,
             run_env=run_env,
             quiet=quiet,
         )

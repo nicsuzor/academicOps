@@ -54,3 +54,25 @@ def test_interactive_session_without_task_stays_interactive(agent_cmd):
         agent_cmd, (), is_interactive=True, explicit_headless=False, task=None, config={}
     )
     assert "--print" not in inner_cmd, inner_cmd
+
+
+@pytest.mark.parametrize("agent_cmd", AGENTS)
+def test_interactive_task_dispatch_is_interactive(agent_cmd):
+    """Passing interactive=True with a task makes claude positional and agy use --prompt-interactive."""
+    inner_cmd, _, seeded_from_task, seeded_prompt = _build_inner_command(
+        agent_cmd,
+        (),
+        is_interactive=True,
+        explicit_headless=False,
+        task="aops_123",
+        config={},
+        interactive=True,
+    )
+    assert seeded_from_task is True
+    assert seeded_prompt == "/pull aops_123"
+    assert "--print" not in inner_cmd
+    if agent_cmd == "claude":
+        assert inner_cmd[-1] == "/pull aops_123"
+    elif agent_cmd == "agy":
+        assert "--prompt-interactive" in inner_cmd
+        assert inner_cmd[inner_cmd.index("--prompt-interactive") + 1] == "/pull aops_123"
