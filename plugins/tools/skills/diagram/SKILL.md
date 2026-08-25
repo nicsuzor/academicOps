@@ -195,6 +195,51 @@ style; challenge the connections while doing it. Only then reposition, restyle,
 and balance — without changing what the diagram claims. Doing both at once
 produces diagrams that are pretty and wrong.
 
+### Emphasis and placement — the difference between a chart and a grid
+
+A boring chart is a uniform chart: every box the same size, same fill, same
+font, snapped to rows and columns. Uniformity claims that nothing matters more
+than anything else — which is never true, so the reader gets no argument, only
+inventory. Before styling anything, answer three questions and let the answers
+drive geometry:
+
+1. **What should the eye hit first?** Not "the title" — the thing the viewer
+   should act on or worry about. Give it the strongest signal you have: the
+   deepest fill, the biggest type, the most whitespace around it. There can be
+   only a handful of first things; if six items are emphasised, none are.
+2. **What varies, and what does the variation mean?** Every visual channel —
+   size, fill, stroke style, type scale, a corner marker — must be spent on
+   exactly one meaning, stated somewhere the reader can find (a small key, or a
+   companion note). Size = weight, fill = state, dashed = unshaped is a working
+   vocabulary; size = whatever-fit-the-text is noise wearing a vocabulary's
+   clothes. Unspent channels stay uniform on purpose.
+3. **What is near what, and why?** Placement is a claim. Cards that belong to
+   the same effort sit in one cluster with macro-whitespace around it; a child
+   sits beside its parent; a deliberate pair overlaps like stacked paper.
+   Distance apart reads as unrelatedness — so a grid, which equalises all
+   distances, erases every relationship the layout could have carried. Break
+   the grid: vary offsets by a few pixels, let clusters breathe unevenly, put
+   the emphasised thing off-axis. Organic ≠ sloppy; it means spacing follows
+   meaning instead of a ruler.
+
+Two disciplines keep this honest on a canvas that lives longer than one pass:
+
+- **A hand-edited canvas is user speech. Restore, never regenerate.** If a
+  person has moved, deleted, resized, or recoloured elements, those positions
+  and absences carry their judgment. Regenerating the file from data — however
+  much prettier the output — destroys their layout and is the single most
+  destructive thing an agent can do to a shared canvas. Diff against the last
+  revision, apply your changes around their geometry (zones grow outward;
+  frozen positions stay byte-identical), and treat their deletions as decisions
+  to honour, not gaps to refill.
+- **The encoding lives in a companion registry, and every pass re-reconciles
+  it.** A canvas with a visual vocabulary needs one place (a note beside it)
+  stating what each channel means, which conventions are suspended, and what
+  the last pass changed. Read it before editing; update it after. An agent that
+  edits the canvas without the registry — or the registry without the canvas —
+  leaves the next agent to reverse-engineer meaning from pixels, and that is
+  how vocabularies rot.
+
 ### Typography and shapes
 
 XL 40–48px titles · L 24–32px headers · M 16–20px body · S 12–14px labels.
