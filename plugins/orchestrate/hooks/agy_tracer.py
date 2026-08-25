@@ -283,11 +283,20 @@ def handle_pre_tool(data: dict, config: dict) -> None:
 
         pending_key = f"{tool_name}_{now_ns}"
         pt = state.setdefault("pending_tools", {})
+
+        agent_span_id = _new_span_id()
+        if tool_name in ("Agent", "Task", "invoke_subagent"):
+            tuid = tool_call.get("id") or tool_call.get("toolUseId")
+            if tuid:
+                import hashlib
+
+                agent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+
         pt[pending_key] = {
             "tool_name": tool_name,
             "tool_input": tool_input,
             "start_ns": now_ns,
-            "pre_allocated_span_id": _new_span_id(),
+            "pre_allocated_span_id": agent_span_id,
             "trace_id": trace_id,
             "root_span_id": root_span_id,
         }
@@ -412,9 +421,10 @@ def handle_stop(data: dict, config: dict) -> None:
             "end_ns": end_ns,
             "trace_id_hex": trace_id,
             "span_id_hex": root_span_id,
+            "parent_span_id_hex": ct.get("parent_span_id"),
             "force_span_id": True,
             "attributes": {
-                "openinference.span.kind": "CHAIN",
+                "openinference.span.kind": "AGENT" if ct.get("parent_span_id") else "CHAIN",
                 "session.id": _phoenix_session_id(state),
             },
         }
