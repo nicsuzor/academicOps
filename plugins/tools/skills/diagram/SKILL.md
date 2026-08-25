@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Creating diagrams in any style — Mermaid flowcharts (structured, code-based) or Excalidraw (hand-drawn, organic). Use style parameter to select.
+description: Creating diagrams in any style — Mermaid flowcharts (structured, code-based) or Excalidraw (hand-drawn, organic, PKB task/knowledge graphs). Use style parameter to select.
 ---
 
 # Diagram
@@ -96,7 +96,7 @@ draws a useful subset and the result reads as a complete inventory.
 - `style="mermaid"` — structured, code-based flowcharts. Use when the diagram
   lives in documentation, is read in a diff, and must stay in version control.
 - `style="excalidraw"` — hand-drawn, organic. Use for mind maps, concept maps,
-  informal architecture sketches, and presentation visuals where feel matters.
+  PKB knowledge/task graphs, informal architecture sketches, and presentation visuals where feel matters.
 
 If the user has not said which, ask before drawing. Converting after the fact
 loses the layout work.
@@ -156,6 +156,12 @@ where the interaction is essential.
 
 ## Style: excalidraw
 
+> **Note:** Excalidraw has a unique hand-drawn aesthetic; graphs look best if they are not regular. If you use an automated layout, you must manually move nodes around afterward to break the grid and make the graph aesthetically pleasing and organic.
+
+Excalidraw charts are hand-drawn, organic, and expressive. When constructing Excalidraw
+diagrams, focus on **semantic topology** and **composition** using the **5-Layer Composition Model**,
+delegating initial physical coordinate calculation to layout engines and native tooling (`excalidraw-view`), followed by manual organic adjustment.
+
 ### Aesthetic defaults
 
 | Property      | Value        | Why                                      |
@@ -168,95 +174,15 @@ where the interaction is essential.
 Canvas background is **white**, always. The palette below is a terminal theme,
 but diagrams need contrast and printability — never a dark canvas.
 
-### Binding is mandatory
+### The 5-Layer Composition Model
 
-- **Text binds to its shape** — `containerId` on the text element,
-  `boundElements` on the shape. Unbound text does not move with its box, and the
-  diagram desynchronises on the first edit. Text should auto-size to container
-  width. Manual equivalent: select both → Cmd/Ctrl+G.
-- **Arrows bind at both ends** — `startBinding` and `endBinding`. A floating
-  arrow points at nothing the moment a box moves. Never create one.
+Construct Excalidraw diagrams conceptually using this 5-layer model instead of flat arrays of boxes:
 
-### The index-order hazard
-
-When writing `.excalidraw` files directly: every element carries a fractional
-`index` key setting z-order, and **the `elements` array must itself be
-serialised in ascending `index` order**. If array order and index order
-disagree, Excalidraw will not open the file — while every referential check
-still passes (ids resolve, bindings match, each index is individually valid), so
-nothing warns you. Sort by `index` immediately before writing, every time.
-
-Use fixed-width keys of equal length over the `0-9A-Za-z` ASCII alphabet (`a00`,
-`a01`, …) so lexicographic order is numeric order with no prefix collisions. An
-ad hoc scheme like `c00`, `d02` is silently regenerated on the next open/save,
-resorting the whole array with it.
-
-### Reading an existing file
-
-Never Read a `.excalidraw` file raw. It is one long line of JSON — offset/limit
-cannot window it, a 135KB file is ~35k+ tokens, and Read refuses past 25k. The
-semantics fit in ~6% of that. Project them with the bundled viewer
-(`scripts/excalidraw-view.py` beside this file, stdlib only):
-
-```bash
-python3 scripts/excalidraw-view.py FILE summary        # counts, extents, max index, order sanity
-python3 scripts/excalidraw-view.py FILE map            # shapes with labels, free text, arrow topology
-python3 scripts/excalidraw-view.py FILE style          # modal style values to copy for new elements
-python3 scripts/excalidraw-view.py FILE check          # structural validation — exit 1 on any fault
-python3 scripts/excalidraw-view.py FILE1 diff FILE2    # summary before/after diff (counts, removals, topology)
-```
-
-`summary` then `map` is full situational awareness; add `style` before creating
-elements so new work matches the house look. For anything the viewer does not
-cover, write a small jq/python projection — never dump the file.
-
-Projected output is for reasoning, **not for Edit anchors**: jq and python
-decode JSON, so `\n` and unicode escapes no longer match the bytes on disk.
-
-### Editing an existing file
-
-Mutate through a short python script — load, modify, dump — never by
-string-matching Edits against the JSON. In the script or using `scripts/excal-edit.py`:
-
-- **Back up first** (`cp FILE FILE.bak-<date>`). Fix a bad result by editing the
-  script and re-running it against the backup — never by patching its output.
-- **Prefer append-only.** New elements added in free canvas (`summary` prints
-  the extents) leave every existing binding untouched.
-- **Clone, don't author.** `copy.deepcopy` an existing element of the same type
-  as the template, then reset the identity fields: `id`, `seed`, `versionNonce`,
-  `version`, `updated`, and clear `groupIds`, `containerId`, `boundElements`
-  before wiring the new relationships.
-- **Continue `index` past the current maximum** (`summary` prints it) so
-  existing elements keep their z-order and the array stays sorted.
-- **Validate on both sides of the write**: `check` mode before editing proves
-  you started from a well-formed file; `check` plus a fresh-interpreter re-parse
-  after proves you left one. A file can pass every referential check and still
-  be unopenable — that is exactly what `check`'s order test catches.
-- **Use helper utilities** (`scripts/excal-edit.py`):
-  - `python3 scripts/excal-edit.py FILE fit <id> "<new text>"`: Recomputes text bounding box and grows container centered to prevent text overflow.
-  - `python3 scripts/excal-edit.py FILE restack [<id>] [--gap GAP]`: Repositions sibling texts inside a card container (or all cards if `<id>` is omitted) vertically with even spacing to eliminate overprints without moving the card. Fails closed if text exceeds container height.
-  - `python3 scripts/excal-edit.py FILE overlap [--baseline BASELINE]`: Flags AABB collisions between non-nested sibling elements, including sibling text collisions inside cards (exits 1 on collision). Accepts `--baseline` (file path or inline `id1:id2` pairs) to allowlist intentional collisions.
-  - `python3 scripts/excal-edit.py FILE arrows`: Flags any arrow whose polyline cuts through a shape it isn't bound to at either end — the check for "route around unrelated boxes, never through them" after moving or rerouting an arrow by hand. Background zone rectangles (a shape fully containing 3+ others) don't count as obstacles. Exits 1 on a hit.
-  - `uv run --with matplotlib python3 scripts/excal-edit.py FILE render [OUT.png] [--region X0,Y0,X1,Y1]`: Render crude boxes+labels matplotlib preview (inverting y-axis for Excalidraw's downward y coordinates). Pass `--region` to crop to one area — past a couple hundred elements the whole-canvas render is too dense to read.
-- **Write both text layers, always.** A text element carries `text` — the
-  wrapped copy Excalidraw paints — and `originalText`, the unwrapped source it
-  re-wraps from. `originalText` is the one that survives: set `text` alone and
-  the next time the editor lays that element out it regenerates `text` from the
-  stale `originalText`, and the edit is gone with nothing to show it ever
-  happened. Set both to the same string on every text write. `check` fails the
-  file when the two disagree in content rather than only in line breaks.
-- **Read `originalText`, not `text`, when you need what an element says.** On a
-  file some earlier writer damaged, `text` may hold a label nobody will see
-  again. When the two disagree, report both and ask which is wanted — do not
-  pick.
-- **Never append investigation notes to a diagram file.** Put investigation notes in git commits, specs, or memory (`remember`).
-
-If a targeted Edit is genuinely simpler (one text swap), extract the exact
-`old_string` with `grep -o` from the raw file so the escaping matches.
-
-To see layout rather than structure, render with `uv run --with matplotlib python3 scripts/excal-edit.py FILE render [OUT.png]` and read the image.
-Say what that proves: geometry and collisions, not Excalidraw's true rendering —
-bound-text wrapping can still differ.
+1. **Scenery**: Background boundaries and logical zones (`--preset zone` or enclosing frames). Nodes should be grouped together with their bounding border and all elements within that border (e.g. all text captions and boxes subsumed within).
+2. **Spine**: The critical path and focal landmark nodes (`--preset hero`). Highlights the root node of an ego-network, current active task, or main sequence. Scale should be used to indicate hierarchy or importance, with children nodes markedly smaller than parents.
+3. **Satellites**: Supporting utility components and standard operational nodes.
+4. **Annotations**: Human commentary and context via sticky notes (`--preset sticky`). Explains rationale and "why" connections exist.
+5. **Connectors**: Solid flows vs. dashed telemetry (`--curved`, `--stroke-style dashed`). Use curved arrows to radiate either out (spiral or star/spoke layout) or down (hierarchy).
 
 ### Aesthetic Presets and Layout Engines
 
@@ -268,7 +194,16 @@ When building diagrams mechanically (e.g., via the `batch` JSON DSL or CLI tools
 - Use `--preset zone` for boundary boxes (Scenery).
 - Use `--curved` and `--stroke-style dashed` for non-critical path connections.
 
-### The 5-Layer Composition Model
+- **Topology first, layout second**: Declare components and relationships accurately. Let the backend layout engine calculate physical space.
+- **Organic adjustment**: After automated layout, **manually move nodes around** to break the perfect grid. The hand-drawn aesthetic demands irregular, pleasing spacing.
+- **Layout engine choices**:
+  - **Radial Layout** (`--layout radial`): Ideal for ego-networks and hub-and-spoke concept maps (one central focal node, radiating relationships).
+  - **Sugiyama Layered DAG Layout**: Default for pipelines, task dependency trees, and directed workflow sequences.
+- **Semantic flags**:
+  - `--preset hero`: Emphasizes landmark focal nodes.
+  - `--preset sticky`: Adds commentary / rationale cards.
+  - `--preset zone`: Defines boundary and domain grouping boxes.
+  - `--curved` and `--stroke-style dashed`: Differentiates secondary / non-critical path connections.
 
 Construct diagrams conceptually using this model instead of flat arrays of boxes:
 
@@ -278,9 +213,51 @@ Construct diagrams conceptually using this model instead of flat arrays of boxes
 4. **Annotations**: Human commentary via sticky notes (`--preset sticky`).
 5. **Connectors**: Solid flows vs. dashed telemetry (`--curved`, `--stroke-style dashed`).
 
-### Structure first, then look
+### Reading and Inspecting an Existing File
 
-Declare every component and topological relationship (edges) for accuracy alone. Let the backend layout engine (`layout.rs`) handle physical space. Do not output manual `X` and `Y` properties in the JSON generation for mechanical tools; rely on the layout engine. Only specify manual overrides if a layout explicitly fails and needs a microscopic correction.
+Never read a `.excalidraw` file raw. It is minified JSON — offset/limit cannot window it,
+and raw dumping wastes context tokens. Use the native `excalidraw-view` CLI:
+
+```bash
+excalidraw-view FILE summary        # counts, extents, max index, order sanity
+excalidraw-view FILE map            # shapes with labels, free text, arrow topology
+excalidraw-view FILE style          # modal style values to copy for new elements
+excalidraw-view FILE check          # structural validation — exit 1 on any fault
+excalidraw-view FILE1 diff FILE2    # summary before/after diff (counts, removals, topology)
+excalidraw-view FILE inspect <id>   # inspect specific element attributes
+excalidraw-view FILE get <id>       # retrieve element JSON
+```
+
+`summary` then `map` gives full situational awareness. Add `style` before creating
+elements so new additions match the house look.
+
+### Editing and Mutating Excalidraw Files
+
+Mutate `.excalidraw` files through `excalidraw-view` CLI commands or declarative batch specs — never
+by ad-hoc string replacement against raw JSON.
+
+- **Back up first** (`cp FILE FILE.bak-<date>`).
+- **Use CLI mutations (`excalidraw-view`)**:
+  - `excalidraw-view FILE add-node --type <type> --text "<text>" [--preset hero|sticky|zone] [--at X,Y] [--size W,H] [--color <hex>]`
+  - `excalidraw-view FILE add-text --text "<text>" --at X,Y [--font-size <size>] [--color <hex>]`
+  - `excalidraw-view FILE connect --from <id1> --to <id2> [--label "<label>"] [--curved] [--stroke-style dashed|solid]`
+  - `excalidraw-view FILE set-text <id> "<new_text>"`
+  - `excalidraw-view FILE fit <id> "<new_text>"`: Recomputes text bounding box and grows container centered to prevent text overflow.
+  - `excalidraw-view FILE move-elem <id> [--to X,Y | --by DX,DY]`
+  - `excalidraw-view FILE delete-elem <id> [--cascade-arrows]`
+  - `excalidraw-view FILE batch <changes.json | ->`
+- **Validation commands**:
+  - `excalidraw-view FILE check`: Full referential integrity and z-index ordering validation.
+  - `excalidraw-view FILE overlap`: Flags bounding-box collisions between non-nested sibling elements.
+  - `excalidraw-view FILE arrows-check`: Flags any arrow whose polyline cuts through a shape it isn't bound to at either end.
+- **Theme application**:
+  - `excalidraw-view FILE theme apply retro-terminal`
+- **Invariants**:
+  - **Text binds to its container** (`containerId` on text, `boundElements` on shape).
+  - **Arrows bind at both ends** (`startBinding` and `endBinding`).
+  - **Write both text layers, always**: Both `text` and `originalText` must be updated to prevent Excalidraw from re-wrapping stale text on subsequent edits.
+  - **Index ordering**: Elements must remain strictly sorted by ascending fractional `index` key (`a00`, `a01`, ...).
+  - **Never append investigation notes to a diagram file.** Put investigation notes in git commits, specs, or memory (`remember`).
 
 ### Emphasis and placement — the difference between a chart and a grid
 
@@ -362,12 +339,11 @@ to the palette below, use 1–3 icons per section, size them to the neighbouring
 text, and do not mix icon styles within one diagram. Material Symbols Outlined
 SVGs are a good source for anything the bundled libraries lack.
 
-To place a library item by script instead, list the items and emit one as an
-appendable element group:
+To inspect or place a library item via CLI:
 
 ```bash
-python3 scripts/excalidraw-view.py libraries/stick-figures.excalidrawlib lib
-python3 scripts/excalidraw-view.py libraries/stick-figures.excalidrawlib \
+excalidraw-view libraries/stick-figures.excalidrawlib lib
+excalidraw-view libraries/stick-figures.excalidrawlib \
   item "Grandma" --after b3lh --at 400,3400 > /tmp/group.json
 ```
 
@@ -446,5 +422,7 @@ Rules:
 - Palette limited and meaningful; contrast holds.
 - Consistent roughness and fill pattern; no orphaned elements.
 - Readable at the size it will actually be viewed.
-- For a hand-written or script-edited `.excalidraw`:
-  `scripts/excalidraw-view.py FILE check` passes, and the file opens.
+- Structural verification passes:
+  ```bash
+  excalidraw-view FILE check
+  ```
