@@ -119,6 +119,7 @@ class Chart:
         self.placed = {}
         self.els = []
         self.depth_of = {}
+        self.overflow = []
 
     # ---------------------------------------------------------------- geometry
     def kids(self, cid):
@@ -290,8 +291,15 @@ class Chart:
         return any(e["id"] == eid for e in self.els)
 
     def meta(self, cid, r, left, right, ybase):
+        """Badge row, right-aligned, with the node id at the left.
+
+        Badges are cheap to add and easy to overflow on a narrow card, where
+        they silently print over the id. Overflow is counted and reported by
+        the build rather than left for a human to spot in a render.
+        """
         data = self.nodes[cid].get("data", {})
         off = 0
+        id_w = (len(cid) * charw(9) + 18) if self.enc.get("show_id", True) else 0
         for i, b in enumerate(self.enc.get("badges", [])):
             val = data.get(b.get("field"))
             if "when_true" in b:
@@ -311,6 +319,8 @@ class Chart:
             self.text(eid, right - len(txt) * charw(11) - off, ybase, txt, 11, col)
             r["boundElements"].append({"id": eid, "type": "nested"})
             off += len(txt) * charw(11) + 16
+        if off and left + id_w > right - off:
+            self.overflow.append((cid, round(left + id_w - (right - off))))
         if self.enc.get("show_id", True):
             self.text(f"{cid}-id", left + 12, ybase + 1, cid, 9, self.pal.get("faint", "#a0a0a0"))
             r["boundElements"].append({"id": f"{cid}-id", "type": "nested"})
@@ -541,7 +551,8 @@ def main():
             shutil.copy2(out_path, bak)
             print(f"backed up -> {bak}")
     prev = json.load(open(out_path)) if os.path.exists(out_path) else {}
-    els = Chart(spec).build()
+    chart = Chart(spec)
+    els = chart.build()
     doc = {
         "type": "excalidraw",
         "version": 2,
