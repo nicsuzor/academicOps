@@ -19,14 +19,7 @@
       ]
     },
     "claude": {
-      "mcpServers": "./.mcp.json",
-      "userConfig": {
-        "pkb_mcp_url": {
-          "type": "string",
-          "title": "PKB MCP server URL",
-          "description": "Streamable-HTTP endpoint of your PKB MCP server. Required — there is no default and no local fallback. Leave blank only if PKB_MCP_URL is already exported in the environment that launches the MCP server."
-        }
-      }
+      "mcpServers": "./.mcp.json"
     },
     "agy": {}
   }
