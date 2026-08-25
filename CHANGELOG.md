@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.1](https://github.com/nicsuzor/academicOps/compare/v0.8.0...v0.8.1) (2026-08-22)
+
+### Features
+
+- **epistemics:** enforce subagent return contract and basis-gated negative claims ([42f6a06](https://github.com/nicsuzor/academicOps/commit/42f6a062514304c3c20038ad54455c77c4a3aca5))
+- **epistemics:** enforce subagent return contract and basis-gated negative claims ([6e7a9e6](https://github.com/nicsuzor/academicOps/commit/6e7a9e6058a49c7129765f912db435b8a9cc290f))
+- **pkb:** add immediate PKB task update obligation to email workflows ([2fab33d](https://github.com/nicsuzor/academicOps/commit/2fab33d33df135d4cd2d7739fe57d7d6fe87b815))
+- **pkb:** add immediate PKB task update obligation to email workflows ([3439d31](https://github.com/nicsuzor/academicOps/commit/3439d315bd2c77ce9b84a3c89249917a7d0b6d70))
+
+### Documentation
+
+- **ida:** add subagent return channel rule to dispatch workflow ([a25692b](https://github.com/nicsuzor/academicOps/commit/a25692bcb6e63d955db0ef2b52768dc7ae5ac037))
+- **ida:** add subagent return channel rule to dispatch workflow ([bccd1cd](https://github.com/nicsuzor/academicOps/commit/bccd1cdbaf5eeaa5fbf3bdfb46d7ced62a5ac241))
+
 ## [0.8.0](https://github.com/nicsuzor/academicOps/compare/v0.7.3...v0.8.0) (2026-08-21)
 
 ### Features
