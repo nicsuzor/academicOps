@@ -299,7 +299,7 @@ class Chart:
         """
         data = self.nodes[cid].get("data", {})
         off = 0
-        id_w = (len(cid) * charw(9) + 18) if self.enc.get("show_id", True) else 0
+        id_w = (len(cid) * 9 * 0.62 + 26) if self.enc.get("show_id", True) else 0
         for i, b in enumerate(self.enc.get("badges", [])):
             val = data.get(b.get("field"))
             if "when_true" in b:
