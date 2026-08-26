@@ -11,8 +11,11 @@ Invoke `pauli` to silently capture, place, and densify the user's intent on the 
 
 ## 1: Intake, Placement & Densification
 
-Stage 1 places the task under the right parent, values it strategically (marginal career benefit, cross-project synergies, Value of Information [VoI]), wires edges (`contributes_to`, `depends_on`, `soft_depends_on`, `[[wikilinks]]`), sorts assumptions into tested vs. hopes, names forks with discriminating probes,
+Stage 1 places the task under the right parent, values it strategically (marginal career benefit, cross-project synergies, Value of Information [VoI]), wires edges (`contributes_to`, `depends_on`, `soft_depends_on`, `[[wikilinks]]`), sorts assumptions into tested vs. hopes, and names forks with discriminating probes.
 
+- **Front-load recon as ONE parallel read-only pass**: Run graph searches (`pkb__search`, `pkb__pkb_context`, `pkb__task_search`) and repo lookups concurrently before writing. Never interleave reads and writes.
+- **One ask vs enumerated goals**: An enumerated feature list or sub-item breakdown inside a single overarching goal is **one unit plus forced children**, not N independent intake asks.
+- **Order writes in separate rounds**: Create parent first, then child tasks, then wire dependent edges/gates in subsequent passes to avoid race conditions.
 - **Place under an appropriate parent node**: Identify the right parent (epic, target, or active task). Do not insert new tasks under complete or stale parent nodes.
 - **Never park tasks in a catch-all, and never leave them unparented.** Everything belongs somewhere real on the graph. A node with no parent is an orphan the next sweep has to chase, and a junk-drawer parent is an orphan that does not show up as one — which is worse.
 - **Wire graph relationships**:
