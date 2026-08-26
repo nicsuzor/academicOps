@@ -76,7 +76,7 @@ that owns it — by handing it to pauli, who runs these — and stop there:
 | Needs grounding in what is already known                                   | `pkb:hydrate`   |
 | Is a captured ask not yet worked out, or one needing a process and a brief | `pkb:brief`     |
 | Is in flight but the graph's claims about it look stale                    | `pkb:reconcile` |
-| Is ready to be worked                                                      | `ida:pc`        |
+| Is ready to be worked                                                      | `orchestrate:pc` |
 
 **The assumption map, the fork ranking, and the probe design belong on the task
 body, written by the stage that owns it.** Do not reproduce them here, and do not

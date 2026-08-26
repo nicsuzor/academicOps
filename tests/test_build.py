@@ -49,24 +49,10 @@ def built_orchestrate(tmp_path_factory) -> Path:
     return dist_root
 
 
-@pytest.fixture(scope="module")
-def built_ida(tmp_path_factory) -> Path:
-    """The real ida plugin, not a fixture — see test_polecat_cli_ships_with_ida."""
-    dist_root = tmp_path_factory.mktemp("build-dist-ida")
-    build_all(
-        PROJECT_ROOT,
-        dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["ida"],
-        version=VERSION,
-    )
-    return dist_root
-
-
-def test_polecat_cli_ships_with_ida(built_ida):
-    """The polecat launcher agent (`plugins/ida/agents/pc.md`) invokes
+def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
+    """The polecat launcher agent (`plugins/orchestrate/agents/pc.md`) invokes
     `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
-    root at all is `plugins/ida/manifest/plugin.toml`, which injects it
+    root at all is `plugins/orchestrate/manifest/plugin.toml`, which injects it
     from `lib/polecat/`.
 
     Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
@@ -82,11 +68,11 @@ def test_polecat_cli_ships_with_ida(built_ida):
     )
     assert "env_contract" in siblings, "cli.py's fallback imports no longer parse"
     for client in ("claude", "agy"):
-        polecat = built_ida / f"ida-{client}" / "polecat"
-        assert (polecat / "cli.py").is_file(), f"ida-{client} ships no polecat/cli.py"
+        polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
+        assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
         for module in siblings:
             assert (polecat / f"{module}.py").is_file(), (
-                f"ida-{client} ships cli.py without the {module} it imports"
+                f"orchestrate-{client} ships cli.py without the {module} it imports"
             )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()
@@ -366,7 +352,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["ida"],
+        plugins=["pkb", "orchestrate"],
         version=VERSION,
     )
 
@@ -374,15 +360,15 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
     # read format — see build/clients/agy.py's _adapt_agents docstring).
-    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida.md"
+    agy_ida_md = dist_root / "pkb-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "ida-agy" / "agents" / "ida" / "agent.md").exists()
+    assert not (dist_root / "pkb-agy" / "agents" / "ida" / "agent.md").exists()
 
     raw = agy_ida_md.read_text()
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
     agy_agent = yaml.safe_load(fm)
     assert agy_agent["name"] == "ida"
-    assert "interactive face" in agy_agent["description"]
+    assert "strategic face" in agy_agent["description"]
     assert "hidden" not in agy_agent
     assert "includeSections" not in agy_agent
     # ida declares no `mcpServers:` and reaches no MCP tool, so the build must
@@ -391,7 +377,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     assert "mcpServers" not in agy_agent
 
     # pc declares tools: [Bash] which translates to run_command for agy
-    agy_pc_md = dist_root / "ida-agy" / "agents" / "pc.md"
+    agy_pc_md = dist_root / "orchestrate-agy" / "agents" / "pc.md"
     assert agy_pc_md.is_file()
     pc_fm, _, _ = agy_pc_md.read_text().partition("---\n")[2].partition("---\n")
     agy_pc = yaml.safe_load(pc_fm)

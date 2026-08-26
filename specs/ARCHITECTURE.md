@@ -107,7 +107,7 @@ integrity is non-negotiable. Ida has three jobs and no others: plan, by
 commissioning `pkb:pauli`; launch polecats, through `pc`; and track what is in
 flight. She holds between steps and filters what comes back so the user sees
 only what needs their judgment. She reaches exactly two agents, `pkb:pauli` and
-`ida:pc`, and nothing else.
+`orchestrate:pc`, and nothing else.
 
 **pc** ships here, because launching containers is how ida gets work done and
 nothing else in the framework dispatches on her behalf. Every polecat runs the
