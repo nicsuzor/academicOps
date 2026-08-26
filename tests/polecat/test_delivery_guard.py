@@ -146,3 +146,120 @@ def test_run_fails_loudly_on_uncommitted_changes(tmp_path, monkeypatch):
     assert "delivery guard failed" in result.output.lower()
     assert "task-dirty" in result.output
     assert "uncommitted changes" in result.output
+
+
+def _setup_repo_with_upstream(tmp_path):
+    """Create a bare upstream repo and a clone with origin configured."""
+    upstream = tmp_path / "upstream.git"
+    subprocess.run(["git", "init", "--bare", str(upstream)], check=True, capture_output=True)
+
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    subprocess.run(["git", "init", "-b", "dev"], cwd=canonical, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=canonical, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=canonical, check=True)
+    (canonical / "file.txt").write_text("initial\n")
+    subprocess.run(["git", "add", "."], cwd=canonical, check=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=canonical, check=True)
+    subprocess.run(["git", "remote", "add", "origin", str(upstream)], cwd=canonical, check=True)
+    subprocess.run(["git", "push", "origin", "dev"], cwd=canonical, check=True)
+
+    clone = tmp_path / "clone"
+    subprocess.run(
+        [
+            "git",
+            "clone",
+            "--local",
+            "--no-checkout",
+            "-c",
+            "push.autoSetupRemote=true",
+            str(canonical),
+            str(clone),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-B", "polecat/session-test", "dev"],
+        cwd=clone,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "remove", "origin"], cwd=clone, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(upstream)],
+        cwd=clone,
+        check=True,
+        capture_output=True,
+    )
+    return upstream, clone
+
+
+def test_verify_workspace_delivery_pushed_branch_direct_match(tmp_path):
+    """A commit that is pushed directly matching origin ref tip passes delivery guard."""
+    _, clone = _setup_repo_with_upstream(tmp_path)
+    initial_head = _get_git_head(clone)
+
+    (clone / "work.txt").write_text("work\n")
+    subprocess.run(["git", "add", "."], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-m", "worker commit"], cwd=clone, check=True)
+    subprocess.run(["git", "push"], cwd=clone, check=True, capture_output=True)
+
+    ok, err = _verify_workspace_delivery(clone, initial_head=initial_head)
+    assert ok is True
+    assert err is None
+
+
+def test_verify_workspace_delivery_pushed_branch_with_upstream_advancement(tmp_path):
+    """Regression test for false negative (observed on aops_55fd207c / session-683e234e).
+
+    When a worker pushes a commit and origin is subsequently advanced by a
+    follow-up commit (e.g. CI/autofix bot adding a formatting commit to the PR branch),
+    ls-remote origin no longer lists the worker's HEAD as a ref tip.
+    The guard must fetch and check reachability rather than falsely failing.
+    """
+    upstream, clone = _setup_repo_with_upstream(tmp_path)
+    initial_head = _get_git_head(clone)
+
+    # Worker commits and pushes
+    (clone / "work.txt").write_text("work\n")
+    subprocess.run(["git", "add", "."], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-m", "worker commit"], cwd=clone, check=True)
+    subprocess.run(["git", "push"], cwd=clone, check=True, capture_output=True)
+
+    # Simulate CI / autofix bot advancing the remote branch
+    bot_clone = tmp_path / "bot_clone"
+    subprocess.run(["git", "clone", str(upstream), str(bot_clone)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "checkout", "polecat/session-test"], cwd=bot_clone, check=True, capture_output=True
+    )
+    subprocess.run(["git", "config", "user.email", "bot@test.com"], cwd=bot_clone, check=True)
+    subprocess.run(["git", "config", "user.name", "Bot"], cwd=bot_clone, check=True)
+    (bot_clone / "work.txt").write_text("work formatted\n")
+    subprocess.run(["git", "add", "."], cwd=bot_clone, check=True)
+    subprocess.run(["git", "commit", "-m", "style: autofix lint"], cwd=bot_clone, check=True)
+    subprocess.run(["git", "push"], cwd=bot_clone, check=True, capture_output=True)
+
+    # Worker clone's HEAD is now an ancestor of the remote branch tip.
+    ok, err = _verify_workspace_delivery(clone, initial_head=initial_head)
+    assert ok is True
+    assert err is None
+
+
+def test_verify_workspace_delivery_unpushed_commits_with_origin_remote(tmp_path):
+    """True negative test: local commits that were genuinely never pushed to origin
+    must fail the delivery guard even when origin is reachable."""
+    _, clone = _setup_repo_with_upstream(tmp_path)
+    initial_head = _get_git_head(clone)
+
+    # Worker creates local commit but never pushes
+    (clone / "unpushed.txt").write_text("unpushed\n")
+    subprocess.run(["git", "add", "."], cwd=clone, check=True)
+    subprocess.run(["git", "commit", "-m", "unpushed commit"], cwd=clone, check=True)
+
+    ok, err = _verify_workspace_delivery(clone, initial_head=initial_head)
+    assert ok is False
+    assert "local commits created" in err.lower()
+    assert "no pushed branch found on origin" in err.lower()

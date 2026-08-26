@@ -30,7 +30,7 @@ the container.
 - [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/ida/agents/pc.md]] — coordinator-side: the launcher agent that builds
+- [[plugins/orchestrate/agents/pc.md]] — coordinator-side: the launcher agent that builds
   the `polecat run` command and runs it synchronously (or wrapped under tmux), locally
   or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
   invocation, and nothing stops a caller reaching the CLI directly
@@ -97,7 +97,8 @@ the container.
    dispatch, the agent's own transcript must reference the task id (retried once
    if not, then a hard failure — a clean exit is not evidence the seed was ever
    delivered); the workspace must have no uncommitted changes, and if `HEAD`
-   moved, the new commit must be present on the remote. A delivery-guard failure
+   moved, the new commit must be present on the remote (directly matching a remote
+   ref tip or reachable on a remote branch after fetch). A delivery-guard failure
    exits non-zero naming the task. Polecat detects; it does not repair. Writing
    to the knowledge base belongs to its sole writer, so the task must be reopened
    by the dispatcher through pauli — which is what the delivery-guard failure
@@ -192,8 +193,8 @@ task graph from inside the container.
    any git operation not using the forwarded token fail; only the forwarded token
    authenticates.
 3. **Delivery guard** — Test: a `run` that leaves uncommitted changes, or commits
-   that never reach the remote, exits non-zero and (with `--task`) names the task
-   in the failure.
+   that never reach the remote (checked via `ls-remote` ref tips and remote-tracking
+   reachability), exits non-zero and (with `--task`) names the task in the failure.
 4. **No stale image** — Test: `run` against an image not present in the local
    Docker cache fails with an explicit message, never a silent registry pull.
 5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.
