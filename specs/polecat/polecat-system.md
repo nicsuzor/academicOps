@@ -157,20 +157,22 @@ the two cases apart.
    [`debug`](../../.agents/skills/debug/SKILL.md) — build the image, then
    dispatch against it — and by no shipped surface.
 7. **Stream separation.** Polecat's own prose goes to stderr, never stdout, so a
-   caller can pipe the inner agent's output unmodified. `--quiet`/`-q`
-   suppresses that prose, including the `Workspace:` and `Session logs:` lines
-   that locate a run's state. `fail()` output is exempt: an exit code alone is
-   not a reliable failure signal here — agy can exit 0 on internal error — so
-   error text must survive `--quiet`. The `Workspace:`/`Session logs:`/`Running:`
-   lines are the evidence [`debug`](../../.agents/skills/debug/SKILL.md) requires
-   a run to report, so `--quiet` and that skill are mutually exclusive by
-   construction: the flag is off by default and no debug procedure passes it.
-8. **Synchronous stream-json stdout contract.** Headless dispatches default to
-   `--output-format stream-json` (`claude` accompanied by `--verbose` as required
-   by the CLI; `agy` using native `--output-format stream-json`). Exactly one
-   well-formed JSON event stream reaches stdout per invocation; polecat prose
-   goes to stderr. On the seed verification retry path, aborted attempt output
-   is buffered and suppressed so callers never receive concatenated streams.
+   caller can pipe the inner agent's output unmodified. Stdout is quiet by default
+   with no polecat chatter. `--quiet`/`-q` suppresses polecat's stderr progress prose,
+   including the `Workspace:` and `Session logs:` lines that locate a run's state.
+   `fail()` output is exempt: an exit code alone is not a reliable failure signal
+   here — agy can exit 0 on internal error — so error text must survive `--quiet`.
+   The `Workspace:`/`Session logs:`/`Running:` lines are the evidence
+   [`debug`](../../.agents/skills/debug/SKILL.md) requires a run to report, so
+   `--quiet` and that skill are mutually exclusive by construction: the flag is off
+   by default and no debug procedure passes it.
+8. **Plain-text stdout contract & opt-in stream-json.** Headless dispatches default
+   to plain text on stdout, not a JSON event stream. `--output-format stream-json`
+   remains available as an explicit opt-in (`claude` accompanied by `--verbose` as
+   required by the CLI; `agy` using native `--output-format stream-json`). Exactly
+   one output stream reaches stdout per invocation; polecat prose goes to stderr.
+   On the seed verification retry path, aborted attempt output is buffered and
+   suppressed so callers never receive concatenated streams.
 
 ## What `run` does not do
 
@@ -204,6 +206,7 @@ task graph from inside the container.
    with `--quiet` its stderr carries no progress, workspace, or session-log line,
    and with a value missing that `fail()` reports, the error still reaches stderr
    under `--quiet`.
-8. **Synchronous stream-json contract** — Test: a headless `run` invocation (with
-   default options) emits only a well-formed JSON event stream on stdout, and
-   seed verification retries emit exactly one stream to stdout.
+8. **Plain-text stdout contract & opt-in stream-json** — Test: a headless `run`
+   invocation (with default options) emits plain-text results on stdout, not a JSON
+   event stream. Seed verification retries emit exactly one output stream to stdout.
+   Explicit `--output-format stream-json` produces a well-formed JSON event stream.
