@@ -595,14 +595,30 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
             text=True,
         )
         if ls_remote.returncode == 0:
-            if current_head not in (ls_remote.stdout or ""):
+            if current_head in (ls_remote.stdout or ""):
+                return True, None
+            # Fast path missed: current_head is not the tip of any ref on origin
+            # (e.g. CI/autofix bot pushed a follow-up commit to the remote branch,
+            # or current_head is an ancestor of the remote branch tip).
+            # Fetch remote refs to update remote-tracking branches, then test reachability.
+            subprocess.run(
+                ["git", "-C", str(workspace_path), "fetch", "origin"],
+                capture_output=True,
+                text=True,
+            )
+            contains_res = subprocess.run(
+                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", current_head],
+                capture_output=True,
+                text=True,
+            )
+            if not (contains_res.stdout or "").strip():
                 return False, (
                     f"local commits created (HEAD={current_head[:8]}) "
                     "but no pushed branch found on origin"
                 )
         else:
             contains_res = subprocess.run(
-                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", "HEAD"],
+                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", current_head],
                 capture_output=True,
                 text=True,
             )
