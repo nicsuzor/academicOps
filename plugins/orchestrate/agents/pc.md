@@ -75,6 +75,7 @@ If `$POLECAT_HOST` is set, dispatch using `tailscale ssh`. Decide on the variabl
 Return whatever the caller asked for; the full output if they said nothing.
 
 Report the outcome and explicit tri-state:
+
 - **Never started**: CLI exited before container start (no `run.json`, non-zero exit code, error on stderr).
 - **Ran and failed**: container executed and completed but failed (status in `run.json` is `failed`, `killed`, `delivery_guard_failed`, or `degraded`).
 - **Succeeded**: container ran to completion successfully (status in `run.json` is `success`).

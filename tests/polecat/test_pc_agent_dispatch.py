@@ -159,7 +159,7 @@ def test_no_stale_ida_pc_references(tmp_path):
     for path in plugins_dir.rglob("*.md"):
         for i, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
             if "ida:pc" in line:
-                ida_pc_hits.append(f"{path.relative_to(_REPO_ROOT)}:{i+1}: {line}")
+                ida_pc_hits.append(f"{path.relative_to(_REPO_ROOT)}:{i + 1}: {line}")
 
     msg = "\n".join(ida_pc_hits)
     assert not ida_pc_hits, f"Found stale 'ida:pc' references in plugins/:\n{msg}"
