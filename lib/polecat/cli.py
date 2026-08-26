@@ -1095,16 +1095,11 @@ def _build_inner_command(
     )
 
     # Output format handling:
-    # Headless agent dispatches default to "stream-json".
-    # An explicit output_format overrides this default.
+    # Headless agent dispatches default to plain text (no output format flag added).
+    # An explicit output_format (e.g. "--output-format stream-json", "json", "text") overrides this default.
     # Non-agent commands (shell, sleep, etc.) and interactive sessions do not get output format flags.
     if agent_cmd in ("claude", "agy"):
-        if output_format is not None:
-            effective_output_format = output_format
-        elif not effectively_interactive:
-            effective_output_format = "stream-json"
-        else:
-            effective_output_format = None
+        effective_output_format = output_format
     else:
         effective_output_format = None
 
