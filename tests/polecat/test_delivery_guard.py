@@ -185,6 +185,8 @@ def _setup_repo_with_upstream(tmp_path):
         check=True,
         capture_output=True,
     )
+    subprocess.run(["git", "config", "user.email", "worker@test.com"], cwd=clone, check=True)
+    subprocess.run(["git", "config", "user.name", "Worker"], cwd=clone, check=True)
     subprocess.run(
         ["git", "remote", "remove", "origin"], cwd=clone, check=True, capture_output=True
     )
