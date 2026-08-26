@@ -31,8 +31,12 @@ concepts like "add a rule", "update the workflow", "change the spec".
 | Framework debugging                                                     | [[investigation]] + framework context           | Still needs spec awareness                         |
 
 Framework specs and significant code changes go through PR bazaar review: a
-branch, a PR referencing the task ID, then multi-agent + human review before
-merge.
+branch, a PR referencing the task ID, then multi-agent review before merge.
+
+**Nic's merge is the sign-off.** Do not emit a human sign-off task node for a
+merge — the act of merging _is_ the authorisation and its own record, so a
+separate `SIGN-OFF (Nic)` node is redundant ceremony (Nic, 2026-08-26). Review
+and verification gates are composed on their own merits and are unaffected.
 
 ## Output for any framework modification
 

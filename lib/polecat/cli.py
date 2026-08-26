@@ -595,14 +595,30 @@ def _verify_workspace_delivery(workspace_dir, initial_head=None):
             text=True,
         )
         if ls_remote.returncode == 0:
-            if current_head not in (ls_remote.stdout or ""):
+            if current_head in (ls_remote.stdout or ""):
+                return True, None
+            # Fast path missed: current_head is not the tip of any ref on origin
+            # (e.g. CI/autofix bot pushed a follow-up commit to the remote branch,
+            # or current_head is an ancestor of the remote branch tip).
+            # Fetch remote refs to update remote-tracking branches, then test reachability.
+            subprocess.run(
+                ["git", "-C", str(workspace_path), "fetch", "origin"],
+                capture_output=True,
+                text=True,
+            )
+            contains_res = subprocess.run(
+                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", current_head],
+                capture_output=True,
+                text=True,
+            )
+            if not (contains_res.stdout or "").strip():
                 return False, (
                     f"local commits created (HEAD={current_head[:8]}) "
                     "but no pushed branch found on origin"
                 )
         else:
             contains_res = subprocess.run(
-                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", "HEAD"],
+                ["git", "-C", str(workspace_path), "branch", "-r", "--contains", current_head],
                 capture_output=True,
                 text=True,
             )
@@ -732,8 +748,21 @@ def resolve_isolated_workspace(
         )
 
     if origin_url:
+        # `git clone --local` seeds refs/remotes/origin/* from the SOURCE
+        # checkout's own local branches (never fetched from any remote), so
+        # simply repointing the URL leaves those fabricated refs resolvable
+        # under the `origin/<branch>` name — indistinguishable from a real
+        # remote-tracking ref once the URL matches GitHub. Removing and
+        # re-adding the remote drops the fabricated refs, so a later
+        # `origin/<branch>` lookup in this clone fails loudly instead of
+        # silently resolving to a value that was never fetched.
         subprocess.run(
-            ["git", "-C", str(clone_path), "remote", "set-url", "origin", origin_url],
+            ["git", "-C", str(clone_path), "remote", "remove", "origin"],
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(clone_path), "remote", "add", "origin", origin_url],
             capture_output=True,
             text=True,
         )
@@ -891,7 +920,7 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
         )
 
 
-def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None):
+def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None, prompt=None):
     """Catch the shapes that would otherwise fail deep inside the container,
     after a clone and an image check, with an error naming neither polecat nor
     the flag's replacement."""
@@ -926,6 +955,15 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None):
             f"{agent_cmd} has no --non-interactive flag and exits immediately when "
             "given one. Headless one-shot mode is --print (-p), which polecat adds "
             "on its own when stdin is not a tty."
+        )
+
+    # Only the agent clients have a prompt to receive. bash, sleep and any
+    # passthrough command would read it as a filename or a stray argument, so a
+    # prompt aimed at one of them is a mistake to name, not a value to drop.
+    if prompt and agent_cmd not in ("claude", "agy"):
+        fail(
+            f"--prompt has no meaning for AGENT_CMD {agent_cmd!r}: only claude and "
+            "agy take a prompt. Drop --prompt, or run claude or agy."
         )
 
 
@@ -1034,6 +1072,7 @@ def _build_inner_command(
     output_format=None,
     prompt=None,
     config=None,
+    interactive=False,
 ):
     """The command run inside the container, and the container path that agent
     writes its session state to.
@@ -1067,17 +1106,16 @@ def _build_inner_command(
         output_format = extracted_format
     extra_args = tuple(cleaned_extra_args)
 
+    effectively_interactive = interactive or (
+        is_interactive and not task and not prompt and not explicit_headless
+    )
+
     # Output format handling:
-    # Headless agent dispatches default to "stream-json".
-    # An explicit output_format overrides this default.
+    # Headless agent dispatches default to plain text (no output format flag added).
+    # An explicit output_format (e.g. "--output-format stream-json", "json", "text") overrides this default.
     # Non-agent commands (shell, sleep, etc.) and interactive sessions do not get output format flags.
     if agent_cmd in ("claude", "agy"):
-        if output_format is not None:
-            effective_output_format = output_format
-        elif not is_interactive or explicit_headless:
-            effective_output_format = "stream-json"
-        else:
-            effective_output_format = None
+        effective_output_format = output_format
     else:
         effective_output_format = None
 
@@ -1098,15 +1136,22 @@ def _build_inner_command(
             ):
                 inner_cmd.append("--verbose")
         if (
-            not is_interactive
-            and not explicit_headless
+            not effectively_interactive
             and "-p" not in extra_args
             and "--print" not in extra_args
+            and not prompt
         ):
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
             # prompt is a positional, so it still arrives from extra_args below,
             # or from stdin when there is none.
+            #
+            # `task` forces it regardless of the TTY. `-t` *is* the autonomous
+            # task dispatch: the worker runs `/pull <id>` and exits. Gating that
+            # on `sys.stdin.isatty()` meant the identical dispatch launched from
+            # a tmux pane got no `--print`, so claude opened its interactive UI
+            # and idled at the prompt forever instead of working the task. agy
+            # already forced headless on this path; claude now matches it.
             inner_cmd.append("--print")
     elif agent_cmd == "agy":
         container_session_path = AGY_SESSION_PATH
@@ -1119,6 +1164,24 @@ def _build_inner_command(
         ]
         if effective_output_format:
             inner_cmd.extend(["--output-format", effective_output_format])
+        agy_prompt_flags = {
+            "-p",
+            "--print",
+            "--prompt",
+            "-i",
+            "--prompt-interactive",
+            "-c",
+            "--continue",
+            "--conversation",
+        }
+        if (
+            not effectively_interactive
+            and not agy_prompt_flags.intersection(extra_args)
+            and not prompt
+            and not task
+            and not extra_args
+        ):
+            inner_cmd.extend([*_print_timeout_args(config), "--print", ""])
     elif agent_cmd in ("shell", "bash"):
         container_session_path = claude_session_path
         inner_cmd = ["bash"]
@@ -1132,23 +1195,33 @@ def _build_inner_command(
     seeded_from_task = bool(task) and not extra_args and not prompt
     if prompt:
         seeded_prompt = prompt
+        # Forwarded args are verbatim passthrough, so they go in ahead of the
+        # prompt: claude reads the prompt as its trailing positional, and agy's
+        # --prompt/--prompt-interactive must come last so no interposed flag can consume its value.
+        # Before this, --prompt and extra_args were mutually exclusive branches
+        # and naming both silently dropped the args.
+        inner_cmd.extend(extra_args)
         if agent_cmd == "agy":
-            # agy's `--prompt` is an alias for `--print`, so this is headless too
-            # and honours the same timeout. The flag must precede the prompt-
-            # bearing flag with nothing between it and its value.
-            inner_cmd.extend([*_print_timeout_args(config), "--prompt", prompt])
-        elif agent_cmd == "claude":
+            if effectively_interactive:
+                inner_cmd.extend(["--prompt-interactive", prompt])
+            else:
+                # agy's `--prompt` is an alias for `--print`, so this is headless too
+                # and honours the same timeout. The flag must precede the prompt-
+                # bearing flag with nothing between it and its value.
+                inner_cmd.extend([*_print_timeout_args(config), "--prompt", prompt])
+        else:
             inner_cmd.append(prompt)
-        elif extra_args:
-            inner_cmd.extend(extra_args)
     elif seeded_from_task:
         seeded_prompt = f"/pull {task}"
         if agent_cmd == "agy":
-            # `-t` is the canonical production dispatch, so the operator's
-            # timeout has to reach it: reading the config only on the
-            # extra_args branch left every seeded run pinned to agy's 5m
-            # default.
-            inner_cmd.extend([*_print_timeout_args(config), "--print", f"/pull {task}"])
+            if effectively_interactive:
+                inner_cmd.extend(["--prompt-interactive", f"/pull {task}"])
+            else:
+                # `-t` is the canonical production dispatch, so the operator's
+                # timeout has to reach it: reading the config only on the
+                # extra_args branch left every seeded run pinned to agy's 5m
+                # default.
+                inner_cmd.extend([*_print_timeout_args(config), "--print", f"/pull {task}"])
         else:
             inner_cmd.append(f"/pull {task}")
     elif extra_args:
@@ -1165,15 +1238,18 @@ def _build_inner_command(
                 "--conversation",
             }
             if not agy_prompt_flags.intersection(extra_args):
-                # Autonomous dispatch runs headless so the agent completes its loop
-                # and exits; an interactive prompt would leave a live container
-                # idling forever. The print timeout must precede --print with
-                # nothing between --print and its prompt value: a value-taking flag
-                # consumes the next token whatever it is, so an interposed flag
-                # becomes the prompt and the real one is silently dropped.
-                inner_cmd.extend(
-                    [*_print_timeout_args(config), "--print", extra_args[0], *extra_args[1:]]
-                )
+                if effectively_interactive:
+                    inner_cmd.extend(["--prompt-interactive", extra_args[0], *extra_args[1:]])
+                else:
+                    # Autonomous dispatch runs headless so the agent completes its loop
+                    # and exits; an interactive prompt would leave a live container
+                    # idling forever. The print timeout must precede --print with
+                    # nothing between --print and its prompt value: a value-taking flag
+                    # consumes the next token whatever it is, so an interposed flag
+                    # becomes the prompt and the real one is silently dropped.
+                    inner_cmd.extend(
+                        [*_print_timeout_args(config), "--print", extra_args[0], *extra_args[1:]]
+                    )
             else:
                 inner_cmd.extend(extra_args)
         else:
@@ -1607,7 +1683,14 @@ def main():
 )
 @click.option(
     "--prompt",
-    help="Prompt string for print/headless mode.",
+    help="Prompt string for print/headless mode. claude and agy only.",
+)
+@click.option(
+    "--interactive",
+    "-i",
+    is_flag=True,
+    default=False,
+    help="Run interactively (attaches TTY and opens interactive UI).",
 )
 @click.option(
     "--port",
@@ -1641,6 +1724,7 @@ def run(
     no_agent,
     output_format,
     prompt,
+    interactive,
     quiet,
     ports,
     extra_args,
@@ -1657,7 +1741,7 @@ def run(
     else:
         effective_agent = None
 
-    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent)
+    _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent, prompt=prompt)
 
     if project:
         project = _sanitize_path_component(project)
@@ -1740,9 +1824,14 @@ def run(
 
         docker_args = []
         explicit_headless = (
-            bool(HEADLESS_FLAGS.intersection(extra_args)) or bool(output_format) or bool(prompt)
+            bool(HEADLESS_FLAGS.intersection(extra_args))
+            or (bool(output_format) and not interactive)
+            or (bool(prompt) and not interactive)
         )
-        is_interactive = not explicit_headless and sys.stdin.isatty()
+        if interactive:
+            is_interactive = True
+        else:
+            is_interactive = not explicit_headless and sys.stdin.isatty()
         if is_interactive:
             docker_args.append("-it")
         else:
@@ -1763,6 +1852,7 @@ def run(
             output_format=output_format,
             prompt=prompt,
             config=config,
+            interactive=interactive,
         )
 
         env["AOPS_POLECAT_CONTAINER"] = "1"
@@ -1823,7 +1913,7 @@ def run(
             # dir (`_transcript_paths`), so a seeded dispatch is verified the
             # same way whichever one ran it. `shell`/`sleep`/other run no agent
             # CLI and have no conversation to check.
-            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task,
+            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task and not interactive,
             run_env=run_env,
             quiet=quiet,
         )

@@ -319,7 +319,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreToolUse"
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreToolUse"
               }
             ],
             "matcher": "*"
@@ -330,7 +330,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostToolUse"
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostToolUse"
               }
             ],
             "matcher": "*"
@@ -341,7 +341,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreInvocation"
               }
             ]
           }
@@ -351,7 +351,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PostInvocation"
               }
             ]
           }
@@ -361,7 +361,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy Stop"
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy Stop"
               }
             ]
           }

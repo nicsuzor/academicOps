@@ -71,12 +71,12 @@ cannot state the rung above the one you are on, you are on the wrong rung.
 A plan that lives only in a turn is not a plan. Route each piece to the stage
 that owns it — by handing it to pauli, who runs these — and stop there:
 
-| The work in front of you                                                   | Stage           |
-| -------------------------------------------------------------------------- | --------------- |
-| Needs grounding in what is already known                                   | `pkb:hydrate`   |
-| Is a captured ask not yet worked out, or one needing a process and a brief | `pkb:brief`     |
-| Is in flight but the graph's claims about it look stale                    | `pkb:reconcile` |
-| Is ready to be worked                                                      | `ida:pc`        |
+| The work in front of you                                                   | Stage            |
+| -------------------------------------------------------------------------- | ---------------- |
+| Needs grounding in what is already known                                   | `pkb:hydrate`    |
+| Is a captured ask not yet worked out, or one needing a process and a brief | `pkb:brief`      |
+| Is in flight but the graph's claims about it look stale                    | `pkb:reconcile`  |
+| Is ready to be worked                                                      | `orchestrate:pc` |
 
 **The assumption map, the fork ranking, and the probe design belong on the task
 body, written by the stage that owns it.** Do not reproduce them here, and do not

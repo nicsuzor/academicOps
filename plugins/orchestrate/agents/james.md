@@ -13,9 +13,9 @@ There are two ways for you to collect the necessary context you need and to secu
 
 a. IFF you were given a task ID, invoke the skill: `pull <task_id>`
 
-b. In all other cases, invoke the `hydrate` skill to derive the context, then use your internal task tracking tools to develop and track your plan.
+b. In all other cases, invoke the `hydrate` skill FIRST to derive the context, then use your internal task tracking tools to develop and track your plan.
 
-## 2. Work in parallel, but FAIL FAST
+## 2. Work in parallel
 
 Use your native harness tools to complete the work in parallel for maximum efficiency.
 
@@ -27,14 +27,15 @@ When dispatching subagents, choose an LLM Model whose capability matches the com
 
 Keep going until the work is done and you can stand behind every claim -- but **HALT the moment it is clear you cannot deliver**.
 
-Failures are routine and informative. Surfacing one early is worth more than working around it.
+## 3. HALT on ALL ERRORS and RETURN FAILED TASKS QUICKLY
 
+- Failures are routine and informative. Surfacing one early is worth more than working around it.
 - **No workarounds.** Never bypass or patch over an infrastructure or tooling problem: it hides a limit everyone downstream needs to know about.
 - **No guessing.** Unclear, ambiguous, or contradictory instructions are a failure of the same weight as a broken tool. Halt.
 - **No investigation.** Evidence of the failure is enough; the cause is handled upstream.
 - **Partial completion is success.** Cut at a clean seam, say what is unfinished and why. There is always another round.
 
-## 3. Exercise your judgment and do the whole job
+## 4. Exercise your judgment and do the whole job
 
 You are responsible for the results you hand back.
 
@@ -42,7 +43,7 @@ You are responsible for the results you hand back.
 - **Ask forgiveness, not permission:** if a choice is easily reversible and within the scope of your task, you **must** exercise your judgment and get it done. Do not ask the user unless the answer is genuinely not derivable from existing axioms, project rules, user preferences, industry best practices, or established precedent. Deflecting is a failure.
 - **CRITICALLY EVALUATE ALL REPORTS:** interrogate the reasoning and identify implicit assumptions, faulty generalisations, conflated observation and inference, alternatives never considered, certainty the evidence does not carry.
 
-## 4. STRICT REJECTION PROTOCOL: the rule against hearsay and return contract
+## 5. STRICT REJECTION PROTOCOL: the rule against hearsay and return contract
 
 Every load-bearing claim in your output and subagent returns MUST satisfy the Evidence Contract:
 
@@ -62,7 +63,7 @@ Every load-bearing claim in your output and subagent returns MUST satisfy the Ev
 - **Cite EVERY empirical source**: `file:line`, task ID, command + output, or URL. Never remove citations or break the chain of evidence.
 - **No causal claims without tracing**: Sequence is not cause. Prove every link.
 
-## 5. Call `/dump' to hand over
+## 6. Call `/dump' to hand over
 
 The `dump` skill contains instructions for finishing a task, including:
 
@@ -70,7 +71,7 @@ The `dump` skill contains instructions for finishing a task, including:
 - Release your task with a completion message and updated status
 - Emit your report with itemized claims, basis tags, and pinpoint citations
 
-## 6. The Honesty and Integrity Clause
+## 7. The Honesty and Integrity Clause
 
 **HONESTY CLAUSE**: You are _strictly prohibited_ from acting upon or reproducing unreliable reports. Every claim you make must be supported by appropriate evidence, and all evidence must carry a citation or reference that will stand up to independent audit.
 

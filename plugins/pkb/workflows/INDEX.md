@@ -97,13 +97,13 @@ owns the scheme criteria and the platform mechanics both.
 
 ### Operations and batch
 
-| Template                      | Routes                                                | Requires                           | Pairs with                            |
-| ----------------------------- | ----------------------------------------------------- | ---------------------------------- | ------------------------------------- |
-| [[batch]]                     | Parallel processing of independent items, one session | —                                  | task-tracking                         |
-| [[burst]]                     | Multi-session stateful batch lifecycle                | task-tracking                      | —                                     |
-| [[external-batch-submission]] | Submit, monitor, retrieve external batch API jobs     | task-tracking, [[wf-verification]] | —                                     |
-| [[worktree-merge]]            | Merge a merge-ready worktree branch                   | —                                  | [[wf-handover]]                       |
-| [[pr-review]]                 | Triage PRs, dispatch reviewers, synthesise verdicts   | batch                              | worktree-merge, [[wf-human-approval]] |
+| Template                      | Routes                                                | Requires                           | Pairs with      |
+| ----------------------------- | ----------------------------------------------------- | ---------------------------------- | --------------- |
+| [[batch]]                     | Parallel processing of independent items, one session | —                                  | task-tracking   |
+| [[burst]]                     | Multi-session stateful batch lifecycle                | task-tracking                      | —               |
+| [[external-batch-submission]] | Submit, monitor, retrieve external batch API jobs     | task-tracking, [[wf-verification]] | —               |
+| [[worktree-merge]]            | Merge a merge-ready worktree branch                   | —                                  | [[wf-handover]] |
+| [[pr-review]]                 | Triage PRs, dispatch reviewers, synthesise verdicts   | batch                              | worktree-merge  |
 
 ### Session and routing
 
@@ -141,11 +141,17 @@ Composed into other templates; never routed to directly.
 
 ## Obligation templates
 
-The `wf-*` review and gate obligations are read from the PKB, not from here: the
-current set is enumerated by the `pkb-workflow-index` MoC
-(`get_document("pkb-workflow-index")`), with `list_documents(tag="wf-template")`
-as the reconciliation sweep. This file does not list them — a second copy of that
-table drifts.
+The `wf-*` review and gate obligations live in the PKB, not here. Enumerate them
+with `list_documents(type="template")` — registration in an index is not a
+condition of existence, and a `wf-` name absent from any index is not thereby
+missing. The `pkb-workflow-index` MoC remains useful for human orientation and
+carries per-template notes that source-scanning does not reproduce, but it is not
+the discovery mechanism and must not be treated as the authoritative set.
 
-`wf-human-approval` is where [[framework-gate]], `wf-outbound-review`,
-[[pr-review]], and [[decision-briefing]] all hand off at their one-way crossing.
+This file does not list them — a second copy of that table drifts. To see the
+whole library across all three tiers, use the `workflow-library` skill.
+
+`wf-human-approval` is where [[framework-gate]]'s governance row,
+`wf-outbound-review`, and [[decision-briefing]] hand off at their one-way
+crossing. A **merge** is not one of those crossings: Nic's merge is itself the
+sign-off, so no template emits a sign-off task node for it.

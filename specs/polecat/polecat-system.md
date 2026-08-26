@@ -30,8 +30,8 @@ the container.
 - [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/ida/agents/pc.md]] — coordinator-side: the launcher agent that builds
-  the `polecat run` command and starts it under a detached `tmux` session, locally
+- [[plugins/orchestrate/agents/pc.md]] — coordinator-side: the launcher agent that builds
+  the `polecat run` command and runs it synchronously (or wrapped under tmux), locally
   or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
   invocation, and nothing stops a caller reaching the CLI directly
 - [[.agents/skills/debug/SKILL.md]] — the operational skill for driving a
@@ -97,7 +97,8 @@ the container.
    dispatch, the agent's own transcript must reference the task id (retried once
    if not, then a hard failure — a clean exit is not evidence the seed was ever
    delivered); the workspace must have no uncommitted changes, and if `HEAD`
-   moved, the new commit must be present on the remote. A delivery-guard failure
+   moved, the new commit must be present on the remote (directly matching a remote
+   ref tip or reachable on a remote branch after fetch). A delivery-guard failure
    exits non-zero naming the task. Polecat detects; it does not repair. Writing
    to the knowledge base belongs to its sole writer, so the task must be reopened
    by the dispatcher through pauli — which is what the delivery-guard failure
@@ -157,29 +158,33 @@ the two cases apart.
    [`debug`](../../.agents/skills/debug/SKILL.md) — build the image, then
    dispatch against it — and by no shipped surface.
 7. **Stream separation.** Polecat's own prose goes to stderr, never stdout, so a
-   caller can pipe the inner agent's output unmodified. `--quiet`/`-q`
-   suppresses that prose, including the `Workspace:` and `Session logs:` lines
-   that locate a run's state. `fail()` output is exempt: an exit code alone is
-   not a reliable failure signal here — agy can exit 0 on internal error — so
-   error text must survive `--quiet`. The `Workspace:`/`Session logs:`/`Running:`
-   lines are the evidence [`debug`](../../.agents/skills/debug/SKILL.md) requires
-   a run to report, so `--quiet` and that skill are mutually exclusive by
-   construction: the flag is off by default and no debug procedure passes it.
-8. **Synchronous stream-json stdout contract.** Headless dispatches default to
-   `--output-format stream-json` (`claude` accompanied by `--verbose` as required
-   by the CLI; `agy` using native `--output-format stream-json`). Exactly one
-   well-formed JSON event stream reaches stdout per invocation; polecat prose
-   goes to stderr. On the seed verification retry path, aborted attempt output
-   is buffered and suppressed so callers never receive concatenated streams.
+   caller can pipe the inner agent's output unmodified. Stdout is quiet by default
+   with no polecat chatter. `--quiet`/`-q` suppresses polecat's stderr progress prose,
+   including the `Workspace:` and `Session logs:` lines that locate a run's state.
+   `fail()` output is exempt: an exit code alone is not a reliable failure signal
+   here — agy can exit 0 on internal error — so error text must survive `--quiet`.
+   The `Workspace:`/`Session logs:`/`Running:` lines are the evidence
+   [`debug`](../../.agents/skills/debug/SKILL.md) requires a run to report, so
+   `--quiet` and that skill are mutually exclusive by construction: the flag is off
+   by default and no debug procedure passes it.
+8. **Plain-text stdout contract & opt-in stream-json.** Headless dispatches default
+   to plain text on stdout, not a JSON event stream. `--output-format stream-json`
+   remains available as an explicit opt-in (`claude` accompanied by `--verbose` as
+   required by the CLI; `agy` using native `--output-format stream-json`). Exactly
+   one output stream reaches stdout per invocation; polecat prose goes to stderr.
+   On the seed verification retry path, aborted attempt output is buffered and
+   suppressed so callers never receive concatenated streams.
 
 ## What `run` does not do
 
-There is no `start`, `finish`, `crew`, `nuke`, `swarm`, `list`, `init`, or `sync`
-subcommand, no bare-mirror registry under a `.repos/` directory, no workspace that
-survives past a single invocation, and no claiming, PR-filing, or status-setting
-performed by the CLI itself. Those either don't exist or are the invoked agent's
-own job, driven by the `pull` skill against the PKB task graph from inside the
-container.
+There is no detached container mode (detaching is the wrapping tmux session's
+job: `polecat run` is strictly a single synchronous script returning results on
+stdout, quiet by default). There is no `start`, `finish`, `crew`, `nuke`, `swarm`,
+`list`, `init`, or `sync` subcommand, no bare-mirror registry under a `.repos/`
+directory, no workspace that survives past a single invocation, and no claiming,
+PR-filing, or status-setting performed by the CLI itself. Those either don't exist
+or are the invoked agent's own job, driven by the `pull` skill against the PKB
+task graph from inside the container.
 
 ## User Expectations
 
@@ -190,8 +195,8 @@ container.
    any git operation not using the forwarded token fail; only the forwarded token
    authenticates.
 3. **Delivery guard** — Test: a `run` that leaves uncommitted changes, or commits
-   that never reach the remote, exits non-zero and (with `--task`) names the task
-   in the failure.
+   that never reach the remote (checked via `ls-remote` ref tips and remote-tracking
+   reachability), exits non-zero and (with `--task`) names the task in the failure.
 4. **No stale image** — Test: `run` against an image not present in the local
    Docker cache fails with an explicit message, never a silent registry pull.
 5. **Branch naming** — Test: an isolated clone's branch is `polecat/<session-id>`.
@@ -202,6 +207,7 @@ container.
    with `--quiet` its stderr carries no progress, workspace, or session-log line,
    and with a value missing that `fail()` reports, the error still reaches stderr
    under `--quiet`.
-8. **Synchronous stream-json contract** — Test: a headless `run` invocation (with
-   default options) emits only a well-formed JSON event stream on stdout, and
-   seed verification retries emit exactly one stream to stdout.
+8. **Plain-text stdout contract & opt-in stream-json** — Test: a headless `run`
+   invocation (with default options) emits plain-text results on stdout, not a JSON
+   event stream. Seed verification retries emit exactly one output stream to stdout.
+   Explicit `--output-format stream-json` produces a well-formed JSON event stream.

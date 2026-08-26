@@ -12,13 +12,7 @@ email = "nic@suzor.net"
 [[plugins]]
 directory = "pkb"
 name = "pkb"
-description = "pauli. Memory, effectual planning, workflow composition, PKB MCP client config."
-category = "productivity"
-
-[[plugins]]
-directory = "ida"
-name = "ida"
-description = "ida — the interactive face; pc — the polecat container launcher."
+description = "ida for strategy and pauli for memory."
 category = "productivity"
 
 [[plugins]]

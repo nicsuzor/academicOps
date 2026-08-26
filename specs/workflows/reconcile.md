@@ -93,6 +93,8 @@ The implementing agent picks the concrete shape (field names, JSON structure, wh
 
 Routing: `confidence: low` always falls through to (c). `confidence: high` with a positive match auto-actions only for the `pr_merged` trigger; all other triggers fall through to (c) regardless of confidence. The user retains final judgment everywhere except the merged-PR happy path.
 
+This routing governs **matching** — deciding which task a PR or issue belongs to, where the answer lives in prose. It is not the whole of the skill's autonomy. The skill's own §5 carries a separate, narrower leg: cancelling a task on an established world-fact — its referent deleted, a merge that mooted its question, its premise falsified — each under a written evidence burden, with demotion the answer wherever the fact could not be established. Those are not semantic matches and do not route through (b); age, silence, and an unresolvable lookup remain outside them entirely.
+
 **(c) Ambiguous → `needs_user_call`.** Written when the agent returns low confidence, or when a closed-not-merged PR has no superseding PR identified. Once the forward-issue leg is built, this also covers an issue closing with `state_reason: not_planned` or `duplicate`, and a `gates_on` event firing on a task with multiple blocking issues.
 
 ## DRY discipline

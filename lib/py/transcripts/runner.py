@@ -137,7 +137,7 @@ def session_source_files(path: Path) -> list[Path]:
 def process_single_session(
     session: NormalizedSession,
     output_dir: Path,
-    skip_cache: SkipCache,
+    skip_cache: SkipCache | None = None,
     force: bool = False,
     fingerprint: str | None = None,
 ) -> bool:
@@ -152,20 +152,25 @@ def process_single_session(
     if fingerprint is None:
         fingerprint = source_fingerprint(session_source_files(session.source_file))
 
-    # Check cache
-    if not force and skip_cache.is_skipped(cache_key, fingerprint):
-        logger.debug("Skipping session %s via cache", session_id)
-        return False
+    # Check cache if provided
+    if skip_cache is not None:
+        if not force and skip_cache.is_skipped(cache_key, fingerprint):
+            logger.debug("Skipping session %s via cache", session_id)
+            return False
 
-    # Check if empty. The fingerprint is recorded alongside, so the session is
-    # re-examined the moment anything is appended to it — a session caught
-    # seconds after it started must not be blacklisted for its whole life.
-    if is_session_empty(session):
-        logger.debug("Session %s is empty, marking in skip cache", session_id)
-        skip_cache.mark_empty(cache_key, fingerprint)
-        return False
+        # Check if empty. The fingerprint is recorded alongside, so the session is
+        # re-examined the moment anything is appended to it — a session caught
+        # seconds after it started must not be blacklisted for its whole life.
+        if is_session_empty(session):
+            logger.debug("Session %s is empty, marking in skip cache", session_id)
+            skip_cache.mark_empty(cache_key, fingerprint)
+            return False
 
-    skip_cache.forget(cache_key)
+        skip_cache.forget(cache_key)
+    else:
+        if is_session_empty(session):
+            logger.debug("Session %s is empty", session_id)
+            return False
 
     # Extract domain attributes
     slug = get_stable_slug(session_id)
@@ -248,15 +253,14 @@ def _process_single_session_worker(args_tuple: tuple[Path, Path, bool]) -> tuple
     try:
         fingerprint = source_fingerprint(session_source_files(path))
         session = load_session(path)
-        if not session or not session.events:
+        if not session or is_session_empty(session):
             return (str(path), fingerprint, False)
 
-        dummy_cache = SkipCache(sessions_dir / ".transcripts_skip_cache.json")
         ok = process_single_session(
             session,
             sessions_dir,
-            dummy_cache,
-            force=force,
+            skip_cache=None,
+            force=True,
             fingerprint=fingerprint,
         )
         return (str(path), fingerprint, ok)

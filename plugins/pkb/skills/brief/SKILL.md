@@ -217,14 +217,37 @@ index, in the PKB index, anywhere — tells you a template may exist and what it
 is for. It is not the template. Read the document before composing its
 obligation in, and where a row resolves to nothing, that row is the finding.
 
-### The Dual-Tier Library Architecture
+### The Three-Source Library Architecture
 
-1. **Universal Core Workflows (`aops` Core)** — `../../workflows/`. These set minimum standards that cannot be derogated from. Process templates in `process/`, catalogued by `../../workflows/INDEX.md`, which also carries the routing tree naming the template for this class of work. These are universal, immutable, and version-controlled.
-2. **User-Specific Workflows & Templates (`pkb`)** — dynamic templates stored directly in the PKB. Read the central registration index `pkb-workflow-index`, then use `get_document` each template listed there that looks applicable.
+Discover candidate templates across three sources. No central registry gates any
+of them; registration in an index is not a condition of existence.
+
+1. **Project tier** — `$CWD/.agents/templates/*.md`. Templates local to the
+   repository you are working in. Absent directory means an empty list, not an
+   error: fall through.
+2. **PKB tier** — templates on the graph, enumerated by
+   `pkb__list_documents(type="template")`. Exclude retired documents
+   (`status: retired`, or a `retired`/`superseded` tag), datestamped instance
+   nodes, and templates scoped to a project other than this one. Composition
+   fragments are available as sub-steps and never dispatched standalone.
+3. **Universal core tier** — `../../workflows/process/*.md`, catalogued by
+   `../../workflows/INDEX.md`, which also carries the routing tree naming the
+   template for this class of work. These set minimum standards that cannot be
+   derogated from: universal, immutable, version-controlled.
+
+**Resolution order when a slug resolves in more than one tier: project ≻ PKB ≻
+universal.** Matching is case-insensitive and ignores a `wf-` prefix and `_`/`-`
+differences, so `feature-dev`, `wf-feature-dev` and `wf_feature_dev` are one
+slug. The winner shadows the loser whole — never merge two tiers' text. Say in
+the composition trace which tier each template came from and what it shadowed.
 
 **DO NOT GUESS.** Read and critically apply each template at composition time, every time.
 
-**HALT IF THERE IS NO PROCESS.** If a template you need exists in neither tier, that is a library gap. Name it. Do not freelance a process to fill it.
+**HALT IF THERE IS NO PROCESS.** If a template you need exists in none of the three tiers, that is a library gap. Name it. Do not freelance a process to fill it.
+
+The library itself — listing what exists, reading one template, adding, editing
+or retiring one — is the `workflow-library` skill's job, not yours. You compose from
+the library; you do not maintain it.
 
 ### Proportion
 

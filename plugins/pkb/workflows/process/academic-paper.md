@@ -3,6 +3,7 @@ id: academic-paper
 title: Academic Paper Workflow Spine
 type: process
 category: academic
+description: Academic paper lifecycle from idea through drafting, internal review, and submission — the flat spine specialisers pair into
 status: ready
 requires: [task-tracking]
 pairs-with: [[[wf-outbound-review]], [[wf-human-approval]], [[wf-verification]]]

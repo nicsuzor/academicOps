@@ -1,4 +1,4 @@
-# Consolidation Cycle
+# Knowledge Extraction and Consolidation Cycle
 
 A consolidation cycle is an **agent session, not a script**. Tools give you
 signals; you make the decisions. Work the stages in order, using judgment about
@@ -8,232 +8,246 @@ lower quality than the last.
 Quality over coverage, everywhere. One well-sourced note beats five superficial
 ones, and one surfaced ambiguity beats one confidently wrong merge.
 
-## Two invariants before you start
+## Invariants and Safety Controls
 
-**The bulk mutators default to preview.** `batch_update`, `batch_reparent`,
-`batch_merge`, `batch_reclassify`, `batch_archive`, and `merge_node` all default
-to `dry_run=true`. A call that omits it changes nothing and returns a simulation.
-Pass `dry_run=false` when you mean it — and read the preview first when you do
-not.
+1. **`dry_run=true` is the default for bulk passes and mutators.**
+   The bulk mutators (`batch_update`, `batch_reparent`, `batch_merge`,
+   `batch_reclassify`, `batch_archive`, `merge_node`) and all batched extraction
+   passes default to `dry_run=true`. A call that omits it changes nothing and
+   returns a simulation. Pass `dry_run=false` only when you deliberately intend to
+   commit changes — and always inspect the preview first.
 
-**Large results spill; a spill is a signal.** On a mature graph, `find_duplicates`
-and unfiltered `list_tasks` return more than fits in context and land in a temp
-file instead. When that happens you have lost the turn and the data is not where
-you can use it.
+2. **Destination-first is mechanised, not advised.**
+   Nothing leaves a source task body until the durable knowledge has landed and
+   been verified by ID in a named destination node.
+   - The destination node ID must exist and be recorded **before** any source
+     body is modified.
+   - If the destination write fails or returns an error, the worker **HALTS
+     immediately** and reports; it **never** proceeds to modify the source task.
 
-- Prefer compact output: `list_tasks` with a `status` or `project` filter and the
-  default markdown format. Reach for JSON only when you need a specific field,
-  then cap `limit` hard.
-- **Never pull a large result into your own context to analyse it.** Mechanical
-  work — counting, filtering, grouping, pulling fields — runs as a script over
-  the spilled file. Whole-file semantic judgment — which clusters are real,
-  reading prose — goes to a sub-agent that reads in chunks and returns a compact
-  verdict. Either way you never load the blob.
-- Do not retry the same call. The slice was too broad.
+3. **A missing tool or write failure is a halt, not a workaround.**
+   A worker or delegated stage that cannot execute a required tool or write its
+   destination emits `HALT:` and the specific failure/tool name rather than
+   fabricating output or performing destructive partial edits. Count halts across
+   the cycle and report them at the **top** of the cycle summary.
 
-**A missing tool is a halt, not a workaround.** A delegated stage that cannot get
-a tool it needs emits `HALT:` and the tool name rather than fabricating output.
-Count the halts across the cycle and report the total at the **top** of the cycle
-summary with the stage and the missing tool — not buried inside per-stage output.
-A halt reported nowhere visible is the silent failure this rule exists to catch.
+4. **Large results spill; a spill is a signal.**
+   On a mature graph, `find_duplicates` and unfiltered `list_tasks` return more
+   than fits in context and land in a temp file.
+   - Prefer compact output: narrow by `status` or `project`, use default markdown.
+   - Reach for JSON only when needed for specific fields, with tight `limit` caps.
+   - **Never pull a large result into your own context.** Mechanical processing
+     runs as a script over the spilled file; semantic judgment goes to a subagent
+     reading in chunks.
 
-## 1 — Baseline
+5. **"A consolidation cycle is an agent session, not a script."**
+   Script artifacts (such as identical boilerplate strings repeated across tasks,
+   `title or filename_stem` fallback text, and unbalanced `[[ ]]` links) are
+   strictly prohibited. Every extraction is an agent evaluation exercising semantic
+   judgment.
 
-`graph_stats`. Record `flat_tasks`, `disconnected_epics`,
+---
+
+## The Definitive Knowledge-Extraction Method
+
+Tasks hold the **work record**; they are not knowledge stores (`kb_634e639c`).
+Durable knowledge discovered during work must leave the closed task body and land
+in the permanent PKB store.
+
+### The Extraction Workflow Sequence (Mandatory)
+
+1. **Scan & Cluster Siblings**:
+   Before extracting, cluster sibling tasks under the same parent or topic area.
+   Shared insights must be synthesised into **one canonical topic note** rather
+   than generating N fragmented notes (clustering yields 50–55% token reduction
+   and higher coherence).
+2. **Search for Canonical Note**:
+   Run `pkb__search(query="<topic>")` to check if a canonical topic note already
+   exists.
+   - If a canonical topic note exists: plan to **augment** it (`pkb__update_body`).
+   - If no note exists: plan to **create** a new structured topic note (`pkb__create`).
+3. **Execute Destination Write (Destination-First)**:
+   Persist the synthesised knowledge to the destination note.
+   - Strip any duplicated frontmatter blocks when doing surgical edits (`mem_189264cc`).
+   - Re-read and verify the write landed by ID (`mem_pkb_serialise_writers`).
+   - If write fails: **HALT and report**. Do NOT touch the source task.
+4. **Rewrite Source Task Body In-Place**:
+   Once (and only once) destination persistence is verified, rewrite the source
+   task body in place to a concise, navigational record (<1,500 chars).
+   - In-place rewrite **never** changes `status`, `id`, `parent`, `depends_on`, or
+     `contributes_to`.
+   - The rewritten body contains:
+     - One-sentence **Goal**
+     - Completed work checklist
+     - Backlinks to extracted notes under `## Pointers` (e.g. `- Extracted knowledge: [[destination-node-id]]`)
+     - Backlinks to PRs, commits, and parent/child tasks
+5. **Densify Graph Relationships**:
+   Ensure the destination note carries multiple valid `[[wikilink]]` pointers in
+   prose to relevant concepts, parent topics, and Maps of Content (MOCs).
+
+### What moves, what stays, what goes
+
+| Move to a topic note                                                                                                                                                                  | Keep in the task body                                                                                               | Discard                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Models and formulas; architecture; behavioural invariants; empirical findings; post-mortems and generalisable lessons; infra constraints and APIs; **contacts, URLs, document links** | One-sentence Goal; completed checklist; backlinks to extracted notes; backlinks to parent/child; PR and commit URLs | Retry loops and terminal spam; intermediate debug output; routine status timestamps; raw transcripts and PIDs; retracted scratchpad proposals |
+
+### The Four Tests — Every Extraction Passes All Four
+
+Evaluate every extraction by **recoverability, not tidiness**: diff the old body
+against the new body plus every note it points to.
+
+1. **Lossy (FAIL)**: Any durable fact, number, path, decision, date, contact, URL,
+   or supersession statement in the old body unreachable from the new body within
+   **one `[[wikilink]]` hop**. Deleted prose with nowhere to land is worse than
+   doing nothing.
+2. **Accretive (FAIL)**: The old body pasted verbatim under a dated heading, or a
+   new note created 1:1 per task where a canonical note exists. Where a canonical
+   topic note exists, you must **augment and synthesise into it**.
+3. **Fabricated (FAIL)**: Anything not verifiable against the source body or a
+   cited commit/PR. Never invent generalisations or paste templated advice.
+4. **Good (PASS)**: New task body is short and navigational (<1,500 chars); each
+   durable fact sits in a topic note beside its siblings; the reader opens **one**
+   note instead of walking a chain of closed tasks.
+
+### The Seven Defect Classes (Reviewer Lint List)
+
+Every knowledge note produced or touched must be checked against these defect classes:
+
+1. **Duplicate canonical/narrow pairs**: Narrow observations created in parallel
+   to an existing canonical note (must merge into canonical and remove duplicate).
+2. **Title-encoded dates and session IDs**: Titles like `note-2026-04-18` or
+   `kb-<hash>` freeze living knowledge into dated artifacts that accrete rather than
+   update.
+3. **Missing `sources:` in frontmatter**: Knowledge claims lacking provenance.
+4. **Missing `confidence:` in frontmatter**: Missing confidence level
+   (`established`, `provisional`, `speculative`).
+5. **Status content misfiled as `type: knowledge`**: Phase progress tables, RFC
+   status, or blocker trackers belong on tasks, not in knowledge notes that rot.
+6. **Zero wikilinks despite obvious targets**: Isolated notes unreachable in graph
+   traversal.
+7. **Notes never advancing past `status: inbox`**: Knowledge notes stagnating at
+   inbox rather than advancing through maturity stages.
+
+### Empty Extraction is a Legal, Named Outcome
+
+A task that contains only ephemeral coordination, routine logs, trivial status, or
+scratchpad proposals contains **nothing durable**.
+
+- In such cases, the worker writes **nothing** to the knowledge layer (no new note,
+  no updated note, no `## Key Knowledge` placeholder).
+- A generic or templated bullet (e.g. invented framework rules) is a **FAIL, not a
+  fallback**.
+- The task body is simply rewritten in place to its minimal goal + checklist + PR
+  pointers.
+
+---
+
+## Stages of the Consolidation Cycle
+
+### 1 — Baseline
+
+Run `graph_stats`. Record `flat_tasks`, `disconnected_epics`,
 `targets_without_contributing_edges`, `orphan_count`, `stale_count`, and
 `metrics_hash`.
 
-Then measure the knowledge layer **separately** — `orphan_count` is
-actionable-only and never counts `note`, `knowledge`, or `memory` nodes:
+Measure the knowledge layer separately:
 
 ```
 pkb_orphans(types=["note","knowledge","memory"], include_all=true, limit=0)
 ```
 
-Record that total. It is the number the knowledge-layer work converges against;
-`orphan_count` is not a proxy for it.
+Record that total as the convergence baseline. Measure both numbers again at the
+end of the cycle to report the delta.
 
-Orphan detection is type-aware. Actionable nodes orphan on a missing parent
-alone. Knowledge and strategic nodes orphan only with **no parent and no
-deliberate edge in either direction** — a body `[[wikilink]]`, an inbound link,
-or a `contributes_to` all clear it; only auto-computed similarity edges do not.
-So "not an orphan" means graph-reachable. It does not certify that a note carries
-its own outbound wikilink, which is what the capture contract requires.
+### 2 — Mine the Transcripts
 
-Measure the same two numbers again at the end of the cycle and report the delta.
+Session transcripts hold what agents did not save during sessions.
+Find transcripts with no `mined: <date>` in frontmatter (up to 15 per cycle):
 
-## 2 — Mine the transcripts
+1. Read the transcript, identifying first-class topics, decisions, and patterns.
+2. Route per the extraction method: search for canonical note, augment or create,
+   record provenance (`sources: ["Session <id> (<date>)"]`, `confidence: provisional`).
+3. Mark frontmatter `mined: <date>`. **Never modify transcript body content.**
+4. If transcript store is unreachable, report as skipped.
 
-Session transcripts hold what agents did not save at the time.
+### 3 — Consolidate Knowledge & Extract Closed Tasks
 
-Find transcripts with no `mined: <date>` in frontmatter. For each, up to about
-fifteen a cycle:
+Find episodic content not yet consolidated (daily notes, meeting notes with no
+`consolidated:` marker, and closed tasks with substantive bodies):
 
-1. Read it, noting decisions, patterns, facts, and problems solved.
-2. For each insight, identify the **first-class topic it is about** — the subject,
-   not the symptom.
-3. Route it per the capture discipline: augment the canonical note for that
-   topic, create one with a section scaffold if the topic is first-class and has
-   none, reconcile stale peers in the same write. Provenance is the session
-   reference and the date; single-source additions are `confidence: provisional`.
-4. Mark the transcript `mined: <date>` in frontmatter. **Never modify its
-   content** — a transcript is a primary record.
+1. For each source, apply the **Definitive Knowledge-Extraction Method** above:
+   - Identify durable facts (models, architecture, decisions, contacts, URLs).
+   - If nothing durable: record empty extraction.
+   - If durable: write to canonical destination note first, verify read-back by ID.
+   - Rewrite source task body in-place (<1,500 chars).
+   - Mark episodic notes `consolidated: <date>` and advance status.
+2. Create a Map of Content (MOC, `type: moc`) only when a topic area accumulates 5+
+   canonical notes and navigation is genuinely improved.
 
-Skip anything already saved during the session. Never fabricate, never
-editorialise.
+### 4 — Reconcile Data Quality
 
-Transcripts live outside `$ACA_DATA`, which is why they may be edited directly at
-all — and the edit is confined to that one frontmatter field.
+Fix data quality before structural maintenance. Three activities:
 
-If the transcript store is not reachable in this environment, skip this stage and
-say so.
+#### Duplicates
 
-> Extracting **prompts or command invocations** — which commands were run, how
-> often, which skills fired — is not a transcript-reading job. The structured
-> session summaries carry `user_prompts` and typed timeline events across every
-> client; read those. Raw transcripts are the fallback for what summaries do not
-> hold: agent reasoning, tool calls, full context.
+`find_duplicates(mode="both")` produces candidates, not verdicts. Always read member
+titles to judge:
 
-## 3 — Consolidate knowledge
+- Heterogeneous titles mean not a duplicate set, regardless of score.
+- Merge only when members are the same work restated.
+- Quarantine large/degenerate clusters.
+- Always check that the survivor is the note with the most context.
 
-Find episodic content not yet consolidated: daily notes and meeting notes with no
-`consolidated:` frontmatter, and completed tasks with substantive bodies. Older
-than about a week is the usual candidacy signal.
+#### Staleness and Closure
 
-For each, identify the first-class topic each insight is about, and route it to
-the canonical topic note per the capture discipline — that is where the _how_
-lives, and this stage does not restate it. Then mark the source
-`consolidated: <date>` and advance its status, leaving its content untouched.
+Staleness, unclosed merged tasks, dead claims, and artifact rot are owned by the
+`reconcile` skill (`plugins/pkb/skills/reconcile/SKILL.md`).
+Delegate this stage to `/reconcile` in batch context; do not freelance separate
+closure logic.
 
-Create a Map of Content only when a topic area has genuinely accumulated five or
-more canonical notes and navigation would help. Skip it by default.
+#### Misclassification
 
-Pacing, per cycle: roughly ten episodic sources, three canonical notes created or
-substantially restructured, at most one MOC.
+Identify captures masquerading as tasks (e.g. aged "Email:" prefixes with no
+children, informational prose with no action). Archive or reclassify to memories.
 
-## 4 — Reconcile data quality
+### 5 — Sweep for Orphans
 
-Before any structural work, fix the data. Three activities, bounded.
+Run `pkb_orphans()` for actionable tasks and knowledge notes. Evaluate flagged
+nodes and surface genuine candidates rather than blindly retiring them.
 
-### Duplicates
+### 6 — Process Refiles
 
-`find_duplicates(mode="both")` produces **candidates, not verdicts**. The only
-reliable field is member count; every other call is made by **reading the member
-titles**. The cluster score can lie — a degenerate cluster once self-reported
-perfect title similarity across unrelated titles, while genuine merge pairs
-routinely score low. **When the score and the titles disagree, trust the titles.**
-The question is always "are these the same work item, restated?", and it is
-answered by reading.
+Process tasks flagged `refile` by inspecting task body, lineage, and context:
 
-- Ignore non-clusters: fewer than two distinct members, or a canonical id that is
-  also in the merge set.
-- **Heterogeneous titles mean it is not a duplicate set, at any member count** —
-  including three members at maximum confidence. Member count bounds blast
-  radius; it does not detect degeneracy.
-- Quarantine large clusters, and separate the two reasons. **Degenerate** —
-  heterogeneous titles, catch-all anchored on one broad epic — is a tool artifact
-  and gets one summary line. **Large but plausibly genuine** — homogeneous titles,
-  too many to merge unattended — gets filed as an actual task ("Review N-way
-  duplicate set: <shared title>") so it survives an unattended run.
-- Disposition the rest by reading: **merge** where every member is the same work
-  restated; **reject** where different people or organisations were spuriously
-  matched; **flag** where the overlap is real but the scope may differ; **partial**
-  where some members match and others do not — flag the coherent pairs, never
-  merge the whole cluster.
-- Two guards before any merge: glance at bodies for date-prefixed, section-
-  numbered, "Summary", "Plan", and "Review" titles, which are false-positive
-  classes; and sanity-check the canonical, which is sometimes the narrower node —
-  keep the survivor with the most context.
-- Every cluster lands in exactly one bucket in the cycle summary, with counts.
+- Correct parentage, consequence, severity, effort, dependencies, and tags.
+- Clear the `refile` flag when complete.
 
-### Staleness and closure
+### 7 — Maintain the Graph
 
-This sweep covers, in batch context: in-flight claims whose session has gone
-quiet, the pull requests closed since the last cycle, aged non-terminal tasks,
-and artifact rot. No shipped skill currently owns that procedure. That is a
-library gap — name it in this cycle's summary rather than freelancing a check
-to fill it.
+Check `metrics_hash` against baseline. If unchanged, actionable graph has
+converged. Maintain knowledge layer until stable. Two consecutive no-op cycles
+across both layers indicates graph stability.
 
-### Misclassification
+### 8 — Check Your Own Output
 
-Untriaged captures masquerading as tasks: an "Email:" title prefix with real age
-and no children; long-aged nodes with no children and a sparse body; bodies that
-are purely informational with no action in them. Clear non-tasks get archived
-with a reason or reclassified to a memory; anything ambiguous is flagged. Up to
-about thirty a cycle.
+Perform a 2-minute audit on notes produced or modified this cycle:
 
-## 5 — Sweep for orphans
+- Does every claim carry `sources:`?
+- Does synthesis cite 2+ observations?
+- Are wikilinks valid?
+- Is confidence present and plausible?
+- Did all extractions pass the four tests?
 
-Orphans and under-specified work, as **signals** rather than verdicts. Run
-`pkb_orphans()` for the actionable layer and the knowledge-layer call from stage
-1 for the other. Read the flagged nodes and decide whether they genuinely need
-attention, and surface candidates rather than retiring them.
+---
 
-## 6 — Process refiles
+## The Cycle Summary
 
-A `refile` flag means the user spotted something structurally wrong — not only
-parentage. Find flagged tasks and fix the whole weighting surface, reading the
-task's own body, its lineage, and its context rather than copying fields from the
-parent:
+Every consolidation run emits a structured report:
 
-- **Parent** — find the correct lineage.
-- **Consequence and severity** — on a target, match severity to the impact the
-  consequence prose actually describes, and write that prose if it is missing. On
-  an ordinary task, never assign non-zero severity; if it looks target-worthy,
-  flag it for triage instead.
-- **Priority** — never originate or adjust a band. A band that looks clearly
-  wrong gets flagged for the user, not changed.
-- **Due** — fix a missing or plainly wrong date; flag if unclear.
-- **Effort** — estimate from actual scope. A default is usually wrong.
-- **Dependencies** — wire real blockers and dependants; set `blocked` where it is.
-- **Tags** — reflect the new lineage.
-
-Clear the flag when done. Where the right answer needs the user's judgment, clear
-the flag, mark it for triage, and name the specific ambiguity in the summary.
-
-No batch limit — these are explicit user requests. Run this before the structural
-stage so the metrics reflect it.
-
-## 7 — Maintain the graph
-
-This stage selects a maintenance strategy from this cycle's baseline and applies
-the triage rules. No shipped skill currently owns that procedure. That is a
-library gap — name it in this cycle's summary rather than freelancing a strategy
-to fill it.
-
-**Convergence.** An unchanged `metrics_hash` means the _actionable_ graph has
-converged — skip the actionable strategies and log it. It says nothing about the
-knowledge layer, which is measured by a different call and has its own terminal
-condition. Do not skip knowledge curation on an actionable-layer signal.
-
-Two consecutive no-op cycles across **both** layers means the graph is stable and
-a running loop should stop.
-
-## 8 — Check your own output
-
-Two minutes, on what **this cycle** produced. For each knowledge note created or
-changed: does it carry `sources`? Does the synthesis cite more than one
-observation? Are its wikilinks valid? Is confidence present and plausible? For
-each episodic source consolidated: has its status advanced?
-
-Log failures in the summary and flag them for review. Do not try to fix content
-quality here — that is the reviewer's job.
-
-Where the same issue appears across three or more cycles, that is a procedure
-defect, not a run defect: file a task describing the pattern, cite the specific
-notes where it appeared, and propose the change to this document or to
-[`quality.md`](quality.md).
-
-## The cycle summary
-
-Every cycle emits one. Sections with nothing to report are omitted — except the
-halt count, which always renders even at zero.
-
-Lead with the halt count, then the baseline and its delta in both layers, then
-one line per stage that did work: what it processed, what it changed, and what it
-surfaced for a human. **Name the ids** for anything merged, archived, or
-surfaced — a bare count is not reviewable. Close with a single sentence on what
-the next cycle should pick up.
-
-State it as what happened and what is now true. It is a report, not a log to
-accumulate.
+1. **Subagent Halt Count** (at the very top, even if zero): list any `HALT:`
+   occurrences with phase and missing tool/error.
+2. **Baseline & Deltas**: initial vs final graph stats and knowledge orphan counts.
+3. **Stage Details**: items processed, notes created/augmented, tasks rewritten,
+   duplicates merged, with exact IDs named.
+4. **Empty Extractions**: list of task IDs where extraction was cleanly empty.
+5. **Next Actions**: concise statement of what the next cycle should pick up.

@@ -15,7 +15,7 @@ import pytest
 # that need a different config monkeypatch it per-test via the autouse
 # `ensure_test_environment` fixture below.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_POLECAT_EXAMPLE = _REPO_ROOT / "plugins" / "aops" / "polecat" / "defaults" / "polecat.yaml.example"
+_POLECAT_EXAMPLE = _REPO_ROOT / "lib" / "polecat" / "defaults" / "polecat.yaml.example"
 if _POLECAT_EXAMPLE.exists():
     os.environ["AOPS_POLECAT_CONFIG"] = str(_POLECAT_EXAMPLE)
 

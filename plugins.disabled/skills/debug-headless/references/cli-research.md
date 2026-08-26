@@ -16,14 +16,12 @@ Research completed for the `debug-headless` skill implementation. This documents
 
 - `-p` / `--print`: Headless mode, prints output to stdout
 - `-d`: Debug mode, logs to `~/.claude/debug/`
-- `--output-format json|stream-json`: Structured output formats
 
 ### Gemini CLI
 
 - Positional `prompt`: Required argument for query text
 - `-d`: Debug mode
 - `-y` / `--yolo`: Auto-approve mode (skip confirmations)
-- `-o`: Output format specification
 
 ## Implementation Options
 
@@ -41,10 +39,8 @@ Four implementation pathways documented for the skill:
 - Copies logs from `~/.claude/debug/`
 - Preserves debug information
 
-**Option C: Structured JSON Streaming**
+**Option C: Log Streaming**
 
-- Uses `--output-format json` / `stream-json`
-- Machine-readable output
 - Real-time streaming capability
 
 **Option D: Full Capture with Metadata Wrapper (Recommended)**
