@@ -4,7 +4,7 @@ kind: process
 category: operations
 description: Triage open PRs, invoke reviewer agents, synthesize a per-PR verdict table — human makes the final merge call
 requires: [batch]
-pairs-with: [worktree-merge, wf-human-approval]
+pairs-with: [worktree-merge]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-pr-review
@@ -32,5 +32,6 @@ supplementary, never a substitute for structured reviewer analysis.
    reviewer verdicts, recommendation.
 5. **Act on verdicts** — clean PRs get approved; PRs with issues get specific
    fix comments, tagged to the responsible agent. Once ready to merge, hand
-   off to [[worktree-merge]]; a merge to a protected branch composes
-   [[wf-human-approval]].
+   off to [[worktree-merge]]. A merge to a protected branch is Nic's to make,
+   and **his merge is the sign-off** — do not emit a human sign-off task node
+   for it (Nic, 2026-08-26).
