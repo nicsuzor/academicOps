@@ -153,7 +153,7 @@ def honest_output(ctx: HookContext) -> Result | None:
     to provide evidence sufficient to support its claims.
 
     """
-    if ctx.agent_type == "ida:ida":
+    if ctx.agent_type == "pkb:ida":
         return None
 
     if ctx.raw.get("background_tasks"):

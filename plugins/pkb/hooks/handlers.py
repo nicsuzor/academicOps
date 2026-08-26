@@ -12,17 +12,11 @@ Every agent-visible string comes from ``messages/<name>.md``. A ``*.user.md``
 sibling, if one exists, becomes a ``systemMessage`` the person actually reads
 (lib/hooks/dispatch.py). No handler here builds either from a Python literal.
 
-**There is deliberately no ``quiet.user.md``.** A gate that announces itself is
-itself a mention of the delegated work, and the one thing this plugin owes Nic
-between an instruction and its completion is silence. ``load_message_pair``
-returns ``None`` for a missing user file and ``dispatch.py`` then emits no
-``systemMessage`` at all, so the file's absence *is* the suppression — a
-mechanism, not an instruction to be quiet.
 """
 
 from __future__ import annotations
 
-from dispatch import HookContext, Result, block, load_message_pair, warn
+from dispatch import HookContext, Result, load_message_pair, warn
 
 
 def be_quiet(ctx: HookContext) -> Result | None:
@@ -36,16 +30,17 @@ def be_quiet(ctx: HookContext) -> Result | None:
     """
 
     # Only fire on Ida
-    if ctx.agent_type == "ida:ida":
+    if ctx.agent_type == "pkb:ida":
         # No need to do anything until the background tasks complete.
         if ctx.raw.get("background_tasks"):
             return None
 
-        return block(*load_message_pair(ctx.hooks_dir, "quiet"))
+        return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
         _ = warn
 
 
 HANDLERS: dict[str, list] = {
     # "PostToolBatch": [be_quiet],
     "SubagentStop": [be_quiet],
+    "Stop": [be_quiet],
 }
