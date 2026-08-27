@@ -36,7 +36,19 @@ A. **Construct your report in the following format:**
 - **Next**: `<task-id>` [ title ] | [ Plain english instructions, with just enough detail to allow the next agent to pick up the work where you left off. ]
 ```
 
-B. **Release your tasks, children first:** call the PKB's `release_task` MCP tool with your session id and your concise report.
+B. **Release your tasks, children first:** release the task with your session
+id and your concise report, over whichever PKB route you are configured
+for — MCP tools if granted, otherwise the `pkb` CLI. If neither route
+answers, HALT and say so in your final report; an unavailable route is
+never license to skip this step.
+
+- **MCP:** call `release_task` with your session id and report.
+- **CLI:** there is no single `release_task` verb. Run
+  `pkb append <task-id> '<report>'` to attach your report, then
+  `pkb update <task-id> --status <status>`. The CLI has no body-rewrite
+  command, so doctrine's "rewrite, never append" cannot be honoured
+  literally through this route — appending is the correct fallback, not a
+  violation of it.
 
 ### 3. EMIT FINAL REPORT
 
