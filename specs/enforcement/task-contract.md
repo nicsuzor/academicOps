@@ -8,7 +8,7 @@ tags: [enforcement, framework-architecture, verification]
 
 # In-Session Enforcement — The Work-Unit Contract (Layer 2)
 
-> **Numbering note.** `Layer 2` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, this file, [workflow.md](workflow.md), [sign-off.md](sign-off.md)) — a different axis from any pipeline/pyramid numbering that may appear elsewhere.
+> **Numbering note.** `Layer 2` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, this file, [workflow.md](workflow.md), [sign-off.md](sign-off.md)). It is distinct from the permission-frontmatter layers in [agent-authority.md](../agents/agent-authority.md) and the retired repo-level L0–L7 numbering (which [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) replaced with a named mechanism index).
 
 ## aops — Work-unit loop (the task contract)
 
