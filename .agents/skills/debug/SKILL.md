@@ -144,9 +144,40 @@ Phoenix is the authoritative, durable telemetry store for session traces. Unlike
 
 Use the **`phoenix` MCP server** tools (`executeSql`, `getSpans`, `listProjectTraces`, `execute`) to perform instant, high-fidelity forensics on any session.
 
-### 1. Direct Analytics SQL (`executeSql`) Recipes
+### 1. Identifier Shapes & Disambiguation Protocol
+
+Do not guess identifier types or query shapes. Searching `session.id` with a `trace_id` returns empty (`{"data":[],"next_cursor":null}`) silently, which is easily misdiagnosed as "telemetry not retained" or "session missing". Classify the identifier shape before querying:
+
+| Identifier Type    | Format / Shape              | Example                                | Phoenix SQL Query Pattern                                               |
+| ------------------ | --------------------------- | -------------------------------------- | ----------------------------------------------------------------------- |
+| **`trace_id`**     | 32 hex chars, **no dashes** | `c75f0a20a67140e791244eb5dfa64be5`     | `WHERE trace_id = '<32_HEX>'`<br>_(Resolve `session.id` via Recipe A0)_ |
+| **`session.id`**   | 36 chars, **dashed UUID**   | `22ec8f3e-72c1-4b15-9988-123456789abc` | `WHERE JSON_EXTRACT(attributes, '$.session.id') = '<UUID>'`             |
+| **`session slug`** | 6–8 hex chars               | `22ec8f3e`                             | `WHERE JSON_EXTRACT(attributes, '$.session.id') LIKE '%<slug>%'`        |
+| **`span_id`**      | 16 hex chars, **no dashes** | `a1b2c3d4e5f60718`                     | `WHERE span_id = '<16_HEX>'`                                            |
+
+> [!IMPORTANT]
+> **Negative Search Invariant**: If a query on `session.id` returns 0 rows, check the ID length and format before concluding data was dropped. If it is 32 hex characters without dashes, query `WHERE trace_id = '<ID>'` to discover its `session.id`, project name, and span count.
+
+### 2. Direct Analytics SQL (`executeSql`) Recipes
 
 Query the allowlisted SQLite database backend directly using standard SQL with JSON extraction operators (`->>` or `JSON_EXTRACT`):
+
+#### A0. Resolve a `trace_id` to its `session.id`
+
+When given a 32-hex `trace_id`, resolve it to its containing session(s) and project:
+
+```sql
+SELECT JSON_EXTRACT(attributes, '$.session.id') AS session_id,
+       project_name,
+       COUNT(*) AS span_count,
+       MIN(start_time) AS first_seen,
+       MAX(start_time) AS last_seen
+FROM spans
+WHERE trace_id = '<32_HEX_TRACE_ID>'
+GROUP BY session_id, project_name
+```
+
+Once `session.id` is identified, pivot all subsequent forensic queries to filter on `session.id`.
 
 #### A. Fast Session Discovery & Error Check
 
@@ -192,9 +223,9 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
 ORDER BY start_time ASC
 ```
 
-#### D. Verify Tool Execution vs Hallucination
+#### D. Verify Tool Execution vs Hallucination & Grounding Claims
 
-Prove whether an agent actually called tools or hallucinated/grepped disk files:
+Prove whether an agent actually called tools, hallucinated, grepped disk files, or made unsubstantiated claims:
 
 ```sql
 SELECT name, COUNT(*) AS invocations,
@@ -206,6 +237,25 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
 GROUP BY name
 ORDER BY invocations DESC
 ```
+
+To audit individual tool calls and payload arguments/returns:
+
+```sql
+SELECT span_id, name, status_code, latency_ms,
+       attributes->>'input.value' AS input_payload,
+       attributes->>'output.value' AS output_payload
+FROM spans
+WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'
+  AND span_kind = 'TOOL'
+ORDER BY start_time ASC
+```
+
+**Auditing Task Execution Claims & Negative Assertions**:
+
+- **Check tool invocations per checklist item**: When an agent's report asserts that specific tasks or items (e.g. items 1–4) are "completed", "failed", or "not done", audit the trace for the corresponding tool calls (`pkb__update_task`, `task_search`, `write_to_file`, etc.).
+- **Zero Tool Calls ≠ Verified Failure**: If an agent performed zero tool calls for items 2–4, report: _"Trace contains no tool calls for items 2–4; agent did not execute actions for these items."_ Do NOT report flatly that "items 2–4 have not been done" without stating that the agent never attempted tool calls.
+- **Search Miss ≠ Absence**: If an agent ran a single fuzzy search (`task_search`) that returned 0 matches or irrelevant hits, report it as a search miss (_"Fuzzy search returned 5 unrelated results; agent halted there"_), not as conclusive proof that the target task does not exist or was unhandled.
+- **Never rely on agent self-reporting**: An agent may summarize in prose that items are done or missing without having made any tool calls. Ground every finding in specific span records.
 
 #### E. Token Accounting & Prompt Cache Ratio
 
@@ -238,9 +288,9 @@ ORDER BY start_time ASC
 
 A named subagent's own root turn opens with `<teammate-message teammate_id="team-lead">...` — the distinctive phrase to match on is the tail of the exact prompt text from the parent's `Agent` tool call. Once you have the child's `session.id`, pull its full span list (Recipe B, no `LIMIT`) to see its whole story: tool calls made, last activity, whether it ever closed.
 
-#### G. Dispatch-Mode Fingerprint: named (teammate) vs unnamed (background task)
+#### G. Dispatch-Mode & Execution Surface Fingerprint: Named Teammate vs Polecat Container vs Background Task
 
-Whether an `Agent` tool call was given a `name` selects a different code path, visible directly in the payload of its own `AGENT`-kind span — read this off the span, do not infer it from timing or behaviour:
+Whether an `Agent` tool call was given a `name` or dispatched to a container selects different runtime boundaries. Read this directly off the telemetry and message payloads:
 
 ```sql
 SELECT span_id, status_code, latency_ms, start_time,
@@ -251,8 +301,13 @@ WHERE JSON_EXTRACT(attributes, '$.session.id') = '<PARENT_SESSION_UUID>'
 ORDER BY start_time ASC
 ```
 
-- **Named** (`name` param set): output is `{"status": "teammate_spawned", "teammate_id": "<name>@session-<slug>", "agent_type": "...", "tmux_session_name": "...", ...}`. The span itself closes in ~150–250ms regardless of what the agent goes on to do — that is only the spawn acknowledgement, never the final result. The real result is delivered later, asynchronously, as an inbound `<teammate-message teammate_id="<name>">` injected as a new turn in the **parent's** own trace (search the parent session for `attributes->>'input.value' LIKE '%teammate-message%'`). A `{"type":"idle_notification","idleReason":"available"}` teammate-message means the named agent went idle — that is not evidence of completion or of being stuck; go check the agent's own session (Recipe F) for what it last did.
-- **Unnamed**: output is `{"isAsync": true, "status": "async_launched", "agentId": "...", "outputFile": "...", "canReadOutputFile": false}`. This mode has an explicit, OTel-visible close event — search the parent session for `attributes->>'input.value' LIKE '%task-notification%'` to find a `<task-notification><status>completed</status>...<usage><duration_ms>N</duration_ms></usage></task-notification>` block. Teammate mode has **no equivalent close event anywhere in Phoenix**: the idle-heartbeat loop that keeps a named agent's pane alive runs below whatever boundary OTel instruments, so Phoenix can show a teammate delivered its result and went quiet, but cannot itself prove it later exited. Corroborate "still alive" against host-level evidence (e.g. `tmux list-panes ... pane_dead`), not telemetry alone.
+- **Named Teammate (Host)** (`name` param set): Output is `{"status": "teammate_spawned", "teammate_id": "<name>@session-<slug>", "agent_type": "...", "tmux_session_name": "...", ...}`.
+  - **Teammate Bus Signature**: Emits `<teammate-message>` turns to the parent.
+  - **The `idle_notification` / `available` signature**: A message payload `{"type":"idle_notification","idleReason":"available"}` means the worker is on the host teammate bus. **Polecat containers cannot reach the teammate bus** due to container isolation. Therefore, seeing teammate bus messages is absolute proof the worker was a **named host session**, NOT a container.
+  - **Semantics of `available`**: `idleReason: "available"` means ONLY that the agent finished processing its current turn and has no messages in queue. It carries **no claim about what got done, whether a task completed, or whether work succeeded**. Check the agent's own session (Recipe F) and tool spans (Recipe D) for what actually occurred.
+  - **Span duration caveat**: The `AGENT` span closes in ~150–250ms on spawn acknowledgement. It has no OTel close event.
+- **Unnamed Background Task**: Output is `{"isAsync": true, "status": "async_launched", "agentId": "...", "outputFile": "...", "canReadOutputFile": false}`. This mode has an explicit, OTel-visible close event — search the parent session for `attributes->>'input.value' LIKE '%task-notification%'` to find a `<task-notification><status>completed</status>...<usage><duration_ms>N</duration_ms></usage></task-notification>` block.
+- **Polecat Container**: Runs inside an isolated Docker container. Generates `$AOPS_SESSIONS/logs/.../run.json`, `polecat-session-hooks.jsonl`, and container stdout logs. Never emits teammate bus messages.
 
 #### H. Tool-Usage Fingerprint — did the agent structurally have the tool it needed?
 
@@ -268,7 +323,7 @@ ORDER BY n DESC
 
 Zero `SendMessage`/`send_message` rows in a named-teammate session, alongside real work visible in `Bash`/other tool spans and `status_code: UNSET` throughout, means the agent did its job and had no channel to report it — not that it hung or errored. Cross-check the spawning agent type's declared `Tools:` allowlist (visible in the session's own agent roster, or the plugin's agent-definition frontmatter) before attributing silence to a bug in the agent's behaviour rather than its tool grant.
 
-### 2. Single-Pass Programmatic Diagnostics via `execute` (Code-Mode)
+### 3. Single-Pass Programmatic Diagnostics via `execute` (Code-Mode)
 
 Instead of multiple round-trips, run a complete forensic evaluation script inside Phoenix's `execute` runtime:
 
@@ -296,10 +351,12 @@ errors = await call_tool("executeSql", {
 return {"summary": summary, "errors": errors}
 ```
 
-### 3. Critical Telemetry Invariants & Rules
+### 4. Critical Telemetry Invariants & Rules
 
-- **Filter strictly on `attributes->>'session.id'` (or `session_identifier`), NEVER on `trace_id` alone**: OpenTelemetry context propagates across inter-agent messages, meaning a single trace can span multiple sessions. Filtering on `trace_id` pulls foreign session work into your diagnostic view.
+- **Identifier Disambiguation**: 32-hex = `trace_id`; dashed UUID = `session.id`; 6–8 hex = `session slug`; 16-hex = `span_id`. Never query `session.id` with a 32-hex `trace_id`.
+- **Filter strictly on `attributes->>'session.id'` (or `session_identifier`) for session-wide analysis**: OpenTelemetry context propagates across inter-agent messages, meaning a single trace can span multiple sessions. Filtering on `trace_id` pulls foreign session work into your diagnostic view. Use `trace_id` only to resolve the `session.id` (Recipe A0), then switch to `session.id`.
 - **Short Slug Matching**: When given a short session slug (e.g. `9456cfd1`), use substring matching (`LIKE '%<slug>%'`) because Phoenix indexes full UUIDs.
+- **Empty Query Result (`{"data":[],"next_cursor":null}`)**: Always verify whether the input ID was a `trace_id` vs `session.id` before concluding the data was not retained.
 - **Turn Counter Ordering**: `arthur.turn_number` is scoped per-tracer-state and resets across subagents. Always sort by `start_time` for session-wide chronology.
 - **Container Telemetry Coverage**: If a container run emits only `CHAIN` spans (`claude-code-turn`) with zero `TOOL`/`LLM` spans, check `GENAI_ENGINE_TRACE_ENDPOINT` forwarding in the container's environment.
 - **No parent↔child linking attribute**: A spawned subagent's session never carries the parent's session id (or any other parent-pointer) in its `attributes`. Correlate by prompt-text match and time window (Recipe F) — never by substring-searching for the parent UUID, which returns only sessions that happen to _mention_ it in conversation text, not the spawned children.
@@ -387,18 +444,21 @@ Run this protocol after modifying any framework code (`plugins/*/hooks`, `lib/`,
 
 ## Diagnostic Gotchas & Reference
 
-| Symptom / Error                                                                     | Root Cause                                                                                              | Immediate Fix / Remediation                                                                                                                                              |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `no server running on /tmp/tmux-...`                                                | Inline tmux command failed in `/bin/sh -c` due to quoting or missing PATH exports                       | Use launch script wrapper file `/tmp/launch-$SESSION.sh`                                                                                                                 |
-| Session log directory named after prompt string                                     | Passed `-p` option after `run` without `--` separator; Click parsed `-p` as `--project`                 | Place `--` (double-dash) before agent flags and prompts                                                                                                                  |
-| `agy` stuck at Google OAuth login prompt                                            | `GEMINI_CONFIG_DIR` missing or lacks `antigravity-oauth-token`                                          | Set `GEMINI_CONFIG_DIR=~/.gemini` and ensure token exists                                                                                                                |
-| `docker logs <container>` returns empty for `agy`                                   | `agy` redirects logs to internal log files                                                              | Read host bind-mounted file `$AOPS_SESSIONS/.../agy-cli.log`                                                                                                             |
-| `fatal: not a git repository` in container                                          | `-d` passed a linked git worktree directory                                                             | Use full git clone directory for `-d` or pass `-p <project>`                                                                                                             |
-| Premature boot failure report for `agy`                                             | Captured pane during 2–3s `⚠ Verifying your account...` auth rendering race                             | Wait 2–3 seconds for header plan name to render before inspecting                                                                                                        |
-| MCP tool calls missing in agent response                                            | Agent grepped answers from host disk files rather than executing tools                                  | Inspect Phoenix MCP SQL `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` to verify real tool execution                         |
-| `⚠ Agent execution terminated due to error` + an error ID, nothing else in the pane | agy agent frontmatter names a tool absent from its registry                                             | `grep "not found in registry" <session>/agy-cli.log`; drop the offending names from `build/tool_map.toml`'s `accepted_tools`                                             |
-| Headless `agy` returns `"error":"context canceled"` with work half-done             | Job outran `--print-timeout` (default `5m0s`)                                                           | Compare `duration_seconds` against the timeout; re-run with an explicit `--print-timeout`                                                                                |
-| `delivery_guard_failed` after a probe that wrote files                              | The probe's own artefacts are uncommitted in the workspace                                              | Expected for a write probe — not a framework defect; confirm the named files are the probe's before treating it as one                                                   |
-| Named subagent never returns / repeats `idle_notification` forever                  | `name` on the `Agent` tool call spawns a persistent teammate with no OTel-visible exit event (Recipe G) | Do not wait on the tool call; watch the parent session for an inbound `<teammate-message>`, and check the child's own session (Recipe F) for whether it already sent one |
-| Named subagent did real work but never reported it                                  | Its `agent_type`'s tool allowlist has no `SendMessage` — the only delivery channel for teammate mode    | Recipe H: confirm zero `SendMessage` spans, then check the agent-type's declared `Tools:` — this is a capability gap, not a hang or a bug in the agent                   |
-| `executeSql` result "exceeds maximum allowed tokens", dumped to a `.txt` file       | Query returned too many rows or unbounded `input.value`/`output.value` columns                          | Narrow the `SELECT` with `SUBSTR(...)`, add a tighter `WHERE`/`LIMIT`; if already dumped, read the saved file with `jq` rather than re-querying                          |
+| Symptom / Error                                                                         | Root Cause                                                                                              | Immediate Fix / Remediation                                                                                                                                              |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `no server running on /tmp/tmux-...`                                                    | Inline tmux command failed in `/bin/sh -c` due to quoting or missing PATH exports                       | Use launch script wrapper file `/tmp/launch-$SESSION.sh`                                                                                                                 |
+| Session log directory named after prompt string                                         | Passed `-p` option after `run` without `--` separator; Click parsed `-p` as `--project`                 | Place `--` (double-dash) before agent flags and prompts                                                                                                                  |
+| `agy` stuck at Google OAuth login prompt                                                | `GEMINI_CONFIG_DIR` missing or lacks `antigravity-oauth-token`                                          | Set `GEMINI_CONFIG_DIR=~/.gemini` and ensure token exists                                                                                                                |
+| `docker logs <container>` returns empty for `agy`                                       | `agy` redirects logs to internal log files                                                              | Read host bind-mounted file `$AOPS_SESSIONS/.../agy-cli.log`                                                                                                             |
+| `fatal: not a git repository` in container                                              | `-d` passed a linked git worktree directory                                                             | Use full git clone directory for `-d` or pass `-p <project>`                                                                                                             |
+| Premature boot failure report for `agy`                                                 | Captured pane during 2–3s `⚠ Verifying your account...` auth rendering race                             | Wait 2–3 seconds for header plan name to render before inspecting                                                                                                        |
+| MCP tool calls missing in agent response                                                | Agent grepped answers from host disk files rather than executing tools                                  | Inspect Phoenix MCP SQL `SELECT count(*) FROM spans WHERE span_kind='TOOL' AND attributes->>'session.id'='<UUID>'` to verify real tool execution                         |
+| `⚠ Agent execution terminated due to error` + an error ID, nothing else in the pane     | agy agent frontmatter names a tool absent from its registry                                             | `grep "not found in registry" <session>/agy-cli.log`; drop the offending names from `build/tool_map.toml`'s `accepted_tools`                                             |
+| Headless `agy` returns `"error":"context canceled"` with work half-done                 | Job outran `--print-timeout` (default `5m0s`)                                                           | Compare `duration_seconds` against the timeout; re-run with an explicit `--print-timeout`                                                                                |
+| `delivery_guard_failed` after a probe that wrote files                                  | The probe's own artefacts are uncommitted in the workspace                                              | Expected for a write probe — not a framework defect; confirm the named files are the probe's before treating it as one                                                   |
+| Named subagent never returns / repeats `idle_notification` forever                      | `name` on the `Agent` tool call spawns a persistent teammate with no OTel-visible exit event (Recipe G) | Do not wait on the tool call; watch the parent session for an inbound `<teammate-message>`, and check the child's own session (Recipe F) for whether it already sent one |
+| Named subagent did real work but never reported it                                      | Its `agent_type`'s tool allowlist has no `SendMessage` — the only delivery channel for teammate mode    | Recipe H: confirm zero `SendMessage` spans, then check the agent-type's declared `Tools:` — this is a capability gap, not a hang or a bug in the agent                   |
+| `executeSql` result "exceeds maximum allowed tokens", dumped to a `.txt` file           | Query returned too many rows or unbounded `input.value`/`output.value` columns                          | Narrow the `SELECT` with `SUBSTR(...)`, add a tighter `WHERE`/`LIMIT`; if already dumped, read the saved file with `jq` rather than re-querying                          |
+| `{"data":[],"next_cursor":null}` when searching for a session by ID                     | Queried `session.id` using a 32-hex `trace_id` instead of a dashed UUID                                 | Check ID format: 32-hex = `trace_id`. Query `WHERE trace_id = '<32_HEX>'` (Recipe A0) to resolve the underlying `session.id` before session diagnostics                  |
+| Worker sent `idle_notification` (`idleReason: "available"`) but assumed to be container | Worker was a host named teammate; containers cannot reach teammate bus                                  | `idleReason: "available"` only means turn ended with empty queue. Check child session spans for actual work (Recipes D, F)                                               |
+| Report asserts tasks/items "not done" or "failed" with no tool evidence                 | Agent assumed outcome or hallucinated after 0 tool calls or 1 search miss                               | Audit `span_kind='TOOL'` invocations in trace (Recipe D). Distinguish 0 tool calls (unattempted/uninvoked) from tool execution failures                                  |

@@ -6,7 +6,8 @@ description: List, read, add, edit, and retire the workflow templates that `brie
 
 # /workflow-library: see and maintain the workflow library
 
-A workflow template is a short markdown document describing how a class of work
+A workflow template is any markdown document with `type: template` (with project-local
+lookup in `$CWD/.agents/templates/` as well) describing how a class of work
 proceeds. `brief` §5 composes process out of them. Nothing else in the framework
 lets a person see what the library holds or change it, so this skill is the only
 surface for both.

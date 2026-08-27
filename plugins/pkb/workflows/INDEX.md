@@ -20,10 +20,10 @@ the session, an email is triaged. Any agent reads the tree directly; no skill
 stands between them and it. Only work released for dispatch gets a full process
 assembled around it, and that is `brief`'s job.
 
-Two kinds: **process templates** — the `*.md` files beside this one, describing
-how a class of work proceeds — and the `wf-*` obligation templates, which are not
-files at all (see "Obligation templates" below). Every name in this library is
-written as it resolves: a process template by its bare filename, an obligation by
+Two kinds: **process templates** — how a class of work proceeds (each carrying
+`type: template`) — and the `wf-*` obligation templates in the PKB (also carrying
+`type: template`; see "Obligation templates" below). Every name in this library is
+written as it resolves: a process template by its bare identifier, an obligation by
 its `wf-` permalink.
 
 ## Routing

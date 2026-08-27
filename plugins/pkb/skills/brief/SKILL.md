@@ -232,7 +232,7 @@ is not a condition of existence.
    (`status: retired`, or a `retired`/`superseded` tag), datestamped instance
    nodes, and templates scoped to a project other than this one. Composition
    fragments are available as sub-steps and never dispatched standalone.
-3. **Universal core tier** — `../../workflows/*.md`, catalogued by
+3. **Universal core tier** — framework templates (`type: template`), catalogued by
    `../../workflows/INDEX.md`, which also carries the routing tree naming the
    template for this class of work. These set minimum standards that cannot be
    derogated from: universal, immutable, version-controlled. No gate template
