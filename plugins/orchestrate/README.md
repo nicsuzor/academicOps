@@ -63,7 +63,7 @@ A bare dispatch has no return path by design: the worker writes its result to th
 | ----- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agent | `james`                  | Briefs and dispatches work; bounces reports that arrive without proof. Never instructs method, never re-does work.                             |
 | Agent | `marsha`                 | QA. Judges whether an artifact is outstanding, and runs it to find out.                                                                        |
-| Agent | `adversary`              | Red-team review: attacks the evidence, the logic, and the scope. Never builds or fixes.                                                       |
+| Agent | `adversary`              | Red-team review: attacks the evidence, the logic, and the scope. Never builds or fixes.                                                        |
 | Skill | `supervised-development` | Drives a delegated change to a green probe: brief from a file, own the build-install-probe cycle, judge the side-effect, reopen a false done.  |
 | Skill | `strategic-review`       | Deploys rbg, pauli, and marsha in parallel and reconciles their findings into one verdict. Bound to james.                                     |
 | Skill | `verify`                 | Marsha's QA pass: assume it is broken, then prove otherwise. Bound to marsha; commissioned, never invoked directly.                            |

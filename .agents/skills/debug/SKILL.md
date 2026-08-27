@@ -375,6 +375,7 @@ score its claims against; its own report is not evidence that anything ran.
 ---
 
 ## Clean Up
+
 ```bash
 tmux send-keys -t "$TMUX_NAME" -l "/exit"; tmux send-keys -t "$TMUX_NAME" Enter
 sleep 2   # Allow client to flush transcript buffer and host bind-mounts
