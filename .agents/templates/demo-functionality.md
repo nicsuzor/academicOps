@@ -21,9 +21,9 @@ deliverable is a narrated run against real state plus whatever the run exposed.
   have been a paragraph wastes the reader's attention, which is the scarcest
   input here.
 - The ask is to change the mechanism — that is `framework-gate`, then whatever
-  it routes to. A demo may *precede* a change; it never substitutes for one.
+  it routes to. A demo may _precede_ a change; it never substitutes for one.
 - The mechanism cannot be run for real right now. Say so and stop. A narrated
-  walkthrough of what *would* happen is the failure mode this template exists
+  walkthrough of what _would_ happen is the failure mode this template exists
   to prevent, and it is indistinguishable from a real run in the transcript.
 
 ## What this process obliges
@@ -42,11 +42,11 @@ deliverable is a narrated run against real state plus whatever the run exposed.
    tier name. The reader must be able to check the demo without re-running it.
 
 4. **Narrate in three beats per step: what is about to happen and why → the
-   action → the observed result.** State the expectation *before* the result is
+   action → the observed result.** State the expectation _before_ the result is
    visible. Retro-fitting a prediction to an outcome is the cheapest way to make
    a broken mechanism look correct.
 
-5. **Show at least one boundary.** Something the mechanism does *not* do, or a
+5. **Show at least one boundary.** Something the mechanism does _not_ do, or a
    case where it declines. A demo made only of confirmations teaches the shape
    of the happy path and nothing about where it ends — and cannot detect drift,
    because drift lives at the edges.
