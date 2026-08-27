@@ -1,0 +1,225 @@
+# PKB Maintenance Sweep: read-only graph diagnostics.
+# Produces three artifacts every run: an orphan report, a stale-task report,
+# and a graph health snapshot. Never mutates the PKB data repo — this is
+# reporting only. Consolidation/dedup/pruning is a separate, currently-gated
+# capability and does not belong in this workflow.
+#
+# Cadence: weekly, Sunday 04:15 UTC. Chosen over daily because this sweep is
+# diagnostic-only (no fixes applied) and a week-old orphan/staleness count is
+# still actionable; daily would multiply agent-session cost for no gain in a
+# workflow that never acts on what it finds. Mirrors the (currently unshipped)
+# templates/github-workflows/pkb-quality-review.yml weekly cadence, offset by
+# a day so the two sweeps don't compete for the same window.
+#
+# Requires a repository variable PKB_DATA_REPO ("owner/name") pointing at the
+# PKB data repo to sweep. Not defaulted here: this workflow ships as part of
+# academicOps, and no PKB data repo belongs in the framework's own source.
+
+name: PKB Maintenance Sweep
+
+on:
+  schedule:
+    - cron: '15 4 * * 0' # Weekly, Sunday 04:15 UTC
+  workflow_dispatch:
+    inputs:
+      pkb_data_repo:
+        description: 'Override the PKB data repo to sweep (owner/name). Defaults to the PKB_DATA_REPO repository variable.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pkb-maintenance-sweep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  maintenance-sweep:
+    name: PKB Maintenance Sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Resolve PKB data repo
+        id: resolve
+        run: |
+          REPO="${{ inputs.pkb_data_repo || vars.PKB_DATA_REPO }}"
+          if [ -z "$REPO" ]; then
+            echo "::error::No PKB data repo configured. Set the PKB_DATA_REPO repository variable (Settings > Secrets and variables > Actions > Variables) to 'owner/name', or pass pkb_data_repo when dispatching manually."
+            exit 1
+          fi
+          echo "repo=$REPO" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout academicOps (this repo)
+        uses: actions/checkout@v4
+
+      - name: Checkout PKB data repo (read-only sweep target)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.resolve.outputs.repo }}
+          path: _brain
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
+      - name: Record PKB data repo HEAD (mutation guard baseline)
+        id: baseline
+        run: echo "sha=$(git -C _brain rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure OpenTelemetry env
+        # Forwards the OTel env contract (specs/ARCHITECTURE.md, Observability)
+        # into the Claude Code session below via claude-code-action's
+        # settings.env mechanism. Forwards only: a contract var absent from
+        # this repo's Settings > Variables is omitted, never defaulted.
+        env:
+          CLAUDE_CODE_ENABLE_TELEMETRY: ${{ vars.CLAUDE_CODE_ENABLE_TELEMETRY }}
+          CLAUDE_CODE_ENHANCED_TELEMETRY_BETA: ${{ vars.CLAUDE_CODE_ENHANCED_TELEMETRY_BETA }}
+          OTEL_METRICS_EXPORTER: ${{ vars.OTEL_METRICS_EXPORTER }}
+          OTEL_LOGS_EXPORTER: ${{ vars.OTEL_LOGS_EXPORTER }}
+          OTEL_TRACES_EXPORTER: ${{ vars.OTEL_TRACES_EXPORTER }}
+          OTEL_EXPORTER_OTLP_ENDPOINT: ${{ vars.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          OTEL_EXPORTER_OTLP_PROTOCOL: ${{ vars.OTEL_EXPORTER_OTLP_PROTOCOL }}
+          OTEL_RESOURCE_ATTRIBUTES: ${{ vars.OTEL_RESOURCE_ATTRIBUTES }}
+          OTEL_LOG_USER_PROMPTS: ${{ vars.OTEL_LOG_USER_PROMPTS }}
+          OTEL_LOG_RAW_API_BODIES: ${{ vars.OTEL_LOG_RAW_API_BODIES }}
+          OTEL_LOG_TOOL_DETAILS: ${{ vars.OTEL_LOG_TOOL_DETAILS }}
+          OTEL_LOG_ASSISTANT_RESPONSES: ${{ vars.OTEL_LOG_ASSISTANT_RESPONSES }}
+          OTEL_METRIC_EXPORT_INTERVAL: ${{ vars.OTEL_METRIC_EXPORT_INTERVAL }}
+          OTEL_LOGS_EXPORT_INTERVAL: ${{ vars.OTEL_LOGS_EXPORT_INTERVAL }}
+          OTEL_TRACES_EXPORT_INTERVAL: ${{ vars.OTEL_TRACES_EXPORT_INTERVAL }}
+        run: |
+          jq -n \
+            --arg CLAUDE_CODE_ENABLE_TELEMETRY "$CLAUDE_CODE_ENABLE_TELEMETRY" \
+            --arg CLAUDE_CODE_ENHANCED_TELEMETRY_BETA "$CLAUDE_CODE_ENHANCED_TELEMETRY_BETA" \
+            --arg OTEL_METRICS_EXPORTER "$OTEL_METRICS_EXPORTER" \
+            --arg OTEL_LOGS_EXPORTER "$OTEL_LOGS_EXPORTER" \
+            --arg OTEL_TRACES_EXPORTER "$OTEL_TRACES_EXPORTER" \
+            --arg OTEL_EXPORTER_OTLP_ENDPOINT "$OTEL_EXPORTER_OTLP_ENDPOINT" \
+            --arg OTEL_EXPORTER_OTLP_PROTOCOL "$OTEL_EXPORTER_OTLP_PROTOCOL" \
+            --arg OTEL_RESOURCE_ATTRIBUTES "$OTEL_RESOURCE_ATTRIBUTES" \
+            --arg OTEL_LOG_USER_PROMPTS "$OTEL_LOG_USER_PROMPTS" \
+            --arg OTEL_LOG_RAW_API_BODIES "$OTEL_LOG_RAW_API_BODIES" \
+            --arg OTEL_LOG_TOOL_DETAILS "$OTEL_LOG_TOOL_DETAILS" \
+            --arg OTEL_LOG_ASSISTANT_RESPONSES "$OTEL_LOG_ASSISTANT_RESPONSES" \
+            --arg OTEL_METRIC_EXPORT_INTERVAL "$OTEL_METRIC_EXPORT_INTERVAL" \
+            --arg OTEL_LOGS_EXPORT_INTERVAL "$OTEL_LOGS_EXPORT_INTERVAL" \
+            --arg OTEL_TRACES_EXPORT_INTERVAL "$OTEL_TRACES_EXPORT_INTERVAL" \
+            '{env: ($ARGS.named | with_entries(select(.value != "")))}' \
+            > "${RUNNER_TEMP}/otel-settings.json"
+
+      - name: Run maintenance sweep agent
+        id: claude
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          settings: ${{ runner.temp }}/otel-settings.json
+          prompt: |
+            You are the PKB Maintenance Sweep agent. Your ONLY job is to produce
+            three read-only diagnostic reports on the PKB task/knowledge graph.
+            You are STRICTLY FORBIDDEN from mutating, consolidating, merging,
+            pruning, deleting, or "fixing" anything. This is diagnostics only —
+            a separate, currently-gated task owns consolidation, and unattended
+            bulk processing of this graph has twice produced mass deletion.
+
+            ## Environment
+            - academicOps (code, reference only): ${{ github.workspace }}
+            - PKB data repo to sweep (READ-ONLY): ${{ github.workspace }}/_brain
+
+            ## What "orphan", "stale", and "graph health" mean here
+            Read these two sections for the working definitions — apply the
+            same judgment, but report findings, never act on them:
+              ${{ github.workspace }}/plugins/pkb/skills/remember/references/consolidation.md
+              (Stage 1 "Baseline" and Stage 5 "Sweep for Orphans")
+
+            ## CI-Specific Rules
+            - **No PKB MCP server** — it runs on a private network unreachable
+              from GitHub Actions. Use Grep/Glob/Read directly against the
+              markdown files under `_brain/`. Do NOT reference any
+              `mcp__services__pkb__*` or `mcp__plugin_pkb_services__*` tool —
+              they will not resolve.
+            - **Staleness verification degrades to flagging candidates only**
+              on CI (no email/calendar MCP to confirm real-world status) —
+              list candidates with your reasoning, do not assert certainty.
+            - Time budget: 15 minutes. Exit cleanly and write partial reports
+              (clearly marked incomplete) rather than running past budget.
+            - **Absolutely no writes under `_brain/`.** Do not create, edit,
+              rename, or delete any file there, and do not run `git commit`,
+              `git push`, or any mutating git command inside `_brain/`. A
+              mechanical check after this step verifies `_brain/` is
+              byte-for-byte unchanged and fails the job if it is not.
+
+            ## Deliverables
+            Write exactly these three files at `${{ github.workspace }}`
+            (i.e. sibling to `_brain/`, not inside it):
+
+            1. `orphan-report.md` — tasks and knowledge notes in `_brain/`
+               with no parent, no `contributes_to`/`depends_on` edge, and no
+               inbound wikilink from anything else in the graph. Group by
+               type. State the count at the top.
+            2. `stale-tasks.md` — tasks whose status is `in_progress`,
+               `queued`, or `blocked` and whose frontmatter `modified` /
+               `last_modified` is older than 30 days. List each with id,
+               title, status, and last-modified date. State the count at the
+               top. These are candidates for human review, not verdicts.
+            3. `graph-health.md` — a snapshot: total node count by `type`,
+               total by `status`, orphan count (cross-reference with #1),
+               stale count (cross-reference with #2), and any disconnected
+               epics (epics with zero children/subtasks found). Include the
+               `_brain` repo HEAD sha (`${{ steps.baseline.outputs.sha }}`)
+               and today's date so the snapshot is reproducible/comparable
+               across runs.
+
+            Write a one-paragraph summary to $GITHUB_STEP_SUMMARY linking the
+            three counts (orphans / stale / disconnected epics) — this is the
+            first thing a human sees, so lead with the numbers.
+
+      - name: Verify PKB data repo was not modified
+        if: always()
+        run: |
+          cd _brain
+          CURRENT_SHA="$(git rev-parse HEAD)"
+          if [ "$CURRENT_SHA" != "${{ steps.baseline.outputs.sha }}" ]; then
+            echo "::error::_brain HEAD moved during the sweep (${{ steps.baseline.outputs.sha }} -> $CURRENT_SHA). This workflow must be strictly read-only."
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Agent left uncommitted changes in the PKB data repo. This workflow must be strictly read-only."
+            git status --porcelain
+            exit 1
+          fi
+          echo "Confirmed read-only: _brain unchanged at $CURRENT_SHA"
+
+      - name: Upload maintenance sweep reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkb-maintenance-sweep-${{ github.run_id }}
+          path: |
+            orphan-report.md
+            stale-tasks.md
+            graph-health.md
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Propagate maintenance sweep outcome
+        if: always()
+        run: |
+          if [ "${{ steps.claude.outcome }}" != "success" ]; then
+            echo "::error::Maintenance sweep agent failed or timed out."
+            exit 1
+          else
+            echo "::notice::Maintenance sweep completed successfully."
+          fi
