@@ -33,17 +33,17 @@ Under [[kb_ca944227]], spawning an agent whose only job is to wait or poll on an
 **If you have a task id:**
 
 ```bash
-HEAD=$(git rev-parse HEAD)
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 NAME="dispatch-<task-id>"
-uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s "$NAME" --base "$HEAD"
+uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s "$NAME" --base "$BRANCH"
 ```
 
 **If you have a prompt only:**
 
 ```bash
-HEAD=$(git rev-parse HEAD)
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 NAME="run-<slug>"
-uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s "$NAME" --base "$HEAD" --prompt '<prompt>'
+uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s "$NAME" --base "$BRANCH" --prompt '<prompt>'
 ```
 
 **Notes:**
@@ -51,7 +51,7 @@ uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/
 - `polecat run` is strictly synchronous: it runs to completion and emits its result on stdout.
 - `--prompt` **must be last**: everything after it is part of the prompt.
 - **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop for output. Your native harness tools will handle the output for you.
-- `--base $HEAD` always: workers branch from the caller's current commit.
+- `--base <branch>`: specifies the base branch to diverge from (fetched fresh from origin before creating the worktree). When omitted, polecat automatically branches from up-to-date upstream HEAD.
 - `-s` sets the session name.
 - `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`).
 - Never use `-d` (`--repo-dir`) with a linked git worktree: its `.git` file points outside the container mounts and git breaks.

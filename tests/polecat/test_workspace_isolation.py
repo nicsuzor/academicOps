@@ -503,3 +503,168 @@ def test_isolated_workspace_fails_on_unresolvable_ref(fake_canonical_repo, tmp_p
             polecat_home,
             base="nonexistent-branch-xyz",
         )
+
+
+def test_isolated_workspace_fetches_remote_when_local_branch_is_stale(tmp_path):
+    """Mode 1 Regression Test: When a local branch in canonical checkout is stale
+    (behind its origin counterpart), resolve_isolated_workspace must fetch the remote
+    and base the worker worktree on the up-to-date remote commit, NEVER on the stale local SHA."""
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    # Canonical checkout initializes and pushes initial commit to upstream dev branch
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("initial dev commit\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial dev", cwd=canonical)
+    _run("git", "branch", "-m", "dev", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "dev", cwd=canonical)
+    stale_sha = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+
+    # Another dev pushes an update to upstream dev branch
+    other_dev = tmp_path / "other-dev"
+    other_dev.mkdir()
+    _run("git", "clone", str(upstream), str(other_dev), cwd=tmp_path)
+    _run("git", "config", "user.email", "test@example.com", cwd=other_dev)
+    _run("git", "config", "user.name", "Test", cwd=other_dev)
+    _run("git", "checkout", "dev", cwd=other_dev)
+    (other_dev / "new_feature.py").write_text("# new feature code\n")
+    _run("git", "add", "new_feature.py", cwd=other_dev)
+    _run("git", "commit", "-m", "update dev upstream", cwd=other_dev)
+    _run("git", "push", "origin", "dev", cwd=other_dev)
+    remote_fresh_sha = _run("git", "rev-parse", "HEAD", cwd=other_dev).strip()
+
+    assert stale_sha != remote_fresh_sha
+
+    # Dispatch specifying base="dev"
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-stale-mode1", polecat_home, base="dev"
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    # Must match remote fresh commit, not stale local commit
+    assert isolated_sha == remote_fresh_sha
+    assert (isolated_path / "new_feature.py").exists()
+    assert (isolated_path / "new_feature.py").read_text() == "# new feature code\n"
+
+    # Canonical checkout must remain untouched (local dev branch still at stale_sha)
+    canonical_sha = _run("git", "rev-parse", "refs/heads/dev", cwd=canonical).strip()
+    assert canonical_sha == stale_sha
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_fetches_remote_only_branch_without_prior_fetch(tmp_path):
+    """Mode 2 Regression Test: When a branch exists on origin but has never been fetched
+    locally into the canonical checkout, resolve_isolated_workspace must fetch and resolve it."""
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("main\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+    _run("git", "branch", "-m", "main", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "main", cwd=canonical)
+
+    # Another dev pushes a brand new branch to origin
+    other_dev = tmp_path / "other-dev"
+    other_dev.mkdir()
+    _run("git", "clone", str(upstream), str(other_dev), cwd=tmp_path)
+    _run("git", "config", "user.email", "test@example.com", cwd=other_dev)
+    _run("git", "config", "user.name", "Test", cwd=other_dev)
+    _run("git", "checkout", "-b", "feature/unfetched-remote", cwd=other_dev)
+    (other_dev / "unfetched.txt").write_text("unfetched branch content\n")
+    _run("git", "add", "unfetched.txt", cwd=other_dev)
+    _run("git", "commit", "-m", "commit on remote branch", cwd=other_dev)
+    _run("git", "push", "origin", "feature/unfetched-remote", cwd=other_dev)
+    remote_branch_sha = _run("git", "rev-parse", "HEAD", cwd=other_dev).strip()
+
+    # Canonical checkout has NEVER run git fetch for this branch
+    local_branches = _run("git", "branch", "--list", "feature/unfetched-remote", cwd=canonical).strip()
+    assert local_branches == ""
+
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-unfetched-mode2", polecat_home, base="feature/unfetched-remote"
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == remote_branch_sha
+    assert (isolated_path / "unfetched.txt").read_text() == "unfetched branch content\n"
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_fails_closed_on_unreachable_remote(tmp_path):
+    """When an explicit base is specified and origin remote is unreachable/fails to fetch,
+    resolve_isolated_workspace must fail closed (SystemExit), never proceed on stale local SHA."""
+    canonical = tmp_path / "canonical-unreachable"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("content\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+    _run("git", "remote", "add", "origin", "https://invalid.unreachable.example.internal/repo.git", cwd=canonical)
+
+    polecat_home = tmp_path / "polecat-home"
+    with pytest.raises(SystemExit):
+        resolve_isolated_workspace(
+            canonical, "session-unreachable-remote", polecat_home, base="some-feature"
+        )
+
+
+def test_canonical_checkout_immutability_during_dispatch(tmp_path):
+    """The canonical shared checkout must experience zero mutation: no working tree changes,
+    no index changes, and no local branch HEAD movement."""
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    canonical = tmp_path / "canonical-immutable"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("hello canonical\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "canonical commit", cwd=canonical)
+    _run("git", "branch", "-m", "main", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "main", cwd=canonical)
+
+    head_before = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+    status_before = _run("git", "status", "--porcelain", cwd=canonical).strip()
+    branch_before = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=canonical).strip()
+
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-immutable-check", polecat_home, base="main"
+    )
+
+    head_after = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+    status_after = _run("git", "status", "--porcelain", cwd=canonical).strip()
+    branch_after = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=canonical).strip()
+
+    assert head_before == head_after
+    assert status_before == status_after
+    assert branch_before == branch_after
+
+    cleanup_isolated_workspace(cleanup_info)
+
+

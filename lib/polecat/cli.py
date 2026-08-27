@@ -678,15 +678,96 @@ def resolve_isolated_workspace(
     clone_path = clones_dir / session_id
     branch_name = branch or f"polecat/{session_id}"
 
-    config = config or {}
-    base_ref = base or branch or config.get("branch") or "HEAD"
+    origin_result = subprocess.run(
+        ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+    )
+    origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
-    # Resolve the base commit SHA from base_ref (base option, branch option, polecat.yaml branch, or HEAD)
+    config = config or {}
+    base_ref = (
+        base
+        or branch
+        or config.get("branch")
+        or config.get("default_branch")
+        or "HEAD"
+    ).strip()
+
+    # Resolve the base commit SHA from base_ref with remote freshness verification
     base_sha = None
     last_err = ""
-    refs_to_try = [base_ref]
-    if not base_ref.startswith("origin/"):
-        refs_to_try.append(f"origin/{base_ref}")
+    refs_to_try = []
+
+    if origin_url:
+        if base_ref != "HEAD" and not base_ref.startswith("origin/"):
+            # Fetch the ref from origin into the remote-tracking namespace without moving local branches
+            fetch_res = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical_dir),
+                    "fetch",
+                    "origin",
+                    f"+refs/heads/{base_ref}:refs/remotes/origin/{base_ref}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if fetch_res.returncode != 0:
+                fetch_res = subprocess.run(
+                    ["git", "-C", str(canonical_dir), "fetch", "origin", base_ref],
+                    capture_output=True,
+                    text=True,
+                )
+            if fetch_res.returncode != 0 and base:
+                fail(
+                    f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
+                )
+            # Remote ref is tried FIRST to close Mode 1 (silent stale local ref)
+            refs_to_try = [f"refs/remotes/origin/{base_ref}", f"origin/{base_ref}"]
+            refs_to_try.append(base_ref)
+        elif base_ref.startswith("origin/"):
+            ref_name = base_ref.removeprefix("origin/")
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical_dir),
+                    "fetch",
+                    "origin",
+                    f"+refs/heads/{ref_name}:refs/remotes/origin/{ref_name}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            refs_to_try = [f"refs/remotes/{base_ref}", base_ref]
+        elif base_ref == "HEAD":
+            upstream_res = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical_dir),
+                    "rev-parse",
+                    "--abbrev-ref",
+                    "--symbolic-full-name",
+                    "@{u}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if upstream_res.returncode == 0:
+                upstream_ref = upstream_res.stdout.strip()
+                subprocess.run(
+                    ["git", "-C", str(canonical_dir), "fetch", "origin"],
+                    capture_output=True,
+                    text=True,
+                )
+                refs_to_try = [upstream_ref, "HEAD"]
+            else:
+                refs_to_try = ["HEAD"]
+    else:
+        refs_to_try = [base_ref]
 
     for ref_to_try in refs_to_try:
         base_result = subprocess.run(
@@ -707,13 +788,6 @@ def resolve_isolated_workspace(
 
     if not base_sha:
         fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{last_err}")
-
-    origin_result = subprocess.run(
-        ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
-        capture_output=True,
-        text=True,
-    )
-    origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
     clone_result = subprocess.run(
         [
@@ -740,6 +814,18 @@ def resolve_isolated_workspace(
         capture_output=True,
         text=True,
     )
+    if checkout_result.returncode != 0 and origin_url:
+        subprocess.run(
+            ["git", "-C", str(clone_path), "fetch", "--depth=50", "origin", base_sha],
+            capture_output=True,
+            text=True,
+        )
+        checkout_result = subprocess.run(
+            ["git", "-C", str(clone_path), "checkout", "-B", branch_name, base_sha],
+            capture_output=True,
+            text=True,
+        )
+
     if checkout_result.returncode != 0:
         shutil.rmtree(clone_path, ignore_errors=True)
         fail(
