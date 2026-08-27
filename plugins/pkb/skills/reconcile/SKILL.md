@@ -15,6 +15,17 @@ This is the only place the reconcile procedure lives. Other skills invoke it;
 none of them re-implements it. What it governs is tasks and the pull requests
 they resolve against.
 
+## The governing invariant
+
+**No thread is ever left with nobody to pick it up.** Every reconcile finding
+that represents unfinished work must terminate in exactly one of: a task
+standing at `queued` for a worker, or a task at `review` parked on a decision
+Nic has to make. A finding that is merely *surfaced in a report* is dropped — the
+report is read once and then gone.
+
+Reconcile's job is therefore not only to correct a lying status but to **ensure a
+live successor exists** for the work.
+
 ## What you are
 
 **A fact-writing channel, and nothing else.** Every write you make is something
@@ -24,6 +35,9 @@ exists, a person wrote a close reason. That is the whole of your authority.
 - You **never certify work complete on your own judgment.** Where a `done` is
   right, it is because an observable criterion was met or a person said so —
   never because a task is old, quiet, duplicative, or inconvenient.
+- You **never write `in_progress`.** It means **a worker is actively working on
+  the task, right now**. A task whose delivery fell short or whose claim is dead
+  has no worker on it — writing `in_progress` is a false claim of live work.
 - You **do cancel, and only on affirmative evidence.** Cancelling is a different
   act from completing: it asserts the work is no longer wanted or no longer
   possible, never that anyone performed it. Two kinds of evidence license it,
@@ -77,10 +91,15 @@ calls, never one wide one.
 
 ### Task Status Reconciliation
 
-Evaluate each non-terminal task in `in_progress`, `review`, or `merge_ready` status individually to verify its actual state against reality:
+Evaluate each non-terminal task in `in_progress`, `review`, or `merge_ready`
+status individually to verify its actual state against reality:
 
-- Check whether active work is still occurring, whether work was completed, or whether an associated PR was merged or closed.
-- Update the task's status in the PKB to accurately reflect reality (e.g., mark as `done`, return to `inbox`, or set to `ready`).
+- Check whether active work is still occurring, whether work was completed, or
+  whether an associated PR was merged or closed.
+- Update the task's status in the PKB to accurately reflect reality (e.g., mark
+  as `done`, return to `inbox`, or set to `ready`).
+- **Never write `in_progress`.** That status is claimed exclusively by a live
+  worker actively working on the task.
 
 ## 2 — Probe every suspect claim, then confirm it or requeue it
 
@@ -143,25 +162,54 @@ once the writes inside it have succeeded.
 
 Run a **backstop that ignores the window** over every task in `merge_ready` or
 `review`, oldest first — these rot regardless of when anything closed, and they
-are not the same parked state. A `merge_ready` task
-resolves against its pull request — merged and not yet done goes through the same
-criteria check; closed-without-merge routes below; **no resolvable pull request
-at all is anomalous** and gets surfaced, not closed. A `review` task is parked on
-a human decision and is **never auto-closed**: if it carries a pull request, note
-that pull request's live state in what you surface; if it has none, which is the
-common case, surface it as awaiting a decision so it cannot rot silently.
+are not the same parked state.
 
-Also surface: a body claiming release with no pull request recorded; a worker that
-ran and recorded that it changed nothing, which re-queues to `inbox` with an
-annotation saying the run happened and produced no work; and three or more
-sweep reports on one task all reading closed-without-merge, which is strong
-evidence the approach keeps failing and belongs in the routing context.
+`merge_ready` must mean one thing only: **an open, mergeable pull request awaiting Nic's merge.**
 
-**Never force a close past open children.** When a merge is confirmed but the
-close is rejected because children are open, do not cascade. Open children may be
-legitimate post-merge follow-up, and cascade-closing destroys real pending work.
-Surface it as merge-confirmed, close-blocked, and let it resolve when the child
-does.
+### Resulting mapping for `merge_ready` tasks
+
+| Observed state of a `merge_ready` task | Action |
+|---|---|
+| PR open, CI failing | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
+| PR open, `DIRTY` (conflicts) | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
+| PR open, `CHANGES_REQUESTED` | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
+| No branch on remote, or branch with no PR | Original → `queued`, note the existing branch/worktree |
+| PR open, green, no blocking review | **Stays** `merge_ready` |
+| PR merged, close blocked by open children | **Stays** `merge_ready` (awaiting the child; do not cascade) |
+| Acceptance criterion unmet or needs interpreting | `review` — parked on a human decision |
+| PR closed without merge | Route per §4 (unchanged) |
+
+### 1. A finished worker with a failed PR gets a follow-up fix task
+
+When a `merge_ready` task's PR exists but cannot merge — CI red, `DIRTY` (conflicts), or `CHANGES_REQUESTED` — the original worker is gone and will not come back. Reconcile must **create a new task to go fix it** and set it `queued`, rather than re-queuing the original.
+
+The follow-up task must carry, in its body:
+- the failing PR's number and URL, and the specific failure (which check, which job, the error, or the reviewer's requested change — quoted, not paraphrased);
+- the head branch and any preserved worktree path, so the fix resumes the existing branch rather than starting a second parallel attempt against the same PR;
+- a `depends_on` or equivalent link so the original node and the fix are traceable to each other.
+
+The original node **does not** go back to `queued` — its delivery happened and its PR is the artifact. Park it as `blocked` on the new fix task so it cannot be double-dispatched.
+
+**Duplicate prevention**: Check for an existing open follow-up task against the same PR first before creating a new one. A sweep that runs multiple times must not produce multiple fix tasks.
+
+### 2. Delivery that never produced a PR
+
+No branch on the remote, or a branch pushed with no PR opened: the delivery is incomplete and no artifact exists to fix. Set the original back to **`queued`** so the dispatcher picks it up, and record on the node that a worktree/branch already exists (with its path) so the next worker resumes rather than restarting.
+
+### 3. `review` tasks
+
+A `review` task is parked on a human decision and is **never auto-closed**: if it carries a pull request, note that pull request's live state in what you surface; if it has none, which is the common case, surface it as awaiting a decision so it cannot rot silently.
+
+### 4. General rules and constraints
+
+- **Never write `in_progress`.** It is claimed by a live worker and nothing else.
+- **Deterministic evaluation**: Compute the target status and follow-up action deterministically from PR attributes (`lib.py.reconcile` / `reconcile.evaluate_pr_state`).
+- **Always record why**, on the node, in one line naming the observed cause (`CI red on PR #NNN`, `no PR for branch X`) so the next sweep does not re-derive it.
+- **One correct current version per node.** Do not append a dated layer beside an existing note saying the same thing — replace it.
+- **Do not touch `review`.** That status is parked on a human decision and stays never-auto-closed.
+- **Never revert a state change someone else made.** Act on observed evidence about the PR, not because a status merely looks wrong.
+- **Never force a close past open children.** When a merge is confirmed but the close is rejected because children are open, do not cascade. Open children may be legitimate post-merge follow-up, and cascade-closing destroys real pending work. Surface it as merge-confirmed, close-blocked, and let it resolve when the child does.
+- Also surface: a body claiming release with no pull request recorded; a worker that ran and recorded that it changed nothing, which re-queues to `inbox` with an annotation saying the run happened and produced no work; and three or more sweep reports on one task all reading closed-without-merge, which is strong evidence the approach keeps failing and belongs in the routing context.
 
 If the state this step depends on is absent — as distinct from the PKB being
 unreachable — say so explicitly. Never report a step as complete when it never
@@ -316,6 +364,12 @@ stopped leaves the next sweep no way to start.
 
 - Close, cancel, or complete anything because it is old, quiet, or inconvenient.
   Age is a candidacy signal and nothing more.
+- Write `in_progress`. That status is reserved exclusively for a live worker
+  actively executing a task.
+- Leave an unfinished-work finding in a report line alone without ensuring a
+  live successor exists (a `queued` task for a worker, or a task at `review`
+  parked on a human decision).
+- Create duplicate follow-up fix tasks for the same failing PR across multiple sweeps.
 - Cancel anything without the evidence its own trigger requires, written into
   the node body (§5) — and, where you claim a referent was destroyed, without
   the deletion-versus-relocation check. Where the two cannot be told apart,
@@ -327,7 +381,8 @@ stopped leaves the next sweep no way to start.
   judgment a person has not made.
 - Prune, restructure, merge, or re-parent anything.
 - Write `focus_score`, `priority`, or `severity`.
-- Promote work into `queued`. That gate is the user's.
+- Promote work into `queued` outside of the explicit reconcile recovery rules
+  (re-queueing incomplete delivery that produced no PR, or creating follow-up fix tasks).
 - Re-plan: re-sort assumptions, design probes, cut units, or write briefs.
 - Certify work, or relay a worker's self-report as a certification verdict.
 - Decide by pattern where prose is what decides. Mechanical matching is for

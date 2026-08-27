@@ -30,13 +30,17 @@ spec should be read as claiming they currently run.
 ## Design constraints (non-negotiable)
 
 1. **One canonical owner.** The reconcile procedure lives in one skill. Other skills invoke it; they do not re-implement it.
-2. **No Shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces (frontmatter fields, the GH API's `closingIssuesReferences` structured field, frontmatter URLs). Anywhere prose is involved, an agent reads it.
-3. **State lives in PKB frontmatter** (the graph). Deltas between GH state and PKB state are surfaced through a short-lived (≤48h) event log. The log is a queue of unprocessed deltas, not state.
-4. **All task writes go through PKB MCP.** That is the concurrency primitive.
-5. **Nothing is flagged for a person without a surface that renders it.** The sweep's own synthesized result is that surface — it leads with what needs a person's decision. Writing a `needs_user_call` flag to the graph with no consumer that renders it is a `halt-on-failure` violation.
-6. **Reverse direction default**: comment-only on GH (cite PKB task ID + closing commit SHA). Auto-close the GH issue only for framework-owned repos and only when the task carries an explicit `closes_issues:` marker (not `gates_on:`).
-7. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write).
-8. **Implementing agent owns file layout, naming, invocation grammar, and verification approach.** This spec does not mandate a directory tree, file names, mode flags, or audit mechanism. Those are downstream decisions the agent makes when landing the work, defended by the constraints above.
+2. **The governing invariant: no thread is ever left with nobody to pick it up.** Every reconcile finding that represents unfinished work must terminate in exactly one of: a task standing at `queued` for a worker, or a task at `review` parked on a decision Nic has to make. A finding that is merely surfaced in a report is dropped. Reconcile ensures a live successor exists.
+3. **`merge_ready` strictly means open, mergeable PR awaiting merge.** When a `merge_ready` task's PR cannot merge (CI failing, `DIRTY` conflicts, `CHANGES_REQUESTED`), reconcile creates a new follow-up fix task at `queued` (carrying failing PR number/URL, quoted error/change request, branch/worktree path, and dependency link) and parks the original as `blocked` on the fix task. If delivery produced no PR or remote branch, the original returns to `queued` noting the existing branch/worktree.
+4. **`in_progress` is reserved and reconcile never writes it.** It indicates a worker is actively working on the task right now; completed or failed delivery has no live worker.
+5. **Duplicate prevention.** Check for an existing open follow-up task against the same PR before creating a new one; repeated sweeps must not create duplicate fix tasks.
+6. **No Shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces (frontmatter fields, the GH API's `closingIssuesReferences` structured field, frontmatter URLs). Anywhere prose is involved, an agent reads it.
+7. **State lives in PKB frontmatter** (the graph). Deltas between GH state and PKB state are surfaced through a short-lived (≤48h) event log. The log is a queue of unprocessed deltas, not state.
+8. **All task writes go through PKB MCP.** That is the concurrency primitive.
+9. **Nothing is flagged for a person without a surface that renders it.** The sweep's own synthesized result is that surface — it leads with what needs a person's decision. Writing a `needs_user_call` flag to the graph with no consumer that renders it is a `halt-on-failure` violation.
+10. **Reverse direction default**: comment-only on GH (cite PKB task ID + closing commit SHA). Auto-close the GH issue only for framework-owned repos and only when the task carries an explicit `closes_issues:` marker (not `gates_on:`).
+11. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write).
+12. **Implementing agent owns file layout, naming, invocation grammar, and verification approach.** This spec does not mandate a directory tree, file names, mode flags, or audit mechanism. Those are downstream decisions the agent makes when landing the work, defended by the constraints above.
 
 ## Invocation contexts
 
