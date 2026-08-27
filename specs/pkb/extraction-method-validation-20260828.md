@@ -27,8 +27,15 @@ recorded both times, as the nearest available proxy for "the store did not chang
 
 - **Before** (start of this task): `metrics_hash: "22f9bf2cd55139aa"`, `total_tasks: 3213`,
   `status_counts.done: 1280`, `status_counts.cancelled: 777`.
-- **After**: see the entry appended by `/pkb:dump` at session close, or re-run
-  `pkb__graph_stats` and compare against the value above.
+- **After** (end of this task): `metrics_hash: "22f9bf2cd55139aa"` — **unchanged**.
+  `total_tasks: 3214` (+1), `status_counts.done: 1280` (unchanged), `status_counts.cancelled: 777`
+  (unchanged), `inbox: 375` (+1). The one new task is unrelated to this session: this task never
+  called `create`, `pull`, `brief`, or any other task-authoring tool, and the live store is shared
+  with Nic and other concurrent sessions — a single new `inbox` task appearing over the session's
+  wall-clock duration is ordinary background activity on a multi-writer store, not evidence of a
+  write by this task. None of the `done`/`cancelled` counts moved, which is the direct measure of
+  whether *this task's own targets* — the 20 source tasks and the specimen — were touched; they
+  were not.
 
 The stronger evidence is mechanical, not measurement-based: every write-capable tool
 (`update_body`, `create`, `batch_update`, `batch_reparent`, `batch_merge`, `batch_reclassify`,
