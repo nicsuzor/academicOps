@@ -1,6 +1,7 @@
 ---
 id: burst
-kind: process
+type: template
+kind: fragment
 category: fragment
 description: Stateful, multi-session batch lifecycle — init, run, persist, resume — for iterative work too large for one session
 requires: [task-tracking]

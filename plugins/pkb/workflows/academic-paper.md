@@ -1,7 +1,8 @@
 ---
 id: academic-paper
+type: template
 title: Academic Paper Workflow Spine
-type: process
+kind: process
 category: academic
 description: Academic paper lifecycle from idea through drafting, internal review, and submission — the flat spine specialisers pair into
 status: ready

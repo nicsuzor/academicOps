@@ -17,11 +17,14 @@ and this skill's whole job is to report the library.
 
 ## The three tiers
 
-| Tier         | Where                                 | Enumerate with                                 |
-| ------------ | ------------------------------------- | ---------------------------------------------- |
-| 1. Project   | `$CWD/.agents/templates/*.md`         | `ls`; absent directory means empty             |
-| 2. PKB       | graph documents with `type: template` | `pkb__list_documents(type="template")`         |
-| 3. Universal | `../../workflows/*.md`                | `ls`, catalogued by `../../workflows/INDEX.md` |
+| Tier         | Where                         | Enumerate with                                 |
+| ------------ | ----------------------------- | ---------------------------------------------- |
+| 1. Project   | `$CWD/.agents/templates/*.md` | `ls`; absent directory means empty             |
+| 2. PKB       | the graph                     | `pkb__list_documents(type="template")`         |
+| 3. Universal | `../../workflows/*.md`        | `ls`, catalogued by `../../workflows/INDEX.md` |
+
+Every tier marks a template the same way — `type: template` in frontmatter. The
+tiers differ only in where you look.
 
 **Resolution: project ≻ PKB ≻ universal.** Slugs match case-insensitively,
 ignoring a `wf-` prefix and `_`/`-` differences: `feature-dev`, `wf-feature-dev`

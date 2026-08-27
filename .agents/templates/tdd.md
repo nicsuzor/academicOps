@@ -1,6 +1,7 @@
 ---
 id: tdd
-kind: process
+type: template
+kind: fragment
 category: fragment
 description: Red-green-refactor cycle for any testable code change
 requires: []

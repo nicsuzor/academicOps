@@ -1,5 +1,6 @@
 ---
 id: email-triage
+type: template
 kind: process
 category: email
 description: Classify incoming emails into Task/FYI/Skip/Uncertain with priority inference

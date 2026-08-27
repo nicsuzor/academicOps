@@ -1,6 +1,7 @@
 ---
 id: task-tracking
-kind: process
+type: template
+kind: fragment
 category: fragment
 description: Bookkeeping fragment — search for duplicates, resolve parent, claim, work, log, complete. Most process templates include this.
 requires: []

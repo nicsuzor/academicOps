@@ -1,5 +1,6 @@
 ---
 id: audit
+type: template
 kind: process
 category: meta
 description: Framework governance audit — structure sync, index curation, acceptance tests, persisted report

@@ -1,5 +1,6 @@
 ---
 id: interactive-followup
+type: template
 kind: process
 category: session
 description: Streamlined flow for bounded follow-up requests within an active session — skips re-hydration and new task binding
