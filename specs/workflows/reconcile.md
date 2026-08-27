@@ -39,7 +39,7 @@ spec should be read as claiming they currently run.
 8. **All task writes go through PKB MCP.** That is the concurrency primitive.
 9. **Nothing is flagged for a person without a surface that renders it.** The sweep's own synthesized result is that surface — it leads with what needs a person's decision. Writing a `needs_user_call` flag to the graph with no consumer that renders it is a `halt-on-failure` violation.
 10. **Reverse direction default**: comment-only on GH (cite PKB task ID + closing commit SHA). Auto-close the GH issue only for framework-owned repos and only when the task carries an explicit `closes_issues:` marker (not `gates_on:`).
-11. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write).
+11. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write). Pure decision models in `lib/py/reconcile.py` backed by unit tests are permitted.
 12. **Implementing agent owns file layout, naming, invocation grammar, and verification approach.** This spec does not mandate a directory tree, file names, mode flags, or audit mechanism. Those are downstream decisions the agent makes when landing the work, defended by the constraints above.
 
 ## Invocation contexts
