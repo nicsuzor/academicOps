@@ -21,7 +21,7 @@ and this skill's whole job is to report the library.
 | ------------ | ------------------------------------- | ---------------------------------------------- |
 | 1. Project   | `$CWD/.agents/templates/*.md`         | `ls`; absent directory means empty             |
 | 2. PKB       | graph documents with `type: template` | `pkb__list_documents(type="template")`         |
-| 3. Universal | `../../workflows/process/*.md`        | `ls`, catalogued by `../../workflows/INDEX.md` |
+| 3. Universal | `../../workflows/*.md`                | `ls`, catalogued by `../../workflows/INDEX.md` |
 
 **Resolution: project ≻ PKB ≻ universal.** Slugs match case-insensitively,
 ignoring a `wf-` prefix and `_`/`-` differences: `feature-dev`, `wf-feature-dev`
