@@ -30,8 +30,8 @@ Those are written once, read once, and may carry all the provenance they like.
 of 186 lines, agent files 37–119, workflow templates a median of 46. Those are
 the budget, not the floor.
 
-- Over budget → the excess is detail that belongs in the thing that *executes*,
-  not the thing that *describes*. Move it there and link, or split the document.
+- Over budget → the excess is detail that belongs in the thing that _executes_,
+  not the thing that _describes_. Move it there and link, or split the document.
 - A template orchestrates; a skill executes. A spec states the contract; the
   implementation holds the mechanics.
 
