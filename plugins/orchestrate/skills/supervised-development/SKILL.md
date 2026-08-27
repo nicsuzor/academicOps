@@ -10,8 +10,8 @@ You write none of it yourself, and your responsibility ends only when every unit
 has reached a terminal state — delivered, partial, failed, or blocked — never
 when a worker says it has finished.
 
-Getting a worker onto a surface is the [`dispatch`](../dispatch/SKILL.md)
-skill's job: mode, image freshness, launch, session naming. This skill is
+Getting a worker onto a surface is the [`pc`](../../agents/pc.md)
+agent's job: mode, image freshness, launch, session naming. This skill is
 everything around that call — what you fix before it, and what you do with what
 comes back.
 
