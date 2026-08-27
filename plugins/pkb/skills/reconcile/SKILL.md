@@ -20,7 +20,7 @@ they resolve against.
 **No thread is ever left with nobody to pick it up.** Every reconcile finding
 that represents unfinished work must terminate in exactly one of: a task
 standing at `queued` for a worker, or a task at `review` parked on a decision
-Nic has to make. A finding that is merely *surfaced in a report* is dropped — the
+Nic has to make. A finding that is merely _surfaced in a report_ is dropped — the
 report is read once and then gone.
 
 Reconcile's job is therefore not only to correct a lying status but to **ensure a
@@ -168,22 +168,23 @@ are not the same parked state.
 
 ### Resulting mapping for `merge_ready` tasks
 
-| Observed state of a `merge_ready` task | Action |
-|---|---|
-| PR open, CI failing | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
-| PR open, `DIRTY` (conflicts) | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
-| PR open, `CHANGES_REQUESTED` | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
-| No branch on remote, or branch with no PR | Original → `queued`, note the existing branch/worktree |
-| PR open, green, no blocking review | **Stays** `merge_ready` |
-| PR merged, close blocked by open children | **Stays** `merge_ready` (awaiting the child; do not cascade) |
-| Acceptance criterion unmet or needs interpreting | `review` — parked on a human decision |
-| PR closed without merge | Route per §4 (unchanged) |
+| Observed state of a `merge_ready` task           | Action                                                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| PR open, CI failing                              | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
+| PR open, `DIRTY` (conflicts)                     | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
+| PR open, `CHANGES_REQUESTED`                     | Create follow-up fix task at `queued`; park the original (`blocked` on the new fix task) |
+| No branch on remote, or branch with no PR        | Original → `queued`, note the existing branch/worktree                                   |
+| PR open, green, no blocking review               | **Stays** `merge_ready`                                                                  |
+| PR merged, close blocked by open children        | **Stays** `merge_ready` (awaiting the child; do not cascade)                             |
+| Acceptance criterion unmet or needs interpreting | `review` — parked on a human decision                                                    |
+| PR closed without merge                          | Route per §4 (unchanged)                                                                 |
 
 ### 1. A finished worker with a failed PR gets a follow-up fix task
 
 When a `merge_ready` task's PR exists but cannot merge — CI red, `DIRTY` (conflicts), or `CHANGES_REQUESTED` — the original worker is gone and will not come back. Reconcile must **create a new task to go fix it** and set it `queued`, rather than re-queuing the original.
 
 The follow-up task must carry, in its body:
+
 - the failing PR's number and URL, and the specific failure (which check, which job, the error, or the reviewer's requested change — quoted, not paraphrased);
 - the head branch and any preserved worktree path, so the fix resumes the existing branch rather than starting a second parallel attempt against the same PR;
 - a `depends_on` or equivalent link so the original node and the fix are traceable to each other.

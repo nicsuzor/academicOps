@@ -19,12 +19,16 @@ from typing import Any
 
 
 class ReconcileAction(StrEnum):
-    MAINTAIN = "maintain"                   # Stays merge_ready (open & green, or merged awaiting children)
-    CREATE_FIX_TASK = "create_fix_task"     # Park original at 'blocked', create follow-up fix task at 'queued'
-    REQUEUE_ORIGINAL = "requeue_original"   # Original -> 'queued' (no PR/branch produced)
-    MOVE_TO_REVIEW = "move_to_review"       # Park original at 'review' (unmet AC or interpretation needed)
-    COMPLETE = "complete"                   # Original -> 'done' (merged & all criteria met)
-    ROUTE_CLOSED = "route_closed"           # PR closed without merge (route per §4)
+    MAINTAIN = "maintain"  # Stays merge_ready (open & green, or merged awaiting children)
+    CREATE_FIX_TASK = (
+        "create_fix_task"  # Park original at 'blocked', create follow-up fix task at 'queued'
+    )
+    REQUEUE_ORIGINAL = "requeue_original"  # Original -> 'queued' (no PR/branch produced)
+    MOVE_TO_REVIEW = (
+        "move_to_review"  # Park original at 'review' (unmet AC or interpretation needed)
+    )
+    COMPLETE = "complete"  # Original -> 'done' (merged & all criteria met)
+    ROUTE_CLOSED = "route_closed"  # PR closed without merge (route per §4)
 
 
 class CloseRouteClass(StrEnum):
@@ -43,11 +47,11 @@ class PRState:
     is_merged: bool = False
     is_closed: bool = False
     is_draft: bool = False
-    ci_failing: bool = False             # CI checks failed, errored, or timed out
-    has_conflicts: bool = False          # mergeable == 'CONFLICTING' or mergeStateStatus == 'DIRTY'
-    changes_requested: bool = False      # reviewDecision == 'CHANGES_REQUESTED'
-    has_open_children: bool = False      # Open child tasks preventing close
-    criteria_met: bool | None = None     # True: all AC met; False/None: unmet or needs interpretation
+    ci_failing: bool = False  # CI checks failed, errored, or timed out
+    has_conflicts: bool = False  # mergeable == 'CONFLICTING' or mergeStateStatus == 'DIRTY'
+    changes_requested: bool = False  # reviewDecision == 'CHANGES_REQUESTED'
+    has_open_children: bool = False  # Open child tasks preventing close
+    criteria_met: bool | None = None  # True: all AC met; False/None: unmet or needs interpretation
     pr_number: int | None = None
     pr_url: str | None = None
     head_branch: str | None = None
@@ -61,8 +65,8 @@ class ReconcileDecision:
     """Action and target status computed for a task during reconciliation."""
 
     action: ReconcileAction
-    target_status: str                   # 'merge_ready', 'queued', 'blocked', 'review', 'done', 'cancelled'
-    create_follow_up: bool               # True if a follow-up fix task must be created at 'queued'
+    target_status: str  # 'merge_ready', 'queued', 'blocked', 'review', 'done', 'cancelled'
+    create_follow_up: bool  # True if a follow-up fix task must be created at 'queued'
     follow_up_status: str | None = None  # 'queued' when create_follow_up is True
     reason: str = ""
     annotation: str = ""
@@ -231,10 +235,7 @@ def pr_state_from_gh_json(
 
     mergeable_str = str(pr_dict.get("mergeable", "UNKNOWN")).upper()
     merge_state_status = str(pr_dict.get("mergeStateStatus", "UNKNOWN")).upper()
-    has_conflicts = (
-        mergeable_str == "CONFLICTING"
-        or merge_state_status == "DIRTY"
-    )
+    has_conflicts = mergeable_str == "CONFLICTING" or merge_state_status == "DIRTY"
 
     review_decision = str(pr_dict.get("reviewDecision", "")).upper()
     changes_requested = review_decision == "CHANGES_REQUESTED"

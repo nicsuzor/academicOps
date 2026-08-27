@@ -178,17 +178,23 @@ def test_merged_pr_all_ac_met_completes():
 def test_closed_pr_routing():
     """Closed without merge routes per §4 classification."""
     # wontfix -> cancelled
-    st_wontfix = PRState(is_open=False, is_closed=True, close_class=CloseRouteClass.WONTFIX, pr_number=130)
+    st_wontfix = PRState(
+        is_open=False, is_closed=True, close_class=CloseRouteClass.WONTFIX, pr_number=130
+    )
     dec_wontfix = evaluate_pr_state(st_wontfix)
     assert dec_wontfix.target_status == "cancelled"
 
     # bad-implementation -> cancelled
-    st_bad = PRState(is_open=False, is_closed=True, close_class=CloseRouteClass.BAD_IMPLEMENTATION, pr_number=131)
+    st_bad = PRState(
+        is_open=False, is_closed=True, close_class=CloseRouteClass.BAD_IMPLEMENTATION, pr_number=131
+    )
     dec_bad = evaluate_pr_state(st_bad)
     assert dec_bad.target_status == "cancelled"
 
     # retry-as-is -> queued
-    st_retry = PRState(is_open=False, is_closed=True, close_class=CloseRouteClass.RETRY_AS_IS, pr_number=132)
+    st_retry = PRState(
+        is_open=False, is_closed=True, close_class=CloseRouteClass.RETRY_AS_IS, pr_number=132
+    )
     dec_retry = evaluate_pr_state(st_retry)
     assert dec_retry.target_status == "queued"
 
