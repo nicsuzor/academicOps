@@ -34,7 +34,7 @@ recorded both times, as the nearest available proxy for "the store did not chang
   with Nic and other concurrent sessions — a single new `inbox` task appearing over the session's
   wall-clock duration is ordinary background activity on a multi-writer store, not evidence of a
   write by this task. None of the `done`/`cancelled` counts moved, which is the direct measure of
-  whether *this task's own targets* — the 20 source tasks and the specimen — were touched; they
+  whether _this task's own targets_ — the 20 source tasks and the specimen — were touched; they
   were not.
 
 The stronger evidence is mechanical, not measurement-based: every write-capable tool
