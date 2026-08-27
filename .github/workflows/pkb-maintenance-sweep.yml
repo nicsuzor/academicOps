@@ -59,7 +59,7 @@ jobs:
         with:
           repository: ${{ steps.resolve.outputs.repo }}
           path: _brain
-          token: ${{ secrets.AOPS_DIST_PAT }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
 
       - name: Record PKB data repo HEAD (mutation guard baseline)
         id: baseline
