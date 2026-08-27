@@ -3,7 +3,7 @@ id: email-triage
 type: template
 kind: process
 category: email
-description: Classify incoming emails into Task/FYI/Skip/Uncertain with priority inference
+description: Classify incoming emails into Task/FYI/Skip/Uncertain
 requires: [task-tracking]
 pairs-with: [wf-handover]
 conflicts: []
@@ -36,13 +36,6 @@ One classification per email:
 | **FYI**       | "awarded", "approved", outcomes, thank-yous                  | Update gating task node in PKB immediately on discovery; archive email |
 | **Skip**      | noreply@, newsletters, already replied to                    | Archive                                                                |
 | **Uncertain** | mixed signals, unknown sender                                | Ask the user                                                           |
-
-## Priority Inference (for Tasks)
-
-- **P0**: contains "URGENT" or deadline < 48h
-- **P1**: deadline < 1 week, or collaborator request
-- **P2**: deadline < 2 weeks, or general request
-- **P3**: no deadline, administrative
 
 ## NOT this template
 
