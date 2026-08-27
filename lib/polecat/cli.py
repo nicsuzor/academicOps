@@ -687,11 +687,7 @@ def resolve_isolated_workspace(
 
     config = config or {}
     base_ref = (
-        base
-        or branch
-        or config.get("branch")
-        or config.get("default_branch")
-        or "HEAD"
+        base or branch or config.get("branch") or config.get("default_branch") or "HEAD"
     ).strip()
 
     # Resolve the base commit SHA from base_ref with remote freshness verification

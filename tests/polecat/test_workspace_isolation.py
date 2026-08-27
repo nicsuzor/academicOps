@@ -594,7 +594,9 @@ def test_isolated_workspace_fetches_remote_only_branch_without_prior_fetch(tmp_p
     remote_branch_sha = _run("git", "rev-parse", "HEAD", cwd=other_dev).strip()
 
     # Canonical checkout has NEVER run git fetch for this branch
-    local_branches = _run("git", "branch", "--list", "feature/unfetched-remote", cwd=canonical).strip()
+    local_branches = _run(
+        "git", "branch", "--list", "feature/unfetched-remote", cwd=canonical
+    ).strip()
     assert local_branches == ""
 
     polecat_home = tmp_path / "polecat-home"
@@ -620,7 +622,14 @@ def test_isolated_workspace_fails_closed_on_unreachable_remote(tmp_path):
     (canonical / "README.md").write_text("content\n")
     _run("git", "add", "README.md", cwd=canonical)
     _run("git", "commit", "-m", "initial", cwd=canonical)
-    _run("git", "remote", "add", "origin", "https://invalid.unreachable.example.internal/repo.git", cwd=canonical)
+    _run(
+        "git",
+        "remote",
+        "add",
+        "origin",
+        "https://invalid.unreachable.example.internal/repo.git",
+        cwd=canonical,
+    )
 
     polecat_home = tmp_path / "polecat-home"
     with pytest.raises(SystemExit):
@@ -666,5 +675,3 @@ def test_canonical_checkout_immutability_during_dispatch(tmp_path):
     assert branch_before == branch_after
 
     cleanup_isolated_workspace(cleanup_info)
-
-
