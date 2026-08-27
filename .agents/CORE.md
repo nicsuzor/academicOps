@@ -27,14 +27,6 @@ On top of them:
 - **A plugin never reads another plugin's files.** It may read `lib/`.
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
-- **Field-test every plugin change.** No change under `plugins/`, `lib/`, or
-  `build/` is done until it has been driven live: inside a polecat container,
-  `make install-dev`, then a headless `claude` run and a headless `agy` run
-  whose prompts exercise the changed behaviour. An LLM reads those runs and
-  judges the result qualitatively; marsha owns that judgment and the verdict it
-  returns. `make lint`, `make test`, and `make build-test` are static checks and
-  never stand in for it. Mechanics: [`field-test`](skills/field-test/SKILL.md),
-  [`debug`](skills/debug/SKILL.md).
 - **Commit immediately, and push.** After any change, commit with a short,
   descriptive message — this container is ephemeral and uncommitted work
   disappears with it. Never write `.bak`/`.orig`/copy-suffixed files; git
