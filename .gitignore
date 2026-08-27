@@ -10,6 +10,10 @@
 !.agents/skills/
 !.agents/rules
 !.agents/workflows
+# Project-tier workflow templates: markdown only.
+!.agents/templates/
+.agents/templates/*
+!.agents/templates/*.md
 
 # ============================================================================
 # Python
