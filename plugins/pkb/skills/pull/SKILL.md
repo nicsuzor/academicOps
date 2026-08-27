@@ -64,9 +64,9 @@ Check your work against the literal requirements and acceptance criteria set out
 
 **If you cannot complete the task** due to lack of access, skills, tooling, instructions, or infrastructure, or other errors:
 
-- **You must return the task FAILED.** This is not your fault: the task is undeliverable as designed.
+- **You must release the task as 'review' (or 'blocked').** This is not your fault: the task is undeliverable as designed.
 - **You do not have authority** to repair work by changing the task instructions, acceptance criteria, or the pre-determined required workflow processes that you were initially provided.
-- **Impossible tasks** must be marked 'failed' to signal that they must be _escalated_ for re-design or the error repaired before they can be re-dispatched.
+- **Impossible tasks** must be released as 'review' (with mandatory `reason`) to signal that they must be _escalated_ for human direction or re-design, or as 'blocked' (with mandatory `blocker`) if waiting on an unmet prerequisite, before they can be re-dispatched.
 
 ### 6. Handover (land the plane): Invoke `dump` Skill**
 
