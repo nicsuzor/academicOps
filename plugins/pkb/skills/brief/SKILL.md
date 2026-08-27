@@ -297,6 +297,13 @@ belonging to a different owner, a different evaluator identity, or work this
 unit blocks on but does not itself do, is not a checklist line — it is its own
 task, placed on the graph where it belongs (not necessarily in the same tree.)
 
+**Multi-child epics land on one branch.** The moment a cut produces a second child
+task under the same epic, name the shared feature branch (`task/<epic-slug>`) they
+push to and record it on the epic body under a `## Shared feature branch: <name>`
+heading — including the child already cut — so every child inherits that one
+referent instead of inventing its own in [[wf-handover]]. A single-child epic has
+nothing to collapse; do not add the heading until a second child exists.
+
 ## 6 — Emit the review and sign-off nodes
 
 Review is **real nodes in the graph, wired as blocking `depends_on`** — never a
