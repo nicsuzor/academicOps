@@ -230,10 +230,11 @@ of them; registration in an index is not a condition of existence.
    (`status: retired`, or a `retired`/`superseded` tag), datestamped instance
    nodes, and templates scoped to a project other than this one. Composition
    fragments are available as sub-steps and never dispatched standalone.
-3. **Universal core tier** — `../../workflows/process/*.md`, catalogued by
+3. **Universal core tier** — `../../workflows/*.md`, catalogued by
    `../../workflows/INDEX.md`, which also carries the routing tree naming the
    template for this class of work. These set minimum standards that cannot be
-   derogated from: universal, immutable, version-controlled.
+   derogated from: universal, immutable, version-controlled. No gate template
+   ships here; all six `wf-*` gates are PKB-tier.
 
 **Resolution order when a slug resolves in more than one tier: project ≻ PKB ≻
 universal.** Matching is case-insensitive and ignores a `wf-` prefix and `_`/`-`

@@ -1,351 +1,178 @@
 ---
 id: workflows-three-source-template-discovery
-title: Three-Source Workflow Template Discovery Contract
+title: Workflow Templates — Composition and Discovery
 type: spec
 category: workflow
 status: ready
-tags: [spec, workflow, templates, discovery, three-tier, resolution, brief, v0.8]
-related: [[workflows-template-library]], [[workflows-task-pipeline]], [[aops-composable-workflow-system]]
+tags: [spec, workflow, templates, discovery, three-tier, resolution, brief, v0.9]
+related: [[workflows-task-pipeline]], [[aops-composable-workflow-system]]
 ---
 
-# Three-Source Workflow Template Discovery Contract
+# Workflow Templates — Composition and Discovery
 
-## 1. Context and Architectural Foundation
+What a workflow template is, where templates are found, and how a composing pass
+assembles them into a process. Supersedes the separate template-library spec,
+which is folded in below.
 
-Workflow templates provide the reusable operational units that composing passes (such as `brief` §5) assemble to structure execution and verification. In v0.4 through v0.7, template discovery relied on a hybrid registry model where templates in the Personal Knowledge Base (PKB) were gated by explicit registration in central index documents (`pkb-workflow-index` and `inde_1c34dd83`), enforcing the invariant that _"A template document exists in the PKB only once it is listed below"_.
+## 1. What a template is
 
-This specification establishes the **Three-Source Workflow Template Discovery Contract**, restoring and extending dynamic discovery across three tiers:
+A short markdown file, or PKB document, that a smart agent reads and composes
+**in context, by comprehension** — never parsed, never solved. Two kinds:
 
-1. **Project Tier**: Project-local templates in `$CWD/.agents/templates/*.md`.
-2. **PKB Tier**: Dynamic personal templates stored across the PKB graph discovered by `type: template`.
-3. **Universal Core Tier**: Shipped framework templates in `plugins/pkb/workflows/process/*.md`.
+- **Process templates** describe how a class of work proceeds — `feature-dev`,
+  `investigation`, `email-triage`. They carry routing signals, NOT-this signals,
+  the steps unique to that class, and exit routing.
+- **Gate templates** are reusable QA, vetting and approval obligations —
+  `wf-verification`, `wf-qa`, `wf-outbound-review`, `wf-human-approval`. They are
+  the units the door-type policy selects among: **two-way versus one-way door is
+  expressed as which gates get composed in**, which gives one vocabulary for
+  proportionate process everywhere.
 
-This contract removes the registry gate requirement, specifies the project tier convention, formalizes the resolution order and collision semantics, settles the fate of existing registries, and provides deterministic blind-scanning rules for composing agents.
+Some templates are **fragments** — sub-steps only meaningful composed into a
+larger process, and never dispatched standalone. A fragment dispatched alone
+sends a worker at half a process. The shipped tier declares one in its own first
+heading (`# Process fragment: …` rather than `# Process: …`); in the PKB tier the
+`planner-data` tag marks the set, corroborated by a `## <slug> — step: …` first
+heading. Confirm against the body, never the tag alone.
 
-> [!WARNING]
-> **This spec states some of its targets in the present tense, and a reader cannot tell those lines from the measured ones.** Three instances were found and corrected on 2026-08-24, all of the same shape — a thing proposed, recommended or intended, written as though already true:
->
-> - §6 row 34 recorded `wf-risk-profiles` as "Retired / Deprecated — Excluded". Its retirement had only been _recommended_, is blocked behind [[aops_1d36fadf]], and had not been performed; the document was live and dispatchable.
-> - §6 Filter 3 keyed fragment detection on a `wf-fragment` tag. That tag occurs in **zero** of the 47 PKB template documents, so the filter could never fire and all eight fragments were classified dispatchable.
-> - §5's colocation rules were introduced with "all operational warnings **are** colocated directly on the template documents". Neither mandated banner occurs anywhere in the corpus.
->
-> Three is not a series of slips. **When reading any normative statement here, check whether it describes the corpus or prescribes a target**, and verify against the corpus before relying on it. When writing here, put targets in the imperative and attach a date and a measurement to anything stated as fact.
+### Authoring bar
 
-## 2. Framework Gate Output Block
+1. **Short and composable.** Several templates must fit comfortably in one
+   context window together; target ≲100 lines. Substance that outgrows that
+   belongs in a skill the template points at — a template orchestrates, a skill
+   executes.
+2. **Minimal dependency vocabulary.** `requires` / `pairs-with` / `conflicts` /
+   soft `recommends`, as frontmatter hints the composer reasons over. No solver,
+   no richer ontology.
+3. **Declared stakes.** A gate template states the door type it exists for and
+   its skip conditions, so proportionality is legible rather than folk knowledge.
+   That section, not the `wf-` prefix, is what makes a template a gate.
+4. **Intent and acceptance criteria, not micro-scripting.**
+5. **Revisable.** Templates are standardised work, not law: versioned, improved
+   from execution feedback.
 
-Per `framework-gate` requirements for modifications to shipped skills and workflow library contracts:
+## 2. Where templates are found
+
+Three sources, one namespace. A PKB template composes exactly like a shipped one.
+
+| Tier             | Location                                                                     | Enumerate with                                   |
+| ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
+| **1. Project**   | `$CWD/.agents/templates/*.md`                                                | `ls`; an absent directory is empty, not an error |
+| **2. PKB**       | graph documents with `type: template`                                        | `pkb__list_documents(type="template")`           |
+| **3. Universal** | `plugins/pkb/workflows/*.md`, catalogued by `plugins/pkb/workflows/INDEX.md` | `ls`                                             |
+
+The project tier is **any** repository's `.agents/templates/`, resolved against
+the working directory. There is no separate user-global layer: when you are
+working inside the PKB repo, its `.agents/templates/` is the project tier by the
+ordinary rule, and nothing about `$ACA_DATA` is special.
+
+**Resolution: project ≻ PKB ≻ universal.** Slugs match case-insensitively and
+ignore a `wf-` prefix and `_`/`-` differences, so `feature-dev`,
+`wf-feature-dev` and `wf_feature_dev` are one slug. A higher tier shadows a lower
+one **whole** — never merge two tiers' text. Name the tier each template came
+from in the composition trace, and say what it shadowed.
+
+**Existence is not registration.** A template exists because it is a file in one
+of those directories or a document with `type: template` — not because an index
+lists it. The old invariant _"a template document exists in the PKB only once it
+is listed below"_ is repealed. Indexes remain useful for human orientation and
+carry notes that source-scanning does not reproduce, but they are never the
+discovery mechanism, and a name absent from every index is not thereby missing.
+
+**Enumerate by running the command, every time.** Describing what the library
+probably holds, from memory, is the failure this contract exists to prevent.
+
+### Filtering the PKB tier
+
+The other two tiers are directories and need no filtering. The PKB tier is a
+live graph, so a scanning agent excludes:
+
+1. **Retired templates** — `status: retired` or `status: cancelled`, or a
+   `retired` / `superseded` tag. **Frontmatter alone is not sufficient**: some
+   are marked only in the body. Read the opening lines.
+2. **Instance nodes** — a datestamped title or id (`-\d{8}-\d{4}-`), or a live
+   execution task. These are runs, not templates.
+3. **Out-of-scope projects** — a `custom-template` tag with a project tag
+   (`wikijuris`), or a `project:` frontmatter field, matches only when the
+   current task's project matches. Check both places.
+
+Fragments are not filtered out; they are available as sub-steps, and only the
+never-dispatch-standalone rule applies.
+
+## 3. What the stock plugin ships
+
+The universal tier is the immutable baseline: it sets minimum standards that
+cannot be derogated from, and both tiers above it may extend or shadow it.
+
+**23 process templates**, of which four declare themselves fragments — `batch`,
+`burst`, `task-tracking`, `tdd`. By the work they cover:
+
+| Group               | Templates                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| Entry and routing   | `framework-gate` (checked first, always), `simple-question`, `interactive-followup`   |
+| Generic work spines | `feature-dev` (known cause), `investigation` (unknown cause), `develop-specification` |
+| Fragments           | `task-tracking`, `tdd`, `batch`, `burst`                                              |
+| Review and closure  | `decision-briefing`, `pr-review`, `worktree-merge`                                    |
+| Academic            | `academic-paper`, `reference-letter`, `finalize-report`, `review-response`            |
+| Email               | `email-triage`, `email-capture`, `email-reply`                                        |
+| Operations          | `external-batch-submission`, `live-fix-loop`, `audit`                                 |
+
+**No gate templates ship.** All six obligation gates — `wf-verification`,
+`wf-qa`, `wf-constraint-check`, `wf-handover`, `wf-outbound-review`,
+`wf-human-approval` — live in the PKB tier only, so a project taking the
+universal tier alone inherits no gates at all. That is a known gap, not a design
+intent.
+
+`INDEX.md` sits in the same directory and carries the **routing tree**, which
+lives nowhere else: it maps an ask to the template for its class of work.
+Routing and composition are different jobs, and most of what the tree routes
+never reaches composition at all.
+
+## 4. The composition process
+
+Composition happens in `brief` §5 — read in context, every time, never carried
+in the composing agent's own text. It runs only on work already released for
+dispatch.
+
+1. **Route.** Read `INDEX.md`'s tree and pick the spine for this class of work.
+   `framework-gate` is checked before any other routing.
+2. **Enumerate all three tiers** and resolve slugs by the order above.
+3. **Read each candidate template.** Do not guess at contents; apply each one
+   critically at composition time.
+4. **Clip on gates proportionate to stakes.** The escalation ladder is
+   `wf-verification` → `wf-qa` → `wf-outbound-review` → `wf-human-approval`;
+   each is strictly weaker than the next, and a weaker one never authorises a
+   stronger one's crossing.
+5. **Emit the checklist** onto the task: the composed steps in order, plus one
+   pointer bullet naming the templates used, the tier each resolved from, and
+   the proportionality call.
+
+The checklist is not the gate. **Obligations that must block acceptance also
+become real task nodes**, and where a step is both a checklist line and an
+obligation, the node wins. An empty review set is a library gap `brief` halts
+on: record the gap, leave the task `blocked`, write no brief.
+
+## 5. Project-tier file format
+
+A flat directory of `.md` files — `$CWD/.agents/templates/deploy-staging.md`.
+Frontmatter:
 
 ```yaml
-framework-gate:
-  component_modified:
-    - "plugins/pkb/skills/brief/SKILL.md (Section 5: Dual-Tier -> Three-Source)"
-    - "specs/workflows/template-library.md (Architectural references)"
-    - "specs/workflows/three-source-template-discovery.md (New contract spec)"
-  relevant_spec: "specs/workflows/three-source-template-discovery.md"
-  indices_needing_update:
-    - "specs/workflows/template-library.md"
-    - "plugins/pkb/workflows/INDEX.md"
-    - "pkb-workflow-index (Transition to MoC)"
-    - "inde_1c34dd83 (Transition to MoC)"
-  governance_level: "Framework Code & Workflow Specification (Requires human sign-off via aops_1f0a5f4c prior to implementation merge)"
+---
+title: "Deploy to Staging Pipeline"
+type: template
+category: process # or gate
+description: "One-line routing summary for agent scanning"
+tags: [deploy, staging, release]
+---
 ```
 
-## 3. The Three Sources (AC 2)
+The absence of `$CWD/.agents/templates/` is the standard case across
+repositories. Fall through silently; report it as "no project tier here".
 
-Composing agents discover candidate templates by scanning three distinct sources:
+## See also
 
-| Source Tier           | Location / Target                    | Enumeration Method                                                                     | Resolution Position         | Collision Rule                                                                   |
-| :-------------------- | :----------------------------------- | :------------------------------------------------------------------------------------- | :-------------------------- | :------------------------------------------------------------------------------- |
-| **1. Project Tier**   | `$CWD/.agents/templates/*.md`        | Directory enumeration over filesystem at `$CWD/.agents/templates/` matching `*.md`     | **1st (Highest priority)**  | Overrides both PKB and Universal templates with matching slug.                   |
-| **2. PKB Tier**       | PKB Knowledge Graph                  | Dynamic query via MCP `list_documents(type="template")` (or `search(type="template")`) | **2nd (Medium priority)**   | Overrides Universal templates with matching slug; shadowed by Project templates. |
-| **3. Universal Tier** | `plugins/pkb/workflows/process/*.md` | Enumerate `.md` files in plugin workflow process directory via git / filesystem        | **3rd (Baseline priority)** | Fallback baseline. Shadowed by Project and PKB templates.                        |
-
-### Resolution Order and Collision Semantics (Fork 1)
-
-When a template identifier or normalized slug (e.g. `feature-dev`, `email-triage`, `wf-qa`) resolves in more than one source:
-
-1. **Resolution Priority**:
-   $$\text{Project Tier} \succ \text{PKB Tier} \succ \text{Universal Tier}$$
-2. **Slug Normalization**: Matching is case-insensitive and normalized with respect to the `wf-` prefix (e.g., `feature-dev`, `wf-feature-dev`, and `wf_feature_dev` are treated as the same logical slug).
-3. **Atomic Shadowing**: A higher-priority source completely and atomically shadows a lower-priority source with the same slug. No multi-tier AST or section-level merging is performed; workflow templates are atomic markdown documents composed in-context by agent comprehension.
-4. **Observability**: When a template collision is resolved via shadowing, the composing pass logs an informational note in the composition trace (e.g. `Resolved 'feature-dev' from Project tier; shadowed Universal 'feature-dev.md'`).
-
-## 4. The `$CWD/.agents/templates` Project Convention (Fork 2, AC 3)
-
-The Project Tier enables repository-specific and project-local workflow templates to live directly within the working codebase.
-
-### Specification
-
-1. **Path**: Exactly `$CWD/.agents/templates/` relative to the active workspace root / current working directory (`$CWD`).
-2. **File Format & Structure**:
-   - Flat directory of markdown files ending in `.md` (e.g., `$CWD/.agents/templates/deploy-staging.md`).
-   - YAML Frontmatter Schema:
-     ```yaml
-     ---
-     title: "Deploy to Staging Pipeline"
-     type: template
-     category: process # or gate
-     description: "One-line routing summary for agent scanning"
-     tags: [deploy, staging, release]
-     ---
-     ```
-   - Standard Body Sections:
-     - `## Purpose / Routing Signals` — When to select and when NOT to select this template.
-     - `## Steps / Checklist` — Concrete sequence of operational activities.
-     - `## Exit Routing / Acceptance Criteria` — Verification gates required for completion.
-3. **VCS and Synchronization**:
-   - Tracked in the project's own version control system (Git) alongside repository code.
-   - Project-local: Not automatically synced into the personal PKB graph or academicOps core distribution.
-4. **Defined Behaviour When Directory is Absent**:
-   - The absence of `$CWD/.agents/templates/` is the standard baseline case across standard repositories.
-   - If the directory does not exist or contains no `.md` files, the Project Tier enumeration returns an empty list (`[]`) immediately without raising errors, warnings, or interactive prompts.
-   - The discovery process falls through cleanly to the PKB and Universal tiers.
-
-## 5. Deprecation of Registry Gate & Fate of Registries (Fork 3, AC 4)
-
-### Repeal of Registry Exclusivity
-
-The invariant _"A template document exists in the PKB only once it is listed below"_ in `pkb-workflow-index` is explicitly repealed. Dynamic discovery via `type: template` is the authoritative mechanism for the PKB tier.
-
-### Recommendation for Registries (`pkb-workflow-index` & `inde_1c34dd83`)
-
-Submitted for human sign-off on [[aops_1f0a5f4c]]:
-
-- **Transition to Curated Maps of Content (MoCs)**: Both `pkb-workflow-index` (portable templates) and `inde_1c34dd83` (non-portable templates) are retained as `type: index` Maps of Content for human review, taxonomy navigation, and agent orientation.
-- **Decoupled from Composition**: Composing passes (`brief` §5) no longer consult or require registration in either index.
-
-### Colocation of Warnings & Metadata
-
-To eliminate drift between registry notes and document bodies, operational warnings belong on the template documents themselves rather than in a registry row.
-
-> [!IMPORTANT]
-> **This is a target convention, not a description of the corpus.** As of 2026-08-24 neither banner below occurs in any of the 47 PKB template documents [`grep -rl` for each banner string across every `type: template` document: zero hits], and the `wf-fragment` tag occurs nowhere either. The documents that _are_ retired use their own ad-hoc forms — `wf-daily-note` a `> [!NOTE]` block, `wf-pkb-memory-consolidation` a bare `# RETIRED` H1. **Do not read the rules below as a guarantee about what a document carries.** A scan that trusts them will miss every retired template in the corpus; read the document's opening lines. Backfilling the corpus to this convention is unowned work.
-
-The convention:
-
-1. **Stage-2 Composition Fragments**:
-   - Frontmatter tag: `tags: [..., wf-fragment]` or frontmatter field `composition_type: fragment`.
-   - Body banner:
-     ```markdown
-     > [!WARNING]
-     > **Stage-2 Composition Fragment**: This document defines sub-process logic for composing passes. NEVER dispatch standalone.
-     ```
-2. **Retired / Superseded Templates**:
-   - Frontmatter: `status: retired`, `superseded_by: "<canonical-id>"`, `tags: [..., retired]`.
-   - Body banner:
-     ```markdown
-     > [!IMPORTANT]
-     > **RETIRED TEMPLATE**: Superseded by [[<canonical-id>]]. Do not compose.
-     ```
-3. **Custom / Non-Portable Templates**:
-   - Frontmatter tag: `tags: [..., custom-template, <project-name>]` or frontmatter field `scope: project`.
-   - Body description naming the repo/infrastructure dependency.
-
-## 6. Blind-Scanning Classification Rules & Live 42-Document Validation (Fork 4, AC 5)
-
-Without relying on a registry index, a blind-scanning composing agent evaluates PKB documents matching `type: template` using deterministic rules:
-
-### Blind-Scanning Rules
-
-1. **Filter 1 (Lifecycle State)**: If document has `status: retired` or `status: cancelled`, or tags include `retired` / `superseded`, exclude from candidate composition pool. **Frontmatter alone is not sufficient**: some retired templates are marked only in the body, by an opening `# RETIRED` heading or a `## Retired — superseded by …` section. Read the opening lines, not just the frontmatter.
-2. **Filter 2 (Instantiation / Instance Nodes)**: If document title or id contains datestamp patterns (e.g. `-\d{8}-\d{4}-`) or represents an active execution task, exclude from template library pool.
-3. **Filter 3 (Composition Fragments vs. Dispatchable Templates)**: A fragment is a sub-step that is only meaningful composed into another process and must never be dispatched standalone. Identify it by the `planner-data` tag, which as of 2026-08-24 marks the fragment set exactly and nothing else, corroborated by the fragment's own first heading (`## <slug> — step: …`). Confirm against the document body before classifying. Note that `module-f` sits on every v0.4-era template and `prose-lens` separates process templates from gate templates — **neither distinguishes a fragment**, and a `wf-fragment` tag does not occur anywhere in the corpus.
-4. **Filter 4 (Project Scope Matching)**: If document is tagged `custom-template` or has project-specific tags (e.g. `wikijuris`), match only if the current task's project matches. Scope may also be carried in a `project:` frontmatter field rather than a tag; check both.
-
-### Empirical Validation on the Live PKB Template Corpus
-
-Measured on 2026-08-20 via `pkb__list_documents(type="template")`, when the corpus held 42 documents.
-
-**This table is a dated measurement, not the library.** Re-measured 2026-08-24: 47 documents. All 42 rows below still resolve; five templates have been added since and are not listed here (`temp_007e629e`, `temp_8804b618`, `temp_c8694d7e`, `temp_f30d20cb`, `tpl_launch_pattern_smoke_test`). Enumerate the tier to see the library; read this table only for the classification worked examples. The `workflow-library` skill produces a current listing on demand, which is why this table is not maintained.
-
-| #  | ID / Permalink                | Document Title                                              | Blind-Scan Classification | Operational Routing / Disposition                                                                                                                                                                                         |
-| :- | :---------------------------- | :---------------------------------------------------------- | :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1  | `tpl_daily`                   | Instructions for creating or updating a daily note          | Canonical Workflow        | Dispatchable: Sole canonical daily note protocol                                                                                                                                                                          |
-| 2  | `brain_arc_12bb1c27`          | TEMPLATE: ARC grant review preparation (per application)    | Specialized Template      | Dispatchable: Scoped to ARC grant peer review                                                                                                                                                                             |
-| 3  | `brain-481c5692`              | TEMPLATE: Process a session/plenary transcript              | Specialized Template      | Dispatchable: Scoped to transcript synthesis                                                                                                                                                                              |
-| 4  | `temp_6ade71d9`               | TEMPLATE: acceptance spot-check — dispatched worker round   | Specialized Template      | Dispatchable: QA spot-check procedure                                                                                                                                                                                     |
-| 5  | `temp_16ba109c`               | Template: Blind Comparison & Transcript Audit Procedure     | Specialized Template      | Dispatchable: Audit benchmarking procedure                                                                                                                                                                                |
-| 6  | `aops_cd98ee81`               | Template: Step-by-Step Interactive Agent Instruction Tuning | Specialized Template      | Dispatchable: Harness tuning procedure                                                                                                                                                                                    |
-| 7  | `temp_f4a9cb82`               | wf-agentic-e2e-certification                                | Portable Process Template | Dispatchable: Framework certification workflow                                                                                                                                                                            |
-| 8  | `wf_audit_e1822280`           | wf-audit-governance                                         | Portable Process Template | Dispatchable: Governance audit workflow                                                                                                                                                                                   |
-| 9  | `wf_batch_21baa604`           | wf-batch-fanout                                             | Portable Process Template | Dispatchable: Batch fanout workflow                                                                                                                                                                                       |
-| 10 | `wf-blind-proof`              | wf-blind-proof                                              | Portable Process Template | Dispatchable: Verification procedure                                                                                                                                                                                      |
-| 11 | `wf_boundary_7088958d`        | wf-boundary-review                                          | **Stage-2 Fragment**      | Fragment: Sub-step review only; never dispatch standalone                                                                                                                                                                 |
-| 12 | `wf-brief-composition-verify` | wf-brief-composition-verify                                 | Portable Gate Template    | Dispatchable: Composition verification gate                                                                                                                                                                               |
-| 13 | `wf_capstone_73d7ce86`        | wf-capstone-verify                                          | **Stage-2 Fragment**      | Fragment: Sub-step verification only; never dispatch standalone                                                                                                                                                           |
-| 14 | `wf-constraint-check`         | wf-constraint-check                                         | Portable Gate Template    | Dispatchable: Constraint verification gate                                                                                                                                                                                |
-| 15 | `wf_critique_decd156b`        | wf-critique-lens                                            | Portable Process Template | Dispatchable: Critique evaluation workflow                                                                                                                                                                                |
-| 16 | `wf-daily-note`               | wf-daily-note — Daily Note Generation Protocol              | **Retired Template**      | Excluded: Superseded by `tpl_daily` (`tags: [retired, superseded]`)                                                                                                                                                       |
-| 17 | `kb_cbe83893`                 | wf-debug-framework-issue                                    | Portable Process Template | Dispatchable: Root cause analysis workflow                                                                                                                                                                                |
-| 18 | `wf_1aa15796`                 | wf-decompose                                                | Portable Process Template | Dispatchable: Task decomposition workflow                                                                                                                                                                                 |
-| 19 | `wf-design-conversation`      | wf-design-conversation                                      | Portable Process Template | Dispatchable: Iterative design workflow                                                                                                                                                                                   |
-| 20 | `kb_d1f982cd`                 | wf-design-new-component                                     | Portable Process Template | Dispatchable: Component architecture workflow                                                                                                                                                                             |
-| 21 | `wf_635eab64`                 | wf-draft                                                    | **Stage-2 Fragment**      | Fragment: Draft formulation only; never dispatch standalone                                                                                                                                                               |
-| 22 | `wf_fact_b828c939`            | wf-fact-check                                               | **Stage-2 Fragment**      | Fragment: Fact check step only; never dispatch standalone                                                                                                                                                                 |
-| 23 | `wf_d0e942d3`                 | wf-handback                                                 | Portable Process Template | Dispatchable: Handback procedure                                                                                                                                                                                          |
-| 24 | `wf-handover`                 | wf-handover                                                 | Portable Gate Template    | Dispatchable: Session handover gate                                                                                                                                                                                       |
-| 25 | `wf-human-approval`           | wf-human-approval                                           | Portable Gate Template    | Dispatchable: Sign-off approval gate                                                                                                                                                                                      |
-| 26 | `wf_23a5a1c6`                 | wf-hydrate                                                  | **Stage-2 Fragment**      | Fragment: Disambiguation index step; never dispatch standalone                                                                                                                                                            |
-| 27 | `wf-map-then-wire`            | wf-map-then-wire                                            | Portable Process Template | Dispatchable: Incremental wiring workflow                                                                                                                                                                                 |
-| 28 | `wf-outbound-review`          | wf-outbound-review                                          | Portable Gate Template    | Dispatchable: Outbound review gate                                                                                                                                                                                        |
-| 29 | `wf-pkb-memory-consolidation` | wf-pkb-memory-consolidation                                 | Portable Process Template | Dispatchable: Zettelkasten consolidation protocol                                                                                                                                                                         |
-| 30 | `wf-qa`                       | wf-qa                                                       | Portable Gate Template    | Dispatchable: Standard QA gate                                                                                                                                                                                            |
-| 31 | `wf_qa_b4b7f9c5`              | wf-qa-around                                                | **Stage-2 Fragment**      | Fragment: Sub-step QA loop; never dispatch standalone                                                                                                                                                                     |
-| 32 | `wf_qa_d27c104b`              | wf-qa-verify                                                | Portable Gate Template    | Dispatchable: QA verification gate                                                                                                                                                                                        |
-| 33 | `wf_refine_6ef85da2`          | wf-refine-loop                                              | **Stage-2 Fragment**      | Fragment: Refinement loop step; never dispatch standalone                                                                                                                                                                 |
-| 34 | `wf_risk_79290491`            | wf-risk-profiles                                            | Portable Process Template | Dispatchable today. Retirement is recommended but **not performed** and is sequenced behind other work ([[task_retire_risk_profiles]]) — the document carries no retirement marker and every composing pass still sees it |
-| 35 | `kb_831042d0`                 | wf-self-test                                                | Portable Gate Template    | Dispatchable: Framework hook self-test gate                                                                                                                                                                               |
-| 36 | `kb_4d8dc3c6`                 | wf-session-hook-forensics                                   | Portable Process Template | Dispatchable: Session forensics workflow                                                                                                                                                                                  |
-| 37 | `wf_signoff_16985750`         | wf-signoff-brief                                            | **Stage-2 Fragment**      | Fragment: Signoff brief spec; never dispatch standalone                                                                                                                                                                   |
-| 38 | `wf-signoff-loop`             | wf-signoff-loop                                             | Portable Gate Template    | Dispatchable: Principal signoff review loop                                                                                                                                                                               |
-| 39 | `wf_tdd_5b47ec98`             | wf-tdd-cycle                                                | Portable Process Template | Dispatchable: TDD development cycle                                                                                                                                                                                       |
-| 40 | `wf-verification`             | wf-verification                                             | Portable Gate Template    | Dispatchable: Core evidence verification gate                                                                                                                                                                             |
-| 41 | `wf-visual-qa-loop`           | wf-visual-qa-loop                                           | Portable Process Template | Dispatchable: Visual screenshot QA convergence loop                                                                                                                                                                       |
-| 42 | `temp_b47ca185`               | wf-wikijuris-external-contribution-integration              | Custom / Scoped Template  | Dispatchable IFF project is `wikijuris`                                                                                                                                                                                   |
-
-## 7. Specification for `brief` §5 Rewrite (AC 6)
-
-The implementation replacing `plugins/pkb/skills/brief/SKILL.md` Section 5 ("The Dual-Tier Library Architecture", lines 220–229) shall read as follows:
-
-```markdown
-### The Three-Source Workflow Template Discovery Architecture
-
-Composing passes discover workflow templates dynamically across three sources without requiring central registry lookups:
-
-1. **Project-Local Templates (Project Tier)** — `$CWD/.agents/templates/*.md`. Project-specific workflows and overrides. If `$CWD/.agents/templates` is absent, returns empty list.
-2. **PKB Graph Templates (PKB Tier)** — Dynamic templates stored in the PKB. Discover via `pkb__list_documents(type="template")` (or `pkb__search(type="template")`). Filter out retired templates (`status: retired` or tag `retired`), datestamped instance notes, and distinguish Stage-2 composition fragments (`wf-hydrate`, `wf-draft`, etc.) from dispatchable templates.
-3. **Universal Core Workflows (Core Tier)** — `plugins/pkb/workflows/process/*.md` catalogued in `plugins/pkb/workflows/INDEX.md`. Universal, immutable, version-controlled baseline templates.
-
-#### Resolution and Collision Order:
-
-When template slugs collide across sources, apply deterministic resolution order:
-$$\text{Project Tier} \succ \text{PKB Tier} \succ \text{Universal Tier}$$
-
-The higher-priority template cleanly shadows the lower-priority template.
-
-**DO NOT GUESS.** Read and critically apply each template at composition time, every time.
-
-**HALT IF THERE IS NO PROCESS.** If a template you need exists in none of the three tiers, that is a library gap. Name it. Do not freelance a process to fill it.
-```
-
-## 8. Integration Test Design (AC 8)
-
-The integration test suite maps one test per acceptance criterion (AC 2 through AC 6), each verifying correct behavior and asserting against distinct failure modes:
-
-```python
-# test_three_source_template_discovery.py
-import pytest
-from pathlib import Path
-
-class TestThreeSourceTemplateDiscovery:
-    """Integration tests for Three-Source Template Discovery Contract (AC 2-6)."""
-
-    def test_ac2_resolution_order_and_collision_shadowing(self, tmp_path, mock_pkb, mock_universal):
-        """
-        AC 2: Verify Project > PKB > Universal resolution priority and collision shadowing.
-        Failure mode detected: Lower tier incorrectly takes precedence or collision causes illegal merge.
-        """
-        slug = "feature-dev"
-        # Setup duplicate template across all 3 tiers with distinct markers
-        project_dir = tmp_path / ".agents" / "templates"
-        project_dir.mkdir(parents=True)
-        (project_dir / f"{slug}.md").write_text("TIER: PROJECT")
-        mock_pkb.add_document(id=f"wf-{slug}", type="template", body="TIER: PKB")
-        mock_universal.add_template(f"{slug}.md", body="TIER: UNIVERSAL")
-
-        resolved = discover_template(slug, cwd=tmp_path, pkb_client=mock_pkb, universal_root=mock_universal)
-        assert resolved.source == "project"
-        assert "TIER: PROJECT" in resolved.content
-
-        # Remove project tier -> PKB should win over Universal
-        (project_dir / f"{slug}.md").unlink()
-        resolved_pkb = discover_template(slug, cwd=tmp_path, pkb_client=mock_pkb, universal_root=mock_universal)
-        assert resolved_pkb.source == "pkb"
-        assert "TIER: PKB" in resolved_pkb.content
-
-    def test_ac3_project_tier_absent_directory_and_structure(self, tmp_path, mock_pkb, mock_universal):
-        """
-        AC 3: Verify $CWD/.agents/templates convention and clean fallthrough when absent.
-        Failure mode detected: Unhandled FileNotFoundError or error raised when .agents/templates does not exist.
-        """
-        empty_cwd = tmp_path / "empty_repo"
-        empty_cwd.mkdir()
-        assert not (empty_cwd / ".agents" / "templates").exists()
-
-        # Must return empty list for project tier without throwing
-        project_templates = enumerate_project_templates(cwd=empty_cwd)
-        assert project_templates == []
-
-        # Overall discovery succeeds seamlessly using remaining tiers
-        all_templates = enumerate_all_sources(cwd=empty_cwd, pkb_client=mock_pkb, universal_root=mock_universal)
-        assert len(all_templates) > 0
-        assert all(t.source in ["pkb", "universal"] for t in all_templates)
-
-    def test_ac4_registry_decoupling_and_colocated_warnings(self, mock_pkb):
-        """
-        AC 4: Verify dynamic discovery finds templates not listed in pkb-workflow-index and reads warnings from document.
-        Failure mode detected: Unregistered template is invisible or warnings are missed without index.
-        """
-        # Create un-indexed PKB template
-        doc_id = "wf-brand-new-pipeline"
-        mock_pkb.add_document(
-            id=doc_id,
-            type="template",
-            tags=["workflow", "wf-template"],
-            body="> [!WARNING]\n> Stage-2 Composition Fragment\n\nContent..."
-        )
-        # Ensure it is NOT in pkb-workflow-index
-        index_doc = mock_pkb.get_document("pkb-workflow-index")
-        assert doc_id not in index_doc.body
-
-        # Discovery by type finds it
-        pkb_templates = enumerate_pkb_templates(pkb_client=mock_pkb)
-        found = next((t for t in pkb_templates if t.id == doc_id), None)
-        assert found is not None
-        assert found.is_fragment is True
-
-    def test_ac5_blind_scan_filtering_on_42_document_set(self, live_42_pkb_corpus):
-        """
-        AC 5: Verify blind scan rules accurately classify fragments, retired templates, and dispatchable templates.
-        Failure mode detected: Composition fragment or retired template misclassified as standalone dispatchable.
-        """
-        classified = [classify_pkb_template(doc) for doc in live_42_pkb_corpus]
-        
-        # Verify exactly 8 fragments identified
-        fragments = [c for c in classified if c.category == "fragment"]
-        assert len(fragments) == 8
-        fragment_ids = {f.id for f in fragments}
-        expected_fragments = {
-            "wf_boundary_7088958d", "wf_capstone_73d7ce86", "wf_635eab64",
-            "wf_fact_b828c939", "wf_23a5a1c6", "wf_qa_b4b7f9c5",
-            "wf_refine_6ef85da2", "wf_signoff_16985750"
-        }
-        assert fragment_ids == expected_fragments
-
-        # Verify retired templates excluded
-        retired = [c for c in classified if c.category == "retired"]
-        retired_ids = {r.id for r in retired}
-        assert "wf-daily-note" in retired_ids
-
-        # Verify canonical daily note identified
-        canonical_daily = next(c for c in classified if c.id == "tpl_daily")
-        assert canonical_daily.category == "canonical_workflow"
-
-    def test_ac6_brief_section_5_composition_pass(self, sample_brief_input, mock_environment):
-        """
-        AC 6: Verify brief §5 composition pass executes 3-source discovery without forks.
-        Failure mode detected: Brief composition halts or requires interactive disambiguation across sources.
-        """
-        composed_process = run_brief_section_5(sample_brief_input, env=mock_environment)
-        assert composed_process.is_valid
-        assert len(composed_process.inner_checklist) > 0
-        assert len(composed_process.outer_nodes) > 0
-```
-
-## 9. Governance & Sign-off Gate (AC 9)
-
-In accordance with `framework-gate` and `develop-specification` step 11:
-
-- This specification contract is delivered via pull request referencing task `aops_50b695bb`.
-- Implementation of skill updates (`plugins/pkb/skills/brief/SKILL.md`) and engine code is gated by human review and sign-off on [[aops_1f0a5f4c]] by Nic.
-- No implementation PR shall be merged until `aops_1f0a5f4c` is resolved.
+- `plugins/pkb/workflows/INDEX.md` — the routing tree
+- `plugins/pkb/skills/brief/SKILL.md` §5 — the composition pass
+- `plugins/pkb/skills/workflow-library/SKILL.md` — list, view, add, edit, retire
+- [[workflow-library-moc]] — the human-facing map of what currently exists in every tier

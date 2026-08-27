@@ -36,9 +36,9 @@ flowchart TD
     pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
     reconcile -- "re-plan when the wave lands:<br/>back to inbox" --> capture
 
-    brief --> library[["workflows/INDEX.md<br/>workflows/process/*.md"]]
-    brief --> userlayer[["$ACA_DATA/.agents/workflows/<br/>overrides by filename"]]
-    brief --> wftemplates[["PKB documents tagged wf-template"]]
+    brief --> library[["workflows/INDEX.md<br/>workflows/*.md"]]
+    brief --> userlayer[["$CWD/.agents/templates/<br/>overrides by filename"]]
+    brief --> wftemplates[["PKB documents with type: template"]]
     agent -- "routes its own ask" --> library
 
     pkbwrite -- "every read and write" --> mcp
@@ -149,11 +149,11 @@ at all — a simple question is answered and halted, a follow-up continues the
 session, an email is triaged.
 
 **Composition** is assembling a full process for work that has been released for
-dispatch, and it happens in `brief` §3 — read in context, every time, never
+dispatch, and it happens in `brief` §5 — read in context, every time, never
 carried in pauli's own text. The three template layers sit outside the box
-because they are sources, not stages: the shipped library, the user's
-`$ACA_DATA/.agents/workflows/`, and PKB documents tagged `wf-template`. They form
-one namespace; a PKB template composes exactly like a shipped one.
+because they are sources, not stages: the shipped library, the working
+repository's `$CWD/.agents/templates/`, and PKB documents with `type: template`.
+They form one namespace; a PKB template composes exactly like a shipped one.
 
 The output lands on the task as its checklist: the composed steps, in order,
 plus one pointer bullet naming the templates and the proportionality call. The
@@ -213,7 +213,7 @@ this plugin ships.
 | ------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pkb_mcp_url` | client `userConfig` | The streamable-HTTP endpoint of the PKB MCP server. Claude Code reads it into `.mcp.json`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `PKB_MCP_URL` | environment         | The same endpoint, for clients that launch the server over stdio via `scripts/run-mcp.sh`. Required there; the script exits non-zero without it. On agy, `mcp_config.json` invokes the script but sets no `env` for it — the value must already be in the process environment that launches agy. Inside an aops-crew container that is guaranteed (the entrypoint exports it). On a bare host, exporting it is still not enough: the launcher path itself carries `${extensionPath}`, which only the aops-crew image rewrites, so `agy plugin install` outside that image cannot start the server at all. |
-| `ACA_DATA`    | environment         | The PKB root. `$ACA_DATA/.agents/workflows/` overrides and extends the shipped workflow library by filename. Unset means there is no user layer — not an error.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `ACA_DATA`    | environment         | The PKB root. There is no special user template layer: the PKB repo's own `.agents/templates/` is the project tier by the ordinary rule, like any other repository's.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 `$ACA_DATA` is the PKB's storage, reached through the MCP tools. Nothing in this
 plugin reads or writes it as a filesystem path.
