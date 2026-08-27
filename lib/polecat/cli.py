@@ -686,9 +686,7 @@ def resolve_isolated_workspace(
     origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
     config = config or {}
-    base_ref = (
-        base or branch or config.get("branch") or config.get("default_branch") or "HEAD"
-    ).strip()
+    base_ref = (base or config.get("default_branch") or "HEAD").strip()
 
     # Resolve the base commit SHA from base_ref with remote freshness verification
     base_sha = None
@@ -717,15 +715,28 @@ def resolve_isolated_workspace(
                     text=True,
                 )
             if fetch_res.returncode != 0 and base:
-                fail(
-                    f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
+                local_check = subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(canonical_dir),
+                        "rev-parse",
+                        "--verify",
+                        f"{base_ref}^{{commit}}",
+                    ],
+                    capture_output=True,
+                    text=True,
                 )
+                if local_check.returncode != 0:
+                    fail(
+                        f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
+                    )
             # Remote ref is tried FIRST to close Mode 1 (silent stale local ref)
             refs_to_try = [f"refs/remotes/origin/{base_ref}", f"origin/{base_ref}"]
             refs_to_try.append(base_ref)
         elif base_ref.startswith("origin/"):
             ref_name = base_ref.removeprefix("origin/")
-            subprocess.run(
+            fetch_res = subprocess.run(
                 [
                     "git",
                     "-C",
@@ -737,6 +748,16 @@ def resolve_isolated_workspace(
                 capture_output=True,
                 text=True,
             )
+            if fetch_res.returncode != 0:
+                fetch_res = subprocess.run(
+                    ["git", "-C", str(canonical_dir), "fetch", "origin", ref_name],
+                    capture_output=True,
+                    text=True,
+                )
+            if fetch_res.returncode != 0:
+                fail(
+                    f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
+                )
             refs_to_try = [f"refs/remotes/{base_ref}", base_ref]
         elif base_ref == "HEAD":
             upstream_res = subprocess.run(

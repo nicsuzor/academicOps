@@ -239,7 +239,7 @@ def test_isolated_workspace_defaults_to_config_branch(fake_canonical_repo, tmp_p
     _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
 
     polecat_home = tmp_path / "polecat-home"
-    config = {"branch": "dev"}
+    config = {"default_branch": "dev"}
     isolated_path, cleanup_info = resolve_isolated_workspace(
         fake_canonical_repo, "session-base-cfg", polecat_home, base=None, config=config
     )
@@ -310,7 +310,8 @@ def test_clone_passes_no_checkout(fake_canonical_repo, tmp_path, monkeypatch):
 
 
 def test_isolated_workspace_branch_sets_base_ref(fake_canonical_repo, tmp_path):
-    """When branch is passed and base is not, base_ref resolves to that branch instead of config or HEAD."""
+    """Rule 3: When branch is passed and base is not, branch only names the worktree checkout branch without overriding base_ref."""
+    initial_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
     initial_branch = _run(
         "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
     ).strip()
@@ -322,22 +323,23 @@ def test_isolated_workspace_branch_sets_base_ref(fake_canonical_repo, tmp_path):
     _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
 
     polecat_home = tmp_path / "polecat-home"
-    # Even if config specifies another branch like main, branch option takes precedence for base ref
-    config = {"branch": initial_branch}
+    # Even if branch is passed, base_ref defaults to config default_branch or HEAD, not branch
+    config = {"default_branch": initial_branch}
     isolated_path, cleanup_info = resolve_isolated_workspace(
         fake_canonical_repo,
         "session-branch-base",
         polecat_home,
         base=None,
         config=config,
-        branch="feat/my-feature",
+        branch="feat/worker-branch",
     )
 
     isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
     branch_name = _run("git", "rev-parse", "--abbrev-ref", "HEAD", cwd=isolated_path).strip()
-    assert isolated_sha == feature_sha
-    assert branch_name == "feat/my-feature"
-    assert (isolated_path / "feature.txt").read_text() == "feature content\n"
+    assert isolated_sha == initial_sha
+    assert isolated_sha != feature_sha
+    assert branch_name == "feat/worker-branch"
+    assert not (isolated_path / "feature.txt").exists()
 
     cleanup_isolated_workspace(cleanup_info)
 
@@ -675,3 +677,71 @@ def test_canonical_checkout_immutability_during_dispatch(tmp_path):
     assert branch_before == branch_after
 
     cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_resolves_local_commit_when_fetch_fails(tmp_path):
+    """When base is a valid local commit (e.g. HEAD~1 or SHA) and origin fetch fails,
+    resolve_isolated_workspace verifies the commit locally and succeeds."""
+    canonical = tmp_path / "canonical-local-fallback"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "file1.txt").write_text("commit 1\n")
+    _run("git", "add", "file1.txt", cwd=canonical)
+    _run("git", "commit", "-m", "first", cwd=canonical)
+    first_sha = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+    (canonical / "file2.txt").write_text("commit 2\n")
+    _run("git", "add", "file2.txt", cwd=canonical)
+    _run("git", "commit", "-m", "second", cwd=canonical)
+    _run(
+        "git",
+        "remote",
+        "add",
+        "origin",
+        "https://invalid.unreachable.example.internal/repo.git",
+        cwd=canonical,
+    )
+
+    polecat_home = tmp_path / "polecat-home"
+    # base="HEAD~1" cannot be fetched from origin, but resolves locally
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-local-base", polecat_home, base="HEAD~1"
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == first_sha
+    assert (isolated_path / "file1.txt").exists()
+    assert not (isolated_path / "file2.txt").exists()
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_isolated_workspace_origin_prefix_fails_closed_on_fetch_error(tmp_path):
+    """When base starts with origin/ and remote fetch fails, resolve_isolated_workspace
+    must fail closed (SystemExit)."""
+    canonical = tmp_path / "canonical-origin-prefix-fail"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("readme\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+    _run(
+        "git",
+        "remote",
+        "add",
+        "origin",
+        "https://invalid.unreachable.example.internal/repo.git",
+        cwd=canonical,
+    )
+
+    polecat_home = tmp_path / "polecat-home"
+    with pytest.raises(SystemExit):
+        resolve_isolated_workspace(
+            canonical,
+            "session-origin-prefix-fail",
+            polecat_home,
+            base="origin/nonexistent-branch",
+        )

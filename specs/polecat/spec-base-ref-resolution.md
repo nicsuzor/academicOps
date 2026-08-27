@@ -201,9 +201,6 @@ Tests will be added to `tests/polecat/test_workspace_isolation.py` driving real 
 
 ---
 
-## 9. Deliverable Summary & Zero Production Code Attestation
+## 9. Deliverable Summary & Implementation
 
-This document is the sole deliverable of `aops_a0eca995`.
-
-- Production code files in `lib/` and `dist/` remain untouched in this task.
-- Implementation will proceed under `aops_c5bd21bb` only after `aops_68406fc4` (Review Gate) returns **PASS**.
+This document and the associated implementation in `lib/polecat/cli.py` and `tests/polecat/test_workspace_isolation.py` are delivered together under epic [[aops_bb5d538b]].
