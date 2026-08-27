@@ -57,6 +57,14 @@ than acting on it.
 
 ## 1 — Read the graph, claims included
 
+Call `refresh_graph` (`pkb__refresh_graph`, maybe hosted under the `services` MCP
+server: `mcp__services__pkb__refresh_graph`) first, before any read below. It is a
+cheap rebuild without re-embedding, and it closes what the per-call warnings on
+`get_task`/`list_tasks` do not: they warn or self-heal one node or one count
+mismatch, but a same-count swap — one node dropped, a different one gained — escapes
+both, and everything downstream in this sweep treats the read that follows as
+ground truth.
+
 `pkb__list_tasks` (maybe hosted under the `services` MCP server: `mcp__services__pkb__list_tasks`) over **every non-terminal status** the PKB MCP schema declares —
 that schema is the source, never a list inlined here. Later steps read and write
 across the whole of that set, so a sweep that loads only the statuses which look
