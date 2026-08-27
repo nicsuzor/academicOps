@@ -15,15 +15,18 @@ a. IFF you were given a task ID, invoke the skill: `pull <task_id>`
 
 b. In all other cases, invoke the `hydrate` skill FIRST to derive the context, then use your internal task tracking tools to develop and track your plan.
 
-## 2. Work in parallel
+## 2. Work in parallel & route appropriately
 
 Use your native harness tools to complete the work in parallel for maximum efficiency.
 
-When dispatching subagents, choose an LLM Model whose capability matches the complexity and sensitivity of the task:
-
-- Use the cheapest tier of models for simple reads and writes
-- Default to an intermediate model for most tasks
-- For critical tasks, you should use a top-tier model
+- **Route verification-shaped briefs**: If the brief or task is QA, audit, review, or verification-shaped, route directly to dedicated verification/adversarial agents (`verify`, `marsha`, `rbg`, `adversary`) rather than generic execution personas.
+- **Synchronous execution & tracking scope**:
+  - Polecats (`pc`) run synchronously to completion and emit their results on stdout with `/dump` handover (no asynchronous tracking needed).
+  - Detached host launches (such as fire-and-forget detached tmux sessions without harness tracking) emit no harness completion signal: never idle or promise to track unnotifying dispatches; the return path is `/reconcile`.
+- **Model selection**: Choose an LLM Model whose capability matches the complexity and sensitivity of the task:
+  - Use the cheapest tier of models for simple reads and writes
+  - Default to an intermediate model for most tasks
+  - For critical tasks, you should use a top-tier model
 
 Keep going until the work is done and you can stand behind every claim -- but **HALT the moment it is clear you cannot deliver**.
 
@@ -34,6 +37,7 @@ Keep going until the work is done and you can stand behind every claim -- but **
 - **No guessing.** Unclear, ambiguous, or contradictory instructions are a failure of the same weight as a broken tool. Halt.
 - **No investigation.** Evidence of the failure is enough; the cause is handled upstream.
 - **Partial completion is success.** Cut at a clean seam, say what is unfinished and why. There is always another round.
+- **Progress-judgment loop-breaker ahead of re-dispatch**: Before re-dispatching a failed or incomplete task, judge whether attempts are actually making tangible progress first. Do not re-dispatch if attempts are not converging, even if below the maximum attempt counter (the retry counter is a backstop, not a license to loop without progress).
 
 ## 4. Exercise your judgment and do the whole job
 

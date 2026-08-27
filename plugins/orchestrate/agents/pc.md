@@ -52,7 +52,11 @@ uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/
 - `--prompt` **must be last**: everything after it is part of the prompt.
 - **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop for output. Your native harness tools will handle the output for you.
 - `--base $HEAD` always: workers branch from the caller's current commit.
-- `-s` sets the session name.
+- `-s` sets the session name. The container branch is constructed deterministically as `polecat/<session>`:
+  - Task dispatch (`-s "dispatch-<task-id>"`): `polecat/dispatch-<task-id>`
+  - Prompt run (`-s "run-<slug>"`): `polecat/run-<slug>`
+  - Unset `-s`: `polecat/session-<8 hex>`
+  - **Authorship & limit**: The branch name proves automated polecat provenance (ruling out parallel human work), but encodes the task/session name rather than an attempt ID — multiple dispatches of the same task share the same branch name.
 - `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`).
 - Never use `-d` (`--repo-dir`) with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
