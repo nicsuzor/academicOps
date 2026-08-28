@@ -1,5 +1,6 @@
 ---
 id: investigation
+type: template
 kind: process
 category: process
 description: Hypothesis-probe-conclude cycle for debugging and exploratory work with an unknown cause

@@ -1,5 +1,6 @@
 ---
 id: worktree-merge
+type: template
 kind: process
 category: operations
 description: Merge a worktree branch back into the main line once its task is verified and merge_ready

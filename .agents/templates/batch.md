@@ -1,6 +1,7 @@
 ---
 id: batch
-kind: process
+type: template
+kind: fragment
 category: fragment
 description: Process multiple independent items in parallel — chunk, spawn workers, aggregate, persist receipts
 requires: []

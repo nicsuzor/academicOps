@@ -17,7 +17,8 @@ which is folded in below.
 ## 1. What a template is
 
 A short markdown file, or PKB document, that a smart agent reads and composes
-**in context, by comprehension** — never parsed, never solved. Two kinds:
+**in context, by comprehension** — never parsed, never solved. Any template is
+defined by carrying `type: template` in its YAML frontmatter. Two kinds:
 
 - **Process templates** describe how a class of work proceeds — `feature-dev`,
   `investigation`, `email-triage`. They carry routing signals, NOT-this signals,
@@ -30,10 +31,11 @@ A short markdown file, or PKB document, that a smart agent reads and composes
 
 Some templates are **fragments** — sub-steps only meaningful composed into a
 larger process, and never dispatched standalone. A fragment dispatched alone
-sends a worker at half a process. The shipped tier declares one in its own first
-heading (`# Process fragment: …` rather than `# Process: …`); in the PKB tier the
+sends a worker at half a process. In the universal and project tiers a fragment
+carries `kind: fragment`, corroborated by its own first heading
+(`# Process fragment: …` rather than `# Process: …`); in the PKB tier the
 `planner-data` tag marks the set, corroborated by a `## <slug> — step: …` first
-heading. Confirm against the body, never the tag alone.
+heading. Confirm against the body, never the marker alone.
 
 ### Authoring bar
 
@@ -55,11 +57,18 @@ heading. Confirm against the body, never the tag alone.
 
 Three sources, one namespace. A PKB template composes exactly like a shipped one.
 
-| Tier             | Location                                                                     | Enumerate with                                   |
+**`type: template` is the marker in every tier.** The tiers differ only in where
+you look for it.
+
+| Tier             | Where to look                                                                | Enumerate with                                   |
 | ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
 | **1. Project**   | `$CWD/.agents/templates/*.md`                                                | `ls`; an absent directory is empty, not an error |
-| **2. PKB**       | graph documents with `type: template`                                        | `pkb__list_documents(type="template")`           |
+| **2. PKB**       | the graph                                                                    | `pkb__list_documents(type="template")`           |
 | **3. Universal** | `plugins/pkb/workflows/*.md`, catalogued by `plugins/pkb/workflows/INDEX.md` | `ls`                                             |
+
+Frontmatter beyond `type: template`: `kind: process` or `kind: fragment`,
+`description` (the one-line routing summary agents scan), and the dependency
+hints `requires` / `pairs-with` / `conflicts` / `recommends`.
 
 The project tier is **any** repository's `.agents/templates/`, resolved against
 the working directory. There is no separate user-global layer: when you are
@@ -72,12 +81,13 @@ ignore a `wf-` prefix and `_`/`-` differences, so `feature-dev`,
 one **whole** — never merge two tiers' text. Name the tier each template came
 from in the composition trace, and say what it shadowed.
 
-**Existence is not registration.** A template exists because it is a file in one
-of those directories or a document with `type: template` — not because an index
-lists it. The old invariant _"a template document exists in the PKB only once it
-is listed below"_ is repealed. Indexes remain useful for human orientation and
-carry notes that source-scanning does not reproduce, but they are never the
-discovery mechanism, and a name absent from every index is not thereby missing.
+**Existence is not registration.** A template exists because it has
+`type: template` (with project-local lookup in `$CWD/.agents/templates/` as well) —
+not because an index lists it. The old invariant _"a template document exists in
+the PKB only once it is listed below"_ is repealed. Indexes remain useful for human
+orientation and carry notes that source-scanning does not reproduce, but they are
+never the discovery mechanism, and a name absent from every index is not thereby
+missing.
 
 **Enumerate by running the command, every time.** Describing what the library
 probably holds, from memory, is the failure this contract exists to prevent.
@@ -104,8 +114,8 @@ never-dispatch-standalone rule applies.
 The universal tier is the immutable baseline: it sets minimum standards that
 cannot be derogated from, and both tiers above it may extend or shadow it.
 
-**23 process templates**, of which four declare themselves fragments — `batch`,
-`burst`, `task-tracking`, `tdd`. By the work they cover:
+**23 templates** — 19 `kind: process`, 4 `kind: fragment` (`batch`, `burst`,
+`task-tracking`, `tdd`). By the work they cover:
 
 | Group               | Templates                                                                             |
 | ------------------- | ------------------------------------------------------------------------------------- |
@@ -161,7 +171,8 @@ Frontmatter:
 ---
 title: "Deploy to Staging Pipeline"
 type: template
-category: process # or gate
+kind: process # or fragment, or gate
+category: release # the domain, not the kind
 description: "One-line routing summary for agent scanning"
 tags: [deploy, staging, release]
 ---

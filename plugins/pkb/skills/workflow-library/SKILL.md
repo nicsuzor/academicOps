@@ -6,7 +6,8 @@ description: List, read, add, edit, and retire the workflow templates that `brie
 
 # /workflow-library: see and maintain the workflow library
 
-A workflow template is a short markdown document describing how a class of work
+A workflow template is any markdown document with `type: template` (with project-local
+lookup in `$CWD/.agents/templates/` as well) describing how a class of work
 proceeds. `brief` §5 composes process out of them. Nothing else in the framework
 lets a person see what the library holds or change it, so this skill is the only
 surface for both.
@@ -17,11 +18,14 @@ and this skill's whole job is to report the library.
 
 ## The three tiers
 
-| Tier         | Where                                 | Enumerate with                                 |
-| ------------ | ------------------------------------- | ---------------------------------------------- |
-| 1. Project   | `$CWD/.agents/templates/*.md`         | `ls`; absent directory means empty             |
-| 2. PKB       | graph documents with `type: template` | `pkb__list_documents(type="template")`         |
-| 3. Universal | `../../workflows/*.md`                | `ls`, catalogued by `../../workflows/INDEX.md` |
+| Tier         | Where                         | Enumerate with                                 |
+| ------------ | ----------------------------- | ---------------------------------------------- |
+| 1. Project   | `$CWD/.agents/templates/*.md` | `ls`; absent directory means empty             |
+| 2. PKB       | the graph                     | `pkb__list_documents(type="template")`         |
+| 3. Universal | `../../workflows/*.md`        | `ls`, catalogued by `../../workflows/INDEX.md` |
+
+Every tier marks a template the same way — `type: template` in frontmatter. The
+tiers differ only in where you look.
 
 **Resolution: project ≻ PKB ≻ universal.** Slugs match case-insensitively,
 ignoring a `wf-` prefix and `_`/`-` differences: `feature-dev`, `wf-feature-dev`

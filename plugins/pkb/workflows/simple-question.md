@@ -1,5 +1,6 @@
 ---
 id: simple-question
+type: template
 kind: process
 category: routing
 description: Pure information request — answer and halt, no modifications, no task, no regime

@@ -1,5 +1,6 @@
 ---
-id: report-finalization
+id: finalize-report
+type: template
 kind: process
 category: academic
 description: Finalize/revise an academic report after reviewer or stakeholder feedback — discovery before any edits

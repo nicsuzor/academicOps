@@ -1,5 +1,6 @@
 ---
 id: pr-review
+type: template
 kind: process
 category: operations
 description: Triage open PRs, invoke reviewer agents, synthesize a per-PR verdict table — human makes the final merge call

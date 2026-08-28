@@ -1,5 +1,6 @@
 ---
 id: decision-briefing
+type: template
 kind: process
 category: general
 description: Generate a structured, user-facing briefing for tasks blocked on a human decision — consequence analysis, not recommendations

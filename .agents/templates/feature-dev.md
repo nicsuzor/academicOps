@@ -1,5 +1,6 @@
 ---
 id: feature-dev
+type: template
 kind: process
 category: development
 description: Test-first feature development from idea to ship — "add feature X", "build Y", "fix bug Z" with a known cause
