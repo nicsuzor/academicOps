@@ -82,8 +82,7 @@ Charts lie most often by omission, and the lie is usually accidental: an author
 draws a useful subset and the result reads as a complete inventory.
 
 - When a container shows fewer children than it has, **say so on the container**
-  ("showing 3 of 12"). `excal-chart.py` emits this automatically from
-  `children_total`; keep that field fed from the source.
+  ("showing 3 of 12").
 - Reserve "collapsed" for a true chain-of-one. If you drew one branch of a wide
   tree, that is a subset, not a collapse — **verify the child counts before
   labelling it either way.**
@@ -216,14 +215,17 @@ Construct diagrams conceptually using this model instead of flat arrays of boxes
 ### Reading and Inspecting an Existing File
 
 Never read a `.excalidraw` file raw. It is minified JSON — offset/limit cannot window it,
-and raw dumping wastes context tokens. Use the native `excalidraw-view` CLI:
+and raw dumping wastes context tokens. Use the native `excalidraw-view` CLI for token-efficient and invariant-safe operations:
 
 ```bash
 excalidraw-view FILE summary        # counts, extents, max index, order sanity
 excalidraw-view FILE map            # shapes with labels, free text, arrow topology
+excalidraw-view FILE nodes          # tabular list of nodes
+excalidraw-view FILE edges          # tabular list of edges
 excalidraw-view FILE style          # modal style values to copy for new elements
 excalidraw-view FILE check          # structural validation — exit 1 on any fault
 excalidraw-view FILE1 diff FILE2    # summary before/after diff (counts, removals, topology)
+excalidraw-view FILE1 struct-diff FILE2 # semantic structural diff (ignores coordinate jitter)
 excalidraw-view FILE inspect <id>   # inspect specific element attributes
 excalidraw-view FILE get <id>       # retrieve element JSON
 ```
@@ -353,33 +355,24 @@ current max `index` as `--after` (read it from `summary`) and validate with
 `check` afterwards. Older libraries store items unnamed — `lib` gives those a
 `#N` selector.
 
-### Building a containment chart from a spec
+### Generating and Syncing with PKB (Personal Knowledge Base)
 
-For any chart whose job is "show a hierarchy and the state of the things in it"
-— task trees, org charts, service maps, module structure — use
-`scripts/excal-chart.py` rather than writing a new generator. Hand-rolled
-per-chart scripts re-implement, and re-break, the same invariants every time.
+For any chart whose job is "show a hierarchy and the state of the things in it" — task trees, org charts, service maps, module structure — use the native `pkb` binary instead of writing new generators or editing large JSON arrays directly.
 
-```bash
-python3 scripts/excal-chart.py SPEC.json OUT.excalidraw --check   # validate spec
-python3 scripts/excal-chart.py SPEC.json OUT.excalidraw           # build
-```
+**Generating Canvases:**
 
-The spec carries `objective`, `audience`, `nodes` (label, children,
-`children_total`, and a free-form `data` dict), an `encoding` block mapping
-data fields to visual channels, and the composition — where each top-level
-frame sits. **The tool refuses to run without an objective and an audience.**
+- `pkb excalidraw export <output_path> [--focus <node_id>] [--hops <H>]`: Exports the knowledge graph or an ego-network using the Sugiyama layered DAG layout engine.
+- `pkb graph --format excalidraw [--focus <id>] [--hops <H>]`: High-level graph export option.
+  _(Also available via MCP server tools: `graph_excalidraw`)_
 
-It handles, so you do not have to: both text layers, fixed-width z-order
-indices in array order, nesting declared at every depth, headers sized to their
-own title, conservative text metrics, automatic subset disclosure, dated backup,
-and a fresh re-parse of what it wrote.
+**Diffing and Syncing:**
+When the user edits the generated Excalidraw canvas visually (e.g., reparenting nodes, changing status colors, removing dependencies), reconcile those visual edits back into the markdown graph:
 
-Keep the data pull separate from the chart. The durable shape is a three-step
-pipeline — **snapshot** (a dated dump from the source system) → **adapter**
-(thin project-local glue: snapshot + display labels + composition → spec) →
-**builder** (this tool). The adapter is the only project-specific code, and it
-should contain no facts of its own.
+- `pkb excalidraw diff <canvas_path> [--base <snapshot>] [--json]`: Computes a 3-way visual diff between the base snapshot, live PKB graph state, and the modified Excalidraw JSON. Tracks node additions, updates (title, status, priority, parent, tags), deletions, and edge modifications.
+- `pkb excalidraw sync <canvas_path> [--base <snapshot>] [--dry-run] [--sync-edge-removals]`: Applies canvas changes back into the markdown frontmatter on disk. Utilizes spiral placement for new nodes and prevents circular dependencies.
+  _(Also available via MCP server tools: `diff_excalidraw`, `sync_excalidraw`)_
+
+**Non-destructive removal**: Removing a card from the canvas marks it as `removed_from_canvas` in the `pkb` diff and never deletes the underlying document.
 
 ### Export
 
