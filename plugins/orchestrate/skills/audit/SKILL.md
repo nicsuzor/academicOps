@@ -90,7 +90,7 @@ Root Session: 2026-08-14-session-root.md
 
 When evaluating transcripts:
 
-• Dispatch Integrity: Verify base commits (--base $(git rev-parse HEAD)) and matching session names (-s $NAME).
+• Dispatch Integrity: Verify base branch/commits (--base <branch>) and matching session names (-s $NAME).
 • Friction Points: Identify blocking permission prompts, unhandled tool exceptions, or connection timeouts.
 • Loop Detection: Flag redundant tool calls, missing reactive wakeups, or stuck sleep cycles.
 • Handoff Quality: Verify subagents reported structured findings back via send_message and persisted outputs to durable storage.

@@ -1,5 +1,5 @@
 ---
-id: report-finalization
+id: finalize-report
 type: template
 kind: process
 category: academic

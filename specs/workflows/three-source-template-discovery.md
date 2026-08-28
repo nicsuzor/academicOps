@@ -17,7 +17,8 @@ which is folded in below.
 ## 1. What a template is
 
 A short markdown file, or PKB document, that a smart agent reads and composes
-**in context, by comprehension** — never parsed, never solved. Two kinds:
+**in context, by comprehension** — never parsed, never solved. Any template is
+defined by carrying `type: template` in its YAML frontmatter. Two kinds:
 
 - **Process templates** describe how a class of work proceeds — `feature-dev`,
   `investigation`, `email-triage`. They carry routing signals, NOT-this signals,
@@ -80,12 +81,13 @@ ignore a `wf-` prefix and `_`/`-` differences, so `feature-dev`,
 one **whole** — never merge two tiers' text. Name the tier each template came
 from in the composition trace, and say what it shadowed.
 
-**Existence is not registration.** A template exists because it is a file in one
-of those directories or a document with `type: template` — not because an index
-lists it. The old invariant _"a template document exists in the PKB only once it
-is listed below"_ is repealed. Indexes remain useful for human orientation and
-carry notes that source-scanning does not reproduce, but they are never the
-discovery mechanism, and a name absent from every index is not thereby missing.
+**Existence is not registration.** A template exists because it has
+`type: template` (with project-local lookup in `$CWD/.agents/templates/` as well) —
+not because an index lists it. The old invariant _"a template document exists in
+the PKB only once it is listed below"_ is repealed. Indexes remain useful for human
+orientation and carry notes that source-scanning does not reproduce, but they are
+never the discovery mechanism, and a name absent from every index is not thereby
+missing.
 
 **Enumerate by running the command, every time.** Describing what the library
 probably holds, from memory, is the failure this contract exists to prevent.

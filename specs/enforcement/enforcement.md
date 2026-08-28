@@ -46,15 +46,12 @@ Before escalating severity, establish that the failure is not a cost or defaults
 problem. Repeated stale-state assertions are not a norms failure — agents know
 the rule — so the fix is cheaper search and injected results, not a heavier gate.
 
-## Where enforcement sits
+## Where enforcement sits — the five bands
 
-Five bands, in descending order of how much they depend on an agent's
-cooperation. The register lists every mechanism in each.
+Five bands, listed in **escalation order** (from the cheapest default mechanism to the most coercive last resort). This order also matches **descending dependence on an agent's cooperation** — instructions require the most voluntary alignment; structural prevention holds unconditionally without cooperation. The register ([`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md)) lists every mechanism in each.
 
-- **Structural prevention** — holds without cooperation. Container and credential
-  isolation, the delivery and seed guards, no-defaults config, model pins.
 - **Instructions** — agent personas and skills. The largest band by far, and the
-  one the design principles below say to reach for first (including bounded capture floors for routine maintenance, e.g. Pauli's 0/1 write rate, 0-create constraint, and suppression against hydrate's shortlist).
+  one design principles reach for first (including bounded capture floors for routine maintenance, e.g. Pauli's 0/1 write rate, 0-create constraint, and suppression against hydrate's shortlist).
 - **The rule channel** — axioms, project rules, and user rules, in three layers
   where a later one may only add obligations and never weakens the floor. Three
   independent delivery paths carry them, and any rule can be on one and off the
@@ -79,6 +76,25 @@ cooperation. The register lists every mechanism in each.
   set is a library gap `brief` halts on, not a pass. Shape:
   [workflow.md](workflow.md); the PR-stage instantiation:
   [sign-off.md](sign-off.md).
+- **Structural prevention** — holds without cooperation. Container and credential
+  isolation, the delivery and seed guards, no-defaults config, model pins.
+
+## The escalation ladder (the enforcement pyramid)
+
+The canonical doctrine of enforcement is the **enforcement pyramid**: escalate the strength of prose instructions first, and only **reluctantly** move to non-instruction enforcement, within which tooling affordances are preferred to code prohibitions.
+
+The escalation sequence runs in strict order. A cheaper rung must be demonstrably exhausted with evidence before advancing to the next:
+
+1. **Instruction, at escalating strength** (prompt directives → persona/skill instructions → rule channel [native rules, cope hints, rbg stop reminders]). The default and starting rung. Reach here first.
+2. **Tooling and affordances** (tool grants/allowlists, parameter schemas, injected hydrator context, cheaper compliant defaults). Prefer shaping the agent's action space and lowering compliance friction before forbidding actions.
+3. **Deterministic gates and post-hoc enforcement** (pre-commit/CI linting, schema validation, non-blocking hook checks, observational review like RBG/Marsha). Detect and flag without imposing hard programmatic blockers during execution.
+4. **Code prohibitions and hard structural blocks** (sandboxing, hard policy blocks, capability funnels/chokepoints). Last resort only, entered reluctantly when all cheaper rungs demonstrably fail.
+
+```
+instruction (escalating strength) → tooling / affordances → deterministic gates / post-hoc enforcers → code prohibitions / structural blocks
+```
+
+A failure on one rung is evidence to escalate **one** step (or to try a stronger formulation on the same rung), never evidence that instruction is an invalid lever.
 
 ## Personalities are not skills
 
