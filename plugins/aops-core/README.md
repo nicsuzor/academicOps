@@ -178,15 +178,15 @@ not collection. The standard for what that means is
 
 ### Skills
 
-| Skill       | Does                                                                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                                                                                                                        |
+| Skill       | Does                                                                                                                                                                                                                       |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                                                                                                                          |
 | `brief`     | Place, value, and wire one task; sort its assumptions, name its forks and probes; size at the forks, compose the process from the three layers, set acceptance criteria, write the brief. `inbox` to `queued`, then stops. |
-| `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                                                                                                                           |
-| `reconcile` | Establish what is true about in-flight and finished work, write it back, return the affected tasks to `inbox`.                                                                                                           |
-| `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                                                                                                                        |
-| `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims.                                                                                                        |
-| `dump`      | Session exit — save and push work, release claimed tasks with a report, and emit a final handover.                                                                                                                       |
+| `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                                                                                                                             |
+| `reconcile` | Establish what is true about in-flight and finished work, write it back, return the affected tasks to `inbox`.                                                                                                             |
+| `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                                                                                                                          |
+| `learn`     | Diagnose an incident back to the structural cause, then route the lesson to the one destination its scope claims.                                                                                                          |
+| `dump`      | Session exit — save and push work, release claimed tasks with a report, and emit a final handover.                                                                                                                         |
 
 ### Command
 
