@@ -35,10 +35,8 @@ brief (Stage 2: Dispatch Preparation — composes only) ──► status: queued
    ├─► validates / refines Stage 1 placement, valuation, and fork map
    ├─► process composed from the three template layers, risk-proportionate
    │   · steps this worker takes in this session ──► the task checklist
-   ├─► anything a different owner does ──► its own child node on the graph
-   │   · review obligations are nodes: reviewer ≠ executor
+   │   · acceptance criteria & verification gates ──► written directly on task body
    │   · empty review set ──► halt, task blocked, no brief written
-   │   · one-way or ambiguous door ──► sign-off node, uncomposed
    ├─► brief written to task body + concrete Acceptance Criteria (AC)
    └─► flips status: inbox ──► queued (ready for dispatch) ──► STOP
 ===================================================================
@@ -51,7 +49,7 @@ reconcile (return channel, facts only)
    │   completed-but-uncertified
    └─► returns the tasks a landed wave touched to inbox
 ===================================================================
-BREAKPOINT 2 — the user: PR review and merge, plus the one-way-door sign-offs
+BREAKPOINT 2 — the user: PR review and merge (Nic's merge is the sign-off)
 ===================================================================
 ```
 
@@ -71,8 +69,8 @@ Leaving tasks in `inbox` with no AC ensures intake cannot accidentally trigger a
 
 **Stage 2 (Dispatch Preparation) belongs to `brief`.**
 When the user explicitly invokes `brief` on an `inbox` node (or raw note), it validates Stage 1 placement,
-composes the process across template layers, emits blocking review and sign-off nodes, drafts the brief,
-and formulates concrete **Acceptance Criteria (AC)**. Once AC and review nodes are present, `brief` flips
+composes the process across template layers, records review obligations and acceptance criteria directly on the task body, drafts the brief,
+and formulates concrete **Acceptance Criteria (AC)**. Once AC are present, `brief` flips
 the node from `inbox` to `queued`.
 
 **Hydrate points; it does not read.** It runs on every ask, which is the widest
@@ -144,11 +142,10 @@ Both are the user's, and no agent crosses either.
    only from `queued` and never promote into it — which is what makes writing
    the decision list a surface rather than a drop: the user reads it on the body
    of the task they just released.
-2. **The pull request, and the sign-offs.** PR review and merge, plus every
-   one-way-door sign-off node `brief` wired into the graph. The
+2. **The pull request.** PR review and merge. Nic's merge is the sign-off; the
    [`one-way-door`](../../lib/axioms/one-way-door.md) axiom binds the agent that
-   crosses; the node is what leaves the obligation somewhere a reviewer can see
-   it was owed.
+   crosses; review obligations are recorded on the task body so a reviewer can see
+   what was owed.
 
 ## One status vocabulary
 
@@ -172,7 +169,7 @@ the target the work serves.
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `hydrate`        | A shortlist of ids, from a few reworded searches. Read-only, opens nothing.                                                                                                          |
 | `/q`             | Stage 1 Intake & Capture: placement under parent, wiring contributes_to/depends_on, [[wikilinks]], strategic valuation (career benefit, synergies, VoI). Status: `inbox` with NO AC. |
-| `brief`          | Stage 2 Dispatch Preparation: process composition, review & sign-off nodes, brief & Acceptance Criteria (AC). Flips `inbox` to `queued`. Composes; never dispatches.                 |
+| `brief`          | Stage 2 Dispatch Preparation: process composition, Acceptance Criteria (AC) & review obligations on task body. Flips `inbox` to `queued`. Composes; never dispatches.               |
 | `pull`           | Claim, execute, record, hand over.                                                                                                                                                   |
 | `reconcile`      | What is true about in-flight and finished work. Facts only; returns re-planning to `inbox`.                                                                                          |
 | `ida:strategize` | An on-demand lens, ida's: fix the altitude, route each piece to the stage that owns it.                                                                                              |

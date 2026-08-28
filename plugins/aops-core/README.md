@@ -21,7 +21,7 @@ flowchart TD
 
         hydrate --> capture["commands/q<br/>record one inbox node<br/>and stop"]
         capture --> gate{{"the user calls brief<br/>on an inbox node<br/>— being called is the gate"}}
-        gate --> brief["skills/brief<br/>placed, valued, wired; assumptions tested vs hopes,<br/>forks and their probes, decision list ·<br/>size at the forks · compose the process ·<br/>emit review and sign-off nodes ·<br/>write the brief — inbox to queued, then stop"]
+        gate --> brief["skills/brief<br/>placed, valued, wired; assumptions tested vs hopes,<br/>forks and their probes, decision list ·<br/>size at the forks · compose the process ·<br/>set acceptance criteria & gates ·<br/>write the brief — inbox to queued, then stop"]
 
         pauli --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
@@ -114,7 +114,7 @@ already exists.
 
 `brief` fires when the user calls it, on a captured ask. It places and values the
 unit, sorts its assumptions, names its forks, sizes it, composes its process,
-emits its review nodes, and writes the brief into the task body — then stops at
+records its review obligations, and writes the brief into the task body — then stops at
 `queued`. Dispatch happens later and **by task id**, never by handing the
 freshly-composed text to a worker as a prompt. The executor's first act is to
 read the brief cold from the task, which is what makes the brief bind rather
@@ -158,7 +158,7 @@ one namespace; a PKB template composes exactly like a shipped one.
 The output lands on the task as its checklist: the composed steps, in order,
 plus one pointer bullet naming the templates and the proportionality call. The
 checklist is not the gate, though — obligations that must block acceptance also
-become real nodes, and where a step is both, the node wins. An empty review set
+become concrete acceptance criteria in the body. An empty review set
 is a library gap `brief` halts on: it records the gap, leaves the task
 `blocked`, and writes no brief.
 
@@ -181,7 +181,7 @@ not collection. The standard for what that means is
 | Skill       | Does                                                                                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `hydrate`   | A few reworded searches, cut to a shortlist of ids the caller can ask more about.                                                                                                                                        |
-| `brief`     | Place, value, and wire one task; sort its assumptions, name its forks and probes; size at the forks, compose the process from the three layers, emit the review nodes, write the brief. `inbox` to `queued`, then stops. |
+| `brief`     | Place, value, and wire one task; sort its assumptions, name its forks and probes; size at the forks, compose the process from the three layers, set acceptance criteria, write the brief. `inbox` to `queued`, then stops. |
 | `pull`      | Claim a queued task, execute it, record the result on the task, and hand over.                                                                                                                                           |
 | `reconcile` | Establish what is true about in-flight and finished work, write it back, return the affected tasks to `inbox`.                                                                                                           |
 | `remember`  | Capture knowledge as it emerges; consolidate episodic records into durable notes.                                                                                                                                        |

@@ -86,8 +86,8 @@ filled in (see [Substance over form](evidence-contract.md#substance-over-form)).
 happen in this order.
 
 1. **Certification — the dispatcher's, at unit completion.** It commissions the
-   review machinery the graph already carries (the review nodes `brief`
-   emitted, executed through the review skills), reads the verdict, and writes
+   review machinery (the review obligations `brief`
+   records on the task, executed through the review skills), reads the verdict, and writes
    that verdict onto the task record. What it certifies is mechanics, quality,
    and compliance with the brief. The dispatcher never supplies that judgment
    itself and never relays a worker's own claim of success in its place.

@@ -5,7 +5,7 @@ description: Prepares tasks for dispatch -- composes workflows, sets acceptance 
 
 # Brief: Prepare a task for dispatch
 
-Turn an ask into a task a cold executor can act on and be judged against. You verify its premises, compose its process, wire its review nodes, write the brief, and set the exit status (§6). You never dispatch, never start the work, and never touch its substance.
+Turn an ask into a task a cold executor can act on and be judged against. You verify its premises, compose its process, record review obligations on the body, write the brief, and set the exit status (§6). You never dispatch, never start the work, and never touch its substance.
 
 **A brief transfers only what the dispatcher has and the executor lacks.** You monopolize intent and strategic context; the executor monopolizes method. Everything the executor can fetch, derive, or decide better itself stays out of the brief.
 
@@ -45,7 +45,7 @@ Discover templates in three tiers; resolution order **project ≻ PKB ≻ univer
 
 Read every template you compose — a catalogue row is not the template. A template you need that no tier holds is a library gap: name it and halt; never freelance a process. Weight the process proportional to real consequence — heavier is theatre, lighter is unmitigated risk.
 
-Sort each obligation by who discharges it: executor-internal steps go on the task checklist; anything owned by a different identity — review above all — becomes a child node wired as blocking `depends_on`. Review is real blocking nodes, never a prose step. Add no gates beyond what the composed process places, with one exception: a one-way door — an irreversible action or ambiguous authority — always gets a blocking human sign-off node, whether or not a template obliges it.
+Sort each obligation by who discharges it: executor-internal steps go on the task checklist; review obligations become Acceptance Criteria on the task body. Never emit speculative review or sign-off graph nodes during planning — acceptance gates live in the brief's criteria and the PR merge boundary.
 
 ## 5 — Write the brief
 
@@ -93,4 +93,4 @@ Your verification notes, composition trace (which tier each template came from a
 - A hard dependency genuinely unmet → **`blocked`**, naming what it waits on.
 - Premise dead, ask under-specified, or an unsettleable decision → leave at **`inbox`**, saying what is missing. Do not backfill by guessing.
 
-One pass: you are making the task actionable, not doing it. If briefing it properly would mean doing the work, record that the unit is a spike and stop. Never re-brief unchanged inputs, never run the review nodes you emitted, never dispatch, never begin the work. A halt that names its gap is a complete pass.
+One pass: you are making the task actionable, not doing it. If briefing it properly would mean doing the work, record that the unit is a spike and stop. Never re-brief unchanged inputs, never emit speculative review nodes, never dispatch, never begin the work. A halt that names its gap is a complete pass.
