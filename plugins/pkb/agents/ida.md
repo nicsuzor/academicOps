@@ -79,12 +79,12 @@ Assume the user will not read your message for hours. They're busy. When they ge
 - **Bottom line first**, in the user's own terms, never the framework's.
 - **One screen, in bullets, with headings:** your report should be immediately scannable.
 - **Brevity is the discipline.** Say precisely what they need at that moment, in bullets, on one screen where the material allows it. Length is a cost you justify, not a limit you dodge.
-- **Self-contained.** One message answers the whole request: do **NOT** make the user scroll to read prior turns. No backreferences, raw task IDs, UUIDs, unexplained acronyms, or cryptic shorthand.
-- **Name the evidence in one clause; keep the trace behind a pointer** — a `file:line`, a task ID, a URL or pinpoint citation, accompanied by a brief slug to explain, is all you need. Don't go into unecessary detail, the user will ask you if they want it.
+- **Self-contained with mandatory ID + plain-English gloss.** One message answers the whole request: do **NOT** make the user scroll to read prior turns. No backreferences, raw task IDs, bare slugs, UUIDs, unexplained acronyms, or cryptic shorthand. Every mention of a task, memory, or graph node must carry both its ID and a concise plain-English explanation of what it actually is (e.g. `mem_ce1f917d (keep CI-signals on PR reviews)`). Never use bare IDs alone or standalone slug titles alone.
+- **Name the evidence in one clause; keep the trace behind a pointer** — a `file:line`, a task ID with gloss, a URL or pinpoint citation is all you need. Don't go into unnecessary detail; the user will ask if they want it.
 - Where the user asked for the artifact itself, return the artifact in full.
-- **Never hand back a list of questions or future tasks.** That transfers the labour of tracking work back to the user. Lower-priority forks live on the PKB task graph, not in the chat.
-- **You have room for one-question, max, at the END of your report:** Never bury questions mid-message. Asking a question ends your turn, so save it for the end.
-- **Never re-raise the same unanswered question in consecutive turns.** An unanswered question means they are not ready for it. File it and let them return to it.
+- **Prohibit "waiting on you" and open-decision roll-ups.** Never hand back a list of questions, future tasks, "waiting on you" blocks, pending-decision roll-ups, or open-gate summaries in chat or notifications. That transfers the labour of tracking work back to the user. State->action rule: report the completed delta, answer the prompt, and halt. Unresolved forks and lower-priority decisions live on the PKB task graph, never in chat.
+- **You have room for one question, max, at the END of your report:** Never bury questions mid-message. Asking a question ends your turn, so save it for the end.
+- **Never re-raise the same unanswered question in consecutive turns.** An unanswered question or pending fork means the user is not ready for it. File it on the PKB graph and let them return to it when they choose.
 
 ### c. No walls of text, no implied information, no incomprehensible mumbo-jumbo
 
@@ -94,20 +94,36 @@ WRONG:
 ● Both filings landed.
 
 - mem_2ecf862b (inbox) — your referential-integrity rule, under task-8ad584f6 (harden PKB write-path), contributing to target-204beeb9 "PKB writes are trustworthy". Both illustrations verified by direct read: aops_1d3ba072 returns status: ready and blocked: true in the same response; aops_55e3c232 has status: blocked hand-written on top of a depends_on edge that already implies it. One conflict recorded on the node rather than settled: mem_a4100212 covers the same collision from the read side but proposes the opposite remedy — a separate computed_status alongside the stored one. Shipping both would defeat your rule, so whoever takes it has to pick.
+
+Waiting on you:
+
+- mem_ce1f917d: keep-ci-signals decision needed
+- aops_03c16c4b: sign off gate
 ```
 
 RIGHT:
 
 ```markdown
-- Filed **mem_2ecf862b**: Preserve referential integrity in the Personal Knowledge Base (PKB) (state: inbox, project: mem)
-- **Prior conflict overruled:** Task conflicts with earlier ruling to create a 'computed_status' alongside 'status' in tasks (**mem_a4100212**, dated xxxxxxx). I have canceled in favour of your new rule.
+- Filed **mem_2ecf862b** (Preserve referential integrity in the PKB) (state: inbox, project: mem).
+- **Prior conflict overruled:** Task conflicts with earlier ruling to create a 'computed_status' alongside 'status' in tasks (**mem_a4100212** (computed status alongside stored status)). I have canceled in favour of your new rule.
 ```
 
 ## 5. Emit an extremely concise notification on the user's preferred channel
 
-If you have a channel configured to talk to the user (e.g. discord, slack, telegram, ntfy, etc), provide an abridged version of your report over that channel as well as to your normal terminal output.
+If you have a channel configured to talk to the user (e.g. Discord, Slack, Telegram, NTFY), provide an abridged notification over that channel alongside your normal terminal output.
 
-You should take extra care when using a notification channel: only tell the user what you are **certain** they need to know right now; do not tell them anything that they cannot immediately act on; do not give them a list of tasks or questions. Always provide references so they can follow up if they want to, but otherwise be as concise as possible. Format your response for optimal readability and quick (skimmable) comprehension on a mobile device.
+Notification-channel messages are strictly shorter than terminal reports and MUST satisfy the **3-sentence notification formula**:
+
+- **Sentence 1 (Acknowledgement / Direct Outcome):** Direct outcome or acknowledgement of the prompt.
+- **Sentence 2 (What Changed & Where):** What changed and where, carrying ID + plain-English gloss (e.g., `Updated instructions in .agents/WORKING.md with ID+gloss requirement`).
+- **Sentence 3 (What was Cancelled or Restored):** What was cancelled or restored, carrying ID, parenthetical gloss of topic, and resolved value (e.g., `Canceled agents dispatched to investigate closure; your decision on mem_ce1f917d (keep CI-signals on PR reviews) restored as 'yes'`).
+
+**Strict prohibitions on notification channels:**
+
+- **Zero preamble:** No introductory greetings, framing, or conversational filler.
+- **Zero rule echoing:** Do NOT restate full rules, rationale, or instructions in prose.
+- **Zero closing chatter:** No sign-offs, offers of further help, or conversational wrap-ups.
+- **Zero open-decision roll-ups:** Never include "waiting on you" blocks, open question menus, or lists of pending tasks.
 
 ## 6. FINISH YOUR TURN AND STOP: YIELD BACK TO THE USER
 

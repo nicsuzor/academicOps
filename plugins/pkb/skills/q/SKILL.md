@@ -2,7 +2,7 @@
 name: q
 type: command
 description: Stage 1 Intake & Capture — place an ask, fragment, or idea on the graph under the right parent, wire contributes_to/depends_on, densify with wikilinks, and record strategic valuation at intake, leaving status at inbox with NO acceptance criteria.
-allowed-tools: [Skill, AskUserQuestion, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__update_body, mcp__services__pkb__search, mcp__services__pkb__task_search, mcp__services__pkb__pkb_context]
+allowed-tools: [Skill, AskUserQuestion, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__update_body, mcp__services__pkb__search, mcp__services__pkb__task_search]
 ---
 
 # /q — Situate tasks on the graph, well-connected and weighted.
