@@ -58,7 +58,7 @@ the reading happens here, once, on the ask that turned out to be worth it — pr
 attempts, decisions, known confounds, each with its node id. Open what looks
 load-bearing and skip what does not.
 
-`pkb__search`, `pkb__pkb_context`, and `pkb__task_search` before changing anything. If another
+`pkb__search` and `pkb__task_search` before changing anything. If another
 node already covers this ask, merge into it (`pkb__update_task` / `pkb__update_body`) —
 integrating into the body it already has, never stacking a new section under old
 content — and retire the duplicate. Never leave a sibling of a node that already
