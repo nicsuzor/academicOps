@@ -176,3 +176,13 @@ def test_repository_has_no_broken_references() -> None:
     misses, unused = RefCheck(REPO_ROOT).run()
     assert not misses, "\n".join(m.render() for m in misses)
     assert not unused, "\n".join(a.render() for a in unused)
+
+
+def test_skill_files_are_in_scope() -> None:
+    """A skill is an agent's instruction surface — a dead relative link inside one
+    is a pointer into nothing. Pin that `[tool.refcheck].include` actually reaches
+    plugins/*/skills/**/*.md, so narrowing the glob later fails loudly here rather
+    than silently dropping coverage."""
+    docs = {d.relative_to(REPO_ROOT).as_posix() for d in RefCheck(REPO_ROOT).documents()}
+    skill_docs = [d for d in docs if d.startswith("plugins/") and "/skills/" in d]
+    assert skill_docs, "no plugins/*/skills/**/*.md file is in scope — check pyproject.toml [tool.refcheck].include"
