@@ -2,24 +2,21 @@
 
 ## [0.9.1](https://github.com/nicsuzor/academicOps/compare/v0.9.0...v0.9.1) (2026-08-28)
 
-
 ### Features
 
-* **polecat:** polecat base-ref resolution and remote freshness (aops_bb5d538b) ([e6a44a6](https://github.com/nicsuzor/academicOps/commit/e6a44a645f9850a469c2454ea48dc84c066ec526))
-* **rules:** add No Shitty NLP and Agentic-First Design project rule ([31daca2](https://github.com/nicsuzor/academicOps/commit/31daca21cd0160b9e9177686c781ff19c5444141))
-
+- **polecat:** polecat base-ref resolution and remote freshness (aops_bb5d538b) ([e6a44a6](https://github.com/nicsuzor/academicOps/commit/e6a44a645f9850a469c2454ea48dc84c066ec526))
+- **rules:** add No Shitty NLP and Agentic-First Design project rule ([31daca2](https://github.com/nicsuzor/academicOps/commit/31daca21cd0160b9e9177686c781ff19c5444141))
 
 ### Bug Fixes
 
-* repair test-suite fallout from PR [#2498](https://github.com/nicsuzor/academicOps/issues/2498)'s ida-into-pkb merge ([d51eaad](https://github.com/nicsuzor/academicOps/commit/d51eaadb6891a4b713577772f5061ad705f120d7))
-* **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([e085c36](https://github.com/nicsuzor/academicOps/commit/e085c3671112947a2affd0fe8f21d3680b97c8df))
-* **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([bcb1744](https://github.com/nicsuzor/academicOps/commit/bcb174468cc23788838f421b9136425e4731c185))
-* **skills:** remove non-canonical task status mandates (#aops_c038247b) ([cff3388](https://github.com/nicsuzor/academicOps/commit/cff33881a0c62008ab23dd1a9779d19a52523148))
-
+- repair test-suite fallout from PR [#2498](https://github.com/nicsuzor/academicOps/issues/2498)'s ida-into-pkb merge ([d51eaad](https://github.com/nicsuzor/academicOps/commit/d51eaadb6891a4b713577772f5061ad705f120d7))
+- **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([e085c36](https://github.com/nicsuzor/academicOps/commit/e085c3671112947a2affd0fe8f21d3680b97c8df))
+- **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([bcb1744](https://github.com/nicsuzor/academicOps/commit/bcb174468cc23788838f421b9136425e4731c185))
+- **skills:** remove non-canonical task status mandates (#aops_c038247b) ([cff3388](https://github.com/nicsuzor/academicOps/commit/cff33881a0c62008ab23dd1a9779d19a52523148))
 
 ### Documentation
 
-* **enforcement:** reorder bands and promote canonical escalation ladder (aops_75f3ee84) ([6a5f2d0](https://github.com/nicsuzor/academicOps/commit/6a5f2d0d688731487773e46d6b9cc60a86887c8c))
+- **enforcement:** reorder bands and promote canonical escalation ladder (aops_75f3ee84) ([6a5f2d0](https://github.com/nicsuzor/academicOps/commit/6a5f2d0d688731487773e46d6b9cc60a86887c8c))
 
 ## [0.9.0](https://github.com/nicsuzor/academicOps/compare/v0.8.1...v0.9.0) (2026-08-27)
 
