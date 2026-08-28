@@ -165,7 +165,7 @@ direct observation.
 
 **New finding, not previously documented: ida's declared `tools` restriction
 did not hold at runtime.** One of the two ida-parent trials reported ida's own
-tool set directly: despite `plugins/ida/agents/ida.md` declaring a `tools`
+tool set directly: despite `plugins/pkb/agents/ida.md` declaring a `tools`
 allowlist that grants no filesystem, shell, or MCP tool at all, and denying
 `Bash`, `Grep`, `Glob`, `Read`, `Edit`, `Write`, `WebFetch`, and `WebSearch`
 again in `disallowedTools`, the spawned ida's actual top-level set was

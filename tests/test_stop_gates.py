@@ -1,5 +1,5 @@
 """End-to-end tests for ida's quiet gate
-(plugins/ida/hooks/handlers.py:strip_the_reply) and orchestrate's hearsay
+(plugins/pkb/hooks/handlers.py:be_quiet) and orchestrate's hearsay
 reminder and honesty advisory
 (plugins/orchestrate/hooks/handlers.py:rule_against_hearsay, honest_output).
 
@@ -38,7 +38,7 @@ def _require_orchestrate_hearsay_enabled():
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
-_IDA_HOOKS = _REPO_ROOT / "plugins" / "ida" / "hooks"
+_IDA_HOOKS = _REPO_ROOT / "plugins" / "pkb" / "hooks"
 _ORCHESTRATE_HOOKS = _REPO_ROOT / "plugins" / "orchestrate" / "hooks"
 
 
@@ -89,8 +89,8 @@ def test_ida_stop_gate_self_loop_guard_suppresses_the_reentry(ida_hooks):
     result = _run(
         ida_hooks,
         "claude",
-        "Stop",
-        {"hook_event_name": "Stop", "stop_hook_active": True},
+        "PostToolBatch",
+        {"hook_event_name": "PostToolBatch", "stop_hook_active": True},
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
@@ -98,9 +98,9 @@ def test_ida_stop_gate_self_loop_guard_suppresses_the_reentry(ida_hooks):
 
 def test_ida_registers_no_posttooluse_handler(ida_hooks):
     """The hearsay reminder moved to orchestrate with the dispatch machinery it
-    binds. ida registers ``Stop`` alone, so a ``PostToolUse`` here finds no
-    handler and emits nothing — which is why the built manifest wires no such
-    event (tests/test_plugin_manifests.py)."""
+    binds. ida registers ``PostToolBatch`` alone, so a ``PostToolUse`` here
+    finds no handler and emits nothing — which is why the built manifest
+    wires no such event (tests/test_plugin_manifests.py)."""
     result = _run(
         ida_hooks,
         "claude",
@@ -191,7 +191,7 @@ def test_orchestrate_honesty_skips_ida_on_subagent_start(orchestrate_hooks):
         orchestrate_hooks,
         "claude",
         "SubagentStart",
-        {"hook_event_name": "SubagentStart", "agent_type": "ida:ida"},
+        {"hook_event_name": "SubagentStart", "agent_type": "pkb:ida"},
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
