@@ -13,7 +13,7 @@ related: [[work-management]], [[feedback-loops]]
 Design intent for the stages a piece of work passes through, and for why the
 boundaries between them sit where they do. The stages themselves are operative
 instructions and live in `plugins/pkb/skills/` — with the one lens that is not a
-stage, `strategize`, in `plugins/ida/skills/`. Nothing here restates them.
+stage, `strategize`, in `plugins/pkb/skills/`. Nothing here restates them.
 
 ## The map
 

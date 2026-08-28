@@ -199,21 +199,24 @@ def test_ida_ships_the_quiet_gate_on_claude_only():
     (aops_73e25af2 — it fired once per internal invocation/tool-call
     round-trip, not once per turn), and ``be_quiet`` was never wired to
     canonical ``Stop`` in the first place (only to the commented-out
-    ``PostToolBatch`` key), so nothing on agy was ever live."""
-    events = _claude_hook_events("ida-claude")
+    ``PostToolBatch`` key), so nothing on agy was ever live.
+
+    ida is an agent hosted inside the pkb plugin (plugins/pkb/agents/ida.md),
+    so its gate ships from ``pkb-claude``, not a standalone ``ida`` plugin."""
+    events = _claude_hook_events("pkb-claude")
     assert "PostToolBatch" in events
     assert "SubagentStop" not in events
-    assert not (DIST_ROOT / "ida-agy" / "hooks.json").exists()
+    assert not (DIST_ROOT / "pkb-agy" / "hooks.json").exists()
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_ida_ships_no_posttooluse_hook():
-    """``plugins/ida/hooks/handlers.py`` registers ``Stop`` and nothing else, so
-    a ``PostToolUse`` entry here would spawn a hook process on every tool call
-    for a handler that does not exist. The hearsay reminder ida used to carry on
-    that event now ships from ``orchestrate``, beside the dispatch machinery it
-    binds."""
-    assert "PostToolUse" not in _claude_hook_events("ida-claude")
+    """``plugins/pkb/hooks/handlers.py`` registers ``PostToolBatch`` for ida's
+    ``be_quiet`` and nothing else, so a ``PostToolUse`` entry here would spawn
+    a hook process on every tool call for a handler that does not exist. The
+    hearsay reminder ida used to carry on that event now ships from
+    ``orchestrate``, beside the dispatch machinery it binds."""
+    assert "PostToolUse" not in _claude_hook_events("pkb-claude")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
@@ -243,6 +246,9 @@ def test_orchestrate_ships_the_handback_reminders():
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_pkb_ships_no_stop_gate():
-    """pkb's stop gate is blocked on a server-side prerequisite, not merely
-    unbuilt. This pins that it stays unwired rather than being swept in."""
-    assert _claude_hook_events("pkb-claude") == {"UserPromptSubmit"}
+    """pkb's own stop gate is blocked on a server-side prerequisite, not merely
+    unbuilt. This pins that it stays unwired rather than being swept in.
+
+    ``PostToolBatch`` is not pkb's own gate — it is ida's quiet gate,
+    hosted here because ida is an agent inside pkb (test_ida_ships_the_quiet_gate_on_claude_only)."""
+    assert _claude_hook_events("pkb-claude") == {"PostToolBatch"}
