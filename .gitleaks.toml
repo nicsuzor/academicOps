@@ -1,0 +1,13 @@
+# Layer 2 secret-scan config (aops_8c697102). Extends gitleaks' default rules;
+# the sole allowlist entry covers the one fixture that legitimately embeds
+# synthetic secret-shaped strings to test Layer 1 (lib/py/transcripts/domain/
+# secret_redaction.py). Keep this list to exact files — a directory-wide or
+# glob exclude here is the exact failure this gate exists to prevent.
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''tests/transcripts/test_secret_redaction\.py''',
+]

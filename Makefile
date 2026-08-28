@@ -145,6 +145,7 @@ lint:
 	@uv run ruff check .
 	@uv run python scripts/check_refs.py
 	@uv run basedpyright
+	@uv run pre-commit run gitleaks --all-files
 
 format:
 	@uv run ruff format .

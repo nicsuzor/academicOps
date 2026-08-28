@@ -2,6 +2,15 @@
 # See https://pre-commit.com for more info
 
 repos:
+  # Commit-time secret backstop (Layer 2, aops_8c697102). Complements the
+  # write-time scrub in lib/py/transcripts/domain/secret_redaction.py (Layer 1)
+  # with an independently-maintained scanner rather than a forked pattern set.
+  # Allowlist for synthetic test fixtures lives in .gitleaks.toml.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.6
     hooks:
