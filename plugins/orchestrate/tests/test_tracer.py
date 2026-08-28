@@ -73,6 +73,39 @@ def test_registered_handlers_mapping():
     assert handlers.stop in handlers.HANDLERS["Stop"]
 
 
+@pytest.mark.parametrize("module_name", ["agy_tracer", "claude_code_tracer"])
+def test_handlers_only_reach_for_attributes_the_tracer_module_exports(module_name):
+    """handlers.py must never call a tracer-module attribute the module never imported.
+
+    aops_2b8f41d0: every agy hook handler called agy_tracer.discover_config(),
+    but agy_tracer's explicit `from claude_code_tracer import (...)` list
+    omitted that name, so every agy hook raised AttributeError at call time —
+    swallowed by the `except Exception` in each handler as a silent warning.
+    No existing test imported both modules and cross-checked the names
+    handlers.py actually reaches for, so the mismatch shipped unnoticed.
+    """
+    import ast
+    import importlib
+
+    handlers_source = (_HOOKS_DIR / "handlers.py").read_text()
+    tree = ast.parse(handlers_source)
+    attrs = {
+        node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == module_name
+    }
+    assert attrs, f"expected handlers.py to reference at least one {module_name}.<attr>"
+
+    module = importlib.import_module(module_name)
+    missing = sorted(a for a in attrs if not hasattr(module, a))
+    assert not missing, (
+        f"handlers.py calls {module_name}.{missing} but {module_name} does not export "
+        f"{'them' if len(missing) > 1 else 'it'}"
+    )
+
+
 def test_discover_config_absent():
     """Verify discover_config returns None when no env vars or config files exist."""
     assert claude_code_tracer.discover_config() is None
