@@ -2,29 +2,25 @@
 
 ## [0.9.0](https://github.com/nicsuzor/academicOps/compare/v0.8.1...v0.9.0) (2026-08-27)
 
-
 ### Features
 
-* **pkb:** sharpen Discord executive briefing standard and ADHD accommodations ([6187d9d](https://github.com/nicsuzor/academicOps/commit/6187d9d55dde7c4485ff83f2a3020e427b61dd36))
-* **pkb:** sharpen Discord executive briefing standard and ADHD accommodations ([034ecd2](https://github.com/nicsuzor/academicOps/commit/034ecd26c3f6d8410a13b4b46a645b9f8b2e29f2))
-
+- **pkb:** sharpen Discord executive briefing standard and ADHD accommodations ([6187d9d](https://github.com/nicsuzor/academicOps/commit/6187d9d55dde7c4485ff83f2a3020e427b61dd36))
+- **pkb:** sharpen Discord executive briefing standard and ADHD accommodations ([034ecd2](https://github.com/nicsuzor/academicOps/commit/034ecd26c3f6d8410a13b4b46a645b9f8b2e29f2))
 
 ### Bug Fixes
 
-* **pkb:** reconcile must record merged PRs as settled and never re-open human decisions ([1bc49a9](https://github.com/nicsuzor/academicOps/commit/1bc49a9a3ce9ce0e6286627bbfc8cda2a5446ec9))
-* **pkb:** reconcile must record merged PRs as settled and never re-open human decisions ([5ba0c8d](https://github.com/nicsuzor/academicOps/commit/5ba0c8d7316d7db62a2269f9d7d809ea601e7ce3))
-* **pkb:** remove pkb_context references from q and brief skills ([ebbb9fc](https://github.com/nicsuzor/academicOps/commit/ebbb9fc51e82e773d1d3546eccf22e7def73b802))
-* **pkb:** remove pkb_context references from q and brief skills ([e443f64](https://github.com/nicsuzor/academicOps/commit/e443f642e9d10f54f699dac4b8263824bf24823f))
-
+- **pkb:** reconcile must record merged PRs as settled and never re-open human decisions ([1bc49a9](https://github.com/nicsuzor/academicOps/commit/1bc49a9a3ce9ce0e6286627bbfc8cda2a5446ec9))
+- **pkb:** reconcile must record merged PRs as settled and never re-open human decisions ([5ba0c8d](https://github.com/nicsuzor/academicOps/commit/5ba0c8d7316d7db62a2269f9d7d809ea601e7ce3))
+- **pkb:** remove pkb_context references from q and brief skills ([ebbb9fc](https://github.com/nicsuzor/academicOps/commit/ebbb9fc51e82e773d1d3546eccf22e7def73b802))
+- **pkb:** remove pkb_context references from q and brief skills ([e443f64](https://github.com/nicsuzor/academicOps/commit/e443f642e9d10f54f699dac4b8263824bf24823f))
 
 ### Documentation
 
-* **core:** remove container field-test requirement from CORE.md (aops_609edb82) ([24f6e6a](https://github.com/nicsuzor/academicOps/commit/24f6e6ac3ac303f613893605f9e7a928c3d71ca6))
-
+- **core:** remove container field-test requirement from CORE.md (aops_609edb82) ([24f6e6a](https://github.com/nicsuzor/academicOps/commit/24f6e6ac3ac303f613893605f9e7a928c3d71ca6))
 
 ### Miscellaneous
 
-* pin next release to 0.9.0 ([143bc24](https://github.com/nicsuzor/academicOps/commit/143bc24e23c0175a82a8be6602ceadce2430e839))
+- pin next release to 0.9.0 ([143bc24](https://github.com/nicsuzor/academicOps/commit/143bc24e23c0175a82a8be6602ceadce2430e839))
 
 ## [0.8.1](https://github.com/nicsuzor/academicOps/compare/v0.8.0...v0.8.1) (2026-08-22)
 
