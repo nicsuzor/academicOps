@@ -52,11 +52,7 @@ that generalise to nothing.
    tool, project, skill, agent, concept. If one exists for this topic area, you
    **must** augment it. A broader canonical note covering the area means no new
    note gets created.
-3. **Augment** — integrate the new observation into the existing structure and
-   rewrite the section it belongs in (`pkb__update_body`). `pkb__append` only where the
-   content is genuinely additive and supersedes nothing. Never a new dated
-   section bolted on the end. A note reads as current state, never as a
-   changelog.
+3. **Augment** — rewrite the section the observation belongs in so the note states **current state only** (`pkb__update_body`). A superseded fact is replaced, not annotated: no dated blocks, no "previously X", no correction notices, no provenance narration. Keep bodies short enough that a full rewrite is cheap — that is what makes this affordable, and it is why `pkb__append` is not needed. Evidence that grounds a claim gets its own node and a `[[wikilink]]`; the claim itself stays one plain attributed sentence.
 4. **Or create**, only when nothing matches — `pkb__create` for a document,
    `pkb__create_memory` for an atomic memory. Topical, never a session or date file.
 
@@ -143,6 +139,8 @@ Maps of Content                                              (navigation)
 A task body found carrying an episodic log — dated sections, resume stacks,
 progress entries — is drift. Repair it: lift anything durable into the right
 topic note, then rewrite the body to goal, checklist, pointers.
+
+The same repair applies to notes, and to three forms that list misses: a retained "superseded" or "historical" block, a correction notice, and provenance narration ("derived from …"). Delete all three. What was durable in them is already a plain sentence of current state, or it is evidence and belongs in its own node. **Length is the diagnostic**: a body too long to rewrite in one pass is the defect, not a reason to append.
 
 **Consolidation is synthesis, not collection.** Merging five memories into a list
 of five bullets adds nothing over the five memories. Synthesis means finding the

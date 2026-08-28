@@ -24,10 +24,8 @@ stays traceable on the graph, not a workflow in its own right.
    context → active epics → project root → ask user.
 3. **Create task** with the resolved parent.
 4. **Claim** the task to lock it.
-5. **Undertake work** — update the task body with findings as you go.
-6. **Record commits and PRs** in the task log — this creates bidirectional
-   traceability: commits reference tasks (`Task:` trailer, see the
-   [[wf-handover]] gate), tasks reference commits/PRs (log entries).
+5. **Undertake work** — check off items on the task checklist as they complete; capture durable findings into knowledge notes.
+6. **Record output pointers** — link commits and PRs under `## Pointers` (no task logs).
 7. **Mark complete** when done.
 
 ## When to Skip
