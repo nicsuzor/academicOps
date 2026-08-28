@@ -9,8 +9,6 @@ academicOps is a streamlined suite of seven plugins for Claude Code and Antigrav
 3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Runs a turn-by-turn local model evaluator on tool calls, advisory only; plus a stop gate that withholds the stop once per chain, directing the agent to verify RBG rule compliance (`axioms/` + project + local rules) and present checkable evidence before handing back.
 
----
-
 ## How It Works
 
 ```mermaid
@@ -37,8 +35,6 @@ flowchart TD
     Enforcement -.-> OTEL
 ```
 
----
-
 ## Master Hook Lifecycle Matrix
 
 Every hook across the plugins is deterministic, lightweight, and single-purpose. The table below details when each hook fires, which plugin owns it, what context it requires, what payload it injects, and **WHY** it exists:
@@ -55,8 +51,6 @@ Every hook across the plugins is deterministic, lightweight, and single-purpose.
 | `ts`          | `SessionStart`          | Claude Code              | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`        | Launches background `tailscale up` for remote connectivity.                                                                                                                                                                                                                                                          | Enables remote session access over Tailnet.                                                                                                                      |
 | `ts`          | `SessionEnd`            | Claude Code              | `TS_SESSION_SYNC_HOST`                         | Transmits session log bundle to remote sync host.                                                                                                                                                                                                                                                                    | Secures session history after termination.                                                                                                                       |
 
----
-
 ## Telemetry & OTEL Tracing Architecture
 
 academicOps uses Claude Code's native OpenTelemetry export forwarded through a local Tailnet server to GCP:
@@ -68,8 +62,6 @@ academicOps uses Claude Code's native OpenTelemetry export forwarded through a l
   - `OTEL_EXPORTER_OTLP_ENDPOINT=http://<tailnet-collector-ip>:4318`
   - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
   - `OTEL_RESOURCE_ATTRIBUTES=service.name=academicOps,service.version=<your installed version>`
-
----
 
 ## The Plugins
 
@@ -85,12 +77,10 @@ Install what you need — plugins are separately installable and loosely coupled
 | `ts`          | Tailscale bring-up for remote sessions.                                                                                |
 | `aops-debug`  | Debug plugin that dumps raw hook payloads.                                                                             |
 
----
-
 ## Install
 
 ```bash
-claude plugin marketplace add nicsuzor/academicOps@dist
+claude plugin marketplace add nicsuzor/academicOps
 claude plugin install ida@academicOps
 claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
@@ -98,8 +88,6 @@ claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoin
 `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way.
 
 Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
-
----
 
 ## Where work runs
 
@@ -112,8 +100,6 @@ When `orchestrate` dispatches a unit, it picks one of three surfaces by the size
 | **Polecat container**    | Cost-sensitive               | Docker container running `agy`, seeded with the task id, headless.        |
 
 Asynchronous work writes its result to the task record and pushes its branch; nothing waits on it.
-
----
 
 ## Developing academicOps itself
 
