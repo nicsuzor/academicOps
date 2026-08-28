@@ -185,4 +185,6 @@ def test_skill_files_are_in_scope() -> None:
     than silently dropping coverage."""
     docs = {d.relative_to(REPO_ROOT).as_posix() for d in RefCheck(REPO_ROOT).documents()}
     skill_docs = [d for d in docs if d.startswith("plugins/") and "/skills/" in d]
-    assert skill_docs, "no plugins/*/skills/**/*.md file is in scope — check pyproject.toml [tool.refcheck].include"
+    assert skill_docs, (
+        "no plugins/*/skills/**/*.md file is in scope — check pyproject.toml [tool.refcheck].include"
+    )
