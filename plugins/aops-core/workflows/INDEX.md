@@ -145,7 +145,7 @@ Composed into other templates; never routed to directly.
 The `wf-*` review and gate obligations live in the PKB, not here. Enumerate them
 with `list_documents(type="template")` — registration in an index is not a
 condition of existence, and a `wf-` name absent from any index is not thereby
-missing. The `pkb-workflow-index` MoC remains useful for human orientation and
+missing. The `workflow-library-moc` MoC remains useful for human orientation and
 carries per-template notes that source-scanning does not reproduce, but it is not
 the discovery mechanism and must not be treated as the authoritative set.
 
