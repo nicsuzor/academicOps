@@ -139,7 +139,7 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
     """Remind the dispatcher that a subagent's report is not evidence."""
 
     # Only fire on supervisor profiles
-    if ctx.agent_type in ("ida:ida", "orchestrate:james"):
+    if ctx.agent_type in ("pkb:ida", "orchestrate:james"):
         if any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
             return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
@@ -340,6 +340,5 @@ HANDLERS: dict[str, list] = {
     # one onto anything; see the comment there).
     "Stop": [stop, agy_stop],
     "PostToolBatch": [rule_against_hearsay],
-    # "SubagentStart": [honest_output],
-    "SubagentStop": [honest_output],
+    "SubagentStart": [honest_output],
 }
