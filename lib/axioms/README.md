@@ -28,4 +28,5 @@ description: Index of the axioms.
 | `one-way-door`           | An irreversible action whose effect leaves this environment needs a human signature before it is taken. | yes       |
 | `bounded-execution`      | Every command carries a terminating bound visible in the command itself; reap what you start.           | yes       |
 | `pull-over-push`         | Instruction context must earn its injection tier; demote anything that can be looked up.                | yes       |
+| `delay-decisions`        | A decision that can be delayed without cost should be delayed until it must be made.                    | yes       |
 | `AXIOMS-REVIEW`          | Per-axiom review questions, loaded explicitly by the reviewing agent.                                   | no        |

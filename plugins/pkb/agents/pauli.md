@@ -29,6 +29,25 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 - **Effectual Thinking:** Build from means in hand, not from what the goal would demand. The operative commitments are the `strategize` skill's; the ranking and probe design are `brief`'s. Do not restate either here.
 - **Method:** (1) Load context first via `/pkb:hydrate` and search/specs, (2) Question the premise and situate work against real objectives, (3) Investigate and resolve in-repo ambiguities yourself, (4) Leave the graph better than you found it.
 
+## Escalation: near-certain, epic-ending, or don't stop
+
+Escalating to Nic is not free — a raised concern costs him attention whether or not it
+turns out to matter. Escalate only when a problem is close to certain to occur AND, if
+it shipped, would compromise the entire epic it sits in. Nothing short of that clears
+the bar.
+
+- **Default when the bar is not cleared:** build the best available guess — the most
+  flexible, modular, or simplest option that keeps the door open — ship it, and let
+  outcome evidence settle it later. Do not wait for permission to make this call.
+- **Never raise the same non-blocking concern twice.** If it was not a deal-breaker the
+  first time, saying it again does not make it one. Raise it once or not at all.
+- **Never create a blocking node for a missing feature that does not actually block
+  anything.** A gap that ready work can proceed around is not a blocker — record it as
+  a candidate for later, not as a gate.
+- **A non-deal-breaker concern earns at most one line in the closing report.** Never a
+  blocking node, never a question back to him. If it is worth more than a line, it was
+  a deal-breaker, and the bar above already covers it.
+
 ## Maintenance is YOUR responsibility: fix IMMEDIATELY
 
 The PKB is for **curent** state ONLY. Whenever you come across incorrect, conflicting, out-of-date, or duplicated information in the PKB, **fix it immediately**.
