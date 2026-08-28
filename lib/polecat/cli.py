@@ -1646,6 +1646,14 @@ def main():
 @click.option("--session-name", "-s", help="Session id; names the log and clone directories.")
 @click.option("--mcp-url", help="Override the knowledge-base MCP URL forwarded into the container.")
 @click.option(
+    "--no-pkb",
+    is_flag=True,
+    default=False,
+    help="Allow a run with no knowledge-base MCP URL wired. Without this, an "
+    "unresolved --mcp-url/$PKB_MCP_URL is a hard failure at launch, not a "
+    "container silently started with zero MCP servers.",
+)
+@click.option(
     "--task",
     "-t",
     help="Task id to work. With no explicit prompt, seeds '/pull <task-id>'.",
@@ -1716,6 +1724,7 @@ def run(
     repo_dir,
     session_name,
     mcp_url,
+    no_pkb,
     task,
     base,
     branch,
@@ -1777,6 +1786,16 @@ def run(
 
     initial_head = _get_git_head(workspace_dir)
     mcp_url = mcp_url or os.environ.get("PKB_MCP_URL")
+    if not mcp_url and not no_pkb:
+        fail(
+            "no knowledge-base MCP URL: --mcp-url was not given and $PKB_MCP_URL "
+            "is unset. Without one, this container would start anyway with zero "
+            "MCP servers wired, and a worker inside it cannot tell an "
+            "unreachable PKB from a PKB that was never configured. Export "
+            "PKB_MCP_URL to the gateway route (host:8020/mcp) or the direct "
+            "route (host:8026/mcp), pass --mcp-url explicitly, or pass --no-pkb "
+            "for a run that genuinely needs no knowledge-base access."
+        )
 
     staging_base = os.environ.get("POLECAT_STAGING_BASE") or str(polecat_home / "tmp" / "staging")
     Path(staging_base).mkdir(parents=True, exist_ok=True)
