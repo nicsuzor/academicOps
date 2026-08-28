@@ -214,6 +214,12 @@ you established: a referent you have shown was **deleted** cancels the task
 a **demotion** to `inbox` with an annotation saying exactly what no longer
 resolves (§7).
 
+**The Two-Step Mutation Contract.** Whenever performing a demotion to `inbox` or a cancellation:
+1. **Body write**: Write the annotation or evidence into the node body via `pkb__append` or `pkb__update_body`.
+2. **Frontmatter mutation**: Explicitly mutate the frontmatter `status` via `pkb__update_task(id="<task-id>", updates={"status": "inbox"|"cancelled"})`.
+3. **Readback verification**: Immediately read back via `pkb__get_task(id="<task-id>")` to verify `frontmatter.status` matches the intended state.
+*(Never rely on body appends or batch update tools to mutate frontmatter status — body tools touch only markdown prose, and `pkb__batch_update` drops status payloads.)*
+
 **Cancel on a world-fact.** These are the unattended triggers — the ones where
 no person has spoken and you establish the fact yourself. They sit alongside the
 person-decision route §4 already carries; they do not replace it. Cancel a task
@@ -298,7 +304,13 @@ Collect the tasks a fact you wrote actually touched:
   criteria leaned on it do;
 - the investigation tasks §4 filed.
 
-Set that whole set back to `inbox`, annotated with the fact that moved it.
+Set that whole set back to `inbox`, annotated with the fact that moved it,
+using the two-step mutation contract:
+1. Append the annotation to the task body (`pkb__append` or `pkb__update_body`).
+2. Update the frontmatter status explicitly via `pkb__update_task(id="<task-id>", updates={"status": "inbox"})`.
+3. Verify readback immediately with `pkb__get_task(id="<task-id>")`.
+Do NOT use `pkb__batch_update` for status mutations or demotions (it drops status payloads silently).
+
 `inbox` is the signal that a task needs working out again; re-planning is a
 separate act, on the user's call, and none of it is yours. You do not re-sort
 their assumptions, re-rank their forks, re-cut them, or promote them.
@@ -331,6 +343,12 @@ stopped leaves the next sweep no way to start.
 - Re-open, adjudicate, or second-guess a decision a person has already recorded —
   including merged pull requests (never propose revert/ratify/let-stand, never
   treat a merge as premature, wrong-base, or conflicting with prior notes).
+- Append a demotion, rot, or cancellation note to a task's body without also
+  mutating its frontmatter `status` via `pkb__update_task`. Leaving a task at
+  `status: queued` or `status: ready` while its body says demoted/cancelled is
+  strictly forbidden.
+- Use `pkb__batch_update` to mutate task statuses or perform demotions (use
+  `pkb__update_task` per node and verify with `pkb__get_task`).
 - Resolve an acceptance criterion that needs interpreting, or supply the
   judgment a person has not made.
 - Prune, restructure, merge, or re-parent anything.
