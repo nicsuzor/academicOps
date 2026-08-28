@@ -1,5 +1,6 @@
 ---
 id: email-capture
+type: template
 kind: process
 category: email
 description: Extract action items from emails into "ready for action" tasks with summaries, downloaded documents, and clear response requirements

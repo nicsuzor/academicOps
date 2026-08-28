@@ -1,5 +1,6 @@
 ---
 id: live-fix-loop
+type: template
 kind: process
 category: development
 description: Fix a defect that only appears in the real runtime — drive the deployed artefact, capture verbatim failure evidence, dispatch a fixer, rebuild, re-drive, score on the machine record

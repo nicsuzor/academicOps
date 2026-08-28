@@ -1,5 +1,6 @@
 ---
 id: framework-gate
+type: template
 kind: process
 category: routing
 description: Detect framework-modification intent and route to the governance-appropriate path — check FIRST, before any other routing

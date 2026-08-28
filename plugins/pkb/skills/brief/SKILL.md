@@ -219,8 +219,10 @@ obligation in, and where a row resolves to nothing, that row is the finding.
 
 ### The Three-Source Library Architecture
 
-Discover candidate templates across three sources. No central registry gates any
-of them; registration in an index is not a condition of existence.
+Discover candidate templates across three sources. Every tier marks a template
+the same way — `type: template` in frontmatter — and the tiers differ only in
+where you look. No central registry gates any of them; registration in an index
+is not a condition of existence.
 
 1. **Project tier** — `$CWD/.agents/templates/*.md`. Templates local to the
    repository you are working in. Absent directory means an empty list, not an
@@ -230,7 +232,7 @@ of them; registration in an index is not a condition of existence.
    (`status: retired`, or a `retired`/`superseded` tag), datestamped instance
    nodes, and templates scoped to a project other than this one. Composition
    fragments are available as sub-steps and never dispatched standalone.
-3. **Universal core tier** — `../../workflows/*.md`, catalogued by
+3. **Universal core tier** — framework templates (`type: template`), catalogued by
    `../../workflows/INDEX.md`, which also carries the routing tree naming the
    template for this class of work. These set minimum standards that cannot be
    derogated from: universal, immutable, version-controlled. No gate template

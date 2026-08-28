@@ -1,5 +1,6 @@
 ---
 id: external-batch-submission
+type: template
 kind: process
 category: operations
 description: Submit, monitor, and retrieve results from external batch prediction/inference APIs (LiteLLM, Boto3, custom)

@@ -1,5 +1,6 @@
 ---
 id: email-reply
+type: template
 kind: process
 category: email
 description: Draft email replies in the user's voice, checking calendar availability for scheduling — agent drafts, user sends

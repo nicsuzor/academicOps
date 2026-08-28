@@ -1,5 +1,6 @@
 ---
 id: develop-specification
+type: template
 kind: process
 category: general
 description: Collaboratively develop a complete task/feature specification before implementation begins

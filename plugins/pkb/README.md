@@ -36,9 +36,9 @@ flowchart TD
     pull --> reconcile["skills/reconcile<br/>fold merged and closed PRs,<br/>probe stale claims — facts only"]
     reconcile -- "re-plan when the wave lands:<br/>back to inbox" --> capture
 
-    brief --> library[["workflows/INDEX.md<br/>workflows/*.md"]]
-    brief --> userlayer[["$CWD/.agents/templates/<br/>overrides by filename"]]
-    brief --> wftemplates[["PKB documents with type: template"]]
+    brief --> library[["workflows/INDEX.md<br/>shipped templates (type: template)"]]
+    brief --> userlayer[["$CWD/.agents/templates/<br/>project-local templates"]]
+    brief --> wftemplates[["PKB documents (type: template)"]]
     agent -- "routes its own ask" --> library
 
     pkbwrite -- "every read and write" --> mcp
@@ -151,9 +151,9 @@ session, an email is triaged.
 **Composition** is assembling a full process for work that has been released for
 dispatch, and it happens in `brief` §5 — read in context, every time, never
 carried in pauli's own text. The three template layers sit outside the box
-because they are sources, not stages: the shipped library, the working
-repository's `$CWD/.agents/templates/`, and PKB documents with `type: template`.
-They form one namespace; a PKB template composes exactly like a shipped one.
+because they are sources, not stages: the shipped library, project-local
+`$CWD/.agents/templates/`, and PKB documents with `type: template`. They form
+one namespace; a PKB template composes exactly like a shipped one.
 
 The output lands on the task as its checklist: the composed steps, in order,
 plus one pointer bullet naming the templates and the proportionality call. The

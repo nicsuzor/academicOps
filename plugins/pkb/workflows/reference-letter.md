@@ -1,5 +1,6 @@
 ---
 id: reference-letter
+type: template
 kind: process
 category: academic
 description: Draft, review, and finalize reference letters for students or colleagues (request → draft → review → send)

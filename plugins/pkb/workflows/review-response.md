@@ -1,5 +1,6 @@
 ---
 id: review-response
+type: template
 kind: process
 category: academic
 description: Reply to reviewer comments in a Word document, showing how each was addressed in the updated draft — threaded docx comment replies
