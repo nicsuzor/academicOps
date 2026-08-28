@@ -204,7 +204,7 @@ reporting; these are my own queries).
 - **`aops_e39b6b9d`** — status `done`. It delivered
   `specs/agents/ida-supervision-migration.md` (313 lines), now in **draft PR
   #2446**, unreviewed. Its recorded design finding bears directly on our item 10:
-  ida's routing discipline is _carried in prose alone_, and the spec holds that
+  ida's routing discipline is _carried in prose alone_ (note: under canonical enforcement doctrine, prose instructions are the primary starting rung rather than a disqualifier), and the spec holds that
   **"no stage past 0 is entered while the envelope is neither declared nor
   enforced."** Our `ida` lockdown is exactly such a stage change, and there is an
   unreviewed spec that already owns the question.
