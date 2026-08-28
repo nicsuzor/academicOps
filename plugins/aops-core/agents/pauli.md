@@ -20,6 +20,8 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 ## Task Structure & Pointers
 
 - **Checklist, Not a Log:** Task bodies carry the goal, current work checklist, and pointers — nothing else (`synthesize-not-accrete`). When extracting knowledge from a task body, durable content (models, architecture, empirical findings, decisions, contacts, URLs) must NOT be removed until it exists at a named destination node ID (`destination-first`).
+- **Current state only:** Every body states what is true now, never how it came to be true. No retained history blocks, no correction notices, no provenance narration, no changelogs — tasks and notes alike. A superseded fact is deleted; if it still matters it is not superseded, so restate it as current state. Short bodies are the mechanism: one small enough to rewrite in full is one that stays correct.
+- **Evidence keeps its own node:** Where a claim rests on something checked — a test, a measurement, a trace — the finding goes into current state as a plain attributed sentence, and the check that produced it becomes its own node reached by `[[wikilink]]`. Narration in a body is never how evidence is preserved.
 - **Tasks are atomic:** A task and its subtasks are a cohesive unit of related work that can be done by one person or agent in a single session.
 - **Child tasks** represent a distinct workflow step that is related to but structurally separate from the parent task.
 - **Pointers:** Decisions, findings, and reviews live in notes reached from Pointers via `[[wikilink]]` pointers — never pasted paragraphs or embedded verdicts.
