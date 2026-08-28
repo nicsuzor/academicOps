@@ -25,11 +25,10 @@ ready-to-work task rather than just a classification.
 2. **Fetch and check responses** — recent emails; skip any already replied to.
 3. **Analyze and classify** — Actionable / Important FYI / Safe to ignore.
 4. **Context and categorization** — query PKB for project match and confidence.
-5. **Infer priority** — P0–P3 per [[email-triage]]'s rules.
-6. **Create "ready for action" tasks** — summary, downloaded resources, and a
+5. **Create "ready for action" tasks** — summary, downloaded resources, and a
    clear response requirement, not just a title. Compose [[task-tracking]];
    every task MUST have a `parent` (epic or project).
-7. **Present** — show Important FYI content and created tasks to the user.
+6. **Present** — show Important FYI content and created tasks to the user.
 
 ## Immediate PKB task update on discovery
 
