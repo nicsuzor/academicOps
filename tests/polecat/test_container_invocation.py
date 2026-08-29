@@ -550,8 +550,11 @@ def test_polecat_typechecks_clean():
     """Both import paths have to resolve for the type checker, not just at
     runtime: the fallback used to import a bare `env_contract` that no
     configured path could resolve."""
+    cmd = ["basedpyright", "--outputjson", "lib/polecat/"]
+    if sys.executable:
+        cmd = ["basedpyright", "--pythonpath", sys.executable, "--outputjson", "lib/polecat/"]
     result = subprocess.run(
-        ["basedpyright", "--outputjson", "lib/polecat/"],
+        cmd,
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,

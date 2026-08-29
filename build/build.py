@@ -14,8 +14,12 @@ package imports):
 """
 
 import argparse
+import json
+import os
 import shutil
+import subprocess
 import tarfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -175,6 +179,59 @@ def _build_plugin_client(
     return build_dir
 
 
+def generate_image_metadata(
+    project_root: Path,
+    resolved_version: str,
+    dist_root: Path,
+    plugins_built: dict[str, list[Path]],
+) -> Path:
+    commit_sha = ""
+    short_sha = ""
+    is_dirty = False
+    try:
+        sha_res = subprocess.run(
+            ["git", "-C", str(project_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if sha_res.returncode == 0 and sha_res.stdout:
+            commit_sha = sha_res.stdout.strip()
+            short_sha = commit_sha[:8]
+        status_res = subprocess.run(
+            ["git", "-C", str(project_root), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        is_dirty = status_res.returncode == 0 and bool(status_res.stdout.strip())
+    except Exception:
+        pass
+
+    dist_ref = os.environ.get("AOPS_DIST_REF", "dev")
+    repo_url = os.environ.get("AOPS_REPO_URL", "https://github.com/nicsuzor/academicOps.git")
+    built_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    plugins_map = {name: resolved_version for name in plugins_built}
+
+    data = {
+        "schema_version": "1.0",
+        "aops_version": resolved_version,
+        "dist_source": os.environ.get("AOPS_DIST_SOURCE", "local"),
+        "commit_sha": commit_sha,
+        "short_sha": short_sha,
+        "is_dirty": is_dirty,
+        "dist_ref": dist_ref,
+        "repo_url": repo_url,
+        "built_at": built_at,
+        "plugins": plugins_map,
+    }
+
+    out_path = dist_root / ".aops-image-metadata.json"
+    out_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return out_path
+
+
 def build_all(
     project_root: Path,
     dist_root: Path,
@@ -212,6 +269,8 @@ def build_all(
         generate_local_marketplace(decl, resolved_version, dist_root)
         generate_production_marketplace(decl, resolved_version, dist_root)
         generate_cowork_dist(decl, resolved_version, dist_root)
+
+    generate_image_metadata(project_root, resolved_version, dist_root, built)
 
     return built
 

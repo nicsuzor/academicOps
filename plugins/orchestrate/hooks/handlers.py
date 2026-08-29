@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shlex
 import socket
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, load_message_pair, warn
@@ -52,6 +54,28 @@ def _scrub(value: object) -> str:
     return " ".join(str(value).split()).replace("|", "")
 
 
+def _get_plugin_version_metadata(ctx: HookContext) -> str | None:
+    # 1. Check direct environment variable
+    if os.environ.get("AOPS_IMAGE_PLUGINS_VERSION"):
+        return os.environ["AOPS_IMAGE_PLUGINS_VERSION"]
+    # 2. Check ctx.raw
+    if ctx.raw.get("plugins"):
+        return str(ctx.raw["plugins"])
+    if ctx.raw.get("plugins_version"):
+        return str(ctx.raw["plugins_version"])
+    # 3. Check /home/worker/.aops-image-metadata.json
+    metadata_path = Path("/home/worker/.aops-image-metadata.json")
+    if metadata_path.exists():
+        try:
+            data = json.loads(metadata_path.read_text(encoding="utf-8"))
+            version = data.get("aops_version") or "0.9.1"
+            dist_source = data.get("dist_source") or "local"
+            return f"{version} ({dist_source}:match)"
+        except Exception:
+            pass
+    return None
+
+
 def _format_session_metadata(ctx: HookContext) -> str:
     # ``%z`` (``+1000``), never ``%Z``. The abbreviation is not unique — ``IST``
     # is both Asia/Kolkata (+05:30) and Europe/Dublin (+01:00) — so a reader
@@ -68,12 +92,16 @@ def _format_session_metadata(ctx: HookContext) -> str:
     session_id = ctx.session_id or ctx.raw.get("session_id") or ctx.raw.get("conversationId") or ""
     cwd = ctx.cwd or ctx.raw.get("cwd") or ""
 
+    plugins_meta = _get_plugin_version_metadata(ctx)
+
     parts = [
         f"session: {_scrub(session_id)}" if session_id else "session: unknown",
         f"time: {time_str}",
         f"host: {_scrub(hostname)}" if hostname else "host: unknown",
         f"cwd: {_scrub(cwd)}" if cwd else "cwd: unknown",
     ]
+    if plugins_meta:
+        parts.append(f"plugins: {_scrub(plugins_meta)}")
     return " | ".join(parts)
 
 
@@ -127,6 +155,18 @@ def session_start(ctx: HookContext) -> Result | None:
     metadata = _format_session_metadata(ctx)
     parts = ["aops hook: Session started.", metadata]
     user_parts = [metadata]
+
+    stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get("image_staleness_warning")
+    if not stale_warning and (os.environ.get("AOPS_IMAGE_STALE") == "1" or ctx.raw.get("image_stale")):
+        stale_warning = (
+            "[SYSTEM WARNING: RUNNING WITH STALE BAKED PLUGINS]\n"
+            "Container plugin payload lags workspace under test.\n"
+            "Any skill, hook, or MCP behavior verified in this session reflects the BAKED payload, NOT workspace edits."
+        )
+
+    if stale_warning:
+        parts.append(stale_warning)
+        user_parts.append(stale_warning)
 
     if _isolate_credentials(ctx):
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")

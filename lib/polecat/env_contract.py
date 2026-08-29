@@ -59,6 +59,10 @@ FORWARDED_ENV = (
     "NONINTERACTIVE",
     "TZ",
     "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP",
+    "AOPS_IMAGE_PROVENANCE",
+    "AOPS_IMAGE_STALE",
+    "AOPS_IMAGE_PLUGINS_VERSION",
+    "AOPS_IMAGE_STALENESS_WARNING",
 )
 
 # Credentials the container's entrypoint requires to reach GitHub and the agent
