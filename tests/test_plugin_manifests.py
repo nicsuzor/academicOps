@@ -43,9 +43,7 @@ def get_plugin_dirs():
     plugin_dirs = []
     for d in DIST_ROOT.iterdir():
         if d.is_dir() and (
-            d.name.endswith("-claude")
-            or d.name.endswith("-agy")
-            or d.name.endswith("-openclaw")
+            d.name.endswith("-claude") or d.name.endswith("-agy") or d.name.endswith("-openclaw")
         ):
             plugin_dirs.append(d)
     if not plugin_dirs:
