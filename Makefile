@@ -7,7 +7,7 @@
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
 LOCAL_MARKETPLACE := aops
-DIST_REPO := nicsuzor/academicOps
+DIST_REPO := nicsuzor/academicOps@dist
 # The image this repository publishes. Override to build/push elsewhere.
 IMAGE ?= ghcr.io/nicsuzor/aops-crew
 
@@ -22,7 +22,7 @@ help:
 	@echo "                      'claude plugin validate' and 'agy plugin validate'"
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
 	@echo "make uninstall-dev  - remove the local marketplace, restore the released one"
-	@echo "make install        - install the released plugins from the repository"
+	@echo "make install        - install the released plugins from the dist branch"
 	@echo "make test           - run the pytest suite"
 	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
