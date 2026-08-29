@@ -15,7 +15,7 @@ Brief exactly the ask you were called on. More than one ask: brief each independ
 
 ## 1 — Read, then verify
 
-Given an id, `pkb__get_task` the unit and its parent. Given prose, search first (`pkb__search`, `pkb__task_search`); merge into any node that already covers the ask, or `pkb__create_task` it at `inbox` under the right parent. Never leave a duplicate sibling.
+If the prompt comes in without an existing task id, run `/q` first so the node can be placed appropriately on the graph. Given an id, `pkb__get_task` the unit and its parent. Given prose, search first (`pkb__search`, `pkb__task_search`); merge into any node that already covers the ask, or `pkb__create_task` it at `inbox` under the right parent. Never leave a duplicate sibling.
 
 The record is a claim, not a fact. Claims about intent do not decay; claims about the world — paths, schemas, deployed states, every negative claim — decay silently. Re-verify each world-claim the brief will lean on **against the world, not another node**, before it becomes a constraint, criterion, or pointer. If a load-bearing premise is dead, the unit is not briefable: record what is no longer true, leave it at `inbox`, and stop.
 
