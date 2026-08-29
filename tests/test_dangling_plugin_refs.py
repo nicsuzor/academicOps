@@ -19,7 +19,7 @@ DIST_ROOT = PROJECT_ROOT / "dist"
 # Pattern matching dangling `/email` slash command references as standalone command calls.
 # Ignores:
 # - URL paths like `https://example.com/email`
-# - File paths like `plugins/pkb/workflows/process/email-triage.md`
+# - File paths like `plugins/aops-core/workflows/process/email-triage.md`
 # - Workflow IDs or permalinks like `wf-email-triage` or `email-triage`
 # - Package names like `email_validator` or python imports `from email import ...`
 SLASH_EMAIL_REGEX = re.compile(r"(?<![A-Za-z0-9_/-])/(?:email)(?![A-Za-z0-9_/-]|\.[a-zA-Z0-9])")
@@ -76,7 +76,7 @@ def test_dangling_email_slash_command_regex_unit():
         SLASH_EMAIL_REGEX.search("https://files.pythonhosted.org/.../email_validator-2.3.0.tar.gz")
         is None
     )
-    assert SLASH_EMAIL_REGEX.search("plugins/pkb/workflows/process/email-triage.md") is None
+    assert SLASH_EMAIL_REGEX.search("plugins/aops-core/workflows/process/email-triage.md") is None
     assert SLASH_EMAIL_REGEX.search("See /email.md for docs") is None
 
 

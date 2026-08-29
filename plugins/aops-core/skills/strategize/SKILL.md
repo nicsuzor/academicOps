@@ -18,7 +18,7 @@ user asks what to do next.
 ## You think; pauli reads and writes
 
 You hold no PKB tools. That is deliberate, and it shapes how this runs: **every
-look at the graph is a question you commission from `pkb:pauli`, and every write
+look at the graph is a question you commission from `aops-core:pauli`, and every write
 is one you hand over.** You are not routing around a limitation — you are the
 only agent holding the user's intent and the standard the work is held to, and
 that is the scarce thing. Spending your context on retrieval spends it on the
@@ -32,7 +32,7 @@ vaguer than it sounded.
 
 What you typically need, and what to ask for:
 
-- **What already exists here** — the shortlist `pkb:hydrate` produces, before
+- **What already exists here** — the shortlist `aops-core:hydrate` produces, before
   anything else. Never plan cold.
 - **What is actually ready** — the `queued` set, and what is sitting at each of
   the two breakpoints.
@@ -71,12 +71,12 @@ cannot state the rung above the one you are on, you are on the wrong rung.
 A plan that lives only in a turn is not a plan. Route each piece to the stage
 that owns it — by handing it to pauli, who runs these — and stop there:
 
-| The work in front of you                                                   | Stage            |
-| -------------------------------------------------------------------------- | ---------------- |
-| Needs grounding in what is already known                                   | `pkb:hydrate`    |
-| Is a captured ask not yet worked out, or one needing a process and a brief | `pkb:brief`      |
-| Is in flight but the graph's claims about it look stale                    | `pkb:reconcile`  |
-| Is ready to be worked                                                      | `orchestrate:pc` |
+| The work in front of you                                                   | Stage              |
+| -------------------------------------------------------------------------- | ------------------ |
+| Needs grounding in what is already known                                   | `aops-core:hydrate`|
+| Is a captured ask not yet worked out, or one needing a process and a brief | `aops-core:brief`  |
+| Is in flight but the graph's claims about it look stale                    | `aops-core:reconcile` |
+| Is ready to be worked                                                      | `orchestrate:pc`   |
 
 **The assumption map, the fork ranking, and the probe design belong on the task
 body, written by the stage that owns it.** Do not reproduce them here, and do not

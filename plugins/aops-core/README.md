@@ -1,4 +1,4 @@
-# pkb
+# aops-core
 
 Pauli — memory, effectual planning, workflow composition, and the client wiring
 for a Personal Knowledge Base.

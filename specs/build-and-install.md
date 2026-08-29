@@ -40,7 +40,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 are separate marketplace names specifically so one install can never silently
 shadow the other: `claude plugin marketplace add` is a no-op when a name already
 exists, so both `install-dev` and `install` remove their own marketplace name
-before re-adding it. The `aops-pkb` plugin takes a `pkb_mcp_url` `userConfig`
+before re-adding it. The `aops-core` plugin takes a `pkb_mcp_url` `userConfig`
 value from `$PKB_MCP_URL` when set (`ARCHITECTURE.md`, "No defaults" — the URL is
 never baked in); `--config` is scoped to that plugin only, since it's the only
 one that declares the key.

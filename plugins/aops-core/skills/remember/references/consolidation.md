@@ -201,7 +201,7 @@ titles to judge:
 #### Staleness and Closure
 
 Staleness, unclosed merged tasks, dead claims, and artifact rot are owned by the
-`reconcile` skill (`plugins/pkb/skills/reconcile/SKILL.md`).
+`reconcile` skill (`plugins/aops-core/skills/reconcile/SKILL.md`).
 Delegate this stage to `/reconcile` in batch context; do not freelance separate
 closure logic.
 

@@ -70,7 +70,7 @@ Five bands, listed in **escalation order** (from the cheapest default mechanism 
 - **Review** — three judgment registers applied at a task or workflow boundary:
   **pauli** (is the premise sound and aligned), **rbg** (were the rules
   followed), **marsha** (does it work, and is it excellent). Which of these a
-  given unit runs is composed by [`brief`](../../plugins/pkb/skills/brief/SKILL.md)
+  given unit runs is composed by [`brief`](../../plugins/aops-core/skills/brief/SKILL.md)
   from the workflow-template namespace, not hardcoded — a fixed set carried in a
   skill's own text is a process the user could never override. An empty composed
   set is a library gap `brief` halts on, not a pass. Shape:
@@ -154,7 +154,7 @@ Two flows, deliberately separated as witness and judge, so the volume and
 direction of framework change is governed by cross-incident pattern rather than
 by the salience of the most recent failure.
 
-1. **Diagnose and route** ([`learn`](../../plugins/pkb/skills/learn/SKILL.md)) — an
+1. **Diagnose and route** ([`learn`](../../plugins/aops-core/skills/learn/SKILL.md)) — an
    agent that hits friction traces it to the structural cause and routes the
    lesson to the one destination its scope claims. It proposes no fix to anything
    governing future sessions; writing a standing rule needs the user to have asked.

@@ -209,7 +209,7 @@ def test_agy_rejects_an_event_it_cannot_fire(tmp_path):
         _to_agy_hooks(config, ctx)
 
 
-def _agy_ctx(tmp_path, directory="pkb", name="aops-pkb"):
+def _agy_ctx(tmp_path, directory="aops-core", name="aops-core"):
     from build.context import BuildContext, Plugin
 
     return BuildContext(
@@ -352,7 +352,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb", "orchestrate"],
+        plugins=["aops-core", "orchestrate"],
         version=VERSION,
     )
 
@@ -360,9 +360,9 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
     # read format — see build/clients/agy.py's _adapt_agents docstring).
-    agy_ida_md = dist_root / "pkb-agy" / "agents" / "ida.md"
+    agy_ida_md = dist_root / "aops-core-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "pkb-agy" / "agents" / "ida" / "agent.md").exists()
+    assert not (dist_root / "aops-core-agy" / "agents" / "ida" / "agent.md").exists()
 
     raw = agy_ida_md.read_text()
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
@@ -1012,11 +1012,11 @@ def test_pauli_agy_frontmatter(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb"],
+        plugins=["aops-core"],
         version=VERSION,
     )
 
-    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
+    pauli_md = dist_root / "aops-core-agy" / "agents" / "pauli.md"
     assert pauli_md.is_file()
     fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)

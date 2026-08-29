@@ -25,7 +25,7 @@ permalink: skills-design-rubric
 
 Create or red-team a qualitative Fitness Rubric for user-facing features to define what excellence looks like. The rubric lives directly on the spec or epic body under `## Fitness Rubric`.
 
-Authoring or red-teaming a rubric is premise-and-fit judgment, not template-filling: it runs as `pauli` (`plugins/pkb/agents/pauli.md`).
+Authoring or red-teaming a rubric is premise-and-fit judgment, not template-filling: it runs as `pauli` (`plugins/aops-core/agents/pauli.md`).
 
 ## Qualitative Bar Signals
 
