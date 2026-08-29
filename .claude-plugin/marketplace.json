@@ -1,0 +1,71 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "academicOps",
+  "description": "academicOps - Research workflow automation framework",
+  "owner": {
+    "name": "Nicolas Suzor",
+    "email": "nic@suzor.net"
+  },
+  "plugins": [
+    {
+      "name": "aops-core",
+      "description": "ida for strategy and pauli for memory.",
+      "version": "0.9.1",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./plugins/aops-core",
+      "category": "productivity"
+    },
+    {
+      "name": "orchestrate",
+      "description": "james \u2014 the container worker; marsha \u2014 QA and UX excellence; adversary \u2014 red-team review.",
+      "version": "0.9.1",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./plugins/orchestrate",
+      "category": "productivity"
+    },
+    {
+      "name": "rbg",
+      "description": "Automatic in-session rule enforcement.",
+      "version": "0.9.1",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./plugins/rbg",
+      "category": "productivity"
+    },
+    {
+      "name": "ts",
+      "description": "Tailscale bring-up for remote sessions.",
+      "version": "0.9.1",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./plugins/ts",
+      "category": "productivity"
+    },
+    {
+      "name": "tools",
+      "description": "Domain research skills.",
+      "version": "0.9.1",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./plugins/tools",
+      "category": "productivity"
+    },
+    {
+      "name": "aops-debug",
+      "description": "Debug plugin that dumps raw hook payloads.",
+      "version": "0.9.1",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./plugins/aops-debug",
+      "category": "productivity"
+    }
+  ]
+}
