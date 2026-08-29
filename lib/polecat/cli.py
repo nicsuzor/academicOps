@@ -1939,8 +1939,14 @@ def run(
         env["AOPS_IMAGE_STALE"] = "1" if staleness_eval["is_stale"] else "0"
         env["AOPS_IMAGE_PLUGINS_VERSION"] = staleness_eval["plugins_version_str"]
         if staleness_eval["is_stale"]:
-            img_short = staleness_eval["image_commit"][:8] if staleness_eval["image_commit"] else "unknown"
-            ws_short = staleness_eval["workspace_commit"][:8] if staleness_eval["workspace_commit"] else "unknown"
+            img_short = (
+                staleness_eval["image_commit"][:8] if staleness_eval["image_commit"] else "unknown"
+            )
+            ws_short = (
+                staleness_eval["workspace_commit"][:8]
+                if staleness_eval["workspace_commit"]
+                else "unknown"
+            )
             env["AOPS_IMAGE_STALENESS_WARNING"] = (
                 f"[SYSTEM WARNING: RUNNING WITH STALE BAKED PLUGINS]\n"
                 f"Container plugin payload (commit {img_short}) lags workspace under test (commit {ws_short}).\n"

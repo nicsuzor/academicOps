@@ -156,8 +156,12 @@ def session_start(ctx: HookContext) -> Result | None:
     parts = ["aops hook: Session started.", metadata]
     user_parts = [metadata]
 
-    stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get("image_staleness_warning")
-    if not stale_warning and (os.environ.get("AOPS_IMAGE_STALE") == "1" or ctx.raw.get("image_stale")):
+    stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
+        "image_staleness_warning"
+    )
+    if not stale_warning and (
+        os.environ.get("AOPS_IMAGE_STALE") == "1" or ctx.raw.get("image_stale")
+    ):
         stale_warning = (
             "[SYSTEM WARNING: RUNNING WITH STALE BAKED PLUGINS]\n"
             "Container plugin payload lags workspace under test.\n"

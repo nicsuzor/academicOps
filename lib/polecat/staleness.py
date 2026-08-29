@@ -78,7 +78,9 @@ def inspect_image_provenance(image: str) -> ImageProvenance:
                 labels = json.loads(raw_str) or {}
                 commit_sha = labels.get("org.opencontainers.image.revision") or ""
                 version = labels.get("org.opencontainers.image.version") or ""
-                dist_source = labels.get("aops.dist_source") or ("remote" if "remote" in image else "local")
+                dist_source = labels.get("aops.dist_source") or (
+                    "remote" if "remote" in image else "local"
+                )
                 dist_ref = labels.get("aops.dist_ref") or ""
                 build_dirty_raw = str(labels.get("aops.build_dirty", "0")).lower()
                 is_dirty = build_dirty_raw in ("1", "true", "yes")
@@ -205,10 +207,14 @@ def evaluate_staleness(
 
     if prov.dist_source == "remote":
         is_stale = False
-        if prov.commit_sha and workspace_sha and (
-            prov.commit_sha == workspace_sha
-            or prov.commit_sha.startswith(workspace_sha)
-            or workspace_sha.startswith(prov.commit_sha)
+        if (
+            prov.commit_sha
+            and workspace_sha
+            and (
+                prov.commit_sha == workspace_sha
+                or prov.commit_sha.startswith(workspace_sha)
+                or workspace_sha.startswith(prov.commit_sha)
+            )
         ):
             status = "FRESH_REMOTE_BUILD"
         else:
@@ -227,10 +233,14 @@ def evaluate_staleness(
         plugins_version_str = f"{image_version} (remote:release)"
     else:
         # Local source build
-        if prov.commit_sha and workspace_sha and not (
-            prov.commit_sha == workspace_sha
-            or prov.commit_sha.startswith(workspace_sha)
-            or workspace_sha.startswith(prov.commit_sha)
+        if (
+            prov.commit_sha
+            and workspace_sha
+            and not (
+                prov.commit_sha == workspace_sha
+                or prov.commit_sha.startswith(workspace_sha)
+                or workspace_sha.startswith(prov.commit_sha)
+            )
         ):
             is_stale = True
             status = "STALE_LOCAL_BUILD"
