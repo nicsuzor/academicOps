@@ -333,6 +333,11 @@ Stages, in order:
    `.claude-plugin/marketplace.json` naming the marketplace
    `academicOps-cowork`. Claude-only; skipped when `claude` is not in the
    client list.
+6. **OpenClaw channel.** `dist/openclaw/` — a local directory marketplace assembled
+   for OpenClaw runtime context: one directory per plugin, a
+   `<plugin>-v<version>.zip` archive per plugin, and
+   `.claude-plugin/marketplace.json` naming the marketplace
+   `academicOps-openclaw`.
 
 ### Client adapters
 
@@ -343,6 +348,15 @@ Stages, in order:
 - `manifest/mcp.json` → `.mcp.json`
 - `axioms/*.md` with `trigger: always_on` → `axioms.jsonl`, merged into
   `~/.claude/settings.json` at install time
+
+`build/clients/openclaw.py`
+
+- `manifest/plugin.json` → `.claude-plugin/plugin.json`
+- `manifest/hooks.json` → `hooks/hooks.json`
+- `manifest/mcp.json` → `.mcp.json`
+- `agents/<name>.md` → validated and adapted for OpenClaw runtime, preserving
+  canonical face persona constraints (e.g. `ida`'s narrowed tool surfaces and permissions)
+- `axioms/*.md` with `trigger: always_on` → `axioms.jsonl`
 
 `build/clients/agy.py`
 

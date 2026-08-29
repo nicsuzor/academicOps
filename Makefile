@@ -17,7 +17,7 @@ PLUGIN_NAMES = $(shell uv run python -c "import tomllib, pathlib; d = tomllib.lo
 STALE_PLUGIN_NAMES = aops aops-cope aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts pkb
 
 help:
-	@echo "make build          - assemble dist/ for every plugin, both clients (build/build.py)"
+	@echo "make build          - assemble dist/ for every plugin, clients (Claude, agy, openclaw)"
 	@echo "make build-test     - build, then validate every dist/ plugin dir with"
 	@echo "                      'claude plugin validate' and 'agy plugin validate'"
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
@@ -59,8 +59,13 @@ build-test: build
 				&& echo "✓ agy $$p validated" \
 				|| { echo "x agy $$p validate failed" >&2; exit 1; }; \
 		fi; \
+		if command -v claude >/dev/null 2>&1; then \
+			claude plugin validate "$(DIST)/$$p-openclaw" \
+				&& echo "✓ openclaw $$p validated" \
+				|| { echo "x openclaw $$p validate failed" >&2; exit 1; }; \
+		fi; \
 	done
-	@echo "✓ dist/ validated for every plugin, both clients"
+	@echo "✓ dist/ validated for every plugin and client target"
 
 # --- Install ---
 

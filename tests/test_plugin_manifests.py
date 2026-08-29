@@ -42,7 +42,11 @@ def get_plugin_dirs():
 
     plugin_dirs = []
     for d in DIST_ROOT.iterdir():
-        if d.is_dir() and (d.name.endswith("-claude") or d.name.endswith("-agy")):
+        if d.is_dir() and (
+            d.name.endswith("-claude")
+            or d.name.endswith("-agy")
+            or d.name.endswith("-openclaw")
+        ):
             plugin_dirs.append(d)
     if not plugin_dirs:
         raise RuntimeError(f"{DIST_ROOT} contains no built plugin directories — run 'make build'")
@@ -55,7 +59,7 @@ def test_plugin_validates_against_cli(plugin_dir):
     Checks each built plugin package against the native CLI plugin validate command.
     """
     # Determine which CLI to use based on the plugin's target platform
-    if plugin_dir.name.endswith("-claude"):
+    if plugin_dir.name.endswith("-claude") or plugin_dir.name.endswith("-openclaw"):
         cli_command = ["claude", "plugin", "validate", str(plugin_dir)]
     elif plugin_dir.name.endswith("-agy"):
         cli_command = ["agy", "plugin", "validate", str(plugin_dir)]
@@ -124,7 +128,7 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     file on disk — this test closes that coverage gap so the same class of
     defect fails a build instead of shipping silently.
     """
-    if plugin_dir.name.endswith("-claude"):
+    if plugin_dir.name.endswith("-claude") or plugin_dir.name.endswith("-openclaw"):
         hooks_json_path = plugin_dir / "hooks" / "hooks.json"
     elif plugin_dir.name.endswith("-agy"):
         hooks_json_path = plugin_dir / "hooks.json"

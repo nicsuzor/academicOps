@@ -23,7 +23,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 
 | Target               | Effect                                                                                                           |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `make build`         | Assembles `dist/` for every plugin, both clients (`build/build.py`).                                             |
+| `make build`         | Assembles `dist/` for every plugin, clients (Claude, agy, openclaw) and channels (cowork, openclaw). |
 | `make install-dev`   | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
 | `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace.            |
 | `make install`       | Registers `nicsuzor/academicOps` as the `academicOps` marketplace and installs every plugin from it.             |

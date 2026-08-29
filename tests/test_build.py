@@ -1028,3 +1028,83 @@ def test_pauli_agy_frontmatter(tmp_path):
     assert "hidden" not in agent
     assert "includeSections" not in agent
     assert "call_mcp_tool" not in agent["tools"]
+
+
+def test_openclaw_dist_built_and_packaged(tmp_path):
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops-core", "orchestrate"],
+        clients=("claude", "agy", "openclaw"),
+        version=VERSION,
+    )
+
+    openclaw_root = dist_root / "openclaw"
+    assert openclaw_root.is_dir()
+
+    # Verify directory marketplace manifest
+    manifest_path = openclaw_root / ".claude-plugin" / "marketplace.json"
+    assert manifest_path.is_file()
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert data["name"] == "academicOps-openclaw"
+    assert {p["name"] for p in data["plugins"]} == {"aops-core", "orchestrate"}
+    for p in data["plugins"]:
+        assert p["source"] == f"./{p['name']}"
+        assert p["version"] == VERSION
+
+    # Verify per-plugin directories and zip packages
+    for name in ("aops-core", "orchestrate"):
+        plugin_dir = openclaw_root / name
+        assert plugin_dir.is_dir()
+        assert (plugin_dir / ".claude-plugin" / "plugin.json").is_file()
+
+        zip_path = openclaw_root / f"{name}-v{VERSION}.zip"
+        assert zip_path.is_file()
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+        assert f"{name}/.claude-plugin/plugin.json" in names
+
+    # Verify openclaw dist directory
+    assert (dist_root / "aops-core-openclaw" / ".claude-plugin" / "plugin.json").is_file()
+    assert (dist_root / "aops-core-openclaw.tar.gz").is_file()
+
+
+def test_openclaw_does_not_bake_urls(tmp_path):
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops-core"],
+        clients=("claude", "openclaw"),
+        version=VERSION,
+    )
+
+    claude_mcp = (dist_root / "aops-core-claude" / ".mcp.json").read_bytes()
+    openclaw_mcp = (dist_root / "openclaw" / "aops-core" / ".mcp.json").read_bytes()
+    assert claude_mcp == openclaw_mcp
+
+
+def test_openclaw_ida_face_configuration(tmp_path):
+    import yaml
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops-core"],
+        clients=("openclaw",),
+        version=VERSION,
+    )
+
+    ida_md = dist_root / "aops-core-openclaw" / "agents" / "ida.md"
+    assert ida_md.is_file()
+    fm, _, body = ida_md.read_text().partition("---\n")[2].partition("---\n")
+    agent = yaml.safe_load(fm)
+
+    assert agent["name"] == "ida"
+    assert "strategic face" in agent["description"]
+    assert "# Ida" in body
