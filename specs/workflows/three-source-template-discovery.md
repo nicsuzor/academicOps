@@ -60,10 +60,10 @@ Three sources, one namespace. A PKB template composes exactly like a shipped one
 **`type: template` is the marker in every tier.** The tiers differ only in where
 you look for it.
 
-| Tier             | Where to look                                                                | Enumerate with                                   |
-| ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| **1. Project**   | `$CWD/.agents/templates/*.md`                                                | `ls`; an absent directory is empty, not an error |
-| **2. PKB**       | the graph                                                                    | `pkb__list_documents(type="template")`           |
+| Tier             | Where to look                                                                            | Enumerate with                                   |
+| ---------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **1. Project**   | `$CWD/.agents/templates/*.md`                                                            | `ls`; an absent directory is empty, not an error |
+| **2. PKB**       | the graph                                                                                | `pkb__list_documents(type="template")`           |
 | **3. Universal** | `plugins/aops-core/workflows/*.md`, catalogued by `plugins/aops-core/workflows/INDEX.md` | `ls`                                             |
 
 Frontmatter beyond `type: template`: `kind: process` or `kind: fragment`,

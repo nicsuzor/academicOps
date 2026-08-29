@@ -21,9 +21,7 @@ POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
 VALID_STATUSES = set(
-    _policy.get("aops-core", _policy.get("pkb", {}))
-    .get("taxonomy", {})
-    .get("valid_statuses", [])
+    _policy.get("aops-core", _policy.get("pkb", {})).get("taxonomy", {}).get("valid_statuses", [])
 )
 
 

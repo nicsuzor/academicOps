@@ -69,7 +69,7 @@ Install what you need — plugins are separately installable and loosely coupled
 
 | Plugin        | Owns                                                                                                                   |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `aops-core`   | pauli. Memory, effectual planning, workflow composition, PKB MCP client config; ida, the interactive face.            |
+| `aops-core`   | pauli. Memory, effectual planning, workflow composition, PKB MCP client config; ida, the interactive face.             |
 | `orchestrate` | james, dispatch; marsha, QA; the review skills; the handback hooks; the polecat container launcher.                    |
 | `rbg`         | Automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook and a `Stop`/`SubagentStop` rule-check gate. |
 | `tools`       | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.).                                            |
