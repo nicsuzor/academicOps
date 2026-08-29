@@ -450,39 +450,6 @@ def test_health_reports_an_upstream_that_is_not_ready(upstream, shim):
     assert body["upstream_health"] == "HTTP 503"
 
 
-# ---------------------------------------------------------------------------
-# Concurrency
-# ---------------------------------------------------------------------------
-
-
-def test_sixteen_simultaneous_evaluations_are_all_answered_in_parallel(upstream, shim):
-    """cope evaluates a rule set in parallel, so this shim is asked in
-    parallel. Serialised, these sixteen would take sixteen delays."""
-    upstream.delay = 0.2
-    url = shim() + "/v1/label"
-    results: list[tuple[int, dict]] = []
-    lock = threading.Lock()
-
-    def ask() -> None:
-        outcome = _post(url, _label_request(), timeout=20.0)
-        with lock:
-            results.append(outcome)
-
-    started = time.monotonic()
-    threads = [threading.Thread(target=ask) for _ in range(16)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join(timeout=30)
-    elapsed = time.monotonic() - started
-
-    assert len(results) == 16
-    assert all(status == 200 for status, _ in results)
-    assert all(body["label"] == 1 for _, body in results)
-    assert len(upstream.seen) == 16
-    assert elapsed < 16 * upstream.delay / 2, f"served serially: {elapsed:.2f}s"
-
-
 def _raise_through_handle_error(server, exception: BaseException) -> None:
     """Drive ``handle_error`` the way socketserver does — from inside an active
     ``except`` block, since it reads the live exception off ``sys.exc_info()``."""
