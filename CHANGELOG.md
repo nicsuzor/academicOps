@@ -2,55 +2,49 @@
 
 ## [0.9.1](https://github.com/nicsuzor/academicOps/compare/v0.9.0...v0.9.1) (2026-08-29)
 
-
 ### Features
 
-* **build:** add OpenClaw client adapter and distribution target ([f51cf4f](https://github.com/nicsuzor/academicOps/commit/f51cf4fbffd57897a222030f9853b94e8e28c013))
-* **distribution:** add Claude and Gemini marketplace manifests for direct repository distribution ([ed255c3](https://github.com/nicsuzor/academicOps/commit/ed255c308d16a8c6c6177babfbb1e7d61529a7a3))
-* **orchestrate:** add minimal sara agent definition ([d8daa99](https://github.com/nicsuzor/academicOps/commit/d8daa999e01a647c02632b66adf57ccd1d26fdb0))
-* **pkb:** land current-state-only doctrine for task and note bodies (aops_81ba220a) ([310ab27](https://github.com/nicsuzor/academicOps/commit/310ab278cb0ad942827a8ad434bd120a267a3a1b))
-* **polecat:** polecat base-ref resolution and remote freshness (aops_bb5d538b) ([e6a44a6](https://github.com/nicsuzor/academicOps/commit/e6a44a645f9850a469c2454ea48dc84c066ec526))
-* **rules:** add No Shitty NLP and Agentic-First Design project rule ([31daca2](https://github.com/nicsuzor/academicOps/commit/31daca21cd0160b9e9177686c781ff19c5444141))
-* **tracing:** parent subagent traces hierarchically ([e48c2a4](https://github.com/nicsuzor/academicOps/commit/e48c2a410dd8a99cf0ea471ba17c26a861bea678))
-* **v0.9.1:** remove dist repo/branch distribution; distribute directly from repository ([233569e](https://github.com/nicsuzor/academicOps/commit/233569e6e88d5a9300925b62e5f6882d72ebc96c))
-
+- **build:** add OpenClaw client adapter and distribution target ([f51cf4f](https://github.com/nicsuzor/academicOps/commit/f51cf4fbffd57897a222030f9853b94e8e28c013))
+- **distribution:** add Claude and Gemini marketplace manifests for direct repository distribution ([ed255c3](https://github.com/nicsuzor/academicOps/commit/ed255c308d16a8c6c6177babfbb1e7d61529a7a3))
+- **orchestrate:** add minimal sara agent definition ([d8daa99](https://github.com/nicsuzor/academicOps/commit/d8daa999e01a647c02632b66adf57ccd1d26fdb0))
+- **pkb:** land current-state-only doctrine for task and note bodies (aops_81ba220a) ([310ab27](https://github.com/nicsuzor/academicOps/commit/310ab278cb0ad942827a8ad434bd120a267a3a1b))
+- **polecat:** polecat base-ref resolution and remote freshness (aops_bb5d538b) ([e6a44a6](https://github.com/nicsuzor/academicOps/commit/e6a44a645f9850a469c2454ea48dc84c066ec526))
+- **rules:** add No Shitty NLP and Agentic-First Design project rule ([31daca2](https://github.com/nicsuzor/academicOps/commit/31daca21cd0160b9e9177686c781ff19c5444141))
+- **tracing:** parent subagent traces hierarchically ([e48c2a4](https://github.com/nicsuzor/academicOps/commit/e48c2a410dd8a99cf0ea471ba17c26a861bea678))
+- **v0.9.1:** remove dist repo/branch distribution; distribute directly from repository ([233569e](https://github.com/nicsuzor/academicOps/commit/233569e6e88d5a9300925b62e5f6882d72ebc96c))
 
 ### Bug Fixes
 
-* **brief:** remove instructions to emit speculative review and sign-off nodes ([758413d](https://github.com/nicsuzor/academicOps/commit/758413dedfb4e64d9db31ad77e619d7ea57175a5))
-* **brief:** run /q first if prompt arrives without task id ([1c7b9a4](https://github.com/nicsuzor/academicOps/commit/1c7b9a4df2199ed645295c9325ef6476744d8e6e))
-* **framework-gate:** rename bare human-approval to wf-human-approval ([3ffebf8](https://github.com/nicsuzor/academicOps/commit/3ffebf87b0c18c4905665a4e23fa702cd488db05))
-* **framework-gate:** rename bare human-approval to wf-human-approval ([79ad733](https://github.com/nicsuzor/academicOps/commit/79ad733e816d1c94abb307a85ad33fa8c0738f38))
-* **otel:** add parent_span_id extraction to agy_tracer and fallback to transcriptPath ([eb66295](https://github.com/nicsuzor/academicOps/commit/eb66295e9885956db2d307b36acc73f2fd800606))
-* repair test-suite fallout from PR [#2498](https://github.com/nicsuzor/academicOps/issues/2498)'s ida-into-pkb merge ([d51eaad](https://github.com/nicsuzor/academicOps/commit/d51eaadb6891a4b713577772f5061ad705f120d7))
-* **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([e085c36](https://github.com/nicsuzor/academicOps/commit/e085c3671112947a2affd0fe8f21d3680b97c8df))
-* **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([bcb1744](https://github.com/nicsuzor/academicOps/commit/bcb174468cc23788838f421b9136425e4731c185))
-* **skills:** remove non-canonical task status mandates (#aops_c038247b) ([cff3388](https://github.com/nicsuzor/academicOps/commit/cff33881a0c62008ab23dd1a9779d19a52523148))
-* **tracing:** forward all GENAI_ENGINE env vars on polecat and launchd ([e862e73](https://github.com/nicsuzor/academicOps/commit/e862e733b07b6c21559880cffd8566b02fe314fd))
-* **workflows:** restore 10 workflow templates to universal tier and resolve duplicate pairs ([4937d42](https://github.com/nicsuzor/academicOps/commit/4937d4278690339abe9cca0e0aa9cc6a5e9b52c7))
-
+- **brief:** remove instructions to emit speculative review and sign-off nodes ([758413d](https://github.com/nicsuzor/academicOps/commit/758413dedfb4e64d9db31ad77e619d7ea57175a5))
+- **brief:** run /q first if prompt arrives without task id ([1c7b9a4](https://github.com/nicsuzor/academicOps/commit/1c7b9a4df2199ed645295c9325ef6476744d8e6e))
+- **framework-gate:** rename bare human-approval to wf-human-approval ([3ffebf8](https://github.com/nicsuzor/academicOps/commit/3ffebf87b0c18c4905665a4e23fa702cd488db05))
+- **framework-gate:** rename bare human-approval to wf-human-approval ([79ad733](https://github.com/nicsuzor/academicOps/commit/79ad733e816d1c94abb307a85ad33fa8c0738f38))
+- **otel:** add parent_span_id extraction to agy_tracer and fallback to transcriptPath ([eb66295](https://github.com/nicsuzor/academicOps/commit/eb66295e9885956db2d307b36acc73f2fd800606))
+- repair test-suite fallout from PR [#2498](https://github.com/nicsuzor/academicOps/issues/2498)'s ida-into-pkb merge ([d51eaad](https://github.com/nicsuzor/academicOps/commit/d51eaadb6891a4b713577772f5061ad705f120d7))
+- **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([e085c36](https://github.com/nicsuzor/academicOps/commit/e085c3671112947a2affd0fe8f21d3680b97c8df))
+- **security:** reinstate Layer 2 commit-time secret backstop (aops_8c697102) ([bcb1744](https://github.com/nicsuzor/academicOps/commit/bcb174468cc23788838f421b9136425e4731c185))
+- **skills:** remove non-canonical task status mandates (#aops_c038247b) ([cff3388](https://github.com/nicsuzor/academicOps/commit/cff33881a0c62008ab23dd1a9779d19a52523148))
+- **tracing:** forward all GENAI_ENGINE env vars on polecat and launchd ([e862e73](https://github.com/nicsuzor/academicOps/commit/e862e733b07b6c21559880cffd8566b02fe314fd))
+- **workflows:** restore 10 workflow templates to universal tier and resolve duplicate pairs ([4937d42](https://github.com/nicsuzor/academicOps/commit/4937d4278690339abe9cca0e0aa9cc6a5e9b52c7))
 
 ### Code Refactoring
 
-* **dist:** remove dist branch distribution; distribute directly from repository ([16cdf26](https://github.com/nicsuzor/academicOps/commit/16cdf26e5d9a7537a86b5aa201dbddd5b433e95e))
-* **packaging:** rename pkb plugin back to aops-core (aops_ed8ee345) ([8a8b4a7](https://github.com/nicsuzor/academicOps/commit/8a8b4a794bcc49d70c44b1aebac005889dca80d5))
-* **pkb:** rewrite brief skill to ideal-task-brief spec (aops_20260828_pauli_instructions) ([8371ad9](https://github.com/nicsuzor/academicOps/commit/8371ad9734ddb2e7e79fba0c8f2ca2bd32af8c5f))
-
+- **dist:** remove dist branch distribution; distribute directly from repository ([16cdf26](https://github.com/nicsuzor/academicOps/commit/16cdf26e5d9a7537a86b5aa201dbddd5b433e95e))
+- **packaging:** rename pkb plugin back to aops-core (aops_ed8ee345) ([8a8b4a7](https://github.com/nicsuzor/academicOps/commit/8a8b4a794bcc49d70c44b1aebac005889dca80d5))
+- **pkb:** rewrite brief skill to ideal-task-brief spec (aops_20260828_pauli_instructions) ([8371ad9](https://github.com/nicsuzor/academicOps/commit/8371ad9734ddb2e7e79fba0c8f2ca2bd32af8c5f))
 
 ### Documentation
 
-* **enforcement:** reorder bands and promote canonical escalation ladder (aops_75f3ee84) ([6a5f2d0](https://github.com/nicsuzor/academicOps/commit/6a5f2d0d688731487773e46d6b9cc60a86887c8c))
-
+- **enforcement:** reorder bands and promote canonical escalation ladder (aops_75f3ee84) ([6a5f2d0](https://github.com/nicsuzor/academicOps/commit/6a5f2d0d688731487773e46d6b9cc60a86887c8c))
 
 ### Tests
 
-* remove test_sixteen_simultaneous_evaluations_are_all_answered_in_parallel ([64d32db](https://github.com/nicsuzor/academicOps/commit/64d32db04fa1cf0645b46e880d8604728a2a2dd5))
-
+- remove test_sixteen_simultaneous_evaluations_are_all_answered_in_parallel ([64d32db](https://github.com/nicsuzor/academicOps/commit/64d32db04fa1cf0645b46e880d8604728a2a2dd5))
 
 ### Miscellaneous
 
-* **tests:** remove dead demo marker and addopts filter ([00ee458](https://github.com/nicsuzor/academicOps/commit/00ee458a8b5f5d5ee1cf1970aecda47b85ed61b8))
-* **tests:** remove dead demo marker and addopts filter ([6fc9306](https://github.com/nicsuzor/academicOps/commit/6fc9306a7d1212aec405d6d40e287e54ff7638de))
+- **tests:** remove dead demo marker and addopts filter ([00ee458](https://github.com/nicsuzor/academicOps/commit/00ee458a8b5f5d5ee1cf1970aecda47b85ed61b8))
+- **tests:** remove dead demo marker and addopts filter ([6fc9306](https://github.com/nicsuzor/academicOps/commit/6fc9306a7d1212aec405d6d40e287e54ff7638de))
 
 ## [0.9.0](https://github.com/nicsuzor/academicOps/compare/v0.8.1...v0.9.0) (2026-08-27)
 
