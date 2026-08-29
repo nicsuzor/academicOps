@@ -1,0 +1,48 @@
+name: Pytest
+
+on:
+  push:
+    branches: [ "dev" ]
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: pytest-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    timeout-minutes: 45
+    name: Pytest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Build dist
+        run: uv run python -m build.build
+
+      - name: Setup Test Environment
+        run: |
+          mkdir -p ~/.claude
+          # Link the skills directory to ~/.claude/skills as expected by framework
+          ln -s $GITHUB_WORKSPACE/plugins/aops/skills ~/.claude/skills
+          ls -l ~/.claude/skills
+
+      - name: Run pytest
+        env:
+          AOPS: ${{ github.workspace }}
+        run: uv run pytest

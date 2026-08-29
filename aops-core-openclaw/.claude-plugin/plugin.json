@@ -1,0 +1,19 @@
+{
+  "name": "aops-core",
+  "description": "ida for strategy and pauli for memory.",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "aops-core",
+    "pauli",
+    "ida",
+    "memory",
+    "planning",
+    "knowledge-graph"
+  ],
+  "mcpServers": "./.mcp.json",
+  "version": "0.9.0+g434efedb"
+}

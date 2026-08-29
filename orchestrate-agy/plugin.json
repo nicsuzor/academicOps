@@ -1,0 +1,15 @@
+{
+  "name": "orchestrate",
+  "description": "james \u2014 the container worker; marsha \u2014 QA and UX excellence; adversary \u2014 red-team review.",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "james",
+    "orchestrator",
+    "polecat"
+  ],
+  "version": "0.9.0+g434efedb"
+}

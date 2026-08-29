@@ -1,0 +1,439 @@
+# Agent: Enforcer (RBG)
+# Personality: The Judge — axiom compliance reviewer.
+# Status check: enforcer-status (posted to PR head SHA via statuses API)
+# Prompt: plugins/rbg/agents/rbg.md + .github/agents/enforcer.agent.md
+#
+# This is a reusable workflow. academicOps installs its own trigger in:
+#   .github/workflows/triggers/enforcer.yml
+# External consumers pin to a release tag:
+#   uses: nicsuzor/academicOps/.github/workflows/agent-enforcer.yml@enforcer-v1
+#
+# contract (specs/workflows/pr-pipeline.md):
+#   §3.1 workflow_call only — no pull_request, workflow_run, workflow_dispatch
+#   §3.2 one named status: enforcer-status, posted to inputs.sha
+#   §3.6 SHA-based loop-skip (replaces broken Enforcer-By trailer check)
+
+name: "Agent: Enforcer (RBG)"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: "PR number to review"
+        type: string
+        required: true
+      ref:
+        description: "Git ref to checkout (PR head branch)"
+        type: string
+        required: true
+      sha:
+        description: "PR head SHA — explicit, not derived (§3.1)"
+        type: string
+        required: true
+    secrets:
+      AOPS_BOT_GH_TOKEN:
+        description: "PAT for GitHub API operations (statuses, reviews)"
+        required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: "OAuth token for Claude agent"
+        required: true
+    outputs:
+      committed:
+        description: "true if this agent pushed a commit in this pass (drives §3.4 short-circuit)"
+        value: ${{ jobs.enforcer.outputs.committed }}
+
+jobs:
+  enforcer:
+    name: Enforcer Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # (No environment gate.) The release-please `production` gate that used to sit
+    # here is retired — release-please PRs no longer run the enforcer at all
+    # (pr-pipeline.yml skips it; `release-autogreen` posts enforcer-status green).
+    # The single release approval now lives on the deploy step (build-extension.yml).
+    outputs:
+      committed: ${{ steps.check-commit.outputs.committed || 'false' }}
+    concurrency:
+      group: agent-enforcer-${{ inputs.pr_number }}
+      cancel-in-progress: true
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      issues: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ inputs.sha }}
+      PR_NUMBER: ${{ inputs.pr_number }}
+      AGENT_NAME: enforcer
+
+    steps:
+      # §3.6 SHA-based loop-skip: re-post the verdict if this exact SHA was already
+      # GENUINELY reviewed. Replaces v1's broken Enforcer-By trailer check
+      # (see PR #1037 / issue #1039). Author identity is irrelevant — only
+      # "have we judged this diff?" matters.
+      #
+      # A diff counts as already-reviewed ONLY when a genuine completed review
+      # exists for this exact SHA:
+      #   (a) an actual enforcer PR review (CHANGES_REQUESTED or APPROVED), or
+      #   (b) the LATEST enforcer-status entry is a genuine terminal success
+      #       ("Axiom-clean", not a "Skipped: …" echo).
+      # Failure, pending, and "Skipped: …" statuses do NOT count. The earlier
+      # design keyed off any status carrying ?target_sha=<HEAD_SHA> in its
+      # target_url — but the pending status, the crash-fallback failure status,
+      # and the skip status all carry it, so a single failed/crashed run
+      # poisoned the SHA and RBG never reviewed it again (regression
+      # aops-330a87e3; follows aops-31798611 and aops-2be8f5c7).
+      - name: SHA-skip check
+        id: sha-skip
+        run: |
+          # (a) Genuine enforcer PR reviews posted against this exact SHA.
+          #     Body starts with "## Enforcer Review" (enforcer.agent.md §5).
+          CHANGES=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"CHANGES_REQUESTED\")] | length" 2>/dev/null || echo "0")
+          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"APPROVED\")] | length" 2>/dev/null || echo "0")
+
+          # (b) Read the LATEST enforcer-status entry for this SHA, NOT a count
+          #     of "any non-Skipped success ever in history". Statuses are
+          #     append-only — counting historical successes means a transient
+          #     or erroneous success can permanently green a SHA: a later
+          #     failure entry does NOT erase the historical success, so a
+          #     subsequent re-run finds it and re-greens off stale evidence.
+          #     Observed live 2026-06-10: a 14:33 success was reverted to
+          #     failure at 14:34, then a 22:33 re-run re-greened the SHA from
+          #     the stale 14:33 history entry without any fresh review.
+          #     Reading the latest state preserves the maintainer's authority
+          #     to revoke a status via a later post (aops-221211fa).
+          GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
+            --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | if . == null then 0 elif (.state == \"success\" and ((.description // \"\") | startswith(\"Skipped:\") | not)) then 1 else 0 end" 2>/dev/null || echo "0")
+
+          if [ "${CHANGES:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already reviewed (CHANGES_REQUESTED) — re-posting failure"
+            echo "::error::Enforcer Review: Head SHA $HEAD_SHA already reviewed and CHANGES_REQUESTED. Re-posting failure."
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=failure \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Violations found — see review (already reviewed)" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "${APPROVED:-0}" -gt 0 ] || [ "${GENUINE_SUCCESS:-0}" -gt 0 ]; then
+            echo "SHA $HEAD_SHA already reviewed (approved) — re-posting idempotent success"
+            echo "::notice::Enforcer Review: Head SHA $HEAD_SHA already reviewed and approved. Skipping run."
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state=success \
+              -f context="${AGENT_NAME}-status" \
+              -f description="Skipped: SHA already reviewed" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post pending status
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          gh api "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state=pending \
+            -f context="${AGENT_NAME}-status" \
+            -f description="Enforcer review in progress" \
+            -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+
+      - uses: actions/checkout@v4
+        if: steps.sha-skip.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      # Fetch canonical enforcer prompt from academicOps.
+      # Uses sparse checkout to pull only the three prompt files.
+      # Self-runs (REPO = nicsuzor/academicOps): always clone from the repo's
+      # default branch (the bare `git clone` below takes no -b flag, so it
+      # checks out the GitHub default branch) so that prompt files introduced
+      # to the default branch are always present, regardless of which branch
+      # inputs.ref points at (the PR head branch may diverge from the default
+      # branch and predate a file added in a recent merge — see aops-59a6cba6).
+      # External consumers calling @enforcer-v1: pin to inputs.ref (release tag)
+      # so their prompt files are consistent with the workflow version they pinned.
+      - name: Fetch enforcer prompt
+        id: prompt
+        if: steps.sha-skip.outputs.skip != 'true'
+        run: |
+          if [ "$REPO" != "nicsuzor/academicOps" ] && [ -n "${{ inputs.ref }}" ]; then
+            git clone -b "${{ inputs.ref }}" --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          else
+            git clone --depth 1 --filter=blob:none --sparse \
+              "https://x-access-token:${{ secrets.AOPS_BOT_GH_TOKEN }}@github.com/nicsuzor/academicOps.git" \
+              .aops
+          fi
+          # --no-cone: treat the arguments as file path patterns, not cone-mode
+          # directories. Cone mode (the default) interprets each path as a
+          # directory ("'rbg/agents/rbg.md' is not a directory") and never
+          # materialises the files, so the subsequent cat fails. (aops-2be8f5c7)
+          cd .aops && git sparse-checkout set --no-cone \
+            /plugins/rbg/agents/rbg.md \
+            /.github/agents/shared-error-handling.md \
+            /.github/agents/enforcer.agent.md \
+            /scripts/ci/reap-agent-processes.sh \
+            /scripts/ci/reconcile-enforcer-reviews.sh && cd ..
+          if [ ! -f .aops/plugins/rbg/agents/rbg.md ] || [ ! -f .aops/.github/agents/enforcer.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
+            echo "::error::Enforcer prompt files were not materialised by sparse-checkout" >&2
+            ls -la .aops/plugins/rbg/agents/ .aops/.github/agents/ 2>&1 || true
+            exit 1
+          fi
+          PROMPT=$(cat .aops/plugins/rbg/agents/rbg.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/enforcer.agent.md)
+          # Append an explicit user-turn directive (aops-2a3b4c71). Without it
+          # the prompt is just concatenated agent-def markdown and the model
+          # intermittently treats it as a pasted artifact ("what would you like
+          # me to do?") instead of starting the review — enforcer-status then
+          # never resolves and hard-blocks the PR.
+          PROMPT="${PROMPT}"$'\n\n## Your task — start now\n\n'"Review PR #${PR_NUMBER} in ${REPO} at HEAD ${HEAD_SHA} per the methodology above, and post your verdict via \`gh pr review\` (APPROVE for axiom-clean, REQUEST_CHANGES otherwise, with the \"Enforcer Review\" marker in the body) so that enforcer-status resolves. Do not ask for clarification — the task is fully specified by the environment variables already in scope (REPO, PR_NUMBER, HEAD_SHA, AGENT_NAME)."
+          {
+            echo "prompt<<AGENT_EOF"
+            echo "$PROMPT"
+            echo "AGENT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Enforcer Review
+        id: review
+        if: steps.sha-skip.outputs.skip != 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          AGENT_NAME: enforcer
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          # Run when the pull_request event was triggered by a bot actor (the
+          # normal case — bots push fix commits). Previously only the retry step
+          # below set this, so every bot-triggered PR failed the primary on the
+          # "non-human actor" abort and burned a full agent run + retry to
+          # recover. Setting it here (agent-mechanic.yml's pattern) lets the
+          # primary succeed on the first attempt; the retry remains for genuinely
+          # transient failures. See agent-qa.yml / PR #2179 for the same fix.
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
+          show_full_output: true
+
+      # One-shot retry for transient claude-code-action infra failures (app-token
+      # exchange 401, rate_limit_event at run start, runner hiccups). The action
+      # exits non-success WITHOUT posting a verdict, which is exactly what makes
+      # enforcer-status flake to a hard-required red on otherwise-mergeable PRs.
+      # We retry only when (a) the first attempt's step exited non-success AND
+      # (b) no Enforcer PR review exists yet for this SHA — re-running after a
+      # posted verdict would create a duplicate review. (aops-221211fa)
+      #
+      # `if: always()` is REQUIRED on both retry steps. `continue-on-error: true`
+      # masks a step `failure` so the job continues, but it does NOT mask a step
+      # `cancelled`. Empirically (run 27250174568) `rate_limit_event` from
+      # claude-code-action surfaces as `cancelled`, not `failure` — without
+      # `always()` GitHub skips every subsequent step on cancellation, the
+      # retry never fires, and enforcer-status flakes red anyway. The whole
+      # point of this retry block is to survive transient infra cancellations,
+      # so `always()` is structural, not defensive.
+      #
+      # NOTE: the action's own workflow-validation 401 ("workflow file must have
+      # identical content to the default branch") is DETERMINISTIC — a retry
+      # cannot clear it on a PR that modifies the calling workflow. For that
+      # case the retry just confirms the failure and we surface a clearer
+      # diagnostic via the terminal-status step below.
+      - name: Check first-attempt verdict
+        id: first-attempt
+        if: always() && steps.sha-skip.outputs.skip != 'true' && steps.review.outcome != 'success'
+        run: |
+          POSTED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\") | select((.body // \"\") | test(\"Enforcer Review\")) | select(.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")] | length" 2>/dev/null || echo "0")
+          if [ "${POSTED:-0}" -gt 0 ]; then
+            echo "Verdict already posted by first attempt — not retrying"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "First attempt did not succeed (${{ steps.review.outcome }}) and posted no verdict — will retry once"
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Reap the cancelled first attempt BEFORE the retry launches (aops-1adfd28d).
+      # `rate_limit_event` surfaces as a step `cancelled`, but the underlying
+      # claude process can survive on the runner as a "zombie", race the retry,
+      # and double-post reviews (observed run 27250704371: three reviews, two
+      # dismissed, on one SHA). Killing the zombie's process group here is what
+      # deterministically guarantees only ONE agent is ever live per job — the
+      # single-verdict ordering guarantee rests on this reap, not on the
+      # post-hoc reconcile below. Best-effort: the script never aborts the job,
+      # so the retry runs whether or not a zombie was present.
+      #
+      # The script is sourced from the canonical academicOps copy in .aops
+      # (present for external consumers too); on the bootstrap PR that adds it,
+      # .aops (default branch) lacks it, so we fall back to the checked-out PR
+      # head copy.
+      - name: Reap cancelled first-attempt agent
+        if: always() && steps.first-attempt.outputs.retry == 'true'
+        run: |
+          SCRIPT=""
+          for p in ".aops/scripts/ci/reap-agent-processes.sh" "scripts/ci/reap-agent-processes.sh"; do
+            if [ -f "$p" ]; then SCRIPT="$p"; break; fi
+          done
+          if [ -z "$SCRIPT" ]; then
+            echo "::warning::reap-agent-processes.sh not found in .aops or checkout; skipping zombie reap"
+            exit 0
+          fi
+          bash "$SCRIPT" claude
+
+      - name: Run Enforcer Review (retry)
+        id: review-retry
+        if: always() && steps.first-attempt.outputs.retry == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ inputs.sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          AGENT_NAME: enforcer
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        with:
+          allowed_bots: "claude[bot],github-actions[bot]"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: '--model sonnet --allowed-tools "Bash,Read,Edit,Write"'
+          show_full_output: true
+
+      - name: Check for agent commits
+        id: check-commit
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          git fetch origin ${{ inputs.ref }}
+          REMOTE_SHA=$(git rev-parse origin/${{ inputs.ref }})
+          if [ "$REMOTE_SHA" != "${{ inputs.sha }}" ]; then
+            echo "Agent pushed a commit ($REMOTE_SHA != ${{ inputs.sha }})"
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Claude session artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.claude/projects/
+            ~/.claude/sessions/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # Idempotent single-verdict reconcile (aops-1adfd28d). Defence-in-depth
+      # behind the reap above: if a zombie ever slips the reap and posts, ensure
+      # AT MOST ONE enforcer verdict review stands per SHA by dismissing all but
+      # the newest. Runs BEFORE "Post terminal status" so the terminal status is
+      # derived from the single standing review. Fail-open: a missing script or
+      # API hiccup must not block a genuine verdict.
+      - name: Reconcile enforcer reviews (single verdict per SHA)
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          SCRIPT=""
+          for p in ".aops/scripts/ci/reconcile-enforcer-reviews.sh" "scripts/ci/reconcile-enforcer-reviews.sh"; do
+            if [ -f "$p" ]; then SCRIPT="$p"; break; fi
+          done
+          if [ -z "$SCRIPT" ]; then
+            echo "::warning::reconcile-enforcer-reviews.sh not found in .aops or checkout; skipping reconcile"
+            exit 0
+          fi
+          bash "$SCRIPT" || echo "::warning::reconcile step errored (continuing)"
+
+      # Compute the terminal enforcer-status decision (state/description) and
+      # whether this job should hard-fail. Extracted to a script so the
+      # committed-short-circuit fix (aops-89d55ef5; pr-pipeline.md §3.4 pt 6)
+      # is unit-tested (tests/test_enforcer_terminal_status.py) instead of
+      # living only as inline bash — the earlier version of this bug was
+      # "fixed" by closing the task without a code change, and the false-red
+      # it describes was still reproducible from this file until now.
+      #
+      # COMMITTED is checked FIRST, before any review lookup: `gh pr review`
+      # attaches to the PR's CURRENT head SHA at submission time, so when the
+      # enforcer pushes a fix mid-run (per enforcer.agent.md §3, before its
+      # §5 verdict), its review lands on the NEW sha and can never match this
+      # job's HEAD_SHA. A problem the agent fixed inline and committed must
+      # not redden this pass's status; only a problem it could not fix does.
+      # Guard against a PR branch that forked before enforcer-terminal-status.sh
+      # existed (added 2026-07-02, #2071) and was never rebased since: `ref` is
+      # the PR's OWN checkout, not dev's tip, so the script genuinely isn't
+      # there. Without this guard, `bash <missing file>` exits 127, this step's
+      # outputs are never set, and the downstream "Post terminal status" step
+      # then tries to post an EMPTY state — which the commit-status API
+      # rejects (422) — leaving enforcer-status stuck at "pending" forever
+      # instead of a real terminal state (worked example: PR #2080). Fail
+      # closed with an actionable description instead, matching this script's
+      # own infra-vs-silent distinction (see its header).
+      - name: Compute terminal decision
+        id: decision
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          if [[ -f scripts/ci/enforcer-terminal-status.sh ]]; then
+            bash scripts/ci/enforcer-terminal-status.sh
+          else
+            echo "::error::scripts/ci/enforcer-terminal-status.sh not found on this branch (added to dev 2026-07-02, #2071) — rebase/merge dev to pick it up."
+            {
+              echo "state=failure"
+              echo "description=Enforcer infra: enforcer-terminal-status.sh missing on this branch — rebase onto dev"
+              echo "failed=true"
+            } >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          COMMITTED: ${{ steps.check-commit.outputs.committed }}
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
+          RETRY_OUTCOME: ${{ steps.review-retry.outcome }}
+
+      # Post terminal status from steps.decision (never re-derives the
+      # verdict here — see scripts/ci/enforcer-terminal-status.sh).
+      - name: Post terminal status
+        if: always() && steps.sha-skip.outputs.skip != 'true'
+        run: |
+          CURRENT_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+            --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state' \
+            2>/dev/null || echo "")
+
+          # Only post if not already posted by the agent in a previous step, or if we need to replace pending
+          if [ "$CURRENT_STATE" = "pending" ] || [ -z "$CURRENT_STATE" ]; then
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="${{ steps.decision.outputs.state }}" \
+              -f context="${AGENT_NAME}-status" \
+              -f description="${{ steps.decision.outputs.description }}" \
+              -f target_url="https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID?target_sha=$HEAD_SHA"
+          fi
+
+      - name: Final check and hard-fail
+        if: always()
+        run: |
+          FAILED=false
+          if [ "${{ steps.sha-skip.outputs.skip }}" = "true" ]; then
+            # Retrieve latest status state for context enforcer-status
+            STATUS_STATE=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses" \
+              --jq '[.[] | select(.context == "enforcer-status")] | sort_by(.created_at) | last.state' 2>/dev/null || echo "")
+            if [ "$STATUS_STATE" = "success" ]; then
+              echo "::notice::Enforcer succeeded: Head SHA already reviewed and approved (skipped run)."
+            else
+              echo "::error::Enforcer failed: Head SHA already reviewed with violations."
+              FAILED=true
+            fi
+          elif [ "${{ steps.decision.outputs.failed }}" = "true" ]; then
+            echo "::error::Enforcer failed: ${{ steps.decision.outputs.description }}"
+            FAILED=true
+          else
+            echo "::notice::Enforcer: ${{ steps.decision.outputs.description }}"
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            exit 1
+          fi

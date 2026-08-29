@@ -1,0 +1,49 @@
+---
+id: email-reply
+type: template
+kind: process
+category: email
+description: Draft email replies in the user's voice, checking calendar availability for scheduling — agent drafts, user sends
+requires: [task-tracking]
+pairs-with: [wf-handover]
+conflicts: []
+version: 1.0.0
+permalink: workflows-process-email-reply
+---
+
+# Process: Email Reply
+
+Agent drafts, user sends — never send autonomously.
+
+## Routing Signals
+
+- Task title starts with "Reply to"
+- Email task created via [[email-capture]] or [[email-triage]]
+
+## Pre-Requisites
+
+1. Load the user's voice/style reference.
+2. If scheduling: check calendar availability first.
+
+## Steps
+
+1. Retrieve the original email (by entry_id or search).
+2. Draft using the user's voice.
+3. Create a draft via the reply tool — **never send**.
+4. Task stays `active` until the user confirms it's sent.
+
+## Immediate PKB task update on discovery
+
+When reading correspondence or thread history, if the exchange reveals new information — arrival of a commitment, resolution (acceptance, refusal, cancellation), or changed constraint (deadline moved, assignee changed):
+
+1. **Update the target task node immediately**, whatever else the run is doing. Update `status`, `due`, `assignee`, or body notes on the gating task node.
+2. **Create a task node if none exists** for newly discovered obligations (`pkb__create_task` with a parent). Prose in drafts or notes is not a record.
+3. **Do not defer the write** to the end of the session.
+
+## Complexity Routing
+
+| Type                   | Action                                      |
+| ---------------------- | ------------------------------------------- |
+| Simple acknowledgment  | Direct reply                                |
+| Scheduling, requests   | Agent drafts                                |
+| Sensitive, negotiation | Block for the user — draft nothing, flag it |

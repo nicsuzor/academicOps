@@ -1,0 +1,131 @@
+# Lint: ruff check + ruff format + dprint, with autofix on PRs, plus the
+# documented-reference check.
+# Mirrors `make lint` / `make format` and the dprint pre-commit hook.
+# Runs independently — does not gate Type Check or Pytest.
+
+name: Lint
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      committed:
+        description: "true if lint pushed a commit in this pass"
+        value: ${{ jobs.lint.outputs.committed }}
+  push:
+    branches: [dev]
+
+jobs:
+  lint:
+    timeout-minutes: 10
+    name: Lint
+    runs-on: ubuntu-latest
+    outputs:
+      committed: ${{ steps.commit.outputs.committed || 'false' }}
+    permissions:
+      contents: write
+    concurrency:
+      group: lint-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          # Use AOPS_BOT_GH_TOKEN so autofix pushes trigger a new
+          # synchronize event, restarting the pipeline on the clean commit.
+          # GITHUB_TOKEN pushes are deliberately ignored by GitHub Actions, so
+          # NO `|| secrets.GITHUB_TOKEN` fallback (halt-on-failure: no silent fallbacks) —
+          # falling back would silently break the autofix retrigger loop.
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+        timeout-minutes: 5
+
+      # Initial check: identify problems but don't fail the job yet
+      - name: Ruff lint (initial)
+        id: lint-initial
+        continue-on-error: true
+        timeout-minutes: 2
+        run: uv run ruff check --output-format=github
+
+      - name: Ruff format check (initial)
+        id: format-initial
+        continue-on-error: true
+        timeout-minutes: 2
+        run: uv run ruff format --check
+
+      # Markdown/JSON/TOML formatting — the same check the dprint pre-commit
+      # hook enforces locally, for commits that bypassed it (e.g. CI-side).
+      - name: dprint check (initial)
+        id: dprint-initial
+        continue-on-error: true
+        timeout-minutes: 2
+        run: uv run dprint check
+
+      # Autofix and push if any check found problems (PRs and workflow_dispatch)
+      - name: Autofix lint and formatting
+        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.dprint-initial.outcome == 'failure')
+        timeout-minutes: 3
+        run: |
+          uv run ruff check --fix || true
+          uv run ruff format
+          uv run dprint fmt
+
+      - name: Commit and push fixes
+        id: commit
+        if: github.event_name != 'push' && (steps.lint-initial.outcome == 'failure' || steps.format-initial.outcome == 'failure' || steps.dprint-initial.outcome == 'failure')
+        timeout-minutes: 2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No formatting changes to commit"
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "style: autofix lint and formatting"
+            git push
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Final gate: re-check after fixes (or confirm clean on first pass)
+      - name: Ruff lint (final)
+        if: steps.lint-initial.outcome == 'failure'
+        timeout-minutes: 2
+        run: uv run ruff check --output-format=github
+
+      - name: Ruff format check (final)
+        if: steps.format-initial.outcome == 'failure'
+        timeout-minutes: 2
+        run: uv run ruff format --check
+
+      - name: dprint check (final)
+        if: steps.dprint-initial.outcome == 'failure'
+        timeout-minutes: 2
+        run: uv run dprint check
+
+      # Every repository path a shipped document names must exist. No autofix
+      # step: repointing a dead reference, or deleting the claim that rested on
+      # it, is a judgement call — so this always runs and always blocks.
+      - name: Documented references resolve
+        if: always()
+        timeout-minutes: 2
+        run: uv run python scripts/check_refs.py
+
+      # Commit-time secret backstop (Layer 2, aops_8c697102). No autofix: a
+      # secret found here always blocks, the same as check_refs.py above.
+      - name: Secret scan (gitleaks)
+        if: always()
+        timeout-minutes: 5
+        run: uv run pre-commit run gitleaks --all-files

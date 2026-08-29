@@ -1,0 +1,80 @@
+name: RBG Axiom Review
+
+on:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  # Ensure only one rbg review runs per PR at a time. New pushes/labels cancel old runs.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rbg-review:
+    # 1. Trigger only on the specific label
+    # 2. Ignore bot actors to prevent loops (Agent A commits -> triggers Agent B)
+    if: ${{ github.event.label.name == 'request-rbg-review' && !endsWith(github.actor, '[bot]') }}
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history so Claude can see the diff properly
+          fetch-depth: 0
+          token: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+
+      - name: Build RBG Prompt
+        id: prompt
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          PROMPT=$(cat << 'EOF'
+
+          1. Read the universal axioms located in `.agents/rules/*.md`. These are your single source of truth.
+          2. Review the changes in PR #$PR_NUMBER for for violations of the universal axioms.
+          3. If you find clear, fixable violations, fix them directly: edit the files, commit, and push to the PR branch.
+          4. For violations that require developer judgment or cannot be safely auto-fixed, you MUST request changes via a native GitHub PR review with line-level comments. Do NOT just post a standard issue comment.
+          5. To post a native review with inline comments, construct a JSON payload for the GitHub API. The JSON must match the `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` schema, containing:
+             - "body": A general summary of your findings.
+             - "event": "REQUEST_CHANGES"
+             - "comments": An array of objects with `path`, `line`, and `body`. Provide ```suggestion blocks in the body where appropriate.
+          6. Save this JSON to `review.json` and use the `gh` CLI to submit it:
+             `gh api --method POST -H "Accept: application/vnd.github+json" /repos/$REPO/pulls/$PR_NUMBER/reviews --input review.json`
+          7. If no axioms are violated, submit an APPROVE review via standard CLI: `gh pr review $PR_NUMBER --approve -b "All axioms upheld."`.
+          EOF
+          )
+
+          {
+            echo "prompt<<DISPATCH_EOF"
+            echo "$PROMPT"
+            echo "DISPATCH_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude Code (RBG Persona)
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          # Allow Claude full bash and write tools so it can run gh api and git commit
+          claude_args: "--model sonnet --agent rbg"
+          show_full_output: true
+
+      - name: Remove Label
+        # Always remove the label at the end, whether success or failure,
+        # so it can be re-applied later to trigger another review.
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr edit $PR_NUMBER --remove-label 'request-rbg-review' || true

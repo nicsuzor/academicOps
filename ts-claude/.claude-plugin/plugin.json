@@ -1,0 +1,15 @@
+{
+  "name": "ts",
+  "description": "AcademicOps Tailscale bring-up \u2014 opt-in SessionStart hook that joins the tailnet in remote/cloud sessions so tailnet services (e.g. the PKB MCP) resolve",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "tailscale",
+    "hooks",
+    "remote"
+  ],
+  "version": "0.9.0+g434efedb"
+}

@@ -1,0 +1,15 @@
+{
+  "name": "tools",
+  "description": "AcademicOps analysis and specialized data processing skills",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "tools",
+    "analysis",
+    "skills"
+  ],
+  "version": "0.9.0+g434efedb"
+}

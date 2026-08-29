@@ -1,0 +1,38 @@
+{
+  "orchestrate": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "uv run --project . python3 hooks/dispatch.py agy PreInvocation"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --project . python3 hooks/dispatch.py agy PreToolUse"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --project . python3 hooks/dispatch.py agy PostToolUse"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "uv run --project . python3 hooks/dispatch.py agy Stop"
+      }
+    ]
+  }
+}

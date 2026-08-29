@@ -1,0 +1,54 @@
+# PR pipeline: the required checks for every pull request into an integration
+# branch.
+#
+# Lint, Type Check, and Pytest are defined once each in their own workflow and
+# reused here via workflow_call, so a PR and a push to the base run identical
+# steps. The three run independently — none gates the others — so one failure
+# still reports the full picture.
+#
+# `branches:` is an ALLOW-LIST matched against the BASE branch, and a base that
+# is not named here gets NO pull_request CI at all — silently, and with an empty
+# check list that reads as "nothing wrong" rather than "nothing ran".
+#
+# Requiring every new integration branch to be added here by hand has now failed
+# twice: once for `agenttools`, and again for the `v0.8.*` release line, where
+# three PRs sat unchecked and one lost its CI merely by being retargeted from
+# `dev`. So release lines are matched by PATTERN, not enumerated. Matching too
+# broadly only costs a CI run on a PR that did not need one; matching too
+# narrowly loses the checks silently, which is the failure that keeps recurring.
+
+name: PR Pipeline
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - agenttools
+      # Release lines: v0.8, v0.8.2, v1.0, ... Deliberately a pattern, so a new
+      # line is covered the day it is cut rather than the day someone notices.
+      - 'v[0-9]*'
+
+concurrency:
+  group: pr-pipeline-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+    # Lint pushes autofix commits back to the PR branch.
+    permissions:
+      contents: write
+    secrets: inherit
+
+  type-check:
+    name: Type Check
+    uses: ./.github/workflows/typecheck.yml
+    permissions:
+      contents: read
+
+  pytest:
+    name: Pytest
+    uses: ./.github/workflows/pytest.yml
+    permissions:
+      contents: read
