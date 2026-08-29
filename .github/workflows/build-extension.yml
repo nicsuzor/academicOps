@@ -3,20 +3,10 @@ name: Build and Deploy
 on:
   # Tag-driven. The tag SHAPE selects the channel (classified in "Resolve build
   # context" below):
-  #   vX.Y.Z                     → stable: build, publish to the `dist` branch,
-  #                                cut a normal GitHub Release, push Docker.
-  #   vX.Y.Z-rc.N / -dev.N / ... → prerelease ("testing"): build and publish to
-  #                                the `dist` branch TOO — we DO ship dev builds
-  #                                to dist. The published plugin version is a
-  #                                semver prerelease (-dev/-beta/-rc), and the
-  #                                GitHub Release is cut `--prerelease`. Because
-  #                                the version is a semver prerelease, semver-aware
-  #                                consumers don't pick it as latest-stable (the
-  #                                stable-tag filter is build/version.py
-  #                                `_STABLE_TAG_RE`), so a client CHOOSES whether to
-  #                                install a dev build — but see the marketplace
-  #                                single-version caveat on the publish step below.
-  #                                Docker is NOT pushed (`:latest` tracks stable).
+  #   vX.Y.Z                     → stable: build, cut a normal GitHub Release,
+  #                                push Docker.
+  #   vX.Y.Z-rc.N / -dev.N / ... → prerelease ("testing"): build and cut GitHub
+  #                                Release `--prerelease`. Docker is NOT pushed (`:latest` tracks stable).
   # A tag push runs THIS file from the tagged commit, which is the source trunk
   # (dev, the default branch). release-please creates the stable vX.Y.Z tag with
   # AOPS_DIST_PAT; prerelease tags are pushed by hand (see `make prerelease`).
@@ -46,10 +36,7 @@ jobs:
     # Human approval for the whole release now happens when the maintainer MERGES the
     # release-please PR — a deliberate, notified action on the PR page that cuts the
     # stable `vX.Y.Z` tag. By the time this job runs the release is therefore already
-    # approved, so there is NO separate `production` environment gate here. The old
-    # gate lived in the Actions tab (Run → "Review deployments"), was easy to miss,
-    # and froze the `dist` branch when stable releases piled up unapproved and their
-    # tag-triggered deploys were cancelled (v0.3.49→v0.3.69 all cancelled unpublished).
+    # approved, so there is NO separate `production` environment gate here.
     permissions:
       contents: write
       packages: write # push ghcr.io/nicsuzor/aops-crew on stable tags (A3)
@@ -87,16 +74,6 @@ jobs:
         with:
           ref: ${{ steps.ctx.outputs.ref }}
           fetch-depth: 0
-
-      - name: Checkout dist branch for publish target
-        # Runs for BOTH stable and prerelease builds — dev/testing builds publish
-        # to `dist` too (see the "Publish distribution to dist" step), so the dist
-        # branch is always checked out as the publish target.
-        uses: actions/checkout@v4
-        with:
-          ref: dist
-          path: dist-repo
-          token: ${{ secrets.AOPS_DIST_PAT }}
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
@@ -168,90 +145,9 @@ jobs:
           # shellcheck disable=SC2086
           uv run python -m build.build $VERSION_FLAG
 
-      - name: Publish distribution to dist
-        # Runs for BOTH stable and prerelease builds. We DO ship dev builds to the
-        # `dist` branch so testers/clients can install them. The published plugin
-        # version is a semver prerelease (-dev/-beta/-rc); stable resolution
-        # excludes prereleases (tests/test_semver_regression.py), so a client
-        # CHOOSES whether to install a dev build rather than being force-upgraded.
-        # NOTE: the dist-branch root marketplace.json carries a single version per
-        # plugin and is refreshed on every publish, so the most recent build (dev
-        # or stable) is what a fresh `marketplace add …@dist` + `plugin install`
-        # resolves. Docker (below) stays stable-only — `:latest` must track stable.
-        run: |
-          set -euo pipefail
-          SRC="${GITHUB_WORKSPACE}"
-
-          # `dist` is the published distribution branch (non-default orphan). Built
-          # plugin dirs live AT THE ROOT of it (e.g. dist:aops-claude), matching
-          # both the marketplace sources (./aops-*, generated at the SOURCE repo
-          # root by build.py) and the local-dev layout — one convention
-          # everywhere. `claude plugin marketplace add nicsuzor/academicOps@dist`
-          # reads the root marketplace on the dist branch and resolves ./aops-*
-          # within that ref.
-          cd "${SRC}/dist-repo"
-
-          # One-time migration off the old layout: earlier publishes nested
-          # every plugin dir under a `dist/` subdirectory of this branch
-          # (dist:dist/aops-claude). That subdir is superseded by the
-          # root-level layout below — remove it so a stale copy doesn't sit
-          # alongside the new root-level dirs.
-          rm -rf dist
-
-          # Mirror every built plugin directory to the branch root, each kept
-          # clean with --delete. The `*/` glob skips dot-entries, so only the
-          # aops-* payload dirs are copied. Release archives (*.tar.gz / *.zip)
-          # are FILES under ${SRC}/dist/ → not matched by the dir glob; they
-          # ship as GitHub Release assets in the next step (never committed to
-          # the dist branch).
-          plugin_dirs=""
-          for d in "${SRC}"/dist/*/; do
-            name="$(basename "$d")"
-            rsync -a --delete "$d" "${name}/"
-            plugin_dirs="$plugin_dirs $name"
-          done
-
-          # Single Claude marketplace at the dist-branch root (sources ./aops-*).
-          mkdir -p .claude-plugin
-          cp "${SRC}/dist/marketplace-production.json" ".claude-plugin/marketplace.json"
-
-          # Publish the PR-pipeline reusable workflows so external consumers can
-          # pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`
-          # — a ref that auto-advances on every release with no manual step,
-          # replacing the pipeline-v1 static tag that silently drifted (aops_1a4b8e23).
-          # The dependency set is DERIVED from pr-pipeline.yml's own relative
-          # `uses: ./.github/workflows/*.yml` lines, not hand-maintained here, so a
-          # new sub-job can't silently fall out of sync with what ships to dist —
-          # exactly the kind of second half-trusted path this fix removes.
-          mkdir -p .github/workflows
-          cp "${SRC}/.github/workflows/pr-pipeline.yml" .github/workflows/pr-pipeline.yml
-          if grep -qE 'uses:\s*\./\.github/workflows/' "${SRC}/.github/workflows/pr-pipeline.yml"; then
-            grep -oP 'uses:\s*\./\.github/workflows/\K[\w.-]+\.ya?ml' \
-              "${SRC}/.github/workflows/pr-pipeline.yml" | sort -u | while read -r wf; do
-              cp "${SRC}/.github/workflows/${wf}" ".github/workflows/${wf}"
-            done
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          # shellcheck disable=SC2086
-          git add -f $plugin_dirs
-          git add -f .github/workflows
-          git add -f .claude-plugin/marketplace.json
-          if git diff --cached --quiet; then
-            echo "dist already in sync — nothing to publish"
-          else
-            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
-            # Fast-forward (dist-repo is checked out at dist HEAD) — no force push,
-            # so a non-fast-forward branch rule on dist can stay enforced.
-            git push origin dist
-          fi
-
       # ── Docker: publish the polecat worker/crew image (stable only, A3) ──────
-      # Built AFTER the dist publish so the image's `git clone --branch dist` (see
-      # Dockerfile) pulls the version just shipped. Prereleases never publish the
-      # image — `:latest` must track the stable channel, exactly like the dist branch.
+      # Built from the locally built dist/ tree. Prereleases never publish the
+      # image — `:latest` must track the stable channel.
       - name: Set up Docker Buildx
         if: steps.ctx.outputs.release_type != 'testing'
         uses: docker/setup-buildx-action@v3
@@ -275,8 +171,7 @@ jobs:
             ghcr.io/nicsuzor/aops-crew:v${{ steps.version.outputs.version }}
             ghcr.io/nicsuzor/aops-crew:latest
           build-args: |
-            AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
-            AOPS_DIST_REF=dist
+            AOPS_DIST_SOURCE=local
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

@@ -154,3 +154,54 @@ def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) ->
         json.dumps(data, indent=2) + "\n", encoding="utf-8"
     )
     return cowork_root
+
+
+def generate_openclaw_dist(decl: dict[str, Any], version: str, dist_root: Path) -> Path:
+    """dist/openclaw/ — a local directory marketplace assembled for OpenClaw
+    runtime context, with per-plugin directories and distribution zips."""
+    openclaw_root = dist_root / "openclaw"
+    if openclaw_root.exists():
+        shutil.rmtree(openclaw_root)
+    openclaw_root.mkdir(parents=True)
+
+    plugins = []
+    for entry in decl["plugins"]:
+        name = entry["name"]
+        src = dist_root / f"{name}-openclaw"
+        if not src.exists():
+            src = dist_root / f"{name}-claude"
+        if not src.exists():
+            continue
+
+        dst = openclaw_root / name
+        shutil.copytree(src, dst, ignore=ignore())
+        plugins.append(
+            {
+                "name": name,
+                "description": entry["description"],
+                "version": version,
+                "author": {"name": decl["owner"].get("name", "")},
+                "source": f"./{name}",
+                "category": entry["category"],
+            }
+        )
+
+        zip_path = openclaw_root / f"{name}-v{version}.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in sorted(dst.rglob("*")):
+                if path.is_file():
+                    zf.write(path, str(path.relative_to(openclaw_root)))
+
+    data = {
+        "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+        "name": "academicOps-openclaw",
+        "description": f"{decl['name']} OpenClaw channel — local directory marketplace",
+        "owner": decl["owner"],
+        "plugins": plugins,
+    }
+    marketplace_dir = openclaw_root / ".claude-plugin"
+    marketplace_dir.mkdir(parents=True, exist_ok=True)
+    (marketplace_dir / "marketplace.json").write_text(
+        json.dumps(data, indent=2) + "\n", encoding="utf-8"
+    )
+    return openclaw_root

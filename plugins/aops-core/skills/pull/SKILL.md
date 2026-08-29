@@ -17,7 +17,7 @@ Use your native tools to manage a team of subagents working in the background.
 
 Claim your task through the knowledge base and synchronise it with your internal TODO list (if you have one).
 
-- Use the `pkb:services:pkb` MCP server to call `claim_task` with your task id.
+- Use the `services` MCP server to call `pkb__claim_task` (or `claim_task`) with your task id.
 - If you do not have a task id, search for the task by title using the `task_search` command.
 - If you cannot find it with certainty, halt and report.
 

@@ -22,11 +22,17 @@ sidechain log handed to it directly.
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import pygments.util
+
+if not hasattr(pygments.util, "html_escape"):
+    pygments.util.html_escape = html.escape
 
 from claude_code_log.converter import load_transcript
 from claude_code_log.models import TranscriptEntry

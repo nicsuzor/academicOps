@@ -8,14 +8,13 @@
 ## From the release channel
 
 ```bash
-claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install ida@academicOps
-claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
+claude plugin marketplace add nicsuzor/academicOps
+claude plugin install aops-core@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
 
-`rbg`, `tools`, `ts`, and `aops-debug` install the same way. `--config` is
+`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way. `--config` is
 valid only against the plugin that declares the key; `pkb_mcp_url` belongs to
-`pkb` alone.
+`aops-core` alone.
 
 Nothing has a default. Set the environment variables each plugin needs before
 first use — the full list is in [`README.md`](README.md#configure), and each

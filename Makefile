@@ -7,22 +7,22 @@
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
 LOCAL_MARKETPLACE := aops
-DIST_REPO := nicsuzor/academicOps@dist
+DIST_REPO := nicsuzor/academicOps
 # The image this repository publishes. Override to build/push elsewhere.
 IMAGE ?= ghcr.io/nicsuzor/aops-crew
 
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
 PLUGIN_NAMES = $(shell uv run python -c "import tomllib, pathlib; d = tomllib.loads(pathlib.Path('build/marketplace.toml').read_text()); print(' '.join(p['name'] for p in d['plugins']))" 2>/dev/null)
-STALE_PLUGIN_NAMES = aops aops-cope aops-core aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts
+STALE_PLUGIN_NAMES = aops aops-cope aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts pkb
 
 help:
-	@echo "make build          - assemble dist/ for every plugin, both clients (build/build.py)"
+	@echo "make build          - assemble dist/ for every plugin, clients (Claude, agy, openclaw)"
 	@echo "make build-test     - build, then validate every dist/ plugin dir with"
 	@echo "                      'claude plugin validate' and 'agy plugin validate'"
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
 	@echo "make uninstall-dev  - remove the local marketplace, restore the released one"
-	@echo "make install        - install the released plugins from the dist branch"
+	@echo "make install        - install the released plugins from the repository"
 	@echo "make test           - run the pytest suite"
 	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
@@ -59,8 +59,13 @@ build-test: build
 				&& echo "✓ agy $$p validated" \
 				|| { echo "x agy $$p validate failed" >&2; exit 1; }; \
 		fi; \
+		if command -v claude >/dev/null 2>&1; then \
+			claude plugin validate "$(DIST)/$$p-openclaw" \
+				&& echo "✓ openclaw $$p validated" \
+				|| { echo "x openclaw $$p validate failed" >&2; exit 1; }; \
+		fi; \
 	done
-	@echo "✓ dist/ validated for every plugin, both clients"
+	@echo "✓ dist/ validated for every plugin and client target"
 
 # --- Install ---
 

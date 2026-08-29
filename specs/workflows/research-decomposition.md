@@ -29,9 +29,9 @@ type: spec
 _No implementation yet. This spec defines research-specific decomposition as a domain application of several upstream specs:_
 
 - [[specs/workflows/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
-- [[plugins/pkb/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
+- [[plugins/aops-core/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
 - PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools (reused; the standalone `mcp-decomposition-tools.md` spec describing an 18-tool `tasks_server.py` was retired as stale during the 2026-07 simplification pass, since the current MCP surface doesn't match it)
-- [[plugins/pkb/skills/brief/SKILL.md]] -- placement, valuation, assumption sorting, fork ranking, probe design, then sizing and process composition; this spec extends it with research primitives and supplies the primitives it cuts to
+- [[plugins/aops-core/skills/brief/SKILL.md]] -- placement, valuation, assumption sorting, fork ranking, probe design, then sizing and process composition; this spec extends it with research primitives and supplies the primitives it cuts to
 
 ## Motivation
 
@@ -41,7 +41,7 @@ The intellectual foundations for why research needs its own decomposition approa
 
 Together, these traditions explain why research decomposition cannot simply be software project management with different labels. Research operates under genuine uncertainty -- not risk (known probability distribution) but uncertainty (unknown unknowns). The decomposition must respect this by front-loading information-gathering, treating assumptions as first-class objects, and maintaining the flexibility to pivot when early findings reshape the question.
 
-This spec composes with the general pipeline — `plugins/pkb/skills/brief/SKILL.md` — and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
+This spec composes with the general pipeline — `plugins/aops-core/skills/brief/SKILL.md` — and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
 
 ## The User
 
@@ -70,7 +70,7 @@ As a domain-specific extension of the core decomposition and review workflows, t
 
 ### 4. Verification and Audit
 
-- **Testable Decompositions**: Every decomposition should include verification tasks that cross-reference findings back to the original research question.
+- **Testable Decompositions**: Every decomposition should include verification criteria in the task body that cross-reference findings back to the original research question.
 - **Auditability**: The resulting task graph should be verifiable via `aops audit` to ensure no orphans are created and all research-specific gates (like ethics) are correctly placed.
 
 ## User Stories
@@ -99,26 +99,26 @@ These failure modes are well-documented in research methods pedagogy. They motiv
 
 ### Effectual Planning
 
-The effectual framework — fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning — lives in one stage. `plugins/pkb/skills/brief/SKILL.md` places the fragment, values it, sorts the assumptions into tested and hopes, ranks the open forks by information value across the network, and designs the probe for each; `plugins/pkb/skills/strategize/SKILL.md` is the on-demand lens over it, run by ida.
+The effectual framework — fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning — lives in one stage. `plugins/aops-core/skills/brief/SKILL.md` places the fragment, values it, sorts the assumptions into tested and hopes, ranks the open forks by information value across the network, and designs the probe for each; `plugins/aops-core/skills/strategize/SKILL.md` is the on-demand lens over it, run by ida.
 
 This spec does NOT replace that pipeline. Instead, it provides three things the pipeline uses when the domain is research:
 
 1. **Domain-specific primitives.** When `brief` cuts a research project into dispatchable units, it draws from the research primitive table below (spike, lit-review, methodology, etc.) rather than generic task types. These primitives carry semantic meaning that shapes sequencing and dependency decisions.
 
-2. **Domain-specific review lenses.** When a research decomposition is reviewed, the conceptual review workflow selects from the research lens table below. `brief` does not perform review -- it emits the review nodes, and the review workflow executes them using these lenses.
+2. **Domain-specific review lenses.** When a research decomposition is reviewed, the conceptual review workflow selects from the research lens table below. `brief` does not perform review -- it records the review obligations on the task body, and the review workflow executes them using these lenses.
 
 3. **A maturity-gated entry path.** The formality gradient (seeds vs. active projects) maps to seedling vs. forest mode. A half-formed research idea enters as a seedling; a defined project enters as a forest.
 
-The intended handoff works as follows: `brief` applies the sequencing rules from this spec to a captured research idea, cuts to the primitives below, and emits the review nodes; the conceptual review workflow then reviews using the research-specific lenses. `brief`'s assumption map feeds directly into the assumptions table that this spec requires as output. (See Open Question #5 for integration path alternatives -- this handoff mechanism is not yet specified.)
+The intended handoff works as follows: `brief` applies the sequencing rules from this spec to a captured research idea, cuts to the primitives below, and records review obligations on the task body; the conceptual review workflow then reviews using the research-specific lenses. `brief`'s assumption map feeds directly into the assumptions table that this spec requires as output. (See Open Question #5 for integration path alternatives -- this handoff mechanism is not yet specified.)
 
 ### Brief Workflow
 
-`plugins/pkb/skills/brief/SKILL.md` provides the general sizing and composition infrastructure:
+`plugins/aops-core/skills/brief/SKILL.md` provides the general sizing and composition infrastructure:
 
 - **Fork-based sizing**: a dispatchable unit is the largest chunk containing no unresolved fork; where a fork is blocked on missing information, the unit dispatched is the probe
 - **Dependency types**: hard (`depends_on`) vs. soft (`soft_depends_on`) dependency decisions; human handoff patterns
 - **Process composition**: the workflow templates the unit runs under, loaded from all three layers at composition time
-- **Review nodes**: each composed obligation emitted as a real blocking node, plus an unconditional sign-off node wherever the door is one-way or ambiguous
+- **Review obligations**: each composed obligation recorded as concrete acceptance criteria on the task body, not as speculative pre-emitted graph nodes (Nic's merge is the sign-off)
 
 The Academic Output Layer, verify-parent completion loops, and the post-decomposition self-check list this spec previously named do not ship anywhere in the tree. They are target shape, not current behaviour.
 
@@ -438,7 +438,7 @@ verify: "Verify: platform governance study objectives met"
 
 - Research decomposition primitives and sequencing rules
 - Seedling and forest modes with fully specified outputs
-- Integration with `plugins/pkb/skills/brief/SKILL.md`
+- Integration with `plugins/aops-core/skills/brief/SKILL.md`
 - Research-specific review lenses for the conceptual review workflow
 
 ### Out of scope
@@ -465,7 +465,7 @@ verify: "Verify: platform governance study objectives met"
 ## Related
 
 - [[specs/workflows/conceptual-review-workflow.md]] -- review layer; this spec is a domain application
-- [[plugins/pkb/agents/pauli.md]] -- upstream strategic planning; this spec specialises it for research
+- [[plugins/aops-core/agents/pauli.md]] -- upstream strategic planning; this spec specialises it for research
 - PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools; reused for structured output
 - [[specs/polecat/polecat-system.md]] -- execution layer; consumes decomposed task graphs
-- [[plugins/pkb/skills/brief/SKILL.md]] -- general sizing and process composition; this spec extends it with research primitives
+- [[plugins/aops-core/skills/brief/SKILL.md]] -- general sizing and process composition; this spec extends it with research primitives

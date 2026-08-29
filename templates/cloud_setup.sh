@@ -51,14 +51,13 @@ chmod +x /usr/local/bin/gh-token-askpass
 git config --global url."https://github.com/nicsuzor/academicOps".insteadOf "https://github.com/nicsuzor/academicOps"
 git config --global core.askPass /usr/local/bin/gh-token-askpass
 
-# 3) Now the marketplaces in .claude/settings.json (extraKnownMarketplaces, ref: dist) can fetch.
+# 3) Now the marketplaces in .claude/settings.json (extraKnownMarketplaces) can fetch.
 #    Optional explicit kick if auto-registration still doesn't trigger on boot:
-claude plugin marketplace add nicsuzor/academicOps#dist
+claude plugin marketplace add nicsuzor/academicOps
 #claude plugin install james@academicOps
-claude plugin install pkb@academicOps
+claude plugin install aops-core@academicOps
 claude plugin install ts@academicOps
 claude plugin install tools@academicOps
-claude plugin install ida@academicOps
 claude plugin install rbg@academicOps
 
 # env vars don't resolve this early in the boot process, declare them above.

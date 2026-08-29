@@ -20,7 +20,9 @@ PLUGINS_DIR = REPO_ROOT / "plugins"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
-VALID_STATUSES = set(_policy.get("pkb", {}).get("taxonomy", {}).get("valid_statuses", []))
+VALID_STATUSES = set(
+    _policy.get("aops-core", _policy.get("pkb", {})).get("taxonomy", {}).get("valid_statuses", [])
+)
 
 
 def skill_files() -> list[Path]:
@@ -28,14 +30,14 @@ def skill_files() -> list[Path]:
 
 
 def test_valid_statuses_policy_loaded():
-    assert VALID_STATUSES, "tests/policy.toml [pkb.taxonomy].valid_statuses must not be empty"
+    assert VALID_STATUSES, "tests/policy.toml [aops-core.taxonomy].valid_statuses must not be empty"
     assert "done" in VALID_STATUSES
     assert "in_progress" in VALID_STATUSES
     assert "failed" not in VALID_STATUSES
 
 
 def test_dump_skill_status_template_uses_canonical_statuses():
-    dump_skill = PLUGINS_DIR / "pkb" / "skills" / "dump" / "SKILL.md"
+    dump_skill = PLUGINS_DIR / "aops-core" / "skills" / "dump" / "SKILL.md"
     assert dump_skill.exists(), f"Missing {dump_skill}"
 
     text = dump_skill.read_text(encoding="utf-8")
@@ -54,7 +56,7 @@ def test_dump_skill_status_template_uses_canonical_statuses():
 
 
 def test_pull_skill_impossible_task_mandates_canonical_status():
-    pull_skill = PLUGINS_DIR / "pkb" / "skills" / "pull" / "SKILL.md"
+    pull_skill = PLUGINS_DIR / "aops-core" / "skills" / "pull" / "SKILL.md"
     assert pull_skill.exists(), f"Missing {pull_skill}"
 
     text = pull_skill.read_text(encoding="utf-8")

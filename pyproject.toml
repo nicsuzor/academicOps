@@ -239,7 +239,7 @@ exclude = [
   "plugins/*/agents/", # Exclude non-code agent configs
   "plugins/*/commands/", # Exclude command specs
   "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
-  "plugins/pkb/workflows/", # Exclude process-template markdown
+  "plugins/aops-core/workflows/", # Exclude process-template markdown
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
@@ -299,12 +299,11 @@ log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-addopts = "-n 16 --dist loadgroup -m 'not slow and not integration and not demo and not otel_e2e' --import-mode=importlib"
+addopts = "-n 16 --dist loadgroup -m 'not slow and not integration and not otel_e2e' --import-mode=importlib"
 markers = [
   "slow: marks tests as slow (run with '-m slow')",
   "integration: marks tests as integration tests",
   "metrics: observability tests that report metrics (run with '-m metrics')",
-  "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
   "e2e: end-to-end tests requiring live infra (POLECAT_E2E=1 to run)",
   "live: drives real headless clients to measure hook-format conformance (run with '-m live'; skip-if-client-unavailable)",
   "otel_e2e: spins up a real OTel collector (docker) and a real Claude Code session against it (run with '-m otel_e2e'; skip-if-docker-or-credentials-unavailable)",

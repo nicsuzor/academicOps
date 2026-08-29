@@ -1,18 +1,19 @@
 {
   "manifestVersion": "1.0",
-  "name": "pkb",
+  "name": "aops-core",
   "clients": {
     "__base__": {
-      "name": "pkb",
-      "description": "pauli. Memory, effectual planning, workflow composition, PKB MCP client config.",
+      "name": "aops-core",
+      "description": "ida for strategy and pauli for memory.",
       "author": {
         "name": "Nicolas Suzor"
       },
       "license": "MIT",
       "keywords": [
         "academicOps",
-        "pkb",
+        "aops-core",
         "pauli",
+        "ida",
         "memory",
         "planning",
         "knowledge-graph"

@@ -1,9 +1,9 @@
 """ida's quiet gate, proven through the artifact ida actually ships.
 
-ida is an agent hosted inside the pkb plugin (plugins/pkb/agents/ida.md); its
+ida is an agent hosted inside the aops-core plugin (plugins/aops-core/agents/ida.md); its
 hook — `be_quiet`, wired to `PostToolBatch` — ships from
-plugins/pkb/hooks/handlers.py alongside pkb's own artifacts, so every path
-below builds and reads the `pkb` plugin.
+plugins/aops-core/hooks/handlers.py alongside aops-core's own artifacts, so every path
+below builds and reads the `aops-core` plugin.
 
 The gate is only real if the built plugin wires a `PostToolBatch` hook, the shipped
 runtime loads the shipped message file, and the response comes back in the
@@ -50,7 +50,7 @@ _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 
 @pytest.fixture(scope="module")
 def ida_dist(tmp_path_factory) -> Path:
-    """ida's host plugin (pkb), really built, claude only — pkb ships no
+    """ida's host plugin (aops-core), really built, claude only — aops-core ships no
     agy hooks.json for this gate (test_plugin_manifests.py::
     test_ida_ships_the_quiet_gate_on_claude_only)."""
     root = tmp_path_factory.mktemp("ida-dist")
@@ -58,7 +58,7 @@ def ida_dist(tmp_path_factory) -> Path:
         _REPO_ROOT,
         root,
         marketplace_path=_MARKETPLACE,
-        plugins=["pkb"],
+        plugins=["aops-core"],
         # PEP 440, because the built plugin carries this into its own
         # pyproject.toml and `uv run` — which is how every hook command starts
         # — refuses to parse a version it cannot resolve. A non-conforming
@@ -70,7 +70,7 @@ def ida_dist(tmp_path_factory) -> Path:
 
 
 def _claude_hooks_dir(ida_dist: Path) -> Path:
-    return ida_dist / "pkb-claude" / "hooks"
+    return ida_dist / "aops-core-claude" / "hooks"
 
 
 def _shipped_message(ida_dist: Path, name: str) -> str:
@@ -82,9 +82,9 @@ def _stop_command(ida_dist: Path) -> tuple[Path, str]:
     """(plugin root, command string) for the hook wired to claude's
     stop-equivalent event, read out of the built config rather than restated.
 
-    claude only: pkb ships no agy hooks.json for this gate (test_plugin_manifests.py::
+    claude only: aops-core ships no agy hooks.json for this gate (test_plugin_manifests.py::
     test_ida_ships_the_quiet_gate_on_claude_only)."""
-    build_dir = ida_dist / "pkb-claude"
+    build_dir = ida_dist / "aops-core-claude"
     config = json.loads((build_dir / "hooks" / "hooks.json").read_text(encoding="utf-8"))
     entries = config["hooks"]["PostToolBatch"]
     return build_dir, entries[0]["hooks"][0]["command"]
@@ -169,10 +169,10 @@ def test_no_message_file_in_the_build_reaches_the_person(ida_dist):
     than listed here.
 
     Scoped to the names ida's handler actually loads, not every `*.user.md` in
-    the build: ida's hooks now ship from plugins/pkb/hooks, alongside pkb's
+    the build: ida's hooks now ship from plugins/aops-core/hooks, alongside aops-core's
     own unrelated messages/pkb-context.user.md (a dead file from the
     permanently-disabled `search_the_pkb` hook, tests/policy.toml
-    `pkb.search_the_pkb_enabled`), so a directory-wide sweep would fail on a
+    `aops-core.search_the_pkb_enabled`), so a directory-wide sweep would fail on a
     file this gate never touches.
     """
     handlers = (_claude_hooks_dir(ida_dist) / "handlers.py").read_text(encoding="utf-8")
@@ -209,7 +209,7 @@ def test_subagentstop_is_not_wired_so_the_gate_stays_scoped_to_the_face(ida_dist
     a subagent ends on `SubagentStop`. Wiring that too would put the face's
     obligations in front of every worker the session dispatches.
     """
-    build_dir = ida_dist / "pkb-claude"
+    build_dir = ida_dist / "aops-core-claude"
     config = json.loads((build_dir / "hooks" / "hooks.json").read_text(encoding="utf-8"))
     assert "SubagentStop" not in config["hooks"]
 

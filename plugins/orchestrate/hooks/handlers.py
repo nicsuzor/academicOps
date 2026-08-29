@@ -139,7 +139,7 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
     """Remind the dispatcher that a subagent's report is not evidence."""
 
     # Only fire on supervisor profiles
-    if ctx.agent_type in ("pkb:ida", "orchestrate:james"):
+    if ctx.agent_type in ("aops-core:ida", "pkb:ida", "orchestrate:james"):
         if any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
             return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
@@ -153,7 +153,7 @@ def honest_output(ctx: HookContext) -> Result | None:
     to provide evidence sufficient to support its claims.
 
     """
-    if ctx.agent_type == "pkb:ida":
+    if ctx.agent_type in ("aops-core:ida", "pkb:ida"):
         return None
 
     if ctx.raw.get("background_tasks"):

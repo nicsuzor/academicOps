@@ -1,20 +1,10 @@
 # --- aops dist/ source selection ---------------------------------------
 # The image needs the built dist/aops-* tree + .claude-plugin/marketplace.json.
-# Two interchangeable sources, selected by AOPS_DIST_SOURCE. Both land at
-# /aops-dist, but nested one level differently (the published `dist` BRANCH
-# publishes plugin dirs + .claude-plugin/ at its own root, while the local
-# COPY below lands the checkout's dist/ under /aops-dist/dist — the
-# `claude plugin marketplace add`/`update`/install RUN block below branches on
-# $AOPS_DIST_SOURCE to point $MP_ROOT at the right one for each, and every
-# plugin dir sits directly under $MP_ROOT in both cases):
-#   remote (default) — clone the published `dist` branch. Used by CI
-#     (build-extension.yml builds the image right after publishing that
-#     branch, so this is exactly the release just shipped).
-#   local — copy the dist/ this checkout already built (`make build` /
-#     build/build.py). Used by `make docker-build` for local dev builds, so
-#     the image reflects your current source tree instead of whatever the
-#     dist branch last published (which can lag current source — see #2208).
-ARG AOPS_DIST_SOURCE=remote
+# Selected by AOPS_DIST_SOURCE:
+#   local (default) — copy the dist/ this checkout already built (`make build` /
+#     build/build.py). Used by `make docker-build` for local dev builds and CI.
+#   remote — clone from a remote repository URL and ref.
+ARG AOPS_DIST_SOURCE=local
 ARG AOPS_REPO_URL
 ARG AOPS_DIST_REF
 
@@ -37,7 +27,7 @@ FROM python:3.12-slim-bookworm
 
 # Re-declared: ARGs don't cross a FROM boundary. Needed below to branch the
 # plugin-install step on which /aops-dist shape we actually got.
-ARG AOPS_DIST_SOURCE=remote
+ARG AOPS_DIST_SOURCE=local
 
 # Create non-root user early so we can switch to it after system-level installs
 RUN useradd -m -d /home/worker -s /bin/bash worker
@@ -282,15 +272,10 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 # The Gemini CLI extension surface is deprecated and intentionally not
 # installed here (matches `make install`, which doesn't install it either).
 #
-# $AOPS_DIST_SOURCE picks the marketplace root (see aops-dist-local /
-# aops-dist-remote above for why these differ): local's /aops-dist/dist IS
-# the self-contained marketplace root build/build.py produces; the published
-# `dist` branch has `.claude-plugin/` AND every plugin dir (aops-claude,
-# aops-agy, ...) at its own root — see build-extension.yml's
-# "Publish distribution to dist" step. Both shapes put every plugin dir
-# directly under $MP_ROOT, so all COPY/install targets below are
-# $MP_ROOT-relative and need no further local/remote branching. Each plugin's
-# per-client build dir is <name>-claude / <name>-agy.
+# $AOPS_DIST_SOURCE picks the marketplace root: local's /aops-dist/dist IS
+# the self-contained marketplace root build/build.py produces; remote clones
+# the specified repository ref into /aops-dist.
+# Each plugin's per-client build dir is <name>-claude / <name>-agy.
 #
 # The marketplace NAME is always academicOps here, regardless of source.
 # build/marketplace.py's generate_local_marketplace() names the dist/

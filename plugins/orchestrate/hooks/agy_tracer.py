@@ -218,6 +218,23 @@ def handle_pre_invocation(data: dict, config: dict) -> None:
             state["cwd"] = data.get("cwd") or os.getcwd()
 
             transcript_path = data.get("transcriptPath", "")
+            if not transcript_path:
+                # Fallback for agy (antigravity-cli)
+                from pathlib import Path
+
+                possible_path = (
+                    Path.home()
+                    / ".gemini"
+                    / "antigravity-cli"
+                    / "brain"
+                    / session_id
+                    / ".system_generated"
+                    / "logs"
+                    / "transcript.jsonl"
+                )
+                if possible_path.exists():
+                    transcript_path = str(possible_path)
+
             if transcript_path:
                 state["transcript_path"] = transcript_path
 
@@ -238,9 +255,43 @@ def handle_pre_invocation(data: dict, config: dict) -> None:
             turn_number = state.get("turn_number", 0) + 1
             state["turn_number"] = turn_number
             state["human_msg_count"] = human_count
+            parent_trace_id = None
+            parent_span_id = None
+            psid = state.get("phoenix_session_id")
+            if psid and psid != session_id:
+                try:
+                    pstate = _load_state(psid)
+                    if pstate and pstate.get("current_trace"):
+                        parent_trace_id = pstate["current_trace"]["trace_id"]
+
+                    # Extract parent_span_id if sidecar exists
+                    import hashlib
+                    from pathlib import Path
+
+                    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+                    if project_dir:
+                        sanitized = project_dir.replace("/", "-")
+                        sidecar = (
+                            Path.home()
+                            / ".claude"
+                            / "projects"
+                            / sanitized
+                            / psid
+                            / "subagents"
+                            / f"agent-{session_id}.meta.json"
+                        )
+                        if sidecar.exists():
+                            sdata = __import__("json").loads(sidecar.read_text())
+                            tuid = sdata.get("toolUseId")
+                            if tuid:
+                                parent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+                except Exception as e:
+                    log.debug("Failed to parent agy subagent: %s", e)
+
             state["current_trace"] = {
-                "trace_id": _new_trace_id(),
+                "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
                 "root_span_id": _new_span_id(),
+                "parent_span_id": parent_span_id,
                 "turn_start_ns": now_ns,
                 "turn_number": turn_number,
                 "human_count_at_start": max(0, human_count - 1),
@@ -283,11 +334,20 @@ def handle_pre_tool(data: dict, config: dict) -> None:
 
         pending_key = f"{tool_name}_{now_ns}"
         pt = state.setdefault("pending_tools", {})
+
+        agent_span_id = _new_span_id()
+        if tool_name in ("Agent", "Task", "invoke_subagent"):
+            tuid = tool_call.get("id") or tool_call.get("toolUseId")
+            if tuid:
+                import hashlib
+
+                agent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+
         pt[pending_key] = {
             "tool_name": tool_name,
             "tool_input": tool_input,
             "start_ns": now_ns,
-            "pre_allocated_span_id": _new_span_id(),
+            "pre_allocated_span_id": agent_span_id,
             "trace_id": trace_id,
             "root_span_id": root_span_id,
         }
@@ -412,9 +472,10 @@ def handle_stop(data: dict, config: dict) -> None:
             "end_ns": end_ns,
             "trace_id_hex": trace_id,
             "span_id_hex": root_span_id,
+            "parent_span_id_hex": ct.get("parent_span_id"),
             "force_span_id": True,
             "attributes": {
-                "openinference.span.kind": "CHAIN",
+                "openinference.span.kind": "AGENT" if ct.get("parent_span_id") else "CHAIN",
                 "session.id": _phoenix_session_id(state),
             },
         }
