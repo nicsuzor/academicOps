@@ -1471,6 +1471,12 @@ def _build_docker_argv(
     if rules_dir:
         cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
 
+    cgroup_parent = config.get("docker", {}).get("cgroup_parent")
+    if not cgroup_parent and Path("/sys/fs/cgroup/polecats.slice").exists():
+        cgroup_parent = "polecats.slice"
+    if cgroup_parent:
+        cmd.extend(["--cgroup-parent", cgroup_parent])
+
     # The host docker socket is a container escape. Mount it only where the
     # container legitimately spawns siblings, and document why.
     if config.get("docker", {}).get("enable_socket", False):
