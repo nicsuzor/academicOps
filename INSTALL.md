@@ -8,7 +8,7 @@
 ## From the release channel
 
 ```bash
-claude plugin marketplace add nicsuzor/academicOps
+claude plugin marketplace add nicsuzor/academicOps@dist
 claude plugin install aops-core@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
 ```
 
