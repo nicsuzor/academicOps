@@ -43,6 +43,27 @@ help:
 build:
 	@uv run python -m build.build
 
+build-claude:
+	@uv run python -m build.build --clients claude
+
+build-agy:
+	@uv run python -m build.build --clients agy
+
+build-openclaw:
+	@uv run python -m build.build --clients openclaw
+
+# The Cowork install path is a manual zip upload (desktop app -> Customize ->
+# Add plugins -> Upload a file), and a plugin installed that way launches its
+# MCP servers with a bare environment — $PKB_MCP_URL does not reach them and
+# there is no --config to supply it afterwards. build.marketplace resolves the
+# URL into the zips' .mcp.json when it is set at build time, and warns when it
+# is not. Deliberately NOT a build failure: the published zips ship without a
+# URL, so Cowork's services MCP is unusable until there is a real way to
+# configure it post-install. Only a local build with PKB_MCP_URL exported
+# produces a working zip.
+build-cowork:
+	@uv run python -m build.build --clients claude
+
 # Each client ships its own manifest schema (.claude-plugin/plugin.json vs
 # plugin.json, agent.md's frontmatter shape, hooks.json's shape) and only
 # that client's own CLI can validate against it — build.py has no

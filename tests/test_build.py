@@ -18,7 +18,7 @@ import pytest
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template
-from build.marketplace import load_marketplace_toml
+from build.marketplace import _bake_cowork_mcp_json, load_marketplace_toml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
@@ -752,13 +752,68 @@ def test_cowork_dist(built):
     assert "fixture-alpha/.claude-plugin/plugin.json" in names
 
 
-def test_cowork_does_not_bake_urls(built):
-    """Hard constraint: no URL/endpoint/token is ever baked into a shipped
-    artifact — the cowork copy's .mcp.json must be byte-identical to the
-    claude dist's, not rewritten."""
+def test_cowork_directory_copy_is_never_rewritten(built):
+    """The dist/cowork/<name> directory copy is byte-identical to the claude
+    dist. A directory-marketplace install can supply the endpoint with
+    `claude plugin install --config`, so it has no reason to carry one, and
+    this is the copy `make build` leaves on disk."""
     claude_mcp = (built / "fixture-alpha-claude" / ".mcp.json").read_bytes()
     cowork_mcp = (built / "cowork" / "fixture-alpha" / ".mcp.json").read_bytes()
     assert claude_mcp == cowork_mcp
+
+
+def _fixture_pkb_plugin(tmp_path: Path) -> Path:
+    plugin = tmp_path / "plug"
+    (plugin / "scripts").mkdir(parents=True)
+    (plugin / "scripts" / "run-mcp.sh").write_text("#!/bin/bash\n", encoding="utf-8")
+    (plugin / ".mcp.json").write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "command": "bash",
+                        "args": ["-c", 'fastmcp run "$PKB_MCP_URL"'],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    return plugin
+
+
+def test_cowork_zip_ships_no_url_when_build_env_has_none(tmp_path, monkeypatch):
+    """The published zips are built without PKB_MCP_URL and must ship without
+    an endpoint — unset is not a build failure, it just yields an unrewritten
+    (and, in Cowork, non-functional) MCP config."""
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
+    plugin = _fixture_pkb_plugin(tmp_path)
+    assert _bake_cowork_mcp_json(plugin / ".mcp.json", plugin) is None
+
+
+def test_cowork_zip_resolves_url_from_build_env(tmp_path, monkeypatch):
+    """A local build with PKB_MCP_URL exported produces a usable zip: the
+    upload install path has no --config, so the endpoint has to travel in the
+    artifact, via the stdio launcher's env block."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    plugin = _fixture_pkb_plugin(tmp_path)
+    baked = _bake_cowork_mcp_json(plugin / ".mcp.json", plugin)
+    assert baked is not None
+    server = json.loads(baked)["mcpServers"]["services"]
+    assert server["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
+    assert server["args"] == ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
+
+
+def test_cowork_zip_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    plugin = _fixture_pkb_plugin(tmp_path)
+    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
+    data["mcpServers"]["other"] = {"command": "other-server", "args": ["--stdio"]}
+    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
+
+    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
+    assert baked["mcpServers"]["other"] == {"command": "other-server", "args": ["--stdio"]}
+    assert "env" in baked["mcpServers"]["services"]
 
 
 # --- hard-error paths ---------------------------------------------------------
