@@ -14,6 +14,7 @@
 ## 1. Problem Statement & Root Cause
 
 ### 1.1 The Silent False-Green Failure Mode
+
 Polecat executes worker agents inside container environments where plugin payloads (skills, hooks, agents, MCP tool wrappers) are **baked into the Docker image** at build time (`Dockerfile:313-349`). Conversely, the workspace code under test is bind-mounted at container launch (`/workspace` via `-v ${workspace_dir}:/workspace`, `lib/polecat/cli.py:1450`).
 
 When an operator modifies plugin code, hooks, or skills in the host workspace and dispatches a test run via `polecat run` without first executing `make docker-build`, the container runs the **stale plugin code baked into the image** rather than the modified code under test.
@@ -37,6 +38,7 @@ Because the stale plugin code often executes without errors, the field test prod
 ```
 
 ### 1.2 Historical Evidence
+
 - **Observed 2026-08-24 (`aops_1787bc75`):** Field test of the `workflow-library` skill in `polecat run agy -d /home/nic/src/academicOps`.
   - Tool-call grep: `grep -c "workflow-library" /tmp/agy2.jsonl` -> **0** (skill never loaded).
   - Tool-call grep: `grep -c "agents/templates" /tmp/agy2.jsonl` -> **0** (project tier never inspected).
@@ -44,6 +46,7 @@ Because the stale plugin code often executes without errors, the field test prod
   - The run executed plugins from `0.8.0-g62456fff`, predating the changes under test, yet returned a plausible three-tier listing graded as a pass.
 
 ### 1.3 World-State Verification & Lost Commitments
+
 1. **Hook Metadata (`plugins/orchestrate/hooks/handlers.py:55-77`):** `_format_session_metadata()` currently emits only `session`, `time`, `host`, and `cwd`. No plugin or image version field is present.
 2. **Superseded Ruling (`mem_724fbde2`):** A 2026-07-15 ruling promised installed-version output in `aops/hooks/router.py`. That file was deleted during the hook-dispatch refactoring (`v0.9.0`), and the version field was not ported to `plugins/orchestrate/hooks/handlers.py`.
 3. **Dual Build Sources (`Dockerfile:17-33`):** `Dockerfile` supports two build sources via `AOPS_DIST_SOURCE`:
@@ -60,11 +63,11 @@ The following constraints are binding on this specification:
 1. **Warn, Never Refuse (Parent Assumption `aops_1787bc75:90-93`):**
    - Detecting that an image lags workspace source MUST emit loud, unmissable warnings to both the operator and the agent.
    - Detecting staleness MUST **NEVER abort, refuse to launch, or exit non-zero**.
-   - *Rationale:* Hard refusals break legitimate testing scenarios (e.g., verifying backwards compatibility, benchmarking against frozen release baselines, running offline when Docker rebuilds are unavailable).
+   - _Rationale:_ Hard refusals break legitimate testing scenarios (e.g., verifying backwards compatibility, benchmarking against frozen release baselines, running offline when Docker rebuilds are unavailable).
 2. **Distinct Dispatch Mode Baselines:**
    - Staleness must be evaluated against the appropriate reference baseline for each dispatch mode (`-d`, `-p`/`--base`, `remote`).
 3. **Remote-Sourced Images Are Not False-Stale:**
-   - A container built with `AOPS_DIST_SOURCE=remote` MUST NOT be flagged as a stale build when running against newer local code. It must be explicitly identified as a *Remote Release Build* operating against its declared release ref.
+   - A container built with `AOPS_DIST_SOURCE=remote` MUST NOT be flagged as a stale build when running against newer local code. It must be explicitly identified as a _Remote Release Build_ operating against its declared release ref.
 4. **Zero Log-Grepping UX:**
    - Version metadata and staleness state must be immediately legible on host CLI stdout, within the in-container `SessionStart` hook banner, and in machine-readable `run.json`. No operator or reviewer should need to grep JSONL logs to determine what plugin version executed.
 
@@ -75,6 +78,7 @@ The following constraints are binding on this specification:
 To allow instantaneous, deterministic staleness comparison without running slow in-container inspections, the build pipeline will stamp provenance metadata at image build time.
 
 ### 3.1 Build Metadata Schema
+
 During image build, a metadata file `/home/worker/.aops-image-metadata.json` is generated and baked into the image, and corresponding Docker labels are attached to the image configuration:
 
 ```json
@@ -97,7 +101,9 @@ During image build, a metadata file `/home/worker/.aops-image-metadata.json` is 
 ```
 
 ### 3.2 Dockerfile Stamping Implementation
+
 In `Dockerfile`:
+
 ```dockerfile
 ARG AOPS_DIST_SOURCE=remote
 ARG AOPS_REPO_URL
@@ -112,6 +118,7 @@ LABEL org.opencontainers.image.revision="${AOPS_BUILD_COMMIT}" \
       aops.dist_ref="${AOPS_DIST_REF}" \
       aops.build_dirty="${AOPS_BUILD_DIRTY}"
 ```
+
 `Makefile` (`docker-build` target) and `build-extension.yml` (CI) pass `--build-arg AOPS_BUILD_COMMIT=$(git rev-parse HEAD)` and `--build-arg AOPS_BUILD_DIRTY=$(git status --porcelain | wc -l)` automatically.
 
 ---
@@ -119,6 +126,7 @@ LABEL org.opencontainers.image.revision="${AOPS_BUILD_COMMIT}" \
 ## 4. Comparison Mechanism per Dispatch Mode
 
 The staleness evaluation algorithm computes two entities at runtime:
+
 1. `ImageProvenance`: Read from image Docker labels via `docker image inspect` or `/home/worker/.aops-image-metadata.json`.
 2. `WorkspaceBaseline`: Computed from the target workspace ref and working tree state.
 
@@ -187,18 +195,18 @@ The staleness evaluation algorithm computes two entities at runtime:
 
 ## 5. Quadrant Analysis Matrix
 
-| Dispatch Mode | Image Source | Workspace State | Evaluated State | Warning Level | Action |
-|---|---|---|---|---|---|
-| `-d <path>` | `local` | Workspace HEAD == Image SHA, Clean | `FRESH_LOCAL` | None (Green) | Proceed quietly |
-| `-d <path>` | `local` | Workspace HEAD != Image SHA | `STALE_LOCAL` | **LOUD WARNING** | Print banner, proceed |
-| `-d <path>` | `local` | Workspace HEAD == Image SHA, Dirty | `DIRTY_UNBAKED` | **LOUD WARNING** | Print banner, proceed |
-| `-d <path>` | `remote` | Host Repo on Feature Branch | `REMOTE_RELEASE` | Info (Notice) | Print info header, proceed |
-| `-p` / `--base` | `local` | `base_sha` == Image SHA | `FRESH_LOCAL` | None (Green) | Proceed quietly |
-| `-p` / `--base` | `local` | `base_sha` != Image SHA | `STALE_LOCAL` | **LOUD WARNING** | Print banner, proceed |
-| `-p` / `--base` | `remote` | `base_sha` == Image SHA | `FRESH_REMOTE` | None (Green) | Proceed quietly |
-| `-p` / `--base` | `remote` | `base_sha` != Image SHA | `REMOTE_RELEASE` | Info (Notice) | Print info header, proceed |
-| Default (no args) | `local` | Canonical Upstream != Image SHA | `STALE_LOCAL` | **LOUD WARNING** | Print banner, proceed |
-| Default (no args) | `remote` | Canonical Upstream != Image SHA | `REMOTE_RELEASE` | Info (Notice) | Print info header, proceed |
+| Dispatch Mode     | Image Source | Workspace State                    | Evaluated State  | Warning Level    | Action                     |
+| ----------------- | ------------ | ---------------------------------- | ---------------- | ---------------- | -------------------------- |
+| `-d <path>`       | `local`      | Workspace HEAD == Image SHA, Clean | `FRESH_LOCAL`    | None (Green)     | Proceed quietly            |
+| `-d <path>`       | `local`      | Workspace HEAD != Image SHA        | `STALE_LOCAL`    | **LOUD WARNING** | Print banner, proceed      |
+| `-d <path>`       | `local`      | Workspace HEAD == Image SHA, Dirty | `DIRTY_UNBAKED`  | **LOUD WARNING** | Print banner, proceed      |
+| `-d <path>`       | `remote`     | Host Repo on Feature Branch        | `REMOTE_RELEASE` | Info (Notice)    | Print info header, proceed |
+| `-p` / `--base`   | `local`      | `base_sha` == Image SHA            | `FRESH_LOCAL`    | None (Green)     | Proceed quietly            |
+| `-p` / `--base`   | `local`      | `base_sha` != Image SHA            | `STALE_LOCAL`    | **LOUD WARNING** | Print banner, proceed      |
+| `-p` / `--base`   | `remote`     | `base_sha` == Image SHA            | `FRESH_REMOTE`   | None (Green)     | Proceed quietly            |
+| `-p` / `--base`   | `remote`     | `base_sha` != Image SHA            | `REMOTE_RELEASE` | Info (Notice)    | Print info header, proceed |
+| Default (no args) | `local`      | Canonical Upstream != Image SHA    | `STALE_LOCAL`    | **LOUD WARNING** | Print banner, proceed      |
+| Default (no args) | `remote`     | Canonical Upstream != Image SHA    | `REMOTE_RELEASE` | Info (Notice)    | Print info header, proceed |
 
 ---
 
@@ -207,9 +215,11 @@ The staleness evaluation algorithm computes two entities at runtime:
 Staleness and version information must be surfaced across three distinct tiers:
 
 ### 6.1 Tier 1: Host CLI Stdout Banner (`lib/polecat/cli.py`)
+
 Printed directly to terminal stdout before container invocation. Reaches human operators, dispatchers, and CI logs without grepping files.
 
 #### Fresh Local Image Header:
+
 ```text
 ================================================================================
 POLECAT DISPATCH: session-9317829f [agy]
@@ -220,6 +230,7 @@ Status:    PLUGINS FRESH [local match]
 ```
 
 #### Stale Local Image Warning Banner:
+
 ```text
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 WARNING: POLECAT IMAGE PLUGINS ARE STALE
@@ -233,6 +244,7 @@ Proceeding with execution (warn-only policy enabled)...
 ```
 
 #### Remote Release Image Header:
+
 ```text
 ================================================================================
 POLECAT DISPATCH: session-9317829f [claude]
@@ -243,16 +255,21 @@ Status:    REMOTE RELEASE IMAGE [testing against released plugin baseline]
 ```
 
 ### 6.2 Tier 2: In-Container SessionStart Hook (`plugins/orchestrate/hooks/handlers.py`)
+
 Injected directly into the agent's context and recorded in `polecat-session-hooks.jsonl` and session transcripts.
 
 #### Metadata Line:
+
 Extended `_format_session_metadata()`:
+
 ```text
 session: session-9317829f | time: 2026-08-29 10:25:00 +1000 | host: polecat-worker-01 | cwd: /workspace | plugins: 0.9.1+gf31ebcf7 (local:match)
 ```
 
 #### Injected Hook Warning (if stale):
+
 If `AOPS_IMAGE_STALENESS_WARNING` is passed via container environment:
+
 ```text
 [SYSTEM WARNING: RUNNING WITH STALE BAKED PLUGINS]
 Container plugin payload (commit 62456fff) lags workspace under test (commit f31ebcf7).
@@ -260,6 +277,7 @@ Any skill, hook, or MCP behavior verified in this session reflects the BAKED pay
 ```
 
 ### 6.3 Tier 3: Machine-Readable `run.json` Schema
+
 `run.json` (written by `lib/polecat/cli.py` on container completion) records structured provenance for automated evaluation:
 
 ```json
@@ -344,6 +362,7 @@ Unit and integration tests to be implemented in `tests/polecat/test_image_stalen
 ## 9. Deliverable Summary & Downstream Handover
 
 This specification delivers the complete design resolving all four requirements of `aops_866c0666`:
+
 1. Concrete comparison mechanism defined per dispatch mode (`-d`, `-p`/`--base`, `remote`, and default).
 2. Dual surfacing points specified (Host CLI stdout banner + In-container SessionStart hook + `run.json`).
 3. Strict enforcement of the "warn, never refuse" invariant.
