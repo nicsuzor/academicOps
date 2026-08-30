@@ -132,8 +132,8 @@ claude --agent jim    → dispatches by bash into agy
 ### F. MCP wiring
 
 12. **PKB for the orchestrators** — declare `mcpServers: [services,
-    plugin:pkb:services]` (the shape `pauli` uses). Open question: `services` is
-    configured in `plugins/pkb/manifest/mcp.template.json`; an `orchestrate` agent
+    plugin:aops-core:services]` (the shape `pauli` uses). Open question: `services` is
+    configured in `plugins/aops-core/manifest/mcp.template.json`; an `orchestrate` agent
     naming it is a cross-plugin reference. Must be _verified to resolve at
     runtime_, not assumed — and checked against "a plugin never reads another
     plugin's files".
@@ -204,7 +204,7 @@ reporting; these are my own queries).
 - **`aops_e39b6b9d`** — status `done`. It delivered
   `specs/agents/ida-supervision-migration.md` (313 lines), now in **draft PR
   #2446**, unreviewed. Its recorded design finding bears directly on our item 10:
-  ida's routing discipline is _carried in prose alone_, and the spec holds that
+  ida's routing discipline is _carried in prose alone_ (note: under canonical enforcement doctrine, prose instructions are the primary starting rung rather than a disqualifier), and the spec holds that
   **"no stage past 0 is entered while the envelope is neither declared nor
   enforced."** Our `ida` lockdown is exactly such a stage change, and there is an
   unreviewed spec that already owns the question.

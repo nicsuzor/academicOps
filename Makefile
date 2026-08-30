@@ -14,10 +14,10 @@ IMAGE ?= ghcr.io/nicsuzor/aops-crew
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
 PLUGIN_NAMES = $(shell uv run python -c "import tomllib, pathlib; d = tomllib.loads(pathlib.Path('build/marketplace.toml').read_text()); print(' '.join(p['name'] for p in d['plugins']))" 2>/dev/null)
-STALE_PLUGIN_NAMES = aops aops-cope aops-core aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts
+STALE_PLUGIN_NAMES = aops aops-cope aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts pkb
 
 help:
-	@echo "make build          - assemble dist/ for every plugin, both clients (build/build.py)"
+	@echo "make build          - assemble dist/ for every plugin, clients (Claude, agy, openclaw)"
 	@echo "make build-test     - build, then validate every dist/ plugin dir with"
 	@echo "                      'claude plugin validate' and 'agy plugin validate'"
 	@echo "make install-dev    - build, then install dist/ as the local '$(LOCAL_MARKETPLACE)' marketplace"
@@ -43,6 +43,27 @@ help:
 build:
 	@uv run python -m build.build
 
+build-claude:
+	@uv run python -m build.build --clients claude
+
+build-agy:
+	@uv run python -m build.build --clients agy
+
+build-openclaw:
+	@uv run python -m build.build --clients openclaw
+
+# The Cowork install path is a manual zip upload (desktop app -> Customize ->
+# Add plugins -> Upload a file), and a plugin installed that way launches its
+# MCP servers with a bare environment — $PKB_MCP_URL does not reach them and
+# there is no --config to supply it afterwards. build.marketplace resolves the
+# URL into the zips' .mcp.json when it is set at build time, and warns when it
+# is not. Deliberately NOT a build failure: the published zips ship without a
+# URL, so Cowork's services MCP is unusable until there is a real way to
+# configure it post-install. Only a local build with PKB_MCP_URL exported
+# produces a working zip.
+build-cowork:
+	@uv run python -m build.build --clients claude
+
 # Each client ships its own manifest schema (.claude-plugin/plugin.json vs
 # plugin.json, agent.md's frontmatter shape, hooks.json's shape) and only
 # that client's own CLI can validate against it — build.py has no
@@ -59,8 +80,13 @@ build-test: build
 				&& echo "✓ agy $$p validated" \
 				|| { echo "x agy $$p validate failed" >&2; exit 1; }; \
 		fi; \
+		if command -v claude >/dev/null 2>&1; then \
+			claude plugin validate "$(DIST)/$$p-openclaw" \
+				&& echo "✓ openclaw $$p validated" \
+				|| { echo "x openclaw $$p validate failed" >&2; exit 1; }; \
+		fi; \
 	done
-	@echo "✓ dist/ validated for every plugin, both clients"
+	@echo "✓ dist/ validated for every plugin and client target"
 
 # --- Install ---
 
@@ -145,6 +171,7 @@ lint:
 	@uv run ruff check .
 	@uv run python scripts/check_refs.py
 	@uv run basedpyright
+	@uv run pre-commit run gitleaks --all-files
 
 format:
 	@uv run ruff format .

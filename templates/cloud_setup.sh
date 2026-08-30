@@ -55,10 +55,9 @@ git config --global core.askPass /usr/local/bin/gh-token-askpass
 #    Optional explicit kick if auto-registration still doesn't trigger on boot:
 claude plugin marketplace add nicsuzor/academicOps#dist
 #claude plugin install james@academicOps
-claude plugin install pkb@academicOps
+claude plugin install aops-core@academicOps
 claude plugin install ts@academicOps
 claude plugin install tools@academicOps
-claude plugin install ida@academicOps
 claude plugin install rbg@academicOps
 
 # env vars don't resolve this early in the boot process, declare them above.

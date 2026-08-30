@@ -55,7 +55,11 @@ def render_template(template_path: Path, client: str) -> dict[str, Any]:
     template = json.loads(template_path.read_text(encoding="utf-8"))
     sections = _client_sections(template, template_path)
     base = sections.get(_BASE_KEY, {})
-    client_section = sections.get(client, {})
+    client_section = sections.get(client)
+    if client_section is None and client == "openclaw":
+        client_section = sections.get("claude", {})
+    elif client_section is None:
+        client_section = {}
     return merge_one_level(base, client_section)
 
 

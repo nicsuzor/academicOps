@@ -944,7 +944,10 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
                 is_disabled = True
             elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
                 is_disabled = True
-            elif name == "pkb" and not _policy.get("pkb", {}).get("search_the_pkb_enabled", True):
+            elif name in ("aops-core", "pkb") and not (
+                _policy.get("aops-core", {}).get("search_the_pkb_enabled")
+                or _policy.get("pkb", {}).get("search_the_pkb_enabled", False)
+            ):
                 is_disabled = True
             elif name == "orchestrate":
                 p = _policy.get("orchestrate", {})
@@ -976,7 +979,10 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
             allowed_missing.update(_wires_for("PostToolBatch"))
             allowed_missing.update(_wires_for("Stop"))
-        elif name == "pkb" and not _policy.get("pkb", {}).get("search_the_pkb_enabled", True):
+        elif name in ("aops-core", "pkb") and not (
+            _policy.get("aops-core", {}).get("search_the_pkb_enabled")
+            or _policy.get("pkb", {}).get("search_the_pkb_enabled", False)
+        ):
             allowed_missing.update(_wires_for("UserPromptSubmit"))
 
         wired = wired - allowed_missing
@@ -990,19 +996,43 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
     assert checked > 0, "no hook-bearing plugins were checked"
 
 
-def test_hook_bearing_plugins_all_present(dist_root):
-    """Guards the loop above against silently checking nothing: these are the
-    Hooks table in specs/ARCHITECTURE.md, plus the debug plugin.
+def _declared_hook_plugins() -> set[str]:
+    """Every marketplace plugin whose own manifest/hooks.template.json
+    declares at least one hook for at least one client.
 
-    Equality, so a plugin that stops shipping hooks fails here rather than
-    quietly dropping out of the coverage loop above.
+    Read from each plugin's source manifest, independently of the built
+    `dist_root` the test below checks against — a plugin renamed, added, or
+    dropped shows up here without anyone having to update a literal.
+    """
+    declared = set()
+    for name in _marketplace_names():
+        manifest = _REPO_ROOT / "plugins" / name / "manifest" / "hooks.template.json"
+        if not manifest.is_file():
+            continue
+        config = json.loads(manifest.read_text(encoding="utf-8"))
+        if any(
+            isinstance(spec, dict) and spec.get("hooks")
+            for spec in config.get("clients", {}).values()
+        ):
+            declared.add(name)
+    return declared
+
+
+def test_hook_bearing_plugins_all_present(dist_root):
+    """Guards the loop above against silently checking nothing: the built
+    tree's hook-bearing plugins must match what each plugin's own manifest
+    declares.
+
+    Equality against the declared set, not a literal, so a plugin that stops
+    shipping hooks — or whose build stops matching its own manifest — fails
+    here rather than quietly dropping out of the coverage loop above.
     """
     hook_plugins = {
         name
         for name, client, build_dir in _build_dirs(dist_root)
         if _hooks_config(client, build_dir)
     }
-    assert hook_plugins == {"aops-debug", "ida", "orchestrate", "pkb", "rbg", "ts"}
+    assert hook_plugins == _declared_hook_plugins()
 
 
 def test_rbg_wires_preinvocation_on_agy(dist_root):

@@ -678,15 +678,113 @@ def resolve_isolated_workspace(
     clone_path = clones_dir / session_id
     branch_name = branch or f"polecat/{session_id}"
 
-    config = config or {}
-    base_ref = base or branch or config.get("branch") or "HEAD"
+    origin_result = subprocess.run(
+        ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+    )
+    origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
-    # Resolve the base commit SHA from base_ref (base option, branch option, polecat.yaml branch, or HEAD)
+    config = config or {}
+    base_ref = (base or config.get("default_branch") or "HEAD").strip()
+
+    # Resolve the base commit SHA from base_ref with remote freshness verification
     base_sha = None
     last_err = ""
-    refs_to_try = [base_ref]
-    if not base_ref.startswith("origin/"):
-        refs_to_try.append(f"origin/{base_ref}")
+    refs_to_try = []
+
+    if origin_url:
+        if base_ref != "HEAD" and not base_ref.startswith("origin/"):
+            # Fetch the ref from origin into the remote-tracking namespace without moving local branches
+            fetch_res = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical_dir),
+                    "fetch",
+                    "origin",
+                    f"+refs/heads/{base_ref}:refs/remotes/origin/{base_ref}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if fetch_res.returncode != 0:
+                fetch_res = subprocess.run(
+                    ["git", "-C", str(canonical_dir), "fetch", "origin", base_ref],
+                    capture_output=True,
+                    text=True,
+                )
+            if fetch_res.returncode != 0 and base:
+                local_check = subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(canonical_dir),
+                        "rev-parse",
+                        "--verify",
+                        f"{base_ref}^{{commit}}",
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                if local_check.returncode != 0:
+                    fail(
+                        f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
+                    )
+            # Remote ref is tried FIRST to close Mode 1 (silent stale local ref)
+            refs_to_try = [f"refs/remotes/origin/{base_ref}", f"origin/{base_ref}"]
+            refs_to_try.append(base_ref)
+        elif base_ref.startswith("origin/"):
+            ref_name = base_ref.removeprefix("origin/")
+            fetch_res = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical_dir),
+                    "fetch",
+                    "origin",
+                    f"+refs/heads/{ref_name}:refs/remotes/origin/{ref_name}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if fetch_res.returncode != 0:
+                fetch_res = subprocess.run(
+                    ["git", "-C", str(canonical_dir), "fetch", "origin", ref_name],
+                    capture_output=True,
+                    text=True,
+                )
+            if fetch_res.returncode != 0:
+                fail(
+                    f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
+                )
+            refs_to_try = [f"refs/remotes/{base_ref}", base_ref]
+        elif base_ref == "HEAD":
+            upstream_res = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical_dir),
+                    "rev-parse",
+                    "--abbrev-ref",
+                    "--symbolic-full-name",
+                    "@{u}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if upstream_res.returncode == 0:
+                upstream_ref = upstream_res.stdout.strip()
+                subprocess.run(
+                    ["git", "-C", str(canonical_dir), "fetch", "origin"],
+                    capture_output=True,
+                    text=True,
+                )
+                refs_to_try = [upstream_ref, "HEAD"]
+            else:
+                refs_to_try = ["HEAD"]
+    else:
+        refs_to_try = [base_ref]
 
     for ref_to_try in refs_to_try:
         base_result = subprocess.run(
@@ -707,13 +805,6 @@ def resolve_isolated_workspace(
 
     if not base_sha:
         fail(f"failed to resolve base ref {base_ref!r} in {canonical_dir}:\n{last_err}")
-
-    origin_result = subprocess.run(
-        ["git", "-C", str(canonical_dir), "remote", "get-url", "origin"],
-        capture_output=True,
-        text=True,
-    )
-    origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
     clone_result = subprocess.run(
         [
@@ -740,6 +831,18 @@ def resolve_isolated_workspace(
         capture_output=True,
         text=True,
     )
+    if checkout_result.returncode != 0 and origin_url:
+        subprocess.run(
+            ["git", "-C", str(clone_path), "fetch", "--depth=50", "origin", base_sha],
+            capture_output=True,
+            text=True,
+        )
+        checkout_result = subprocess.run(
+            ["git", "-C", str(clone_path), "checkout", "-B", branch_name, base_sha],
+            capture_output=True,
+            text=True,
+        )
+
     if checkout_result.returncode != 0:
         shutil.rmtree(clone_path, ignore_errors=True)
         fail(
@@ -842,12 +945,12 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
 
     settings = {}
     if mcp_url:
-        # `pkb_mcp_url` is declared by the pkb plugin's userConfig, so the value
+        # `pkb_mcp_url` is declared by the aops-core plugin's userConfig, so the value
         # must be staged under that plugin's key. Under any other key the option
         # is silently ignored and the container's PKB MCP server starts with no
         # URL. The key is `<plugin name>@<marketplace name>`, and both halves
         # come from build/marketplace.toml — see build/marketplace.py.
-        settings["pluginConfigs"] = {"pkb@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
+        settings["pluginConfigs"] = {"aops-core@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
     worker_model = os.environ.get("POLECAT_WORKER_MODEL")
     if worker_model:
         settings["model"] = worker_model
@@ -1367,6 +1470,12 @@ def _build_docker_argv(
     # was configured but unreadable, before any container started).
     if rules_dir:
         cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
+
+    cgroup_parent = config.get("docker", {}).get("cgroup_parent")
+    if not cgroup_parent and Path("/sys/fs/cgroup/polecats.slice").exists():
+        cgroup_parent = "polecats.slice"
+    if cgroup_parent:
+        cmd.extend(["--cgroup-parent", cgroup_parent])
 
     # The host docker socket is a container escape. Mount it only where the
     # container legitimately spawns siblings, and document why.

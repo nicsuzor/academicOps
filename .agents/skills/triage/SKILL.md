@@ -21,7 +21,7 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 
 ## Dispatch Model
 
-Every mode dispatches to `pauli`: the premise test these reviews turn on, and the graph mutation `sweep` performs, are both hers (`plugins/pkb/agents/pauli.md`).
+Every mode dispatches to `pauli`: the premise test these reviews turn on, and the graph mutation `sweep` performs, are both hers (`plugins/aops-core/agents/pauli.md`).
 
 ---
 

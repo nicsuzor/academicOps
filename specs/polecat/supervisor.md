@@ -161,8 +161,8 @@ extensions (`partial` is part of that canonical set).
 
 - [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- `plugins/pkb/skills/pull/SKILL.md` — The operative skill: claiming a unit,
+- `plugins/aops-core/skills/pull/SKILL.md` — The operative skill: claiming a unit,
   working it, and carrying it to a terminal state.
-- `plugins/ida/agents/pc.md` — The launcher that puts a worker in front of a unit.
+- `plugins/orchestrate/agents/pc.md` — The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which
   of an epic's children go next.

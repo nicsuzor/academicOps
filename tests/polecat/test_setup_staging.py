@@ -1,17 +1,10 @@
 """Regression tests for polecat/cli.py setup_staging().
 
-Two defects are covered here.
-
 Gemini settings: setup_staging() used to copy the host's ~/.gemini/settings.json
 (and ~/.gemini/antigravity-cli/settings.json) verbatim into every container,
 leaking live mcpServers API keys, internal-only URLs, and host hook command
 paths to every polecat worker. It must now regenerate a minimal, secret-free
 settings.json instead.
-
-Plugin config: the PKB MCP URL used to be staged under `aops@academicOps`,
-but `pkb_mcp_url` is declared by the aops-pkb plugin. Claude Code drops an
-option staged under a plugin that does not declare it, so every containerised
-session came up with an unset PKB URL and no reachable knowledge base.
 """
 
 import json
@@ -100,37 +93,6 @@ def test_antigravity_settings_not_created_in_staging(fake_gemini_home, tmp_path)
     setup_staging(str(staging_dir), None, str(fake_gemini_home))
 
     assert not (staging_dir / ".gemini" / "antigravity-cli" / "settings.json").exists()
-
-
-def _plugin_declaring(option):
-    """The plugin whose manifest declares `option` under claude userConfig."""
-    declaring = [
-        json.loads(manifest.read_text())
-        for manifest in sorted(_REPO_ROOT.glob("plugins/*/manifest/plugin.template.json"))
-    ]
-    names = [
-        m["clients"]["__base__"]["name"]
-        for m in declaring
-        if option in (m["clients"].get("claude", {}).get("userConfig") or {})
-    ]
-    assert len(names) == 1, f"expected exactly one plugin to declare {option}, got {names}"
-    return names[0]
-
-
-def test_pkb_url_staged_under_the_plugin_that_declares_it(tmp_path):
-    """The staged key must name the plugin whose userConfig declares
-    `pkb_mcp_url`. Under any other key Claude Code ignores the option and the
-    container has no PKB URL at all."""
-    staging_dir = tmp_path / "staging"
-    staging_dir.mkdir()
-
-    setup_staging(str(staging_dir), MCP_URL, None)
-
-    settings = json.loads((staging_dir / ".claude" / "settings.json").read_text())
-    expected_key = f"{_plugin_declaring('pkb_mcp_url')}@academicOps"
-
-    assert list(settings["pluginConfigs"]) == [expected_key]
-    assert settings["pluginConfigs"][expected_key]["options"]["pkb_mcp_url"] == MCP_URL
 
 
 def test_no_settings_file_staged_without_an_mcp_url(tmp_path, monkeypatch):

@@ -420,6 +420,29 @@ def _get_cached_transcript_path(
     return resolved
 
 
+def _find_tool_use_id(transcript_path: str, tool_name: str, tool_input: dict) -> str | None:
+    if not transcript_path:
+        return None
+    try:
+        if not __import__("os").path.exists(transcript_path):
+            return None
+        lines = open(transcript_path).read().splitlines()
+        for line in reversed(lines):
+            if not line.strip():
+                continue
+            try:
+                entry = __import__("json").loads(line)
+            except Exception:
+                continue
+            if entry.get("type") == "assistant":
+                for block in entry.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use" and block.get("name") == tool_name:
+                        return block.get("id")
+    except Exception as e:
+        log.debug("Failed to find tool_use_id: %s", e)
+    return None
+
+
 def _is_human_message(entry: dict) -> bool:
     """True for user-initiated messages (not tool results)."""
     if entry.get("type") != "user":
@@ -1315,6 +1338,7 @@ def _complete_turn(
             {
                 "trace_id_hex": trace_id,
                 "span_id_hex": root_span_id,
+                "parent_span_id_hex": current_trace.get("parent_span_id"),
                 "name": "claude-code-turn",
                 "kind": SpanKind.INTERNAL,
                 "start_ns": turn_start_ns,
@@ -1489,9 +1513,41 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     state["turn_number"] = turn_number
     state["human_msg_count"] = current_human_count
 
+    parent_trace_id = None
+    parent_span_id = None
+    phoenix_session_id = state.get("phoenix_session_id")
+    if phoenix_session_id and phoenix_session_id != session_id:
+        try:
+            pstate = _load_state(phoenix_session_id)
+            if pstate and pstate.get("current_trace"):
+                parent_trace_id = pstate["current_trace"]["trace_id"]
+
+            import hashlib
+
+            project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+            if project_dir:
+                sanitized = project_dir.replace("/", "-")
+                sidecar = (
+                    Path.home()
+                    / ".claude"
+                    / "projects"
+                    / sanitized
+                    / phoenix_session_id
+                    / "subagents"
+                    / f"agent-{session_id}.meta.json"
+                )
+                if sidecar.exists():
+                    sdata = __import__("json").loads(sidecar.read_text())
+                    tuid = sdata.get("toolUseId")
+                    if tuid:
+                        parent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+        except Exception as e:
+            log.debug("Failed to parent subagent: %s", e)
+
     state["current_trace"] = {
-        "trace_id": _new_trace_id(),
+        "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
         "root_span_id": _new_span_id(),
+        "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "human_count_at_start": current_human_count,
@@ -1601,9 +1657,15 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     current_trace = state.get("current_trace")
     if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
+        transcript_path = state.get("transcript_path")
+        if transcript_path:
+            tuid = _find_tool_use_id(transcript_path, tool_name, tool_input)
+            if tuid:
+                import hashlib
+
+                agent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+
         pending_entry["pre_allocated_span_id"] = agent_span_id
-        # Key by span_id so parallel Agent/Task calls in the same session don't
-        # overwrite each other — post_tool finds the right entry by tool_input match.
         pending_key = f"{tool_name}#{agent_span_id}"
     else:
         pending_key = tool_name

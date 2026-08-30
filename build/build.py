@@ -21,12 +21,14 @@ from typing import Any
 
 from build.clients import agy as agy_client
 from build.clients import claude as claude_client
+from build.clients import openclaw as openclaw_client
 from build.context import BuildContext, Plugin
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template, template_stem
 from build.marketplace import (
     generate_cowork_dist,
     generate_local_marketplace,
+    generate_openclaw_dist,
     generate_production_marketplace,
     load_marketplace_toml,
 )
@@ -42,6 +44,7 @@ from build.version import get_current_version
 CLIENT_ADAPTERS = {
     "claude": claude_client.adapt,
     "agy": agy_client.adapt,
+    "openclaw": openclaw_client.adapt,
 }
 
 _STAGE_EXCLUDE_TOP = frozenset({"manifest"})  # manifest/ is rendered per client, never shipped raw
@@ -208,10 +211,11 @@ def build_all(
     finally:
         shutil.rmtree(stage_root, ignore_errors=True)
 
-    if "claude" in clients:
+    if "claude" in clients or "openclaw" in clients:
         generate_local_marketplace(decl, resolved_version, dist_root)
         generate_production_marketplace(decl, resolved_version, dist_root)
         generate_cowork_dist(decl, resolved_version, dist_root)
+        generate_openclaw_dist(decl, resolved_version, dist_root)
 
     return built
 
@@ -222,7 +226,10 @@ def main() -> None:
         "--plugins", nargs="+", default=None, help="Build only these plugin directories"
     )
     parser.add_argument(
-        "--clients", nargs="+", default=["claude", "agy"], choices=["claude", "agy"]
+        "--clients",
+        nargs="+",
+        default=["claude", "agy", "openclaw"],
+        choices=["claude", "agy", "openclaw"],
     )
     parser.add_argument("--version", action="store_true", help="Print the current version and exit")
     parser.add_argument(

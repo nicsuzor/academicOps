@@ -59,7 +59,7 @@ on:
   workflow_dispatch:
 ```
 
-The workflow checks out both repos: the brain repo (data) and academicOps (code). The extraction and consolidation procedure is defined once, in `plugins/pkb/skills/remember/references/consolidation.md`.
+The workflow checks out both repos: the brain repo (data) and academicOps (code). The extraction and consolidation procedure is defined once, in `plugins/aops-core/skills/remember/references/consolidation.md`.
 
 Manual invocation: `gh workflow run sleep-cycle` or `/remember` consolidation mode.
 

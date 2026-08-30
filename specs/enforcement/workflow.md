@@ -8,7 +8,7 @@ tags: [enforcement, framework-architecture, verification, workflow]
 
 # Enforcement — The Workflow (Layer 3)
 
-> **Numbering note.** `Layer 3` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, [task-contract.md](task-contract.md), this file, [sign-off.md](sign-off.md)) — a different axis from any pipeline/pyramid numbering that may appear elsewhere.
+> **Numbering note.** `Layer 3` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, [task-contract.md](task-contract.md), this file, [sign-off.md](sign-off.md)). It is distinct from the permission-frontmatter layers in [agent-authority.md](../agents/agent-authority.md) and the retired repo-level L0–L7 numbering (which [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) replaced with a named mechanism index).
 
 ## aops — Workflow
 
@@ -86,8 +86,8 @@ filled in (see [Substance over form](evidence-contract.md#substance-over-form)).
 happen in this order.
 
 1. **Certification — the dispatcher's, at unit completion.** It commissions the
-   review machinery the graph already carries (the review nodes `brief`
-   emitted, executed through the review skills), reads the verdict, and writes
+   review machinery (the review obligations `brief`
+   records on the task, executed through the review skills), reads the verdict, and writes
    that verdict onto the task record. What it certifies is mechanics, quality,
    and compliance with the brief. The dispatcher never supplies that judgment
    itself and never relays a worker's own claim of success in its place.
