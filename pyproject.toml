@@ -239,7 +239,7 @@ exclude = [
   "plugins/*/agents/", # Exclude non-code agent configs
   "plugins/*/commands/", # Exclude command specs
   "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
-  "plugins/aops-core/workflows/", # Exclude process-template markdown
+  "plugins/aops/workflows/", # Exclude process-template markdown
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports

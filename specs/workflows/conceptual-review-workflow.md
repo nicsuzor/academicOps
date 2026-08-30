@@ -21,7 +21,7 @@ related:
 The conceptual review pattern is implemented through the following framework components:
 
 - **Upstream/Downstream**:
-  - [[plugins/aops-core/agents/pauli.md]] -- upstream; strategic planning under uncertainty.
+  - [[plugins/aops/agents/pauli.md]] -- upstream; strategic planning under uncertainty.
   - [[specs/workflows/research-decomposition.md]] -- downstream; domain-specific application of the review pattern.
 
 # The User
@@ -210,4 +210,4 @@ Practising what we preach:
 - [[non-interactive-c1dda99b]] -- agent lifecycle and Phase 1 decomposition protocol
 - [[polecat-swarms]] -- execution layer; consumes reviewed artifacts
 - [[research-decomposition]] -- downstream domain application (research project planning instantiates this workflow)
-- [[plugins/aops-core/skills/brief/SKILL.md]] -- general sizing and process composition; specifies the review obligations this workflow's lenses run against
+- [[plugins/aops/skills/brief/SKILL.md]] -- general sizing and process composition; specifies the review obligations this workflow's lenses run against

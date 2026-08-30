@@ -12,8 +12,8 @@ related: [[work-management]], [[feedback-loops]]
 
 Design intent for the stages a piece of work passes through, and for why the
 boundaries between them sit where they do. The stages themselves are operative
-instructions and live in `plugins/aops-core/skills/` — with the one lens that is not a
-stage, `strategize`, in `plugins/aops-core/skills/`. Nothing here restates them.
+instructions and live in `plugins/aops/skills/` — with the one lens that is not a
+stage, `strategize`, in `plugins/aops/skills/`. Nothing here restates them.
 
 ## The map
 
@@ -123,7 +123,7 @@ from the three template layers only ever served the unit about to be worked, so
 it belongs in `brief` rather than in a skill of its own. Routing — which
 template a class of work follows — is a different job serving a much wider set
 of asks, most of which never reach dispatch, so its tree stays in
-[`plugins/aops-core/workflows/INDEX.md`](../../plugins/aops-core/workflows/INDEX.md) where
+[`plugins/aops/workflows/INDEX.md`](../../plugins/aops/workflows/INDEX.md) where
 any agent reads it directly.
 
 **The return channel writes facts and re-plans nothing.** `reconcile` has

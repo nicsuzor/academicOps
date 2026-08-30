@@ -495,8 +495,8 @@ check the enforcer agent -- make sure it doesn't use inline python:
 
 ### Relevant Context
 
-- Enforcer agent: `$AOPS/aops-core/agents/enforcer.md`
-- Session state library: `$AOPS/aops-core/lib/session_state.py`
+- Enforcer agent: `$AOPS/aops/agents/enforcer.md`
+- Session state library: `$AOPS/aops/lib/session_state.py`
 - Framework rule: Tools should use packaged scripts, not inline code (maintainability, testability)
 
 ### Execution Plan
@@ -573,8 +573,8 @@ figure out why the memory server isn't returning results
 
 ### Relevant Context
 
-- Memory server MCP: `mcp__plugin_aops-core_memory__*`
-- Database health check available: `mcp__plugin_aops-core_memory__check_database_health`
+- Memory server MCP: `mcp__plugin_aops_memory__*`
+- Database health check available: `mcp__plugin_aops_memory__check_database_health`
 
 ### Execution Plan
 

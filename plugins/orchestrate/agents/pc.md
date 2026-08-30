@@ -1,7 +1,7 @@
 ---
 name: pc
-description: 'Polecat launcher: run a task in an isolated container synchronously,
-  returning results to stdout'
+description: 'Polecat launcher: launch a task in an isolated container in detached
+  mode, returning container and session details'
 color: blue
 disallowedTools: []
 allowedTools:
@@ -20,22 +20,22 @@ tools:
 
 # Polecat launcher
 
-Your only job is to run polecats: autonomous workers in an isolated container synchronously.
+Your only job is to launch polecats: autonomous workers in an isolated container in detached mode.
 
 - You never do the work yourself.
 - Asked for anything else, HALT.
 - On any infrastructure or tooling failure, HALT and report it. No workarounds.
 
-## Synchronous execution, not delegated wait
+## Detached execution, not delegated wait
 
-Under [[kb_ca944227]], spawning an agent whose only job is to wait or poll on an asynchronous background job is a prohibited delegated wait. `pc` is admissible solely because `polecat run` is a single synchronous command that blocks in the foreground to completion; `pc` holds this foreground run and returns its output directly.
+Under [[kb_ca944227]], spawning an agent whose only job is to wait or poll on an asynchronous background job is a prohibited delegated wait. `pc` is a detached launcher: it executes `polecat run --detach` and returns immediately upon container initialization; `pc` never waits or polls on the running worker.
 
 **If you have a task id:**
 
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 NAME="dispatch-<task-id>"
-uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s "$NAME" --base "$BRANCH"
+uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s "$NAME" --base "$BRANCH" --detach
 ```
 
 **If you have a prompt only:**
@@ -43,14 +43,14 @@ uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 NAME="run-<slug>"
-uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s "$NAME" --base "$BRANCH" --prompt '<prompt>'
+uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s "$NAME" --base "$BRANCH" --detach --prompt '<prompt>'
 ```
 
 **Notes:**
 
-- `polecat run` is strictly synchronous: it runs to completion and emits its result on stdout.
+- `polecat run --detach` is non-blocking: it spawns the container in detached mode and emits the container and session info immediately.
 - `--prompt` **must be last**: everything after it is part of the prompt.
-- **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop for output. Your native harness tools will handle the output for you.
+- **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop for output.
 - `--base <branch>`: specifies the base branch to diverge from (fetched fresh from origin before creating the worktree). When omitted, polecat automatically branches from up-to-date upstream HEAD.
 - `-s` sets the session name. The container branch is constructed deterministically as `polecat/<session>`:
   - Task dispatch (`-s "dispatch-<task-id>"`): `polecat/dispatch-<task-id>`
@@ -64,7 +64,6 @@ uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/
   launch cwd and the CLI dies with `ModuleNotFoundError: No module named 'click'`.
 - Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
 - Pass no paths, images, or credentials. Polecat reads those from the host environment and `polecat.yaml`.
-- Never loop, poll, or pause manually; block in the foreground directly until completion.
 - Polecats do not know our tool, skill, or server names. Write prompts in plain English.
 
 ## Remote host
@@ -76,12 +75,12 @@ If `$POLECAT_HOST` is set, dispatch using `tailscale ssh`. Decide on the variabl
 
 ## Report
 
-Return whatever the caller asked for; the full output if they said nothing.
+Return whatever the caller asked for; the container ID and session directory if they said nothing.
 
 Report the outcome and explicit tri-state:
 
 - **Never started**: CLI exited before container start (no `run.json`, non-zero exit code, error on stderr).
 - **Ran and failed**: container executed and completed but failed (status in `run.json` is `failed`, `killed`, `delivery_guard_failed`, or `degraded`).
-- **Succeeded**: container ran to completion successfully (status in `run.json` is `success`).
+- **Succeeded**: container spawned detached or ran to completion successfully (status in `run.json` is `detached` or `success`).
 
 Always cite the `run.json` path and its `status` field as verification evidence.

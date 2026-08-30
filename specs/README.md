@@ -11,6 +11,7 @@
 
 - [agents/agent-authority.md](agents/agent-authority.md) — permissions schema, tool naming, skill/sub-agent delegation.
 - [agents/supervision-split.md](agents/supervision-split.md) — where rex's supervision doctrine and execution material live, and why.
+- [agents/ida-supervision-migration.md](agents/ida-supervision-migration.md) — which supervision capabilities move to ida, the checkpoints that gate each increment of autonomy, and what never moves.
 
 ## Enforcement
 

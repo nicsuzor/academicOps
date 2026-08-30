@@ -80,7 +80,7 @@ In the short-form branch, the agent uses `update_task` to write the latest delta
 
 If `release_task` is called without a bound task ID (or for a task that doesn't exist), it must:
 
-1. Create a minimal task file in the `adhoc-sessions/` directory (requires `aops-core/skills/remember/references/TAXONOMY.md` update).
+1. Create a minimal task file in the `adhoc-sessions/` directory (requires `aops/skills/remember/references/TAXONOMY.md` update).
 2. Parent it to the root `adhoc-sessions` node.
 3. Apply the provided fields and summary.
 
@@ -123,15 +123,15 @@ An earlier design routed session data through a `synthesis.json` file in the bra
 
 ## 7. Giving Effect
 
-| Component                  | Implementation File              | Status |
-| -------------------------- | -------------------------------- | ------ |
-| `mem` YAML Schema          | `pkb/schemas/task.py`            | 📋     |
-| `release_task` logic       | `pkb/tools/task_tools.py`        | 📋     |
-| `dump` (end_session) skill | `aops-core/skills/dump/SKILL.md` | 📋     |
-| `/recap` definition        | `aops-core/commands/recap.toml`  | 📋     |
+| Component                  | Implementation File         | Status |
+| -------------------------- | --------------------------- | ------ |
+| `mem` YAML Schema          | `pkb/schemas/task.py`       | 📋     |
+| `release_task` logic       | `pkb/tools/task_tools.py`   | 📋     |
+| `dump` (end_session) skill | `aops/skills/dump/SKILL.md` | 📋     |
+| `/recap` definition        | `aops/commands/recap.toml`  | 📋     |
 
 ## 8. Backwards Compatibility
 
 - **No shims**: Existing `## Framework Reflection` blocks are not migrated.
 - **Deprecation**: Agents should be prompted to stop using the old format immediately upon implementation of this spec.
-- **Breaking**: Parsers relying on regex-extraction from `## Framework Reflection` will be retired once the dashboard is fully functional. This includes `aops-core/lib/reflection_detector.py`, which should be explicitly deprecated at implementation time.
+- **Breaking**: Parsers relying on regex-extraction from `## Framework Reflection` will be retired once the dashboard is fully functional. This includes `aops/lib/reflection_detector.py`, which should be explicitly deprecated at implementation time.

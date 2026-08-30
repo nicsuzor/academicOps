@@ -69,7 +69,7 @@ project_root/
 └── output/ or _book/           # Build artifacts ONLY (gitignored, expendable)
 ```
 
-### Data Directory Separation (CRITICAL)
+### Data Directory Separation & Single Canonical Cache (CRITICAL)
 
 **`data/` and build output directories (`output/`, `_book/`, `_site/`, `dist/`) are fundamentally different and MUST NOT overlap.**
 
@@ -84,6 +84,8 @@ project_root/
 2. **NEVER configure a build tool's output directory to point at `data/`.** If a tool's `output-dir` overlaps with where data lives, the tool will destroy the data on its next clean/render cycle.
 3. **`data/` files are gitignored cache** — they are expendable and re-extractable from upstream sources, but losing them costs time. Keep them separate from build artifacts to avoid accidental deletion.
 4. **When in doubt, check the build tool's config** (`_quarto.yml`, `dbt_project.yml`, `package.json`) to confirm its output directory before placing any files.
+5. **Single canonical cache location (NO duplicate cache files)**: Local analytical databases (e.g. DuckDB files) must reside at exactly ONE documented canonical path. NEVER allow duplicate databases to exist across subdirectories (e.g. `data/local_cache.duckdb` and `dbt/data/local_cache.duckdb`).
+6. **Absolute canonical path addressing**: Code and scripts must address analytical stores via absolute paths resolved against project root, NEVER via bare cwd-relative strings.
 
 ## Documentation Hierarchy
 

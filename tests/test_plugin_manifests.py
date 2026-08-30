@@ -203,22 +203,22 @@ def test_ida_ships_the_quiet_gate_on_claude_only():
     canonical ``Stop`` in the first place (only to the commented-out
     ``PostToolBatch`` key), so nothing on agy was ever live.
 
-    ida is an agent hosted inside the aops-core plugin (plugins/aops-core/agents/ida.md),
-    so its gate ships from ``aops-core-claude``, not a standalone ``ida`` plugin."""
-    events = _claude_hook_events("aops-core-claude")
+    ida is an agent hosted inside the aops plugin (plugins/aops/agents/ida.md),
+    so its gate ships from ``aops-claude``, not a standalone ``ida`` plugin."""
+    events = _claude_hook_events("aops-claude")
     assert "PostToolBatch" in events
     assert "SubagentStop" not in events
-    assert not (DIST_ROOT / "aops-core-agy" / "hooks.json").exists()
+    assert not (DIST_ROOT / "aops-agy" / "hooks.json").exists()
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_ida_ships_no_posttooluse_hook():
-    """``plugins/aops-core/hooks/handlers.py`` registers ``PostToolBatch`` for ida's
+    """``plugins/aops/hooks/handlers.py`` registers ``PostToolBatch`` for ida's
     ``be_quiet`` and nothing else, so a ``PostToolUse`` entry here would spawn
     a hook process on every tool call for a handler that does not exist. The
     hearsay reminder ida used to carry on that event now ships from
     ``orchestrate``, beside the dispatch machinery it binds."""
-    assert "PostToolUse" not in _claude_hook_events("aops-core-claude")
+    assert "PostToolUse" not in _claude_hook_events("aops-claude")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
@@ -248,9 +248,9 @@ def test_orchestrate_ships_the_handback_reminders():
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_aops_core_ships_no_stop_gate():
-    """aops-core's own stop gate is blocked on a server-side prerequisite, not merely
+    """aops's own stop gate is blocked on a server-side prerequisite, not merely
     unbuilt. This pins that it stays unwired rather than being swept in.
 
-    ``PostToolBatch`` is not aops-core's own gate — it is ida's quiet gate,
-    hosted here because ida is an agent inside aops-core (test_ida_ships_the_quiet_gate_on_claude_only)."""
-    assert _claude_hook_events("aops-core-claude") == {"PostToolBatch"}
+    ``PostToolBatch`` is not aops's own gate — it is ida's quiet gate,
+    hosted here because ida is an agent inside aops (test_ida_ships_the_quiet_gate_on_claude_only)."""
+    assert _claude_hook_events("aops-claude") == {"PostToolBatch"}

@@ -1,0 +1,54 @@
+---
+id: email-capture
+type: template
+kind: process
+category: email
+description: Extract action items from emails into "ready for action" tasks with summaries, downloaded documents, and clear response requirements
+requires: [task-tracking]
+pairs-with: [wf-handover]
+conflicts: []
+recommends: [email-triage]
+version: 2.1.0
+permalink: workflows-process-email-capture
+status: retired
+superseded_by: aops_f74b7e6c
+tags: [retired]
+---
+
+> [!IMPORTANT]
+> **RETIRED**: archived off as part of the v0.9 null workflow-template set reset ([[aops_f74b7e6c]]). Do not compose.
+
+# Process: Email → Task Capture
+
+**When to invoke**: "check my email for tasks", "process emails", "any new
+tasks from email?" Heavier than [[email-triage]] — produces a fully-loaded,
+ready-to-work task rather than just a classification.
+
+## Steps
+
+1. **Check existing tasks first** — prevent duplicates for emails already
+   processed.
+2. **Fetch and check responses** — recent emails; skip any already replied to.
+3. **Analyze and classify** — Actionable / Important FYI / Safe to ignore.
+4. **Context and categorization** — query PKB for project match and confidence.
+5. **Create "ready for action" tasks** — summary, downloaded resources, and a
+   clear response requirement, not just a title. Compose [[task-tracking]];
+   every task MUST have a `parent` (epic or project).
+6. **Present** — show Important FYI content and created tasks to the user.
+
+## Immediate PKB task update on discovery
+
+On discovering new information in an email — arrival of a new commitment, resolution of an existing item (approval granted, invitation declined, request cancelled), or a changed constraint (deadline moved, assignee changed):
+
+1. **Update the target task node immediately**, whatever else the run is doing. Update `status`, `due`, `assignee`, or body on the task node that gates the work.
+2. **Create a task node if none exists** for the commitment or obligation (`pkb__create_task` with a parent). Prose in a daily note or summary document is not a record.
+3. **Do not defer the write** to a wrap-up step, summary, or handback.
+
+## Critical Guardrails
+
+- Always check for existing tasks before creating one.
+- Update existing gating task nodes or create missing task nodes on discovery; never defer to wrap-up.
+- Prose in a document is not a record — every commitment or resolution must reach its task node in the PKB.
+- Verify the email connector by calling it, not by checking config.
+- High-confidence auto-categorizes; low-confidence flags for review.
+- Fail-fast: halt immediately if the email connector is unavailable.

@@ -1,0 +1,20 @@
+{
+  "manifestVersion": "1.0",
+  "name": "aops",
+  "clients": {
+    "claude": {
+      "hooks": {
+        "PostToolBatch": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolBatch"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

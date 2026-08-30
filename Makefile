@@ -190,6 +190,9 @@ docker: docker-build
 #   make docker-build AGY_VERSION=1.1.11
 docker-build: build
 	@docker build --build-arg AOPS_DIST_SOURCE=local \
+		--build-arg AOPS_BUILD_COMMIT="$$(git rev-parse HEAD 2>/dev/null)" \
+		--build-arg AOPS_BUILD_DIRTY="$$(if [ -n "$$(git status --porcelain 2>/dev/null)" ]; then echo 1; else echo 0; fi)" \
+		--build-arg AOPS_VERSION="$$(uv run python -m build.version --get 2>/dev/null || echo 0.1.0)" \
 		$(if $(AGY_VERSION),--build-arg AGY_VERSION=$(AGY_VERSION)) \
 		$(if $(CLAUDE_CODE_VERSION),--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION)) \
 		-t $(IMAGE) -t $(notdir $(IMAGE)):latest .

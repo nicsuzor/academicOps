@@ -607,11 +607,14 @@ abstract: |
 #| label: setup
 #| include: false
 
+from pathlib import Path
 import duckdb
 import pandas as pd
 
-# Connect to project DuckDB
-con = duckdb.connect("../data/processed/<project_name>.duckdb", read_only=True)
+# Connect to project DuckDB via absolute canonical path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DB_PATH = PROJECT_ROOT / "data" / "processed" / "<project_name>.duckdb"
+con = duckdb.connect(str(DB_PATH), read_only=True)
 ```
 
 Only include `_setup.qmd` if dbt/DuckDB is also selected.

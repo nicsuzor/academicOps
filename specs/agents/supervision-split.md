@@ -23,7 +23,7 @@ user. This spec records where each half of that charter now lives, and why.
 | The standard held while scoring someone else's run — do none of the work yourself, a halt is a result, a blocked route is work, never trade away an ambition, no binary done | `.agents/skills/dogfood/SKILL.md` § "Supervising a trial" | It is judgment about evidence, which is what the dogfood protocol governs. As a skill it is invocable by any identity, which is the point. |
 | Driving a run — surface choice, background spawning, dispatch preconditions, and the tracking record carrying acceptance criteria                                            | `.agents/skills/debug/SKILL.md`                           | Project-local, like the material itself.                                                                                                   |
 | Identity, the user-facing proxy role, and the two required workflows                                                                                                         | `.agents/agents/rex.md`                                   | Uniquely rex. Everything else is now a pointer.                                                                                            |
-| The standard, referenced so `ida` holds it                                                                                                                                   | `plugins/aops-core/agents/ida.md` § "Dogfood duty"        | A pointer only. `ida` is shipped, so it names the skill rather than a project-local path.                                                  |
+| The standard, referenced so `ida` holds it                                                                                                                                   | `plugins/aops/agents/ida.md` § "Dogfood duty"             | A pointer only. `ida` is shipped, so it names the skill rather than a project-local path.                                                  |
 
 ## Why the execution material lives in `debug` and not on the shipped launcher
 
@@ -104,6 +104,6 @@ PKB writes and spawning named agents. `ida.md` reserves both: james is ida's onl
 subagent, surface selection is james's, and ida is not a writer to the PKB. The
 authoritative wired map corroborates this at the architecture level. So ida now
 _holds_ the supervision standard and _delegates_ the run; it does not select a
-surface or open a tracking record itself. Whether any further capability should
-move to ida, and what trust checkpoints would gate it, belongs to task
-`aops_e39b6b9d`, which owns that design.
+surface or open a tracking record itself. Which further capabilities should move
+to ida, and what trust checkpoints gate each, is designed in
+[Migrating Supervision Capability into Ida](ida-supervision-migration.md).
