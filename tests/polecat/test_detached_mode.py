@@ -94,7 +94,17 @@ def test_detach_execution_spawns_docker_with_d_flag(tmp_path, monkeypatch):
     runner = CliRunner()
     res = runner.invoke(
         cli.main,
-        ["run", "agy", "-d", str(tmp_path / "repo"), "-s", "session-detach1", "-t", "aops_test", "--detach"],
+        [
+            "run",
+            "agy",
+            "-d",
+            str(tmp_path / "repo"),
+            "-s",
+            "session-detach1",
+            "-t",
+            "aops_test",
+            "--detach",
+        ],
     )
     assert res.exit_code == 0, res.output
 
