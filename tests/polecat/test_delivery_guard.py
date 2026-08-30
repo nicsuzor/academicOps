@@ -112,6 +112,7 @@ def test_run_fails_loudly_on_uncommitted_changes(tmp_path, monkeypatch):
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
+    monkeypatch.setenv("PKB_MCP_URL", "http://test-pkb.invalid:8026/mcp")
     monkeypatch.setattr("lib.polecat.cli._image_available_locally", lambda image: True)
     monkeypatch.setattr(
         "lib.polecat.cli.load_config",
