@@ -20,7 +20,7 @@ from build.build import build_all
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REAL_MARKETPLACE = PROJECT_ROOT / "build" / "marketplace.toml"
-WORKFLOW = PROJECT_ROOT / "plugins" / "aops-core" / "workflows" / "email-triage.md"
+WORKFLOW = PROJECT_ROOT / "plugins" / "aops-core" / "workflows" / "archive" / "email-triage.md"
 
 # A shipped instruction reaches every user, so it carries no person, organisation,
 # address, timezone, or local path. See specs/meta/doc-taxonomy.md.
@@ -86,6 +86,6 @@ def test_the_template_reaches_the_client_artifact(client, tmp_path):
         version="0.0.0-test",
     )
 
-    built = dist_root / f"aops-core-{client}" / "workflows" / "email-triage.md"
+    built = dist_root / f"aops-core-{client}" / "workflows" / "archive" / "email-triage.md"
     assert built.is_file(), f"the template did not ship to {client}: {built}"
     assert _frontmatter(built).get("id") == "email-triage"

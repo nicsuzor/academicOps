@@ -8,6 +8,11 @@ permalink: workflows-index
 
 # Workflow Template Library
 
+> [!IMPORTANT]
+> **v0.9.1 Null Template Set**: All legacy composed-workflow templates have been archived to `archive/` ([[aops_f74b7e6c]]). The universal template set is currently null, awaiting replacement templates to be authored against the unified `/q` → `/decompose` → `/weave` → `/extrapolate` → `/reify` pipeline ([[aops_8d893568]] / [[spec_efb3c4ec]]).
+>
+> Legacy templates are preserved in `plugins/aops-core/workflows/archive/` with `status: retired` for post-MVP salvage and reference.
+
 Short markdown files describing how a class of work proceeds. They are read and
 composed **in context, by comprehension** — never parsed, never solved. The
 composition procedure is [`../skills/brief/SKILL.md`](../skills/brief/SKILL.md)
@@ -24,7 +29,7 @@ Two kinds: **process templates** — how a class of work proceeds (each carrying
 `type: template`) — and the `wf-*` obligation templates in the PKB (also carrying
 `type: template`; see "Obligation templates" below). Every name in this library is
 written as it resolves: a process template by its bare identifier, an obligation by
-its `wf-` permalink.
+its `wf-` permalink. All legacy instances have been marked `status: retired`.
 
 ## Routing
 
