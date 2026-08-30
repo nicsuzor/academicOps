@@ -19,7 +19,8 @@ If you have hit an error, exhausted your resources, or have been asked to termin
 
 You are running in an isolated, _ephemeral_ environment. Any files left on your local storage will be DESTROYED.
 
-- You must commit and push your work if you can.
+- You must commit and push your work if you can (`git push`).
+- If you are opening a pull request (`gh pr create`), always target the base branch matching the cut line your worktree diverged from (e.g. `--base "${BASE_BRANCH:-${POLECAT_BASE_BRANCH}}"`); never hardcode `dev`, `main`, or `master`.
 - If you are blocked from pushing, you must find another way to save your work in a durable location.
 
 ### 2. RELEASE YOUR TASKS

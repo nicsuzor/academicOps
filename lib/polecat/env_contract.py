@@ -63,6 +63,9 @@ FORWARDED_ENV = (
     "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP",
     "POLECAT_TARGET_TASK",
     "POLECAT_TASK",
+    "POLECAT_BASE_REF",
+    "POLECAT_BASE_BRANCH",
+    "BASE_BRANCH",
 )
 
 # Credentials the container's entrypoint requires to reach GitHub and the agent

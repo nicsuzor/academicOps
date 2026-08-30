@@ -226,16 +226,19 @@ def test_isolated_workspace_respects_base_option(fake_canonical_repo, tmp_path):
     cleanup_isolated_workspace(cleanup_info)
 
 
-def test_isolated_workspace_defaults_to_config_branch(fake_canonical_repo, tmp_path):
-    """When base is None, isolated workspace must default to the branch specified in polecat.yaml config."""
+def test_isolated_workspace_always_captures_canonical_head_when_base_unspecified(
+    fake_canonical_repo, tmp_path
+):
+    """When base is None, isolated workspace must fork from the canonical repo's current HEAD,
+    never falling back to a hardcoded default_branch or remote default."""
     initial_branch = _run(
         "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
     ).strip()
+    initial_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
     _run("git", "checkout", "-b", "dev", cwd=fake_canonical_repo)
     (fake_canonical_repo / "dev.txt").write_text("dev content\n")
     _run("git", "add", "dev.txt", cwd=fake_canonical_repo)
     _run("git", "commit", "-m", "dev commit", cwd=fake_canonical_repo)
-    dev_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
     _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
 
     polecat_home = tmp_path / "polecat-home"
@@ -245,10 +248,17 @@ def test_isolated_workspace_defaults_to_config_branch(fake_canonical_repo, tmp_p
     )
 
     isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
-    assert isolated_sha == dev_sha
-    assert (isolated_path / "dev.txt").read_text() == "dev content\n"
+    # Must capture initial_branch HEAD, NOT dev
+    assert isolated_sha == initial_sha
+    assert not (isolated_path / "dev.txt").exists()
+    assert cleanup_info["base_ref"] == initial_branch
+
+    # Git config in clone must record polecat.base
+    cfg_base = _run("git", "config", "polecat.base", cwd=isolated_path).strip()
+    assert cfg_base == initial_branch
 
     cleanup_isolated_workspace(cleanup_info)
+
 
 
 def test_isolated_workspace_defaults_to_head_when_unconfigured(fake_canonical_repo, tmp_path):
@@ -745,3 +755,63 @@ def test_isolated_workspace_origin_prefix_fails_closed_on_fetch_error(tmp_path):
             polecat_home,
             base="origin/nonexistent-branch",
         )
+
+
+def test_isolated_workspace_non_default_base_branch_metadata(tmp_path):
+    """When a non-default base branch is passed (e.g. v0.9.1 or feature-branch),
+    the isolated workspace creates its worktree from that exact base, sets git config
+    polecat.base, and returns base_ref and base_sha in cleanup_info."""
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("main content\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "main initial", cwd=canonical)
+    _run("git", "branch", "-m", "main", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "main", cwd=canonical)
+
+    # Create release branch v0.9.1 on upstream
+    other_dev = tmp_path / "other-dev"
+    other_dev.mkdir()
+    _run("git", "clone", str(upstream), str(other_dev), cwd=tmp_path)
+    _run("git", "config", "user.email", "test@example.com", cwd=other_dev)
+    _run("git", "config", "user.name", "Test", cwd=other_dev)
+    _run("git", "checkout", "-b", "v0.9.1", cwd=other_dev)
+    (other_dev / "release.txt").write_text("v0.9.1 release\n")
+    _run("git", "add", "release.txt", cwd=other_dev)
+    _run("git", "commit", "-m", "cut v0.9.1", cwd=other_dev)
+    v091_sha = _run("git", "rev-parse", "HEAD", cwd=other_dev).strip()
+    _run("git", "push", "origin", "v0.9.1", cwd=other_dev)
+
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-v091-dispatch", polecat_home, base="v0.9.1"
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == v091_sha
+    assert (isolated_path / "release.txt").exists()
+    assert cleanup_info["base_ref"] == "v0.9.1"
+    assert cleanup_info["base_sha"] == v091_sha
+
+    # Verify git config inside the isolated clone
+    assert _run("git", "config", "polecat.base", cwd=isolated_path).strip() == "v0.9.1"
+    assert (
+        _run(
+            "git",
+            "config",
+            f"branch.polecat/session-v091-dispatch.base",
+            cwd=isolated_path,
+        ).strip()
+        == "v0.9.1"
+    )
+
+    cleanup_isolated_workspace(cleanup_info)
+

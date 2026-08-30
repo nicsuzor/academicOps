@@ -686,7 +686,18 @@ def resolve_isolated_workspace(
     origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
     config = config or {}
-    base_ref = (base or config.get("default_branch") or "HEAD").strip()
+    if not base:
+        sym_res = subprocess.run(
+            ["git", "-C", str(canonical_dir), "symbolic-ref", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+        )
+        if sym_res.returncode == 0 and sym_res.stdout.strip():
+            base_ref = sym_res.stdout.strip()
+        else:
+            base_ref = "HEAD"
+    else:
+        base_ref = base.strip()
 
     # Resolve the base commit SHA from base_ref with remote freshness verification
     base_sha = None
@@ -878,7 +889,18 @@ def resolve_isolated_workspace(
             "checkout — refusing to mount a shared tree."
         )
 
-    return isolated_path, {"path": clone_path}
+    subprocess.run(
+        ["git", "-C", str(clone_path), "config", "polecat.base", base_ref],
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(clone_path), "config", f"branch.{branch_name}.base", base_ref],
+        capture_output=True,
+        text=True,
+    )
+
+    return isolated_path, {"path": clone_path, "base_ref": base_ref, "base_sha": base_sha}
 
 
 def cleanup_isolated_workspace(cleanup_info):
@@ -1748,7 +1770,7 @@ def main():
     """Polecat: run an agent CLI inside an isolated container."""
 
 
-@main.command(context_settings={"ignore_unknown_options": True})
+@main.command(context_settings={"ignore_unknown_options": True})  # pyright: ignore[reportFunctionMemberAccess]
 @click.argument("agent_cmd", default="claude")
 @click.option("--project", "-p", help="Project name, resolved via local.yaml paths.")
 @click.option(
@@ -1938,6 +1960,15 @@ def run(
 
         if branch:
             env["AOPS_POLECAT_BRANCH"] = branch
+
+        if clone_cleanup and "base_ref" in clone_cleanup:
+            env["POLECAT_BASE_REF"] = clone_cleanup["base_ref"]
+            env["POLECAT_BASE_BRANCH"] = clone_cleanup["base_ref"]
+            env["BASE_BRANCH"] = clone_cleanup["base_ref"]
+        elif base:
+            env["POLECAT_BASE_REF"] = base
+            env["POLECAT_BASE_BRANCH"] = base
+            env["BASE_BRANCH"] = base
 
         if task:
             env["POLECAT_TARGET_TASK"] = task
