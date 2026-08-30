@@ -138,6 +138,29 @@ class TestRedactSecrets:
         assert "sk-ant-api03-abc123def456" not in out2
         assert REDACTED in out2
 
+    def test_quoted_secret_with_spaces_redacted(self):
+        # Spaces in quoted secrets must not split the match and leak the tail (#2405).
+        text = '"MY_API_KEY": "firsthalf secondhalf9x"'
+        out = redact_secrets(text)
+        assert "firsthalf" not in out
+        assert "secondhalf9x" not in out
+        assert out == f'"MY_API_KEY": "{REDACTED}"'
+
+    def test_escaped_quote_secret_redacted(self):
+        # Escaped quotes in text assignments must be scrubbed cleanly (#2405).
+        text = 'export MY_API_KEY=\\"firsthalf secondhalf9x\\"'
+        out = redact_secrets(text)
+        assert "firsthalf" not in out
+        assert "secondhalf9x" not in out
+        assert out == f'export MY_API_KEY=\\"{REDACTED}\\"'
+
+    def test_fullwidth_colon_redacted(self):
+        # Fullwidth colon must be recognised in JSON/YAML assignments (#2405).
+        text = 'MY_API_KEY： "opaquevalue123"'
+        out = redact_secrets(text)
+        assert "opaquevalue123" not in out
+        assert out == f'MY_API_KEY： "{REDACTED}"'
+
 
 class TestRedactObj:
     def test_recurses_values_not_keys(self):
