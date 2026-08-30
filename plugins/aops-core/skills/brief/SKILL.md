@@ -90,6 +90,9 @@ Your verification notes, composition trace (which tier each template came from a
 ## 6 — Set status and stop
 
 - Every fork settled or carrying a designed probe (§2), dependencies wired, brief on the body → **`queued`**.
+  _(If the existing task body carried an artifact rot annotation, premise falsification note,
+  or KILL triage verdict, you must explicitly clear/resolve that condition in the new brief;
+  otherwise the task must remain at `inbox` or be cancelled)._
 - A hard dependency genuinely unmet → **`blocked`**, naming what it waits on.
 - Premise dead, ask under-specified, or an unsettleable decision → leave at **`inbox`**, saying what is missing. Do not backfill by guessing.
 
