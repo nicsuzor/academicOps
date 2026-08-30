@@ -434,6 +434,30 @@ def test_resolve_project_name(monkeypatch, tmp_path):
     assert claude_code_tracer.resolve_project_name() == Path.cwd().name
 
 
+def test_resolve_project_name_with_aliases(monkeypatch, tmp_path):
+    """Verify resolve_project_name maps project aliases to canonical names."""
+    config = {
+        "projects": {
+            "aops": {"aliases": ["academicOps"]},
+        }
+    }
+    monkeypatch.setattr(claude_code_tracer, "_load_polecat_config", lambda: config)
+
+    # 1. Payload cwd resolving to alias
+    payload = {"cwd": "/home/user/code/academicOps"}
+    assert claude_code_tracer.resolve_project_name(payload) == "aops"
+
+    # 2. PHOENIX_PROJECT_NAME set to alias
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "academicOps")
+    assert claude_code_tracer.resolve_project_name() == "aops"
+    monkeypatch.delenv("PHOENIX_PROJECT_NAME")
+
+    # 3. task_id with alias prefix
+    assert (
+        claude_code_tracer.resolve_project_name(task_id="academicOps-task_123") == "aops-task_123"
+    )
+
+
 def test_build_and_export_spans_resource_attributes(monkeypatch):
     """Verify _build_and_export_spans sets project and host attributes on Resource and Spans."""
     created_resources = []

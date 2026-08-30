@@ -260,7 +260,6 @@ def test_isolated_workspace_always_captures_canonical_head_when_base_unspecified
     cleanup_isolated_workspace(cleanup_info)
 
 
-
 def test_isolated_workspace_defaults_to_head_when_unconfigured(fake_canonical_repo, tmp_path):
     """When base and config['branch'] are unset, isolated workspace defaults to HEAD."""
     head_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
@@ -814,4 +813,3 @@ def test_isolated_workspace_non_default_base_branch_metadata(tmp_path):
     )
 
     cleanup_isolated_workspace(cleanup_info)
-

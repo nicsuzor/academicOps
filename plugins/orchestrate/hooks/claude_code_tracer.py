@@ -58,9 +58,106 @@ def _load_config_file(path: Path) -> dict:
     return {}
 
 
+def _load_polecat_config() -> dict:
+    cfg_path = os.environ.get("AOPS_POLECAT_CONFIG")
+    if not cfg_path:
+        sessions = os.environ.get("AOPS_SESSIONS")
+        if sessions:
+            cfg_path = os.path.join(sessions, "polecat.yaml")
+    if cfg_path and os.path.exists(cfg_path):
+        try:
+            import yaml
+
+            with open(cfg_path) as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            log.debug("Failed to read polecat config %s: %s", cfg_path, e)
+    return {}
+
+
+def resolve_canonical_project(project: str | None, config: dict | None = None) -> str | None:
+    """Resolve a project name or alias to its canonical project slug.
+
+    Reads aliases configured in polecat.yaml:
+    - `projects.<slug>.aliases`: list of alias strings or single alias string
+    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `academicOps: aops`),
+      or canonical slug to alias list (e.g. `aops: [academicOps, academicops]`).
+
+    If `project` matches a canonical slug or an alias (checked case-insensitively if exact
+    case does not hit), returns the canonical slug.
+    Also handles `<alias>-<task_id>` prefixes by canonicalizing the prefix.
+    If no alias matches, returns `project`.
+    """
+    if not project:
+        return project
+
+    if config is None:
+        config = _load_polecat_config()
+
+    project_str = str(project).strip()
+    if not project_str:
+        return project
+
+    projects = config.get("projects", {})
+    if isinstance(projects, dict) and project_str in projects:
+        return project_str
+
+    if isinstance(projects, dict):
+        for slug, p_cfg in projects.items():
+            if isinstance(p_cfg, dict):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases == project_str:
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)) and project_str in aliases:
+                    return str(slug)
+
+        for slug, p_cfg in projects.items():
+            if str(slug).lower() == project_str.lower():
+                return str(slug)
+            if isinstance(p_cfg, dict):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases.lower() == project_str.lower():
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)):
+                    if any(str(a).lower() == project_str.lower() for a in aliases):
+                        return str(slug)
+
+    top_aliases = config.get("aliases", {})
+    if isinstance(top_aliases, dict):
+        if project_str in top_aliases and isinstance(top_aliases[project_str], str):
+            return str(top_aliases[project_str])
+
+        for target, val in top_aliases.items():
+            if isinstance(val, str):
+                if target == project_str:
+                    return str(val)
+                if val == project_str:
+                    return str(val)
+                if target.lower() == project_str.lower():
+                    return str(val)
+                if val.lower() == project_str.lower():
+                    return str(target)
+            elif isinstance(val, (list, tuple, set)):
+                if project_str in val or any(str(a).lower() == project_str.lower() for a in val):
+                    return str(target)
+
+        for k, v in top_aliases.items():
+            if k.lower() == project_str.lower() and isinstance(v, str):
+                return str(v)
+
+    if "-" in project_str:
+        prefix, rest = project_str.split("-", 1)
+        canon_prefix = resolve_canonical_project(prefix, config)
+        if canon_prefix and canon_prefix != prefix:
+            return f"{canon_prefix}-{rest}"
+
+    return project_str
+
+
 def resolve_project_name(
     data: dict | None = None,
     task_id: str = "",
+    config: dict | None = None,
 ) -> str:
     """Resolve project name from environment, config, hook payload cwd, or starting dirname.
 
@@ -70,37 +167,42 @@ def resolve_project_name(
     3. OTEL_SERVICE_NAME env var
     4. Hook payload cwd or CLAUDE_PROJECT_DIR or current working directory basename
     5. Fallback to 'default'
+
+    Any resolved project name is automatically mapped to its canonical slug if defined
+    in polecat.yaml aliases.
     """
+    raw_name = ""
     if task_id:
-        return task_id
-    env_task = os.environ.get("GENAI_ENGINE_TASK_ID", "").strip()
-    if env_task:
-        return env_task
-    env_phoenix = os.environ.get("PHOENIX_PROJECT_NAME", "").strip()
-    if env_phoenix:
-        return env_phoenix
-    env_service = os.environ.get("OTEL_SERVICE_NAME", "").strip()
-    if env_service:
-        return env_service
+        raw_name = task_id
+    elif env_task := os.environ.get("GENAI_ENGINE_TASK_ID", "").strip():
+        raw_name = env_task
+    elif env_phoenix := os.environ.get("PHOENIX_PROJECT_NAME", "").strip():
+        raw_name = env_phoenix
+    elif env_service := os.environ.get("OTEL_SERVICE_NAME", "").strip():
+        raw_name = env_service
+    else:
+        # Directory resolution
+        cwd = ""
+        if data and isinstance(data, dict):
+            cwd = str(data.get("cwd") or "")
+        if not cwd:
+            cwd = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
+        if not cwd:
+            try:
+                cwd = os.getcwd()
+            except Exception:
+                cwd = ""
 
-    # Directory resolution
-    cwd = ""
-    if data and isinstance(data, dict):
-        cwd = str(data.get("cwd") or "")
-    if not cwd:
-        cwd = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
-    if not cwd:
-        try:
-            cwd = os.getcwd()
-        except Exception:
-            cwd = ""
+        if cwd:
+            name = Path(cwd).resolve().name
+            if name and name not in ("/", "\\", "."):
+                raw_name = name
 
-    if cwd:
-        name = Path(cwd).resolve().name
-        if name and name not in ("/", "\\", "."):
-            return name
+    if not raw_name:
+        raw_name = "default"
 
-    return "default"
+    canonical = resolve_canonical_project(raw_name, config=config)
+    return canonical or raw_name
 
 
 def discover_config(data: dict | None = None) -> dict | None:

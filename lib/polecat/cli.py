@@ -101,6 +101,93 @@ def load_local_overlay(polecat_home):
     return {}
 
 
+def resolve_canonical_project(project: str | None, config: Mapping | None = None) -> str | None:
+    """Resolve a project name or alias to its canonical project slug.
+
+    Reads aliases configured in polecat.yaml:
+    - `projects.<slug>.aliases`: list of alias strings or single alias string
+    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `academicOps: aops`),
+      or canonical slug to alias list (e.g. `aops: [academicOps, academicops]`).
+
+    If `project` matches a canonical slug or an alias (checked case-insensitively if exact
+    case does not hit), returns the canonical slug.
+    Also handles `<alias>-<task_id>` prefixes by canonicalizing the prefix.
+    If no alias matches, returns `project`.
+    """
+    if not project:
+        return project
+
+    cfg = config if config is not None else load_config()
+
+    project_str = str(project).strip()
+    if not project_str:
+        return project
+
+    # 1. Direct match in `projects` (exact key match is canonical)
+    projects = cfg.get("projects", {}) if cfg else {}
+    if isinstance(projects, Mapping) and project_str in projects:
+        return project_str
+
+    # 2. Check aliases under `projects.<slug>`
+    if isinstance(projects, Mapping):
+        # Exact alias match
+        for slug, p_cfg in projects.items():
+            if isinstance(p_cfg, Mapping):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases == project_str:
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)) and project_str in aliases:
+                    return str(slug)
+
+        # Case-insensitive alias match / slug match
+        for slug, p_cfg in projects.items():
+            if str(slug).lower() == project_str.lower():
+                return str(slug)
+            if isinstance(p_cfg, Mapping):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases.lower() == project_str.lower():
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)):
+                    if any(str(a).lower() == project_str.lower() for a in aliases):
+                        return str(slug)
+
+    # 3. Check top-level `aliases` block
+    top_aliases = cfg.get("aliases", {}) if cfg else {}
+    if isinstance(top_aliases, Mapping):
+        # Direct key match if mapping alias -> canonical
+        if project_str in top_aliases and isinstance(top_aliases[project_str], str):
+            return str(top_aliases[project_str])
+
+        # If mapping canonical -> [aliases] or canonical -> alias
+        for target, val in top_aliases.items():
+            if isinstance(val, str):
+                if target == project_str:
+                    return str(val)
+                if val == project_str:
+                    return str(val)
+                if target.lower() == project_str.lower():
+                    return str(val)
+                if val.lower() == project_str.lower():
+                    return str(target)
+            elif isinstance(val, (list, tuple, set)):
+                if project_str in val or any(str(a).lower() == project_str.lower() for a in val):
+                    return str(target)
+
+        # Case-insensitive key match in alias -> canonical
+        for k, v in top_aliases.items():
+            if k.lower() == project_str.lower() and isinstance(v, str):
+                return str(v)
+
+    # 4. Check for <alias>-<task_suffix>
+    if "-" in project_str:
+        prefix, rest = project_str.split("-", 1)
+        canon_prefix = resolve_canonical_project(prefix, config)
+        if canon_prefix and canon_prefix != prefix:
+            return f"{canon_prefix}-{rest}"
+
+    return project_str
+
+
 def expand(value):
     return Path(os.path.expandvars(os.path.expanduser(str(value))))
 
@@ -1108,13 +1195,17 @@ def _sanitize_path_component(val: str | None, default: str | None = None) -> str
     return cleaned
 
 
-def _resolve_workspace(repo_dir, project, polecat_home):
+def _resolve_workspace(repo_dir, project, polecat_home, config=None):
     """The host directory to mount at /workspace. No default: an unresolvable
     workspace is a hard failure, never a guess at the current directory."""
     if repo_dir:
         workspace_dir = repo_dir.resolve()
     elif project:
-        proj_path = load_local_overlay(polecat_home).get("paths", {}).get(project)
+        canonical_project = resolve_canonical_project(project, config)
+        paths = load_local_overlay(polecat_home).get("paths", {})
+        proj_path = (paths.get(canonical_project) if canonical_project else None) or paths.get(
+            project
+        )
         workspace_dir = expand(proj_path).resolve() if proj_path else None
     else:
         workspace_dir = None
@@ -1903,17 +1994,18 @@ def run(
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent, prompt=prompt)
 
+    config = load_config()
     if project:
+        project = resolve_canonical_project(project, config)
         project = _sanitize_path_component(project)
     if session_name:
         session_name = _sanitize_path_component(session_name)
 
-    config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
     sessions_base = resolve_sessions_root()
     rules_dir = resolve_rules_dir(config)
-    workspace_dir = _resolve_workspace(repo_dir, project, polecat_home)
+    workspace_dir = _resolve_workspace(repo_dir, project, polecat_home, config=config)
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
 
