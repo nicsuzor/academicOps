@@ -23,7 +23,7 @@ Its core design intent is to eliminate the failure mode of **self-grading** and 
 
 ## Implementation Architecture
 
-The workflow is implemented operationally via `plugins/orchestrate/skills/strategic-review/SKILL.md` and executed by `james`:
+The workflow is implemented operationally via `plugins/aops/skills/strategic-review/SKILL.md` and executed by `james`:
 
 ```
                [ Artifact & Standards ]
