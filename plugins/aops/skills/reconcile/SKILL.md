@@ -38,28 +38,6 @@ exists, a person wrote a close reason. That is the whole of your authority.
   delete any stale in-body instruction the decision overtook; you never
   adjudicate whether the decision was right, premature, or contrary to prior
   notes.
-- You **never prune.** You do not cancel on age, merge nodes, delete edges, or
-  tidy the graph's shape. Structure is not yours.
-- You **never score.** `focus_score` is computed by the graph engine from the
-  signals already on the nodes. You do not write it, and you do not write
-  `priority` or `severity` to move it.
-- You **never certify**, and you never re-plan. When facts you wrote change what
-  should happen next, you return the affected tasks to `inbox` (§7) rather than
-  deciding it yourself.
-
-## Contexts
-
-One procedure. The context sets the input subset — never the steps.
-
-| Context        | Input subset                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------------ |
-| **Engagement** | The absence window: claims taken before it, pull requests closed during it.                      |
-| **Batch**      | The consolidation cycle's window, at that cycle's pacing.                                        |
-| **On demand**  | Everything: every non-terminal task, and pull requests closed inside a window you set and state. |
-
-There is no reverse context. No skill in this tree yet carries the return leg, so
-if you meet a task whose completion should resolve an issue, surface it rather
-than acting on it.
 
 ## 1 — Read the graph, claims included
 
