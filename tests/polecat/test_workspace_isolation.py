@@ -807,7 +807,7 @@ def test_isolated_workspace_non_default_base_branch_metadata(tmp_path):
         _run(
             "git",
             "config",
-            f"branch.polecat/session-v091-dispatch.base",
+            "branch.polecat/session-v091-dispatch.base",
             cwd=isolated_path,
         ).strip()
         == "v0.9.1"
