@@ -38,6 +38,7 @@ Stop and write the verdict when you see any of:
 - Silent error swallowing — a caught exception with no log.
 - A test suite checking existence instead of content.
 - Data that looks plausible but does not match its source.
+- Modifications targeting installed runtime plugin directories (`~/.gemini/config/plugins/`, `~/.claude/plugins/`) rather than the source repository.
 
 ## 4. Visual artifacts
 

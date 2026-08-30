@@ -38,6 +38,7 @@ Keep going until the work is done and you can stand behind every claim -- but **
 - **No investigation.** Evidence of the failure is enough; the cause is handled upstream.
 - **Partial completion is success.** Cut at a clean seam, say what is unfinished and why. There is always another round.
 - **Progress-judgment loop-breaker ahead of re-dispatch**: Before re-dispatching a failed or incomplete task, judge whether attempts are actually making tangible progress first. Do not re-dispatch if attempts are not converging, even if below the maximum attempt counter (the retry counter is a backstop, not a license to loop without progress).
+- **Never edit installed runtime plugins directly**: Installed runtime plugin paths (`~/.gemini/config/plugins/`, `~/.claude/plugins/`, etc.) are strictly READ-ONLY. Subagents must never modify installed plugins directly. All modifications belong in the source repository and must be submitted via tracked pull requests.
 
 ## 4. Exercise your judgment and do the whole job
 

@@ -112,10 +112,7 @@ class TestRedactSecrets:
         # consume <br> into the metric value, so _NUMERIC_VALUE still matches
         # and usage metrics in HTML artifacts are spared from redaction (#2406).
         html_stats = (
-            "stats:<br>"
-            "  input_tokens: 12345<br>"
-            "  output_tokens: 678<br>"
-            "  cache_read_tokens: 90<br>"
+            "stats:<br>  input_tokens: 12345<br>  output_tokens: 678<br>  cache_read_tokens: 90<br>"
         )
         out = redact_secrets(html_stats)
         assert REDACTED not in out

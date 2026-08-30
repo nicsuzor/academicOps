@@ -364,6 +364,7 @@ stopped leaves the next sweep no way to start.
   it, or hand that one question to an agent that will.
 - Re-implement this procedure inside another skill, or run a second sweep beside
   it.
+- Modify installed runtime plugin directories (`~/.gemini/config/plugins/`, `~/.claude/plugins/`) directly — framework updates must be made in tracked source checkouts.
 
 ## Fitness test
 
