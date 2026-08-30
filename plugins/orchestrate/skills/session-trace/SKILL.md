@@ -239,6 +239,6 @@ Field names below are the **controller** export's. In the full export drop the `
 
 ## Related
 
-`plugins/orchestrate/skills/audit` is the complement: forensics over the markdown transcript files.
+The `audit` workflow (`plugins/aops/workflows/archive/audit.md`) is the complement: forensics over the markdown transcript files.
 Use `audit` for the narrative and the subagent call tree, and this skill for the span store, where
 values are untruncated and timings are exact.
