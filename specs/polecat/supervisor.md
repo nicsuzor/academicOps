@@ -73,7 +73,9 @@ Every delegation MUST leave an inspectable trace; nothing is fire-and-forgotten:
 ## When It's Invoked
 
 Any orchestrator that delegates work and must verify it gets done invokes the
-`supervisor` skill — never hand-rolled inline. This covers:
+`supervised-development` skill
+(`plugins/orchestrate/skills/supervised-development/SKILL.md`) — never
+hand-rolled inline. This covers:
 
 - Epic-level orchestration (one PKB epic — an epic is just a task with children —
   state in the epic body)
@@ -105,23 +107,25 @@ feedback), or **Fail** (fundamental issues or retry budget exhausted, escalate t
 a human).
 
 The supervisor stays responsible for the work until it reaches a terminal state — it
-checks progress on every tick, it does not fire-and-forget.
+does not fire-and-forget. Responsibility is not polling: a tick is woken by a worker
+terminating or by a bound the supervisor set at dispatch, and it establishes state by
+reading durable evidence, never by asking a running worker how it is going.
 
 ## Relationship to `/pull` and `/dispatch`
 
-`/pull`, `/dispatch`, and `/supervisor` are three verbs over the same queue, differing
-in where work runs and whether they loop — a cadence choice made at dispatch, not a
-difference in worker contract:
+`pull`, `dispatch`, and `supervised-development` are three verbs over the same queue,
+differing in where work runs and whether they loop — a cadence choice made at dispatch,
+not a difference in worker contract:
 
-| Verb              | Where work runs                      | Loops?                         |
-| ----------------- | ------------------------------------ | ------------------------------ |
-| **`/pull`**       | Inline, this interactive session     | No — one task                  |
-| **`/dispatch`**   | Background worker (polecat/subagent) | No — one dispatch step         |
-| **`/supervisor`** | Background workers, across ticks     | Yes — stateless tick + `/loop` |
+| Verb                         | Where work runs                      | Loops?                         |
+| ---------------------------- | ------------------------------------ | ------------------------------ |
+| **`pull`**                   | Inline, this interactive session     | No — one task                  |
+| **`dispatch`**               | Background worker (polecat/subagent) | No — one dispatch step         |
+| **`supervised-development`** | Background workers, across ticks     | Yes — stateless tick + `/loop` |
 
 All three verbs share **one** Select+Gates spine, implemented once in the
-shared dispatch logic: `/pull` claims the task and runs it inline (with licence to
-ask the user questions); `/dispatch` routes it to a worker and halts.
+shared dispatch logic: `pull` claims the task and runs it inline (with licence to
+ask the user questions); `dispatch` routes it to a worker and halts.
 
 The supervisor's Dispatch phase **reuses that same spine**
 for task selection, the premise gate, and the freshness pre-check — it does
@@ -129,10 +133,10 @@ not re-implement them, so there is exactly one description of that behaviour.
 On top of the spine the supervisor adds the discipline that is genuinely its own and
 has no meaning in standard dispatch: the pauli pre-flight confirmation and critic gate,
 proof, the ledger, evaluation, and escalation **across ticks** (standard dispatch has
-no concept of "across ticks"). `/dispatch` is a thin one-shot slice of a single
+no concept of "across ticks"). `dispatch` is a thin one-shot slice of a single
 supervisor dispatch step.
 
-A `/supervisor` invoked interactively schedules its own next tick when work remains
+A supervision pass invoked interactively schedules its own next tick when work remains
 and it is not at a terminal state, so one invocation visibly keeps going without the
 user manually wiring `/loop`. It stops self-arming at the terminal state.
 
@@ -161,6 +165,9 @@ extensions (`partial` is part of that canonical set).
 
 - [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
+- `plugins/orchestrate/skills/supervised-development/SKILL.md` — The operative
+  skill this spec mandates: the delegate-and-verify loop an orchestrator runs
+  rather than hand-rolling.
 - `plugins/aops-core/skills/pull/SKILL.md` — The operative skill: claiming a unit,
   working it, and carrying it to a terminal state.
 - `plugins/orchestrate/agents/pc.md` — The launcher that puts a worker in front of a unit.

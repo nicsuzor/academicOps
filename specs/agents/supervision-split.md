@@ -104,6 +104,6 @@ PKB writes and spawning named agents. `ida.md` reserves both: james is ida's onl
 subagent, surface selection is james's, and ida is not a writer to the PKB. The
 authoritative wired map corroborates this at the architecture level. So ida now
 _holds_ the supervision standard and _delegates_ the run; it does not select a
-surface or open a tracking record itself. Whether any further capability should
-move to ida, and what trust checkpoints would gate it, belongs to task
-`aops_e39b6b9d`, which owns that design.
+surface or open a tracking record itself. Which further capabilities should move
+to ida, and what trust checkpoints gate each, is designed in
+[Migrating Supervision Capability into Ida](ida-supervision-migration.md).
