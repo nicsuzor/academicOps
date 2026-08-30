@@ -46,6 +46,7 @@ def _base_mocks(monkeypatch, tmp_path):
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000/mcp")
 
 
 def _init_git_repo(repo_dir: Path) -> str:
