@@ -9,7 +9,13 @@ pairs-with: [develop-specification, wf-human-approval]
 conflicts: []
 version: 1.0.0
 permalink: workflows-process-framework-gate
+status: retired
+superseded_by: aops_f74b7e6c
+tags: [retired]
 ---
+
+> [!IMPORTANT]
+> **RETIRED**: archived off as part of the v0.9 null workflow-template set reset ([[aops_f74b7e6c]]). Do not compose.
 
 # Process: Framework Gate
 
