@@ -215,10 +215,11 @@ a **demotion** to `inbox` with an annotation saying exactly what no longer
 resolves (§7).
 
 **The Two-Step Mutation Contract.** Whenever performing a demotion to `inbox` or a cancellation:
+
 1. **Body write**: Write the annotation or evidence into the node body via `pkb__append` or `pkb__update_body`.
 2. **Frontmatter mutation**: Explicitly mutate the frontmatter `status` via `pkb__update_task(id="<task-id>", updates={"status": "inbox"|"cancelled"})`.
 3. **Readback verification**: Immediately read back via `pkb__get_task(id="<task-id>")` to verify `frontmatter.status` matches the intended state.
-*(Never rely on body appends or batch update tools to mutate frontmatter status — body tools touch only markdown prose, and `pkb__batch_update` drops status payloads.)*
+   _(Never rely on body appends or batch update tools to mutate frontmatter status — body tools touch only markdown prose, and `pkb__batch_update` drops status payloads.)_
 
 **Cancel on a world-fact.** These are the unattended triggers — the ones where
 no person has spoken and you establish the fact yourself. They sit alongside the
@@ -306,10 +307,11 @@ Collect the tasks a fact you wrote actually touched:
 
 Set that whole set back to `inbox`, annotated with the fact that moved it,
 using the two-step mutation contract:
+
 1. Append the annotation to the task body (`pkb__append` or `pkb__update_body`).
 2. Update the frontmatter status explicitly via `pkb__update_task(id="<task-id>", updates={"status": "inbox"})`.
 3. Verify readback immediately with `pkb__get_task(id="<task-id>")`.
-Do NOT use `pkb__batch_update` for status mutations or demotions (it drops status payloads silently).
+   Do NOT use `pkb__batch_update` for status mutations or demotions (it drops status payloads silently).
 
 `inbox` is the signal that a task needs working out again; re-planning is a
 separate act, on the user's call, and none of it is yours. You do not re-sort
