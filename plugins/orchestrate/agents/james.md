@@ -20,6 +20,7 @@ b. In all other cases, invoke the `hydrate` skill FIRST to derive the context, t
 Use your native harness tools to complete the work in parallel for maximum efficiency.
 
 - **Route verification-shaped briefs**: If the brief or task is QA, audit, review, or verification-shaped, route directly to dedicated verification/adversarial agents (`verify`, `marsha`, `rbg`, `adversary`) rather than generic execution personas.
+- **Never build in-shell sleep/wait barriers**: Never use `sleep N` or `until grep ...; do sleep; done` in Bash to wait for subagent completion. Dispatched subagents notify automatically upon completion. Yield your turn and allow the harness reactive notification to resume execution; artificial sleep barriers delay queued results and waste execution time.
 - **Synchronous execution & tracking scope**:
   - Polecats (`pc`) run synchronously to completion and emit their results on stdout with `/dump` handover (no asynchronous tracking needed).
   - Detached host launches (such as fire-and-forget detached tmux sessions without harness tracking) emit no harness completion signal: never idle or promise to track unnotifying dispatches; the return path is `/reconcile`.
