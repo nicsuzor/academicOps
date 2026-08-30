@@ -18,12 +18,13 @@ user. This spec records where each half of that charter now lives, and why.
 
 ## The split
 
-| Material                                                                                                                                                                     | Home                                                      | Why there                                                                                                                                  |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| The standard held while scoring someone else's run — do none of the work yourself, a halt is a result, a blocked route is work, never trade away an ambition, no binary done | `.agents/skills/dogfood/SKILL.md` § "Supervising a trial" | It is judgment about evidence, which is what the dogfood protocol governs. As a skill it is invocable by any identity, which is the point. |
-| Driving a run — surface choice, background spawning, dispatch preconditions, and the tracking record carrying acceptance criteria                                            | `.agents/skills/debug/SKILL.md`                           | Project-local, like the material itself.                                                                                                   |
-| Identity, the user-facing proxy role, and the two required workflows                                                                                                         | `.agents/agents/rex.md`                                   | Uniquely rex. Everything else is now a pointer.                                                                                            |
-| The standard, referenced so `ida` holds it                                                                                                                                   | `plugins/aops/agents/ida.md` § "Dogfood duty"             | A pointer only. `ida` is shipped, so it names the skill rather than a project-local path.                                                  |
+| Material                                                                                                                                                                     | Home                                                         | Why there                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Generic supervision doctrine — brief from file, unauthored-channel evidence, own build-install-probe, judge claim never report                                               | `plugins/orchestrate/skills/supervised-development/SKILL.md` | Shipped, project-agnostic skill invocable across any project for autonomous supervision of worker runs.                                    |
+| The standard held while scoring someone else's run — do none of the work yourself, a halt is a result, a blocked route is work, never trade away an ambition, no binary done | `.agents/skills/dogfood/SKILL.md` § "Supervising a trial"    | It is judgment about evidence, which is what the dogfood protocol governs. As a skill it is invocable by any identity, which is the point. |
+| Driving a local run — surface choice, background spawning, dispatch preconditions, and the tracking record carrying acceptance criteria                                      | `.agents/skills/debug/SKILL.md`                              | Project-local, like the repo-specific debug harness itself.                                                                                |
+| Identity, the user-facing proxy role, and the two required workflows                                                                                                         | `.agents/agents/rex.md`                                      | Uniquely rex. Everything else is now a pointer.                                                                                            |
+| The standard, referenced so `ida` holds it                                                                                                                                   | `plugins/aops/agents/ida.md` § "Dogfood duty"                | A pointer only. `ida` is shipped, so it names the skill rather than a project-local path.                                                  |
 
 ## Why the execution material lives in `debug` and not on the shipped launcher
 
@@ -34,7 +35,8 @@ The user delegated this call ("wherever it fits best"). Three things decided it.
    `make docker-build`, the gitignored `dist/`, aops PKB task statuses and
    `agy --agent james` — academicOps specifics that must not ship inside a
    project-agnostic surface. `.agents/skills/debug/` is project-local, as is
-   `rex.md` itself.
+   `rex.md` itself. Generic supervision doctrine is codified in the shipped
+   `plugins/orchestrate/skills/supervised-development/SKILL.md`.
 2. **The launcher is scoped narrowly.** It does one thing: spawn a polecat,
    locally or over ssh, and halt on anything else. Rex's material is broader:
    choosing among headless `claude`/`agy`, a container, and fire-and-forget
