@@ -10,8 +10,8 @@ name = "Nicolas Suzor"
 email = "nic@suzor.net"
 #
 [[plugins]]
-directory = "aops-core"
-name = "aops-core"
+directory = "aops"
+name = "aops"
 description = "ida for strategy and pauli for memory."
 category = "productivity"
 

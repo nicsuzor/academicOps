@@ -4,7 +4,7 @@ description: "QA & Excellence — is this artifact, as presented, AMAZINGLY good
 color: pink
 mcpServers:
   - plugin:orchestrate:playwright
-  - plugin:aops-core:services
+  - plugin:aops:services
 ---
 
 # Marsha Agent Directive (Substantive Quality Review)

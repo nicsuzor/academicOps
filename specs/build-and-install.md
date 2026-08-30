@@ -40,7 +40,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 are separate marketplace names specifically so one install can never silently
 shadow the other: `claude plugin marketplace add` is a no-op when a name already
 exists, so both `install-dev` and `install` remove their own marketplace name
-before re-adding it. `aops-core`'s `services` MCP server resolves `$PKB_MCP_URL`
+before re-adding it. `aops`'s `services` MCP server resolves `$PKB_MCP_URL`
 from the environment at launch (`ARCHITECTURE.md`, "No defaults" — the URL is
 never committed, and there is no fallback).
 
@@ -52,7 +52,7 @@ servers with a bare environment: `$PKB_MCP_URL` expands to the empty string,
 path has no `--config` equivalent to supply the endpoint afterwards, so the URL
 has to travel inside the artifact. `build.marketplace._bake_cowork_mcp_json`
 resolves it into the zips' `.mcp.json` — swapping the server for the
-`plugins/aops-core/scripts/run-mcp.sh` stdio launcher with the URL in its `env`
+`plugins/aops/scripts/run-mcp.sh` stdio launcher with the URL in its `env`
 block, since that bare environment also routinely lacks `uvx` on `PATH` — **when
 `PKB_MCP_URL` is set in the build environment**. It reads that value from the
 environment; it is never committed. An unset variable is not a build failure:

@@ -944,8 +944,8 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
                 is_disabled = True
             elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
                 is_disabled = True
-            elif name in ("aops-core", "pkb") and not (
-                _policy.get("aops-core", {}).get("search_the_pkb_enabled")
+            elif name in ("aops", "pkb") and not (
+                _policy.get("aops", {}).get("search_the_pkb_enabled")
                 or _policy.get("pkb", {}).get("search_the_pkb_enabled", False)
             ):
                 is_disabled = True
@@ -979,8 +979,8 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
             allowed_missing.update(_wires_for("PostToolBatch"))
             allowed_missing.update(_wires_for("Stop"))
-        elif name in ("aops-core", "pkb") and not (
-            _policy.get("aops-core", {}).get("search_the_pkb_enabled")
+        elif name in ("aops", "pkb") and not (
+            _policy.get("aops", {}).get("search_the_pkb_enabled")
             or _policy.get("pkb", {}).get("search_the_pkb_enabled", False)
         ):
             allowed_missing.update(_wires_for("UserPromptSubmit"))

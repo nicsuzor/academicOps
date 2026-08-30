@@ -64,7 +64,7 @@ def test_hierarchical_subagent_call_tree_l1_l2_building() -> None:
     pauli = SubagentTranscript(
         agent_id="pauli_001",
         source_file=Path("agent-pauli_001.jsonl"),
-        agent_type="aops-core:pauli",
+        agent_type="aops:pauli",
         name="pauli",
         description="Code quality audit",
         parent_agent_id="main",
@@ -84,7 +84,7 @@ def test_hierarchical_subagent_call_tree_l1_l2_building() -> None:
     marsha = SubagentTranscript(
         agent_id="marsha_002",
         source_file=Path("agent-marsha_002.jsonl"),
-        agent_type="aops-core:marsha",
+        agent_type="aops:marsha",
         name="marsha",
         description="Security review",
         parent_agent_id="pauli_001",
@@ -136,14 +136,14 @@ def test_hierarchical_subagent_call_tree_l1_l2_building() -> None:
         session, "s_m2", "2026-08-10T22:00:00Z", "", "", True, CORRELATION, None
     )
     assert "### Subagent Call Tree Lineage" in md
-    assert "└── 1. pauli (aops-core:pauli) (L1) [420.1k tok | $1.26] — Code quality audit" in md
-    assert "    └── 1.1 marsha (aops-core:marsha) (L2) [180k tok | $0.54] — Security review" in md
+    assert "└── 1. pauli (aops:pauli) (L1) [420.1k tok | $1.26] — Code quality audit" in md
+    assert "    └── 1.1 marsha (aops:marsha) (L2) [180k tok | $0.54] — Security review" in md
     assert (
-        "| L1 | `main/pauli` | `pauli` | aops-core:pauli | `main` | 1 | 420.1k | $1.26 | Code quality audit |"
+        "| L1 | `main/pauli` | `pauli` | aops:pauli | `main` | 1 | 420.1k | $1.26 | Code quality audit |"
         in md
     )
     assert (
-        "| L2 | `main/pauli/marsha` | `marsha` | aops-core:marsha | `pauli` | 1 | 180k | $0.54 | Security review |"
+        "| L2 | `main/pauli/marsha` | `marsha` | aops:marsha | `pauli` | 1 | 180k | $0.54 | Security review |"
         in md
     )
 

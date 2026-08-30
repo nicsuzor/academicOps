@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "name": "aops-core",
+  "name": "aops",
   "clients": {
     "__base__": {
       "mcpServers": {

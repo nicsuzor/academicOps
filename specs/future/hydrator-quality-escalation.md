@@ -73,14 +73,14 @@ When diagnosis reveals a structural problem (not just a missing fact):
 
 ## Root Cause Categories
 
-| Root Cause                    | Description                                                              | Systemic Fix                                                       |
-| ----------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| **Hydrator skill gap**        | SKILL.md does not instruct the hydrator to look for this type of context | Update `aops-core/skills/hydrator/SKILL.md`                        |
-| **Workflow gap**              | The selected workflow does not include a relevant step                   | Update the workflow file in `aops-core/skills/hydrator/workflows/` |
-| **Context map gap**           | The context-map.json does not route this type of work to relevant files  | Update `.agents/context-map.json`                                  |
-| **Memory gap**                | No PKB memory exists for this knowledge                                  | Create memory with appropriate tags                                |
-| **Reference doc gap**         | The reference document exists but omits critical information             | Update the reference doc                                           |
-| **Hook architecture doc gap** | The hooks reference (`hooks.md`) does not explain this behavior          | Update `.agents/skills/framework/references/hooks.md`              |
+| Root Cause                    | Description                                                              | Systemic Fix                                                  |
+| ----------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| **Hydrator skill gap**        | SKILL.md does not instruct the hydrator to look for this type of context | Update `aops/skills/hydrator/SKILL.md`                        |
+| **Workflow gap**              | The selected workflow does not include a relevant step                   | Update the workflow file in `aops/skills/hydrator/workflows/` |
+| **Context map gap**           | The context-map.json does not route this type of work to relevant files  | Update `.agents/context-map.json`                             |
+| **Memory gap**                | No PKB memory exists for this knowledge                                  | Create memory with appropriate tags                           |
+| **Reference doc gap**         | The reference document exists but omits critical information             | Update the reference doc                                      |
+| **Hook architecture doc gap** | The hooks reference (`hooks.md`) does not explain this behavior          | Update `.agents/skills/framework/references/hooks.md`         |
 
 ## Feedback Loop: Correction to Improvement
 
@@ -137,10 +137,10 @@ This self-check should be added to the hydrator's detection patterns in SKILL.md
 - **Epic**: `aops-fa32b8ad` (Hydration Gate Reliability)
 - **Existing tasks**: `aops-1bf76d85` (env var architecture gap)
 - **Test suite**: `tests/test_dispatch_gate.py` (gate verdict regression tests)
-- **Hydrator skill**: `aops-core/skills/hydrator/SKILL.md`
+- **Hydrator skill**: `aops/skills/hydrator/SKILL.md`
 - **Context map**: `.agents/context-map.json`
 - **Hooks reference**: `.agents/skills/framework/references/hooks.md`
-- **Dogfooding workflow**: `aops-core/skills/hydrator/workflows/dogfooding.md`
+- **Dogfooding workflow**: `aops/skills/hydrator/workflows/dogfooding.md`
 - **Session insights**: `.agents/skills/session-insights/SKILL.md` (post-hoc gap detection)
 
 ## Acceptance Criteria

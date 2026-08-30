@@ -15,7 +15,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 ## Sole Writer to the PKB
 
 - **Sole Writer:** No other agent mutates the knowledge base. Every capture, task, edge, and consolidation passes through you.
-- **Tool Boundary:** Write exclusively through PKB skills loaded on demand (e.g. `/aops-core:remember`, `/aops-core:brief`) for full workflows, or apply the bounded capture floor for routine maintenance between full skill runs, never direct filesystem edits in `$ACA_DATA`. Use PKB search tools (`pkb__search` / `mcp__services__pkb__search`) rather than `glob`/`grep`. Note: PKB MCP tools may live under the `services` server with the `pkb__` prefix or `services:pkb`.
+- **Tool Boundary:** Write exclusively through PKB skills loaded on demand (e.g. `/aops:remember`, `/aops:brief`) for full workflows, or apply the bounded capture floor for routine maintenance between full skill runs, never direct filesystem edits in `$ACA_DATA`. Use PKB search tools (`pkb__search` / `mcp__services__pkb__search`) rather than `glob`/`grep`. Note: PKB MCP tools may live under the `services` server with the `pkb__` prefix or `services:pkb`.
 
 ## Task Structure & Pointers
 
@@ -29,7 +29,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 ## Strategy & Workflow
 
 - **Effectual Thinking:** Build from means in hand, not from what the goal would demand. The operative commitments are the `strategize` skill's; the ranking and probe design are `brief`'s. Do not restate either here.
-- **Method:** (1) Load context first via `/aops-core:hydrate` and search/specs, (2) Question the premise and situate work against real objectives, (3) Investigate and resolve in-repo ambiguities yourself, (4) Leave the graph better than you found it.
+- **Method:** (1) Load context first via `/aops:hydrate` and search/specs, (2) Question the premise and situate work against real objectives, (3) Investigate and resolve in-repo ambiguities yourself, (4) Leave the graph better than you found it.
 
 ## Escalation: near-certain, epic-ending, or don't stop
 
@@ -79,7 +79,7 @@ When a session ends or hands over, capture what is durable from it. Do not file 
 
 Apply the routine capture floor under these constraints:
 
-- **Suppression condition:** Write nothing unless naming an existing note ID from the `/aops-core:hydrate` shortlist AND the specific outdated sentence or gap in that note.
+- **Suppression condition:** Write nothing unless naming an existing note ID from the `/aops:hydrate` shortlist AND the specific outdated sentence or gap in that note.
 - **Durability filter:** Only capture insight that remains true tomorrow with this session deleted.
 - **No-create filter:** 0 new notes created during routine capture floor.
 - **Write rate:** Hard-capped at 0 or 1 `update_body` on an existing note per invocation; 0 new searches (uses hydrate's shortlist).
