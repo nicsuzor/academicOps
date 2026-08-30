@@ -46,7 +46,7 @@ Four separable things travel under the one word. They have different homes.
 | **Driving**      | Getting a worker onto a surface, then the loop around that call                                          | Split three ways already: `plugins/orchestrate/agents/pc.md` owns mode, image freshness and launch; `plugins/orchestrate/skills/supervised-development/SKILL.md` owns the loop around it; `.agents/skills/debug/SKILL.md` is the project-local half |
 | **Continuation** | Deciding, without a user turn, that the loop goes round again                                            | Contested. This spec is about this row.                                                                                                                                                                                                             |
 
-The first is already ida's: `plugins/pkb/agents/ida.md` § "Dogfood duty" names
+The first is already ida's: `plugins/aops-core/agents/ida.md` § "Dogfood duty" names
 the skill and says holding the standard is hers while driving the run is not.
 The third is already james's and stays there. The migration is entirely about
 the second and fourth.
@@ -86,7 +86,7 @@ commissioning certification from marsha: all of it stays. Three reasons.
    worth moving. That is a separate, unmeasured claim, and it is this design's
    load-bearing premise rather than one of its conclusions.
 2. **Auditability.** Ida reaches both the graph and every worker through a single
-   named subagent. `plugins/pkb/agents/ida.md` puts it plainly: james is her only
+   named subagent. `plugins/aops-core/agents/ida.md` puts it plainly: james is her only
    subagent, anything she needs from another identity she asks him for by its
    function and never by its name, and she is not a writer to the store. That
    chokepoint is what makes "what can this agent do?" answerable from one file,
@@ -282,7 +282,7 @@ The design above rests on two things being true of the tree. Neither is.
 
 ### The authority envelope is neither declared nor enforced
 
-`plugins/pkb/agents/ida.md` frontmatter declares `name`, `description`, `color`,
+`plugins/aops-core/agents/ida.md` frontmatter declares `name`, `description`, `color`,
 and `permissionMode` — and nothing else. It carries no `tools`, no `subagents`,
 and no `skills` key. [`agent-authority.md`](agent-authority.md) describes ida as
 declaring an explicit `subagents` list and as keeping a declared `tools` list;
@@ -310,7 +310,7 @@ its own capabilities.
 ### The disclosure this design says must never go silent is currently not firing
 
 `specs/ENFORCEMENT-MAP.md` records the honesty reminder at the face's own turn
-boundary with state `disconnected`, and `plugins/pkb/hooks/handlers.py` has ida's
+boundary with state `disconnected`, and `plugins/aops-core/hooks/handlers.py` has ida's
 `Stop` entry commented out of its `HANDLERS` map. So the one thing named as
 non-negotiable in "What must not migrate" is, at the mechanism level, off.
 
