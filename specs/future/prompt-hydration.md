@@ -1,7 +1,7 @@
 ---
 title: Prompt Hydration
 type: spec
-status: implemented
+status: proposed
 tier: core
 depends_on: []
 tags: [framework, routing, context]
