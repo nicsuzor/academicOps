@@ -1,4 +1,4 @@
-"""Behavioral tests for plugins/pkb/hooks/handlers.py.
+"""Behavioral tests for plugins/aops/hooks/handlers.py.
 
 pkb ships exactly one hook — `search_the_pkb`, registered for
 `UserPromptSubmit` — and specs/ARCHITECTURE.md's Hooks table describes it as
@@ -25,15 +25,15 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
-PKB_HOOKS = REPO_ROOT / "plugins" / "pkb" / "hooks"
-RUN_MCP = REPO_ROOT / "plugins" / "pkb" / "scripts" / "run-mcp.sh"
+PKB_HOOKS = REPO_ROOT / "plugins" / "aops" / "hooks"
+RUN_MCP = REPO_ROOT / "plugins" / "aops" / "scripts" / "run-mcp.sh"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
 
 
 def _require_search_enabled():
-    if not _policy.get("pkb", {}).get("search_the_pkb_enabled", True):
+    if not _policy.get("aops", _policy.get("pkb", {})).get("search_the_pkb_enabled", False):
         pytest.skip("search_the_pkb is disabled by policy")
 
 
@@ -276,7 +276,7 @@ def test_editing_the_message_file_changes_the_output(tmp_path):
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "No missing-message guard in plugins/pkb/hooks/handlers.py. "
+        "No missing-message guard in plugins/aops/hooks/handlers.py. "
         "`load_message_pair` (lib/hooks/dispatch.py) returns '' for a message "
         "file that is not there — it no longer raises, and the "
         "`MessageNotFoundError`/degraded-notice machinery this case used to "
@@ -323,7 +323,7 @@ def test_a_missing_message_file_is_never_a_silent_empty_injection(tmp_path):
 # specs/ARCHITECTURE.md's Hooks table describes this hook's effect as "Inject
 # relevant PKB context, or instruct the agent to search for it" — a live
 # choice between two outcomes. The shipped handler's own docstring
-# (plugins/pkb/hooks/handlers.py) says otherwise: it "always takes the
+# (plugins/aops/hooks/handlers.py) says otherwise: it "always takes the
 # 'instruct the agent to search' branch of the contract", on purpose, because
 # reaching the PKB itself would put a slow or unreachable network call on the
 # critical path of every prompt. So there is no code path here that ever

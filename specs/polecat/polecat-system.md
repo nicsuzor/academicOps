@@ -27,7 +27,7 @@ the container.
   `agy-settings.json`, `agy-onboarding.json`, `ccstatusline-settings.json`,
   `agystatusline-settings.json`, `docker_gemini_fixups.py`)
 - [[Dockerfile]] — the image `run` executes inside
-- [[plugins/pkb/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
+- [[plugins/aops/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
 - [[plugins/orchestrate/agents/pc.md]] — coordinator-side: the launcher agent that builds
@@ -49,7 +49,7 @@ the container.
 3. Unless `--repo-dir` was given, clones the resolved repo (`git clone --local
    --no-checkout`) into `$POLECAT_HOME/worktrees/<session-id>`, checks out
    `polecat/<session-id>` at the commit specified by `--base` (defaulting to the
-   `branch` key in `polecat.yaml`, or `HEAD`), and repoints `origin`
+   active branch's up-to-date `HEAD` if `--base` is omitted), and repoints `origin`
    at the host repo's own remote — so a push from inside the container reaches the
    real remote and nothing the container does is visible in the host checkout
    until pushed. This clone is deleted again when `run` exits, success or failure.

@@ -206,16 +206,16 @@ Instead of a flat subagent table, `.controller.md` MUST render a hierarchical ca
 
 ```
 main (Controlling Agent) [1,250,400 tokens | $3.7512]
-├── 1. pauli (L1: aops-core:pauli) [420,100 tokens | $1.2603]
-│   └── 1.1 marsha (L2: aops-core:marsha) [180,000 tokens | $0.5400]
-└── 2. rbg (L1: aops-core:rbg) [310,000 tokens | $0.9300]
+├── 1. pauli (L1: aops:pauli) [420,100 tokens | $1.2603]
+│   └── 1.1 marsha (L2: aops:marsha) [180,000 tokens | $0.5400]
+└── 2. rbg (L1: aops:rbg) [310,000 tokens | $0.9300]
 ```
 
-| Level | Call Path           | Agent Label | Type               | Parent Agent | Events | Tokens  | USD Cost | Task / Description    |
-| ----- | ------------------- | ----------- | ------------------ | ------------ | ------ | ------- | -------- | --------------------- |
-| L1    | `main/pauli`        | `pauli`     | `aops-core:pauli`  | `main`       | 24     | 420,100 | $1.2603  | Code quality audit    |
-| L2    | `main/pauli/marsha` | `marsha`    | `aops-core:marsha` | `pauli`      | 12     | 180,000 | $0.5400  | Security review       |
-| L1    | `main/rbg`          | `rbg`       | `aops-core:rbg`    | `main`       | 18     | 310,000 | $0.9300  | Performance benchmark |
+| Level | Call Path           | Agent Label | Type          | Parent Agent | Events | Tokens  | USD Cost | Task / Description    |
+| ----- | ------------------- | ----------- | ------------- | ------------ | ------ | ------- | -------- | --------------------- |
+| L1    | `main/pauli`        | `pauli`     | `aops:pauli`  | `main`       | 24     | 420,100 | $1.2603  | Code quality audit    |
+| L2    | `main/pauli/marsha` | `marsha`    | `aops:marsha` | `pauli`      | 12     | 180,000 | $0.5400  | Security review       |
+| L1    | `main/rbg`          | `rbg`       | `aops:rbg`    | `main`       | 18     | 310,000 | $0.9300  | Performance benchmark |
 
 #### 4.1.2 Per-Step Token Accounting & Cost Headers
 
@@ -283,10 +283,10 @@ Failed tool executions, subagent errors, process crashes, and session limit term
 
 ## 🧵 Subagents
 
-| # | Agent    | Type             | Depth | Events | Tokens | Started              | Task            |
-| - | -------- | ---------------- | ----- | ------ | ------ | -------------------- | --------------- |
-| 1 | `pauli`  | aops-core:pauli  | 1     | 24     | 420100 | 2026-08-10T22:10:00Z | Code audit      |
-| 2 | `marsha` | aops-core:marsha | 2     | 12     | 180000 | 2026-08-10T22:12:00Z | Security review |
+| # | Agent    | Type        | Depth | Events | Tokens | Started              | Task            |
+| - | -------- | ----------- | ----- | ------ | ------ | -------------------- | --------------- |
+| 1 | `pauli`  | aops:pauli  | 1     | 24     | 420100 | 2026-08-10T22:10:00Z | Code audit      |
+| 2 | `marsha` | aops:marsha | 2     | 12     | 180000 | 2026-08-10T22:12:00Z | Security review |
 
 ---
 
@@ -330,16 +330,16 @@ Command failed. Retrying with system pytest.
 
 ```
 main (Controlling Agent) [1,250,400 tokens | $3.7512]
-├── 1. pauli (L1: aops-core:pauli) [420,100 tokens | $1.2603]
-│   └── 1.1 marsha (L2: aops-core:marsha) [180,000 tokens | $0.5400]
-└── 2. rbg (L1: aops-core:rbg) [310,000 tokens | $0.9300]
+├── 1. pauli (L1: aops:pauli) [420,100 tokens | $1.2603]
+│   └── 1.1 marsha (L2: aops:marsha) [180,000 tokens | $0.5400]
+└── 2. rbg (L1: aops:rbg) [310,000 tokens | $0.9300]
 ```
 
-| Level | Call Path           | Agent Label | Type               | Parent Agent | Events | Tokens  | USD Cost | Task / Description    |
-| ----- | ------------------- | ----------- | ------------------ | ------------ | ------ | ------- | -------- | --------------------- |
-| L1    | `main/pauli`        | `pauli`     | `aops-core:pauli`  | `main`       | 24     | 420,100 | $1.2603  | Code quality audit    |
-| L2    | `main/pauli/marsha` | `marsha`    | `aops-core:marsha` | `pauli`      | 12     | 180,000 | $0.5400  | Security review       |
-| L1    | `main/rbg`          | `rbg`       | `aops-core:rbg`    | `main`       | 18     | 310,000 | $0.9300  | Performance benchmark |
+| Level | Call Path           | Agent Label | Type          | Parent Agent | Events | Tokens  | USD Cost | Task / Description    |
+| ----- | ------------------- | ----------- | ------------- | ------------ | ------ | ------- | -------- | --------------------- |
+| L1    | `main/pauli`        | `pauli`     | `aops:pauli`  | `main`       | 24     | 420,100 | $1.2603  | Code quality audit    |
+| L2    | `main/pauli/marsha` | `marsha`    | `aops:marsha` | `pauli`      | 12     | 180,000 | $0.5400  | Security review       |
+| L1    | `main/rbg`          | `rbg`       | `aops:rbg`    | `main`       | 18     | 310,000 | $0.9300  | Performance benchmark |
 
 ---
 

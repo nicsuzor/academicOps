@@ -58,9 +58,106 @@ def _load_config_file(path: Path) -> dict:
     return {}
 
 
+def _load_polecat_config() -> dict:
+    cfg_path = os.environ.get("AOPS_POLECAT_CONFIG")
+    if not cfg_path:
+        sessions = os.environ.get("AOPS_SESSIONS")
+        if sessions:
+            cfg_path = os.path.join(sessions, "polecat.yaml")
+    if cfg_path and os.path.exists(cfg_path):
+        try:
+            import yaml
+
+            with open(cfg_path) as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            log.debug("Failed to read polecat config %s: %s", cfg_path, e)
+    return {}
+
+
+def resolve_canonical_project(project: str | None, config: dict | None = None) -> str | None:
+    """Resolve a project name or alias to its canonical project slug.
+
+    Reads aliases configured in polecat.yaml:
+    - `projects.<slug>.aliases`: list of alias strings or single alias string
+    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `academicOps: aops`),
+      or canonical slug to alias list (e.g. `aops: [academicOps, academicops]`).
+
+    If `project` matches a canonical slug or an alias (checked case-insensitively if exact
+    case does not hit), returns the canonical slug.
+    Also handles `<alias>-<task_id>` prefixes by canonicalizing the prefix.
+    If no alias matches, returns `project`.
+    """
+    if not project:
+        return project
+
+    if config is None:
+        config = _load_polecat_config()
+
+    project_str = str(project).strip()
+    if not project_str:
+        return project
+
+    projects = config.get("projects", {})
+    if isinstance(projects, dict) and project_str in projects:
+        return project_str
+
+    if isinstance(projects, dict):
+        for slug, p_cfg in projects.items():
+            if isinstance(p_cfg, dict):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases == project_str:
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)) and project_str in aliases:
+                    return str(slug)
+
+        for slug, p_cfg in projects.items():
+            if str(slug).lower() == project_str.lower():
+                return str(slug)
+            if isinstance(p_cfg, dict):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases.lower() == project_str.lower():
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)):
+                    if any(str(a).lower() == project_str.lower() for a in aliases):
+                        return str(slug)
+
+    top_aliases = config.get("aliases", {})
+    if isinstance(top_aliases, dict):
+        if project_str in top_aliases and isinstance(top_aliases[project_str], str):
+            return str(top_aliases[project_str])
+
+        for target, val in top_aliases.items():
+            if isinstance(val, str):
+                if target == project_str:
+                    return str(val)
+                if val == project_str:
+                    return str(val)
+                if target.lower() == project_str.lower():
+                    return str(val)
+                if val.lower() == project_str.lower():
+                    return str(target)
+            elif isinstance(val, (list, tuple, set)):
+                if project_str in val or any(str(a).lower() == project_str.lower() for a in val):
+                    return str(target)
+
+        for k, v in top_aliases.items():
+            if k.lower() == project_str.lower() and isinstance(v, str):
+                return str(v)
+
+    if "-" in project_str:
+        prefix, rest = project_str.split("-", 1)
+        canon_prefix = resolve_canonical_project(prefix, config)
+        if canon_prefix and canon_prefix != prefix:
+            return f"{canon_prefix}-{rest}"
+
+    return project_str
+
+
 def resolve_project_name(
     data: dict | None = None,
     task_id: str = "",
+    config: dict | None = None,
 ) -> str:
     """Resolve project name from environment, config, hook payload cwd, or starting dirname.
 
@@ -70,37 +167,42 @@ def resolve_project_name(
     3. OTEL_SERVICE_NAME env var
     4. Hook payload cwd or CLAUDE_PROJECT_DIR or current working directory basename
     5. Fallback to 'default'
+
+    Any resolved project name is automatically mapped to its canonical slug if defined
+    in polecat.yaml aliases.
     """
+    raw_name = ""
     if task_id:
-        return task_id
-    env_task = os.environ.get("GENAI_ENGINE_TASK_ID", "").strip()
-    if env_task:
-        return env_task
-    env_phoenix = os.environ.get("PHOENIX_PROJECT_NAME", "").strip()
-    if env_phoenix:
-        return env_phoenix
-    env_service = os.environ.get("OTEL_SERVICE_NAME", "").strip()
-    if env_service:
-        return env_service
+        raw_name = task_id
+    elif env_task := os.environ.get("GENAI_ENGINE_TASK_ID", "").strip():
+        raw_name = env_task
+    elif env_phoenix := os.environ.get("PHOENIX_PROJECT_NAME", "").strip():
+        raw_name = env_phoenix
+    elif env_service := os.environ.get("OTEL_SERVICE_NAME", "").strip():
+        raw_name = env_service
+    else:
+        # Directory resolution
+        cwd = ""
+        if data and isinstance(data, dict):
+            cwd = str(data.get("cwd") or "")
+        if not cwd:
+            cwd = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
+        if not cwd:
+            try:
+                cwd = os.getcwd()
+            except Exception:
+                cwd = ""
 
-    # Directory resolution
-    cwd = ""
-    if data and isinstance(data, dict):
-        cwd = str(data.get("cwd") or "")
-    if not cwd:
-        cwd = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
-    if not cwd:
-        try:
-            cwd = os.getcwd()
-        except Exception:
-            cwd = ""
+        if cwd:
+            name = Path(cwd).resolve().name
+            if name and name not in ("/", "\\", "."):
+                raw_name = name
 
-    if cwd:
-        name = Path(cwd).resolve().name
-        if name and name not in ("/", "\\", "."):
-            return name
+    if not raw_name:
+        raw_name = "default"
 
-    return "default"
+    canonical = resolve_canonical_project(raw_name, config=config)
+    return canonical or raw_name
 
 
 def discover_config(data: dict | None = None) -> dict | None:
@@ -418,6 +520,29 @@ def _get_cached_transcript_path(
     if resolved:
         state["transcript_path"] = resolved
     return resolved
+
+
+def _find_tool_use_id(transcript_path: str, tool_name: str, tool_input: dict) -> str | None:
+    if not transcript_path:
+        return None
+    try:
+        if not __import__("os").path.exists(transcript_path):
+            return None
+        lines = open(transcript_path).read().splitlines()
+        for line in reversed(lines):
+            if not line.strip():
+                continue
+            try:
+                entry = __import__("json").loads(line)
+            except Exception:
+                continue
+            if entry.get("type") == "assistant":
+                for block in entry.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use" and block.get("name") == tool_name:
+                        return block.get("id")
+    except Exception as e:
+        log.debug("Failed to find tool_use_id: %s", e)
+    return None
 
 
 def _is_human_message(entry: dict) -> bool:
@@ -1315,6 +1440,7 @@ def _complete_turn(
             {
                 "trace_id_hex": trace_id,
                 "span_id_hex": root_span_id,
+                "parent_span_id_hex": current_trace.get("parent_span_id"),
                 "name": "claude-code-turn",
                 "kind": SpanKind.INTERNAL,
                 "start_ns": turn_start_ns,
@@ -1489,9 +1615,41 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     state["turn_number"] = turn_number
     state["human_msg_count"] = current_human_count
 
+    parent_trace_id = None
+    parent_span_id = None
+    phoenix_session_id = state.get("phoenix_session_id")
+    if phoenix_session_id and phoenix_session_id != session_id:
+        try:
+            pstate = _load_state(phoenix_session_id)
+            if pstate and pstate.get("current_trace"):
+                parent_trace_id = pstate["current_trace"]["trace_id"]
+
+            import hashlib
+
+            project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+            if project_dir:
+                sanitized = project_dir.replace("/", "-")
+                sidecar = (
+                    Path.home()
+                    / ".claude"
+                    / "projects"
+                    / sanitized
+                    / phoenix_session_id
+                    / "subagents"
+                    / f"agent-{session_id}.meta.json"
+                )
+                if sidecar.exists():
+                    sdata = __import__("json").loads(sidecar.read_text())
+                    tuid = sdata.get("toolUseId")
+                    if tuid:
+                        parent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+        except Exception as e:
+            log.debug("Failed to parent subagent: %s", e)
+
     state["current_trace"] = {
-        "trace_id": _new_trace_id(),
+        "trace_id": parent_trace_id if parent_trace_id else _new_trace_id(),
         "root_span_id": _new_span_id(),
+        "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "human_count_at_start": current_human_count,
@@ -1601,9 +1759,15 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     current_trace = state.get("current_trace")
     if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
+        transcript_path = state.get("transcript_path")
+        if transcript_path:
+            tuid = _find_tool_use_id(transcript_path, tool_name, tool_input)
+            if tuid:
+                import hashlib
+
+                agent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+
         pending_entry["pre_allocated_span_id"] = agent_span_id
-        # Key by span_id so parallel Agent/Task calls in the same session don't
-        # overwrite each other — post_tool finds the right entry by tool_input match.
         pending_key = f"{tool_name}#{agent_span_id}"
     else:
         pending_key = tool_name

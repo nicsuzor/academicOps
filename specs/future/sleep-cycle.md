@@ -41,7 +41,7 @@ Promotion is only justified when there is a **named consumer** — a specific pl
 | ------------------- | ----------------------------------------- | -------------------------------------------- |
 | **Session start**   | `MEMORY.md`, `CLAUDE.md`, env vars        | Agent behaviour patterns, conventions        |
 | **PKB search**      | `knowledge/`, `memories/`                 | Recurring questions without good answers     |
-| **Framework files** | `aops-core/` index files, specs, axioms   | Framework behaviour changes                  |
+| **Framework files** | `aops/` index files, specs, axioms        | Framework behaviour changes                  |
 | **Daily note**      | Focus section, task tree, recommendations | Task status changes, project progress        |
 | **Task graph**      | Task frontmatter, dependencies            | Status updates, completion, blocking changes |
 
@@ -59,7 +59,7 @@ on:
   workflow_dispatch:
 ```
 
-The workflow checks out both repos: the brain repo (data) and academicOps (code). The extraction and consolidation procedure is defined once, in `plugins/pkb/skills/remember/references/consolidation.md`.
+The workflow checks out both repos: the brain repo (data) and academicOps (code). The extraction and consolidation procedure is defined once, in `plugins/aops/skills/remember/references/consolidation.md`.
 
 Manual invocation: `gh workflow run sleep-cycle` or `/remember` consolidation mode.
 
@@ -83,7 +83,7 @@ Run `/session-insights batch` for any sessions with transcripts but no insights.
 
 **Consumer**: PKB search
 
-Extract insights from session transcripts that agents may not have saved during the session. See `aops-core/skills/sleep/SKILL.md` Phase 1b for full procedure, critical rules, and batch limits.
+Extract insights from session transcripts that agents may not have saved during the session. See `aops/skills/sleep/SKILL.md` Phase 1b for full procedure, critical rules, and batch limits.
 
 **Input**: Session transcripts in `$AOPS_SESSIONS/` (JSONL files).
 **Output**: Knowledge notes with provenance, created via /remember skill.
@@ -125,7 +125,7 @@ Scan recent activity (since last sleep cycle) and identify **promotion candidate
 
 **Consumer**: PKB search, knowledge docs
 
-Transform episodic memory into durable semantic knowledge. This is the core value of the sleep cycle — it mirrors cognitive semanticization, where temporal memories are decontextualized into lasting understanding. See `aops-core/skills/sleep/SKILL.md` Phase 2b for the full consolidation pipeline, deduplication process, and bounded effort limits.
+Transform episodic memory into durable semantic knowledge. This is the core value of the sleep cycle — it mirrors cognitive semanticization, where temporal memories are decontextualized into lasting understanding. See `aops/skills/sleep/SKILL.md` Phase 2b for the full consolidation pipeline, deduplication process, and bounded effort limits.
 
 **Input**: Episodic content older than 7 days without `consolidated:` frontmatter.
 **Output**: Knowledge notes (new or augmented), synthesis notes (3+ sources), MOCs (5+ related notes). Created on a branch, submitted as a PR for /qa review.
@@ -137,9 +137,9 @@ Transform episodic memory into durable semantic knowledge. This is the core valu
 
 Run the audit skill's structure check for mechanical indices. This keeps `SKILLS.md` and `INDEX.md` current without manual invocation. Governance documents (`AXIOMS.md`, `HEURISTICS.md`, `VISION.md`) are never auto-updated — if they appear out of sync, flag them via PR with a description of what changed and why it matters, so the human can make a qualitative decision (P#84).
 
-**Input**: Filesystem state of `aops-core/`.
+**Input**: Filesystem state of `aops/`.
 **Output**: Updated mechanical index files, committed and pushed. PR for governance docs if stale.
-**Skip condition**: No files changed in `aops-core/` since last run.
+**Skip condition**: No files changed in `aops/` since last run.
 
 #### Phase 4: Data Quality Reconciliation
 
@@ -161,7 +161,7 @@ Three activities:
 
 **Skip condition**: None — always runs. The backlog is large enough that every cycle should chip away at it.
 
-See `aops-core/skills/sleep/SKILL.md` Phase 4 for detailed procedures and batch limits.
+See `aops/skills/sleep/SKILL.md` Phase 4 for detailed procedures and batch limits.
 
 #### Phase 5: Staleness Sweep
 
@@ -184,7 +184,7 @@ Identify knowledge docs and memories that may be stale, and tasks that are under
 
 A 2-minute sanity check of THIS cycle's own knowledge output. Not a quality review — the real quality gate is the /qa review on the consolidation PR.
 
-Checks: sources in frontmatter, synthesis cites 2+ observations, wikilinks valid, confidence level present. On failure: log in cycle summary and flag in PR description. See `aops-core/skills/sleep/SKILL.md` Phase 5c for the evaluation feedback loop.
+Checks: sources in frontmatter, synthesis cites 2+ observations, wikilinks valid, confidence level present. On failure: log in cycle summary and flag in PR description. See `aops/skills/sleep/SKILL.md` Phase 5c for the evaluation feedback loop.
 
 #### Phase 6: Brain Sync
 
@@ -217,7 +217,7 @@ Ensure `$ACA_DATA` is committed, pushed, and remote is pulled. This is already h
 The sleep cycle produces knowledge of uncertain quality. Consolidation output (new knowledge notes, synthesis, MOCs) MUST go through a QA gate before reaching the main branch. The process:
 
 1. **Sleep cycle creates a PR** against brain/main (branch: `sleep/consolidation-YYYY-MM-DD-HHMM`)
-2. **`/qa` review** — the existing /qa skill evaluates the PR for fitness-for-purpose (see `aops-core/skills/qa/SKILL.md`). This is not a separate QA process — it's the standard /qa skill applied to consolidation output. The user story: "consolidated knowledge should help future agents find synthesized understanding without reconstructing from fragments."
+2. **`/qa` review** — the existing /qa skill evaluates the PR for fitness-for-purpose (see `aops/skills/qa/SKILL.md`). This is not a separate QA process — it's the standard /qa skill applied to consolidation output. The user story: "consolidated knowledge should help future agents find synthesized understanding without reconstructing from fragments."
 3. **Merge only after QA passes** — during supervised phase, human reviews the QA decision
 
 Mechanical work (dedup, index refresh, graph maintenance, brain sync) commits directly — this is safe because it's deterministic and verifiable. Knowledge creation is judgment work and follows Principle #5: unsupervised execution, supervised judgment.
@@ -240,7 +240,7 @@ Mechanical work (dedup, index refresh, graph maintenance, brain sync) commits di
 
 ```
 specs/sleep-cycle.md                              ← this spec
-aops-core/skills/sleep/SKILL.md                   ← skill definition (manual invocation)
+aops/skills/sleep/SKILL.md                   ← skill definition (manual invocation)
 templates/github-workflows/sleep-cycle.yml        ← GH Actions workflow template
 $ACA_DATA/.github/workflows/sleep-cycle.yml       ← installed workflow (copy from template)
 ```
@@ -262,7 +262,7 @@ The sleep cycle is the framework's "maintenance" layer. Users (human or agent) c
 
 - [ ] **Backfill**: Given a session transcript without a summary, running the sleep cycle (Phase 1) generates the corresponding summary JSON.
 - [ ] **Triage**: Given an active task with a vague title (e.g., "Stuff") and no body, the sleep cycle (Phase 4) flags it as `needs-deletion` or `needs-decomposition`.
-- [ ] **Index Refresh**: After adding a new skill file to `aops-core/skills/`, the sleep cycle (Phase 3) updates `aops-core/SKILLS.md` to include the new skill.
+- [ ] **Index Refresh**: After adding a new skill file to `aops/skills/`, the sleep cycle (Phase 3) updates `aops/SKILLS.md` to include the new skill.
 - [ ] **Governance Protection**: Changes to governance documents (`VISION.md`, `AXIOMS.md`) are flagged via Pull Request rather than being auto-committed.
 - [ ] **Sync Integrity**: Every successful cycle concludes with a commit to the brain repo using the standard message `sleep: periodic consolidation`.
 - [ ] **Time Management**: The agent exits cleanly and records a summary to `$GITHUB_STEP_SUMMARY` within the configured timeout.

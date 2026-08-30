@@ -132,8 +132,8 @@ claude --agent jim    → dispatches by bash into agy
 ### F. MCP wiring
 
 12. **PKB for the orchestrators** — declare `mcpServers: [services,
-    plugin:pkb:services]` (the shape `pauli` uses). Open question: `services` is
-    configured in `plugins/pkb/manifest/mcp.template.json`; an `orchestrate` agent
+    plugin:aops:services]` (the shape `pauli` uses). Open question: `services` is
+    configured in `plugins/aops/manifest/mcp.template.json`; an `orchestrate` agent
     naming it is a cross-plugin reference. Must be _verified to resolve at
     runtime_, not assumed — and checked against "a plugin never reads another
     plugin's files".

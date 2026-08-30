@@ -20,7 +20,7 @@ from pathlib import Path
 
 from build.errors import BuildError
 
-CLIENTS = ("claude", "agy")
+CLIENTS = ("claude", "agy", "openclaw")
 
 
 def resolve_client_agents(agents_dir: Path, client: str) -> None:

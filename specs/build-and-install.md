@@ -23,7 +23,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 
 | Target               | Effect                                                                                                           |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `make build`         | Assembles `dist/` for every plugin, both clients (`build/build.py`).                                             |
+| `make build`         | Assembles `dist/` for every plugin, clients (Claude, agy, openclaw) and channels (cowork, openclaw).             |
 | `make install-dev`   | `build`, then registers `dist/` as the local `aops` marketplace and installs every plugin from it (`aops@aops`). |
 | `make uninstall-dev` | Removes the local marketplace and its installs, then restores the released `academicOps` marketplace.            |
 | `make install`       | Registers `nicsuzor/academicOps@dist` as the `academicOps` marketplace and installs every plugin from it.        |
@@ -40,10 +40,27 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 are separate marketplace names specifically so one install can never silently
 shadow the other: `claude plugin marketplace add` is a no-op when a name already
 exists, so both `install-dev` and `install` remove their own marketplace name
-before re-adding it. The `aops-pkb` plugin takes a `pkb_mcp_url` `userConfig`
-value from `$PKB_MCP_URL` when set (`ARCHITECTURE.md`, "No defaults" — the URL is
-never baked in); `--config` is scoped to that plugin only, since it's the only
-one that declares the key.
+before re-adding it. `aops`'s `services` MCP server resolves `$PKB_MCP_URL`
+from the environment at launch (`ARCHITECTURE.md`, "No defaults" — the URL is
+never committed, and there is no fallback).
+
+**Cowork is the exception, and is currently broken on the published artifact.**
+Cowork installs a plugin by manual zip upload (desktop app → Customize → Add
+plugins → Upload a file), and a plugin installed that way launches its MCP
+servers with a bare environment: `$PKB_MCP_URL` expands to the empty string,
+`fastmcp run ""` exits, and the client reports "Connection closed". The upload
+path has no `--config` equivalent to supply the endpoint afterwards, so the URL
+has to travel inside the artifact. `build.marketplace._bake_cowork_mcp_json`
+resolves it into the zips' `.mcp.json` — swapping the server for the
+`plugins/aops/scripts/run-mcp.sh` stdio launcher with the URL in its `env`
+block, since that bare environment also routinely lacks `uvx` on `PATH` — **when
+`PKB_MCP_URL` is set in the build environment**. It reads that value from the
+environment; it is never committed. An unset variable is not a build failure:
+CI has no `PKB_MCP_URL`, so **published zips ship with no endpoint and their
+`services` MCP does not work in Cowork**, and will not until there is a way to
+configure it post-install. Only a local `make build-cowork` with `PKB_MCP_URL`
+exported produces a usable zip. The `dist/cowork/<name>` directory copy is never
+rewritten — a directory-marketplace install can still use `--config`.
 
 Both Claude Code and `agy` install by **copying** the built plugin content into
 their own plugin caches — an edit to `plugins/` is invisible to an installed

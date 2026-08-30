@@ -39,7 +39,7 @@ def mod():
         "plugins/ida/README.md",
         "plugins/ida/agents/ida.md",
         "plugins/ida/skills/strategize/SKILL.md",
-        "plugins/pkb/workflows/process/feature-dev.md",
+        "plugins/aops/workflows/process/feature-dev.md",
         "plugins/orchestrate/hooks/messages/honesty.md",
         "plugins/tools/skills/analyst/SKILL.md",
         # disabled plugins during development

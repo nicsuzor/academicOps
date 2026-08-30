@@ -1,5 +1,5 @@
 """End-to-end tests for ida's quiet gate
-(plugins/pkb/hooks/handlers.py:be_quiet) and orchestrate's hearsay
+(plugins/aops/hooks/handlers.py:be_quiet) and orchestrate's hearsay
 reminder and honesty advisory
 (plugins/orchestrate/hooks/handlers.py:rule_against_hearsay, honest_output).
 
@@ -38,7 +38,7 @@ def _require_orchestrate_hearsay_enabled():
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
-_IDA_HOOKS = _REPO_ROOT / "plugins" / "pkb" / "hooks"
+_IDA_HOOKS = _REPO_ROOT / "plugins" / "aops" / "hooks"
 _ORCHESTRATE_HOOKS = _REPO_ROOT / "plugins" / "orchestrate" / "hooks"
 
 

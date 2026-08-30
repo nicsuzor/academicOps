@@ -13,7 +13,9 @@ Support academic research data analysis through technology-agnostic principles: 
 
 **Academic research disposition (non-negotiable floor for all academic work):**
 
-- **Data immutability** — source datasets, ground-truth labels, and research configs are sacred; never modify, reformat, or "fix" them — HALT and report rather than reshaping data to fit infrastructure. Violations are scholarly misconduct.
+- **Data immutability & irreplaceable ground truth** — source datasets, ground-truth labels, `records/`, and research configs are sacred; never modify, reformat, or "fix" them — HALT and report rather than reshaping data to fit infrastructure. Violations are scholarly misconduct.
+- **Canonical path resolution** — all analytical database and cache connections MUST resolve against an explicit absolute canonical path rooted at the project root. Cwd-relative addressing (e.g. bare `data/warehouse.db`) is prohibited: volatile working directories cause queries to silently hit confusable duplicate or stale databases.
+- **Canonical-source vs derived-copy parity** — derived marts and analytical caches must be validated against authoritative canonical sources before analysis proceeds. Never analyze against an unverified derived copy. A missing table or column must be treated as a wrong-file symptom before diagnosing data loss.
 - **Research questions drive design** — methods serve the question; restate the question, confirm the method fits it, and refuse convenience shortcuts that compromise validity. A result that doesn't answer the question is worthless however technically sound.
 - **Methodological justification** — ensure all model, variable, and sample choices are justified by the research design, not by computational convenience. Do not drop variables, models, or conditions, or simplify experimental designs unless there is a clear methodological justification. Preserve all theoretically meaningful distinctions.
 - **Dry run / pilot verification** — before full-scale execution, run a qualitative pilot audit. Evaluate representative samples of actual outputs for content substance, completeness across all conditions, edge-case behavior, and face validity. Do not declare a dry run successful based on error-free execution or aggregate statistics alone.
@@ -27,6 +29,70 @@ The data-pipeline specifics below EXTEND this floor.
 ## 🚨 CRITICAL: Data directory separation
 
 Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
+
+## 🚨 CRITICAL: Canonical Path Resolution (NO Cwd-Relative Data Access)
+
+**ALL connections to analytical databases, local caches, and data stores MUST resolve against an absolute canonical path rooted at the project root. Bare cwd-relative path strings are strictly prohibited.**
+
+### The Problem with Cwd-Relative Addressing
+
+In multi-directory project environments, an agent's shell working directory shifts frequently (e.g. project root vs `dbt/` vs `streamlit/`).
+
+1. **Confusable duplicate caches**: When duplicate database files exist at different directory levels (e.g. `data/local_cache.duckdb` vs `dbt/data/local_cache.duckdb`), a cwd-relative query like `duckdb.connect("data/local_cache.duckdb")` silently connects to whichever copy happens to match cwd.
+2. **Silent stale reads**: A stale copy can serve queries with outdated data, quietly producing flawed research findings.
+3. **False "Table does not exist" alarms**: When cwd shifts, a relative path query may hit a database missing recent tables, causing false data-loss investigations.
+
+### The Canonical Addressing Rules
+
+1. **Single canonical location**: Every analytical database or local cache must reside at exactly ONE documented canonical path. Confusable duplicate cache files across subdirectories must be removed.
+2. **Absolute path resolution**: Always resolve the database path relative to the project root using `Path(__file__).resolve()` or an explicit project root locator.
+3. **Pre-connection validation**: Verify the target file exists, check file size and modification time, and verify read-only connection mode where applicable.
+
+```python
+from pathlib import Path
+import duckdb
+
+# ✅ ALWAYS: Resolve absolute canonical path from project root
+PROJECT_ROOT = Path(__file__).resolve().parent  # or project root locator
+DB_PATH = (PROJECT_ROOT / "dbt" / "data" / "local_cache.duckdb").resolve()
+
+if not DB_PATH.is_file():
+    raise FileNotFoundError(
+        f"Canonical database not found at {DB_PATH}. Do not fall back to cwd-relative paths."
+    )
+
+conn = duckdb.connect(str(DB_PATH), read_only=True)
+```
+
+## 🚨 CRITICAL: Canonical-Source vs Derived-Copy Integrity Check
+
+**Before analyzing or scoring against derived tables or warehouse marts, ALWAYS run a pre-flight integrity check validating that the derived copy matches the authoritative canonical ground truth.**
+
+### The Divergence Hazard
+
+Authoritative ground truth (e.g. per-record YAML files in `records/`, raw benchmark configs, expert annotations) is frequently ingested into warehouse tables (BigQuery, DuckDB) via sync scripts or out-of-band loaders.
+
+- If a ground-truth label or record is modified in source files, but the downstream load/sync step is not re-run, derived tables quietly retain stale data.
+- Built-in tool checks like `dbt source freshness` validate timestamp recency, NOT content equality, and out-of-band loaders bypass dbt DAGs entirely.
+- "Research Data is Immutable" prohibits modifying source data, but you must also actively verify that derived copies have not silently diverged from that immutable source.
+
+### Pre-Flight Parity Validation Protocol
+
+Before producing figures, tables, or conclusions from derived data:
+
+1. **Assert count and key parity**: Verify row counts and key sets between canonical source files and derived marts.
+2. **Assert label/content equality**: Run automated diffs or parity tests comparing ground-truth source fields against derived column values (e.g. asserting `expected_violating` equals source `records/*.yaml` labels).
+3. **Fail-fast on mismatch**: If any divergence is detected, HALT immediately and report the synchronization failure. Never proceed with analysis on diverged data.
+
+### Disambiguating "Table Does Not Exist" / Catalog Errors
+
+When a query fails with `Catalog Error: Table with name ... does not exist` or missing relation:
+
+- ❌ **DO NOT** immediately conclude the database was clobbered or data was lost.
+- ✅ **Step 1: Check Connection Path** — Confirm the query connected to the absolute canonical path, not a stale cwd-relative duplicate.
+- ✅ **Step 2: Inspect File Metadata** — Verify file size and modification time (`ls -lh <canonical_path>`). A tiny or stale file indicates an unpopulated or wrong cache.
+- ✅ **Step 3: Scan for Confusable Duplicates** — Run `find . -name "*.duckdb"` (or `.db`) to identify and eliminate rogue duplicates.
+- ✅ **Step 4: Check Model Materialization** — Verify if the model was compiled and built in the target database (`dbt run --select <model_name>`).
 
 ## 🚨 CRITICAL: Transformation Layer vs Presentation Layer
 
@@ -115,7 +181,7 @@ Invoke this skill when:
 
 - A version-controlled transformation layer (e.g. a `dbt/models/` directory — staging, intermediate, marts)
 - A presentation layer (e.g. a `streamlit/` directory or dashboard `.py` files)
-- `data/warehouse.db` or similar analytical database
+- An analytical database at a single canonical path (e.g. `dbt/data/local_cache.duckdb` or `data/warehouse.db`)
 - Academic research focus (papers, empirical analysis)
 
 ## Workflow Decision Tree
@@ -243,15 +309,25 @@ df = pd.read_sql("SELECT * FROM raw_schema.table", engine)
 
 # Direct API call for analysis data - PROHIBITED
 response = requests.get("https://api.example.com/data")
+
+# Bare cwd-relative database connection - PROHIBITED (cwd-volatile, risks duplicate/stale cache)
+conn = duckdb.connect("data/warehouse.db")
 ```
 
 ✅ **ALWAYS** do this:
 
 ```python
-# Query through the modelled layer - CORRECT
+# Query through the modelled layer via absolute canonical path - CORRECT
+from pathlib import Path
 import duckdb
 
-conn = duckdb.connect("data/warehouse.db")
+PROJECT_ROOT = Path(__file__).resolve().parent  # or project root helper
+DB_PATH = (PROJECT_ROOT / "dbt" / "data" / "local_cache.duckdb").resolve()
+
+if not DB_PATH.is_file():
+    raise FileNotFoundError(f"Canonical database not found at {DB_PATH}")
+
+conn = duckdb.connect(str(DB_PATH), read_only=True)
 df = conn.execute("SELECT * FROM fct_case_decisions").df()  # fct_* = a tested mart
 ```
 
@@ -283,23 +359,32 @@ Add tests to validate data quality at every pipeline stage.
 
 Use appropriate test type for the validation:
 
-| Test Type             | Use For             | Example                                        |
-| --------------------- | ------------------- | ---------------------------------------------- |
-| **Schema tests**      | Column-level checks | not_null, unique, accepted_values              |
-| **Singular tests**    | Multi-column logic  | Date range validation, cross-table consistency |
-| **Package tests**     | Common patterns     | Recency checks, multi-column uniqueness        |
-| **Diagnostic models** | Quality monitoring  | Aggregated metrics for manual review           |
+| Test Type             | Use For                     | Example                                        |
+| --------------------- | --------------------------- | ---------------------------------------------- |
+| **Schema tests**      | Column-level checks         | not_null, unique, accepted_values              |
+| **Singular tests**    | Multi-column logic          | Date range validation, cross-table consistency |
+| **Parity tests**      | Canonical source sync check | Derived copy matches canonical source YAML/CSV |
+| **Package tests**     | Common patterns             | Recency checks, multi-column uniqueness        |
+| **Diagnostic models** | Quality monitoring          | Aggregated metrics for manual review           |
 
 ### Follow Single-Step Testing Workflow
 
 Work one step at a time, checkpointing with the user between each:
 
-1. **Identify what to test** — which columns should never be null, must be unique, have accepted-value lists, or carry date/range logic. STOP; agree the test plan with the user.
-2. **Add declarative schema tests** alongside the model. STOP; show to user.
+1. **Identify what to test** — which columns should never be null, must be unique, have accepted-value lists, carry date/range logic, or require canonical-source parity checks. STOP; agree the test plan with the user.
+2. **Add declarative schema tests & parity assertions** alongside the model. STOP; show to user.
 3. **Run the tests.** STOP; report results. If failures, discuss before fixing.
 4. **Add singular/multi-column tests** for logic a column-level test can't express. STOP; show, then run and report.
 
 The engine-specific syntax (test declarations, `severity: warn` for aspirational/known issues, run commands) lives in the aops-tools `dbt` skill.
+
+### Canonical Source vs Derived Copy Parity Tests
+
+When models derive from or score against authoritative ground truth (YAML files, external annotations, benchmark sets), implement automated parity tests:
+
+- **Label parity**: Assert that mart ground-truth columns match canonical source records verbatim.
+- **Record coverage**: Assert that all canonical source IDs exist in the derived dataset with zero dropped records.
+- **Pre-analysis assertion**: Run parity assertions before running statistical evaluations or falsification suites.
 
 ### Pipeline/Template Validation Tests
 

@@ -38,7 +38,7 @@ Antigravity uses different skill and MCP naming conventions to Claude Code.
 
 Always instruct agy with plain English names and descriptions, not specific plugin/skill/server/function names.
 
-Skills expand in print mode only under the plugin-prefixed slash form. Write `/pkb:hydrate`; the bare `/hydrate` expands nothing and raises no error.
+Skills expand in print mode only under the plugin-prefixed slash form. Write `/aops:hydrate`; the bare `/hydrate` expands nothing and raises no error.
 
 ## Completing the task
 

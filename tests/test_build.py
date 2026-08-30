@@ -18,7 +18,7 @@ import pytest
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template
-from build.marketplace import load_marketplace_toml
+from build.marketplace import _bake_cowork_mcp_json, load_marketplace_toml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
@@ -209,7 +209,7 @@ def test_agy_rejects_an_event_it_cannot_fire(tmp_path):
         _to_agy_hooks(config, ctx)
 
 
-def _agy_ctx(tmp_path, directory="pkb", name="aops-pkb"):
+def _agy_ctx(tmp_path, directory="aops", name="aops"):
     from build.context import BuildContext, Plugin
 
     return BuildContext(
@@ -352,7 +352,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb", "orchestrate"],
+        plugins=["aops", "orchestrate"],
         version=VERSION,
     )
 
@@ -360,9 +360,9 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
     # read format — see build/clients/agy.py's _adapt_agents docstring).
-    agy_ida_md = dist_root / "pkb-agy" / "agents" / "ida.md"
+    agy_ida_md = dist_root / "aops-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "pkb-agy" / "agents" / "ida" / "agent.md").exists()
+    assert not (dist_root / "aops-agy" / "agents" / "ida" / "agent.md").exists()
 
     raw = agy_ida_md.read_text()
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
@@ -752,13 +752,68 @@ def test_cowork_dist(built):
     assert "fixture-alpha/.claude-plugin/plugin.json" in names
 
 
-def test_cowork_does_not_bake_urls(built):
-    """Hard constraint: no URL/endpoint/token is ever baked into a shipped
-    artifact — the cowork copy's .mcp.json must be byte-identical to the
-    claude dist's, not rewritten."""
+def test_cowork_directory_copy_is_never_rewritten(built):
+    """The dist/cowork/<name> directory copy is byte-identical to the claude
+    dist. A directory-marketplace install can supply the endpoint with
+    `claude plugin install --config`, so it has no reason to carry one, and
+    this is the copy `make build` leaves on disk."""
     claude_mcp = (built / "fixture-alpha-claude" / ".mcp.json").read_bytes()
     cowork_mcp = (built / "cowork" / "fixture-alpha" / ".mcp.json").read_bytes()
     assert claude_mcp == cowork_mcp
+
+
+def _fixture_pkb_plugin(tmp_path: Path) -> Path:
+    plugin = tmp_path / "plug"
+    (plugin / "scripts").mkdir(parents=True)
+    (plugin / "scripts" / "run-mcp.sh").write_text("#!/bin/bash\n", encoding="utf-8")
+    (plugin / ".mcp.json").write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "command": "bash",
+                        "args": ["-c", 'fastmcp run "$PKB_MCP_URL"'],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    return plugin
+
+
+def test_cowork_zip_ships_no_url_when_build_env_has_none(tmp_path, monkeypatch):
+    """The published zips are built without PKB_MCP_URL and must ship without
+    an endpoint — unset is not a build failure, it just yields an unrewritten
+    (and, in Cowork, non-functional) MCP config."""
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
+    plugin = _fixture_pkb_plugin(tmp_path)
+    assert _bake_cowork_mcp_json(plugin / ".mcp.json", plugin) is None
+
+
+def test_cowork_zip_resolves_url_from_build_env(tmp_path, monkeypatch):
+    """A local build with PKB_MCP_URL exported produces a usable zip: the
+    upload install path has no --config, so the endpoint has to travel in the
+    artifact, via the stdio launcher's env block."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    plugin = _fixture_pkb_plugin(tmp_path)
+    baked = _bake_cowork_mcp_json(plugin / ".mcp.json", plugin)
+    assert baked is not None
+    server = json.loads(baked)["mcpServers"]["services"]
+    assert server["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
+    assert server["args"] == ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
+
+
+def test_cowork_zip_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    plugin = _fixture_pkb_plugin(tmp_path)
+    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
+    data["mcpServers"]["other"] = {"command": "other-server", "args": ["--stdio"]}
+    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
+
+    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
+    assert baked["mcpServers"]["other"] == {"command": "other-server", "args": ["--stdio"]}
+    assert "env" in baked["mcpServers"]["services"]
 
 
 # --- hard-error paths ---------------------------------------------------------
@@ -1012,11 +1067,11 @@ def test_pauli_agy_frontmatter(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb"],
+        plugins=["aops"],
         version=VERSION,
     )
 
-    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
+    pauli_md = dist_root / "aops-agy" / "agents" / "pauli.md"
     assert pauli_md.is_file()
     fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)
@@ -1028,3 +1083,83 @@ def test_pauli_agy_frontmatter(tmp_path):
     assert "hidden" not in agent
     assert "includeSections" not in agent
     assert "call_mcp_tool" not in agent["tools"]
+
+
+def test_openclaw_dist_built_and_packaged(tmp_path):
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops", "orchestrate"],
+        clients=("claude", "agy", "openclaw"),
+        version=VERSION,
+    )
+
+    openclaw_root = dist_root / "openclaw"
+    assert openclaw_root.is_dir()
+
+    # Verify directory marketplace manifest
+    manifest_path = openclaw_root / ".claude-plugin" / "marketplace.json"
+    assert manifest_path.is_file()
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert data["name"] == "academicOps-openclaw"
+    assert {p["name"] for p in data["plugins"]} == {"aops", "orchestrate"}
+    for p in data["plugins"]:
+        assert p["source"] == f"./{p['name']}"
+        assert p["version"] == VERSION
+
+    # Verify per-plugin directories and zip packages
+    for name in ("aops", "orchestrate"):
+        plugin_dir = openclaw_root / name
+        assert plugin_dir.is_dir()
+        assert (plugin_dir / ".claude-plugin" / "plugin.json").is_file()
+
+        zip_path = openclaw_root / f"{name}-v{VERSION}.zip"
+        assert zip_path.is_file()
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+        assert f"{name}/.claude-plugin/plugin.json" in names
+
+    # Verify openclaw dist directory
+    assert (dist_root / "aops-openclaw" / ".claude-plugin" / "plugin.json").is_file()
+    assert (dist_root / "aops-openclaw.tar.gz").is_file()
+
+
+def test_openclaw_does_not_bake_urls(tmp_path):
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops"],
+        clients=("claude", "openclaw"),
+        version=VERSION,
+    )
+
+    claude_mcp = (dist_root / "aops-claude" / ".mcp.json").read_bytes()
+    openclaw_mcp = (dist_root / "openclaw" / "aops" / ".mcp.json").read_bytes()
+    assert claude_mcp == openclaw_mcp
+
+
+def test_openclaw_ida_face_configuration(tmp_path):
+    import yaml
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops"],
+        clients=("openclaw",),
+        version=VERSION,
+    )
+
+    ida_md = dist_root / "aops-openclaw" / "agents" / "ida.md"
+    assert ida_md.is_file()
+    fm, _, body = ida_md.read_text().partition("---\n")[2].partition("---\n")
+    agent = yaml.safe_load(fm)
+
+    assert agent["name"] == "ida"
+    assert "strategic face" in agent["description"]
+    assert "# Ida" in body

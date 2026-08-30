@@ -1,7 +1,7 @@
 """The email-triage process template ships, generically, to every client.
 
 PR #2372 proposed a second copy of this procedure as a skill, on a review finding
-that `plugins/pkb/workflows/` was an unauthorized location for instructions. It is
+that `plugins/aops/workflows/` was an unauthorized location for instructions. It is
 not: the workflow library is a shipped, indexed surface, and this template already
 carried the whole procedure. These tests hold that single copy in place — its
 routing frontmatter, its genericity, and its arrival in both clients' artifacts —
@@ -20,7 +20,7 @@ from build.build import build_all
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REAL_MARKETPLACE = PROJECT_ROOT / "build" / "marketplace.toml"
-WORKFLOW = PROJECT_ROOT / "plugins" / "pkb" / "workflows" / "email-triage.md"
+WORKFLOW = PROJECT_ROOT / "plugins" / "aops" / "workflows" / "archive" / "email-triage.md"
 
 # A shipped instruction reaches every user, so it carries no person, organisation,
 # address, timezone, or local path. See specs/meta/doc-taxonomy.md.
@@ -82,10 +82,10 @@ def test_the_template_reaches_the_client_artifact(client, tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb"],
+        plugins=["aops"],
         version="0.0.0-test",
     )
 
-    built = dist_root / f"pkb-{client}" / "workflows" / "email-triage.md"
+    built = dist_root / f"aops-{client}" / "workflows" / "archive" / "email-triage.md"
     assert built.is_file(), f"the template did not ship to {client}: {built}"
     assert _frontmatter(built).get("id") == "email-triage"

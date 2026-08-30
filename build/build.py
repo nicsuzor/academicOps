@@ -14,19 +14,25 @@ package imports):
 """
 
 import argparse
+import json
+import os
 import shutil
+import subprocess
 import tarfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from build.clients import agy as agy_client
 from build.clients import claude as claude_client
+from build.clients import openclaw as openclaw_client
 from build.context import BuildContext, Plugin
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template, template_stem
 from build.marketplace import (
     generate_cowork_dist,
     generate_local_marketplace,
+    generate_openclaw_dist,
     generate_production_marketplace,
     load_marketplace_toml,
 )
@@ -42,6 +48,7 @@ from build.version import get_current_version
 CLIENT_ADAPTERS = {
     "claude": claude_client.adapt,
     "agy": agy_client.adapt,
+    "openclaw": openclaw_client.adapt,
 }
 
 _STAGE_EXCLUDE_TOP = frozenset({"manifest"})  # manifest/ is rendered per client, never shipped raw
@@ -175,6 +182,59 @@ def _build_plugin_client(
     return build_dir
 
 
+def generate_image_metadata(
+    project_root: Path,
+    resolved_version: str,
+    dist_root: Path,
+    plugins_built: dict[str, list[Path]],
+) -> Path:
+    commit_sha = ""
+    short_sha = ""
+    is_dirty = False
+    try:
+        sha_res = subprocess.run(
+            ["git", "-C", str(project_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if sha_res.returncode == 0 and sha_res.stdout:
+            commit_sha = sha_res.stdout.strip()
+            short_sha = commit_sha[:8]
+        status_res = subprocess.run(
+            ["git", "-C", str(project_root), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        is_dirty = status_res.returncode == 0 and bool(status_res.stdout.strip())
+    except Exception:
+        pass
+
+    dist_ref = os.environ.get("AOPS_DIST_REF", "dev")
+    repo_url = os.environ.get("AOPS_REPO_URL", "https://github.com/nicsuzor/academicOps.git")
+    built_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    plugins_map = {name: resolved_version for name in plugins_built}
+
+    data = {
+        "schema_version": "1.0",
+        "aops_version": resolved_version,
+        "dist_source": os.environ.get("AOPS_DIST_SOURCE", "local"),
+        "commit_sha": commit_sha,
+        "short_sha": short_sha,
+        "is_dirty": is_dirty,
+        "dist_ref": dist_ref,
+        "repo_url": repo_url,
+        "built_at": built_at,
+        "plugins": plugins_map,
+    }
+
+    out_path = dist_root / ".aops-image-metadata.json"
+    out_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return out_path
+
+
 def build_all(
     project_root: Path,
     dist_root: Path,
@@ -208,10 +268,13 @@ def build_all(
     finally:
         shutil.rmtree(stage_root, ignore_errors=True)
 
-    if "claude" in clients:
+    if "claude" in clients or "openclaw" in clients:
         generate_local_marketplace(decl, resolved_version, dist_root)
         generate_production_marketplace(decl, resolved_version, dist_root)
         generate_cowork_dist(decl, resolved_version, dist_root)
+        generate_openclaw_dist(decl, resolved_version, dist_root)
+
+    generate_image_metadata(project_root, resolved_version, dist_root, built)
 
     return built
 
@@ -222,7 +285,10 @@ def main() -> None:
         "--plugins", nargs="+", default=None, help="Build only these plugin directories"
     )
     parser.add_argument(
-        "--clients", nargs="+", default=["claude", "agy"], choices=["claude", "agy"]
+        "--clients",
+        nargs="+",
+        default=["claude", "agy", "openclaw"],
+        choices=["claude", "agy", "openclaw"],
     )
     parser.add_argument("--version", action="store_true", help="Print the current version and exit")
     parser.add_argument(

@@ -24,4 +24,9 @@ Every metric, join, aggregation, and `CASE` business rule lives in a tested dbt 
 in the staging / intermediate / mart layering — never inline in the presentation
 layer. A transformation without a test is not one anyone can audit.
 
+## Ground truth parity and canonical addressing
+
+- **Canonical source parity**: When models derive from or score against authoritative ground truth (e.g. YAML records, research configs, benchmark sets), author tests (schema or singular) asserting that the derived mart matches the canonical source records verbatim. `dbt source freshness` validates timestamp recency, not content equality.
+- **Canonical database paths**: Local warehouse caches (e.g. DuckDB databases) must reside at a single documented canonical path. Address them via absolute canonical paths from the project root; never use bare cwd-relative paths.
+
 Fetch current dbt documentation at the point of use.

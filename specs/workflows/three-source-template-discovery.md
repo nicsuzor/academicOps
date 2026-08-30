@@ -60,11 +60,11 @@ Three sources, one namespace. A PKB template composes exactly like a shipped one
 **`type: template` is the marker in every tier.** The tiers differ only in where
 you look for it.
 
-| Tier             | Where to look                                                                | Enumerate with                                   |
-| ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| **1. Project**   | `$CWD/.agents/templates/*.md`                                                | `ls`; an absent directory is empty, not an error |
-| **2. PKB**       | the graph                                                                    | `pkb__list_documents(type="template")`           |
-| **3. Universal** | `plugins/pkb/workflows/*.md`, catalogued by `plugins/pkb/workflows/INDEX.md` | `ls`                                             |
+| Tier             | Where to look                                                                  | Enumerate with                                   |
+| ---------------- | ------------------------------------------------------------------------------ | ------------------------------------------------ |
+| **1. Project**   | `$CWD/.agents/templates/*.md`                                                  | `ls`; an absent directory is empty, not an error |
+| **2. PKB**       | the graph                                                                      | `pkb__list_documents(type="template")`           |
+| **3. Universal** | `plugins/aops/workflows/*.md`, catalogued by `plugins/aops/workflows/INDEX.md` | `ls`                                             |
 
 Frontmatter beyond `type: template`: `kind: process` or `kind: fragment`,
 `description` (the one-line routing summary agents scan), and the dependency
@@ -183,7 +183,7 @@ repositories. Fall through silently; report it as "no project tier here".
 
 ## See also
 
-- `plugins/pkb/workflows/INDEX.md` — the routing tree
-- `plugins/pkb/skills/brief/SKILL.md` §5 — the composition pass
-- `plugins/pkb/skills/workflow-library/SKILL.md` — list, view, add, edit, retire
+- `plugins/aops/workflows/INDEX.md` — the routing tree
+- `plugins/aops/skills/brief/SKILL.md` §5 — the composition pass
+- `plugins/aops/skills/workflow-library/SKILL.md` — list, view, add, edit, retire
 - [[workflow-library-moc]] — the human-facing map of what currently exists in every tier

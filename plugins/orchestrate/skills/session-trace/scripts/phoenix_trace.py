@@ -144,6 +144,89 @@ def project_names(projects: list[dict[str, Any]]) -> str:
     return ", ".join(str(p.get("name")) for p in projects) or "(none)"
 
 
+def _load_polecat_config() -> dict[str, Any]:
+    cfg_path = os.environ.get("AOPS_POLECAT_CONFIG")
+    if not cfg_path:
+        sessions = os.environ.get("AOPS_SESSIONS")
+        if sessions:
+            cfg_path = os.path.join(sessions, "polecat.yaml")
+    if cfg_path and os.path.exists(cfg_path):
+        try:
+            import yaml
+
+            with open(cfg_path) as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            pass
+    return {}
+
+
+def resolve_canonical_project(
+    project: str | None, config: dict[str, Any] | None = None
+) -> str | None:
+    """Resolve a project name or alias to its canonical project slug."""
+    if not project:
+        return project
+    if config is None:
+        config = _load_polecat_config()
+    project_str = str(project).strip()
+    if not project_str:
+        return project
+
+    projects = config.get("projects", {})
+    if isinstance(projects, dict) and project_str in projects:
+        return project_str
+
+    if isinstance(projects, dict):
+        for slug, p_cfg in projects.items():
+            if isinstance(p_cfg, dict):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases == project_str:
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)) and project_str in aliases:
+                    return str(slug)
+
+        for slug, p_cfg in projects.items():
+            if str(slug).lower() == project_str.lower():
+                return str(slug)
+            if isinstance(p_cfg, dict):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases.lower() == project_str.lower():
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)):
+                    if any(str(a).lower() == project_str.lower() for a in aliases):
+                        return str(slug)
+
+    top_aliases = config.get("aliases", {})
+    if isinstance(top_aliases, dict):
+        if project_str in top_aliases and isinstance(top_aliases[project_str], str):
+            return str(top_aliases[project_str])
+
+        for target, val in top_aliases.items():
+            if isinstance(val, str):
+                if target == project_str or val == project_str:
+                    return str(val if target == project_str else target)
+                if target.lower() == project_str.lower():
+                    return str(val)
+                if val.lower() == project_str.lower():
+                    return str(target)
+            elif isinstance(val, (list, tuple, set)):
+                if project_str in val or any(str(a).lower() == project_str.lower() for a in val):
+                    return str(target)
+
+        for k, v in top_aliases.items():
+            if k.lower() == project_str.lower() and isinstance(v, str):
+                return str(v)
+
+    if "-" in project_str:
+        prefix, rest = project_str.split("-", 1)
+        canon_prefix = resolve_canonical_project(prefix, config)
+        if canon_prefix and canon_prefix != prefix:
+            return f"{canon_prefix}-{rest}"
+
+    return project_str
+
+
 def resolve_project_name(explicit: str | None, base_url: str | None) -> str:
     """The project to query, from ``--project`` then the environment, or a loud failure.
 
@@ -154,7 +237,8 @@ def resolve_project_name(explicit: str | None, base_url: str | None) -> str:
     """
     candidate = (explicit or os.environ.get(PROJECT_ENV_VAR, "")).strip()
     if candidate:
-        return candidate
+        canonical = resolve_canonical_project(candidate)
+        return canonical or candidate
     known = ""
     if base_url:
         try:
@@ -173,6 +257,11 @@ def resolve_project(base_url: str, wanted: str) -> tuple[str, str]:
     for project in projects:
         if wanted in (project.get("name"), project.get("id")):
             return str(project.get("id")), str(project.get("name"))
+    canonical = resolve_canonical_project(wanted)
+    if canonical and canonical != wanted:
+        for project in projects:
+            if canonical in (project.get("name"), project.get("id")):
+                return str(project.get("id")), str(project.get("name"))
     raise ConfigError(
         f"project {wanted!r} not found. Projects on this server: {project_names(projects)}"
     )

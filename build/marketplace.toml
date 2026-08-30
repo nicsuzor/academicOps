@@ -10,8 +10,8 @@ name = "Nicolas Suzor"
 email = "nic@suzor.net"
 #
 [[plugins]]
-directory = "pkb"
-name = "pkb"
+directory = "aops"
+name = "aops"
 description = "ida for strategy and pauli for memory."
 category = "productivity"
 

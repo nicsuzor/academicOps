@@ -34,6 +34,7 @@ try:  # imported as part of the installed package
         format_otel_resource_attributes,
     )
     from .notify import notify_run_complete
+    from .staleness import evaluate_staleness, inspect_image_provenance
 except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
@@ -46,6 +47,7 @@ except ImportError:  # run directly as <plugin-root>/polecat/cli.py
         format_otel_resource_attributes,
     )
     from polecat.notify import notify_run_complete
+    from polecat.staleness import evaluate_staleness, inspect_image_provenance
 
 
 # A trailing flag that means the caller has already asked for headless, so
@@ -97,6 +99,93 @@ def load_local_overlay(polecat_home):
         except Exception as e:
             fail(f"failed to load overlay from {local_path}: {e}")
     return {}
+
+
+def resolve_canonical_project(project: str | None, config: Mapping | None = None) -> str | None:
+    """Resolve a project name or alias to its canonical project slug.
+
+    Reads aliases configured in polecat.yaml:
+    - `projects.<slug>.aliases`: list of alias strings or single alias string
+    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `academicOps: aops`),
+      or canonical slug to alias list (e.g. `aops: [academicOps, academicops]`).
+
+    If `project` matches a canonical slug or an alias (checked case-insensitively if exact
+    case does not hit), returns the canonical slug.
+    Also handles `<alias>-<task_id>` prefixes by canonicalizing the prefix.
+    If no alias matches, returns `project`.
+    """
+    if not project:
+        return project
+
+    cfg = config if config is not None else load_config()
+
+    project_str = str(project).strip()
+    if not project_str:
+        return project
+
+    # 1. Direct match in `projects` (exact key match is canonical)
+    projects = cfg.get("projects", {}) if cfg else {}
+    if isinstance(projects, Mapping) and project_str in projects:
+        return project_str
+
+    # 2. Check aliases under `projects.<slug>`
+    if isinstance(projects, Mapping):
+        # Exact alias match
+        for slug, p_cfg in projects.items():
+            if isinstance(p_cfg, Mapping):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases == project_str:
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)) and project_str in aliases:
+                    return str(slug)
+
+        # Case-insensitive alias match / slug match
+        for slug, p_cfg in projects.items():
+            if str(slug).lower() == project_str.lower():
+                return str(slug)
+            if isinstance(p_cfg, Mapping):
+                aliases = p_cfg.get("aliases") or p_cfg.get("alias")
+                if isinstance(aliases, str) and aliases.lower() == project_str.lower():
+                    return str(slug)
+                elif isinstance(aliases, (list, tuple, set)):
+                    if any(str(a).lower() == project_str.lower() for a in aliases):
+                        return str(slug)
+
+    # 3. Check top-level `aliases` block
+    top_aliases = cfg.get("aliases", {}) if cfg else {}
+    if isinstance(top_aliases, Mapping):
+        # Direct key match if mapping alias -> canonical
+        if project_str in top_aliases and isinstance(top_aliases[project_str], str):
+            return str(top_aliases[project_str])
+
+        # If mapping canonical -> [aliases] or canonical -> alias
+        for target, val in top_aliases.items():
+            if isinstance(val, str):
+                if target == project_str:
+                    return str(val)
+                if val == project_str:
+                    return str(val)
+                if target.lower() == project_str.lower():
+                    return str(val)
+                if val.lower() == project_str.lower():
+                    return str(target)
+            elif isinstance(val, (list, tuple, set)):
+                if project_str in val or any(str(a).lower() == project_str.lower() for a in val):
+                    return str(target)
+
+        # Case-insensitive key match in alias -> canonical
+        for k, v in top_aliases.items():
+            if k.lower() == project_str.lower() and isinstance(v, str):
+                return str(v)
+
+    # 4. Check for <alias>-<task_suffix>
+    if "-" in project_str:
+        prefix, rest = project_str.split("-", 1)
+        canon_prefix = resolve_canonical_project(prefix, config)
+        if canon_prefix and canon_prefix != prefix:
+            return f"{canon_prefix}-{rest}"
+
+    return project_str
 
 
 def expand(value):
@@ -686,7 +775,18 @@ def resolve_isolated_workspace(
     origin_url = origin_result.stdout.strip() if origin_result.returncode == 0 else None
 
     config = config or {}
-    base_ref = (base or config.get("default_branch") or "HEAD").strip()
+    if not base:
+        sym_res = subprocess.run(
+            ["git", "-C", str(canonical_dir), "symbolic-ref", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+        )
+        if sym_res.returncode == 0 and sym_res.stdout.strip():
+            base_ref = sym_res.stdout.strip()
+        else:
+            base_ref = "HEAD"
+    else:
+        base_ref = base.strip()
 
     # Resolve the base commit SHA from base_ref with remote freshness verification
     base_sha = None
@@ -878,7 +978,18 @@ def resolve_isolated_workspace(
             "checkout — refusing to mount a shared tree."
         )
 
-    return isolated_path, {"path": clone_path}
+    subprocess.run(
+        ["git", "-C", str(clone_path), "config", "polecat.base", base_ref],
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(clone_path), "config", f"branch.{branch_name}.base", base_ref],
+        capture_output=True,
+        text=True,
+    )
+
+    return isolated_path, {"path": clone_path, "base_ref": base_ref, "base_sha": base_sha}
 
 
 def cleanup_isolated_workspace(cleanup_info):
@@ -945,12 +1056,12 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
 
     settings = {}
     if mcp_url:
-        # `pkb_mcp_url` is declared by the pkb plugin's userConfig, so the value
+        # `pkb_mcp_url` is declared by the aops plugin's userConfig, so the value
         # must be staged under that plugin's key. Under any other key the option
         # is silently ignored and the container's PKB MCP server starts with no
         # URL. The key is `<plugin name>@<marketplace name>`, and both halves
         # come from build/marketplace.toml — see build/marketplace.py.
-        settings["pluginConfigs"] = {"pkb@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
+        settings["pluginConfigs"] = {"aops@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
     worker_model = os.environ.get("POLECAT_WORKER_MODEL")
     if worker_model:
         settings["model"] = worker_model
@@ -1084,13 +1195,17 @@ def _sanitize_path_component(val: str | None, default: str | None = None) -> str
     return cleaned
 
 
-def _resolve_workspace(repo_dir, project, polecat_home):
+def _resolve_workspace(repo_dir, project, polecat_home, config=None):
     """The host directory to mount at /workspace. No default: an unresolvable
     workspace is a hard failure, never a guess at the current directory."""
     if repo_dir:
         workspace_dir = repo_dir.resolve()
     elif project:
-        proj_path = load_local_overlay(polecat_home).get("paths", {}).get(project)
+        canonical_project = resolve_canonical_project(project, config)
+        paths = load_local_overlay(polecat_home).get("paths", {})
+        proj_path = (paths.get(canonical_project) if canonical_project else None) or paths.get(
+            project
+        )
         workspace_dir = expand(proj_path).resolve() if proj_path else None
     else:
         workspace_dir = None
@@ -1315,18 +1430,14 @@ def _build_inner_command(
         else:
             inner_cmd.append(prompt)
     elif seeded_from_task:
-        seeded_prompt = f"/pull {task}"
+        seeded_prompt = f"/pkb:pull {task}"
         if agent_cmd == "agy":
-            if effectively_interactive:
-                inner_cmd.extend(["--prompt-interactive", f"/pull {task}"])
-            else:
+            if not effectively_interactive:
                 # `-t` is the canonical production dispatch, so the operator's
                 # timeout has to reach it: reading the config only on the
                 # extra_args branch left every seeded run pinned to agy's 5m
                 # default.
-                inner_cmd.extend([*_print_timeout_args(config), "--print", f"/pull {task}"])
-        else:
-            inner_cmd.append(f"/pull {task}")
+                inner_cmd.extend(_print_timeout_args(config))
     elif extra_args:
         seeded_prompt = " ".join(extra_args)
         if agent_cmd == "agy":
@@ -1399,6 +1510,7 @@ def _build_docker_argv(
     with_sessions=False,
     sessions_base=None,
     ports=(),
+    detach=False,
 ):
     """The full `docker run` argv, and the environment to launch it with.
 
@@ -1434,10 +1546,16 @@ def _build_docker_argv(
     cmd = [
         "docker",
         "run",
-        "--rm",
-        "--cidfile",
-        str(cidfile),
     ]
+    if detach:
+        cmd.append("-d")
+    cmd.extend(
+        [
+            "--rm",
+            "--cidfile",
+            str(cidfile),
+        ]
+    )
     if session_id:
         cmd.extend(["--name", f"polecat-{session_id}"])
 
@@ -1470,6 +1588,12 @@ def _build_docker_argv(
     # was configured but unreadable, before any container started).
     if rules_dir:
         cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
+
+    cgroup_parent = config.get("docker", {}).get("cgroup_parent")
+    if not cgroup_parent and Path("/sys/fs/cgroup/polecats.slice").exists():
+        cgroup_parent = "polecats.slice"
+    if cgroup_parent:
+        cmd.extend(["--cgroup-parent", cgroup_parent])
 
     # The host docker socket is a container escape. Mount it only where the
     # container legitimately spawns siblings, and document why.
@@ -1554,11 +1678,13 @@ def write_run_record(
     ended_at: datetime,
     worker_model: str | None = None,
     degraded: list | None = None,
+    status: str | None = None,
+    plugin_provenance: dict | None = None,
 ) -> Path:
     """Persist run.json at the root of session_dir.
 
     All schema keys are always present; unobtainable values are recorded as null.
-    `status` is derived from exit_code and delivery_guard.
+    `status` is derived from exit_code and delivery_guard unless explicitly provided.
     `degraded[]` is always present and records missing observable state.
     `transcript` is read off the session directory here rather than passed in,
     so no call path can write a record that says nothing about whether the run
@@ -1576,7 +1702,7 @@ def write_run_record(
         or not transcript.get("event_count")
     )
 
-    if is_agent_cmd and transcript_missing:
+    if is_agent_cmd and transcript_missing and status != "detached":
         if not any(
             isinstance(d, dict) and d.get("what") in ("transcript", "transcript_missing")
             for d in degraded_list
@@ -1599,16 +1725,17 @@ def write_run_record(
                 }
             )
 
-    if exit_code is None or exit_code in (130, 137, -9, -15):
-        status = "killed"
-    elif exit_code != 0:
-        status = "failed"
-    elif not delivery_guard.get("ok", True):
-        status = "delivery_guard_failed"
-    elif is_agent_cmd and transcript_missing:
-        status = "degraded"
-    else:
-        status = "success"
+    if status is None:
+        if exit_code is None or exit_code in (130, 137, -9, -15):
+            status = "killed"
+        elif exit_code != 0:
+            status = "failed"
+        elif not delivery_guard.get("ok", True):
+            status = "delivery_guard_failed"
+        elif is_agent_cmd and transcript_missing:
+            status = "degraded"
+        else:
+            status = "success"
 
     record = {
         "schema_version": 1,
@@ -1633,6 +1760,7 @@ def write_run_record(
         "duration_seconds": duration_seconds,
         "worker_model": worker_model,
         "degraded": degraded_list,
+        "plugin_provenance": plugin_provenance,
     }
 
     out_path = Path(session_dir) / "run.json"
@@ -1737,7 +1865,7 @@ def main():
     """Polecat: run an agent CLI inside an isolated container."""
 
 
-@main.command(context_settings={"ignore_unknown_options": True})
+@main.command(context_settings={"ignore_unknown_options": True})  # pyright: ignore[reportFunctionMemberAccess]
 @click.argument("agent_cmd", default="claude")
 @click.option("--project", "-p", help="Project name, resolved via local.yaml paths.")
 @click.option(
@@ -1748,6 +1876,14 @@ def main():
 )
 @click.option("--session-name", "-s", help="Session id; names the log and clone directories.")
 @click.option("--mcp-url", help="Override the knowledge-base MCP URL forwarded into the container.")
+@click.option(
+    "--no-pkb",
+    is_flag=True,
+    default=False,
+    help="Allow a run with no knowledge-base MCP URL wired. Without this, an "
+    "unresolved --mcp-url/$PKB_MCP_URL is a hard failure at launch, not a "
+    "container silently started with zero MCP servers.",
+)
 @click.option(
     "--task",
     "-t",
@@ -1796,6 +1932,13 @@ def main():
     help="Run interactively (attaches TTY and opens interactive UI).",
 )
 @click.option(
+    "--detach",
+    "--detached",
+    is_flag=True,
+    default=False,
+    help="Run container in detached mode and return immediately without blocking.",
+)
+@click.option(
     "--port",
     "--publish",
     "-P",
@@ -1819,6 +1962,7 @@ def run(
     repo_dir,
     session_name,
     mcp_url,
+    no_pkb,
     task,
     base,
     branch,
@@ -1828,6 +1972,7 @@ def run(
     output_format,
     prompt,
     interactive,
+    detach,
     quiet,
     ports,
     extra_args,
@@ -1837,6 +1982,9 @@ def run(
     Anything after AGENT_CMD that is not one of this command's own options is
     forwarded verbatim to the inner invocation.
     """
+    if detach and interactive:
+        fail("cannot run in interactive mode with --detach")
+
     if no_agent:
         effective_agent = None
     elif agent is not None:
@@ -1846,17 +1994,18 @@ def run(
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent, prompt=prompt)
 
+    config = load_config()
     if project:
+        project = resolve_canonical_project(project, config)
         project = _sanitize_path_component(project)
     if session_name:
         session_name = _sanitize_path_component(session_name)
 
-    config = load_config()
     polecat_home = resolve_polecat_home(config)
     image = resolve_image(config)
     sessions_base = resolve_sessions_root()
     rules_dir = resolve_rules_dir(config)
-    workspace_dir = _resolve_workspace(repo_dir, project, polecat_home)
+    workspace_dir = _resolve_workspace(repo_dir, project, polecat_home, config=config)
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
 
@@ -1880,6 +2029,16 @@ def run(
 
     initial_head = _get_git_head(workspace_dir)
     mcp_url = mcp_url or os.environ.get("PKB_MCP_URL")
+    if not mcp_url and not no_pkb:
+        fail(
+            "no knowledge-base MCP URL: --mcp-url was not given and $PKB_MCP_URL "
+            "is unset. Without one, this container would start anyway with zero "
+            "MCP servers wired, and a worker inside it cannot tell an "
+            "unreachable PKB from a PKB that was never configured. Export "
+            "PKB_MCP_URL to the gateway route (host:8020/mcp) or the direct "
+            "route (host:8026/mcp), pass --mcp-url explicitly, or pass --no-pkb "
+            "for a run that genuinely needs no knowledge-base access."
+        )
 
     staging_base = os.environ.get("POLECAT_STAGING_BASE") or str(polecat_home / "tmp" / "staging")
     Path(staging_base).mkdir(parents=True, exist_ok=True)
@@ -1896,6 +2055,7 @@ def run(
     seeded_prompt = None
     worker_model = os.environ.get("POLECAT_WORKER_MODEL")
     degraded = []
+    staleness_eval = None
 
     try:
         setup_staging(staging_dir, mcp_url, os.environ.get("GEMINI_CONFIG_DIR"), agent_cmd)
@@ -1910,12 +2070,60 @@ def run(
                 "ship stale plugins. Build it locally, then retry."
             )
 
+        # Staleness evaluation
+        image_provenance = inspect_image_provenance(image)
+        staleness_eval = evaluate_staleness(
+            image_provenance,
+            workspace_dir,
+            dispatch_mode="direct" if repo_dir else ("base" if base else "default"),
+            base_sha=initial_head if not repo_dir else None,
+            session_id=session_id,
+            agent=agent_cmd,
+            branch=branch,
+            image_ref=image,
+        )
+
+        if not quiet:
+            if staleness_eval.get("warning_banner"):
+                click.echo(staleness_eval["warning_banner"], err=True)
+            elif staleness_eval.get("header_banner"):
+                click.echo(staleness_eval["header_banner"], err=True)
+
         env = get_env_forwards(config)
+        env["AOPS_IMAGE_PROVENANCE"] = json.dumps(image_provenance.to_dict())
+        env["AOPS_IMAGE_STALE"] = "1" if staleness_eval["is_stale"] else "0"
+        env["AOPS_IMAGE_PLUGINS_VERSION"] = staleness_eval["plugins_version_str"]
+        if staleness_eval["is_stale"]:
+            img_short = (
+                staleness_eval["image_commit"][:8] if staleness_eval["image_commit"] else "unknown"
+            )
+            ws_short = (
+                staleness_eval["workspace_commit"][:8]
+                if staleness_eval["workspace_commit"]
+                else "unknown"
+            )
+            env["AOPS_IMAGE_STALENESS_WARNING"] = (
+                f"[SYSTEM WARNING: RUNNING WITH STALE BAKED PLUGINS]\n"
+                f"Container plugin payload (commit {img_short}) lags workspace under test (commit {ws_short}).\n"
+                f"Any skill, hook, or MCP behavior verified in this session reflects the BAKED payload, NOT workspace edits."
+            )
         if mcp_url:
             env["PKB_MCP_URL"] = mcp_url
 
         if branch:
             env["AOPS_POLECAT_BRANCH"] = branch
+
+        if clone_cleanup and "base_ref" in clone_cleanup:
+            env["POLECAT_BASE_REF"] = clone_cleanup["base_ref"]
+            env["POLECAT_BASE_BRANCH"] = clone_cleanup["base_ref"]
+            env["BASE_BRANCH"] = clone_cleanup["base_ref"]
+        elif base:
+            env["POLECAT_BASE_REF"] = base
+            env["POLECAT_BASE_BRANCH"] = base
+            env["BASE_BRANCH"] = base
+
+        if task:
+            env["POLECAT_TARGET_TASK"] = task
 
         has_sessions_access = False
         if with_sessions:
@@ -2000,46 +2208,69 @@ def run(
             with_sessions=has_sessions_access,
             sessions_base=sessions_base,
             ports=effective_ports,
+            detach=detach,
         )
 
-        if not quiet:
-            click.echo(f"Workspace: {workspace_dir}", err=True)
-            click.echo(f"Session logs: {session_dir}", err=True)
-
-        returncode = _execute_with_seed_verification(
-            cmd,
-            image=image,
-            inner_cmd=inner_cmd,
-            session_dir=session_dir,
-            task=task,
-            # Both agent CLIs persist a conversation transcript into the session
-            # dir (`_transcript_paths`), so a seeded dispatch is verified the
-            # same way whichever one ran it. `shell`/`sleep`/other run no agent
-            # CLI and have no conversation to check.
-            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task and not interactive,
-            run_env=run_env,
-            quiet=quiet,
-        )
-        cidfile = session_dir / "container.cid"
-        if cidfile.exists():
-            try:
-                cid_content = cidfile.read_text().strip()
-                if cid_content:
-                    container_id = cid_content
-            except OSError:
-                pass
-
-        if returncode != 0:
+        if detach:
             preserve_workspace = True
             if not quiet:
-                click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
+                click.echo(f"Workspace: {workspace_dir}", err=True)
+                click.echo(f"Session logs: {session_dir}", err=True)
+            res = subprocess.run(cmd, env=run_env, capture_output=True, text=True)
+            returncode = res.returncode
+            if returncode != 0:
+                fail(f"failed to start detached container (exit {returncode}):\n{res.stderr}")
+            cidfile = session_dir / "container.cid"
+            if cidfile.exists():
+                try:
+                    cid_content = cidfile.read_text().strip()
+                    if cid_content:
+                        container_id = cid_content
+                except OSError:
+                    pass
+            if not container_id and res.stdout.strip():
+                container_id = res.stdout.strip()
+            if not quiet:
+                click.echo(f"Started detached container: {container_id or 'unknown'}", err=True)
+        else:
+            if not quiet:
+                click.echo(f"Workspace: {workspace_dir}", err=True)
+                click.echo(f"Session logs: {session_dir}", err=True)
 
-        if returncode == 0:
-            delivery_ok, delivery_err = _verify_workspace_delivery(
-                workspace_dir, initial_head=initial_head
+            returncode = _execute_with_seed_verification(
+                cmd,
+                image=image,
+                inner_cmd=inner_cmd,
+                session_dir=session_dir,
+                task=task,
+                # Both agent CLIs persist a conversation transcript into the session
+                # dir (`_transcript_paths`), so a seeded dispatch is verified the
+                # same way whichever one ran it. `shell`/`sleep`/other run no agent
+                # CLI and have no conversation to check.
+                verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task and not interactive,
+                run_env=run_env,
+                quiet=quiet,
             )
-            if not delivery_ok:
+            cidfile = session_dir / "container.cid"
+            if cidfile.exists():
+                try:
+                    cid_content = cidfile.read_text().strip()
+                    if cid_content:
+                        container_id = cid_content
+                except OSError:
+                    pass
+
+            if returncode != 0:
                 preserve_workspace = True
+                if not quiet:
+                    click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
+
+            if returncode == 0:
+                delivery_ok, delivery_err = _verify_workspace_delivery(
+                    workspace_dir, initial_head=initial_head
+                )
+                if not delivery_ok:
+                    preserve_workspace = True
 
     finally:
         cidfile = session_dir / "container.cid"
@@ -2056,13 +2287,33 @@ def run(
         image_digest = _get_image_digest(image)
 
         delivery_guard = {"ok": delivery_ok, "error": delivery_err}
-        if returncode != 0 and delivery_ok and delivery_err is None:
+        if not detach and returncode != 0 and delivery_ok and delivery_err is None:
             delivery_guard = {
                 "ok": False,
                 "error": f"container exited with code {returncode}"
                 if returncode is not None
                 else "container execution failed",
             }
+
+        if detach and returncode == 0:
+            record_status = "detached"
+            record_exit_code = None
+        else:
+            record_status = None
+            record_exit_code = returncode
+
+        plugin_provenance = (
+            {
+                "image_source": staleness_eval.get("image_source", "unknown"),
+                "image_commit": staleness_eval.get("image_commit", ""),
+                "workspace_commit": staleness_eval.get("workspace_commit", ""),
+                "is_stale": staleness_eval.get("is_stale", False),
+                "staleness_reason": staleness_eval.get("staleness_reason"),
+                "staleness_status": staleness_eval.get("staleness_status", "UNKNOWN"),
+            }
+            if staleness_eval
+            else None
+        )
 
         run_record_path = write_run_record(
             session_dir=session_dir,
@@ -2077,12 +2328,14 @@ def run(
             workspace_dir=workspace_dir,
             commit_start=initial_head,
             commit_end=commit_end,
-            exit_code=returncode,
+            exit_code=record_exit_code,
             delivery_guard=delivery_guard,
             started_at=started_at,
             ended_at=ended_at,
             worker_model=worker_model,
             degraded=degraded,
+            status=record_status,
+            plugin_provenance=plugin_provenance,
         )
 
         if os.path.exists(staging_dir):
@@ -2092,10 +2345,14 @@ def run(
 
         # Last, so a slow or interrupted POST cannot delay or skip the cleanup
         # above: a Ctrl-C during the request raises out of this `finally:`.
-        try:
-            notify_run_complete(run_record_path, sessions_base)
-        except Exception:
-            pass
+        if not detach:
+            try:
+                notify_run_complete(run_record_path, sessions_base)
+            except Exception:
+                pass
+
+    if detach:
+        return
 
     if returncode != 0:
         sys.exit(returncode)

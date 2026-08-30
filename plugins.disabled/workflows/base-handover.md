@@ -14,7 +14,7 @@ bases: [base-commit]
 1. **Complete all file changes** - Finish any pending edits, writes, or code modifications
 2. **Run quality gates** - If code was changed, run tests and verify they pass
 3. **Update task status** - Mark tasks complete or update progress as appropriate
-4. **Invoke `/handover`** - Use the Skill tool with `skill="aops-core:handover"`
+4. **Invoke `/handover`** - Use the Skill tool with `skill="aops:handover"`
 5. **Commit and PUSH** - The handover skill will guide you, but ensure `git push` succeeds
 6. **Verify** - All changes committed AND pushed to remote
 7. **Output Framework Reflection** - Provide context for the next session
@@ -51,7 +51,7 @@ If you DID NOT claim a task AND you did meaningful work:
 Update your claimed task with progress and release it.
 
 ```
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__plugin_aops_task_manager__update_task(
   id="<task-id>",
   body="## Session Progress\n- [What was accomplished]\n- [Any blockers or notes]",
   status="done"  # or "review" if needs human verification
@@ -106,7 +106,7 @@ active → in_progress → merge_ready → done
 For each incomplete work item from the current session:
 
 ```
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__plugin_aops_task_manager__create_task(
   title="<incomplete task>",
   type="task",
   project="aops",
@@ -173,7 +173,7 @@ Next: `/pull <task-id>` to resume.
 CREATE a historical task to capture the session's work:
 
 ```
-mcp__plugin_aops-core_task_manager__create_task(
+mcp__plugin_aops_task_manager__create_task(
   title="[Session] <brief description of work done>",
   type="task",
   project="<relevant project or 'aops'>",
@@ -192,7 +192,7 @@ When session ends because tooling failed and a bug was filed:
 1. **Mark original task as blocked**:
 
 ```
-mcp__plugin_aops-core_task_manager__update_task(
+mcp__plugin_aops_task_manager__update_task(
   id="<original-task-id>",
   status="blocked",
   depends_on=["<bug-task-id>"]

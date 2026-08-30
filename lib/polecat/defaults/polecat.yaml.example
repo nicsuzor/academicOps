@@ -66,10 +66,18 @@
 #     repo: your-repo                 # optional, defaults to slug
 #     default_branch: main            # documentary
 #     sessions_access: false          # optional, mount $AOPS_SESSIONS/logs read-only
+#     aliases:                        # optional project aliases
+#       - your-project-alias
+#       - your_project_alias
 #     mounts:                         # optional, for empirical projects
 #       - host: $AOPS_SESSIONS/secrets/your-project/
 #         container: /run/secrets/project/
 #         mode: ro
+#
+# Global project aliases mapping (resolves project variants across polecat & OTEL).
+# aliases:
+#   academicOps: aops
+#   academicops: aops
 
 # Host directory of user-scoped cope/rbg rules (the same shape as
 # $ACA_DATA/.agents/rules/ on a host session), mounted read-only into every
