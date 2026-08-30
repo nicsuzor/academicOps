@@ -38,6 +38,17 @@ FROM python:3.12-slim-bookworm
 # Re-declared: ARGs don't cross a FROM boundary. Needed below to branch the
 # plugin-install step on which /aops-dist shape we actually got.
 ARG AOPS_DIST_SOURCE=remote
+ARG AOPS_REPO_URL=""
+ARG AOPS_DIST_REF=""
+ARG AOPS_BUILD_COMMIT=""
+ARG AOPS_BUILD_DIRTY="0"
+ARG AOPS_VERSION=""
+
+LABEL org.opencontainers.image.revision="${AOPS_BUILD_COMMIT}" \
+      org.opencontainers.image.version="${AOPS_VERSION}" \
+      aops.dist_source="${AOPS_DIST_SOURCE}" \
+      aops.dist_ref="${AOPS_DIST_REF}" \
+      aops.build_dirty="${AOPS_BUILD_DIRTY}"
 
 # Create non-root user early so we can switch to it after system-level installs
 RUN useradd -m -d /home/worker -s /bin/bash worker
@@ -344,6 +355,10 @@ RUN umask 000 \
     && python3 /home/worker/docker_gemini_fixups.py fixup-mcp-config-paths \
     && mkdir -p /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin \
     && cp "$MP_ROOT"/.claude-plugin/marketplace.json /home/worker/.claude/plugins/marketplaces/"$MP_NAME"/.claude-plugin/marketplace.json \
+    && if [ -f "$MP_ROOT/.aops-image-metadata.json" ]; then \
+        cp "$MP_ROOT/.aops-image-metadata.json" /home/worker/.aops-image-metadata.json; \
+    fi \
+    && chmod 644 /home/worker/.aops-image-metadata.json 2>/dev/null || true \
     # keep for now && rm -rf /tmp/aops-dist \
     && python3 /home/worker/docker_gemini_fixups.py fixup-marketplace-cache --marketplace-name "$MP_NAME"
 

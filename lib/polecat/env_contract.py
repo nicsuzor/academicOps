@@ -66,6 +66,10 @@ FORWARDED_ENV = (
     "POLECAT_BASE_REF",
     "POLECAT_BASE_BRANCH",
     "BASE_BRANCH",
+    "AOPS_IMAGE_PROVENANCE",
+    "AOPS_IMAGE_STALE",
+    "AOPS_IMAGE_PLUGINS_VERSION",
+    "AOPS_IMAGE_STALENESS_WARNING",
 )
 
 # Credentials the container's entrypoint requires to reach GitHub and the agent

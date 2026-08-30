@@ -25,3 +25,7 @@ to = "polecat/env_contract.py"
 [[shared]]
 from = "polecat/notify.py"
 to = "polecat/notify.py"
+
+[[shared]]
+from = "polecat/staleness.py"
+to = "polecat/staleness.py"

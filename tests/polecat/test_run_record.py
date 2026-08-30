@@ -42,6 +42,7 @@ REQUIRED_SCHEMA_KEYS = {
     "duration_seconds",
     "worker_model",
     "degraded",
+    "plugin_provenance",
 }
 
 

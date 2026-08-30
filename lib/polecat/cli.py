@@ -34,6 +34,7 @@ try:  # imported as part of the installed package
         format_otel_resource_attributes,
     )
     from .notify import notify_run_complete
+    from .staleness import evaluate_staleness, inspect_image_provenance
 except ImportError:  # run directly as <plugin-root>/polecat/cli.py
     # Put the package's own parent on the path and import through the package,
     # so the module resolves the same way under both entry points.
@@ -46,6 +47,7 @@ except ImportError:  # run directly as <plugin-root>/polecat/cli.py
         format_otel_resource_attributes,
     )
     from polecat.notify import notify_run_complete
+    from polecat.staleness import evaluate_staleness, inspect_image_provenance
 
 
 # A trailing flag that means the caller has already asked for headless, so
@@ -1586,6 +1588,7 @@ def write_run_record(
     worker_model: str | None = None,
     degraded: list | None = None,
     status: str | None = None,
+    plugin_provenance: dict | None = None,
 ) -> Path:
     """Persist run.json at the root of session_dir.
 
@@ -1666,6 +1669,7 @@ def write_run_record(
         "duration_seconds": duration_seconds,
         "worker_model": worker_model,
         "degraded": degraded_list,
+        "plugin_provenance": plugin_provenance,
     }
 
     out_path = Path(session_dir) / "run.json"
@@ -1959,6 +1963,7 @@ def run(
     seeded_prompt = None
     worker_model = os.environ.get("POLECAT_WORKER_MODEL")
     degraded = []
+    staleness_eval = None
 
     try:
         setup_staging(staging_dir, mcp_url, os.environ.get("GEMINI_CONFIG_DIR"), agent_cmd)
@@ -1973,7 +1978,43 @@ def run(
                 "ship stale plugins. Build it locally, then retry."
             )
 
+        # Staleness evaluation
+        image_provenance = inspect_image_provenance(image)
+        staleness_eval = evaluate_staleness(
+            image_provenance,
+            workspace_dir,
+            dispatch_mode="direct" if repo_dir else ("base" if base else "default"),
+            base_sha=initial_head if not repo_dir else None,
+            session_id=session_id,
+            agent=agent_cmd,
+            branch=branch,
+            image_ref=image,
+        )
+
+        if not quiet:
+            if staleness_eval.get("warning_banner"):
+                click.echo(staleness_eval["warning_banner"], err=True)
+            elif staleness_eval.get("header_banner"):
+                click.echo(staleness_eval["header_banner"], err=True)
+
         env = get_env_forwards(config)
+        env["AOPS_IMAGE_PROVENANCE"] = json.dumps(image_provenance.to_dict())
+        env["AOPS_IMAGE_STALE"] = "1" if staleness_eval["is_stale"] else "0"
+        env["AOPS_IMAGE_PLUGINS_VERSION"] = staleness_eval["plugins_version_str"]
+        if staleness_eval["is_stale"]:
+            img_short = (
+                staleness_eval["image_commit"][:8] if staleness_eval["image_commit"] else "unknown"
+            )
+            ws_short = (
+                staleness_eval["workspace_commit"][:8]
+                if staleness_eval["workspace_commit"]
+                else "unknown"
+            )
+            env["AOPS_IMAGE_STALENESS_WARNING"] = (
+                f"[SYSTEM WARNING: RUNNING WITH STALE BAKED PLUGINS]\n"
+                f"Container plugin payload (commit {img_short}) lags workspace under test (commit {ws_short}).\n"
+                f"Any skill, hook, or MCP behavior verified in this session reflects the BAKED payload, NOT workspace edits."
+            )
         if mcp_url:
             env["PKB_MCP_URL"] = mcp_url
 
@@ -2169,6 +2210,19 @@ def run(
             record_status = None
             record_exit_code = returncode
 
+        plugin_provenance = (
+            {
+                "image_source": staleness_eval.get("image_source", "unknown"),
+                "image_commit": staleness_eval.get("image_commit", ""),
+                "workspace_commit": staleness_eval.get("workspace_commit", ""),
+                "is_stale": staleness_eval.get("is_stale", False),
+                "staleness_reason": staleness_eval.get("staleness_reason"),
+                "staleness_status": staleness_eval.get("staleness_status", "UNKNOWN"),
+            }
+            if staleness_eval
+            else None
+        )
+
         run_record_path = write_run_record(
             session_dir=session_dir,
             session_id=session_id,
@@ -2189,6 +2243,7 @@ def run(
             worker_model=worker_model,
             degraded=degraded,
             status=record_status,
+            plugin_provenance=plugin_provenance,
         )
 
         if os.path.exists(staging_dir):
