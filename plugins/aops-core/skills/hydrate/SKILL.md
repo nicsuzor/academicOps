@@ -11,22 +11,29 @@ description: Fast disambiguation index — take the ambiguous words in an ask, r
 
 If you do not receive a prompt argument, HALT and RETURN immediately.
 
-### RULE 2. Identify the 'pkb' set of MCP tools and confirm that they are available to you
+### RULE 2. Confirm you have a working route to the PKB, then use it
 
-Identify the PKB tool (usually styled in lower case: `pkb`):
+Two routes reach the same graph, and neither is more authoritative than the
+other: the PKB MCP tools (bare, or nested under a combined `services` server,
+always suffixed `pkb__` — e.g. `pkb__search`, `mcp__services__pkb__search`) and
+the sanctioned local `pkb` CLI, invoked via `Bash(pkb *)`.
 
-- Check your tool index first and use your tool search functionality if you need to.
-- PKB tools may be hosted on a combined tool server; e.g. nested under a **`services`** MCP server like `mcp__services__pkb__*`
-- At a minimum, you must be able to find a tool with the suffix `pkb__search`
-- PKB MCP tools may be hosted on the **`services`** MCP server using the `pkb__` prefix (e.g., `pkb__search`, `pkb__task_search`, `pkb__retrieve_memory`).
+- **Use whichever route you are actually configured for.** Check your tool
+  index (use tool search if you need to) for a tool suffixed `pkb__search`. If
+  you have one, use the MCP tools. If you do not, but `pkb` is invocable
+  through Bash, use the CLI instead — run `pkb --help` for the exact
+  search/query subcommand, since flags can change.
+- **If neither route answers, HALT and RETURN immediately.** This is a fail
+  closed rule, not a degradation ladder — do not fall back to anything else.
 
-The PKB is ONLY to be accessed over specifically granted MCP tools that are enabled in your context.
+The PKB may ONLY be reached over one of these two sanctioned routes.
 
-- **Do NOT use `Bash()`** to interact with the PKB.
-- **Do NOT use `Grep`, `Glob`, or any filesystem access** to interact with the PKB.
-- **Never interact with `$ACA_DATA`** (the directory holding the PKB database), even if it is available to you.
-
-If you do not have access to the PKB MCP tools, HALT and RETURN immediately.
+- **Do NOT use `Grep`, `Glob`, or any other filesystem access** to interact
+  with the PKB.
+- **Never touch `$ACA_DATA`** (the directory holding the PKB database)
+  directly, by any means, even if it is available to you. The `pkb` CLI is not
+  filesystem access — it is the same sanctioned binary and the same graph as
+  the MCP tools, so using it does not violate this rule.
 
 ## Task
 
