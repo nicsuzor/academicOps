@@ -33,16 +33,14 @@ def test_task_dispatch_is_always_headless(agent_cmd, is_interactive):
         config={},
     )
     assert seeded_from_task is True
-    assert seeded_prompt == "/pull aops_123"
-    assert "--print" in inner_cmd, inner_cmd
-    # The prompt is the trailing positional in both CLIs.
-    assert inner_cmd[-1] == "/pull aops_123", inner_cmd
+    assert seeded_prompt == "/pkb:pull aops_123"
+    if agent_cmd == "claude":
+        assert "--print" in inner_cmd, inner_cmd
 
 
-@pytest.mark.parametrize("agent_cmd", AGENTS)
-def test_print_is_not_added_twice(agent_cmd):
+def test_print_is_not_added_twice_for_claude():
     inner_cmd, _, _, _ = _build_inner_command(
-        agent_cmd, (), is_interactive=True, explicit_headless=False, task="aops_123", config={}
+        "claude", (), is_interactive=True, explicit_headless=False, task="aops_123", config={}
     )
     assert inner_cmd.count("--print") == 1, inner_cmd
 
@@ -58,7 +56,7 @@ def test_interactive_session_without_task_stays_interactive(agent_cmd):
 
 @pytest.mark.parametrize("agent_cmd", AGENTS)
 def test_interactive_task_dispatch_is_interactive(agent_cmd):
-    """Passing interactive=True with a task makes claude positional and agy use --prompt-interactive."""
+    """Passing interactive=True with a task marks seeded_from_task and seeded_prompt."""
     inner_cmd, _, seeded_from_task, seeded_prompt = _build_inner_command(
         agent_cmd,
         (),
@@ -69,10 +67,5 @@ def test_interactive_task_dispatch_is_interactive(agent_cmd):
         interactive=True,
     )
     assert seeded_from_task is True
-    assert seeded_prompt == "/pull aops_123"
+    assert seeded_prompt == "/pkb:pull aops_123"
     assert "--print" not in inner_cmd
-    if agent_cmd == "claude":
-        assert inner_cmd[-1] == "/pull aops_123"
-    elif agent_cmd == "agy":
-        assert "--prompt-interactive" in inner_cmd
-        assert inner_cmd[inner_cmd.index("--prompt-interactive") + 1] == "/pull aops_123"

@@ -1315,18 +1315,14 @@ def _build_inner_command(
         else:
             inner_cmd.append(prompt)
     elif seeded_from_task:
-        seeded_prompt = f"/pull {task}"
+        seeded_prompt = f"/pkb:pull {task}"
         if agent_cmd == "agy":
-            if effectively_interactive:
-                inner_cmd.extend(["--prompt-interactive", f"/pull {task}"])
-            else:
+            if not effectively_interactive:
                 # `-t` is the canonical production dispatch, so the operator's
                 # timeout has to reach it: reading the config only on the
                 # extra_args branch left every seeded run pinned to agy's 5m
                 # default.
-                inner_cmd.extend([*_print_timeout_args(config), "--print", f"/pull {task}"])
-        else:
-            inner_cmd.append(f"/pull {task}")
+                inner_cmd.extend(_print_timeout_args(config))
     elif extra_args:
         seeded_prompt = " ".join(extra_args)
         if agent_cmd == "agy":
@@ -1399,6 +1395,7 @@ def _build_docker_argv(
     with_sessions=False,
     sessions_base=None,
     ports=(),
+    detach=False,
 ):
     """The full `docker run` argv, and the environment to launch it with.
 
@@ -1434,10 +1431,16 @@ def _build_docker_argv(
     cmd = [
         "docker",
         "run",
-        "--rm",
-        "--cidfile",
-        str(cidfile),
     ]
+    if detach:
+        cmd.append("-d")
+    cmd.extend(
+        [
+            "--rm",
+            "--cidfile",
+            str(cidfile),
+        ]
+    )
     if session_id:
         cmd.extend(["--name", f"polecat-{session_id}"])
 
@@ -1560,11 +1563,12 @@ def write_run_record(
     ended_at: datetime,
     worker_model: str | None = None,
     degraded: list | None = None,
+    status: str | None = None,
 ) -> Path:
     """Persist run.json at the root of session_dir.
 
     All schema keys are always present; unobtainable values are recorded as null.
-    `status` is derived from exit_code and delivery_guard.
+    `status` is derived from exit_code and delivery_guard unless explicitly provided.
     `degraded[]` is always present and records missing observable state.
     `transcript` is read off the session directory here rather than passed in,
     so no call path can write a record that says nothing about whether the run
@@ -1582,7 +1586,7 @@ def write_run_record(
         or not transcript.get("event_count")
     )
 
-    if is_agent_cmd and transcript_missing:
+    if is_agent_cmd and transcript_missing and status != "detached":
         if not any(
             isinstance(d, dict) and d.get("what") in ("transcript", "transcript_missing")
             for d in degraded_list
@@ -1605,16 +1609,17 @@ def write_run_record(
                 }
             )
 
-    if exit_code is None or exit_code in (130, 137, -9, -15):
-        status = "killed"
-    elif exit_code != 0:
-        status = "failed"
-    elif not delivery_guard.get("ok", True):
-        status = "delivery_guard_failed"
-    elif is_agent_cmd and transcript_missing:
-        status = "degraded"
-    else:
-        status = "success"
+    if status is None:
+        if exit_code is None or exit_code in (130, 137, -9, -15):
+            status = "killed"
+        elif exit_code != 0:
+            status = "failed"
+        elif not delivery_guard.get("ok", True):
+            status = "delivery_guard_failed"
+        elif is_agent_cmd and transcript_missing:
+            status = "degraded"
+        else:
+            status = "success"
 
     record = {
         "schema_version": 1,
@@ -1802,6 +1807,13 @@ def main():
     help="Run interactively (attaches TTY and opens interactive UI).",
 )
 @click.option(
+    "--detach",
+    "--detached",
+    is_flag=True,
+    default=False,
+    help="Run container in detached mode and return immediately without blocking.",
+)
+@click.option(
     "--port",
     "--publish",
     "-P",
@@ -1834,6 +1846,7 @@ def run(
     output_format,
     prompt,
     interactive,
+    detach,
     quiet,
     ports,
     extra_args,
@@ -1843,6 +1856,9 @@ def run(
     Anything after AGENT_CMD that is not one of this command's own options is
     forwarded verbatim to the inner invocation.
     """
+    if detach and interactive:
+        fail("cannot run in interactive mode with --detach")
+
     if no_agent:
         effective_agent = None
     elif agent is not None:
@@ -1922,6 +1938,9 @@ def run(
 
         if branch:
             env["AOPS_POLECAT_BRANCH"] = branch
+
+        if task:
+            env["POLECAT_TARGET_TASK"] = task
 
         has_sessions_access = False
         if with_sessions:
@@ -2006,46 +2025,69 @@ def run(
             with_sessions=has_sessions_access,
             sessions_base=sessions_base,
             ports=effective_ports,
+            detach=detach,
         )
 
-        if not quiet:
-            click.echo(f"Workspace: {workspace_dir}", err=True)
-            click.echo(f"Session logs: {session_dir}", err=True)
-
-        returncode = _execute_with_seed_verification(
-            cmd,
-            image=image,
-            inner_cmd=inner_cmd,
-            session_dir=session_dir,
-            task=task,
-            # Both agent CLIs persist a conversation transcript into the session
-            # dir (`_transcript_paths`), so a seeded dispatch is verified the
-            # same way whichever one ran it. `shell`/`sleep`/other run no agent
-            # CLI and have no conversation to check.
-            verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task and not interactive,
-            run_env=run_env,
-            quiet=quiet,
-        )
-        cidfile = session_dir / "container.cid"
-        if cidfile.exists():
-            try:
-                cid_content = cidfile.read_text().strip()
-                if cid_content:
-                    container_id = cid_content
-            except OSError:
-                pass
-
-        if returncode != 0:
+        if detach:
             preserve_workspace = True
             if not quiet:
-                click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
+                click.echo(f"Workspace: {workspace_dir}", err=True)
+                click.echo(f"Session logs: {session_dir}", err=True)
+            res = subprocess.run(cmd, env=run_env, capture_output=True, text=True)
+            returncode = res.returncode
+            if returncode != 0:
+                fail(f"failed to start detached container (exit {returncode}):\n{res.stderr}")
+            cidfile = session_dir / "container.cid"
+            if cidfile.exists():
+                try:
+                    cid_content = cidfile.read_text().strip()
+                    if cid_content:
+                        container_id = cid_content
+                except OSError:
+                    pass
+            if not container_id and res.stdout.strip():
+                container_id = res.stdout.strip()
+            if not quiet:
+                click.echo(f"Started detached container: {container_id or 'unknown'}", err=True)
+        else:
+            if not quiet:
+                click.echo(f"Workspace: {workspace_dir}", err=True)
+                click.echo(f"Session logs: {session_dir}", err=True)
 
-        if returncode == 0:
-            delivery_ok, delivery_err = _verify_workspace_delivery(
-                workspace_dir, initial_head=initial_head
+            returncode = _execute_with_seed_verification(
+                cmd,
+                image=image,
+                inner_cmd=inner_cmd,
+                session_dir=session_dir,
+                task=task,
+                # Both agent CLIs persist a conversation transcript into the session
+                # dir (`_transcript_paths`), so a seeded dispatch is verified the
+                # same way whichever one ran it. `shell`/`sleep`/other run no agent
+                # CLI and have no conversation to check.
+                verify_seed=agent_cmd in ("claude", "agy") and seeded_from_task and not interactive,
+                run_env=run_env,
+                quiet=quiet,
             )
-            if not delivery_ok:
+            cidfile = session_dir / "container.cid"
+            if cidfile.exists():
+                try:
+                    cid_content = cidfile.read_text().strip()
+                    if cid_content:
+                        container_id = cid_content
+                except OSError:
+                    pass
+
+            if returncode != 0:
                 preserve_workspace = True
+                if not quiet:
+                    click.echo(f"Workspace preserved for inspection: {workspace_dir}", err=True)
+
+            if returncode == 0:
+                delivery_ok, delivery_err = _verify_workspace_delivery(
+                    workspace_dir, initial_head=initial_head
+                )
+                if not delivery_ok:
+                    preserve_workspace = True
 
     finally:
         cidfile = session_dir / "container.cid"
@@ -2062,13 +2104,20 @@ def run(
         image_digest = _get_image_digest(image)
 
         delivery_guard = {"ok": delivery_ok, "error": delivery_err}
-        if returncode != 0 and delivery_ok and delivery_err is None:
+        if not detach and returncode != 0 and delivery_ok and delivery_err is None:
             delivery_guard = {
                 "ok": False,
                 "error": f"container exited with code {returncode}"
                 if returncode is not None
                 else "container execution failed",
             }
+
+        if detach and returncode == 0:
+            record_status = "detached"
+            record_exit_code = None
+        else:
+            record_status = None
+            record_exit_code = returncode
 
         run_record_path = write_run_record(
             session_dir=session_dir,
@@ -2083,12 +2132,13 @@ def run(
             workspace_dir=workspace_dir,
             commit_start=initial_head,
             commit_end=commit_end,
-            exit_code=returncode,
+            exit_code=record_exit_code,
             delivery_guard=delivery_guard,
             started_at=started_at,
             ended_at=ended_at,
             worker_model=worker_model,
             degraded=degraded,
+            status=record_status,
         )
 
         if os.path.exists(staging_dir):
@@ -2098,10 +2148,14 @@ def run(
 
         # Last, so a slow or interrupted POST cannot delay or skip the cleanup
         # above: a Ctrl-C during the request raises out of this `finally:`.
-        try:
-            notify_run_complete(run_record_path, sessions_base)
-        except Exception:
-            pass
+        if not detach:
+            try:
+                notify_run_complete(run_record_path, sessions_base)
+            except Exception:
+                pass
+
+    if detach:
+        return
 
     if returncode != 0:
         sys.exit(returncode)
