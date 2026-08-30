@@ -72,7 +72,7 @@ mcpServers: <list<string>>   # MCP servers the agent may use. Implicitly grants 
 allowedTools: <list<string>> # Permission rules in Tool(pattern) form — e.g. Agent(pauli), Skill(q), Bash(git *).
                              # Narrows *how* a granted tool may be called; `tools` grants the tool at all.
 disallowedTools: <list<string>>  # Explicit denylist. Narrows the default set; the harness ignores it when `tools` is also set.
-skills: <list<string>>       # Skill allowlist. If present, agent may invoke only these via the Skill tool. If omitted, no skill invocation is permitted.
+skills: <list<string>>       # Skill preload list. If present, harness preloads these skills into prompt context. If omitted, no skills are preloaded.
 hooks: <map>                 # PreToolUse / PostToolUse / Stop hooks scoped to this agent's lifetime.
 memory: <string>             # Persistent memory scope: "user" | "project" | "local".
 initialPrompt: <string>      # Auto-submitted first message when the agent runs as the main session (via --agent). Not read when spawned as a sub-agent.
@@ -117,7 +117,7 @@ in this spec licenses stripping it.
 | `mcpServers`      | No MCP servers                                                        |
 | `bashScopes`      | No bash — even with `Bash` in `tools`; lint rejects this              |
 | `fileAccess`      | No filesystem access — lint rejects if `tools` requires it            |
-| `skills`          | No skill invocation                                                   |
+| `skills`          | No skills preloaded into prompt context                               |
 | `subagents`       | No sub-agent spawning                                                 |
 | `allowedTools`    | No pre-approved call patterns; every call falls through to the prompt |
 | `disallowedTools` | No explicit overrides                                                 |
@@ -141,7 +141,7 @@ instead of "no tool calls permitted."
 **Current state across the core agents:**
 
 - The four core worker/backend agents — `james` (`plugins/orchestrate/agents/james.md`), `marsha` (`plugins/orchestrate/agents/marsha.md`), `pauli` (`plugins/aops/agents/pauli.md`), and `rbg` (`plugins/rbg/agents/rbg.md`) — omit `tools` entirely from their frontmatter for this materialization reason. Each declares its required `mcpServers` (e.g. `services`, `plugin:aops:services`, `plugin:orchestrate:playwright`), allowing the harness to materialize the full MCP namespace without hitting the allowlist truncation defect.
-- `ida` (`plugins/aops/agents/ida.md`), as the interactive face, declares an explicit `tools` allowlist (`[Agent, Skill, AskUserQuestion, SendMessage, TaskGet, TaskList, TaskStop, ListAgents]`) alongside a `disallowedTools` list covering every direct-work tool and every PKB write verb, and `permissionMode: "dontAsk"` with the matching `allowedTools` rules (`Agent(pauli)`, `Agent(pc)`, `Skill(strategize)`, `Skill(tick)`, and the `Task*`/`SendMessage`/`AskUserQuestion`/`ListAgents` bare names) so her permitted calls run unprompted. She declares her delegation targets under `subagents: ["aops:pauli", "orchestrate:pc"]` — the only two agents she may spawn — and her permitted skills under `skills: ["strategize", "tick"]`.
+- `ida` (`plugins/aops/agents/ida.md`), as the interactive face, omits `tools` to inherit the full available tool pool (avoiding harness MCP allowlist truncation) while scoping her role through her system prompt and delegating operations to `pauli` and `pc`.
 - `pc` (`plugins/orchestrate/agents/pc.md`) declares `tools: [Bash]` with explicit `bashScopes: [uv, git, ssh]`, and pairs `permissionMode: "dontAsk"` with `allowedTools: [Bash(uv run *), Bash(git *), Bash(ssh *)]`.
 - `enable_mcp_tools` is a legacy key with no reader in the harness or in `build/`; it is purged. `allowedTools`, `disallowedTools`, `permissionMode: dontAsk`, `hooks`, `memory`, and `initialPrompt` are **not** in that category — they are supported frontmatter and must not be stripped.
 - For agents requiring client-specific instructions or frontmatter, the build system supports native per-client files via `build/agents.py` (`<name>.<client>.md`), resolved in place by `resolve_client_agents` without error-prone mechanical translation.

@@ -83,7 +83,7 @@ _ASSIGN_PATTERNS: list[tuple[re.Pattern[str], Callable[[re.Match[str]], str]]] =
     # Shell:  export FOO_TOKEN=value   /   FOO_TOKEN='value'
     (
         re.compile(
-            rf"((?:export\s+)?{_SENSITIVE_NAME})(\s*=\s*)(['\"]?)([^\s'\"]+)(['\"]?)",
+            rf"((?:export\s+)?{_SENSITIVE_NAME})(\s*=\s*)(['\"]?)([^\s'\"<]+)(['\"]?)",
             re.IGNORECASE,
         ),
         _redact_shell_assign,
@@ -91,7 +91,7 @@ _ASSIGN_PATTERNS: list[tuple[re.Pattern[str], Callable[[re.Match[str]], str]]] =
     # JSON / YAML:  "FOO_TOKEN": "value"   /   FOO_TOKEN: value
     (
         re.compile(
-            rf"(\"?{_SENSITIVE_NAME}\"?\s*:\s*)(['\"]?)([^\s'\",}}]+)(['\"]?)",
+            rf"(\"?{_SENSITIVE_NAME}\"?\s*:\s*)(['\"]?)([^\s'\",}}<]+)(['\"]?)",
             re.IGNORECASE,
         ),
         _redact_yaml_json_assign,

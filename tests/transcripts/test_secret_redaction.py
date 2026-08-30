@@ -107,6 +107,22 @@ class TestRedactSecrets:
         for n in ("12345", "678", "90", "0", "38", "3.4"):
             assert f": {n}" in out, f"metric value {n!r} did not survive"
 
+    def test_token_count_metrics_with_html_breaks_not_redacted(self):
+        # HTML renderers turn newlines into <br>. The assignment regex must not
+        # consume <br> into the metric value, so _NUMERIC_VALUE still matches
+        # and usage metrics in HTML artifacts are spared from redaction (#2406).
+        html_stats = (
+            "stats:<br>"
+            "  input_tokens: 12345<br>"
+            "  output_tokens: 678<br>"
+            "  cache_read_tokens: 90<br>"
+        )
+        out = redact_secrets(html_stats)
+        assert REDACTED not in out
+        assert "input_tokens: 12345<br>" in out
+        assert "output_tokens: 678<br>" in out
+        assert "cache_read_tokens: 90<br>" in out
+
     def test_numeric_shell_assignment_not_redacted(self):
         # The same protection applies to shell-style ``FOO_TOKEN=12345``: a
         # bare integer is never a credential.
