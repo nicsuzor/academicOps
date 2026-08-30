@@ -86,5 +86,5 @@ No endpoint, host, registry, account or credential is written into anything this
 ## Depends on
 
 - `lib/hooks/` for the hook runtime, injected at build time (`manifest/plugin.toml`).
-- The `rbg` and `aops-core` plugins at runtime, for `rbg:rbg` and `aops-core:pauli`, whom `strategic-review` always deploys, and for the `services` MCP server provided by `aops-core` (`plugins/aops-core/manifest/mcp.template.json`) which `james` accesses via `mcpServers: [services, plugin:aops-core:services]`.
-- The `aops-core` plugin, which ships the polecat launcher that starts the containers james runs inside.
+- The `rbg` and `aops` plugins at runtime, for `rbg:rbg` and `aops:pauli`, whom `strategic-review` always deploys, and for the `services` MCP server provided by `aops` (`plugins/aops/manifest/mcp.template.json`) which `james` accesses via `mcpServers: [services, plugin:aops:services]`.
+- The `aops` plugin, which ships the polecat launcher that starts the containers james runs inside.

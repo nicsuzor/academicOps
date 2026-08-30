@@ -201,7 +201,7 @@ Existing files are NOT renamed. The old files remain discoverable via backward-c
 
 ### Single Source of Truth
 
-All naming logic lives in `aops-core/lib/session_naming.py`. No other module generates session filenames. All consumers (transcript.py, session_paths.py, insights_generator.py, sync pipeline) call into this module.
+All naming logic lives in `aops/lib/session_naming.py`. No other module generates session filenames. All consumers (transcript.py, session_paths.py, insights_generator.py, sync pipeline) call into this module.
 
 ### Parsing
 

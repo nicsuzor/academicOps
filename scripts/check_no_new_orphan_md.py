@@ -18,7 +18,7 @@ Canonical locations (allowed adds):
 The point: agents must place new markdown in a canonical home, or the
 content belongs in the task body / parent epic / PKB instead.
 
-Reference: aops-core/RULES.md R5.6.
+Reference: aops/RULES.md R5.6.
 """
 
 from __future__ import annotations

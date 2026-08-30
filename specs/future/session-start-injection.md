@@ -88,7 +88,7 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 **Who uses**:
 
 - Agents WITH prompt hooks: Hydrator loads context based on task
-- Agents WITHOUT prompt hooks: MUST read `$AOPS/aops-core/agents/prompt-hydrator.md` and self-hydrate
+- Agents WITHOUT prompt hooks: MUST read `$AOPS/aops/agents/prompt-hydrator.md` and self-hydrate
 
 **Contains** (loaded on-demand):
 
@@ -115,12 +115,12 @@ Tier 3: JIT Injection (prompt-hydrator or on-demand)
 
 ## File Inventory
 
-| Tier | File                                        | Purpose                        | Size Target |
-| ---- | ------------------------------------------- | ------------------------------ | ----------- |
-| 1    | `$AOPS/CORE.md`                             | Framework tools                | ~2KB        |
-| 2    | `$cwd/.agents/CORE.md`                      | Project context                | ~1KB        |
-| 3    | `$AOPS/aops-core/agents/prompt-hydrator.md` | Fallback for non-hooked agents | ~1KB        |
-| 3    | Various                                     | JIT-loaded by hydrator         | As needed   |
+| Tier | File                                   | Purpose                        | Size Target |
+| ---- | -------------------------------------- | ------------------------------ | ----------- |
+| 1    | `$AOPS/CORE.md`                        | Framework tools                | ~2KB        |
+| 2    | `$cwd/.agents/CORE.md`                 | Project context                | ~1KB        |
+| 3    | `$AOPS/aops/agents/prompt-hydrator.md` | Fallback for non-hooked agents | ~1KB        |
+| 3    | Various                                | JIT-loaded by hydrator         | As needed   |
 
 ## What Was Removed (from v1 spec)
 
@@ -162,7 +162,7 @@ fi
 
 Agents spawned without hooks (e.g., subagents via Task tool) must:
 
-1. Read `$AOPS/aops-core/agents/prompt-hydrator.md`
+1. Read `$AOPS/aops/agents/prompt-hydrator.md`
 2. Self-assess what context they need
 3. Load relevant files before executing
 

@@ -27,7 +27,7 @@ the container.
   `agy-settings.json`, `agy-onboarding.json`, `ccstatusline-settings.json`,
   `agystatusline-settings.json`, `docker_gemini_fixups.py`)
 - [[Dockerfile]] — the image `run` executes inside
-- [[plugins/aops-core/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
+- [[plugins/aops/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
 - [[plugins/orchestrate/agents/pc.md]] — coordinator-side: the launcher agent that builds

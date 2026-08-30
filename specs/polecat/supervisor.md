@@ -168,7 +168,7 @@ extensions (`partial` is part of that canonical set).
 - `plugins/orchestrate/skills/supervised-development/SKILL.md` — The operative
   skill this spec mandates: the delegate-and-verify loop an orchestrator runs
   rather than hand-rolling.
-- `plugins/aops-core/skills/pull/SKILL.md` — The operative skill: claiming a unit,
+- `plugins/aops/skills/pull/SKILL.md` — The operative skill: claiming a unit,
   working it, and carrying it to a terminal state.
 - `plugins/orchestrate/agents/pc.md` — The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which

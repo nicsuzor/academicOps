@@ -150,7 +150,7 @@ def test_subagent_is_attached_to_the_parent_session(project_dir: Path) -> None:
 
     subagent = session.subagents[0]
     assert subagent.agent_id == SUBAGENT_AGENT_ID
-    assert subagent.agent_type == "aops-core:pauli"
+    assert subagent.agent_type == "aops:pauli"
     assert subagent.description == "Retro: agent unaware of md transcripts"
     assert subagent.parent_tool_use_id == "toolu_01Me46HjJa47GxqUEh193Rfs"
     assert subagent.events, "subagent conversation was attached but empty"
@@ -234,7 +234,7 @@ def test_an_inlined_subagent_is_regrouped_and_not_duplicated(project_dir: Path) 
     subagents = load_subagent_transcripts(_trunk(project_dir), [], inlined)
 
     assert [sub.agent_id for sub in subagents] == [SUBAGENT_AGENT_ID]
-    assert subagents[0].agent_type == "aops-core:pauli"
+    assert subagents[0].agent_type == "aops:pauli"
     assert subagents[0].tokens_used == 32438
 
 
@@ -258,7 +258,7 @@ def test_summary_markdown_indexes_subagents_without_inlining_them(project_dir: P
     reply = session.subagents[0].events[-1].content
 
     assert "## 🧵 Subagents" in md
-    assert "aops-core:pauli" in md
+    assert "aops:pauli" in md
     assert "Retro: agent unaware of md transcripts" in md
     # The summary stays a summary: the conversation itself is not inlined.
     assert reply not in md
@@ -298,7 +298,7 @@ def test_json_sidecar_lists_subagents_and_keeps_trunk_keys(project_dir: Path) ->
 
     entry = data["subagents"][0]
     assert entry["agent_id"] == SUBAGENT_AGENT_ID
-    assert entry["agent_type"] == "aops-core:pauli"
+    assert entry["agent_type"] == "aops:pauli"
     assert entry["event_count"] == len(session.subagents[0].events)
     assert entry["started_at"]
 
