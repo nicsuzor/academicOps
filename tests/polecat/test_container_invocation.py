@@ -131,9 +131,8 @@ def test_headless_claude_uses_print_not_a_nonexistent_flag(tmp_path, monkeypatch
 
 
 def test_headless_claude_keeps_the_prompt_positional(tmp_path, monkeypatch):
-    """`--print` is a boolean and the prompt is a positional, so a seeded task
-    must still arrive as its own argument after the flag."""
-    cmd = _capture_docker_cmd(
+    """`--print` is passed for headless claude, and the task id is carried via POLECAT_TARGET_TASK."""
+    cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
         ["run", "claude", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
@@ -141,7 +140,7 @@ def test_headless_claude_keeps_the_prompt_positional(tmp_path, monkeypatch):
     inner = _inner_cmd(cmd)
 
     assert inner.count("--print") == 1
-    assert inner[-1] == "/pull task_abc123"
+    assert docker_env["POLECAT_TARGET_TASK"] == "task_abc123"
 
 
 def test_caller_supplied_print_is_not_duplicated(tmp_path, monkeypatch):
@@ -217,9 +216,8 @@ def test_passthrough_commands_keep_their_own_flags(tmp_path, monkeypatch):
 
 
 def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkeypatch):
-    """The headless handling is claude-specific: agy gets its own `--print`
-    from the prompt path and must never pick up claude's flags."""
-    cmd = _capture_docker_cmd(
+    """The headless handling is claude-specific: agy inner_cmd gets no bare print, and POLECAT_TARGET_TASK is forwarded."""
+    cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
         ["run", "agy", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
@@ -231,9 +229,8 @@ def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkey
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--print",
-        "/pull task_abc123",
     ]
+    assert docker_env["POLECAT_TARGET_TASK"] == "task_abc123"
     assert "--non-interactive" not in inner
 
 
@@ -1080,8 +1077,8 @@ def test_interactive_flag_agy_positional_prompt(monkeypatch, tmp_path):
 
 
 def test_interactive_flag_claude_task_dispatch(monkeypatch, tmp_path):
-    """Passing -i and -t to claude runs interactively with seeded /pull prompt."""
-    cmd = _capture_docker_cmd(
+    """Passing -i and -t to claude runs interactively with POLECAT_TARGET_TASK forwarded."""
+    cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
         [
@@ -1100,15 +1097,15 @@ def test_interactive_flag_claude_task_dispatch(monkeypatch, tmp_path):
         "claude",
         "--dangerously-skip-permissions",
         "--setting-sources=user,project",
-        "/pull task_abc123",
     ]
+    assert docker_env["POLECAT_TARGET_TASK"] == "task_abc123"
     assert "-it" in cmd
     assert "--print" not in inner
 
 
 def test_interactive_flag_agy_task_dispatch(monkeypatch, tmp_path):
-    """Passing -i and -t to agy runs interactively using --prompt-interactive."""
-    cmd = _capture_docker_cmd(
+    """Passing -i and -t to agy runs interactively with POLECAT_TARGET_TASK forwarded."""
+    cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
         [
@@ -1128,9 +1125,8 @@ def test_interactive_flag_agy_task_dispatch(monkeypatch, tmp_path):
         "--dangerously-skip-permissions",
         "--log-file",
         "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--prompt-interactive",
-        "/pull task_abc123",
     ]
+    assert docker_env["POLECAT_TARGET_TASK"] == "task_abc123"
     assert "-it" in cmd
     assert "--print" not in inner
 
