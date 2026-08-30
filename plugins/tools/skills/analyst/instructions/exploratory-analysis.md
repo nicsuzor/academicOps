@@ -19,9 +19,17 @@ Exploratory analysis is for understanding PATTERNS and RELATIONSHIPS in clean da
 **Step 1: Load data and show basic statistics**
 
 ```python
+from pathlib import Path
 import duckdb
 
-conn = duckdb.connect("data/warehouse.db")
+# Resolve absolute canonical path from project root
+PROJECT_ROOT = Path(__file__).resolve().parent
+DB_PATH = (PROJECT_ROOT / "dbt" / "data" / "local_cache.duckdb").resolve()
+
+if not DB_PATH.is_file():
+    raise FileNotFoundError(f"Canonical database not found at {DB_PATH}")
+
+conn = duckdb.connect(str(DB_PATH), read_only=True)
 df = conn.execute("SELECT * FROM fct_cases").df()
 
 print(f"Rows: {len(df)}")
@@ -55,6 +63,15 @@ Continue one step at a time, yielding to user after each finding.
 
 ## Exploratory Analysis Anti-Patterns
 
-❌ **Don't** create comprehensive analysis notebook without user input ❌ **Don't** generate 10 charts at once ❌ **Don't** make assumptions about what's interesting ❌ **Don't** query upstream data sources directly
+❌ **Don't** create comprehensive analysis notebook without user input
+❌ **Don't** generate 10 charts at once
+❌ **Don't** make assumptions about what's interesting
+❌ **Don't** query upstream data sources directly
+❌ **Don't** use bare cwd-relative database paths (`duckdb.connect("data/...")`) — always resolve absolute canonical paths
+❌ **Don't** misdiagnose "table does not exist" as data loss before verifying connection path, file size, and checking for duplicate caches
 
-✅ **Do** take one analytical step at a time ✅ **Do** explain each finding and ask for direction ✅ **Do** use dbt models for all data access ✅ **Do** document interesting findings in code comments
+✅ **Do** take one analytical step at a time
+✅ **Do** explain each finding and ask for direction
+✅ **Do** use dbt models for all data access
+✅ **Do** verify canonical-source parity before analyzing derived marts
+✅ **Do** document interesting findings in code comments
