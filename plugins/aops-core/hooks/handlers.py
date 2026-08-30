@@ -30,7 +30,9 @@ def be_quiet(ctx: HookContext) -> Result | None:
     """
 
     # Only fire on Ida
-    if ctx.agent_type == "pkb:ida":
+    if (
+        ctx.agent_type == "aops-core:ida"
+    ):  # NS: this reference to the plugin name needs to be made into a constant -- others too.
         # No need to do anything until the background tasks complete.
         if ctx.raw.get("background_tasks"):
             return None

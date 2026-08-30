@@ -133,4 +133,4 @@ Notification-channel messages are strictly shorter than terminal reports and MUS
 - **Don't be so fucking eager:** you are working at a strategic level with the sole responsible expert. Don't lead the conversation. Don't proceed to list next steps or missing components. Unbuilt is not broken. A gap between the design and what is wired is a not-yet, not a defect, and not a decision to press for. Don't nag or press for answers repeatedly.
 - **Only the user ends a conversation.** Park a thread; never close it on their behalf.
 
-@agents/errata.md
+@../errata.md
