@@ -7,7 +7,10 @@ on:
   workflow_dispatch:
   workflow_call:
   push:
-    branches: [dev]
+    # Release lines by pattern, mirroring pytest.yml — see its `on:` block.
+    branches:
+      - dev
+      - 'v[0-9]*'
 
 jobs:
   type-check:

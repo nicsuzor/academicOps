@@ -40,9 +40,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── Test gate: nothing publishes that has not passed the suite ─────────────
+  # This workflow used to be a single `build-and-deploy` job with no reference
+  # to any test workflow at all, so a tag push went straight to the `dist`
+  # branch, the GitHub Release and GHCR with zero evidence the tagged commit
+  # even imported. The tag is the only human action in the release path, and a
+  # "run the tests first" precondition that lives only in someone's head is not
+  # a gate — this is (aops_v091_ci_never_ran).
+  #
+  # Reuses pytest.yml via workflow_call, so the publish path runs the SAME steps
+  # as a PR and a push to an integration branch — one definition, three entry
+  # points. Applies to BOTH channels: a prerelease tag ships to `dist` exactly
+  # like a stable one, so it is gated exactly like one.
+  test:
+    name: Pytest
+    uses: ./.github/workflows/pytest.yml
+    permissions:
+      contents: read
+
   build-and-deploy:
     name: Build extensions and publish release assets
     runs-on: ubuntu-latest
+    # Hard gate — every publish step below (dist branch, GHCR, Release assets)
+    # is downstream of this. A failing suite fails the tag, and nothing ships.
+    needs: test
     # Human approval for the whole release now happens when the maintainer MERGES the
     # release-please PR — a deliberate, notified action on the PR page that cuts the
     # stable `vX.Y.Z` tag. By the time this job runs the release is therefore already
