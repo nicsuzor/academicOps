@@ -2,21 +2,24 @@
 name: q
 type: command
 description: Stage 1 Intake & Capture — place an ask, fragment, or idea on the graph under the right parent, wire contributes_to/depends_on, densify with wikilinks, and record strategic valuation at intake, leaving status at inbox with NO acceptance criteria.
-allowed-tools: [Skill, AskUserQuestion, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__update_body, mcp__services__pkb__search, mcp__services__pkb__task_search]
+allowed-tools: [Skill, AskUserQuestion, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__update_body, mcp__services__pkb__search, mcp__services__pkb__task_search, mcp__services__pkb__batch_reparent]
 ---
 
 # /q — Situate tasks on the graph, well-connected and weighted.
 
 Invoke `pauli` to silently capture, place, and densify the user's intent on the task graph by creating or updating one or more tasks in the `inbox` state.
 
+> PKB MCP tools live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g. `pkb__search`, `pkb__get_task`, `pkb__create_task`, `pkb__update_task`, `pkb__batch_reparent`). Note: `pkb__create_task` sets `status: "inbox"` (or `"ready"`). Setting `status: "queued"` requires a two-step write via `pkb__update_task` and belongs to `brief`, not `q`.
+
 ## 1: Intake, Placement & Densification
 
-Stage 1 places the task under the right parent, values it strategically (marginal career benefit, cross-project synergies, Value of Information [VoI]), wires edges (`contributes_to`, `depends_on`, `soft_depends_on`, `[[wikilinks]]`), sorts assumptions into tested vs. hopes, names forks with discriminating probes,
+Stage 1 places the task under the right parent, values it strategically (marginal career benefit, cross-project synergies, Value of Information [VoI]), wires edges (`contributes_to`, `depends_on`, `soft_depends_on`, `[[wikilinks]]`), sorts assumptions into tested vs. hopes, names forks with discriminating probes.
 
 - **Place under an appropriate parent node**: Identify the right parent (epic, target, or active task). Do not insert new tasks under complete or stale parent nodes.
 - **Never park tasks in a catch-all, and never leave them unparented.** Everything belongs somewhere real on the graph. A node with no parent is an orphan the next sweep has to chase, and a junk-drawer parent is an orphan that does not show up as one — which is worse.
+- **Adopt existing work**: Where existing unparented, misparented, or pre-existing tasks already cover the idea, adopt them under the parent using `pkb__batch_reparent(ids=[...], new_parent="<parent-id>", dry_run=False)` rather than creating duplicate nodes.
 - **Wire graph relationships**:
-  - Add a `contributes_to` edge to the target or goal this work actually serves, with a verbal weight and one sentence of justification (following [[kb_pauli_prioritisation_doctrine]]).
+  - Add a `contributes_to` edge to the target or goal this work actually serves, with a verbal `stated_weight` (`critical`, `high`, `medium`, `low`) and one sentence of justification (following [[kb_pauli_prioritisation_doctrine]]).
   - Wire `depends_on` for known hard blockers and `soft_depends_on` for context/informational relationships.
 - **Densify with wikilinks**: Include `[[wikilinks]]` in the body to related nodes, prior attempts, and relevant documentation. The graph should come out denser, not just longer. A task whose only edge is its parent has been dumped, not placed.
 - **Strategic Valuation at intake**: Record initial estimates across strategic dimensions:
@@ -27,7 +30,7 @@ Stage 1 places the task under the right parent, values it strategically (margina
 
 ## 2: Place it, value it, wire it
 
-One task, under the right parent.
+One task, under the right parent. When creating tasks (`pkb__create_task`), mint slugged, human-readable IDs upfront (`id: "aops_<slug>"`, etc.) rather than leaving `id` empty for auto-generation.
 
 | Signal                                       | Level                                          |
 | -------------------------------------------- | ---------------------------------------------- |
@@ -43,7 +46,7 @@ between two live candidates — not merely unclear at a glance — that is a SUR
 case (§3). Do not flip a coin.
 
 Add a `contributes_to` edge to the target this work actually serves, with a
-verbal weight and one sentence of justification ([[kb_pauli_prioritisation_doctrine]]). Then densify: `depends_on` for
+verbal `stated_weight` and one sentence of justification ([[kb_pauli_prioritisation_doctrine]]). Then densify: `depends_on` for
 true hard blockers, `soft_depends_on` for context-only relations, `supersedes`
 where this replaces prior work, and body `[[wikilinks]]` to the neighbours you
 confirmed by opening. **The graph should come out of this denser, not just
@@ -55,7 +58,7 @@ Record an initial estimate across key strategic valuation dimensions:
 - **Marginal benefit**: The milestone, advantage, or capability this work advances.
 - **Cross-project synergies**: Work that is reusable across other active projects.
 - **Value of Information (VoI)**: How much doing this work reduces uncertainty on other nodes on the graph.
-- **Downstream unblocking & contribution**: Hard unblocking (`depends_on` from work this frees), target contribution (`contributes_to` verbal weight + justification), consequence of failure (`consequence` prose on the target), and initial `effort`. Populate what you actually established; do not fabricate precision the ask does not support.
+- **Downstream unblocking & contribution**: Hard unblocking (`depends_on` from work this frees), target contribution (`contributes_to` verbal `stated_weight` + justification), consequence of failure (`consequence` prose on the target), and initial `effort`. Populate what you actually established; do not fabricate precision the ask does not support.
 
 **`focus_score` is computed by the graph engine, and you never write it.** You influence it only by wiring up edges.
 
@@ -73,15 +76,16 @@ If you can decide by yourself, do not block. Where there is a reasonably clear c
 
 ## Must NOT
 
-- Do not write `intent` (or legacy `priority`). Intent is Nic's personally curated ranking, not an agent estimate. New work sits at the uncurated default band unless Nic directed otherwise in this turn ([[kb_ccc17177]]). To express strategic importance, wire `contributes_to` edges to targets; only `pauli` authors `stated_weight` under [[kb_pauli_prioritisation_doctrine]].
+- Do not write `intent` (or legacy `priority`). Intent is Nic's personally curated ranking, not an agent estimate. New work sits at the uncurated default band unless Nic directed otherwise in this turn ([[kb_ccc17177]]). Agents must NOT originate an intent band. To express strategic importance, wire `contributes_to` edges to targets with `stated_weight` (`critical`, `high`, `medium`, `low`); only `pauli` authors `stated_weight` under [[kb_pauli_prioritisation_doctrine]].
+- Do not attempt to set `status: "queued"` at intake. `q` leaves tasks at `status: "inbox"`.
 - Do not set `severity` on anything that is not a `type: target` node (severity is target-only magnitude; see [[kb_pauli_prioritisation_doctrine]]).
-- Manufacture a `due` date to carry urgency. `due` means a real external deadline.
+- Do not manufacture a `due` date to carry urgency. `due` means a real external deadline.
 
 ## Output
 
 **RETURN Task ID and title** in the following format:
 
 ```
-- Queued [TASK-ID] - [TASK-TITLE] (under [PARENT TASK-ID]) [inbox]
+- Captured [TASK-ID] - [TASK-TITLE] (under [PARENT TASK-ID]) [inbox]
 ... [ Repeat if necessary ]
 ```
