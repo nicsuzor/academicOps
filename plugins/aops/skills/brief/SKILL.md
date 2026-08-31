@@ -11,7 +11,7 @@ Turn an ask into a task a cold executor can act on and be judged against. You ve
 
 Brief exactly the ask you were called on — the cohesive unit of intent or epic. Do not conflate "one ask" with a single isolated line item: related tasks serving one atomic deliverable or epic are composed and briefed together as one unit, not fragmented into uncoordinated mini-briefs. Do not pre-write briefs for downstream work behind this one. The return contract attaches to the claimed task — one deliverable, with evidence and an output URL — including any completed child tasks.
 
-PKB MCP tools may live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g. `pkb__search`, `pkb__get_task`, `pkb__create_task`). 
+PKB MCP tools may live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g. `pkb__search`, `pkb__get_task`, `pkb__create_task`).
 
 ## 1 — Read, then verify
 
