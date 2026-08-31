@@ -5,23 +5,14 @@ category: spec
 status: draft
 permalink: email-to-tasks-workflow
 tags:
-- spec
-- email
-- task-capture
-- automation
-- stage-2
-- P1
+  - spec
+  - email
+  - task-capture
 ---
 
 # Email to Tasks Workflow
 
-**Unbuilt, and its dependencies are gone.** This spec belongs to a retired
-plugin — `plugins.disabled/` is excluded from the build
-([ARCHITECTURE.md](../../specs/ARCHITECTURE.md)). Every artifact it names
-(`bmem`, `bots/skills/tasks/scripts/task_add.py`, `task_view.py`,
-`task_archive.py`, `data/tasks/inbox/`, `data/logs/`) appears nowhere in this
-repository outside other retired specs. It is kept as the record of a design,
-not as a description of anything installed.
+Unbuilt. Nothing in this repository implements it.
 
 ## Problem
 
@@ -32,23 +23,6 @@ the mailbox and the task graph, and items drop. Email is a primary source of
 hard-deadline work (board votes, peer reviews, travel), and manual filing after
 reading breaks flow, which is exactly the friction the capture path exists to
 remove.
-
-```mermaid
-graph TD
-    A[User Request] --> B[Mail MCP: recent messages]
-    B --> C[Analyse for action items]
-    C --> D{Action items?}
-    D -->|No| E[Report: no actions]
-    D -->|Yes| F[Gather context from knowledge store]
-    F --> G[Categorise with confidence score]
-    G -->|>80%| H[Auto-apply category]
-    G -->|50-80%| I[Suggest, flag for review]
-    G -->|<50%| J[Inbox + #needs-categorization]
-    H --> K[Task backend]
-    I --> K
-    J --> K
-    K --> L[Present summary]
-```
 
 ## US1 — Email to tasks
 
@@ -76,29 +50,25 @@ Acceptance:
 
 ## US2 — Interactive completion
 
-**As** someone clearing a task list, **I want** `/tasks` to show every inbox
-task with a checkbox, **so that** I can archive a batch of finished work in one
-interaction rather than one at a time.
+**As** someone clearing a task list, **I want** every inbox task shown with a
+checkbox, **so that** I can archive a batch of finished work in one interaction
+rather than one at a time.
 
 Acceptance:
 
-- `/tasks` reads the task list as JSON and presents it through the harness's own
-  multi-select prompt.
+- The task list is read as structured data and presented through the harness's
+  own multi-select prompt.
 - Selected tasks archive in a single batched operation, and the messages they
   came from archive with them.
 - The user is told what was archived.
 
 ## Design decisions
 
-**Backend-agnostic.** The workflow addresses a task backend through one
-narrow interface — create a task from a fixed field set — so it can run against
-scripts or an MCP server without the workflow knowing which. The abstraction is
-documentation-only: the agent tries the MCP backend and falls back to scripts on
-failure. Add code only if the switching logic outgrows a sentence.
-
 **Orchestration, not capability.** This is connective tissue between a mail
 source, a knowledge store, and a task backend, each of which stays independent
-and usable alone. It owns no data and no storage of its own.
+and usable alone. It owns no data and no storage of its own, and addresses the
+task backend through one narrow interface — create a task from a fixed field
+set — so it can run against whatever backend is installed without knowing which.
 
 **Categorisation is semantic, not keyword.** Matching a message to a project
 goes through semantic search over the knowledge store, because keyword rules
@@ -113,8 +83,8 @@ sample — not by a date.
 ## Scope
 
 In: action extraction, context-aware categorisation, priority inference, task
-creation through the backend abstraction, source-message metadata linking, the
-`/tasks` completion command and its batch archive.
+creation through the backend abstraction, source-message metadata linking, and
+the batch-archive completion pass.
 
 Out: calendar-deadline integration; auto-archiving mail on task creation as a
 standing behaviour (US2 archives only on explicit selection); task dependencies;
@@ -123,11 +93,10 @@ non-English mail; attachment extraction — tasks link to the message instead.
 ## Monitoring
 
 Log every task-creation event with the source subject, the extracted action, the
-confidence score, the assigned project, and which backend served it. That log is
-the only way to answer the questions that decide whether the workflow is
-working: is the confidence distribution healthy, and how often does a
-categorisation get corrected by hand? Failed extractions log separately so a
-human can recover them.
+confidence score, and the assigned project. That log is the only way to answer
+the questions that decide whether the workflow is working: is the confidence
+distribution healthy, and how often does a categorisation get corrected by hand?
+Failed extractions log separately so a human can recover them.
 
 Targets: >60% of categorisations high-confidence, <20% manually recategorised,
 <5% false positives. False negatives are not measurable from the log and need

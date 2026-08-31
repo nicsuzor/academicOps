@@ -43,7 +43,7 @@ def mod():
         "plugins/orchestrate/hooks/messages/honesty.md",
         "plugins/tools/skills/analyst/SKILL.md",
         # retired design intent — the only surviving half of plugins.disabled/
-        "plugins.disabled/specs/learning-log-skill.md",
+        "plugins.disabled/specs/retired-design.md",
         "plugins.disabled/specs/sub/dir/deep.md",
         # specs / tests / templates
         "specs/ARCHITECTURE.md",

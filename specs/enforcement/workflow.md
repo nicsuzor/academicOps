@@ -24,12 +24,8 @@ trust-the-method.
 - **`brief`-skill sizing and composition** (pauli's dispatch-time call),
   task-template conventions, and proof-of-compliance tool fields — the
   workflow is assembled compliant before the unit is dispatched.
-- **`cohesive-pr-epic`** — a coupled set of tasks shares one draft PR: the
-  PR-surface instance of the general return contract — one claimed task, one
-  deliverable, never a spray of per-child PRs — whose home is
-  [task-contract.md](task-contract.md).
-- **`/supervisor`** — the multi-tick delegate-and-verify loop that runs across a
-  set of tasks.
+- **The supervisor** ([sara.md](../agents/sara.md)) — the multi-tick
+  delegate-and-verify loop that runs across a set of tasks.
 
 ## The five-step shape
 
@@ -52,7 +48,7 @@ separate research path.
    `brief` emits the contract as a standing, early-blocking node
    in the epic's DAG, so the rest of the epic's work depends on it clearing. The
    previously separate standalone premise-gate concept — a two-judge
-   hard-refuse ceremony run at the spend surfaces (`/pull`, `/dispatch`) — is
+   hard-refuse ceremony run at the spend surfaces (`/pull`) — is
    retired; dispatch surfaces trust those passes without re-judging the premise
    themselves. `brief` plans only: it emits this task (and the
    boundary-check/QA-around tasks below) into the graph, it never dispatches or
@@ -129,14 +125,15 @@ contracts:
 - **Low-risk / narrow blast radius** — workers self-assess against the
   exit-reflection checklist and hand back separate commits under one shared
   branch; a single consolidated boundary-check + QA-around pass runs once —
-  a review pass whose receipt lands in the PKB. The final PR (the `cohesive-pr-epic`
-  mechanism above) is the PR-surface instance of that pass, and the GHA PR
-  pipeline is one optional executor of it.
+  a review pass whose receipt lands in the PKB. One final PR over the coupled
+  set — never a spray of per-child PRs, per the return contract in
+  [task-contract.md](task-contract.md) — is the PR-surface instance of that
+  pass, and the GHA PR pipeline is one optional executor of it.
 
 The only invariant across the whole range: a complete set of
 steps 3–5 runs per the assembled workflow before a workflow is marked done, regardless of how pauli
 chose to distribute it. A unit may also legally terminate `partial` (see
-[spec-partial-work-tight-loop-delivery.md §4](../polecat/spec-partial-work-tight-loop-delivery.md#4-the-partial-terminal-state)):
+[spec-partial-work-tight-loop-delivery.md](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)):
 steps 3–5 then review the shipped chunk plus its declared-deferred
 remainder, and draft → ready-for-the-principal still requires the
 pauli-specified review.

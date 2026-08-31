@@ -5,9 +5,7 @@ category: instruction
 description: "Triage a corpus, classify, and dispatch outputs. Three modes: retro (transcript review → issues), trend (longitudinal performance analysis), sweep (GitHub issue triage → fix-epics). Delegates execution to pauli for all three modes to keep main context clean."
 ---
 
-# /triage — Unified Triage Skill
-
-Triage a corpus, classify findings, and dispatch outputs according to the selected mode.
+# /triage — triage a corpus, classify, dispatch
 
 | Mode    | Corpus                              | Primary output                 |
 | ------- | ----------------------------------- | ------------------------------ |
@@ -15,46 +13,56 @@ Triage a corpus, classify findings, and dispatch outputs according to the select
 | `trend` | Many sessions / audit files         | Trend report + recommendations |
 | `sweep` | Open GitHub issues                  | PKB tasks, fix-epics, closures |
 
-**Privacy Rule**: the anonymisation clause in [`references/forensic-scope.md`](references/forensic-scope.md) binds every mode here, not only `retro`.
+**Read [`references/forensic-scope.md`](references/forensic-scope.md) before
+starting any mode.** Its in-scope/out-of-scope split and its anonymisation clause
+bind all three modes, not `retro` alone.
 
----
-
-## Dispatch Model
-
-Every mode dispatches to `pauli`: the premise test these reviews turn on, and the graph mutation `sweep` performs, are both hers (`plugins/aops/agents/pauli.md`).
-
----
+Every mode dispatches to `pauli` (`plugins/aops/agents/pauli.md`): the premise
+test these reviews turn on, and the graph mutation `sweep` performs, are both
+hers.
 
 ## Mode: retro
 
-Perform a critical, forensic review of a single session transcript, apply immediate fixes where appropriate, and file the tracking GitHub issues.
+Forensic review of a single session transcript — apply the immediate fixes, file
+the tracking issues.
 
-### 1. Transcript Selection & Quality Gate
+### 1. Select the transcript and gate on its quality
 
-- **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
-- **Same-Session Review Allowed**: the current session may be reviewed by a fresh subagent, whose detached context is what makes the review honest. What is never allowed is the same agent grading its own work in the same context.
-- Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
-- Resolve the target session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/`. Each session has a markdown, an HTML, and a JSON sidecar artifact — see [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#4-output-formats). Read the markdown.
-- **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
+- **Review only the session ID, transcript path, or session context passed in the
+  prompt.** Never fall back to a random unreviewed transcript. With no target
+  supplied, halt and report.
+- The current session may be reviewed by a fresh subagent, whose detached context
+  is what makes the review honest. What is never allowed is the same agent
+  grading its own work in the same context.
+- Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists; if not,
+  stop and ask the user.
+- Resolve the session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/` and read
+  the markdown. Each session also has HTML and JSON sidecars — see
+  [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#4-output-formats).
+- **Verify the transcript is complete and usable before analysing it.** If it is
+  not, name the failed condition and stop. A forensic review on a degraded
+  transcript yields false findings, so never silently fall back to the raw
+  `.jsonl`; proceed on raw JSONL only with explicit user confirmation.
 
-### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
+### 2. Analyse and fix
 
-- Read the entire transcript.
-- The forensic read, the in-scope/out-of-scope split between fixing the reviewed session and changing the framework, and the "fix and route" invariant are stated in [`references/forensic-scope.md`](references/forensic-scope.md). Apply it as written. In retro, "route the lesson" means the destination chosen in §4, and the record it names is the filed GitHub issue.
+Read the entire transcript. Apply `references/forensic-scope.md` as written: the
+forensic read, the split between fixing the reviewed session and changing the
+framework, and the fix-and-route invariant all come from there. In retro, the
+record that routing names is the filed GitHub issue.
 
-### 2a. Classified recurrence — bad-premise approval (attribute the miss to the reviewer)
+**Bad-premise approval.** Good, working, well-tested work done for a bad idea is
+a bad-premise approval, and the miss is scored against the reviewer who passed
+it, not only the author. Every review surface (arch-fit, `/verify`, rbg, pauli)
+carries a forced step-0 premise test — _was this worth building at all, in this
+shape?_ — so a PASS on a bad premise means that test was skipped or rationalised
+past, and test-passing is never the excuse. The filed issue names the approving
+surface as the locus of the miss, alongside the premise that should have been
+bounced. A deterministic rig — regex, threshold, NLP, checklist — built for a
+call a smart agent should just make (`judgment-non-delegable`) is one worked
+instance, not the whole class.
 
-Good, working, well-tested work done for a bad idea is a **bad-premise approval**, and the miss is scored against the reviewer who passed it, not only the author. Every review surface (arch-fit / `/verify` / rbg / pauli) carries a forced step-0 premise test — _was this worth building at all, in this shape?_ — so a PASS on a bad premise means that test was skipped or rationalised past, and test-passing is never the excuse.
-
-The filed issue names the approving surface as the locus of the miss, alongside the premise that should have been bounced. A deterministic rig — regex/threshold/NLP/checklist — built for a call a smart agent should just make (`judgment-non-delegable`) is one worked instance, not the whole class.
-
-### 2b. Framework/behavioral changes are never a retro fix
-
-Retro's job stops at naming the gap precisely in the filed issue. Deciding on a framework change — including which mechanism carries it and the spec update `.agents/rules/RULES.md` requires — is a separate, deliberate pass outside retro.
-
-### 3. Output Requirements
-
-Produce a review in this exact format. Keep text concise:
+### 3. Output
 
 ```markdown
 ## Transcript Review: <filename>
@@ -71,34 +79,47 @@ Produce a review in this exact format. Keep text concise:
 [Upstream/structural root cause spanning multiple findings.]
 ```
 
-### 4. File Issues & Apply Changes
+### 4. File issues and land the changes
 
-- Search existing issues/PRs using `gh issue list` and `gh pr list` to avoid duplication.
-- If a match exists, comment with a concise delta comment (new date, facts, and impact). Edit structurally using `gh issue edit`.
-- If no match, create a bug issue (cap at 3 per session). Title must be `Bug: <brief-slug>`.
-- Issue body must contain only forensic fields: **Incident facts**, **Structural shape**, and **Impact**. Do not propose solutions in the issue report.
-- Record review provenance in the daily note as a single, self-contained semantic chunk (e.g., an H3 heading or list item) to allow the PKB to index it. Write the full verbatim text including the reviewed_by block (fields: agent, date, verdict, issues_filed, session ID, transcript path) under a heading like ### Retro review stamp: session <SID> (<project>) with tags #retro #reviewed #triage-retro #<project-tag>. This indexed entry serves as the durable already reviewed signal that prevents re-triaging the same transcript.
-- **Execution & Validation**:
-  - For any immediate fixes applied to the codebase, run the test suite (e.g., `uv run pytest`) to verify no regressions were introduced.
-  - Commit the changes and open a PR with a description referencing both the fix and the filed GitHub issue(s).
-
----
+- Search `gh issue list` and `gh pr list` for an existing match. If one exists,
+  comment the delta (new date, facts, impact) and edit structurally with
+  `gh issue edit`.
+- Otherwise create a bug issue titled `Bug: <brief-slug>`, capped at 3 per
+  session. The body carries only forensic fields — **Incident facts**,
+  **Structural shape**, **Impact**. Propose no solutions in the issue.
+- Stamp review provenance in the daily note as one self-contained semantic chunk
+  so the PKB indexes it: a heading `### Retro review stamp: session <SID>
+  (<project>)`, tagged `#retro #reviewed #triage-retro #<project-tag>`, carrying
+  the verbatim `reviewed_by` block (agent, date, verdict, issues_filed, session
+  ID, transcript path). This indexed entry is the durable already-reviewed signal
+  that prevents re-triaging the same transcript.
+- Run the test suite (`uv run pytest`) over any fix applied, then commit and open
+  a PR referencing both the fix and the filed issues.
 
 ## Mode: trend
 
-Review multiple sessions to identify systemic effectiveness and trends.
+Review many sessions for systemic effectiveness and trends.
 
-> **Corpus selection — prompt mining vs trend reading.**
-> If the goal is to extract _what the user typed_ (prompts, `/command` invocations, skill usage patterns), start with the **per-session JSON sidecars** at `$AOPS_SESSIONS/transcripts/YYYY-MM/*.json`. Read the top-level `user_prompts` array (`[{timestamp, text}]`); harness-injected text is held out of it in the sibling `injected_prompts` array — across ALL clients, no client-name filter needed. Narrow to human-driven sessions with the `has_user_context` boolean. This is faster and more reliable than grepping raw transcripts. Read the field set off a sidecar itself; there is no schema doc. The rendered transcripts beside them (`*.full.md` in the same directory) are the fallback for content the sidecars don't capture (agent reasoning, tool calls).
+**Corpus selection.** To extract what the user typed — prompts, `/command`
+invocations, skill usage — start with the per-session JSON sidecars at
+`$AOPS_SESSIONS/transcripts/YYYY-MM/*.json`: read the top-level `user_prompts`
+array (`[{timestamp, text}]`), which holds out harness-injected text into the
+sibling `injected_prompts` array across all clients, and narrow to human-driven
+sessions with `has_user_context`. Read the field set off a sidecar itself; there
+is no schema doc. Fall back to the rendered `*.full.md` beside them only for what
+the sidecars do not capture (agent reasoning, tool calls).
 
-### 1. Sampling & Reading
+### 1. Sample and read
 
-- Select 8 to 15 files spanning both early and recent periods, including size and project diversity.
-- Extract: Context, component behavior, accuracy (TP/FP/FN), and trajectory impact.
+Select 8 to 15 files spanning both early and recent periods, with size and
+project diversity. Extract context, component behaviour, accuracy (TP/FP/FN), and
+trajectory impact.
 
-### 2. Synthesis & Output
+### 2. Synthesise
 
-Analyze aggregate true/false rates, temporal trends, coverage, and cost-benefit. Produce a report in this format:
+Analyse aggregate true/false rates, temporal trends, coverage, and cost-benefit.
+Save the report to `$AOPS_SESSIONS/reviews/<component>-trend-<date>.md` in this
+format:
 
 ```markdown
 # Trend Review: <Component Name>
@@ -133,17 +154,14 @@ Analyze aggregate true/false rates, temporal trends, coverage, and cost-benefit.
 ## Confidence and Limitations
 ```
 
-Save the report to `$AOPS_SESSIONS/reviews/<component>-trend-<date>.md`.
-
----
-
 ## Mode: sweep
 
-Triage and process open issues on `nicsuzor/academicOps` (batch limit: ≤20 issues).
+Triage open issues on `nicsuzor/academicOps`, at most 20 per cycle.
 
-### 1. Issue Triage & Dispositions
+### 1. Classify and dispose
 
-Fetch open issues, focusing on the focal issue first if a directed focus is provided. Classify using this rubric:
+Fetch the open issues, taking the focal issue first where one is named, and
+classify each:
 
 | Disposition             | Criterion                                             | Action                                                                                   | Label                   |
 | ----------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------- |
@@ -155,23 +173,23 @@ Fetch open issues, focusing on the focal issue first if a directed focus is prov
 | `fix-epic`              | Multi-step, multi-file, or design-required work.      | Create epic task, leave at `inbox` for the user to brief.                                | `triaged-epic`          |
 | `defer`                 | Real but blocked or low-criticality.                  | Apply defer label and revisit-by date.                                                   | `triaged-defer`         |
 
-- **Execution**: Apply low blast-radius dispositions autonomously. Gate ONLY on:
-  - Ambiguous classification (Needs human triage).
-  - Add-or-escalate enforcement proposals (requires step 2b review).
-  - Hard halts (locked merge gates, irreversible operations).
+Apply low blast-radius dispositions autonomously. Gate only on an ambiguous
+classification, an add-or-escalate enforcement proposal (step 2 below), or a hard
+halt (locked merge gate, irreversible operation).
 
-### 2b. Enforcement-Escalation Review (Legislative Role)
+### 2. Enforcement-escalation review
 
-For proposals that **add or escalate** a rule, perform this review before assigning the disposition:
+Before assigning a disposition to any proposal that **adds or escalates** a rule:
 
-1. Generalize the failure into a Root Cause Category.
-2. Map to existing mechanisms in the enforcement map and axioms.
-3. Classify: _Propagation failure_ (fix via L1 propagation) vs. _Escalation candidate_ (requires CBA: ≥3 recurrence links).
-4. Default to the cheapest tier (L1 propagation). Flag enforcement changes not reflected in `specs/enforcement/enforcement.md` as a pipeline gap.
+1. Generalise the failure into a root-cause category.
+2. Map it to existing mechanisms in the enforcement map and the axioms.
+3. Classify it as a _propagation failure_ (fix via L1 propagation) or an
+   _escalation candidate_ (requires cost-benefit analysis and ≥3 recurrence
+   links).
+4. Default to the cheapest tier, L1 propagation. Flag any enforcement change not
+   reflected in `specs/enforcement/enforcement.md` as a pipeline gap.
 
-### 2c. Output Cycle Report
-
-Log results in the following format:
+### 3. Report the cycle
 
 ```markdown
 ## Cycle <N> — applied (open before: <K>; batch: <M>)
@@ -192,10 +210,14 @@ Log results in the following format:
 - <add-or-escalate proposal>: cost-ladder reasoning + ≥3 recurrence links
 ```
 
-### 3. Execution Rules
+### 4. Execution rules
 
-- **Task creation**: Omit `severity` on tasks created during the sweep — severity belongs on target milestones, not ordinary tasks. Created tasks default to `inbox`; `ready` is computed downstream, never hand-written.
-- **Priority**: Leave `priority` at its default on swept tasks. Never infer, estimate, or propagate a band — only the principal sets intent. To make a swept task more important, raise the `stated_weight` of its `contributes_to` edge, never the priority.
-- **Verification**: Confirm closed issues actually reached `state: closed`.
-- **Handoff**: After the cycle, `Skill(skill="verify", args="Verify cycle <N> of the issue sweep.")`
-- **Halt**: Exit after completing exactly one cycle.
+- **Task creation**: omit `severity` — it belongs on target milestones, not
+  ordinary tasks. Created tasks default to `inbox`; `ready` is computed
+  downstream, never hand-written.
+- **Priority**: leave `priority` at its default. Never infer, estimate, or
+  propagate a band — only the principal sets intent. To make a swept task more
+  important, raise the `stated_weight` of its `contributes_to` edge.
+- **Verification**: confirm closed issues actually reached `state: closed`.
+- **Handoff**: `Skill(skill="verify", args="Verify cycle <N> of the issue sweep.")`
+- **Halt**: exit after exactly one cycle.

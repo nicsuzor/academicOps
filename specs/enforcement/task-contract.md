@@ -45,7 +45,7 @@ work.
 - **Premise judgment** — no longer a standalone gate at `claim_task`. The
   assessment happens earlier, in pauli's `brief` skill: it places and values the
   work, sorts its assumptions, names its open forks, then settles shape and
-  acceptance criteria. Dispatch surfaces (`/pull`, `/dispatch`) trust that rather
+  acceptance criteria. Dispatch surfaces (`/pull`) trust that rather
   than re-judging the premise themselves.
 - **Task-binding invariant** — no mutating work without a task bound to the
   session via `claim_task`. The invariant is **one session claims exactly one
@@ -65,10 +65,10 @@ work.
   signal a reconcile sweep probes and, finding nothing, requeues to `ready`.
 - **Evidence contract** — at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,
-  or a stated failure reason. **This is the primary enforcement point** (H7).
+  or a stated failure reason. **This is the primary enforcement point.**
   Framed to agents as "land the plane" — commit → push → `release_task` with
   either a completion claim or a `partial` handback per
-  [spec-partial-work-tight-loop-delivery.md §4](../polecat/spec-partial-work-tight-loop-delivery.md)
+  [spec-partial-work-tight-loop-delivery.md](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)
   (the existing terminal status in the canonical taxonomy — a partial handback
   is a legal terminal outcome, not a failure; that spec owns partial
   semantics, which this bullet does not restate). Only silent, undisclosed

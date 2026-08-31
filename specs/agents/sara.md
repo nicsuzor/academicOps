@@ -52,9 +52,8 @@ Placement heuristics:
   refused decisions surfaced.
 - **Not dispatchable**: missing inputs or blockers → record a block note and defer.
 
-This routing is implemented in the `/dispatch` command. Weighing
-expected duration/effort in the routing decision is a target requirement, not yet
-implemented.
+Weighing expected duration/effort in the routing decision is a target
+requirement, not yet implemented.
 
 ## Observability Guarantee
 

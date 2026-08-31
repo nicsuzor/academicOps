@@ -12,10 +12,9 @@ the current round's scheme criteria and producing evidence-based, signable feedb
 agent prepares and verifies; **the academic owns the scores, the net call, and the final
 submitted text.**
 
-A review is not a linear pipeline that ends in a self-check. It is an adaptive loop of five
-stages, and its failures happen at the seams between them — a polish pass that quietly
-promotes a paraphrase into a fabricated quote, a voice rewrite that drops a verified
-correction.
+Run it as an adaptive loop of five stages, not a pipeline ending in a self-check: its
+failures happen at the seams — a polish pass promoting a paraphrase into a fabricated quote,
+a voice rewrite dropping a verified correction.
 
 ## Core Rules
 
@@ -54,11 +53,11 @@ default; it needs no fleet infrastructure.
 When you have many reviews in a round **and** the infrastructure to fan out, two stages
 parallelise — in _opposite_ directions:
 
-- **VERIFY silos** (guard F5): one independent, contextless verifier **per application** —
-  isolation prevents cross-contamination. Prefer a _fresh_ sub-agent for VERIFY even in
-  serial mode; an agent verifying its own draft is a weaker adversary than a cold reader.
-- **DE-TEMPLATE is whole-set** (guard F5): a single pass over the _entire round's_ drafts at
-  once — fingerprints only exist across documents.
+- **VERIFY silos**: one independent, contextless verifier **per application** — isolation
+  prevents cross-contamination. Prefer a _fresh_ sub-agent for VERIFY even in serial mode;
+  an agent verifying its own draft is a weaker adversary than a cold reader.
+- **DE-TEMPLATE is whole-set**: a single pass over the _entire round's_ drafts at once —
+  fingerprints only exist across documents.
 
 **Dispatch constraint.** Fan-out is a privilege of a top-level / lead session. If this
 skill is itself running inside a leaf sub-agent, it **cannot** fan out a verifier panel —
@@ -100,7 +99,7 @@ deliberately separated things ([[reading-notes-format]]):
 Then draft evidence-cited per-criterion comments applying the probes, following the scheme's
 bands ([[review-guidance]]). **Scores left blank.**
 
-**PREP self-review before finishing (guard F3 — PREP is the weakest self-checking link):**
+**PREP self-review before finishing** — PREP is the weakest self-checking link:
 
 - No integrity-adjacent or third-party-identifying material in prose (route separately).
 - **Recompute any number before asserting it** — never quote a total you haven't re-derived.
@@ -113,7 +112,7 @@ bands ([[review-guidance]]). **Scores left blank.**
 Run as a **separate contextless pass** (fan-out) or an explicit, forceful hat-switch, and
 run it as [[review-verification]] is written — the six techniques, the claim-by-claim
 classification, the independent gap analysis, and the BLOCKER / FIX / NIT ladder. Never
-degrade it to a citation-check of the draft's own claim list (guard F2).
+degrade it to a citation-check of the draft's own claim list.
 
 ### Stage 3 — VOICE & DE-TEMPLATE
 
@@ -126,15 +125,15 @@ constructively and anchored to the application's own promises.
 
 ### Stage 4 — FINAL-CHECK & submit
 
-- **Pre-"ready" gate (guard F7):** verbatim-quote grep + spell + dash-normalise +
+- **Pre-"ready" gate:** verbatim-quote grep + spell + dash-normalise +
   budget-recompute must pass **before** a draft is called ready. The final check confirms;
   it must not be the first place anyone greps a quote.
 - Run a final contextless confirmation pass (the VERIFY techniques as a safety net).
-- **Boundary gate (guard F1 — the most important structural rule):** _"verified" attaches to
-  a committed artifact, not an idea._ Any regeneration after VERIFY — a voice rewrite, a
+- **Boundary gate — the most important structural rule:** _"verified" attaches to a
+  committed artifact, not an idea._ Any regeneration after VERIFY — a voice rewrite, a
   polish pass, a hand-edit — **re-enters verification**. Stamp the verified commit; re-run
-  the checks on any later diff. On-disk drafts are mutable and get rewritten post-hoc (F8):
-  trust the committed/verified artifact, never a live draft, as the record.
+  the checks on any later diff. On-disk drafts are mutable and get rewritten post-hoc, so
+  the committed, verified artifact is the record, never a live draft.
 - The academic owns scores, top-line read, net call, and submission. Submit; save the
   confirmation to the task file.
 

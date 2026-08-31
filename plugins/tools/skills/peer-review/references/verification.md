@@ -68,7 +68,7 @@ Then run **independent gap analysis**: read the application cold and list streng
 weaknesses the draft missed, and check balance across criteria (don't let one criterion get
 three paragraphs and another two lines).
 
-## Severity ladder (guard F6)
+## Severity ladder
 
 Classify every finding. The BLOCKER↔FIX boundary is where reviewers disagree, so it is
 defined explicitly:
@@ -88,7 +88,7 @@ defined explicitly:
 End the verification with a one-line **verdict** (e.g. "1 BLOCKER, 3 FIX, 2 NIT — not ready;
 re-verify after fixes").
 
-## Where verification runs (guard F7)
+## Where verification runs
 
 Push the techniques **upstream into a pre-"ready" gate** — verbatim-quote grep + AU-spell +
 dash-normalise + budget-recompute must pass before a draft is _called_ ready. Keep a
@@ -96,7 +96,7 @@ contextless final-check as **confirmation**, not as the first place anyone greps
 final check that is the _only_ place a quote gets grepped means verification is compensating
 for a missing upstream gate.
 
-## After verification: applying the findings (guard F4)
+## After verification: applying the findings
 
 Whoever integrates the findings (the FIX hat) must do the triage itself, not receive a
 pre-digested list:
@@ -112,11 +112,11 @@ pre-digested list:
 - Append a short `## Verification round N — applied` changelog; defer (don't silently drop)
   lower-priority items.
 
-## The boundary gate (guard F1)
+## The boundary gate
 
 _"Verified" attaches to a committed artifact, not an idea._ Any regeneration after VERIFY —
 voice rewrite, polish, hand-edit — **re-enters verification**. The seams between stages are
 where errors enter: a fabricated quote is born when a voice pass promotes a paraphrase into
 quote-marks; a correct addition is lost when a later polish drops it. Stamp the verified
-commit and re-run the checks on any later diff. On-disk drafts are mutable (guard F8) — the
-committed/verified artifact is the record, never a live draft.
+commit and re-run the checks on any later diff. On-disk drafts are mutable — the committed,
+verified artifact is the record, never a live draft.
