@@ -11,9 +11,6 @@ Covers:
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -36,7 +33,8 @@ from task_body_gate import (  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _cleanup_verdicts():
+def _cleanup_verdicts(tmp_path, monkeypatch):
+    monkeypatch.setenv("AOPS_VERDICTS_DIR", str(tmp_path))
     session_id = "test-gate-session"
     clear_recorded_verdicts(session_id)
     yield
@@ -74,8 +72,7 @@ def test_parse_mandatory_gates_markers():
     assert parse_mandatory_gates(body_qa) == ["marsha"]
 
     body_multiple = (
-        "1. MUST get James APPROVE before PR.\n"
-        "2. Mandatory marsha verdict required before push."
+        "1. MUST get James APPROVE before PR.\n2. Mandatory marsha verdict required before push."
     )
     assert set(parse_mandatory_gates(body_multiple)) == {"james", "marsha"}
 
