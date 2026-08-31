@@ -43,8 +43,9 @@ One block per axiom, keyed by its slug. Read the diff and the session record aga
 
 - Does each write to a durable store leave one correct document, or a new entry beside a stale one?
 - Did the agent read what was already there and integrate it before writing?
-- Does any durable artifact now carry a timestamped entry, decision log, changelog, deprecation notice, "as of" qualifier, or a note about what something used to be called?
+- Does any durable artifact now carry a timestamped entry, decision log, changelog, deprecation notice, "as of" qualifier, meta-commentary about the writing process, or a note about what something used to be called?
 - Where a fact changed, does the document simply state the new fact?
+- Is any observation sitting unsynthesised beside the topic note it belongs in, rather than folded into that note's current-state prose or removed?
 
 ## do-one-thing
 

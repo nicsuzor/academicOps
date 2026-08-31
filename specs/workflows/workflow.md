@@ -21,7 +21,14 @@ The stages are operative instructions and live in `plugins/aops/skills/`. This s
 
 ## Workflow components
 
-A workflow component is a short markdown file, or knowledge-base document, carrying `type: template`. An agent reads it and composes it in context, by comprehension — never parsed, never solved.
+A workflow component is a short outline of the steps a class of work requires — not a script. It names what must happen and in what order, and leaves a **blank** at every point where the executing agent supplies something the component cannot fix in advance: which lens reviews it, how deep verification runs, who else gets pulled in, what the artifact itself looks like. A component that fills in every blank stops composing — it becomes the one process it happens to describe.
+
+Two things keep a component composable:
+
+- **Steps are outcomes, not instructions.** State what must be true when a step completes ("criteria are locked before evidence is gathered"), not the keystrokes that get there. An abstract step accepts whatever the caller's context supplies to satisfy it; a prescriptive one only accepts its own.
+- **Blanks are named, not hidden.** Where a step depends on something outside the component's own authority — a review lens, a depth setting, a companion component — the step says so, so the composing agent knows exactly what to bring.
+
+Carries `type: template`. An agent reads a component and composes it in context, by comprehension — never parsed, never solved.
 
 Components come from three sources:
 
@@ -35,9 +42,10 @@ Components come from three sources:
 
 ## Authoring a component
 
-1. **Short and composable.** Several must fit in one context window together; target ≲100 lines. Substance that outgrows that belongs in a skill the component points at — a component orchestrates, a skill executes.
-2. **Intent and acceptance criteria, not micro-scripting.**
-3. **Revisable.** Components are standardised work, not law: versioned, and improved from execution feedback.
+1. **Outline, not script.** Enumerate the steps the class of work requires, each stated as an outcome the caller can recognise as met — never the specific tool calls or prose that satisfy it this time. Several components must fit in one context window together; target ≲100 lines. Substance that outgrows that belongs in a skill the component points at — a component orchestrates, a skill executes.
+2. **Name the blanks.** Every point where a step depends on something the caller supplies — a lens, a depth, a sibling component, an artifact shape — is stated as a blank in that step, not silently assumed.
+3. **No history or meta-commentary in the body.** A component states the current process only, per [`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md) — never why a step was added, what it replaced, or how the template evolved. That belongs in git.
+4. **Revisable.** Components are standardised work, not law: versioned, and improved from execution feedback.
 
 ## Existence, not registration
 
