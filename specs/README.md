@@ -34,6 +34,7 @@
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) — composable-lens multi-agent review of intellectual artifacts.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) — research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) — GitHub ↔ PKB task-graph reconciliation.
+- [workflows/strategic-review.md](workflows/strategic-review.md) — design intent for the parallel-review-and-reconcile quality gate.
 
 ## Future
 

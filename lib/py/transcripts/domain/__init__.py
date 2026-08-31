@@ -28,11 +28,7 @@ from transcripts.domain.renderer import (
 from transcripts.domain.slug import get_stable_slug
 from transcripts.domain.sync import git_sync_sessions
 from transcripts.domain.time import get_event_timestamps
-from transcripts.domain.view import (
-    filter_controller_events,
-    get_subagent_summaries,
-    select_recent_interactive,
-)
+from transcripts.domain.view import select_recent_interactive
 
 __all__ = [
     "get_stable_slug",
@@ -42,8 +38,6 @@ __all__ = [
     "is_session_empty",
     "source_fingerprint",
     "select_recent_interactive",
-    "filter_controller_events",
-    "get_subagent_summaries",
     "infer_correlation",
     "infer_insights",
     "render_session_to_all_formats",
