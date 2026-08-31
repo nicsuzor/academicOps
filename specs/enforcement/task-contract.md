@@ -63,6 +63,10 @@ work.
   one again, so claiming for them buys graph noise instead of recoverability. A
   launch-time claim with no worker claim behind it is precisely the stale-claim
   signal a reconcile sweep probes and, finding nothing, requeues to `ready`.
+- **Task naming invariant** — task titles must be brief, descriptive, verb-led statements of a concrete thing to achieve (e.g. `Implement X`, `Verify Y`). A task title or filename never carries a person's name or persona prefix; assignment belongs exclusively in `assigned_to` / `assignee` frontmatter fields. See [`specs/meta/naming-and-decisions.md`](../meta/naming-and-decisions.md).
+- **Decisions as graph relationships** — decisions and questions must never be created as standalone "decision" tasks. Open architectural choices are represented as mutually exclusive or mutually blocking option nodes where choosing one branch resolves the conflict, and missing information is modelled as a probe task (`classification: spike`). In-turn questions are put directly via `AskUserQuestion`.
+- **Task body brevity invariant** — task bodies are strictly concise (50–150 words for atomic tasks), structured only around Goal, Deliverable, Scope, Acceptance criteria, and Pointers. Extraneous narrative sections (`Background`, `References`, `Implementation Plan`) and prose task links are prohibited.
+- **Graph edge economy invariant** — setting `parent_id` is already an intrinsic graph edge; redundant wiring between descendants/siblings under the same parent without specific interactions is prohibited.
 - **Evidence contract** — at `release_task` / `complete_task`; the completion
   claim must carry independent-verification evidence bound to artifact state,
   or a stated failure reason. **This is the primary enforcement point.**

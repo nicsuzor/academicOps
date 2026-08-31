@@ -58,8 +58,7 @@ Assume the user will not read your message for hours and will have forgotten wha
 - **Name the evidence in one clause and leave the trace behind a pointer** — a `file:line`, a task ID with gloss, a URL. They will ask if they want more.
 - Where the user asked for the artifact itself, return the artifact in full.
 - **Absorb gap-flags silently.** When a worker reports a missing component, an unrouted observation, or a possible future task, file it on the graph via pauli and say nothing. Filing resolves the item for conversation; do not file _and_ press. Unbuilt is not broken, and a thing is not urgent because it was just filed.
-- **Report the completed delta and halt.** Never hand back a question list, a "waiting on you" block, a pending-decision roll-up, or an open-gate summary — that transfers the tracking labour back to the user. Unresolved forks live on the graph.
-- **One question, at most, at the very end.** Asking a question ends your turn, so never bury one mid-message, and never re-raise an unanswered one in a following turn — an unanswered question means the user is not ready for it. File it and let them return to it.
+- **One question, at most, at the very end.** Put immediate interactive questions via `AskUserQuestion` at the very end of your turn; never bury one mid-message, never create standalone "decision" tasks, and never re-raise an unanswered question in a following turn — an unanswered question means the user is not ready for it. Represent open choices as graph forks or probe tasks and let them return to it.
 
 Shape:
 

@@ -27,12 +27,70 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 - **Current state only:** Every body states what is true now, never how it came to be true. No retained history blocks, no correction notices, no provenance narration, no changelogs — tasks and notes alike. A superseded fact is deleted; if it still matters it is not superseded, so restate it as current state. Short bodies are the mechanism: one small enough to rewrite in full is one that stays correct.
 - **Evidence keeps its own node:** Where a claim rests on something checked — a test, a measurement, a trace — the finding goes into current state as a plain attributed sentence, and the check that produced it becomes its own node reached by `[[wikilink]]`. Narration in a body is never how evidence is preserved.
 - **Tasks are atomic:** A task and its subtasks are a cohesive unit of related work that can be done by one person or agent in a single session.
+- **Task titles are verb-led imperatives:** Every task title begins with an active imperative verb describing the concrete outcome to achieve (e.g. `Implement X`, `Verify Y`, `Refactor Z`).
+- **No person's name in titles or filenames:** A task title, note title, or filename must **never** contain a person's name or persona prefix (e.g. no `nic: decision: ...`, `nic-task-...`, `for-nic.md`). Assignment belongs exclusively in the `assigned_to` or `assignee` frontmatter field.
+- **Decisions and questions emerge from graph relationships:** Never create standalone "decision" tasks or file questions as tasks. Represent competing alternatives as mutually exclusive option nodes with mutual blocking edges where choosing one branch resolves the conflict, and model unknowns as empirical probe tasks (`classification: spike`). In-turn questions use `AskUserQuestion` directly.
+- **Parent/child is already an edge:** Setting `parent_id` automatically links the node into its parent hierarchy. Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, genuine interaction (such as a sequential dependency `depends_on`, `supersedes`, or cross-branch data flow).
 - **Child tasks** represent a distinct workflow step that is related to but structurally separate from the parent task.
 - **Pointers:** Decisions, findings, and reviews live in notes reached from Pointers via `[[wikilink]]` pointers — never pasted paragraphs or embedded verdicts.
 - **A goal names every outcome, not the one that summarises them:** Write the goal as numbered imperatives — one per artifact the task must produce, change, or delete. A goal that states only the first outcome, or abstracts several into a single noun phrase, has silently narrowed the task.
 - **Every line serves the executor, or it is cut:** A body carries only what the agent doing the work needs at the moment it acts. No meta-commentary — nothing whose subject is the task itself: how it was scoped, which stage it sits at, what it is not to be mistaken for, why it is worded this way. Scope exclusions are bare directives ("Do not include X"), never a case for the boundary. Say each qualifier once: a hedge a heading already carries is not restated beneath it.
 - **Structure lives in the graph, never in prose:** Never link another task from a body, and never write a section about how this task relates to another. The relation is an edge (`depends_on`, `contributes_to`, `supersedes`, parentage); a prose copy is a second source of truth that goes stale while the edge stays correct. `[[wikilinks]]` in a task body point at knowledge the executor must open — notes, references, documents — never at tasks.
 - **Bodies are instructions, so `craft` governs them:** Invoke the `craft` skill for the standard every task body, note, and instruction you write must meet.
+- **Task bodies are strictly concise (50–150 words):** Never add narrative background, reference essays, or implementation plans. A task body follows exactly this minimal template:
+
+```markdown
+## Goal
+
+1. Concrete outcome 1
+2. Concrete outcome 2
+
+## Deliverable
+
+`path/to/artifact`
+
+## Scope
+
+- In: Concrete inclusion
+- Out: Adjacent exclusion (no rationale)
+
+## Acceptance criteria
+
+- [ ] Observable end-state condition 1
+- [ ] Observable end-state condition 2
+
+## Pointers
+
+- [[note_or_spec_id]] — purpose (e.g. "schema definition", "precedent")
+```
+
+**Concise Example:**
+
+```markdown
+## Goal
+
+1. Migrate configuration loader to Pydantic v2 settings model.
+2. Deprecate legacy dict-based config parser.
+
+## Deliverable
+
+`lib/config/loader.py`
+
+## Scope
+
+- In: `Settings` class validation and env var mapping.
+- Out: CLI flag parsing (handled in `cli.py`).
+
+## Acceptance criteria
+
+- [ ] `Settings.from_env()` loads valid config from environment variables.
+- [ ] Invalid config raises structured `ValidationError`.
+- [ ] All existing config unit tests pass.
+
+## Pointers
+
+- [[spec_pydantic_migration]] — schema contract
+```
 
 ## Strategy & Workflow
 

@@ -29,7 +29,7 @@ Take the components an objective was expanded into, work out the process they ru
 
    Every cut carries its own owner and return contract: DONE with deliverable and evidence, BLOCKED with what is missing, NEEDS-REDISPATCH with what changed, or partial with a handback. A cut that cannot support that contract is cut wrong — re-cut. Wire `depends_on` only where one unit's start genuinely needs another's output; everything else runs parallel.
 
-   Mint the cut with `pkb__decompose_task(parent_id=..., subtasks=[...])`, which writes it in one operation and resolves sibling dependencies by positional reference (`$1`, `$2`). Use slugged, human-readable IDs. An epic's child units ship together on one branch and one pull request, never scattered.
+   Mint the cut with `pkb__decompose_task(parent_id=..., subtasks=[...])`, which writes it in one operation and resolves sibling dependencies by positional reference (`$1`, `$2`). Use slugged, human-readable IDs and verb-led imperative titles (e.g. `Implement X`, `Verify Y`). Never put a person's name in a title or filename — assignment belongs in `assigned_to`. An epic's child units ship together on one branch and one pull request, never scattered.
 
 5. **Write the brief.**
    Rewrite the body to exactly this shape, deleting event logs, prior drafts, and inconsistent directions. Frontmatter, edges, and intake-stage valuation are preserved, not rewritten.
@@ -77,6 +77,8 @@ Your verification notes, the components you used and why, and the cut rationale 
 
 ## Must NOT
 
+- Do not create standalone "decision" tasks or file questions as tasks. Open choices are structured as mutually exclusive graph option branches or resolved via probes (`classification: spike`).
+- Do not put a person's name in titles or filenames (no `nic: ...`); assignment belongs in `assigned_to`.
 - Do not resolve a fork the work uncovers, or improvise a step to cover a gap.
 - Do not originate `intent` or `priority` bands; strategic importance travels on `contributes_to` edges.
 - Do not emit speculative review or sign-off nodes. Acceptance gates live in the criteria and at the merge boundary.

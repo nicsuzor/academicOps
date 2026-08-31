@@ -78,6 +78,8 @@ Top-level entry points: README.md, INSTALL.md, CHANGELOG.md. Per plugin: `plugin
 
 **The split with `specs/`.** Design rationale, why a choice was made, and the seams and gaps go to `specs/`, which serves the developer extending the plugin. A README that argues for the plugin's design is a spec in the wrong place; so is a history, a roadmap, or a changelog.
 
+For task and file naming standards, see [`specs/meta/naming-and-decisions.md`](naming-and-decisions.md).
+
 ---
 
 Checking whether a document fits its category is a judgement an experienced reader can make — not a mechanical contract. Marsha or any reviewer asks: _is this in the right place, does it contain roughly the right kind of thing, does it leave out the kinds of thing it shouldn't have?_ If those answers are clear, it's compliant.
