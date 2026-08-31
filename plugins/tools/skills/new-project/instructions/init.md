@@ -1,35 +1,30 @@
 # Init — Project Scaffolding Procedure
 
-Execute this procedure after Phase 1 discovery. You have the user's answers
-about project type, tooling, and preferences. Now build it.
+Execute after Phase 1 discovery, using the user's answers about project type,
+tooling, and preferences.
 
 ## Operating principles
 
-- **Idempotency first.** Before each step that creates external state (repo, PKB
-  node, polecat entry), check whether it already exists. If it does, HALT and
-  report — do not overwrite or create a duplicate. The user can decide whether
-  to resume, rename, or abort.
-- **No rollback on partial failure.** If a later step fails, do NOT tear down
-  earlier steps. Report exactly what succeeded, what failed, and the exact
-  command to resume from the failure point. A half-scaffolded repo is
-  recoverable; a half-deleted one is not.
-- **Collect a running log** of what you created as you go. You will print this
-  in Step 9 regardless of whether you reached the end or bailed out early.
+- **Check before you create.** Before any step that creates external state
+  (repo, PKB node, polecat entry), check whether it already exists. If it does,
+  HALT and let the user choose to resume, rename, or abort — never overwrite or
+  duplicate.
+- **Never roll back on partial failure.** A half-scaffolded repo is
+  recoverable; a half-deleted one is not. Report what succeeded, what failed,
+  and the exact command to resume from the failure point.
+- **Keep a running log** of what you created. Step 9 prints it whether or not
+  you reached the end.
 
 ## Step 1: Create the GitHub repository
-
-First, check for an existing repo (idempotency):
 
 ```bash
 gh repo view <org>/<project-name> >/dev/null 2>&1 && echo "EXISTS"
 ```
 
-If it exists, **HALT**. Tell the user the repo is already registered and ask
-whether they want to (a) pick a different name, (b) resume scaffolding inside
-the existing repo (skip to Step 2 after cloning), or (c) abort. Do not proceed
-without an explicit decision.
+If it exists, HALT and ask the user to (a) pick a different name, (b) resume
+scaffolding inside the existing repo (clone, then Step 2), or (c) abort.
 
-If it does not exist, create it:
+Otherwise:
 
 ```bash
 gh repo create <org>/<project-name> --<visibility> --clone
@@ -37,52 +32,27 @@ cd <project-name>
 git checkout -B main  # ensure default branch (creates or resets to main)
 ```
 
-If the user wants to initialise an existing local directory instead, skip repo
-creation and work in place.
-
-On failure (auth error, name collision, network): HALT. Nothing has been
-created locally yet — no rollback needed. Print the error and stop.
+To initialise an existing local directory instead, skip repo creation and work
+in place. On failure (auth, name collision, network) HALT and print the error —
+nothing local exists yet.
 
 ## Step 2: Base structure (all projects)
 
-Create these files for every project, regardless of type.
-
 ### `.agents/CORE.md`
 
-Adapt this template based on Phase 1 answers:
+Write a project title, a one-line statement of what the project is and why it
+exists, a **Key Components** list matching the directories actually created, a
+**Development** section (`uv sync`, `uv run`, `uv run pytest`,
+`pre-commit run --all-files`), and an **Agent Rules** section carrying:
 
-```markdown
-# <Project Title>
+- Check the repo before asking the user — if a file answers the question, read it.
+- Search the PKB before creating tasks or proposing plans.
+- Research data is immutable: never modify, convert, or "fix" source datasets,
+  ground-truth labels, or raw outputs.
+- Edit files with Read/Write/Edit, never a heredoc, `python3 -c`, `sed`, or
+  `awk` against a tracked file. If the native tool cannot do the job, STOP and
+  report rather than shelling out.
 
-<One-line description of what the project is and why it exists.>
-
-## Key Components
-
-- `src/` — execution code, scripts, prompt templates
-- `data/` — datasets (raw is immutable, processed is derived)
-- `docs/` — methodology, ethics, project documentation
-
-## Agent Rules
-
-- **Check the repo before asking the user.** If a question about project state
-  could be answered by reading a file, READ THE FILE FIRST.
-- **Search PKB first.** Before creating tasks or proposing plans, search for
-  existing work, prior decisions, and related artifacts.
-- **Research data is immutable.** Source datasets, ground truth labels, and raw
-  outputs are sacred. Never modify, convert, or "fix" them.
-- **Edit files natively.** Use the Read/Write/Edit tools to create or modify
-  files — never a bash heredoc, a `python3 -c`/`python3 -` one-liner, `sed`,
-  or `awk` to rewrite a tracked file. If the native tool genuinely can't do the
-  job, STOP and report; do not shell out as a workaround.
-
-## Development
-
-- **Python**: `uv sync` to install, `uv run` to execute
-- **Tests**: `uv run pytest`
-- **Formatting**: `pre-commit run --all-files`
-```
-
-Adjust the Key Components section to reflect the actual directories created.
 Add project-specific rules from the Phase 1 conversation (e.g. dbt-first
 analysis, Quarto rendering conventions).
 
@@ -97,24 +67,20 @@ doesn't support the data format, HALT and report the gap.
 
 ## Data freshness
 
-- Authoritative source: <e.g. BigQuery `prosocial-443205.toxicity`>
-- Local cache lives at: <e.g. `data/cache/local_cache.duckdb`>
+- Authoritative source: <upstream warehouse or dataset the user named>
+- Local cache lives at: <path the user chose>
 - Refresh script: `scripts/refresh.sh`
-- Stale means: <project-author's call — e.g. "older than the most recent BQ load timestamp">
+- Stale means: <project-author's call>
 - If the cache is missing or stale, the dispatched worker HALTs and reports. It does not regenerate silently.
 ```
 
-For non-research projects (tool/library), omit the research data line and
-replace with the project's primary constraint. Also omit the Data freshness
-section if not applicable.
+For a tool/library project, replace the immutability line with the project's
+primary constraint and drop the Data freshness section.
 
-### `.claude/settings.json` — default to Ida for research repos
+### `.claude/settings.json`
 
-Research project repos open as **Ida** (the interactive academic-research head
-personality) by default. Write the shared default-agent setting so every
-session launched in the repo picks it up automatically (the top-level
-`"agent"` key; the schema URL must be `json.schemastore.org`, not
-`json-schema.org`):
+Research repos open as **Ida**. Write the shared default so every session in
+the repo picks it up; the schema host must be `json.schemastore.org`:
 
 ```json
 {
@@ -123,74 +89,24 @@ session launched in the repo picks it up automatically (the top-level
 }
 ```
 
-This file is **git-tracked** (it carries the shared agent default, so it must
-travel with the repo — see the `.gitignore` note below); machine-local
-overrides go in `.claude/settings.local.json`, which stays gitignored. For a
-non-research tool/library project, omit the `"agent"` key — the session uses
-Claude Code's baseline default rather than a named academicOps head persona.
-(Junior, a general-purpose coordinator, is a personal userspace tool outside
-this plugin, not something project scaffolding can default sessions to.)
+Track this file — it carries the shared default. Machine-local overrides go in
+the gitignored `.claude/settings.local.json`. For a tool/library project, omit
+the `"agent"` key so sessions use the baseline default.
 
 ### `README.md`
 
-````markdown
-# <Project Title>
-
-<Description from Phase 1.>
-
-## Status
-
-**Phase**: Setup | Active | Analysis | Writing | Complete
-
-## Architecture
-
-<Brief overview of tooling and directory layout.>
-
-## Setup
-
-```bash
-git clone <repo-url>
-cd <project-name>
-uv sync
-pre-commit install
-```
-
-## Directory Layout
-
-```
-<generated tree of what was actually created>
-```
-
-## Team
-
-- <PI / lead researcher>
-````
+Title, description from Phase 1, **Status** (Setup | Active | Analysis |
+Writing | Complete), **Architecture** (tooling and directory layout), **Setup**
+(`git clone`, `cd`, `uv sync`, `pre-commit install`), **Directory Layout** (the
+tree actually created), and **Team**.
 
 ### `.gitignore`
 
-Generate a comprehensive `.gitignore` covering all selected tooling:
+Standard Python, secrets/credentials, OS, and IDE ignores, plus the entries the
+selected tooling needs — drop the sections for tooling not selected:
 
 ```gitignore
-# Python
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-dist/
-*.egg-info/
-
-# Environment and secrets
-.env
-.env.local
-.env.*.local
-credentials/
-*.key
-*.pem
-
-# Claude Code / academicOps
-# NOTE: .claude/settings.json is intentionally TRACKED — it carries the shared
-# repo defaults (e.g. "agent": "ida" so research repos open as Ida). Only the
-# machine-local override file is ignored.
+# Claude Code / academicOps — settings.json is intentionally TRACKED
 .claude/settings.local.json
 .claude/agents/
 .academicOps/
@@ -215,18 +131,7 @@ logs/
 
 # Experiment tracking
 mlruns/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.idea/
-.vscode/
-*.swp
 ```
-
-Remove sections for tooling not selected (e.g. drop dbt section if no dbt).
 
 ### `.pre-commit-config.yaml`
 
@@ -250,14 +155,8 @@ repos:
         args: [--check]
 ```
 
-If the project uses Jupyter notebooks, add `nbstripout`:
-
-```yaml
-- repo: https://github.com/kynan/nbstripout
-  rev: 0.7.1
-  hooks:
-    - id: nbstripout
-```
+For notebook projects add `nbstripout` (`https://github.com/kynan/nbstripout`,
+rev `0.7.1`, hook id `nbstripout`).
 
 ### `pyproject.toml`
 
@@ -280,74 +179,25 @@ select = ["E", "F", "I", "UP"]
 testpaths = ["tests"]
 ```
 
-Add tool-specific dependencies based on Phase 1 selections (e.g. `dbt-duckdb`,
-`quarto`, `mlflow`, `dvc`).
+Add dependencies for the Phase 1 selections (e.g. `dbt-duckdb`, `quarto`,
+`mlflow`, `dvc`).
 
 ## Step 3: Documentation stubs
 
-Create these for all projects. They ensure documentation happens because the
-files exist and have structure — not because someone remembers to create them.
+Create these for all projects, so documentation happens because the structure
+exists rather than because someone remembers.
 
-### `docs/METHODOLOGY.md`
-
-```markdown
-# Methodology
-
-## Research Questions
-
-<!-- State the primary research questions this project addresses. -->
-
-## Data Sources
-
-<!-- Describe data sources, collection methods, and access requirements. -->
-
-## Analytical Approach
-
-<!-- Describe the analytical methods, tools, and pipeline architecture. -->
-
-## Reproducibility
-
-- **Environment**: Python dependencies locked via `uv.lock`
-- **Data versioning**: <DVC / git-ignored snapshots / describe approach>
-- **Computation caching**: <Quarto freeze / describe approach>
-- **Data refresh**: `scripts/refresh.sh` (if generated) — rebuilds local DuckDB cache from source.
-```
-
-### `docs/ETHICS.md`
-
-```markdown
-# Ethics and Data Governance
-
-## Ethics Approval
-
-<!-- Status, reference number, approving body. -->
-
-## Data Handling
-
-<!-- Storage, access controls, retention policy. -->
-
-## AI/LLM Disclosure
-
-This project uses AI tools (Claude Code, academicOps framework) for:
-
-- Code generation and review
-- Data pipeline development
-- Document formatting
-
-All analytical decisions and interpretations are made by the research team.
-```
-
-### `CHANGELOG.md`
-
-```markdown
-# Changelog
-
-## [Unreleased]
-
-### Added
-
-- Initial project scaffolding
-```
+- **`docs/METHODOLOGY.md`** — Research Questions, Data Sources, Analytical
+  Approach, and Reproducibility (environment locked via `uv.lock`; data
+  versioning approach; computation caching approach; `scripts/refresh.sh` if
+  generated). Leave each section as an HTML comment prompt.
+- **`docs/ETHICS.md`** — Ethics Approval (status, reference, approving body),
+  Data Handling (storage, access controls, retention), and an AI/LLM Disclosure
+  stating that AI tools are used for code generation and review, data pipeline
+  development, and document formatting, and that all analytical decisions and
+  interpretations are made by the research team.
+- **`CHANGELOG.md`** — `## [Unreleased]` / `### Added` / `- Initial project
+  scaffolding`.
 
 ## Step 4: GitHub infrastructure
 
@@ -394,59 +244,24 @@ jobs:
             actions: read
 ```
 
-### `.github/ISSUE_TEMPLATE/task.yml`
+### Issue templates
 
-This dropdown is for a **human** filing an issue. When an agent creates a task programmatically it follows the intent-authority rule instead — leave `intent` (or `priority`) at the uncurated default; only Nic sets a non-default band, by express per-request instruction ([[framework-conventions-summary#intent-authority]]).
+`.github/ISSUE_TEMPLATE/task.yml` — name "Task", label `task`, a required
+`priority` dropdown (`1`, `2`, `3`) and a required `description` textarea.
 
-```yaml
-name: Task
-description: Create a task for this project
-labels: ["task"]
-body:
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority
-      options:
-        - "1"
-        - "2"
-        - "3"
-    validations:
-      required: true
-  - type: textarea
-    id: description
-    attributes:
-      label: Description
-    validations:
-      required: true
-```
+`.github/ISSUE_TEMPLATE/bug_report.yml` — name "Bug Report", label `bug`, two
+required textareas: "What happened?" and "What did you expect?".
 
-### `.github/ISSUE_TEMPLATE/bug_report.yml`
-
-```yaml
-name: Bug Report
-description: Report a bug
-labels: ["bug"]
-body:
-  - type: textarea
-    id: description
-    attributes:
-      label: What happened?
-    validations:
-      required: true
-  - type: textarea
-    id: expected
-    attributes:
-      label: What did you expect?
-    validations:
-      required: true
-```
+The priority dropdown is for a human filing an issue. An agent creating a task
+programmatically leaves `intent`/`priority` at the uncurated default; only Nic
+sets a non-default band, by express per-request instruction
+([[framework-conventions-summary#intent-authority]]).
 
 ### Canonical labels
 
-Provision the framework's canonical label set on the new repo. Issue templates and the `repo-sync-cron` triage pipeline assume these exist — GitHub does **not** auto-create labels from `labels:` fields in issue templates, and `gh pr edit --add-label` against a missing label fails with exit 1.
-
-`gh label create --force` is idempotent — safe to re-run on existing repos.
+Provision the framework's canonical label set: GitHub does not auto-create
+labels from a template's `labels:` field, and `gh pr edit --add-label` against
+a missing label fails with exit 1. `--force` makes this idempotent.
 
 ```bash
 # Issue-template defaults (referenced by .github/ISSUE_TEMPLATE/*.yml)
@@ -479,11 +294,10 @@ gh label create "criticality:low"      --color "0e8a16" --description "Polish, m
 gh label create polecat --color "5319e7" --description "PR authored by a polecat worker" --force
 ```
 
-If the cron's `gh` token lacks `repo:write` on the new repo, label provisioning will fail loudly here rather than silently downstream — file a token-scope task and HALT per the fail-fast rule.
+If the `gh` token lacks `repo:write` on the new repo this fails here rather
+than silently downstream — file a token-scope task and HALT.
 
-## Step 5: Research tooling (conditional)
-
-Only create these if the user selected them in Phase 1.
+## Step 5: Research tooling (only what Phase 1 selected)
 
 ### Data directories (empirical research)
 
@@ -494,16 +308,13 @@ data/
 src/           # Execution code, API scripts, prompt templates
 ```
 
-Key defaults to communicate:
+Tell the user the defaults: `data/raw/` is immutable (DVC-tracked or
+gitignored, never modified); raw LLM outputs go to JSONL (schema-flexible,
+human-readable, fine-tuning compatible); analytical tables go to Parquet
+(columnar, compressed, fast under DuckDB); DuckDB is the default local
+analytical database, so small teams need no cloud warehouse.
 
-- `data/raw/` is **immutable** — tracked by DVC or `.gitignored`, never modified
-- Raw LLM outputs → JSONL format (schema-flexible, human-readable, fine-tuning compatible)
-- Analytical tables → Parquet format (columnar, compressed, fast for DuckDB queries)
-- DuckDB as default local analytical database — no cloud warehouse needed for small teams
-
-### dbt (if selected)
-
-Create `dbt_project/` with working configuration:
+### dbt
 
 **`dbt_project/dbt_project.yml`**:
 
@@ -530,10 +341,6 @@ clean-targets: ["target", "dbt_packages"]
       threads: 4
 ```
 
-**`dbt_project/models/staging/.gitkeep`** and
-**`dbt_project/models/marts/.gitkeep`** — these directories should exist to
-show the medallion architecture pattern (staging → marts).
-
 **`dbt_project/models/schema.yml`**:
 
 ```yaml
@@ -544,7 +351,9 @@ sources:
     tables: []
 ```
 
-**`scripts/refresh.sh`** (executable):
+Also create `dbt_project/models/staging/.gitkeep` and
+`dbt_project/models/marts/.gitkeep` so the staging → marts pattern is visible,
+`data/cache/.gitignore` containing `*`, and an executable `scripts/refresh.sh`:
 
 ```bash
 #!/bin/bash
@@ -552,17 +361,10 @@ sources:
 uv run dbt build --project-dir dbt_project --profiles-dir dbt_project
 ```
 
-**`data/cache/.gitignore`**:
+### Quarto
 
-```gitignore
-*
-```
-
-### Quarto (if selected)
-
-Create the manuscript/report directory with working configuration.
-
-**`manuscript/_quarto.yml`** (for manuscript format):
+**`manuscript/_quarto.yml`** (manuscript format; adjust `project.type` for
+website or book):
 
 ```yaml
 project:
@@ -579,29 +381,12 @@ bibliography: references.bib
 csl: apa.csl
 ```
 
-Adjust `project.type` for website or book formats as requested.
+Also create `manuscript/index.qmd` (frontmatter with title, author name and
+affiliation, `date: today`, an abstract placeholder, then an `## Introduction`
+stub) and an empty `manuscript/references.bib`.
 
-**`manuscript/index.qmd`**:
-
-```markdown
----
-title: "<Project Title>"
-author:
-  - name: "<Author>"
-    affiliation: "<Institution>"
-date: today
-abstract: |
-  <!-- Abstract goes here. -->
----
-
-## Introduction
-
-<!-- Begin writing here. -->
-```
-
-**`manuscript/references.bib`**: empty file (placeholder)
-
-**`manuscript/_setup.qmd`** (shared imports for multi-chapter projects):
+For multi-chapter projects with dbt/DuckDB selected, add
+**`manuscript/_setup.qmd`** for shared imports:
 
 ```python
 #| label: setup
@@ -617,54 +402,39 @@ DB_PATH = PROJECT_ROOT / "data" / "processed" / "<project_name>.duckdb"
 con = duckdb.connect(str(DB_PATH), read_only=True)
 ```
 
-Only include `_setup.qmd` if dbt/DuckDB is also selected.
+### MLflow
 
-### MLflow (if selected)
+Add `mlflow` to `pyproject.toml` dependencies and create `experiments/`.
+`mlruns/` is already gitignored.
 
-Add to `pyproject.toml` dependencies: `mlflow`.
-
-Create `experiments/` directory. Add `mlruns/` to `.gitignore` (already in
-the base template).
-
-### DVC (if selected)
+### DVC
 
 ```bash
 dvc init
 dvc remote add -d storage <remote-path>  # configure with user
 ```
 
-Add `data/raw/` to DVC tracking. Ensure `.dvc/` is committed but
-`data/raw/` is in `.gitignore`.
+Track `data/raw/` with DVC; commit `.dvc/` and keep `data/raw/` gitignored.
 
-## Step 6: Documentation Index
+## Step 6: Documentation index
 
-Create `.agents/INDEX.md`. This plain-text index makes the repo's documentation discoverable by any agent via the `@.agents/INDEX.md` include in `CORE.md`.
-
-```markdown
-# Available Documentation
-
-- **`README.md`**: Project overview, architecture, and installation
-- **`.agents/CORE.md`**: Core architecture decisions, agent instructions, and project rules
-- **`docs/METHODOLOGY.md`**: (if applicable) Research methods and design
-```
-
-Add any other documentation created in earlier steps to this list.
+Create `.agents/INDEX.md` listing every documentation file created — at
+minimum `README.md`, `.agents/CORE.md`, and `docs/METHODOLOGY.md` where
+applicable — each with a one-line description. `CORE.md` includes it via
+`@.agents/INDEX.md`, which is how any agent discovers the repo's docs.
 
 ## Step 7: PKB integration
 
-**Search for duplicates first.** Project nodes are long-lived; two nodes for
-the same project cause downstream confusion (which tasks hang off which?).
+Search for duplicates first, because project nodes are long-lived and two nodes
+for one project leave tasks split across both:
 
 ```
 mcp__services__pkb__task_search(query="<project title or slug>", limit=10)
 ```
 
-Inspect the results. If a `type=project` node with a matching title or slug
-already exists, **HALT** and ask the user: (a) link work to the existing node,
-(b) rename the new project to disambiguate, or (c) abort. Do not create a
-second node silently.
-
-If no duplicate exists, create the project node:
+If a `type=project` node with a matching title or slug exists, HALT and ask the
+user to (a) link work to the existing node, (b) rename to disambiguate, or (c)
+abort. Otherwise:
 
 ```
 mcp__services__pkb__create_task(
@@ -676,13 +446,11 @@ mcp__services__pkb__create_task(
 )
 ```
 
-Record the returned node ID in your running log — Step 9 will reference it.
-If creation fails, note the failure and continue to Step 8; the repo is still
-usable without a PKB node, and the user can retry later with the same command.
+Record the returned node ID in the running log. If creation fails, note it and
+continue to Step 8 — the repo works without a PKB node and the user can retry
+the same command later.
 
 ## Step 8: Git, pre-commit, and polecat registration
-
-Initial commit and push:
 
 ```bash
 uv sync                           # install Python dependencies
@@ -692,32 +460,26 @@ git commit -m "feat: initial project scaffolding"
 git push -u origin main
 ```
 
-If `uv sync` or `pre-commit install` fails (missing tool, locked file, network):
-continue anyway — they can be re-run by the user. Commit and push are the
-load-bearing steps; if either of those fails, HALT and report the exact command
-to retry. Do not delete the local repo.
+If `uv sync` or `pre-commit install` fails, continue — the user can re-run
+them. Commit and push are load-bearing: if either fails, HALT and report the
+exact retry command. Do not delete the local repo.
 
-### Register with polecat (git-native propagation)
+### Register with polecat
 
-Polecat registration is git-native: edit the sessions repo's `polecat.yaml`,
-commit, and push. The registry is portable — no machine-local data lives in it. Path resolution happens at read-time via
-convention (`$AOPS_SRC_DIR/<repo>`) with overrides in
-`$POLECAT_HOME/local.yaml`.
+Registration is git-native and portable: edit the sessions repo's
+`polecat.yaml`, commit, push. Paths resolve at read time by convention
+(`$AOPS_SRC_DIR/<repo>`), with overrides in `$POLECAT_HOME/local.yaml`, so no
+machine-local data belongs in the registry.
 
 ```bash
 # $AOPS_SESSIONS is the sessions repo (e.g. <org>/sessions)
 cd "$AOPS_SESSIONS"
 git pull --rebase                 # avoid stale-write conflicts
-```
-
-Check for an existing entry before appending (idempotency):
-
-```bash
 grep -E "^\s*<slug>:" "$AOPS_SESSIONS/polecat.yaml" && echo "EXISTS"
 ```
 
-If the slug already appears, **HALT** and ask the user whether to reuse it,
-rename, or abort. Otherwise append (note: no `path:` — that's machine-local):
+If the slug already appears, HALT and ask whether to reuse it, rename, or
+abort. Otherwise append (no `path:` — that is machine-local):
 
 ```yaml
 <slug>:
@@ -729,28 +491,26 @@ rename, or abort. Otherwise append (note: no `path:` — that's machine-local):
       mode: ro
 ```
 
-Commit and push:
-
 ```bash
 git add polecat.yaml
 git commit -m "chore(projects): register <slug>"
 git push
 ```
 
-Then tell the user: on other machines, run `git pull` in `$AOPS_SESSIONS` and
-then `setup-machine.sh`. If the repo lives at the conventional location
-(`$AOPS_SRC_DIR/<repo>`) nothing further is required; otherwise add a `paths:`
-entry to `$POLECAT_HOME/local.yaml`.
+Then tell the user: on other machines, `git pull` in `$AOPS_SESSIONS` and run
+`setup-machine.sh`. A repo at the conventional location
+(`$AOPS_SRC_DIR/<repo>`) needs nothing further; otherwise add a `paths:` entry
+to `$POLECAT_HOME/local.yaml`.
 
-If the sessions repo push fails (auth, conflict): the local repo and PKB node
-are already in place — the user can retry this step manually. Do not unwind
-earlier work.
+If the sessions push fails (auth, conflict), the local repo and PKB node are
+already in place — the user retries this step manually. Do not unwind earlier
+work.
 
 ## Step 9: Report
 
-Print a summary covering three things: what was created, what failed (if
-anything), and what was deliberately deferred to the user. Be explicit — the
-user should not need to guess which parts are done.
+Print what was created, what failed, and what was deliberately deferred, so the
+user never has to guess which parts are done. Say at the top if any step HALTed
+for idempotency, and make the summary match what actually happened.
 
 ```
 Project '<name>' — scaffolding report
@@ -767,25 +527,22 @@ Failed (if any):
 
 Deferred to user (by design):
 
-  0. Project Credentials (for research projects):
-     Before dispatching analytic work, create a scoped service account for this
-     project's data and drop the JSON at `$AOPS_SESSIONS/secrets/<slug>/sa.json`.
-     The polecat launcher mounts
-     that directory read-only at dispatch time. (No 1Password, no env-file
-     ceremony. One human action, once.)
+  0. Project credentials (research projects): create a scoped service account
+     for this project's data and drop the JSON at
+     `$AOPS_SESSIONS/secrets/<slug>/sa.json`. The polecat launcher mounts that
+     directory read-only at dispatch time.
 
   1. GitHub OAuth token for Claude Code workflows:
      cd <path> && claude setup-github
-     (This provisions CLAUDE_CODE_OAUTH_TOKEN automatically. Do NOT set it by
-     hand with `gh secret set` — the built-in mechanism is the supported path.)
+     (Provisions CLAUDE_CODE_OAUTH_TOKEN. Do NOT set it by hand with
+     `gh secret set` — the built-in mechanism is the supported path.)
 
   2. Async QA agents (optional):
      $AOPS/scripts/install-async-qa-agents.sh <path>
 
-  3. Branch protection: not set — solo project default. Enable in GitHub
-     settings if the project grows a team.
+  3. Branch protection: not set — solo project default.
 
-  4. CI/CD beyond claude.yml: not configured. Add workflows as needed.
+  4. CI/CD beyond claude.yml: not configured.
 
   5. Polecat on other machines:
      polecat sync && $AOPS/scripts/setup-machine.sh
@@ -793,7 +550,3 @@ Deferred to user (by design):
 Start working:
   cd <path> && claude
 ```
-
-If any step HALTed for idempotency (existing repo, duplicate PKB node,
-existing polecat slug), the report should say so clearly at the top — the user
-resumed or aborted, and the summary should match reality.

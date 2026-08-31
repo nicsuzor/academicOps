@@ -60,7 +60,7 @@ file is U-shaped — openings and endings bind, middles get skipped:
   models navigate by structure, not by rereading prose.
 - Move dense reference matter — schemas, long tables, style guides,
   boilerplate — into `references/` files exactly one level deep, and at each
-  point of use instruct the read explicitly ("Read `references/x.md` before
+  point of use instruct the read explicitly ("Read `references/<name>.md` before
   doing Y"). Agents rarely follow bare "see also" pointers and do not traverse
   nested directories.
 - Keep content that is mandatory at the moment of action inline. Forking a

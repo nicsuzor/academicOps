@@ -5,42 +5,55 @@ type: spec
 category: workflow
 status: ready
 tags: [spec, workflow, reconcile, github, pkb, closure-loop]
-related: [[feedback-loops]], [[pr-pipeline]], [[work-management]]
+related:
+  - feedback-loops
+  - pr-pipeline
+  - work-management
 ---
 
 # GH ↔ PKB Reconcile
 
-This is a behavioural spec. It describes what an agent does when reconciling GitHub state with the PKB task graph. It does not describe directory layouts, CLI grammars, or verification scripts — the implementing agent decides those.
+The reconcile procedure itself lives in `plugins/aops/skills/reconcile/SKILL.md` and is not
+restated here. This spec carries the design constraints that bind it, the frontmatter and
+event-log surfaces it reads and writes, and the target shape of the GitHub-issue leg it does not
+yet cover.
 
-## Problem
+## Coverage
 
-The closure loop between GitHub (issues, PRs) and the PKB task graph is partial, and where it runs it matches by whole-word title and branch name — shitty NLP (the `judgment-non-delegable` axiom).
+The skill's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
+one is covered.
 
-Four gap types. Of these, only #2 is built into the `reconcile` skill today — the
-skill's own scope is "tasks and the pull requests they resolve against," and it
-carries no issue-matching logic. #1, #3, and #4 are specified below as the
-target shape of a forward-issue leg that does not exist yet; nothing in this
-spec should be read as claiming they currently run.
+| Gap                                                                                    | State                                         |
+| -------------------------------------------------------------------------------------- | --------------------------------------------- |
+| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built — forward-issue leg, below          |
+| Closed-not-merged PR that was legitimately superseded                                  | Built — the skill's pull-request routing step |
+| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built — forward-issue leg, below          |
+| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built — reverse direction, M3             |
 
-1. **GH issue close → PKB `gates_on` update.** When a GH issue closes via `Closes #N` in a commit, no PKB task referencing that issue gets touched. **Not built.**
-2. **Closed-not-merged PRs** are unconditionally excluded from auto-close, but some are legitimately superseded and should close the task. **Built** — see the `reconcile` skill's pull-request routing step.
-3. **Manual `gh issue close`** with `state_reason: not_planned` or `duplicate` — no PKB-side reconciliation. **Not built.**
-4. **PKB task done → GH issue close/comment** absent beyond the GH-native `Closes #N` commit convention. **Not built** — this is the reverse direction; see below and M3.
+## Design constraints
 
-## Design constraints (non-negotiable)
-
-1. **One canonical owner.** The reconcile procedure lives in one skill. Other skills invoke it; they do not re-implement it.
-2. **No Shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces (frontmatter fields, the GH API's `closingIssuesReferences` structured field, frontmatter URLs). Anywhere prose is involved, an agent reads it.
-3. **State lives in PKB frontmatter** (the graph). Deltas between GH state and PKB state are surfaced through a short-lived (≤48h) event log. The log is a queue of unprocessed deltas, not state.
+1. **One canonical owner.** The procedure lives in one skill. Other skills invoke it; they do not
+   re-implement it.
+2. **No shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces
+   (frontmatter fields, the GH API's `closingIssuesReferences`, frontmatter URLs). Anywhere prose
+   is involved, an agent reads it.
+3. **State lives in PKB frontmatter.** Deltas between GH state and PKB state surface through a
+   short-lived event log, which is a queue of unprocessed deltas, not state.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.
-5. **Nothing is flagged for a person without a surface that renders it.** The sweep's own synthesized result is that surface — it leads with what needs a person's decision. Writing a `needs_user_call` flag to the graph with no consumer that renders it is a `halt-on-failure` violation.
-6. **Reverse direction default**: comment-only on GH (cite PKB task ID + closing commit SHA). Auto-close the GH issue only for framework-owned repos and only when the task carries an explicit `closes_issues:` marker (not `gates_on:`).
-7. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do this work using existing tools (PKB MCP, `gh`, Read/Write).
-8. **Implementing agent owns file layout, naming, invocation grammar, and verification approach.** This spec does not mandate a directory tree, file names, mode flags, or audit mechanism. Those are downstream decisions the agent makes when landing the work, defended by the constraints above.
+5. **Nothing is flagged for a person without a surface that renders it.** The sweep's own
+   synthesized result is that surface. A `needs_user_call` flag with no consumer that renders it
+   is a `halt-on-failure` violation.
+6. **Reverse direction defaults to comment-only** on GH, citing PKB task ID and closing commit
+   SHA. Auto-close the GH issue only for framework-owned repos, and only where the task carries
+   an explicit `closes_issues:` marker (never `gates_on:`).
+7. **No bespoke scripts, no bespoke library, no custom cron entrypoint, no new hooks.** Agents do
+   this work with PKB MCP, `gh`, and Read/Write.
+8. **The implementing agent owns file layout, naming, invocation grammar, and verification
+   approach**, defended by the constraints above.
 
 ## Invocation contexts
 
-The reconcile procedure runs in three contexts. The context changes the input subset, not the procedure.
+The context changes the input subset, not the procedure.
 
 | Context    | Owner                                                                        | Input subset                                                               |
 | ---------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -48,84 +61,98 @@ The reconcile procedure runs in three contexts. The context changes the input su
 | Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                  |
 | On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across every non-terminal task and its pull requests            |
 
-Every row's input subset is pull requests only, matching the skill's current
-scope. Once the forward-issue leg (gap types #1 and #3 above) is built, each
-row's subset extends to the open issues in the same window.
+Each subset is pull requests only. Once the forward-issue leg lands, each extends to the open
+issues in the same window.
 
-The face does not touch the knowledge base — a prohibition on what is hers to do, not a claim about what tools a session hands her — so its engagement sweep is a delegation: it commissions an agent that runs the skill and returns one synthesized result.
+The face does not touch the knowledge base, so its engagement sweep is a delegation: it
+commissions an agent that runs the skill and returns one synthesized result.
 
-**The reverse direction is not a fourth context of this procedure.** A task completing, and what its completion resolves on the issue tracker, belongs on the release path that already writes the task — a different act on a different trigger, which reconcile does not run. It is not built: no skill in the tree reads `closes_issues:` today, and M3 below is where it lands.
-
-Agents in the three contexts invoke the reconcile skill. None of them runs a script or calls into a library. The skill body is prose that the invoking agent reads and follows.
+**The reverse direction is not a fourth context.** What a task's completion resolves on the issue
+tracker belongs on the release path that already writes the task — `dump` and `pull` — on a
+different trigger, which reconcile does not run.
 
 ## Frontmatter markers
 
-Two task frontmatter fields, PKB-lint validated:
+Two task frontmatter fields, PKB-lint validated. Both are legal on one task simultaneously; the
+same issue number appearing in both emits a lint warning, not a hard block.
 
-**`closes_issues: [N, M]`** — this task's completion resolves the listed GH issues. On task completion, the agent on the release path adds a GH comment to each citing the closing commit SHA. For issues in framework-owned repos, the agent also closes the issue; otherwise comment-only. Validation: integer values; warn if a listed issue is already closed at write time.
+**`closes_issues: [N, M]`** — this task's completion resolves the listed GH issues. On completion,
+the agent on the release path comments on each citing the closing commit SHA, and for
+framework-owned repos also closes the issue. Validation: integer values; warn if a listed issue is
+already closed at write time.
 
-**`gates_on: [N, M]`** — this task is blocked or monitored by the listed GH issues. When any listed issue closes (forward sweep detects this), the agent writes a `needs_user_call` event for the task. Detection never auto-completes the task; the user decides disposition. **Not built** — the `reconcile` skill does not read this field or query issue state today; this is the target shape of the forward-issue leg (gap type #1).
-
-Both fields are legal on the same task simultaneously (a task can both depend on and resolve an issue). The same number appearing in both emits a lint warning — probable data-entry error, not a hard block.
+**`gates_on: [N, M]`** — this task is blocked or monitored by the listed GH issues. When a listed
+issue closes, the forward sweep writes a `needs_user_call` event; detection never auto-completes
+the task. **Not built** — no skill reads this field today.
 
 ## Event log
 
-Path: `$AOPS_SESSIONS/state/gh-pkb-deltas.json`. Append-only, file-locked. Events older than 48h pruned on write. The 48h TTL is deliberately wider than the expected sweep cadence, so a sweep that skips a day still catches the previous day's events.
+Path: `$AOPS_SESSIONS/state/gh-pkb-deltas.json`. Append-only, file-locked, events older than 48h
+pruned on write. The TTL is wider than the sweep cadence so a skipped day still catches the
+previous day's events.
 
-Each event records: timestamp, direction (forward / reverse), what triggered it, the GH or PKB object that triggered it, how it was matched, what action the agent took, the target object, and a free-text `notes` field used as the surface text when the event renders in a sweep's result.
+Each event records: timestamp, direction (forward / reverse), what triggered it, the GH or PKB
+object that triggered it, how it was matched, the action taken, the target object, and a
+free-text `notes` field used as the surface text when the event renders in a sweep's result.
 
-The implementing agent picks the concrete shape (field names, JSON structure, whether to use a discriminator or separate event types). The constraint is that the file is short-lived, append-only, and that the next sweep can read it to render what needs a person's decision. Over-structuring this is the failure mode — most fields exist to give the sweep's result enough context to render a one-line cue with a link; if a field is only ever read by an LLM as natural-language context, it should stay prose.
+The implementing agent picks the concrete shape. The binding constraints are that the file is
+short-lived and append-only, and that the next sweep can read it to render what needs a person's
+decision. Over-structuring is the failure mode: a field only ever read as natural-language
+context stays prose.
 
-## Three matching surfaces
+## Forward-issue leg — target shape
 
-**(a) Guaranteed structured → mechanical.** Direct lookup, no agent call:
+Structured surfaces, matched mechanically:
 
-- `pr_url` frontmatter → exact string match against the pull request's own state, read from `gh`. **Built.**
-- Task-ID pattern in a PR body string field — pattern-match against the PR body as a single field, not as parsed prose. **Built.**
-- `closes_issues: [N]` / `gates_on: [N]` → `gh issue view N --json state`. **Not built** — forward-issue leg.
-- `closingIssuesReferences` field from the GH API (structured, not regex over commit text). **Not built** — forward-issue leg.
+- `closes_issues: [N]` / `gates_on: [N]` → `gh issue view N --json state`.
+- `closingIssuesReferences` from the GH API — the structured field, never regex over commit text.
 
-**(b) Semantic → agent reads the prose.** Where matching needs human-like judgment, the reconcile agent asks a sub-agent (one focused Claude call per question) a structured question and gets back a typed JSON answer with a confidence enum. The three questions the procedure currently asks:
+Prose surfaces, read by an agent that returns a typed JSON answer with a confidence enum. One
+question: does this manually-closed issue correspond to a PKB task? (issue title, body, labels;
+top-5 PKB search candidates → task ID, confidence, reason).
 
-- Does this PR correspond to this task? (PR title, task title, task body excerpt → match bool, confidence, reason) **Built.**
-- Is this closed-not-merged PR superseded? (PR body, timeline, linked issues → superseded_by, disposition) **Built.**
-- Does this manually-closed issue correspond to a PKB task? (issue title, body, labels; top-5 PKB search candidates → task ID, confidence, reason) **Not built** — forward-issue leg (gap type #3).
+**Routing.** `confidence: low` always falls through to `needs_user_call`. `confidence: high` with
+a positive match auto-actions only for the `pr_merged` trigger; every other trigger falls through
+to `needs_user_call` regardless of confidence. `needs_user_call` also covers an issue closing
+with `state_reason: not_planned` or `duplicate`, and a `gates_on` event firing on a task with
+multiple blocking issues.
 
-Routing: `confidence: low` always falls through to (c). `confidence: high` with a positive match auto-actions only for the `pr_merged` trigger; all other triggers fall through to (c) regardless of confidence. The user retains final judgment everywhere except the merged-PR happy path.
-
-This routing governs **matching** — deciding which task a PR or issue belongs to, where the answer lives in prose. It is not the whole of the skill's autonomy. The skill's own §5 carries a separate, narrower leg: cancelling a task on an established world-fact — its referent deleted, a merge that mooted its question, its premise falsified — each under a written evidence burden, with demotion the answer wherever the fact could not be established. Those are not semantic matches and do not route through (b); age, silence, and an unresolvable lookup remain outside them entirely.
-
-**(c) Ambiguous → `needs_user_call`.** Written when the agent returns low confidence, or when a closed-not-merged PR has no superseding PR identified. Once the forward-issue leg is built, this also covers an issue closing with `state_reason: not_planned` or `duplicate`, and a `gates_on` event firing on a task with multiple blocking issues.
+This routing governs **matching** only. The skill's own cancellation authority — a world-fact
+established under a written evidence burden — is separate and does not route through it.
 
 ## DRY discipline
 
-No other skill carries closure-loop logic of its own. The consolidation cycle delegates its staleness-and-closure stage to reconcile rather than restating it, and any surface that grows a closure need invokes reconcile instead of re-implementing one.
-
-Verification is by audit — the agent landing each milestone reads the touched skills and confirms no duplicate logic remains. The audit is qualitative ("does any other skill still contain closure-loop logic?"), not a syntactic absence check. If the audit can be automated later, that is a separate design question; until then the auditing agent does it by reading.
+No other skill carries closure-loop logic of its own. Verification is by audit: the agent landing
+each milestone reads the touched skills and answers, by reading, "does any other skill still
+contain closure-loop logic?"
 
 ## Legacy backfill
 
-Blocked on the forward-issue leg (gap types #1 and #3) landing first — this pass
-classifies task/issue relationships the current skill does not yet detect. A
-one-off agent session, run after that leg lands, before the forward sweep runs
-on a cadence.
+Blocked on the forward-issue leg landing first. A one-off agent session, run after that leg lands
+and before the forward sweep runs on a cadence.
 
-The agent considers all open GH issues across framework repos and all PKB tasks in the taxonomy's actionable set. For each, the agent reads the prose and classifies the relationship — does this task close that issue, is it gated on it, or is there no relationship? Uncertain cases get written to the event log with the ambiguous phrase quoted, surfacing in the next sweep's result.
+The agent considers all open GH issues across framework repos and all PKB tasks in the taxonomy's
+actionable set, reads the prose, and classifies each relationship — does this task close that
+issue, is it gated on it, or is there no relationship. Uncertain cases go to the event log with
+the ambiguous phrase quoted, surfacing in the next sweep's result. Closed and done records are
+read-only.
 
-The agent may pre-filter cheaply (e.g., skip items whose body contains no GitHub-reference shape at all) — that is candidate gating over a string field, not prose classification. The judgment call about relationship type is always agent-read, never regex.
-
-Closed and done records are read-only. The candidate set is roughly 282 open issues + active tasks.
+Cheap pre-filtering over a string field (skip items whose body contains no GitHub-reference shape)
+is permitted; the relationship classification is always agent-read, never regex.
 
 ## Landing milestones
 
-These are sequencing checkpoints, not implementation tickets. The implementing agent owns file layout and naming.
+Sequencing checkpoints, not implementation tickets.
 
-- **M1 — Skill exists and is invocable.** The reconcile procedure is one skill, PKB lint validates the new frontmatter fields, a handful of cases have been worked end-to-end by hand.
-- **M2 — Forward sweeps adopted.** The engagement and batch contexts both reach the skill, and no other skill carries closure-loop logic of its own. DRY audit clean.
-- **M3 — Reverse direction adopted at release.** The `dump` and `pull` skills carry the reverse handoff on the release path that already writes the task — reading `closes_issues:` and acting on it there, not by invoking reconcile. No new hooks added.
-- **M4 — Backfill run.** One agent session, scope as above. Done.
+- **M1 — Skill exists and is invocable.** One skill, PKB lint validates the new frontmatter
+  fields, a handful of cases worked end-to-end by hand.
+- **M2 — Forward sweeps adopted.** Engagement and batch contexts both reach the skill; no other
+  skill carries closure-loop logic. DRY audit clean.
+- **M3 — Reverse direction adopted at release.** `dump` and `pull` read `closes_issues:` and act
+  on it on the release path, not by invoking reconcile. No new hooks.
+- **M4 — Backfill run.**
 
-## Open questions
+## Open question
 
-- Is a cached issue-state snapshot worth keeping, so a sweep does not re-query `gh` for every tracked issue? Resolved separately — not blocking this spec.
-- Should `closes_issues` accept cross-repo references like `owner/repo#N`? Default no (single-repo numeric). Revisit if a use case emerges.
+Should `closes_issues` accept cross-repo references like `owner/repo#N`? Default no (single-repo
+numeric); revisit if a use case emerges.

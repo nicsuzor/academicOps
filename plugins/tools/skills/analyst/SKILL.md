@@ -1,58 +1,67 @@
 ---
 name: analyst
-description: Support academic research data analysis with technology-agnostic principles — research-data immutability, a versioned/tested/reproducible transformation layer, statistical methodology, and self-documenting research. Use this skill for any computational research project with an empirical data pipeline. The skill enforces academicOps best practices for reproducible, transparent research with a collaborative single-step workflow. Tech-specific how-to (dbt, Streamlit, Python plotting/stats) lives in the aops-tools package.
+description: Run academic research data analysis reproducibly — research-data immutability, canonical absolute path resolution, canonical-vs-derived parity checks, a versioned and tested transformation layer kept strictly separate from a display-only presentation layer, defensible statistical methodology, and self-documenting research. Use for any computational research project with an empirical data pipeline — analysing a dataset, adding or changing a model/mart, producing a chart or dashboard, adding data-quality tests, investigating a data anomaly, or writing up results. Works one action at a time, checkpointing with the user. Engine-specific how-to lives in the `dbt`, `streamlit` and `python-viz` skills; not for general software engineering or non-research data work.
 ---
 
 # Analyst
 
-## Overview
+Technology-agnostic principles for reproducible research pipelines. When the
+tooling is settled, pair this with the `dbt`, `streamlit`, or `python-viz`
+skill for concrete commands.
 
-Support academic research data analysis through technology-agnostic principles: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation. The principles here hold regardless of which transformation engine or dashboard tool you use. When you have settled on specific tooling, pair this skill with the relevant aops-tools skill (`dbt`, `streamlit`, `python-viz`) for the concrete commands.
+**Take ONE action at a time** — generate a chart, add a model, write a test —
+then show the result, say what it means, and yield to the user before
+continuing. Never run a workflow end to end without checkpoints, and offer the
+options rather than assuming the next step.
 
-**Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
+## Academic research floor
 
-**Academic research disposition (non-negotiable floor for all academic work):**
+Non-negotiable for all academic work; the pipeline rules below extend it.
 
-- **Data immutability & irreplaceable ground truth** — source datasets, ground-truth labels, `records/`, and research configs are sacred; never modify, reformat, or "fix" them — HALT and report rather than reshaping data to fit infrastructure. Violations are scholarly misconduct.
-- **Canonical path resolution** — all analytical database and cache connections MUST resolve against an explicit absolute canonical path rooted at the project root. Cwd-relative addressing (e.g. bare `data/warehouse.db`) is prohibited: volatile working directories cause queries to silently hit confusable duplicate or stale databases.
-- **Canonical-source vs derived-copy parity** — derived marts and analytical caches must be validated against authoritative canonical sources before analysis proceeds. Never analyze against an unverified derived copy. A missing table or column must be treated as a wrong-file symptom before diagnosing data loss.
-- **Research questions drive design** — methods serve the question; restate the question, confirm the method fits it, and refuse convenience shortcuts that compromise validity. A result that doesn't answer the question is worthless however technically sound.
-- **Methodological justification** — ensure all model, variable, and sample choices are justified by the research design, not by computational convenience. Do not drop variables, models, or conditions, or simplify experimental designs unless there is a clear methodological justification. Preserve all theoretically meaningful distinctions.
-- **Dry run / pilot verification** — before full-scale execution, run a qualitative pilot audit. Evaluate representative samples of actual outputs for content substance, completeness across all conditions, edge-case behavior, and face validity. Do not declare a dry run successful based on error-free execution or aggregate statistics alone.
-- **Reproducibility & versioning** — every transformation is version-controlled, testable by re-running, and separated from display (never compute in the display layer).
-- **Methodological transparency** — name the assumptions and limitations a result rests on; flag uncertainty rather than smoothing it over.
-- **Fail-fast on data quality** — stop and report quality problems rather than patching around them; the discovery IS the result.
-- **Report as argument** — structure research reports as cohesive arguments where every chapter, section, and visualization directly supports a specific claim. Ground all reported metrics in their practical and theoretical implications. Collaborate section-by-section with the user to refine narrative framing.
+- **Research data is immutable.** Source datasets, ground-truth labels,
+  `records/`, and research configs are sacred: never modify, reformat, or "fix"
+  them. HALT and report rather than reshaping data to fit infrastructure —
+  reshaping it is scholarly misconduct.
+- **Research questions drive design.** Restate the question, confirm the method
+  fits it, and refuse convenience shortcuts that compromise validity. A result
+  that does not answer the question is worthless however technically sound.
+- **Justify every methodological choice by the research design**, not by
+  computational convenience. Keep all theoretically meaningful distinctions:
+  do not drop variables, models, or conditions, or simplify an experimental
+  design, without an explicit methodological reason.
+- **Pilot before full-scale execution.** Audit representative samples of actual
+  outputs for content substance, completeness across every condition,
+  edge-case behaviour, and face validity. Error-free execution and healthy
+  aggregate statistics are not a successful dry run.
+- **Fail fast on data quality.** Stop and report quality problems rather than
+  patching around them; the discovery IS the result.
+- **State assumptions and limitations** a result rests on, and flag uncertainty
+  rather than smoothing it over.
+- **Report as argument.** Every chapter, section and figure supports a specific
+  claim, and every metric is interpreted for its practical and theoretical
+  implications. Refine the narrative section-by-section with the user.
 
-The data-pipeline specifics below EXTEND this floor.
+## Canonical path resolution
 
-## 🚨 CRITICAL: Data directory separation
+Resolve every analytical database, cache, and data-store connection against an
+absolute path rooted at the project root. A bare cwd-relative path
+(`duckdb.connect("data/warehouse.db")`) is prohibited: an agent's working
+directory shifts between the project root and subdirectories, so a relative
+path silently connects to whichever confusable duplicate matches cwd, serves
+stale data into published findings, or raises a false "table does not exist"
+alarm.
 
-Local data files (`data/`) and build output directories (`output/`, `_book/`, etc.) MUST NOT overlap. Build tools clean their output directories — any data stored there will be destroyed. See [[instructions/research-documentation.md#data-directory-separation-critical]] for the full convention.
-
-## 🚨 CRITICAL: Canonical Path Resolution (NO Cwd-Relative Data Access)
-
-**ALL connections to analytical databases, local caches, and data stores MUST resolve against an absolute canonical path rooted at the project root. Bare cwd-relative path strings are strictly prohibited.**
-
-### The Problem with Cwd-Relative Addressing
-
-In multi-directory project environments, an agent's shell working directory shifts frequently (e.g. project root vs `dbt/` vs `streamlit/`).
-
-1. **Confusable duplicate caches**: When duplicate database files exist at different directory levels (e.g. `data/local_cache.duckdb` vs `dbt/data/local_cache.duckdb`), a cwd-relative query like `duckdb.connect("data/local_cache.duckdb")` silently connects to whichever copy happens to match cwd.
-2. **Silent stale reads**: A stale copy can serve queries with outdated data, quietly producing flawed research findings.
-3. **False "Table does not exist" alarms**: When cwd shifts, a relative path query may hit a database missing recent tables, causing false data-loss investigations.
-
-### The Canonical Addressing Rules
-
-1. **Single canonical location**: Every analytical database or local cache must reside at exactly ONE documented canonical path. Confusable duplicate cache files across subdirectories must be removed.
-2. **Absolute path resolution**: Always resolve the database path relative to the project root using `Path(__file__).resolve()` or an explicit project root locator.
-3. **Pre-connection validation**: Verify the target file exists, check file size and modification time, and verify read-only connection mode where applicable.
+1. **One canonical location** per database or cache, documented; delete
+   confusable duplicates across subdirectories.
+2. **Absolute resolution** from the project root via `Path(__file__).resolve()`
+   or an explicit root locator.
+3. **Pre-connection validation**: the file exists, its size and mtime are
+   plausible, and the connection is read-only where applicable.
 
 ```python
 from pathlib import Path
 import duckdb
 
-# ✅ ALWAYS: Resolve absolute canonical path from project root
 PROJECT_ROOT = Path(__file__).resolve().parent  # or project root locator
 DB_PATH = (PROJECT_ROOT / "dbt" / "data" / "local_cache.duckdb").resolve()
 
@@ -64,302 +73,82 @@ if not DB_PATH.is_file():
 conn = duckdb.connect(str(DB_PATH), read_only=True)
 ```
 
-## 🚨 CRITICAL: Canonical-Source vs Derived-Copy Integrity Check
+Keep local data (`data/`) out of any build output directory (`output/`,
+`_book/`): build tools clean their output directories and will destroy it. Full
+convention: [[instructions/research-documentation.md#data-directory-separation-critical]].
 
-**Before analyzing or scoring against derived tables or warehouse marts, ALWAYS run a pre-flight integrity check validating that the derived copy matches the authoritative canonical ground truth.**
+### When a query raises "table does not exist"
 
-### The Divergence Hazard
+Do not conclude the database was clobbered. Work the ladder:
 
-Authoritative ground truth (e.g. per-record YAML files in `records/`, raw benchmark configs, expert annotations) is frequently ingested into warehouse tables (BigQuery, DuckDB) via sync scripts or out-of-band loaders.
+1. Confirm the query used the absolute canonical path, not a stale duplicate.
+2. Inspect file size and mtime (`ls -lh <canonical_path>`); tiny or stale means
+   wrong or unpopulated cache.
+3. Scan for rogue duplicates (`find . -name "*.duckdb"`) and remove them.
+4. Verify the model was actually built into the target database (e.g.
+   `dbt run --select <model_name>`).
 
-- If a ground-truth label or record is modified in source files, but the downstream load/sync step is not re-run, derived tables quietly retain stale data.
-- Built-in tool checks like `dbt source freshness` validate timestamp recency, NOT content equality, and out-of-band loaders bypass dbt DAGs entirely.
-- "Research Data is Immutable" prohibits modifying source data, but you must also actively verify that derived copies have not silently diverged from that immutable source.
+## Canonical-source vs derived-copy parity
 
-### Pre-Flight Parity Validation Protocol
+Ground truth (per-record YAML in `records/`, benchmark configs, expert
+annotations) is loaded into warehouse tables by sync scripts and out-of-band
+loaders that bypass the transformation DAG, so a source edit without a re-run
+leaves the derived copy quietly stale. Freshness checks (e.g. `dbt source
+freshness`) validate timestamps, not content equality.
 
-Before producing figures, tables, or conclusions from derived data:
+Before producing any figure, table, or conclusion from derived data:
 
-1. **Assert count and key parity**: Verify row counts and key sets between canonical source files and derived marts.
-2. **Assert label/content equality**: Run automated diffs or parity tests comparing ground-truth source fields against derived column values (e.g. asserting `expected_violating` equals source `records/*.yaml` labels).
-3. **Fail-fast on mismatch**: If any divergence is detected, HALT immediately and report the synchronization failure. Never proceed with analysis on diverged data.
+1. **Assert count and key parity** between canonical source files and derived
+   marts.
+2. **Assert content equality** on ground-truth fields (e.g. mart
+   `expected_violating` equals the label in `records/*.yaml`).
+3. **HALT on any divergence** and report the synchronisation failure. Never
+   analyse diverged data.
 
-### Disambiguating "Table Does Not Exist" / Catalog Errors
+## Transformation layer vs presentation layer
 
-When a query fails with `Catalog Error: Table with name ... does not exist` or missing relation:
+All transformation happens in a versioned, tested, reproducible transformation
+layer; the presentation layer only displays pre-computed data. This is a
+property of the architecture, not of any tool — the transformation layer may be
+a dbt project, a SQL pipeline, or version-controlled scripted notebooks; the
+presentation layer may be a dashboard, static report, or notebook viewer. It
+holds because anyone re-running the transformation layer must get identical
+results, and reviewers must be able to read and test exactly how data was
+processed.
 
-- ❌ **DO NOT** immediately conclude the database was clobbered or data was lost.
-- ✅ **Step 1: Check Connection Path** — Confirm the query connected to the absolute canonical path, not a stale cwd-relative duplicate.
-- ✅ **Step 2: Inspect File Metadata** — Verify file size and modification time (`ls -lh <canonical_path>`). A tiny or stale file indicates an unpopulated or wrong cache.
-- ✅ **Step 3: Scan for Confusable Duplicates** — Run `find . -name "*.duckdb"` (or `.db`) to identify and eliminate rogue duplicates.
-- ✅ **Step 4: Check Model Materialization** — Verify if the model was compiled and built in the target database (`dbt run --select <model_name>`).
+| Layer              | Allowed                                                                                                                                                                       | Prohibited                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Transformation** | All transformations, joins, aggregations, filtering, business logic                                                                                                           | —                                                                                                                                          |
+| **Presentation**   | Reading pre-computed outputs; filtering on existing columns; formatting numbers and dates; interactive widgets over existing data; rendering charts from pre-computed metrics | Aggregation (`SUM(...) GROUP BY`), joins, `CASE WHEN` business logic, inline derived metrics, any formula that changes the meaning of data |
 
-## 🚨 CRITICAL: Transformation Layer vs Presentation Layer
+Tempted to transform in the presentation layer? Add the transformation as a
+versioned model, add tests proving it works, build the transformation layer,
+then read the pre-computed output. The extra scrutiny is the point.
 
-**ALL data transformation happens in a versioned, tested, reproducible transformation layer. The presentation layer ONLY displays pre-computed data. Period.**
+## Data access
 
-This is non-negotiable for academic integrity, reproducibility, and auditability. It is a property of the _architecture_, not of any particular tool. (e.g. the transformation layer might be a dbt project, a SQL pipeline, or scripted notebooks under version control; the presentation layer might be a Streamlit dashboard, a static report, or a notebook viewer. See the aops-tools `dbt` and `streamlit` skills for those concrete implementations.)
+All data access goes through the modelled transformation layer — never a direct
+query against a raw upstream source (raw BigQuery tables, raw schemas, live
+APIs), because unmodelled reads are untested, unversioned, and unreproducible.
 
-| Layer              | Allowed                                                             | Prohibited                                                         |
-| ------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Transformation** | ALL transformations, joins, aggregations, filtering, business logic | -                                                                  |
-| **Presentation**   | Display, formatting, interactive filtering of PRE-COMPUTED data     | Any operation that transforms, joins, aggregates, or applies logic |
+- Data exists in a mart → read it.
+- Only in staging → use it for exploratory work, or promote it to a mart via
+  the transformation-model workflow.
+- Not modelled at all → ask the user whether to create a model. If not, stop;
+  you cannot proceed without a modelled source.
 
-### Why This Matters (Academic Integrity)
+## Transformation models
 
-1. **Reproducibility**: Anyone can re-run the transformation layer and get identical results
-2. **Auditability**: Transformation logic is version-controlled and testable
-3. **Transparency**: Reviewers see exactly how data was processed
-4. **Testing**: Tests in the transformation layer PROVE transformations work correctly
+Layers: **staging (`stg_*`)** cleans and standardises raw data with no business
+logic; **intermediate (`int_*`)** holds business logic and may be ephemeral;
+**marts (`fct_*`, `dim_*`)** are materialised, analysis-ready datasets.
 
-### The Rule in Practice
+Check for a duplicate model before creating a new one. Engine-specific workflow
+and file layout: the `dbt` skill.
 
-**Need a new metric?** → Add it to the transformation layer with tests
-**Need to filter data?** → Pre-compute the filtered view in the transformation layer OR filter on EXISTING columns in the presentation layer (no new calculations)
-**Need to join tables?** → Do the join in the transformation layer
-**Need aggregations?** → Compute them in the transformation layer
+## Testing
 
-### Presentation Layer: Display ONLY
-
-The presentation layer may:
-
-- ✅ Read pre-computed outputs (`SELECT * FROM precomputed_table`)
-- ✅ Filter on EXISTING columns (`WHERE column = :user_selection`)
-- ✅ Format numbers, dates for display
-- ✅ Create interactive widgets that filter existing data
-- ✅ Render charts from pre-computed metrics
-
-The presentation layer must NEVER:
-
-- ❌ Aggregate (`SUM(...) GROUP BY ...` = transformation)
-- ❌ Join (`a.*, b.* FROM a JOIN b` = transformation)
-- ❌ Apply business logic (`CASE WHEN ... END` = transformation)
-- ❌ Calculate derived metrics inline
-- ❌ Apply any formula that changes the meaning of data
-
-### If You're Tempted to Transform in the Presentation Layer
-
-**STOP.** Move the transformation into the transformation layer instead:
-
-1. Add the transformation as a versioned model/script
-2. Add tests proving it works
-3. Build/run the transformation layer
-4. THEN read the pre-computed output from the presentation layer
-
-This takes more time. That's the point. Transformations deserve scrutiny.
-
-## Documentation Index
-
-### Instructions (_CHUNKS/)
-
-- **Investigation**: [[instructions/exploratory-analysis.md]]
-- **Research docs**: [[instructions/research-documentation.md]] (REQUIRED), [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]]
-
-### References
-
-[[references/context-discovery.md]]
-
-### Technology-Specific Skills (aops-tools)
-
-The concrete how-to for particular tools lives in the **aops-tools** package, so it can be swapped for official/community-consensus skills:
-
-- **`dbt`** — transformation-layer implementation (models, tests, marts).
-- **`streamlit`** — presentation-layer implementation (display-only dashboards).
-- **`python-viz`** — Python plotting & statistical-modelling libraries (matplotlib, seaborn, statsmodels). Use the `python-dev` skill for code standards.
-
-## When to Use This Skill
-
-Invoke this skill when:
-
-1. **Working in computational research projects** - An empirical data pipeline, analytical database, or transformation/presentation layer is present
-2. **User requests data analysis** - "Analyze X", "Create a chart showing Y", "Explore the relationship between Z"
-3. **Building or updating dashboards** - Presentation-layer visualization work (see the aops-tools `streamlit` skill for that engine)
-4. **Creating or modifying transformations** - Transformation-layer pipeline work (see the aops-tools `dbt` skill for that engine)
-5. **Validating data quality** - Adding tests, checking consistency
-
-**Key indicators in project structure:**
-
-- A version-controlled transformation layer (e.g. a `dbt/models/` directory — staging, intermediate, marts)
-- A presentation layer (e.g. a `streamlit/` directory or dashboard `.py` files)
-- An analytical database at a single canonical path (e.g. `dbt/data/local_cache.duckdb` or `data/warehouse.db`)
-- Academic research focus (papers, empirical analysis)
-
-## Workflow Decision Tree
-
-```
-START
-│
-├─ Is this a new analysis task?
-│  ├─ YES → Go to: Context Discovery
-│  └─ NO → Is context already loaded?
-│     ├─ YES → Go to: Task Execution
-│     └─ NO → Go to: Context Discovery
-│
-Context Discovery (REQUIRED FIRST STEP)
-│
-├─ Read project context files:
-│  ├─ README.md (current directory + all parents to project root)
-│  ├─ data/README.md (if exists)
-│  └─ data/projects/[project-name].md (if exists)
-│
-├─ Identify project conventions:
-│  ├─ Research questions
-│  ├─ Data sources and access patterns
-│  ├─ Existing transformation-layer models (list them)
-│  ├─ Testing strategy
-│  └─ Project-specific rules
-│
-└─ Proceed to: Task Execution
-│
-Task Execution
-│
-├─ What type of task?
-│  ├─ Data access → Go to: Data Access Workflow
-│  ├─ Visualization → Go to: Visualization Workflow
-│  ├─ Transformation model → Go to: Transformation Model Workflow
-│  ├─ Testing → Go to: Testing Workflow
-│  └─ Exploration → Go to: Exploratory Analysis
-│
-└─ After completing ONE step: see "Collaborative Workflow Principles" below.
-```
-
-## Context Discovery
-
-**CRITICAL FIRST STEP:** Before any analysis work, automatically discover and read project context.
-
-### Required Context Files
-
-1. **Project README files**
-   - Current working directory `README.md`
-   - All parent directories up to project root (e.g., `papers/automod/`, `projects/buttermilk/`)
-   - Purpose: Understand research questions, conventions, project structure
-
-2. **Data README**
-   - `data/README.md` in the project
-   - Purpose: Understand data sources, schema, access patterns
-
-3. **Project overview**
-   - `data/projects/[project-name].md` corresponding to current project
-   - Purpose: Strategic context, goals, status
-
-### Context Extraction
-
-From these files, identify:
-
-- **Research questions** - What is this project investigating?
-- **Data sources** - Where does data come from? (BigQuery, APIs, files?)
-- **Existing transformation models** - What models already exist in the transformation layer?
-- **Conventions** - Naming patterns, coding standards, project-specific rules
-- **Testing strategy** - What tests exist? What quality expectations?
-- **Tools and technologies** - Which transformation engine and presentation tool? (e.g. dbt + Streamlit — see the aops-tools skills.) DuckDB? PostgreSQL? Specific Python packages?
-
-**Example context discovery:**
-
-```bash
-# List existing transformation-layer models (engine-specific; e.g. dbt)
-ls -1 dbt/models/staging/*.sql dbt/models/marts/*.sql
-
-# Check for presentation-layer apps (engine-specific; e.g. Streamlit)
-ls -1 streamlit/*.py
-
-# Understand project structure
-cat README.md
-cat data/README.md
-```
-
-> The example commands above assume a dbt + Streamlit stack. For the concrete
-> per-engine discovery commands, see the aops-tools `dbt` and `streamlit` skills.
-
-After context discovery, summarize findings to the user — research topic and questions, transformation-layer scope (staging/mart model counts), existing work areas — then ask what to help with.
-
-## Follow Data Access Workflow
-
-**🚨 CRITICAL RULE: ALL data access MUST go through the modelled transformation layer. NEVER query raw upstream sources directly.**
-
-### Decision Tree
-
-```
-Need data for analysis?
-│
-├─ Does required data exist in the modelled (mart) layer?
-│  ├─ YES → Read it (e.g. `SELECT * FROM mart_name`)
-│  │         └─ Done! Use this data in analysis.
-│  │
-│  └─ NO → Does it exist in staging models?
-│     ├─ YES → Should this become a new mart?
-│     │  ├─ YES → Go to: Transformation Model Workflow (create mart)
-│     │  └─ NO → Use staging model for exploratory work
-│     │
-│     └─ NO → Data doesn't exist in the transformation layer yet
-│        └─ Ask user: "Should I create a model for [data source]?"
-│           ├─ YES → Go to: Transformation Model Workflow (create staging model)
-│           └─ NO → Stop. Cannot proceed without a modelled source.
-```
-
-### Prohibited Actions
-
-❌ **NEVER** do this:
-
-```python
-# Direct BigQuery query against raw source - PROHIBITED
-df = client.query("SELECT * FROM bigquery.raw.cases").to_dataframe()
-
-# Direct database query against raw schema - PROHIBITED
-df = pd.read_sql("SELECT * FROM raw_schema.table", engine)
-
-# Direct API call for analysis data - PROHIBITED
-response = requests.get("https://api.example.com/data")
-
-# Bare cwd-relative database connection - PROHIBITED (cwd-volatile, risks duplicate/stale cache)
-conn = duckdb.connect("data/warehouse.db")
-```
-
-✅ **ALWAYS** do this:
-
-```python
-# Query through the modelled layer via absolute canonical path - CORRECT
-from pathlib import Path
-import duckdb
-
-PROJECT_ROOT = Path(__file__).resolve().parent  # or project root helper
-DB_PATH = (PROJECT_ROOT / "dbt" / "data" / "local_cache.duckdb").resolve()
-
-if not DB_PATH.is_file():
-    raise FileNotFoundError(f"Canonical database not found at {DB_PATH}")
-
-conn = duckdb.connect(str(DB_PATH), read_only=True)
-df = conn.execute("SELECT * FROM fct_case_decisions").df()  # fct_* = a tested mart
-```
-
-**See:** the aops-tools `dbt` skill for the dbt implementation of this policy.
-
-## Follow Transformation Model Workflow
-
-Create or modify transformation-layer models following academicOps layered architecture. The layering below is engine-neutral; the aops-tools `dbt` skill gives the dbt-specific commands and file layout.
-
-### Quick Reference: Model Layers
-
-1. **Staging (`stg_*`)** - Clean and standardize raw data (no business logic)
-2. **Intermediate (`int_*`)** - Business logic transformations (can be ephemeral)
-3. **Marts (`fct_*`, `dim_*`)** - Analysis-ready datasets (materialized)
-
-**ALWAYS check for duplicate models before creating new ones.**
-
-**See:** the aops-tools `dbt` skill for complete workflow details and comprehensive patterns.
-
-## Follow Visualization Workflow
-
-Create presentation-layer visualizations following the single-step collaborative pattern. The presentation layer is display only — see the aops-tools `streamlit` skill for the engine-specific workflow.
-
-## Follow Testing Workflow
-
-Add tests to validate data quality at every pipeline stage.
-
-### Testing Strategy
-
-Use appropriate test type for the validation:
-
-| Test Type             | Use For                     | Example                                        |
+| Test type             | Use for                     | Example                                        |
 | --------------------- | --------------------------- | ---------------------------------------------- |
 | **Schema tests**      | Column-level checks         | not_null, unique, accepted_values              |
 | **Singular tests**    | Multi-column logic          | Date range validation, cross-table consistency |
@@ -367,82 +156,81 @@ Use appropriate test type for the validation:
 | **Package tests**     | Common patterns             | Recency checks, multi-column uniqueness        |
 | **Diagnostic models** | Quality monitoring          | Aggregated metrics for manual review           |
 
-### Follow Single-Step Testing Workflow
+Work one step at a time, stopping between each: agree the test plan (which
+columns must never be null, must be unique, carry accepted-value lists or
+range logic, or need canonical-source parity) → add declarative schema tests
+and parity assertions and show them → run them and report, discussing failures
+before fixing → add singular tests for logic a column-level test cannot express.
 
-Work one step at a time, checkpointing with the user between each:
+Parity tests assert that mart ground-truth columns match canonical source
+records verbatim and that every canonical source ID survives into the derived
+dataset with zero dropped records. Run them before any statistical evaluation
+or falsification suite.
 
-1. **Identify what to test** — which columns should never be null, must be unique, have accepted-value lists, carry date/range logic, or require canonical-source parity checks. STOP; agree the test plan with the user.
-2. **Add declarative schema tests & parity assertions** alongside the model. STOP; show to user.
-3. **Run the tests.** STOP; report results. If failures, discuss before fixing.
-4. **Add singular/multi-column tests** for logic a column-level test can't express. STOP; show, then run and report.
+When testing LLM pipelines or templated content, validate substantive content
+rather than error strings, whose form is unpredictable: check content-length
+minimums (e.g. a criteria block over 100 chars), verify required sections exist
+_and_ carry content, and use position-based length for multiline content
+(regex `.*?` does not cross newlines).
 
-The engine-specific syntax (test declarations, `severity: warn` for aspirational/known issues, run commands) lives in the aops-tools `dbt` skill.
+Engine-specific syntax (test declarations, severity levels, run commands): the
+`dbt` skill.
 
-### Canonical Source vs Derived Copy Parity Tests
+## Investigation and exploration
 
-When models derive from or score against authoritative ground truth (YAML files, external annotations, benchmark sets), implement automated parity tests:
+Write data-quality investigations (missing values, unexpected patterns, join
+coverage) as reusable scripts in `analyses/`, because the finding has to be
+re-runnable by someone else and shell history is not.
 
-- **Label parity**: Assert that mart ground-truth columns match canonical source records verbatim.
-- **Record coverage**: Assert that all canonical source IDs exist in the derived dataset with zero dropped records.
-- **Pre-analysis assertion**: Run parity assertions before running statistical evaluations or falsification suites.
+For pattern and relationship exploration, take one analytical step at a time
+and yield after each finding. Read
+[[instructions/exploratory-analysis.md]] before starting an exploratory pass.
 
-### Pipeline/Template Validation Tests
+## Context discovery
 
-When testing LLM pipelines or templated content, validate **substantive content** not just error patterns:
+Before any analysis task, read the project context: `README.md` in the working
+directory and every parent up to the project root, `data/README.md`, and
+`data/projects/[project-name].md`. Extract the research questions, data sources
+and access patterns, existing models, conventions, testing strategy, and the
+transformation/presentation engines in use. Read
+[[references/context-discovery.md]] for the full procedure.
 
-- ✅ Check content length minimums (e.g., criteria block > 100 chars)
-- ✅ Verify required sections exist AND have content
-- ✅ Use position-based length for multiline content (regex `.*?` doesn't cross newlines)
-- ❌ Don't just check for specific error strings - upstream bugs are unpredictable
+Summarise findings to the user — research topic and questions, model counts by
+layer, existing work areas — then ask what to help with.
 
-**See:** the aops-tools `dbt` skill for complete engine-specific testing patterns.
+## Documentation
 
-## Follow Data Investigation Workflow
+Do not create standalone analysis reports or ad-hoc documentation files. Read
+[[instructions/research-documentation.md]] before creating any research
+document: it is the complete requirement, including which files are mandatory
+and which are forbidden. Per-file detail: [[instructions/methodology-files.md]],
+[[instructions/methods-vs-methodology.md]],
+[[instructions/experiment-logging.md]].
 
-When investigating data quality issues (missing values, unexpected patterns, join coverage), create REUSABLE investigation scripts in `analyses/` directory. Never use throwaway one-liners for data investigation — the finding has to be re-runnable by someone else, which a shell history is not.
+Analysis documentation lives in the dashboard, notebooks (in `experiments/` if
+exploratory), GitHub issues, code comments in transformation models, commit
+messages, transformation-layer schema docs, and `methods/*.md` specifications.
+Update documentation in the same commit as the code it describes, and give each
+fact exactly one home.
 
-## Exploratory Analysis
+## Statistical methodology
 
-When exploring data patterns and relationships, follow collaborative discovery process. Take one analytical step at a time, yielding to user after each finding.
+Formulas, test-selection trees and APA reporting shapes are public knowledge.
+What binds is methodology, and it is the researcher's call before it is yours.
 
-**For complete exploration workflow and anti-patterns, see [[instructions/exploratory-analysis.md]]**
+- **The question picks the test, not the data.** Choosing a test after seeing
+  which gives a significant result is p-hacking. Where the analysis plan was
+  not fixed in advance, say so in the write-up.
+- **State and check the assumptions the test rests on** — independence,
+  distributional form, homogeneity of variance, whatever it requires — and
+  report what you found, including a failed assumption you proceeded past and
+  why.
+- **Report effect sizes and intervals always**, interpreted in the units the
+  research question is asked in. A p-value alone is not a result.
+- **Label exploratory passes as exploratory in the write-up.** Multiple
+  comparisons, subgroup hunts and post-hoc contrasts are corrected or flagged;
+  they never migrate into the confirmatory frame.
+- **HALT on a methodological choice nobody made** — which model, which
+  covariates, which exclusions, how to handle missing data. Ask.
 
-**NOTE:** For data quality issues (missing values, unexpected nulls), use Data Investigation Workflow instead.
-
-## Documentation Philosophy
-
-**Self-documenting work**: Do NOT create separate analysis reports or random documentation files.
-
-**🚨 CRITICAL: Research projects must follow the STRICT documentation structure in [[instructions/research-documentation.md]] — that file is the complete requirement, including which files are mandatory and which are forbidden.** Its per-file detail: [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]].
-
-### Where Analysis Documentation Lives
-
-1. **Presentation-layer dashboards** - Interactive exploration and validation (e.g. Streamlit)
-2. **Jupyter notebooks** - Detailed analysis with inline markdown (in experiments/ if exploratory)
-3. **GitHub issues** - Track analysis tasks and decisions
-4. **Code comments** - Explain analytical decisions in transformation-layer models
-5. **Commit messages** - Document why changes were made
-6. **Transformation-layer schema docs** - Document model purposes and column meanings (e.g. `dbt/schema.yml`)
-7. **methods/*.md** - Technical method specifications
-
-Documentation is updated in the SAME commit as the code it describes, and each fact has one home.
-
-## Statistical Methodology
-
-The formulas, test-selection trees, and APA reporting shapes are public knowledge and are not restated here. What binds is the methodology, and it is the researcher's call before it is yours:
-
-- **The question picks the test, not the data.** Choosing a test after seeing which one gives a significant result is p-hacking whatever else it is called. Where the analysis plan was not fixed in advance, say so in the write-up.
-- **State and check the assumptions the test rests on** — independence, distributional form, homogeneity of variance, whatever the specific test requires — and report what you found, including when an assumption fails and you proceeded anyway with a justification.
-- **Effect sizes and intervals, always.** A p-value alone is not a result. Report the magnitude and its uncertainty, and interpret both in the units the research question is asked in.
-- **Every exploratory pass is exploratory in the write-up.** Multiple comparisons, subgroup hunts, and post-hoc contrasts are labelled as such and corrected or flagged; they never migrate into the confirmatory frame.
-- **Halt on a methodological choice nobody made.** Which model, which covariates, which exclusions, how to handle missing data — these are the researcher's, not conveniences to settle so the pipeline runs. Ask.
-
-Where you need a specific library's API, reach for the aops-tools `python-viz` skill rather than reconstructing it here.
-
-## Collaborative Workflow Principles
-
-**One step at a time:** perform ONE action (create chart, write model, run test), show the result, explain what it means, then STOP and wait for the user's direction. Never run a complex workflow end to end without checkpoints, and never assume the next step — offer the options and ask.
-
-## Quick Reference
-
-For engine-specific commands, see the aops-tools `dbt` and `streamlit` skills.
+Library APIs: the `python-viz` skill.

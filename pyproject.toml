@@ -210,19 +210,9 @@ refs = ["hooks/dispatch.py"]
 reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
 
 [[tool.refcheck.allow]]
-docs = "specs/polecat/tmux-interactive-driving.md"
-refs = ["antigravity-cli/settings.json"]
-reason = "Configuration inside the container image, not in this repository."
-
-[[tool.refcheck.allow]]
 docs = "templates/github-agent/README.md"
 refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."
-
-[[tool.refcheck.allow]]
-docs = ".agents/skills/debug/**"
-refs = [".claude/settings.json"]
-reason = "Claude Code configuration file in workspace, not in this repository."
 
 [[tool.refcheck.allow]]
 docs = "specs/agents/**"
