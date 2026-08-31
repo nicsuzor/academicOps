@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -42,7 +41,9 @@ _TIMING_WORDS = re.compile(r"\b(before\s+(?:PR|push|pull\s+request))\b", re.IGNO
 _GATE_DETECTORS: dict[str, re.Pattern] = {
     "james": re.compile(r"(?:James(?:\s+re-review)?(?:\s+APPROVE)?|code\s+review)", re.IGNORECASE),
     "marsha": re.compile(r"(?:marsha(?:\s+verdict|\s+APPROVE)?|QA\s+verdict)", re.IGNORECASE),
-    "adversary": re.compile(r"(?:adversary(?:\s+verdict|\s+APPROVE)?|red-team\s+verdict)", re.IGNORECASE),
+    "adversary": re.compile(
+        r"(?:adversary(?:\s+verdict|\s+APPROVE)?|red-team\s+verdict)", re.IGNORECASE
+    ),
 }
 
 
@@ -114,7 +115,7 @@ def get_recorded_verdicts(session_id: str) -> dict[str, dict[str, str]]:
     # Also inspect individual AOPS_GATE_SATISFIED_<GATE>
     for k, v in os.environ.items():
         if k.startswith("AOPS_GATE_SATISFIED_") and v in ("1", "true", "TRUE", "yes", "YES"):
-            gate_name = k[len("AOPS_GATE_SATISFIED_"):].lower()
+            gate_name = k[len("AOPS_GATE_SATISFIED_") :].lower()
             verdicts[gate_name] = {"verdict": "APPROVE", "detail": "env"}
 
     return verdicts
@@ -164,7 +165,11 @@ def parse_mandatory_gates(task_body: str) -> list[str]:
     # If no line-by-line match, search whole text for combined mandatory patterns
     if not gates:
         for gate_name, detector in _GATE_DETECTORS.items():
-            if _MANDATORY_WORDS.search(task_body) and detector.search(task_body) and _TIMING_WORDS.search(task_body):
+            if (
+                _MANDATORY_WORDS.search(task_body)
+                and detector.search(task_body)
+                and _TIMING_WORDS.search(task_body)
+            ):
                 if gate_name not in gates:
                     gates.append(gate_name)
 
@@ -216,7 +221,11 @@ def _get_task_body(ctx: HookContext) -> str:
 
 def task_body_gate_handler(ctx: HookContext) -> Result | None:
     """PreToolUse handler checking for unsatisfied task-body mandatory gates."""
-    command = ctx.command or (ctx.raw.get("tool_input", {}).get("command", "") if isinstance(ctx.raw.get("tool_input"), dict) else "")
+    command = ctx.command or (
+        ctx.raw.get("tool_input", {}).get("command", "")
+        if isinstance(ctx.raw.get("tool_input"), dict)
+        else ""
+    )
     if not is_push_or_pr_command(command):
         return None
 

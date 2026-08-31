@@ -11,9 +11,6 @@ Covers:
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -74,8 +71,7 @@ def test_parse_mandatory_gates_markers():
     assert parse_mandatory_gates(body_qa) == ["marsha"]
 
     body_multiple = (
-        "1. MUST get James APPROVE before PR.\n"
-        "2. Mandatory marsha verdict required before push."
+        "1. MUST get James APPROVE before PR.\n2. Mandatory marsha verdict required before push."
     )
     assert set(parse_mandatory_gates(body_multiple)) == {"james", "marsha"}
 

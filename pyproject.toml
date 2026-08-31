@@ -234,7 +234,6 @@ docs = "specs/polecat/**"
 refs = ["plugins/orchestrate/skills/supervised-development/SKILL.md"]
 reason = "Historical skill path referenced in supervisor specifications."
 
-
 [tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference
 exclude = [
