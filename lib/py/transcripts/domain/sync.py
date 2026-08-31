@@ -75,9 +75,9 @@ def _abort_merge(sessions_dir: Path, git_dir: Path) -> None:
 
     `git merge --abort` is the clean path; `git reset --merge` covers the case
     where the merge state is too damaged for --abort to run; removing MERGE_HEAD
-    is the last-ditch unwedge. Safe here for the same reason it is safe in
-    scripts/git-sync.sh: auto-sync commits are mechanical snapshots that get
-    re-derived from HEAD on the next pull, so nothing unique is lost.
+    is the last-ditch unwedge. Safe here for sessions: auto-sync commits are
+    mechanical snapshots that get re-derived from HEAD on the next pull, so
+    nothing unique is lost.
     """
     aborted = _try(["git", "merge", "--abort"], sessions_dir) or _try(
         ["git", "reset", "--merge"], sessions_dir
