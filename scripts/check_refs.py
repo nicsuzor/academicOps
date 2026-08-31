@@ -39,6 +39,10 @@ _FOREIGN_PREFIXES = ("/", "~", "$", "{", "<", "@", "!", "%", "#")
 # Globs, shell metacharacters, and whitespace mean the span is a pattern or a
 # command line, not one concrete path.
 _NOT_A_PATH = set("*?<>|$ \t'\"()[]{}=;&")
+# A pinpoint line citation — ``handlers.py:99``, ``SKILL.md:1-5``, ``x.md:53,55``.
+# It addresses a location *inside* a file, so it is no more part of the filename
+# than a ``#anchor`` is; the existence claim is about the file it hangs off.
+_LINE_CITATION = re.compile(r":\d+(?:[-,]\d+)*$")
 # A trailing extension is what turns `foo/bar` from a phrase into a filename.
 _FILE_SUFFIX = re.compile(
     r"\.(md|py|sh|yml|yaml|json|jsonl|toml|txt|cfg|ini|lock|template|ts|tsx|js|sql|css|html)$"
@@ -112,6 +116,9 @@ def clean(raw: str) -> str | None:
     """Normalise a candidate, or return None when it cannot name a repo path."""
     ref = raw.strip().split("#", 1)[0].split("?", 1)[0].strip()
     if not ref or _SCHEME.match(ref) or ref.startswith(_FOREIGN_PREFIXES):
+        return None
+    ref = _LINE_CITATION.sub("", ref).strip()
+    if not ref:
         return None
     if any(c in _NOT_A_PATH for c in ref):
         return None

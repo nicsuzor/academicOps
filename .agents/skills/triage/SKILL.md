@@ -34,7 +34,7 @@ Perform a critical, forensic review of a single session transcript, apply immedi
 - **Explicit Target Requirement**: You must only review the specified session ID, transcript path, or current session context passed in the prompt. Do NOT fall back to selecting a random unreviewed transcript. If no session context, ID, or path is provided, halt and report an error.
 - **Same-Session Review Allowed**: the current session may be reviewed by a fresh subagent, whose detached context is what makes the review honest. What is never allowed is the same agent grading its own work in the same context.
 - Verify `$AOPS_SESSIONS` is set and `$AOPS_SESSIONS/transcripts` exists. If not, stop and ask the user.
-- Resolve the target session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/`. Each session has a markdown, an HTML, and a JSON sidecar artifact — see [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#3-output-formats). Read the markdown.
+- Resolve the target session ID against `$AOPS_SESSIONS/transcripts/YYYY-MM/`. Each session has a markdown, an HTML, and a JSON sidecar artifact — see [`specs/transcript-pipeline.md`](../../../specs/transcript-pipeline.md#4-output-formats). Read the markdown.
 - **Quality Gate**: Verify the transcript is complete and usable before analyzing it. If it isn't, name the failed condition and stop. Never silently fall back to the raw `.jsonl` as a workaround — a forensic review on a degraded transcript yields false findings; proceed on raw JSONL only with explicit user confirmation.
 
 ### 2. Forensic Analysis & Immediate Fixes (Fix AND File)
