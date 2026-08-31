@@ -22,8 +22,6 @@ Process templates are instructions too, and live in `plugins/<plugin>/workflows/
 
 This spec answers _which file_ by audience. For how enforcement mechanisms apply (the levers, and the delivery-channel-vs-verdict split), see [enforcement.md](../enforcement/enforcement.md).
 
-<!-- NS: We should make some brief quality and substance notes about what info each doc should and shouldn't contain and how to know it's good. -->
-
 ## Specs — for devs and auditors
 
 Live in `specs/<subsystem>/<name>.md` at the academicOps root.
@@ -35,6 +33,8 @@ Live in `specs/<subsystem>/<name>.md` at the academicOps root.
 **Shouldn't contain**: per-agent log entries, imperative agent instructions (those go in instructions), generated tables (audit-artifact), or provenance.
 
 **No provenance.** A spec states what's true and why, not who decided it, where, or when. PKB task/session IDs, ruling numbers, and "ruled by X on date Y" citations belong in git commit messages and task files — cite them there, not in the spec body. A reference-only section that just enumerates adjacent task IDs with no other content (a "related work" list) belongs in the tracking task, not the spec; if a spec genuinely depends on another spec's content, link that spec by name, not a PKB ID.
+
+**Concise.** A spec earns its length by design intent, not by restating the same claim from several angles or hedging it with qualifiers. Say a thing once, in the fewest words that carry the design intent; where a sibling doc already states it, link rather than re-derive (see "One fact, one file" below).
 
 **A spec declares intended behavior — for any subsystem, including this repo's own tooling — and it may be aspirational.** A spec is a _specification_: what a subsystem is designed to do and why, not a live telemetry feed of what the code happens to do today. Drift between a spec and the code is an expected, ordinary state of the world (it means there's a bug or an unfinished migration to fix — it is not evidence the doc is miscategorized). That's the axis that actually separates a spec from a **state** doc: a state doc claims to be the current-truth SSoT ("this IS what the system does right now"); a spec claims to be the designed target ("this is what the subsystem is for and how it should behave"), and is allowed to be ahead of, or drift from, reality.
 

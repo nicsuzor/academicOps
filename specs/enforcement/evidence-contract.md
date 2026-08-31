@@ -8,16 +8,11 @@ tags: [enforcement, framework-architecture, verification, evidence-contract]
 
 # Enforcement — The Evidence Contract
 
-> **Numbering note.** This file is not a fifth `Layer` in the module-boundary
-> layer model ([task-contract.md](task-contract.md), [workflow.md](workflow.md),
-> [sign-off.md](sign-off.md)). It is the single contract those layers each
-> instantiate at their own boundary — `release_task` (Layer 2), the
-> boundary-check and QA-around steps of a workflow (Layer 3), and the
-> principal sign-off brief (Layer 4) all read the same rule defined here,
-> rather than each layer inventing its own evidence format. The supervisor's
-> per-tick worker handback ([`specs/agents/sara.md`](../agents/sara.md))
-> is the same contract again, instantiated for orchestration rather than a
-> PKB task boundary.
+This file is not a fifth `Layer` in the module-boundary layer model
+([task-contract.md](task-contract.md), [workflow.md](workflow.md),
+[sign-off.md](sign-off.md)). It is the single contract those layers each
+instantiate at their own boundary, and where each does so is listed once,
+canonically, in [Where this binds](#where-this-binds) below.
 
 ## The contract
 
@@ -144,8 +139,8 @@ Negative claims ("X does not exist", "X failed", "X never ran") and capability c
 
 This format is deliberately markdown prose, not a JSON or YAML schema —
 consistent with the framework-wide constraint that inter-agent contracts stay
-prose, never structured data formats agents must parse exactly (D2, module-d
-binding decision). Any harness or gate that wants to check for the format's
+prose, never structured data formats agents must parse exactly. Any harness or
+gate that wants to check for the format's
 presence mechanically may do so as a cheap, non-authoritative hint; it is
 never the verdict. The verdict is always an agent reading the content and
 judging whether the claim holds — never a regex over the field names (see Substance over form above, and the
@@ -194,11 +189,9 @@ holds (§Substance over form above); and (2) **structurally, presence-only** —
 them as mandatory (non-empty checks; never content inspection).
 
 **Tasks created before the presence-only field requirement ships are
-grandfathered.** Concretely: the mem gate, when it lands, evaluates a task's
-`created` frontmatter timestamp against its own ship date. Tasks created before
-that date are not retroactively held to a stricter presence check than existed
-when they were claimed — the agentic/prose obligation in this file binds
-immediately and universally (it always did, informally), but the _mechanical_
-presence requirement is forward-only. This uses the existing `created` field;
-it introduces no new frontmatter field (D2: ≤1 new frontmatter field
-framework-wide for this module, and zero is simpler than one).
+grandfathered.** The mem gate, when it lands, evaluates a task's `created`
+frontmatter timestamp against its own ship date: tasks created before that
+date are not retroactively held to a stricter presence check than existed when
+they were claimed. The agentic/prose obligation in this file binds immediately
+and universally; only the mechanical presence requirement is forward-only.
+This reuses the existing `created` field rather than adding a new one.
