@@ -55,20 +55,6 @@ def test_dump_skill_status_template_uses_canonical_statuses():
         )
 
 
-def test_pull_skill_impossible_task_mandates_canonical_status():
-    pull_skill = PLUGINS_DIR / "aops" / "skills" / "pull" / "SKILL.md"
-    assert pull_skill.exists(), f"Missing {pull_skill}"
-
-    text = pull_skill.read_text(encoding="utf-8")
-    assert "'failed'" not in text, (
-        f"{pull_skill.relative_to(REPO_ROOT)} mandates non-canonical status 'failed'. "
-        f"Impossible tasks must be released as a canonical status ('review' or 'blocked')."
-    )
-    assert "FAILED" not in text, (
-        f"{pull_skill.relative_to(REPO_ROOT)} contains 'FAILED' as status mandate."
-    )
-
-
 @pytest.mark.parametrize("skill_path", skill_files(), ids=lambda p: str(p.relative_to(PLUGINS_DIR)))
 def test_all_skills_mandated_statuses_are_canonical(skill_path: Path):
     text = skill_path.read_text(encoding="utf-8")

@@ -9,7 +9,6 @@
 
 ## Agents
 
-- [agents/agent-authority.md](agents/agent-authority.md) — permissions schema, tool naming, skill/sub-agent delegation.
 - [agents/sara.md](agents/sara.md) — delegate-and-verify orchestration process.
 - [agents/ida-supervision-migration.md](agents/ida-supervision-migration.md) — which supervision capabilities move to ida, the checkpoints that gate each increment of autonomy, and what never moves.
 

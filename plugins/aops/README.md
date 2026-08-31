@@ -82,8 +82,8 @@ the asks that turn out to be worth it.
 
 Everything that mutates the PKB is routed through pauli by instruction. That is
 doctrine, not permission: pauli, james, marsha and rbg all omit `tools` to work
-around a harness materialization defect (`specs/agents/agent-authority.md`), so
-each inherits its parent's full effective set including the PKB MCP namespace.
+around a harness materialization defect, so each inherits its parent's full
+effective set including the PKB MCP namespace.
 James holds read, knowledge-write, and task-lifecycle operations outright by its
 own charter, and routes only graph mutation — creating, reparenting, decomposing
 — to pauli. Restore the boundary as a tool grant when the harness defect is

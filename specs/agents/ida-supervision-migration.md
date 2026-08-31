@@ -4,7 +4,7 @@ title: Migrating Supervision Capability into Ida
 type: spec
 status: draft
 tier: core
-depends_on: [supervisor-spec, agent-authority-spec]
+depends_on: [supervisor-spec]
 tags: [spec, agents, ida, supervision, autonomy, trust]
 ---
 
@@ -40,7 +40,7 @@ The standard is invocable by ida already. Driving is orchestrate's and stays the
 Surface selection, image freshness, the build-install-probe cycle, waiting on exit signals, reopening a unit whose record claims a delivery that is absent, commissioning certification from marsha: all of it stays, for three reasons.
 
 1. **Context.** Driving reads everything adjudication reads and then more — the transcript, the probe output, the diff, the container logs. The _ordering_ is therefore analytic: driving cannot cost ida less than adjudicating, and that alone keeps driving out of the agent whose defining constraint is staying light enough to keep pace with a user working in parallel.
-2. **Auditability.** Ida reaches the graph only by commissioning `aops:pauli`, and workers only through `orchestrate:pc`; she is not a writer to the store. That chokepoint is what makes "what can this agent do?" answerable from one file, per the authority-non-transit rule in [`agent-authority.md`](agent-authority.md). Granting ida spawn or write authority dissolves it, at exactly the moment nobody is watching.
+2. **Auditability.** Ida reaches the graph only by commissioning `aops:pauli`, and workers only through `orchestrate:pc`; she is not a writer to the store. That chokepoint is what makes "what can this agent do?" answerable from one file. Granting ida spawn or write authority dissolves it, at exactly the moment nobody is watching.
 3. **Latency.** An agent that may be blocked on a forty-minute build cannot also be the agent that answers the user within a turn.
 
 None of the three weakens as trust grows. They are properties of the role, not of the confidence placed in it.
@@ -124,7 +124,7 @@ The user learns of a failed autonomous run in the same register as a successful 
 
 `plugins/aops/agents/ida.md` frontmatter declares `name`, `description`, and `color` alone — no `tools`, no `subagents`, no `skills`. Her routing discipline is carried entirely in prose. Prose is enough for a co-worked session, where a user is present to notice a violation within a turn; it is not enough for a day-long unattended run, which is the exact condition under which nobody notices.
 
-Both halves are required, and declaration alone does not buy it. They are separable — restoring the frontmatter is a repair to this repository, making the declaration bind is the upstream harness matter recorded in [`agent-authority.md`](agent-authority.md) — but they are not alternatives. A declared envelope that does not bind is the state that spec already records as untrustworthy, so treating declaration as sufficient would gate stage 1 on something known not to work. The enforcement half is demonstrated, not assumed: a spawned ida offered a tool outside its declaration cannot call it, shown in a recorded trial scored from the tool-call record rather than from ida's account of its own capabilities.
+Both halves are required, and declaration alone does not buy it. They are separable — restoring the frontmatter is a repair to this repository, making the declaration bind is an upstream harness matter — but they are not alternatives. A declared envelope that does not bind is untrustworthy, so treating declaration as sufficient would gate stage 1 on something known not to work. The enforcement half is demonstrated, not assumed: a spawned ida offered a tool outside its declaration cannot call it, shown in a recorded trial scored from the tool-call record rather than from ida's account of its own capabilities.
 
 ### No hook fires the disclosure at ida's turn boundary
 

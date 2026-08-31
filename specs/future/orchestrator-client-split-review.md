@@ -31,10 +31,10 @@ listed only so a reader does not re-litigate them:
   the class properly, because no instruction is involved.
 - A commented "ready to enable" `allowedTools` block cannot ship: the adapters
   round-trip frontmatter through YAML (design C8). rbg's stronger claim that
-  `allowedTools` is absent from the agent schema has since been overtaken —
-  `specs/agents/agent-authority.md` now documents it as the approval rule set,
-  distinct from `tools` and from `subagents` (design C7). The design records the
-  distinction rather than the original objection.
+  `allowedTools` is absent from the agent schema has since been overtaken:
+  `allowedTools` is the approval rule set, distinct from `tools` and from
+  `subagents` (design C7). The design records the distinction rather than the
+  original objection.
 - `--agent none` was a magic value over a namespace we do not own; the paired
   `--agent` / `--no-agent` boolean shipped instead.
 - Section B is new work, not the verification of a prior decision. A dispatched
@@ -46,8 +46,8 @@ listed only so a reader does not re-litigate them:
 
 ## Open — Section D blocks
 
-**The gate may not bind.** `specs/agents/agent-authority.md:163-176` records that
-a spawned `ida`'s actual top-level tool set was `Agent, Artifact, Bash, Edit,
+**The gate may not bind.** A spawned `ida`'s actual top-level tool set was
+recorded as `Agent, Artifact, Bash, Edit,
 Read, Skill, ToolSearch, Write` plus the full PKB MCP namespace — "none of which
 its frontmatter grants and four of which it explicitly denies." A lockdown
 expressed in frontmatter alone may pay the full cost of the rewrite and buy

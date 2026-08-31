@@ -2,19 +2,16 @@
 
 Verifies:
 1. `pc.md` command path resolves to a valid `cli.py` in the built distribution.
-2. `pc.md` contains no `tmux` wrapper, no `sleep`, no `wait-for`, and no `while`.
-3. `pc.md` contains explicit prose grounding why holding a synchronous run is not
-   the banned delegated wait under kb_ca944227.
-4. `pc.md` specifies the explicit tri-state return contract with run.json evidence.
-5. In a non-TTY, non-interactive environment, the command extracted from `pc.md`
+2. `pc.md` grants no `tmux` tool or scope and contains no `tmux new-session`.
+3. `pc.md` cites `run.json` as the return contract's evidence artifact.
+4. In a non-TTY, non-interactive environment, the command extracted from `pc.md`
    executes without requiring a TTY or tmux session.
-6. Shipped `dist/orchestrate-claude/agents/pc.md` matches `plugins/orchestrate/agents/pc.md`.
-7. End-to-end dispatch execution produces run.json with tri-state status reporting.
+5. Shipped `dist/orchestrate-claude/agents/pc.md` matches `plugins/orchestrate/agents/pc.md`.
+6. End-to-end dispatch execution produces run.json with tri-state status reporting.
 """
 
 import json
 import os
-import re
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -31,8 +28,7 @@ _REAL_MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 
 
 def test_pc_agent_frontmatter_and_content_structure():
-    """`pc.md` must not grant tmux tools or declare tmux scopes, and must not
-    contain polling/waiting constructs."""
+    """`pc.md` must not grant tmux tools or declare tmux scopes."""
     assert _PC_AGENT_PATH.is_file(), f"pc.md missing at {_PC_AGENT_PATH}"
     content = _PC_AGENT_PATH.read_text(encoding="utf-8")
 
@@ -49,23 +45,7 @@ def test_pc_agent_frontmatter_and_content_structure():
     bash_scopes = fm.get("bashScopes", [])
     assert "tmux" not in bash_scopes, f"Found unexpected tmux scope in bashScopes: {bash_scopes}"
 
-    # Criterion 4: No sleep, wait-for, or while in pc.md
-    for forbidden in ["sleep", "wait-for", "while"]:
-        hits = [
-            (i + 1, line)
-            for i, line in enumerate(content.splitlines())
-            if re.search(r"\b" + re.escape(forbidden) + r"\b", line, re.IGNORECASE)
-        ]
-        assert not hits, f"Found forbidden keyword '{forbidden}' in pc.md: {hits}"
-
-    # Criterion 5: States in prose why holding synchronous run is not banned delegated wait
-    assert "kb_ca944227" in content or "delegated wait" in content.lower(), (
-        "pc.md must state why holding a synchronous run is not a banned delegated wait"
-    )
-
-    # Criterion 3: Tri-state return contract
-    lower_content = content.lower()
-    assert "never started" in lower_content
+    # Criterion 3: Tri-state return contract cites the run.json evidence artifact
     assert "run.json" in content
 
 

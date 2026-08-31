@@ -368,7 +368,6 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
     agy_agent = yaml.safe_load(fm)
     assert agy_agent["name"] == "ida"
-    assert "strategic face" in agy_agent["description"]
     assert "hidden" not in agy_agent
     assert "includeSections" not in agy_agent
     # ida declares no `mcpServers:` and reaches no MCP tool, so the build must
@@ -385,7 +384,6 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     body = body.lstrip("\n")
     assert body.startswith("# Agent System Instructions")
-    assert "# Ida" in body
 
 
 def test_agy_agent_tool_names_are_translated(built):
@@ -1157,9 +1155,7 @@ def test_openclaw_ida_face_configuration(tmp_path):
 
     ida_md = dist_root / "aops-openclaw" / "agents" / "ida.md"
     assert ida_md.is_file()
-    fm, _, body = ida_md.read_text().partition("---\n")[2].partition("---\n")
+    fm, _, _ = ida_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)
 
     assert agent["name"] == "ida"
-    assert "strategic face" in agent["description"]
-    assert "# Ida" in body

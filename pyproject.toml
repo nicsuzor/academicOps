@@ -215,11 +215,6 @@ refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."
 
 [[tool.refcheck.allow]]
-docs = "specs/agents/**"
-refs = ["plugins/orchestrate/skills/supervised-development/SKILL.md"]
-reason = "Historical skill path before migration into dogfood and supervisor specs."
-
-[[tool.refcheck.allow]]
 docs = "specs/ENFORCEMENT-MAP.md"
 refs = ["../.agents/WORKING.md", ".agents/LOCAL.md"]
 reason = "Machine-local rule files. `.gitignore` line 8 ignores `.agents/*` and the negations on lines 9-15 re-include only subdirectories, so neither file is ever tracked and neither can resolve in CI or a clean checkout. The mechanism they carry is real and belongs in the register; only the files are outside the repository."

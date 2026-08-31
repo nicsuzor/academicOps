@@ -132,4 +132,3 @@ A single incident that is a **bug** is fixed immediately from one report. A sing
 - [sign-off.md](sign-off.md) — workflow-level review, instantiated as the PR pipeline.
 - [evidence-contract.md](evidence-contract.md) — the universal claim-evidence shape.
 - [auto-mode-classifier.md](auto-mode-classifier.md) — the harness's own per-action classifier.
-- [agent-authority.md](../agents/agent-authority.md) — the frontmatter permission schema the grants above are expressed in.

@@ -8,7 +8,7 @@ tags: [enforcement, framework-architecture, verification, workflow]
 
 # Enforcement — The Workflow (Layer 3)
 
-> **Numbering note.** `Layer 3` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, [task-contract.md](task-contract.md), this file, [sign-off.md](sign-off.md)). It is distinct from the permission-frontmatter layers in [agent-authority.md](../agents/agent-authority.md) and the retired repo-level L0–L7 numbering (which [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) replaced with a named mechanism index).
+> **Numbering note.** `Layer 3` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, [task-contract.md](task-contract.md), this file, [sign-off.md](sign-off.md)). It is distinct from the retired repo-level L0–L7 numbering (which [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) replaced with a named mechanism index).
 
 ## aops — Workflow
 

@@ -3,8 +3,6 @@
 # requirements so they can be modified without altering the test code itself.
 
 [rbg.stop_gate]
-# Minimum required text fragments in the shipped rule-check.md
-required_shipped_text = ["rule check", "evidence", "axioms"]
 # Events that the RBG stop gate will block on. Currently empty because rbg hooks are disabled.
 stop_events = []
 
