@@ -125,11 +125,11 @@ for **the decision a person already made**, recording it rather than reaching
 it. Where the comments carry none clearly, the class is `bad-implementation`,
 which files a question rather than closing anything. Exactly one of:
 
-| Class                  | Signal                                                                                    | Action                                                                                                                                                             |
-| ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **wontfix**            | Clear "do not do this", not-planned, superseded, or the reviewer rejects the goal itself. | Cancel the task, or complete it if a sibling superseded it. Record the pull request and the person's stated reason in the body. File no follow-up.                 |
+| Class                  | Signal                                                                                    | Action                                                                                                                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **wontfix**            | Clear "do not do this", not-planned, superseded, or the reviewer rejects the goal itself. | Cancel the task, or complete it if a sibling superseded it. Record the pull request and the person's stated reason in the body. File no follow-up.                                                      |
 | **bad-implementation** | Wrong approach, design rejected, repeated failure, "needs a rethink", or ambiguous.       | Call `/q` (`/aops:q`) to reposition the task in place under the same parent (returning to `inbox` with updated context on what went wrong and what must change), rather than creating a duplicate task. |
-| **retry-as-is**        | Rare. Unrelated infrastructure failure, documented in the comments. Nothing was wrong.    | Re-queue to `inbox`, with the justification written into both the task body and the result.                                                                        |
+| **retry-as-is**        | Rare. Unrelated infrastructure failure, documented in the comments. Nothing was wrong.    | Re-queue to `inbox`, with the justification written into both the task body and the result.                                                                                                             |
 
 Record the chosen route, the close reason quoted from where you read it, and any
 repositioning performed.
