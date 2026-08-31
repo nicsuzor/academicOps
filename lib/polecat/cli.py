@@ -270,6 +270,31 @@ def resolve_rules_dir(config):
     return path
 
 
+def resolve_scratch_dir(
+    config: dict | None = None, cli_scratch_dir: str | Path | None = None
+) -> Path | None:
+    """Host directory of shared scratch space to mount read-write at /scratch
+    inside the container.
+
+    From CLI `--scratch-dir` / `--scratch`, else $POLECAT_SCRATCH_DIR, else config
+    `docker.scratch_dir` or `scratch_dir`. Wholly optional: absent is a clean,
+    silent no-op (no default).
+    """
+    raw = cli_scratch_dir or os.environ.get("POLECAT_SCRATCH_DIR")
+    if not raw and config and isinstance(config, dict):
+        raw = config.get("docker", {}).get("scratch_dir") or config.get("scratch_dir")
+    if not raw:
+        return None
+    path = expand(raw)
+    if path.exists() and not path.is_dir():
+        fail(
+            f"scratch_dir {raw!r} resolves to a file, not a directory ({path}). "
+            "A shared scratch space must be a directory."
+        )
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _resolve_section_env(
     config: dict | None, section: str, mapping: Mapping[str, str | list[str]]
 ) -> dict[str, str]:
@@ -1504,6 +1529,7 @@ def _build_docker_argv(
     container_session_path,
     env,
     rules_dir,
+    scratch_dir=None,
     config,
     docker_args,
     session_id=None,
@@ -1588,6 +1614,9 @@ def _build_docker_argv(
     # was configured but unreadable, before any container started).
     if rules_dir:
         cmd.extend(["-v", f"{rules_dir}:{CONTAINER_ACA_DATA}/.agents/rules:ro"])
+
+    if scratch_dir:
+        cmd.extend(["-v", f"{scratch_dir}:/scratch"])
 
     cgroup_parent = config.get("docker", {}).get("cgroup_parent")
     if not cgroup_parent and Path("/sys/fs/cgroup/polecats.slice").exists():
@@ -1947,6 +1976,13 @@ def main():
     help="Publish container port(s) to dynamic host port (defaults to '8080'). Bare port (e.g. '8080') maps dynamically to an ephemeral host port. Mappings (e.g. 'HOST:CONTAINER' or '127.0.0.1::8080') pass directly.",
 )
 @click.option(
+    "--scratch-dir",
+    "--scratch",
+    "scratch_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Host directory to mount read-write at /scratch in the container. No default.",
+)
+@click.option(
     "--quiet",
     "-q",
     is_flag=True,
@@ -1975,6 +2011,7 @@ def run(
     detach,
     quiet,
     ports,
+    scratch_dir,
     extra_args,
 ):
     """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
@@ -2005,6 +2042,7 @@ def run(
     image = resolve_image(config)
     sessions_base = resolve_sessions_root()
     rules_dir = resolve_rules_dir(config)
+    scratch_dir = resolve_scratch_dir(config, scratch_dir)
     workspace_dir = _resolve_workspace(repo_dir, project, polecat_home, config=config)
 
     session_id = session_name or f"session-{uuid.uuid4().hex[:8]}"
@@ -2202,6 +2240,7 @@ def run(
             container_session_path=container_session_path,
             env=env,
             rules_dir=rules_dir,
+            scratch_dir=scratch_dir,
             config=config,
             docker_args=docker_args,
             session_id=session_id,

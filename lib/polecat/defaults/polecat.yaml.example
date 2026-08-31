@@ -88,6 +88,13 @@
 # directory exists. $POLECAT_RULES_DIR overrides this at the environment.
 # rules_dir: /path/to/your/pkb-checkout/.agents/rules
 
+# Host directory of shared scratch space to mount read-write into the container
+# at `/scratch` (resolve_scratch_dir). Optional: absent means the container
+# starts with no `/scratch` mount — a clean no-op (no default).
+# $POLECAT_SCRATCH_DIR overrides this at the environment, and `--scratch-dir`
+# / `--scratch` overrides both at the CLI.
+# scratch_dir: /path/to/shared/scratch
+
 # cope's evaluator, forwarded into every container. Each field is the plain
 # COPE_EVALUATOR_* variable lower-cased and prefixed here; a host environment
 # variable of that name still wins over whatever is set below
