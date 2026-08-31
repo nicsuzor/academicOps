@@ -128,11 +128,11 @@ which files a question rather than closing anything. Exactly one of:
 | Class                  | Signal                                                                                    | Action                                                                                                                                                             |
 | ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **wontfix**            | Clear "do not do this", not-planned, superseded, or the reviewer rejects the goal itself. | Cancel the task, or complete it if a sibling superseded it. Record the pull request and the person's stated reason in the body. File no follow-up.                 |
-| **bad-implementation** | Wrong approach, design rejected, repeated failure, "needs a rethink", or ambiguous.       | Cancel the original. File a sibling investigation task under the same parent, softly depending on the original, saying what went wrong and what must change first. |
+| **bad-implementation** | Wrong approach, design rejected, repeated failure, "needs a rethink", or ambiguous.       | Call `/q` (`/aops:q`) to reposition the task in place under the same parent (returning to `inbox` with updated context on what went wrong and what must change), rather than creating a duplicate task. |
 | **retry-as-is**        | Rare. Unrelated infrastructure failure, documented in the comments. Nothing was wrong.    | Re-queue to `inbox`, with the justification written into both the task body and the result.                                                                        |
 
 Record the chosen route, the close reason quoted from where you read it, and any
-node created.
+repositioning performed.
 
 ## 5 — Staleness, rot, and cancellation
 
@@ -188,9 +188,8 @@ trigger that fired, and no trigger's burden is imposed on another:
 A cancellation nobody can audit from the node is one you do not make.
 
 Where a world-fact cancellation leaves an unanswerable ambiguity, record the
-observed fact on the node and return unblocked dependents to `inbox` (§7). §4 is
-the one route that files an investigation task, and only on a rejection a person
-recorded.
+observed fact on the node and return unblocked dependents to `inbox` (§7). §4
+repositions tasks in place rather than filing separate investigation tasks.
 
 ### The two-step mutation contract
 
@@ -231,7 +230,7 @@ wrote actually touched:
 - what a §5 cancellation unblocked or invalidated — the cancelled node is
   terminal and does not itself return, but its live siblings and anything whose
   criteria leaned on it do;
-- the investigation tasks §4 filed.
+- the tasks §4 repositioned to `inbox`.
 
 Set that whole set to `inbox` under the two-step mutation contract (§5),
 annotated with the fact that moved it. `inbox` signals that a task needs working
@@ -276,7 +275,7 @@ and with the window you covered.
 - Use `pkb__batch_update` to mutate task statuses or perform demotions.
 - Resolve an acceptance criterion that needs interpreting, or supply a judgment
   a person has not made.
-- Prune, restructure, merge, or re-parent anything.
+- Prune, restructure, or merge anything (delegate task repositioning and intake placement to `/q`).
 - Write `focus_score`, `intent`, `priority`, or `severity`.
 - Promote work into `queued`. That gate is the user's.
 - Re-plan: re-sort assumptions, design probes, cut units, or write briefs.

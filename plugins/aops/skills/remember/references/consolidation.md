@@ -191,8 +191,9 @@ artifact rot are owned by the `reconcile` skill
 batch context; do not freelance separate closure logic.
 
 **Misclassification.** Identify captures masquerading as tasks -- aged "Email:"
-prefixes with no children, informational prose with no action. Archive them or
-reclassify them to memories.
+prefixes with no children, informational prose with no action. Reclassify them
+to memories, or invoke `/q` (`/aops:q`) to reposition/reclassify them on the
+graph in place rather than creating duplicate nodes.
 
 ### 5 -- Sweep for orphans
 
@@ -201,9 +202,10 @@ nodes and surface genuine candidates rather than blindly retiring them.
 
 ### 6 -- Process refiles
 
-Process tasks flagged `refile` by inspecting task body, lineage, and context:
-correct parentage, consequence, severity, effort, dependencies, and tags, then
-clear the `refile` flag.
+Process tasks flagged `refile` by inspecting task body, lineage, and context.
+Invoke `/q` (`/aops:q`) to reposition the task in place -- updating parentage,
+consequence, severity, effort, dependencies, and tags -- rather than minting
+duplicate nodes. Clear the `refile` flag when complete.
 
 ### 7 -- Maintain the graph
 

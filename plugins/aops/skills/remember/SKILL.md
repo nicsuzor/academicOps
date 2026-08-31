@@ -130,11 +130,12 @@ yourself, and do not leave it as a suggestion in your final message.
   misled -- record the facts, then invoke `learn` (`/aops:learn`) on the incident.
   Learn owns the diagnosis and where the lesson lands.
 - **New work, or an open decision** that needs situating, sizing, or
-  decomposition -- create the task (`pkb__create_task`, status `inbox`) so the
-  graph holds the hook, then invoke `brief` (`/aops:brief`) on it.
-- **If the owning skill cannot be invoked** -- not in this agent's skill list, or
-  the user has said stop -- the inbox node is the fallback contract: it exists,
-  carries its edges, and names the owning skill in its body.
+  decomposition -- invoke the `q` skill (`/aops:q`) to place or reposition it
+  on the graph under the right parent with initial valuation and edges, rather
+  than creating an unplaced or duplicate task.
+- **If the owning skill cannot be invoked** -- not in this agent's skill list,
+  or the user has said stop -- the inbox node is the fallback contract: it
+  exists, carries its edges, and names the owning skill in its body.
 
 ## Consolidate
 
