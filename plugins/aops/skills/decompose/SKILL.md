@@ -29,8 +29,8 @@ Abstract means it says what, never how. If you are writing how a component gets 
 4. **Sort the assumptions, route the unknowns.**
    Sort every assumption into tested versus hoped. For each unknown:
    - **DECIDE** — a clear best option exists: make the call and record it in one bullet. If you can decide yourself, do not block; do not manufacture a roadblock where minimal effort settles the question.
-   - **DEFER** — the missing input is runtime data: say what is missing, and **mint the probe** — the cheapest piece of work that yields the deciding information. Wire the blocked node `depends_on` the probe. A probe usually belongs elsewhere on the graph, not as a sibling or parent of what it blocks.
-   - **SURFACE** — a genuine trade-off, a wide blast radius, or the user's own intent: one bullet giving the options, their costs, and your recommendation.
+   - **DEFER** — the missing input is runtime data: say what is missing, and **mint the probe** — the cheapest piece of work that yields the deciding information (`classification: spike`). Wire the blocked node `depends_on` the probe. A probe usually belongs elsewhere on the graph, not as a sibling or parent of what it blocks.
+   - **SURFACE** — a genuine trade-off, a wide blast radius, or the user's own intent: represent the competing alternatives as **mutually exclusive option nodes** on the graph. Choosing an option branch completes/adopts it and cancels the competing option, unblocking downstream dependencies. **Never create a standalone "decision" task.**
 
    Every load-bearing assumption carries a confidence level and a contingency — what the graph must change to if it turns out wrong — regardless of which route it takes.
 
@@ -38,7 +38,9 @@ Abstract means it says what, never how. If you are writing how a component gets 
 
 5. **Wire what you mint.**
    A node that is created but not connected has been dumped, not decomposed.
+   - Title every task with a brief, descriptive, verb-led imperative (e.g. `Implement X`, `Verify Y`). Never put a person's name in a title or filename — assignment belongs in `assigned_to`.
    - Parent each node to the objective it decomposes. Never unparented, never a catch-all.
+   - **Parent/child is already an edge:** Setting `parent_id` establishes hierarchy; do not wire redundant edges between siblings or descendants under the same parent without specific interactions.
    - `depends_on` for true hard blockers, `soft_depends_on` for context-only relations, `contributes_to` with a verbal `stated_weight` and one sentence of justification. Test which: ask what happens if the dependency never completes — impossible or wrong output is hard, still valid but less-informed is soft.
    - Densify with `[[wikilinks]]` to neighbours you confirmed by opening. **The graph should come out denser, not just longer.**
    - Where existing unparented or misparented tasks already cover part of the expansion, adopt them (`pkb__batch_reparent`) rather than minting duplicate siblings.
@@ -76,6 +78,8 @@ Your verification notes and the reasoning behind each fork go in your reply to t
 
 ## Must NOT
 
+- Do not create standalone "decision" tasks or file questions as tasks. Model choices as mutually exclusive option nodes and unknowns as probes.
+- Do not put a person's name in titles or filenames (no `nic: ...`); assignment belongs in `assigned_to`.
 - Do not prescribe method. An abstract component says what, never how.
 - Do not expand into implementation steps: those come from projecting a component through a composed process, which is a later stage.
 - Do not compose process or select templates.

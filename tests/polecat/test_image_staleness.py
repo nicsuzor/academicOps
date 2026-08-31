@@ -197,6 +197,8 @@ def test_staleness_detection_remote_lagging_local_not_flagged_stale(tmp_path):
 
 def test_session_start_hook_surfaces_plugin_version(monkeypatch):
     """In-container SessionStart hook outputs plugin version in metadata and warning when stale."""
+    monkeypatch.delenv("AOPS_IMAGE_PLUGINS_VERSION", raising=False)
+    monkeypatch.delenv("AOPS_IMAGE_STALENESS_WARNING", raising=False)
     ctx = HookContext(
         client="claude",
         event="SessionStart",

@@ -109,6 +109,14 @@ off, because the orchestrator routes on it and length dilutes it. Permissions,
 model, tools, and allowlists live in frontmatter only; the body never restates
 them in prose.
 
+## Task Naming, Filename, and Decision Craft
+
+- **Task titles are verb-led imperatives:** Brief, descriptive statements of a concrete outcome to achieve (e.g. `Implement X`, `Verify Y`, `Refactor Z`).
+- **No person's name in titles or filenames:** A task title, note title, or filename must **never** contain a person's name or persona prefix (e.g. no `nic: decision: ...`, `nic-task-...`, `for-nic.md`). Assignment belongs exclusively in `assigned_to` or `assignee` frontmatter.
+- **Decisions as graph relationships:** Never create standalone "decision" tasks or file questions as tasks. Represent competing alternatives as mutually exclusive option nodes with mutual blocking edges where choosing one branch resolves the conflict, and model unknowns as empirical probe tasks (`classification: spike`).
+- **Task bodies are strictly concise (50–150 words):** Follow the canonical template in [`specs/meta/naming-and-decisions.md`](../../../../specs/meta/naming-and-decisions.md). Never add extra narrative background, reference essays, or prose task-to-task links.
+- **Graph edge economy:** Parent/child (`parent_id`) is already a structural edge. Do not redundantly wire edges between siblings or descendants under the same parent unless there is a specific, genuine interaction (`depends_on`, `supersedes`, data flow).
+
 ## Schemas Are Contracts
 
 Constrain every tool-parameter or structured-output schema fully: mark every
