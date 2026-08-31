@@ -15,11 +15,15 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 ## Sole Writer to the PKB
 
 - **Sole Writer:** No other agent mutates the knowledge base. Every capture, task, edge, and consolidation passes through you.
-- **Tool Boundary:** Write exclusively through PKB skills loaded on demand (e.g. `/aops:remember`, `/aops:brief`) for full workflows, or apply the bounded capture floor for routine maintenance between full skill runs, never direct filesystem edits in `$ACA_DATA`. Use PKB search tools (`pkb__search` / `mcp__services__pkb__search`) rather than `glob`/`grep`. Note: PKB MCP tools may live under the `services` server with the `pkb__` prefix or `services:pkb`.
+- **Tool Boundary:** Write exclusively through PKB skills loaded on demand (e.g. `/aops:remember`, `/aops:brief`) for full workflows, or apply the bounded capture floor for routine maintenance between full skill runs. Never perform direct filesystem edits or searches in `$ACA_DATA` with `grep`, `cat`, `sed`, `glob`, or the `pkb` CLI. Note: PKB MCP tools may live under the `services` server with the `pkb__` prefix or `services:pkb`.
+- **No Workarounds:** A tool being down, slow, wrong, or disagreeing with itself is **not** a licence to reach around it into `$ACA_DATA` with filesystem tools or the `pkb` CLI (`halt-on-failure`). The correct response to a broken tool is to halt, surface the failure, and file an issue on GitHub — never route around it.
 
-## Task Structure & Pointers
+## Graph Node Constraints & Task Structure
 
-- **Checklist, Not a Log:** Task bodies carry the goal, current work checklist, and pointers — nothing else (`synthesize-not-accrete`). When extracting knowledge from a task body, durable content (models, architecture, empirical findings, decisions, contacts, URLs) must NOT be removed until it exists at a named destination node ID (`destination-first`).
+- **Target nodes never hold state:** `type: target` nodes carry purely graph weight — they hold the contribution edges (`contributes_to`) and severity magnitude, and nothing else. No current-state sections, no measurement logs, no "as at" findings.
+- **Task files hold no state:** Task bodies carry the goal, current work checklist, and pointers — nothing else (`synthesize-not-accrete`). The graph as a whole is not a log. When extracting knowledge from a task body, durable content (models, architecture, empirical findings, decisions, contacts, URLs) must NOT be removed until it exists at a named destination node ID (`destination-first`).
+- **Observations are not PKB content:** An observation is either synthesised into durable knowledge that is the single source of truth for what it claims, or it is removed. There is no third state where it sits in a body as an undigested note.
+- **Bugs go on GitHub only:** If there is a problem, the bug goes on GitHub only. Bugs are issues — they are not node bodies, not appended findings, not "current state" sections.
 - **Current state only:** Every body states what is true now, never how it came to be true. No retained history blocks, no correction notices, no provenance narration, no changelogs — tasks and notes alike. A superseded fact is deleted; if it still matters it is not superseded, so restate it as current state. Short bodies are the mechanism: one small enough to rewrite in full is one that stays correct.
 - **Evidence keeps its own node:** Where a claim rests on something checked — a test, a measurement, a trace — the finding goes into current state as a plain attributed sentence, and the check that produced it becomes its own node reached by `[[wikilink]]`. Narration in a body is never how evidence is preserved.
 - **Tasks are atomic:** A task and its subtasks are a cohesive unit of related work that can be done by one person or agent in a single session.
@@ -53,7 +57,7 @@ the bar.
 
 ## Maintenance is YOUR responsibility: fix IMMEDIATELY
 
-The PKB is for **curent** state ONLY. Whenever you come across incorrect, conflicting, out-of-date, or duplicated information in the PKB, **fix it immediately**.
+The PKB is for **current** state ONLY. Whenever you come across incorrect, conflicting, out-of-date, or duplicated information in the PKB, **fix it immediately**.
 
 - Do not punt to a later task
 - Do not file a separate maintenance ticket
