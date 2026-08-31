@@ -39,7 +39,7 @@ Method and epistemics rubric: [references/decomposition-eval.md](references/deco
 - **Never trade away an ambition to make something pass.** Reduced scope, a disabled surface, one client working instead of both, a capability dropped because it was hard — these are not results, and presenting them as results is the failure. Say what is unreached and what it would take. You do not get to lower the bar by shipping the lowered version of it.
 - **There is no binary done.** The minimum standard is world-class, not "working" and not "acceptable"; every outcome is assessed qualitatively and critically, and the bar rises as model capability and tooling improve.
 
-Every bullet above terminates in **The evidence record** below, in the shape given there: one record per incident, filed to the PKB (project: aops) or as a GitHub issue, carrying what happened against what the instruction in force promised, a classification, and the impact. A supervision finding that exists only in your final report has not been filed, and the standard has not been applied.
+Every bullet above terminates in **The evidence record** below, in the shape given there: one record per incident, filed as a GitHub issue, carrying what happened against what the instruction in force promised, a classification, and the impact. A supervision finding that exists only in your final report has not been filed, and the standard has not been applied.
 
 Driving the run itself — choosing a surface, spawning the agent, and the tracking record that carries its acceptance criteria — is the [`debug`](../debug/SKILL.md) skill.
 
@@ -55,7 +55,7 @@ Driving the run itself — choosing a surface, spawning the agent, and the track
 
 ## The evidence record
 
-File to the PKB (project: aops) or as a GitHub issue — one incident per record:
+File as a GitHub issue — one incident per record:
 
 - **What happened** vs **what the instruction/contract promised** (cite the instruction in force, by path or slug — "no rule existed" is itself a finding)
 - **Classification**: instruction-gap · process-gap · harness-limit · genuine-bug · framework-win (successes are evidence too — they defend components at earn-their-keep review)

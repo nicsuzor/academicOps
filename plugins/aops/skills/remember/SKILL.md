@@ -27,9 +27,19 @@ What a good note looks like is [`references/quality.md`](references/quality.md).
 - **Never fabricate.** Extract what a source actually states or clearly implies.
   Never editorialise — record what happened and what was learned, not opinions
   about what should be done differently.
-- **Preserve contradictions.** A new observation that contradicts an existing one
+- **Preserve contradictions.** A new claim that contradicts an existing one
   gets recorded alongside it, with both sources and a flag. Do not overwrite
   silently and do not pick a winner on your own authority.
+- **Target nodes never hold state.** `type: target` nodes carry purely graph weight
+  — contribution edges and severity magnitude only. No current-state sections,
+  measurement logs, or "as at" findings.
+- **Task files hold no state.** The graph as a whole is not a log; task bodies
+  are work checklists rewritten in place (`synthesize-not-accrete`).
+- **Observations are not PKB content.** An observation is either synthesised into
+  durable knowledge that is the single source of truth for what it claims, or it
+  is removed. No undigested notes.
+- **Bugs go on GitHub only.** System, tooling, and framework defects are GitHub
+  issues, never PKB node bodies, appended findings, or "current state" sections.
 
 ## Capture
 
@@ -52,7 +62,7 @@ that generalise to nothing.
    tool, project, skill, agent, concept. If one exists for this topic area, you
    **must** augment it. A broader canonical note covering the area means no new
    note gets created.
-3. **Augment** — rewrite the section the observation belongs in so the note states **current state only** (`pkb__update_body`). A superseded fact is replaced, not annotated: no dated blocks, no "previously X", no correction notices, no provenance narration. Keep bodies short enough that a full rewrite is cheap — that is what makes this affordable, and it is why `pkb__append` is not needed. Evidence that grounds a claim gets its own node and a `[[wikilink]]`; the claim itself stays one plain attributed sentence.
+3. **Augment** — rewrite the section the fact belongs in so the note states **current state only** (`pkb__update_body`). A superseded fact is replaced, not annotated: no dated blocks, no "previously X", no correction notices, no provenance narration. Keep bodies short enough that a full rewrite is cheap — that is what makes this affordable, and it is why `pkb__append` is not needed. Evidence that grounds a claim gets its own node and a `[[wikilink]]`; the claim itself stays one plain attributed sentence.
 4. **Or create**, only when nothing matches — `pkb__create` for a document,
    `pkb__create_memory` for an atomic memory. Topical, never a session or date file.
 
@@ -89,13 +99,6 @@ behind carrying a pointer — that is duplication with extra steps.
   and anything else is one bullet under `## Pointers`. A prose section
   restating an edge is a parallel copy that drifts.
 - Capture the generalisable pattern, not the local implementation detail.
-- Factual claims in an episodic note carry an observation callout:
-
-  ```
-  > [!observation] The factual statement
-  > Source: [[source-note]]
-  > Confidence: <0.0–1.0>   (≥0.8 established · 0.4–0.79 provisional · <0.4 speculative)
-  ```
 
 - A `type: knowledge` note carries provenance in frontmatter: `sources`,
   `synthesized`, `last_reviewed`, `confidence`, and
@@ -155,6 +158,9 @@ record: it is a checklist, and consolidation rewrites it to one.
 
 ## Must not
 
+- Write state, measurement logs, or "as at" findings onto a `type: target` node (targets are pure weight).
+- Retain undigested observations in node bodies instead of synthesising them into durable SSOT notes or removing them.
+- File software, tooling, or framework bugs into PKB nodes instead of GitHub issues.
 - Write a dated section onto an existing note.
 - Create a second note on a topic that already has a canonical one.
 - Leave a superseded note in place with a pointer instead of merging and deleting.
