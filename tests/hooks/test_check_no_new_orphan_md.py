@@ -42,9 +42,9 @@ def mod():
         "plugins/aops/workflows/process/feature-dev.md",
         "plugins/orchestrate/hooks/messages/honesty.md",
         "plugins/tools/skills/analyst/SKILL.md",
-        # disabled plugins during development
+        # retired design intent — the only surviving half of plugins.disabled/
         "plugins.disabled/specs/learning-log-skill.md",
-        "plugins.disabled/workflows/base-commit.md",
+        "plugins.disabled/specs/sub/dir/deep.md",
         # specs / tests / templates
         "specs/ARCHITECTURE.md",
         "specs/enforcement/task-contract.md",
@@ -83,6 +83,10 @@ def test_allowed_paths(mod, path):
         "EXPLAINER.md",
         "SUMMARY.md",
         "CAPABILITY-MATRIX.md",
+        # retired plugin halves that no longer exist: the exemption covers
+        # plugins.disabled/specs/ only, not the whole retired tree
+        "plugins.disabled/workflows/base-commit.md",
+        "plugins.disabled/skills/extractor/SKILL.md",
         # adds inside lib or scripts (Python homes)
         "lib/notes.md",
         "scripts/notes.md",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -11,8 +12,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add required search paths
-_PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-_REPO_ROOT = _PLUGIN_ROOT.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_PLUGIN_ROOT = _REPO_ROOT / "plugins" / "orchestrate"
 _HOOKS_DIR = _PLUGIN_ROOT / "hooks"
 _LIB_HOOKS_DIR = _REPO_ROOT / "lib" / "hooks"
 
@@ -20,9 +21,27 @@ for p in (_LIB_HOOKS_DIR, _PLUGIN_ROOT, _HOOKS_DIR):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-import claude_code_tracer
-import handlers
-from dispatch import HookContext
+import claude_code_tracer  # noqa: E402  (plugins/orchestrate/hooks/claude_code_tracer.py)
+from dispatch import HookContext  # noqa: E402  (lib/hooks/dispatch.py)
+
+
+def _load_plugin_module(name: str, path: Path):
+    """Import a plugin hook module under a name of our choosing.
+
+    ``handlers`` is not a unique top-level module name — rbg, aops, aops-debug
+    and orchestrate each ship one, and ``tests/test_cope.py`` binds rbg's to
+    ``sys.modules["handlers"]`` when it sorts first in a shared session. A bare
+    ``import handlers`` here would silently get that one back.
+    """
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec and spec.loader, f"cannot load {path}"
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+handlers = _load_plugin_module("orchestrate_handlers", _HOOKS_DIR / "handlers.py")
 
 
 @pytest.fixture(autouse=True)

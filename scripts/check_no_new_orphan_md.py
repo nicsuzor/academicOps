@@ -6,7 +6,7 @@ allowlist. Modifications and renames of existing files are permitted.
 
 Canonical locations (allowed adds):
 - plugins/**/*.md                    plugin content
-- plugins.disabled/**/*.md           disabled plugins during development
+- plugins.disabled/specs/**/*.md     retired design intent
 - specs/**/*.md                      specifications
 - tests/**/*.md                      test fixtures + evidentiary data
 - templates/**/*.md                  scaffold templates
@@ -29,7 +29,7 @@ import sys
 
 ALLOWED_PATTERNS = [
     "plugins/**/*.md",
-    "plugins.disabled/**/*.md",
+    "plugins.disabled/specs/**/*.md",
     "specs/**/*.md",
     "tests/**/*.md",
     "templates/**/*.md",

@@ -123,11 +123,10 @@ queued → in_progress → merge_ready → done (deliverable accepted)
 `done` means the deliverable was accepted — evidence + output URL recorded on the
 PKB task; a merged PR is the code-surface instance of this.
 
-Canonical status definitions were documented at
-[[plugins.disabled/skills.disabled/graph-maintenance/references/taxonomy.md#status]];
-that skill is retired and excluded from the build, so treat the file as
-historical reference. The supervisor uses the canonical set without
-extensions (`partial` is part of that canonical set).
+The canonical status set is mem's `VALID_STATUSES`, mirrored in this repository
+at [[tests/policy.toml]] under `[aops.taxonomy]` and enforced against every
+shipped skill by [[tests/test_skill_status_vocabulary.py]]. The supervisor uses
+that set without extensions (`partial` is part of it).
 
 ## Related
 

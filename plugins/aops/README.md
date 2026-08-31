@@ -7,11 +7,7 @@ for a Personal Knowledge Base.
 
 ```mermaid
 flowchart TD
-    prompt([user prompt]) --> hook
-
-    hook["UserPromptSubmit hook<br/>one advisory message, every prompt:<br/>run search · task_search · retrieve_memory"]
-    hook --> agent
-    prompt --> agent["any agent<br/>calls the PKB MCP tools itself"]
+    prompt([user prompt]) --> agent["any agent<br/>calls the PKB MCP tools itself"]
 
     agent -- "planning, memory,<br/>anything that writes" --> pauli
 
@@ -42,7 +38,7 @@ flowchart TD
     agent -- "routes its own ask" --> library
 
     pkbwrite -- "every read and write" --> mcp
-    agent -- "the three hook searches" --> mcp
+    agent -- "hydrate's searches" --> mcp
 
     mcp[".mcp.json — services<br/>HTTP, or scripts/run-mcp.sh over stdio"] --> pkbstore[(PKB)]
 
@@ -50,27 +46,20 @@ flowchart TD
     dispatch --> pull
 ```
 
-### The hook asks; nothing checks
+### Grounding is a skill, not a hook
 
-The hook fires on every prompt and never calls the PKB itself. Establishing an
-MCP session on the critical path of every turn is not affordable, and a slow
-server would stall the turn. It emits one advisory message
-(`hooks/messages/pkb-context.md`, editable without touching code) naming three
-MCP tool calls to issue before answering — `pkb__search`, `pkb__task_search`,
-`pkb__retrieve_memory` (hosted under the `services` MCP server as `mcp__services__pkb__*`). It names no skill and does not invoke `hydrate`.
+Nothing fires on every prompt to ground it in the PKB. Establishing an MCP
+session on the critical path of every turn is not affordable, and a slow server
+would stall the turn, so the plugin does not try: it ships no
+`UserPromptSubmit` handler.
 
-Compliance is voluntary. The handler returns an advisory, which is context
-injection only; nothing reads back whether the agent searched. Agents can act on
-it because they hold the PKB tools directly — james, marsha, rbg and pauli all
-inherit the full MCP namespace (including `services` / `mcp__services__pkb__*`). `ida` is the one agent whose declared `tools`
-exclude them, and the message covers that case: say the tools are unavailable
-and work from what is visible, rather than guessing at what the PKB would have
-said.
-
-The `hydrate` skill is a different mechanism with a similar name, and the
-difference is that it runs. The hook asks the agent to search and never checks;
-the skill actually issues the searches, spends a six-call budget, and returns a
-shortlist. There, it is always first and never skipped.
+Grounding is `hydrate`'s job, and the difference from an advisory is that it
+runs. The skill issues the searches itself, spends a six-call budget, and
+returns a shortlist. There, it is always first and never skipped. Agents can
+run it because they hold the PKB tools directly — james, marsha, rbg and pauli
+all inherit the full MCP namespace (including `services` /
+`mcp__services__pkb__*`). `ida` is the one agent whose declared `tools` exclude
+them; she commissions the search rather than issuing it.
 
 What it returns is **pointers, not prose**: ids with a line each, saying what
 the thing is and why it might bear on the ask. It does not open them. The
@@ -196,13 +185,13 @@ not collection. The standard for what that means is
 
 ### Hook
 
-| Event              | Does                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| `UserPromptSubmit` | Injects the instruction to ground the prompt in the PKB, and names the searches to run. |
+| Event           | Does                                                                                               |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| `PostToolBatch` | Reminds ida to strip her reply to load-bearing content before speaking. Fires only for `aops:ida`. |
 
-Wording lives in `hooks/messages/pkb-context.md` and is editable without
-touching code. Claude Code fires this event directly; on Antigravity it arrives
-as `PreInvocation`.
+Wording lives in `hooks/messages/quiet.md` and is editable without touching
+code. Claude Code only: `PostToolBatch` has no Antigravity wire equivalent, and
+this plugin ships no agy `hooks.json`.
 
 ## Configuration
 

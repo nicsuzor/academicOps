@@ -169,11 +169,9 @@ def test_no_message_file_in_the_build_reaches_the_person(ida_dist):
     than listed here.
 
     Scoped to the names ida's handler actually loads, not every `*.user.md` in
-    the build: ida's hooks now ship from plugins/aops/hooks, alongside aops's
-    own unrelated messages/pkb-context.user.md (a dead file from the
-    permanently-disabled `search_the_pkb` hook, tests/policy.toml
-    `aops.search_the_pkb_enabled`), so a directory-wide sweep would fail on a
-    file this gate never touches.
+    the build: ida's hooks ship from plugins/aops/hooks, whose messages/ is
+    shared with anything else that plugin wires there, so a directory-wide
+    sweep would fail on a file this gate never touches.
     """
     handlers = (_claude_hooks_dir(ida_dist) / "handlers.py").read_text(encoding="utf-8")
     names = re.findall(r'load_message_pair\(\s*ctx\.hooks_dir,\s*"([^"]+)"\s*\)', handlers)

@@ -49,4 +49,4 @@ The handback for a TDD-cycled change states: which behaviors were covered by whi
 
 ## Source material (provenance)
 
-Reworked from the archived workflow template `base-tdd.md`, largely intact — no longer on the tree, deleted in `422eda01` from `plugins.disabled/workflows/`. The original was already a clean, self-contained composable pattern with an explicit state machine and check predicates; this rework repackages it with an output contract and when-to-include guidance to match the wf-* seed bar. Part of epic_5e9fc3d5 (SSoT: note_296e5520 D4).
+Reworked from the retired workflow template `base-tdd.md`, largely intact — no longer on the tree; git holds it. The original was already a clean, self-contained composable pattern with an explicit state machine and check predicates; this rework repackages it with an output contract and when-to-include guidance to match the wf-* seed bar. Part of epic_5e9fc3d5 (SSoT: note_296e5520 D4).
