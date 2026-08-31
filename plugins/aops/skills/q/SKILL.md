@@ -35,8 +35,10 @@ Capture and placement only. You do not expand an ask into its components, name i
    - `contributes_to` the target or goal this work actually serves, with a verbal `stated_weight` (`critical`, `high`, `medium`, `low`) and one sentence of justification ([[kb_pauli_prioritisation_doctrine]]).
    - `depends_on` for known hard blockers, `soft_depends_on` for context or informational relations, `supersedes` where this replaces prior work.
 
-5. **Densify with wikilinks.**
-   Add `[[wikilinks]]` to related nodes, prior attempts, and relevant documentation — the neighbours you confirmed by opening. **The graph should come out denser, not just longer.** A task whose only edge is its parent has not been placed, it has been dumped.
+5. **Densify.**
+   Wire an edge to every neighbour you confirmed by opening — related work, prior attempts, what this supersedes. **The graph should come out denser, not just longer.** A task whose only edge is its parent has not been placed, it has been dumped.
+
+   Density is edges, never prose. A task body never links another task and never describes its relation to one: that structure is the edge, and a prose copy of it goes stale while the edge stays correct. `[[wikilinks]]` in a body point at knowledge the executor must open — notes, references, documentation.
 
 6. **Value it at intake.**
    Record initial estimates, populating only what you actually established. Do not fabricate precision the ask does not support.

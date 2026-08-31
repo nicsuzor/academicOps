@@ -46,12 +46,14 @@ Abstract means it says what, never how. If you are writing how a component gets 
    ```markdown
    ## Goal — every outcome this component must produce, numbered, one imperative per outcome
 
-   ## Known fragments — [[id]] + ≤1 clause on why to open it; where a starting set exists
+   ## Known fragments — [[id]] of a note or document the executor must open + ≤1 clause on why; never a task; where a starting set exists
 
    ## Not included — bare directives, one clause each, no rationale; where a real collision risk exists
    ```
 
-   No section defending the scope, naming the stage the component sits at, warning what happens if it is read wider, or adjudicating overlap with a sibling — the overlap is the edge you wired in step 5, and a prose copy of an edge drifts. A qualifier a heading already carries is not restated beneath it.
+   Every line must be immediately useful to the agent that executes this component. Nothing whose subject is the component itself: no section defending the scope, naming the stage it sits at, warning what happens if it is read wider, or describing its relation to a sibling. Those relations are the edges you wired in step 5; a prose copy of an edge drifts while the edge stays correct. A qualifier a heading already carries is not restated beneath it.
+
+   Invoke the `craft` skill for the standard these bodies must meet.
 
 ## Output
 

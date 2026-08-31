@@ -94,10 +94,13 @@ behind carrying a pointer — that is duplication with extra steps.
 - Wikilinks in prose only — never inside code blocks, inline code, or technical
   tables. No "See Also" section; links live where the thing is discussed.
 - Typed relations on a **note** go in a `## Relationships` section:
-  `- [related] [[task-id]] — one line on why`. Not on a task body: there the
-  relation is a real graph edge (`depends_on`, `supersedes`, `contributes_to`)
-  and anything else is one bullet under `## Pointers`. A prose section
-  restating an edge is a parallel copy that drifts.
+  `- [related] [[node-id]] — one line on why`. Never on a task body: there the
+  relation between two tasks is a real graph edge (`depends_on`, `supersedes`,
+  `contributes_to`, parentage) and nothing else. A task body never links a task
+  and never has a section describing its relation to one — a prose copy of an
+  edge is a parallel source of truth that drifts while the edge stays correct.
+  Wikilinks in a task body point at knowledge the executor must open, never at
+  tasks.
 - Capture the generalisable pattern, not the local implementation detail.
 
 - A `type: knowledge` note carries provenance in frontmatter: `sources`,
