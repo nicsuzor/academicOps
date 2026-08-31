@@ -17,15 +17,12 @@ the user, so if supervision is to survive a day-long absence at all, some of it
 has to be hers.
 
 The question is which part. `rex` is a project-local persona that ships in no
-plugin, and its charter has already been taken apart:
-[`supervision-split.md`](supervision-split.md) records where each half went — the
-standard held while scoring someone else's run to
-`.agents/skills/dogfood/SKILL.md` § "Supervising a trial", the material for
-driving a run to `.agents/skills/debug/SKILL.md`. The delegate-and-verify loop
-itself is now a shipped skill,
+plugin, and its charter has already been taken apart: the standard held while scoring
+someone else's run lives in `.agents/skills/dogfood/SKILL.md` § "Supervising a trial",
+the material for driving a run in `.agents/skills/debug/SKILL.md`. The delegate-and-verify
+loop itself is now a shipped skill,
 `plugins/orchestrate/skills/supervised-development/SKILL.md`, which
-[`../polecat/supervisor.md`](../polecat/supervisor.md) mandates any orchestrator
-invoke rather than hand-roll.
+[`sara.md`](sara.md) mandates any orchestrator invoke rather than hand-roll.
 
 So the remaining question is narrow and answerable: **of what is left, which
 capabilities move to ida, on what evidence, and what never moves.**
@@ -376,14 +373,13 @@ whether errors are independent or correlated across units.
 
 ## Relationship to the surrounding design
 
-This spec resolves the gap left open by
-[`supervision-split.md`](supervision-split.md), which recorded that ida holds the
-supervision standard and delegates the run, and that whether any further
+This spec resolves the gap left by decomposing rex's charter, which recorded that
+ida holds the supervision standard and delegates the run, and that whether any further
 capability should move — and what would gate it — was undecided. The answer
 offered here, conditional on the context probe above: adjudication and
 continuation move, on the staged evidence; driving does not, at any stage.
 
-It does not reopen [`../polecat/supervisor.md`](../polecat/supervisor.md). The
+It does not reopen [`sara.md`](sara.md). The
 four supervisor concerns and the four evaluation outcomes are that spec's, and
 the loop remains `plugins/orchestrate/skills/supervised-development/SKILL.md`,
 invoked and never hand-rolled. What changes across the stages here is only

@@ -396,7 +396,7 @@ jobs:
 
 ### `.github/ISSUE_TEMPLATE/task.yml`
 
-This dropdown is for a **human** filing an issue. When an agent creates a task programmatically it follows the intent-authority rule instead — leave `priority` at the uncurated default; only Nic sets a non-default band, by express per-request instruction ([[framework-conventions-summary#intent-authority]]).
+This dropdown is for a **human** filing an issue. When an agent creates a task programmatically it follows the intent-authority rule instead — leave `intent` (or `priority`) at the uncurated default; only Nic sets a non-default band, by express per-request instruction ([[framework-conventions-summary#intent-authority]]).
 
 ```yaml
 name: Task

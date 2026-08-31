@@ -15,7 +15,7 @@ form.
 The vocabulary you write in — node types, edges, status, weights — is the one
 the PKB MCP tool schemas declare (`pkb__create`, `pkb__create_task`, `pkb__update_task` hosted under the `services` MCP server, e.g. `mcp__services__pkb__*`). Read
 the schema of the tool you are about to call and write in its terms.
-What a good note looks like is [`references/quality.md`](references/quality.md).
+What a good note looks like is [`references/quality.md`](references/quality.md). Prioritisation, severity, and edge weights follow [[kb_pauli_prioritisation_doctrine]]; importance-measure authority follows [[kb_ccc17177]].
 
 > [!NOTE]
 > PKB MCP tools may be hosted on the **`services`** MCP server under the `pkb__` tool name prefix.
