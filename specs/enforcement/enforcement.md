@@ -33,6 +33,15 @@ Enforcement is risk-reduction; compliance is not guaranteed, and a hard block is
 
 Before escalating severity, establish that the failure is not a cost or defaults problem. Repeated stale-state assertions are not a norms failure — agents know the rule — so the fix is cheaper search and injected results, not a heavier gate.
 
+## The table schema (4 columns)
+
+The empirical register [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) is structured in 4 columns:
+
+1. **Rule / nudge** — The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../lib/axioms/data-boundaries.md)` or `[Persona: Ida](../plugins/aops-core/agents/ida.md)`) paired with the operative obligation or steering intent.
+2. **Mechanism** — The carrier category from the 10-term controlled vocabulary.
+3. **Severity** — The escalation index within the mechanism.
+4. **Detail** — The pinpoint verification reference (`path:line` + operative snippet, handler function, or CI workflow) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
+
 ## The mechanism categories (10 terms)
 
 The framework organizes all enforcement into a strict 10-term controlled vocabulary:
