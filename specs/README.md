@@ -10,7 +10,7 @@
 ## Agents
 
 - [agents/agent-authority.md](agents/agent-authority.md) — permissions schema, tool naming, skill/sub-agent delegation.
-- [agents/supervision-split.md](agents/supervision-split.md) — where rex's supervision doctrine and execution material live, and why.
+- [agents/sara.md](agents/sara.md) — delegate-and-verify orchestration process.
 - [agents/ida-supervision-migration.md](agents/ida-supervision-migration.md) — which supervision capabilities move to ida, the checkpoints that gate each increment of autonomy, and what never moves.
 
 ## Enforcement
@@ -26,7 +26,6 @@
 ## Polecat
 
 - [polecat/polecat-system.md](polecat/polecat-system.md) — one isolated container + isolated clone per `polecat run` invocation.
-- [polecat/supervisor.md](polecat/supervisor.md) — delegate-and-verify orchestration process.
 - [polecat/tmux-interactive-driving.md](polecat/tmux-interactive-driving.md) — driving a polecat container interactively via tmux.
 - [polecat/spec-partial-work-tight-loop-delivery.md](polecat/spec-partial-work-tight-loop-delivery.md) — the `partial` terminal state and partial-work doctrine.
 

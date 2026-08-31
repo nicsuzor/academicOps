@@ -1,7 +1,7 @@
 ---
 name: tick
 type: skill
-description: Periodic check to nudge high priority epics along between steps.
+description: Periodic check to nudge high intent epics along between steps.
 ---
 
 # /tick: keep our epics moving
@@ -24,7 +24,7 @@ Epics might be stuck for any number of reasons.
 
 - Maybe they're waiting on a decision; you should figure out if you can resolve it yourself, or whether you need to bring it to nic's attention. Please do try not to bring it to my attention though.
 - Maybe they're waiting on a PR approval, or a stuck CI run, or a draft pull request or changes requested on a PR. You know what to do; each epic should have a process that was baked into the task by the decomposition process, so just follow that. If that's not there, figure it out. Again, don't bother me with it if you can at all avoid it.
-- Things genuinely waiting for me: I need to know. Put it in the daily note for a start, but also make sure that the decision point is assigned to me and shows up on the graph. Don't touch the manual priority lever, but an approval task that is blocking a high focus epic should show up on my dashboard automatically.
+- Things genuinely waiting for me: I need to know. Put it in the daily note for a start, but also make sure that the decision point is assigned to me and shows up on the graph. Don't touch the manual intent lever, but an approval task that is blocking a high focus epic should show up on my dashboard automatically.
 
 Once you have decisions that you need to bring to me, give me a brief summary and a recommendation for each through the AskUserQuestion tool. If I've just invoked this skill, it's likely I have time to talk through some quick decisions and unblock some tasks.
 

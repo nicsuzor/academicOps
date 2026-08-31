@@ -15,7 +15,7 @@ tags: [enforcement, framework-architecture, verification, evidence-contract]
 > boundary-check and QA-around steps of a workflow (Layer 3), and the
 > principal sign-off brief (Layer 4) all read the same rule defined here,
 > rather than each layer inventing its own evidence format. The supervisor's
-> per-tick worker handback ([`specs/polecat/supervisor.md`](../polecat/supervisor.md))
+> per-tick worker handback ([`specs/agents/sara.md`](../agents/sara.md))
 > is the same contract again, instantiated for orchestration rather than a
 > PKB task boundary.
 
@@ -93,7 +93,7 @@ are present has not performed either step.
 ## The canonical structured-handback format
 
 This section is the single source of truth for the six-field handback shape.
-Every other surface that uses it — [`specs/polecat/supervisor.md`](../polecat/supervisor.md)
+Every other surface that uses it — [`specs/agents/sara.md`](../agents/sara.md)
 and any task brief that asks for a handback — links here rather than
 restating the field definitions.
 
@@ -164,7 +164,7 @@ no programmatic, deterministic, or mechanical enforcement of quality, ever).
   prose brief to the principal is this contract at release-unit scale: every
   delivered/checked claim in it carries a resolvable pointer or a stated
   failure reason, exactly as at Layer 2.
-- **Supervisor per-tick handback** ([`specs/polecat/supervisor.md`](../polecat/supervisor.md)).
+- **Supervisor per-tick handback** ([`specs/agents/sara.md`](../agents/sara.md)).
   Same contract, applied to a background worker reporting to its supervisor
   rather than a task boundary reporting to a reviewer.
 

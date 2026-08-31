@@ -155,7 +155,7 @@ pointers and leaves every write to the stages downstream.
 - Synthesize. No prose summary, no "here is what has been tried" narrative, no
   restating the ask back. You point; whoever called you opens what matters.
 - List standards, obligations, review gates, or workflow templates.
-- Judge value, priority, effort, or whether the work is worth doing.
+- Judge value, intent, effort, or whether the work is worth doing.
 - Touch status or any other frontmatter.
 - Pad the shortlist to look thorough, or rank by similarity score — the score
   got the line in front of you, and your judgment is what keeps it.

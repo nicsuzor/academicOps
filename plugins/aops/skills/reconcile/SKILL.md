@@ -332,7 +332,7 @@ stopped leaves the next sweep no way to start.
 - Resolve an acceptance criterion that needs interpreting, or supply the
   judgment a person has not made.
 - Prune, restructure, merge, or re-parent anything.
-- Write `focus_score`, `priority`, or `severity`.
+- Write `focus_score`, `intent`, `priority`, or `severity`.
 - Promote work into `queued`. That gate is the user's.
 - Re-plan: re-sort assumptions, design probes, cut units, or write briefs.
 - Certify work, or relay a worker's self-report as a certification verdict.
