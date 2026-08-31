@@ -8,7 +8,7 @@ description: List, read, add, edit, and retire the workflow templates that `brie
 
 A workflow template is any markdown document with `type: template` (with project-local
 lookup in `$CWD/.agents/templates/` as well) describing how a class of work
-proceeds. `brief` §5 composes process out of them. Nothing else in the framework
+proceeds. `brief` composes process out of them. Nothing else in the framework
 lets a person see what the library holds or change it, so this skill is the only
 surface for both.
 

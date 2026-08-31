@@ -31,7 +31,9 @@ _No implementation yet. This spec defines research-specific decomposition as a d
 - [[specs/workflows/conceptual-review-workflow.md]] -- review workflow; this spec instantiates it for research
 - [[plugins/aops/agents/pauli.md]] -- strategic planning; this spec specialises it for research projects
 - PKB task-graph MCP tools (`mcp__services__pkb__*`) -- task graph tools (reused; the standalone `mcp-decomposition-tools.md` spec describing an 18-tool `tasks_server.py` was retired as stale during the 2026-07 simplification pass, since the current MCP surface doesn't match it)
-- [[plugins/aops/skills/brief/SKILL.md]] -- placement, valuation, assumption sorting, fork ranking, probe design, then sizing and process composition; this spec extends it with research primitives and supplies the primitives it cuts to
+- [[plugins/aops/skills/q/SKILL.md]] -- placement and valuation
+- [[plugins/aops/skills/decompose/SKILL.md]] -- assumption sorting, fork ranking, probe design
+- [[plugins/aops/skills/brief/SKILL.md]] -- process composition and sizing; this spec extends the pipeline with research primitives and supplies the primitives it cuts to
 
 ## Motivation
 
@@ -41,7 +43,7 @@ The intellectual foundations for why research needs its own decomposition approa
 
 Together, these traditions explain why research decomposition cannot simply be software project management with different labels. Research operates under genuine uncertainty -- not risk (known probability distribution) but uncertainty (unknown unknowns). The decomposition must respect this by front-loading information-gathering, treating assumptions as first-class objects, and maintaining the flexibility to pivot when early findings reshape the question.
 
-This spec composes with the general pipeline — `plugins/aops/skills/brief/SKILL.md` — and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
+This spec composes with the general pipeline — `/q` → `/decompose` → `/brief` — and the conceptual review workflow. It does not replace either. It provides the domain-specific primitives, lenses, and sequencing rules that those upstream systems use when the domain is academic research.
 
 ## The User
 
@@ -99,30 +101,30 @@ These failure modes are well-documented in research methods pedagogy. They motiv
 
 ### Effectual Planning
 
-The effectual framework — fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning — lives in one stage. `plugins/aops/skills/brief/SKILL.md` places the fragment, values it, sorts the assumptions into tested and hopes, ranks the open forks by information value across the network, and designs the probe for each; `plugins/aops/skills/strategize/SKILL.md` is the on-demand lens over it, run by ida.
+The effectual framework — fragment placement, assumption surfacing, network-based prioritisation, adaptive replanning — is split across the front of the pipeline. `plugins/aops/skills/q/SKILL.md` places the fragment and values it; `plugins/aops/skills/decompose/SKILL.md` sorts the assumptions into tested and hopes, ranks the open forks by information value across the network, and designs the probe for each; `plugins/aops/skills/strategize/SKILL.md` is the on-demand lens over it, run by ida.
 
 This spec does NOT replace that pipeline. Instead, it provides three things the pipeline uses when the domain is research:
 
-1. **Domain-specific primitives.** When `brief` cuts a research project into dispatchable units, it draws from the research primitive table below (spike, lit-review, methodology, etc.) rather than generic task types. These primitives carry semantic meaning that shapes sequencing and dependency decisions.
+1. **Domain-specific primitives.** When `brief` cuts a research project into dispatchable units at the reify stage, it draws from the research primitive table below (spike, lit-review, methodology, etc.) rather than generic task types. These primitives carry semantic meaning that shapes sequencing and dependency decisions.
 
 2. **Domain-specific review lenses.** When a research decomposition is reviewed, the conceptual review workflow selects from the research lens table below. `brief` does not perform review -- it records the review obligations on the task body, and the review workflow executes them using these lenses.
 
 3. **A maturity-gated entry path.** The formality gradient (seeds vs. active projects) maps to seedling vs. forest mode. A half-formed research idea enters as a seedling; a defined project enters as a forest.
 
-The intended handoff works as follows: `brief` applies the sequencing rules from this spec to a captured research idea, cuts to the primitives below, and records review obligations on the task body; the conceptual review workflow then reviews using the research-specific lenses. `brief`'s assumption map feeds directly into the assumptions table that this spec requires as output. (See Open Question #5 for integration path alternatives -- this handoff mechanism is not yet specified.)
+The intended handoff works as follows: the pipeline applies the sequencing rules from this spec to a captured research idea, `brief` cuts to the primitives below and records review obligations as acceptance criteria on the task body, and the conceptual review workflow then reviews using the research-specific lenses. `decompose`'s assumption map feeds directly into the assumptions table that this spec requires as output. (See Open Question #5 for integration path alternatives -- this handoff mechanism is not yet specified.)
 
-### Brief Workflow
+### Pipeline Workflow
 
-`plugins/aops/skills/brief/SKILL.md` provides the general sizing and composition infrastructure:
+The general sizing and composition infrastructure is split across `decompose` and `brief`:
 
 - **Fork-based sizing**: a dispatchable unit is the largest chunk containing no unresolved fork; where a fork is blocked on missing information, the unit dispatched is the probe
 - **Dependency types**: hard (`depends_on`) vs. soft (`soft_depends_on`) dependency decisions; human handoff patterns
-- **Process composition**: the workflow templates the unit runs under, loaded from all three layers at composition time
+- **Process composition** (`brief`): the workflow components the unit runs under, read from all three sources at composition time
 - **Review obligations**: each composed obligation recorded as concrete acceptance criteria on the task body, not as speculative pre-emitted graph nodes (Nic's merge is the sign-off)
 
 The Academic Output Layer, verify-parent completion loops, and the post-decomposition self-check list this spec previously named do not ship anywhere in the tree. They are target shape, not current behaviour.
 
-This spec composes with `brief`; it does not replace it. Specifically:
+This spec composes with the pipeline; it does not replace it. Specifically:
 
 - **Research primitives map to existing types** (no schema changes). A `lit-review` is a `learn` task with a research-semantic label. An `ethics` task is a `task` with a gate marker. The existing graph vocabulary handles all of these.
 - **The Academic Output Layer applies to research outputs.** A research paper follows the same Prep --> Decision Support --> Decisions --> Writing --> Integration --> Audit sequence. This spec does not add new layers; it specifies what each layer contains for research (e.g., Prep includes literature search and data access validation; Audit includes claim-evidence cross-referencing).
@@ -438,7 +440,7 @@ verify: "Verify: platform governance study objectives met"
 
 - Research decomposition primitives and sequencing rules
 - Seedling and forest modes with fully specified outputs
-- Integration with `plugins/aops/skills/brief/SKILL.md`
+- Integration with the `/q` → `/decompose` → `/brief` pipeline
 - Research-specific review lenses for the conceptual review workflow
 
 ### Out of scope
@@ -452,8 +454,8 @@ verify: "Verify: platform governance study objectives met"
 1. **When to decompose.** What heuristics determine seedling vs. forest? Input length, presence of methodology keywords, and user's stated intent are candidates, but the boundary is fuzzy.
 2. **Domain expertise injection.** How do we inject field-specific knowledge into the reviewer? Literature search via Zotero? User-provided context documents? Retrieval-augmented review? (Shared with the conceptual review workflow.)
 3. **Methodology primitive granularity.** Is one "methodology" primitive sufficient, or does it need sub-primitives (research design, sampling strategy, analysis plan, instrument development)?
-4. **Multi-project decomposition.** How do related projects' decompositions interact? A researcher working on two governance studies should share literature review and ethics tasks. `brief`'s network-based fork ranking may handle this, but the mechanism is unspecified.
-5. **Pipeline integration path.** What is the concrete handoff mechanism? Does `brief` invoke this spec's rules directly, or does it produce a draft that this spec's primitives then reshape?
+4. **Multi-project decomposition.** How do related projects' decompositions interact? A researcher working on two governance studies should share literature review and ethics tasks. `decompose`'s network-based fork ranking may handle this, but the mechanism is unspecified.
+5. **Pipeline integration path.** What is the concrete handoff mechanism? Do the pipeline stages invoke this spec's rules directly, or do they produce a draft that this spec's primitives then reshape?
 
 ## Future Work
 

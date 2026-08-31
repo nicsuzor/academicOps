@@ -21,7 +21,8 @@ flowchart TD
 
         hydrate --> capture["commands/q<br/>record one inbox node<br/>and stop"]
         capture --> gate{{"the user calls brief<br/>on an inbox node<br/>— being called is the gate"}}
-        gate --> brief["skills/brief<br/>placed, valued, wired; assumptions tested vs hopes,<br/>forks and their probes, decision list ·<br/>size at the forks · compose the process ·<br/>set acceptance criteria & gates ·<br/>write the brief — inbox to queued, then stop"]
+        gate --> decompose["skills/decompose<br/>expand into abstract components ·<br/>assumptions tested vs hopes ·<br/>forks and their probes · decision list"]
+        decompose --> brief["skills/brief — reify<br/>work out the process · size at the forks ·<br/>set acceptance criteria · write the brief<br/>— inbox to queued, then stop"]
 
         pauli --> pull["skills/pull<br/>claim it, execute it,<br/>record the result, hand over"]
         pauli --> remember["skills/remember<br/>capture · consolidate"]
@@ -102,19 +103,19 @@ pull request and the one-way-door sign-offs `brief` wired into the graph.
 ### Capture is hydrate plus one write
 
 `/q` runs `hydrate` and records one `inbox` node carrying the ask and the
-shortlist. That is the whole of capture: no parent judgment, no valuation, no
-edges, no decisions.
-Every judgment made at capture time is one made on the thinnest context anyone
-will ever have about the ask, and capture that costs more than a few seconds is
-capture that stops happening. `brief` does all of it afterwards, on a node that
-already exists.
+shortlist, placed under a real parent, wired to what it serves, and valued at
+intake. What capture does **not** do is expand the ask into its components,
+name its forks, or decide anything: every judgment made at capture time is one
+made on the thinnest context anyone will ever have about the ask, and capture
+that costs more than a few seconds is capture that stops happening. The stages
+after it do that work, on a node that already exists.
 
 ### The composer is not the executor
 
-`brief` fires when the user calls it, on a captured ask. It places and values the
-unit, sorts its assumptions, names its forks, sizes it, composes its process,
-records its review obligations, and writes the brief into the task body — then stops at
-`queued`. Dispatch happens later and **by task id**, never by handing the
+`brief` fires when the user calls it, on a captured ask. `decompose` sorts its
+assumptions and names its forks; `brief` works out the process, sizes the work,
+records the review obligations as acceptance criteria, and writes the brief into
+the task body — then stops at `queued`. Dispatch happens later and **by task id**, never by handing the
 freshly-composed text to a worker as a prompt. The executor's first act is to
 read the brief cold from the task, which is what makes the brief bind rather
 than merely restate the reasoning that produced it.
@@ -148,7 +149,7 @@ at all — a simple question is answered and halted, a follow-up continues the
 session, an email is triaged.
 
 **Composition** is assembling a full process for work that has been released for
-dispatch, and it happens in `brief` §5 — read in context, every time, never
+dispatch, and it happens in `brief` — read in context, every time, never
 carried in pauli's own text. The three template layers sit outside the box
 because they are sources, not stages: the shipped library, project-local
 `$CWD/.agents/templates/`, and PKB documents with `type: template`. They form

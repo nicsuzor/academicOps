@@ -17,13 +17,13 @@ title: wf-brief-composition-verify
 type: template
 ---
 
-# wf-brief-composition-verify: Live TDD-Shaped Verification of Pauli /brief Composition
+# wf-brief-composition-verify: Live TDD-Shaped Verification of Pipeline Composition
 
 ## What this step does
 
 A live, TDD-shaped verification workflow that tests whether `pkb:pauli` reliably composes correct `/brief` processes across a variety of task shapes.
 
-This workflow distinguishes "the skill instructions say X" from "a cold agent composing under `/brief` actually executes X." It provides a repeatable qualitative test harness to verify that `/brief` outputs adhere strictly to the dual-tier library architecture, sizing rules, gate placement, and acceptance criteria formulation.
+This workflow distinguishes "the skill instructions say X" from "a cold agent composing under `/brief` actually executes X." It provides a repeatable qualitative test harness to verify that `/brief` reads components from all three sources, and adheres to the sizing rules and acceptance criteria formulation.
 
 ## Scope & Superseded Context
 
@@ -45,7 +45,7 @@ No further investigation of search path or precedence is needed or permitted in 
 
 ### 2. Evaluation Rules (drawn from `[[wf-qa-verify]]`)
 
-- **Evaluator ≠ Executor**: The agent evaluating `/brief` outputs must be a separate, independent identity from the agent composing the brief.
+- **Evaluator ≠ Executor**: The agent evaluating pipeline outputs must be a separate, independent identity from the agent that ran the stages.
 - **Lock criteria before gathering evidence**: Acceptance criteria are fixed before examining the generated task body.
 - **Evaluate against evidence, not self-report**: Verdicts (PASS / FAIL / ESCALATE) must cite exact pinpoint extracts from the composed task body.
 
@@ -68,7 +68,7 @@ Governed by `[[ref-brief-detail-verdict-20260818]]`:
 Modeled on `[[wf-self-test]]` and `[[wf-agentic-e2e-certification]]` ("when to include"):
 
 - **Triggered, not continuously automated.**
-- Run after any change to `plugins/pkb/skills/brief/SKILL.md` or `plugins/pkb/agents/pauli.md`.
+- Run after any change to `plugins/aops/skills/brief/SKILL.md` or `plugins/aops/agents/pauli.md`.
 - Run after any change to composed `wf-template` documents in `pkb-workflow-index` or `plugins/pkb/workflows/process/*.md`.
 - Run as a periodic audit or quality certification before minor/major framework releases.
 

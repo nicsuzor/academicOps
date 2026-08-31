@@ -9,7 +9,7 @@ permalink: workflows-index
 # Workflow Template Library
 
 > [!IMPORTANT]
-> **v0.9.1 Null Template Set**: All legacy composed-workflow templates have been archived to `archive/` ([[aops_f74b7e6c]]). The universal template set is currently null, awaiting replacement templates to be authored against the unified `/q` → `/decompose` → `/weave` → `/extrapolate` → `/reify` pipeline ([[aops_8d893568]] / [[spec_efb3c4ec]]).
+> **v0.9.1 template set**: the legacy composed-workflow templates were archived to `archive/` ([[aops_f74b7e6c]]). What remains here are QA and utility components; the process components a task composes around are yet to be re-authored against the `/q` → `/decompose` → `/brief` pipeline ([[aops_8d893568]] / [[spec_efb3c4ec]]).
 >
 > Legacy templates are preserved in `plugins/aops/workflows/archive/` with `status: retired` for post-MVP salvage and reference.
 

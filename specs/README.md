@@ -31,7 +31,7 @@
 
 ## Workflows
 
-- [workflows/task-pipeline.md](workflows/task-pipeline.md) — the stages from capture to return channel, and why the boundaries sit where they do.
+- [workflows/workflow.md](workflows/workflow.md) — the three-stage pipeline and where workflow components come from.
 - [workflows/conceptual-review-workflow.md](workflows/conceptual-review-workflow.md) — composable-lens multi-agent review of intellectual artifacts.
 - [workflows/research-decomposition.md](workflows/research-decomposition.md) — research-specific decomposition primitives and sequencing.
 - [workflows/reconcile.md](workflows/reconcile.md) — GitHub ↔ PKB task-graph reconciliation.

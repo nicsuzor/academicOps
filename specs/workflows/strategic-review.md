@@ -5,7 +5,7 @@ type: spec
 category: workflow
 status: ready
 tags: [spec, workflow, review, multi-agent, strategic-review, lenses]
-related: [[conceptual-review]], [[task-pipeline]]
+related: [[conceptual-review]], [[workflows-workflow]]
 ---
 
 # Strategic Review Workflow

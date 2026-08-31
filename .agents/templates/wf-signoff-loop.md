@@ -24,10 +24,9 @@ source: "aops-1e4cbf7e"
 ## What this step does
 
 The review-until-approval loop the principal runs **at** a sign-off gate, over one completed unit
-of work, before it may be marked done. `brief` holds that "**Human sign-off is the one node you
-emit uncomposed**" (`plugins/pkb/skills/brief/SKILL.md:429`); this template is the _interior_ of
-that node. It is **not** a node `brief` composes into a worker's process, and no producer runs it
-over its own output.
+of work, before it may be marked done. Human sign-off is the heaviest review obligation `brief`
+can record on a task, and this template is the _interior_ of that obligation. It is **not** a step
+composed into a worker's process, and no producer runs it over its own output.
 
 ## Slots the invoker fills
 
