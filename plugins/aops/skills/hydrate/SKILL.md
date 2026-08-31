@@ -13,27 +13,19 @@ If you do not receive a prompt argument, HALT and RETURN immediately.
 
 ### RULE 2. Confirm you have a working route to the PKB, then use it
 
-Two routes reach the same graph, and neither is more authoritative than the
-other: the PKB MCP tools (bare, or nested under a combined `services` server,
-always suffixed `pkb__` — e.g. `pkb__search`, `mcp__services__pkb__search`) and
-the sanctioned local `pkb` CLI, invoked via `Bash(pkb *)`.
+The PKB is reached exclusively through its MCP tools (bare, or nested under a
+combined `services` server, prefixed `pkb__` — e.g. `pkb__search`,
+`mcp__services__pkb__search`).
 
-- **Use whichever route you are actually configured for.** Check your tool
-  index (use tool search if you need to) for a tool suffixed `pkb__search`. If
-  you have one, use the MCP tools. If you do not, but `pkb` is invocable
-  through Bash, use the CLI instead — run `pkb --help` for the exact
-  search/query subcommand, since flags can change.
-- **If neither route answers, HALT and RETURN immediately.** This is a fail
-  closed rule, not a degradation ladder — do not fall back to anything else.
-
-The PKB may ONLY be reached over one of these two sanctioned routes.
-
-- **Do NOT use `Grep`, `Glob`, or any other filesystem access** to interact
-  with the PKB.
-- **Never touch `$ACA_DATA`** (the directory holding the PKB database)
-  directly, by any means, even if it is available to you. The `pkb` CLI is not
-  filesystem access — it is the same sanctioned binary and the same graph as
-  the MCP tools, so using it does not violate this rule.
+- **If MCP tools are unavailable or fail, HALT and RETURN immediately.** A tool
+  being down, slow, wrong, or failing is not a licence to reach around it into
+  `$ACA_DATA` with `grep`, `cat`, `sed`, or the `pkb` CLI (`halt-on-failure`).
+  The correct response to a broken tool is to halt and surface, not to route
+  around it.
+- **Do NOT use `Grep`, `Glob`, `Bash`, the `pkb` CLI, or any filesystem access**
+  to interact with the PKB or `$ACA_DATA`.
+- **Never touch `$ACA_DATA`** (the directory holding the PKB database) directly
+  by any means.
 
 ## Task
 
