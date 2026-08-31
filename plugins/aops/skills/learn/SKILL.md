@@ -12,7 +12,7 @@ The user is reporting that something went wrong _that is worth fixing systemical
 - Your role is the hard part: thinking through the counterfactual -- what technique _might_ we have used that would have been more likely to prevent the **class** of mistake or to identify and correct it earlier?
 - Every mitigation measure comes at significant cost. We use this skill to develop the evidence base required for us to decide when and how to act in a way that is likely to be effective while minimising ths burden.
 
-You are to file a Root Cause Analysis at the _appropriate layer_.
+You are to file a Root Cause Analysis at the _appropriate layer_. You diagnose and file; the remedy is not yours to apply, to choose, or to propose.
 
 - **Anonymise** your report. No real names, emails, personal details, or raw session dumps in anything you write or transmit.
 
@@ -63,26 +63,15 @@ Record the root cause at the appropriate layer:
 - Be careful about leaking sensitive information; strip reports of any identifying information and specific tasks, input, or output.
 - You should first try to find _other_ instances of this class of error. It is **much** better to add detail and counter-examples to existing known problems than to create a new issue for the specific manifestation of a general class of risks.
 
-## 4. Match the remedy to the failure
+## 4. Where the finding goes
 
-You are **strictly forbidden from implementing any fix directly**. We have found that this leads to an unacceptable risk of over-fitting to this specific instance rather than the broader class of problem. Instead, route the finding to the mechanism that fits.
+You are **strictly forbidden from implementing any fix directly**. We have found that this leads to an unacceptable risk of over-fitting to this specific instance rather than the broader class of problem.
 
-There is no default direction to move in, lighter to heavier or the reverse. The mechanisms available suit different shapes of problem, and choosing between them is a matter of fit, not a rung on a severity ladder:
+The same reasoning forbids proposing one. Do not select a remedy class, argue that one mechanism fits the failure better than another, or open a task to make the fix. No agent introduces a new rule or enforcement mechanism on the strength of its own finding: that authority sits with the evidence loop in `specs/enforcement/enforcement.md`, and any escalation it authorises works the enforcement pyramid in § "The escalation ladder (the enforcement pyramid)", in strict order, cheapest rung first. Your finding is evidence going into that process, not a verdict coming out of it.
 
-- **Restraint** — a rule, a gate, a hard block, an explicit prohibition — makes the disfavoured action impossible or forces a stop before it lands. It fits when the impact is irreversible, or serious enough that another instance can't be tolerated while a lighter fix takes hold.
-- **Architecture** — defaults, what tools exist, which skills are discoverable, which templates exist — nudges without prohibiting anything, by making the preferred behaviour cheap and the disfavoured one merely inconvenient. It fits most routine, reversible failures, and is usually the cheaper remedy of the two.
+A finding filed as a GitHub issue is read by the `triage` skill's sweep mode, on the cadence the user sets, which weighs it against the accumulated queue rather than against this incident alone. That loop, and this skill's place in it, are defined in `specs/enforcement/enforcement.md` § "Evidence loop — how the framework learns".
 
-Neither is the safer default. Irreversible harm left to sit on advisory prose is a mismatch; routine work pinned under a hard block that only generates friction is exactly as much a mismatch, in the other direction. Don't train toward the lighter end or the heavier one — only toward fit.
-
-**Check `specs/ENFORCEMENT-MAP.md` before proposing anything new.** It is the live, current-state register of every enforcement mechanism in the framework — kind, tone, binding, and state (live / dark / disconnected / unbuilt). The common finding is not that no mechanism exists; it's that a suitable one already does and has been switched off, mis-scoped, or silently broken by a rename. Check the register before you build or harden anything — repairing or turning on what's already there is frequently the whole fix.
-
-Beyond filing the finding, act under three conditions:
-
-- Once we have enough evidence to diagnose a pattern of recurring errors;
-- If we identify a clear conflict or mistake in instructions or bug in tooling;
-- When the impact of an error is serious enough to warrant immediate preventative or restorative action.
-
-If the evidence is sufficient to act, **do not make the fix yourself**. Instead, create a new task to fix the problem at the appropriate level — pointing at the existing mechanism from the register where one fits, or naming what needs building where none does.
+**Read `specs/ENFORCEMENT-MAP.md` as part of the diagnosis.** It is the live, current-state register of every enforcement mechanism in the framework — kind, tone, binding, and state (live / dark / disconnected / unbuilt). Ask it which mechanism should have caught this, and what state that mechanism was in when the incident happened. The common finding is not that no mechanism exists; it's that a suitable one already does and has been switched off, mis-scoped, or silently broken by a rename.
 
 ## 5. Output
 
@@ -90,5 +79,4 @@ Return a markdown formatted response that includes:
 a. The specific evidence of how the incident came about, with citations;
 b. The root cause of the class of error;
 c. An estimate of frequency and severity of this class of error;
-d. A link to your report (github issue or PKB entry)
-e. If you have it, a link to the PKB task to remedy the problem.
+d. A link to your report (github issue or PKB entry).

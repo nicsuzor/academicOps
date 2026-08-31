@@ -28,8 +28,7 @@ flowchart TD
         pauli --> learn["skills/learn<br/>diagnose the incident,<br/>route the lesson by its scope"]
 
         learn -. knowledge scope .-> remember
-        learn -. project scope .-> rules[["$CWD/.agents/rules/RULES.md<br/>the rule, written parked at trigger: off"]]
-        learn -. task scope .-> pull
+        learn -. project or framework scope .-> finding[["a filed finding at the layer that owns it<br/>— weighed later by the triage sweep;<br/>learn diagnoses and files, proposing no fix"]]
     end
 
     pull --> dump["skills/dump<br/>session exit — save, push,<br/>release tasks, hand over"]
