@@ -1,32 +1,11 @@
 ---
 name: craft
-type: skill
-category: meta
-description: "Instruction quality gate — reviews agent instructions (task bodies, workflow steps, skill procedures, self-test protocols, agent definition files) for shallow-execution vulnerabilities before deployment. Two modes: author (pre-hoc review) and audit (trace a failure back to the instruction gap). The bar is excellence, not compliance."
-triggers:
-  - "craft"
-  - "review these instructions"
-  - "instruction quality"
-  - "are these instructions good enough"
-  - "raise the bar"
-  - "why did the agent miss this"
-  - "review this agent definition"
-modifies_files: true
-needs_task: false
-mode: conversational
-domain:
-  - meta
-  - framework
-  - quality-assurance
-allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent
-model: opus
-version: 0.2.0
-permalink: skills-craft
+description: Instruction quality gate — review agent-facing instructions (prompts, skill bodies, agent definitions, procedure steps) before they ship. Use when writing or revising any instruction an agent will read, or when asking whether a set of instructions is good enough. The bar is excellence, not compliance.
 ---
 
 # Instruction Craftsmanship
 
-Review and audit agent-facing instructions — task prompts, workflow steps, skill procedures, self-test protocols — for excellence. Applies to any Claude agent system, not only this repo's framework.
+Review agent-facing instructions for excellence.
 
 ## First Principles
 
@@ -36,7 +15,7 @@ Good instructions trust a capable, improving agent to exercise judgment; they do
 2. **Specify the process, not the keystrokes.** State _when_ to invoke which capability and _what outcome_ proves it worked. Do not spell out sub-steps, tool flags, or branching logic a competent agent already knows how to perform (opening a PR, formatting a table, running a routine lookup). Name the judgment call, not the click-path.
 3. **One skill, one job.** An instruction set is constrained to its own pure function. Naming another skill as a delegation or dispatch target is fine; explaining, restating, or summarizing that other skill's internals, procedures, or file layout is not — that creates a hidden dependency that silently rots when the referenced skill changes shape.
 4. **Verification must be real, not performed.** "Did the step run?" is not evidence of anything. Instructions must demand direct inspection of the actual artifact — outputs, logs, diffs — with an eye for the failure that looks like success (silent errors, plausible-but-wrong data, a summary standing in for the thing itself).
-5. **Every line earns its place.** Brevity is a feature. Cut anything that does not change what the agent does: provenance ("on the 2026-06-25 session…"), incident IDs, and recipes tuned to one past failure all belong in the PR/issue/memory that records _why_ a rule exists — not in the instruction loaded every run. Write the durable principle the incident illustrates, not the incident.
+5. **Every line earns its place.** Brevity is a feature. Cut anything that does not change what the agent does: provenance ("on the 2026-06-25 session…"), incident IDs, and recipes tuned to one past failure all belong in the change record that explains why a rule exists — not in the instruction loaded every run. Write the durable principle the incident illustrates, not the incident.
 
 These are lenses, not a checklist to tick. If instructions feel shallow but match nothing below, trust the feeling and say why — depth is verification specificity, not step count.
 
@@ -51,7 +30,7 @@ Instances of the principles above, worth naming because they recur:
 
 ## Agent Definition Files — Content Boundary
 
-Agent files (`agents/<name>.md`) are identity files loaded on every invocation — every byte is a budget line. The general principles apply; these rules are agent-file-specific.
+An agent definition is an identity file loaded on every invocation — every byte is a budget line. The general principles apply; these rules are agent-file-specific.
 
 The body may contain exactly four kinds of content:
 
@@ -60,16 +39,12 @@ The body may contain exactly four kinds of content:
 3. **Output schema** — verdict states and required report shape; not methodology or worked examples.
 4. **Routing table** (orchestrators only) — a table, not prose, with no per-route rationale.
 
-Out of scope: skill matter (name the skill; never inline its procedure), documentation and reference material (an explicit exception to documentation-as-code — it belongs in specs/README/PKB), mechanics already enforced by the harness or hooks, paraphrases of the axioms, and authoring-time rationale or design history.
+Out of scope: skill matter (name the skill; never inline its procedure), documentation and reference material (it belongs in reference docs, not the identity file), mechanics already enforced by the harness or its hooks, paraphrases of rules the agent is already given elsewhere, and authoring-time rationale or design history.
 
 The token-budget test for any passage: **if removed, would the agent behave differently on the median task?** No → cut or relocate. Passages that only matter on rare tasks belong in the relevant skill, not the always-loaded identity file.
 
 Frontmatter/body boundary: permissions, model, tools, and allowlists live in frontmatter only; the body never restates them in prose.
 
-## Construction Rule: Static Prefix, Variable Tail (Prompt-Caching Requirement)
+## Construction Rule: Static Prefix, Variable Tail
 
 For any code that renders a template with dynamic data (an f-string, `.format()`/`.render()`, or a builder concatenating static scaffolding with session/transcript content): emit all static material first, append variable content last. Prompt caching keys on the longest identical prefix — one variable byte placed early invalidates the cacheable suffix that follows it. Where moving a placeholder to the tail would break meaning for negligible cache gain (a short single-token variable mid-sentence), leave it and say why.
-
-## Output
-
-Structured, direct, concise. Cite exact line diffs where revisions are made.

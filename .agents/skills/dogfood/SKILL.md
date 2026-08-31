@@ -71,4 +71,4 @@ Any session may propose; only express approval authorises the edit. Work down th
 3. workflow contract (task-record criteria, breakpoints)
 4. runtime mechanism (requires ≥3 recurrences + a pre-registration)
 
-Every instruction change passes `/craft` (author mode) before deployment, then a blind re-test (mode 2) confirms the gap actually closed. Promotion of a tested instruction to canonical location happens before the session ends; record any residual friction in the session handback note rather than filing speculative follow-up tasks.
+Every instruction change passes `/craft` before deployment, then a blind re-test (mode 2) confirms the gap actually closed. Promotion of a tested instruction to canonical location happens before the session ends; record any residual friction in the session handback note rather than filing speculative follow-up tasks.
