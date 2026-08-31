@@ -31,6 +31,11 @@ except ImportError as exc:
     agy_tracer = None
     log.warning("agy_tracer did not import (%s)", exc)
 
+try:
+    from task_body_gate import task_body_gate_handler
+except ImportError:
+    task_body_gate_handler = None
+
 Handler = Callable[[HookContext], Result | None]
 
 _BASIC_VARS = (
@@ -376,7 +381,7 @@ HANDLERS: dict[str, list] = {
     # dispatch.py's TO_CANONICAL maps onto this canonical key before handler
     # lookup runs — a "PreInvocation" registration here would never fire.
     "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, honest_output],
-    "PreToolUse": [pre_tool, agy_pre_tool],
+    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, task_body_gate_handler) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
     # Both clients register here: agy's wire event is its own "Stop" (not
