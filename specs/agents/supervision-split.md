@@ -103,8 +103,7 @@ the skill's general invariants.
 
 **Not resolved — ida cannot drive a run.** Rex's role as written includes direct
 PKB writes and spawning named agents. `ida.md` reserves both: james is ida's only
-subagent, surface selection is james's, and ida is not a writer to the PKB. The
-authoritative wired map corroborates this at the architecture level. So ida now
+subagent, surface selection is james's, and ida is not a writer to the PKB. The authoritative Excalidraw map corroborates this at the architecture level. So ida now
 _holds_ the supervision standard and _delegates_ the run; it does not select a
 surface or open a tracking record itself. Which further capabilities should move
 to ida, and what trust checkpoints gate each, is designed in
