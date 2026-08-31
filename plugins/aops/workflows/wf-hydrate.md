@@ -1,46 +1,30 @@
 ---
-alias:
-- wf-hydrate-wf-hydrate
-- wf-hydrate
-created: 2026-07-11T12:41:18.157008105+00:00
-id: wf_23a5a1c6
-last_modified: 2026-07-28T03:01:21.921103855+00:00
-modified: 2026-07-28T03:01:21.921102002+00:00
-permalink: wf-hydrate
-tags:
-- wf-template
-- v0.4
-- module-f
-- workflow
-- planner-data
-title: wf-hydrate
+title: Context Hydration
 type: template
+category: gate
+description: Assemble relevant context, locate existing work, and resolve ambiguities before starting execution on a task. Select at the beginning of any non-trivial task. Not for task intake (use `/q`) or execution.
+tags: [hydration, context, disambiguation, setup, gate]
 ---
 
-## wf-hydrate — step: context assembly before work starts
+# Gate: Context Hydration
 
-**Sequence position**: step 1. Everything downstream depends on this being done honestly.
+Pre-execution discovery pass to ensure work operates on true, current system context.
 
-## What this step does
+## 1. Disambiguation and Scope Resolution
 
-Before an executor drafts anything, gather the minimum context needed to do the work well and to make later review possible without re-deriving it: the task's SSoT links, upstream decisions/premises that bear on shape and worth, relevant PKB neighbors (duplicates, related specs, prior attempts — especially retired ones whose lessons apply), and the `depends_on` chain the planner has already wired. This folds in what used to be the standalone "premise gate": is this worth doing, does it fit the shape of the larger design — judged at planning/decomposition time, not as a separate ceremony later (see [[note_296e5520]] §2, pauli lens).
+- Resolve ambiguous terms and pronouns in `<task-ask>`.
+- Search the knowledge graph and codebase to locate existing related tasks, specs, and prior work.
 
-## Output contract
+## 2. Environment and Branch Verification
 
-The hydration handback must state:
+- Verify current working directory, active git branch, and repository clean status.
+- Ensure branch is rebased on latest upstream changes.
 
-- The SSoT/spec(s) consulted, with resolvable links.
-- Any prior attempt or retired approach found and why this one differs (or "none found — searched X, Y").
-- The premise judgment: worth doing / right shape, in one or two sentences — or, if judgment can't be made yet, the specific missing information and who/what resolves it.
-- The concrete inputs the drafting step needs (files, prior art, constraints) that a downstream executor with a fresh context window would need restated.
+## 3. Dependency and Prerequisite Check
 
-Evidence-or-failure-reason: every claim of "checked X" names the resolving link; if no SSoT could be found or the premise is genuinely unclear, that is stated plainly, not papered over.
+- Check that required environment variables, tool binaries, credentials, and dependencies exist.
+- Confirm prerequisite tasks are completed.
 
-## When to include
+## Exit Condition
 
-Always — this is the cheapest step and every other step depends on it being done honestly. For trivial low-stakes work (a one-line email reply, a routine data refresh) it can collapse to a single sentence ("no upstream decisions bear on this, proceeding"). For anything touching a ratified design, a framework spec, or prior retired work, it must be explicit.
-
-## Related
-
-- [[note_296e5520]] — SSoT, §2 (pauli premise lens folded into decomposition)
-- [[wf_635eab64]] — next step, consumes this step's inputs
+Unambiguous scope, verified workspace environment, and confirmed prerequisites.

@@ -1,9 +1,9 @@
 ---
-title: Principal Sign-off Loop (Project Local)
+title: Principal Sign-off Loop
 type: template
 category: gate
-description: Project-local principal review-until-approval loop with verbatim evidence digest and two-gate approval. Select when project deliverables require explicit principal sign-off.
-tags: [signoff, approval, principal, governance, project-local, loop, gate]
+description: The review-until-approval loop the principal runs at a human sign-off gate before work may be marked done. Select when human sign-off is the recorded review obligation. Not for worker self-certification.
+tags: [signoff, approval, principal, governance, loop, gate]
 ---
 
 # Gate: Principal Sign-off Loop
@@ -18,7 +18,7 @@ Governance loop requiring explicit human principal approval before marking criti
 ## 2. Present Evidence Digest (Gate A)
 
 - Present structured digest (`wf-signoff-brief`) to `<principal>`.
-- Open with bottom-line verdict; include verbatim quoted excerpts; end with single open question.
+- Open with verdict; include verbatim excerpts; end with single open question.
 - **Approved by principal** -> Mark work done; loop terminates.
 - **Defects confirmed** -> Proceed to step 3.
 - **Silence is not consent** -> Work remains unapproved until principal acts.

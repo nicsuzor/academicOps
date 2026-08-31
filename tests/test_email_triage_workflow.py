@@ -1,11 +1,8 @@
 """The email-triage process template ships, generically, to every client.
 
-PR #2372 proposed a second copy of this procedure as a skill, on a review finding
-that `plugins/aops/workflows/` was an unauthorized location for instructions. It is
-not: the workflow library is a shipped, indexed surface, and this template already
-carried the whole procedure. These tests hold that single copy in place — its
-routing frontmatter, its genericity, and its arrival in both clients' artifacts —
-so the next reader extends it instead of planting a parallel one beside it.
+These tests hold that single copy in place — its routing frontmatter, its
+genericity, and its arrival in both clients' artifacts — so the next reader
+extends it instead of planting a parallel one beside it.
 """
 
 from __future__ import annotations
@@ -20,7 +17,7 @@ from build.build import build_all
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REAL_MARKETPLACE = PROJECT_ROOT / "build" / "marketplace.toml"
-WORKFLOW = PROJECT_ROOT / "plugins" / "aops" / "workflows" / "archive" / "email-triage.md"
+WORKFLOW = PROJECT_ROOT / "plugins" / "aops" / "workflows" / "email-triage.md"
 
 # A shipped instruction reaches every user, so it carries no person, organisation,
 # address, timezone, or local path. See specs/meta/doc-taxonomy.md.
@@ -57,12 +54,10 @@ def test_the_email_triage_template_is_the_only_copy():
 def test_the_template_declares_the_routing_the_library_reads():
     fm = _frontmatter(WORKFLOW)
 
-    assert fm.get("id") == "email-triage"
-    assert fm.get("kind") == "process"
-    assert fm.get("permalink") == "workflows-process-email-triage"
-    assert "task-tracking" in fm.get("requires", []), (
-        "triage creates tasks, so it requires the task-tracking template"
-    )
+    assert fm.get("title") == "Email Triage"
+    assert fm.get("type") == "template"
+    assert fm.get("category") == "process"
+    assert "email" in fm.get("tags", [])
 
 
 def test_the_template_is_generic():
@@ -86,6 +81,6 @@ def test_the_template_reaches_the_client_artifact(client, tmp_path):
         version="0.0.0-test",
     )
 
-    built = dist_root / f"aops-{client}" / "workflows" / "archive" / "email-triage.md"
+    built = dist_root / f"aops-{client}" / "workflows" / "email-triage.md"
     assert built.is_file(), f"the template did not ship to {client}: {built}"
-    assert _frontmatter(built).get("id") == "email-triage"
+    assert _frontmatter(built).get("type") == "template"

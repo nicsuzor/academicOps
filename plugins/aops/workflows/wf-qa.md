@@ -1,58 +1,36 @@
 ---
-alias:
-- wf-qa-wf-qa
-- wf-qa
-created: 2026-07-20T07:23:37.722328387+00:00
-id: wf-qa
-last_modified: 2026-07-28T03:01:21.921839011+00:00
-modified: 2026-07-28T03:01:21.921836657+00:00
-permalink: wf-qa
-tags:
-- wf-template
-- v0.4
-- module-f
-title: wf-qa
+title: Multi-Lens QA Gate
 type: template
+category: gate
+description: Structured QA gate with depth modes (smoke, standard, deep) to evaluate an artifact against explicit criteria using an independent reviewer lens. Select when quality evaluation requires dedicated review. Not for simple sanity checks (use `wf-verification`).
+tags: [qa, quality, review-lens, gate]
 ---
 
-## What this step does
+# Gate: Multi-Lens QA Gate
 
-Structured QA obligation — lock criteria, gather evidence, judge, emit PASS/FAIL/ESCALATE — with modes for how deep to go. The general-purpose QA obligation. [[wf-verification]] is the floor (lock/confirm); this gate adds a structured verdict and depth-of-review modes for when more than a sanity check is warranted.
+Structured quality review obligation with explicit criteria locking, evidence collection, and formal verdict.
 
-## Core Pattern
+## 1. Lock Criteria and Select Review Lens
 
-1. **Lock criteria** — define success criteria BEFORE examining evidence.
-2. **Gather evidence** — observe, test, or review. Don't interpret yet.
-3. **Evaluate** — compare evidence against the locked criteria.
-4. **Verdict** — `PASS` | `FAIL` | `ESCALATE`, with evidence citations.
+- Lock acceptance criteria and select the review lens (`<lens>`) appropriate for the artifact type:
+  - `Correctness / Logic`: Functionality, edge cases, failure modes.
+  - `Security / Rules`: Axiom compliance, access controls, injection risks.
+  - `Craft / Readability`: Instruction craftsmanship, concision, ergonomics.
+- Set verification depth (`<depth>`): `smoke` (sanity), `standard` (full checks), `deep` (boundary stress).
 
-**Criteria before evidence** is the load-bearing rule: shifting goalposts after seeing the output invalidates the QA pass.
+## 2. Gather Independent Evidence
 
-## Depth Modes
+- An independent evaluator collects primary evidence: execution logs, diff inspections, or rendered outputs for `<artifact>`.
+- The author/producer does not self-certify.
 
-| Mode                       | When                                                  | What it produces                        |
-| -------------------------- | ----------------------------------------------------- | --------------------------------------- |
-| **Quick verification**     | Pre-completion sanity check, tests pass               | VERIFIED / ISSUES                       |
-| **Acceptance testing**     | End-to-end, from the user's perspective               | Evidence table (expected vs actual)     |
-| **Qualitative assessment** | Fitness-for-purpose, UX quality, design intent        | Narrative prose evaluation, not a table |
-| **Integration validation** | Framework/structural changes, cross-client robustness | Evidence table + regression check       |
+## 3. Judge and Emit Structured Verdict
 
-Pick the shallowest mode that would actually catch the failure mode you're worried about — depth is proportionate to stakes, not a default maximum.
+- Evaluate gathered evidence against locked criteria.
+- Emit structured verdict:
+  - `PASS`: All criteria met with verified evidence.
+  - `FAIL`: One or more criteria unmet; emit specific failure citations and required fixes.
+  - `ESCALATE`: Contradiction or blocking ambiguity requiring principal decision.
 
-## Routing signals
+## Exit Condition
 
-- Feature complete, before final commit
-- User-facing functionality changed
-- Complex changes with non-obvious acceptance criteria
-- Framework/infrastructure changes needing cross-client checks
-
-**NOT this gate**: bug investigation with unknown cause → [[wf-investigation]].
-
-## When to Skip
-
-- Trivial changes (typo fixes)
-- User explicitly waives verification
-
-## Declared stakes
-
-Door-type is two-way (a FAIL sends work back for another pass; it doesn't itself authorize an irreversible release). When the artifact under review is about to leave the team, compose [[wf-outbound-review]] instead of, or in addition to, this gate — QA judges correctness, outbound-review judges fitness-to-ship.
+`PASS` verdict reached, or route to `wf-refine-loop` on `FAIL`.

@@ -1,47 +1,30 @@
 ---
-alias:
-- wf-verification-wf-verification
-- wf-verification
-created: 2026-07-20T07:23:41.042618480+00:00
-id: wf-verification
-last_modified: 2026-08-29T00:39:42.434488680+00:00
-modified: 2026-08-29T00:39:42.434486466+00:00
-permalink: wf-verification
-tags:
-- wf-template
-- v0.4
-- module-f
-title: wf-verification
+title: Verification Floor
 type: template
+category: gate
+description: Lightweight verification floor — lock acceptance criteria before work, confirm evidence against them before calling anything done. Select as the default baseline gate for any task. Not for deep multi-lens quality grading (use `wf-qa`).
+tags: [verification, floor, criteria, sanity-check, gate]
 ---
 
-## What this step does
+# Gate: Verification Floor
 
-Lightweight checkpoint — lock acceptance criteria before work, confirm evidence against them before calling anything done. The cheapest gate in the library. Most process templates compose this by default — it is the floor, not the ceiling.
+The lightweight baseline verification obligation: lock criteria before work, confirm direct evidence before calling done.
 
-## Pattern
+## 1. Lock Acceptance Criteria (Pre-Work)
 
-1. **Before starting work**, lock in clear, testable acceptance criteria. Write them down; don't hold them only in your head.
-2. Do the work.
-3. **Confirm against the locked criteria** using evidence gathered during work (tests pass, behavior observed, output verified) — not against criteria reinterpreted after the fact.
+- State concrete, machine-checkable acceptance criteria before starting work on `<target>`.
+- Criteria must define observable outcomes (test command passes, output file exists with schema, exit code 0).
 
-## Why this is a gate, not just good practice
+## 2. Execute Work
 
-Locking criteria _before_ evidence exists is what stops an agent from quietly reining "done" to match whatever it produced. The lock is the enforcement mechanism; the confirmation step is just bookkeeping without it.
+- Implement the required change or produce `<artifact>`.
 
-## Escalation
+## 3. Confirm Evidence Against Criteria (Post-Work)
 
-If verification reveals issues:
+- Inspect actual machine outputs, test run logs, or rendered files.
+- Verify that every locked criterion from step 1 is satisfied with direct evidence.
+- A summary or claim that "it worked" is not evidence; inspect the artifact itself.
 
-- **Simple fix** → fix and re-verify against the same locked criteria.
-- **Complex issue, or criteria turn out to be wrong** → escalate to [[wf-qa]] (structured PASS/FAIL/ESCALATE) or [[wf-investigation]] if root cause is unknown.
+## Exit Condition
 
-## Declared stakes
-
-This gate exists for any work where "I think it's done" is not sufficient evidence — i.e. almost everything except pure information lookups. Door-type is two-way: a failed check loops back for a fix against the locked criteria; it does **not** by itself authorize crossing a one-way door (external release, irreversible action) — see [[wf-human-approval]] and [[wf-outbound-review]].
-
-**Skip conditions** (evidence the submission must carry to discharge this gate without a separate review node):
-
-- **Pure read-only queries**: output produces no state mutations or durable artifacts.
-- **Deterministic machine proof**: submission includes execution logs or test output that mechanically prove the locked criteria without requiring subjective inspection.
-- **Trivial/cosmetic changes**: diff carries zero behavioral, structural, or semantic impact.
+All locked criteria confirmed by direct machine inspection.

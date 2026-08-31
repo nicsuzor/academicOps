@@ -1,97 +1,36 @@
 ---
-id: temp_16ba109c
-title: "Template: Blind Comparison & Transcript Audit Procedure for Contextless Subagents"
+title: Blind Comparison and Transcript Audit
 type: template
-created: 2026-08-13T03:25:31.124150573+00:00
-modified: 2026-08-13T03:25:31.124150573+00:00
-last_modified: 2026-08-13T03:25:31.124165561+00:00
-alias:
-  - "temp_16ba109c-template-blind-comparison-transcript-audit-procedure-for-contextless-subagents"
-  - "temp_16ba109c"
-permalink: temp_16ba109c
-tags:
-  - template
-  - subagent
-  - blind-comparison
-  - transcript-audit
-  - evaluation
-  - benchmarking
+category: gate
+description: Compare multiple independent agent executions or model runs on the same task without evaluator bias. Select when benchmarking prompts, models, or implementations side-by-side. Not for single-agent quality checks (use `wf-qa`).
+tags: [blind-comparison, benchmark, multi-agent, evaluation, gate]
 ---
 
-# Template: Blind Comparison & Transcript Audit Procedure for Contextless Subagents
+# Gate: Blind Comparison and Transcript Audit
 
-## 🎯 Purpose & Scope
+Side-by-side comparative evaluation of independent agent runs on identical tasks.
 
-This template provides a standardized, empirical procedure for benchmarking subagent context-independence, evaluating tool selection, and auditing session transcript query accuracy.
+## 1. Parallel Independent Execution
 
-Use this procedure when:
+- Dispatch identical prompt `<task-prompt>` to N independent candidate agents/models in isolated sessions.
+- Record full execution transcripts, token usage, tool calls, and output artifacts.
 
-- Testing how well an un-prompted, context-free subagent navigates workspace artifacts.
-- Validating session history claims or auditing PKB modifications from prior sessions.
-- Benchmarking model autonomy, precision, and recall on multi-step investigation tasks.
+## 2. Transcript Anonymization
 
----
+- Strip model names, agent IDs, and identifying metadata from transcripts and outputs.
+- Assign randomized anonymous identifiers (e.g. Candidate A, Candidate B).
 
-## 📋 Standard Operating Procedure
+## 3. Blind Comparative Grading
 
-```mermaid
-flowchart TD
-    A["1. Define Query & Target Session"] --> B["2. Launch Contextless Subagent"]
-    A --> C["3. Perform Independent Ground-Truth Audit"]
-    B --> D["4. Evaluate & Score Subagent Response"]
-    C --> D
-    D --> E["5. Document Results & Route Insights"]
-```
+- Independent judge evaluates candidates side-by-side against locked evaluation dimensions:
+  - Adherence to constraints and prompt instructions.
+  - Quality, accuracy, and completeness of final artifact.
+  - Tool usage efficiency and error recovery behavior.
 
-### Step 1: Formulate Evaluation Query & Target Scope
+## 4. Synthesis and Unblinding
 
-- Identify the target session ID/slug (e.g., `ab530e51`).
-- Define the specific metric/question to evaluate (e.g., _"What PKB notes and tasks were added or updated in session `<session_id>`?"_).
+- Collate rankings, unblind candidate identities, and document relative strengths and failure modes.
 
-### Step 2: Dispatch Contextless Subagent
+## Exit Condition
 
-- Launch a subagent via `invoke_subagent` (e.g., `research` or `agy`).
-- **Constraint:** Supply **only** the bare user prompt. Do not provide pre-digested hints, file paths, or search shortcuts.
-- Set role to `Contextless Evaluator`.
-
-### Step 3: Conduct Independent Ground-Truth Audit (Parent Pass)
-
-While the subagent runs in the background, establish the ground-truth baseline:
-
-1. Locate session transcript files in `transcripts/YYYY-MM/` (e.g., `*<session_id>*.full.md`, `*<session_id>*.controller.md`).
-2. Search for tool execution logs matching target actions:
-   - PKB operations: `pkb__create_task`, `pkb__create`, `pkb__update_body`, `pkb__append`, `mcp__plugin_pkb_services__pkb__*`.
-3. Construct the Ground Truth Baseline Table:
-   - **Tasks Created:** Node ID, title, parent, creator subagent.
-   - **Notes/Memories Updated:** Node ID, title, modification details, subagent.
-
-### Step 4: Evaluate & Score Subagent Performance
-
-Upon receiving the subagent's response, evaluate against the baseline:
-
-- **Precision:** Did the subagent list only true modifications without false positives?
-- **Recall:** Did the subagent catch all created/updated nodes without omissions?
-- **Attribution Accuracy:** Were subagent lineage and tool call reasons correctly attributed?
-- **Speed & Efficiency:** Total turnaround time and tool calls executed.
-
-### Step 5: Document Results
-
-Record evaluation findings into the PKB or project task graph using `remember` or `pkb__create`.
-
----
-
-## 📊 Evaluation Scoring Matrix
-
-| Metric          | Score 1.0 (Optimal)                | Score 0.5 (Partial)                    | Score 0.0 (Failure)             |
-| :-------------- | :--------------------------------- | :------------------------------------- | :------------------------------ |
-| **Precision**   | 0 false positives                  | Minor non-PKB edits included           | Hallucinated non-existent nodes |
-| **Recall**      | 100% created & updated nodes found | Found created nodes, missed updates    | Missed all nodes                |
-| **Attribution** | Exact subagent ID & task rationale | Correct node, missing subagent lineage | Incorrect attribution           |
-| **Navigation**  | Used transcript logs directly      | Relied on git log or broad search      | Stuck / failed search           |
-
----
-
-## 🔗 Related Knowledge & Standards
-
-- [[mem-427f193b]] — Junior delegation surfaces & subagent routing
-- [[aops_c6ea7823]] — Lighter-weight peer review workflow
+Completed comparative ranking table with evidence citations.
