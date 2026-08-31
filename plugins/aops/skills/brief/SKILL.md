@@ -11,8 +11,6 @@ Turn an ask into a task a cold executor can act on and be judged against. You ve
 
 Brief exactly the ask you were called on — the cohesive unit of intent or epic. Do not conflate "one ask" with a single isolated line item: related tasks serving one atomic deliverable or epic are composed and briefed together as one unit, not fragmented into uncoordinated mini-briefs. Do not pre-write briefs for downstream work behind this one. The return contract attaches to the claimed task — one deliverable, with evidence and an output URL — including any completed child tasks.
 
-> PKB MCP tools live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g. `pkb__search`, `pkb__get_task`, `pkb__create_task`, `pkb__update_task`, `pkb__batch_reparent`). Note: `pkb__create_task` sets `status: "inbox"` (or `"ready"`). Setting `status: "queued"` requires a two-step write via `pkb__update_task`. Prioritisation and edge weighting follow [[kb_pauli_prioritisation_doctrine]]; intent curation follows [[kb_ccc17177]].
-
 ## 1 — Read, then verify
 
 Front-load reconnaissance: run a parallel read-only fan-out across the codebase, PKB, git history, and runtime environments before making decisions or decomposing. Verify all world-claims (paths, schemas, deployed states, negative capability claims) concurrently against reality, not another node.
@@ -81,13 +79,13 @@ Rewrite the brief prose to exactly this shape, deleting event logs, prior drafts
 
 Excluded, always:
 
-- **Method** — no procedure, ordering, batch sizes, or techniques, even good ones. Canonical method binds by reference to its home; a binding rule converts to an AC citing its home, never transcribing its text.
-- **Summaries of linked content** — an inline copy is a fork the executor acts on stale. Elevate by reference, never by transcription.
-- **Provenance, supersession narrative, session diary** — edges, receipts, and git carry history.
-- **Restated doctrine** the executor loads anyway.
+- **Micromanaging: any directions that provided detailed instructions about changes to make:** compiled brief must not require or even suggest the methods of achieving the deliverables; agents must have discretion to choose the best method. The brief is a contract, not a how-to.
+- **Summaries of linked content** — inline copies go stale. Only ever incorporate existing materials by reference, never by transcription.
+- **Provenance, supersession narrative, session diary:** strictly forbidden in task contracts — history is recorded by session audit logs and git commits.
+- **Restated doctrine** that the executor loads anyway.
 - **Perishable facts** — counts, SHAs, dates-as-state, other nodes' statuses. State the threshold; let the executor measure.
-- **Meta-commentary** whose subject is the brief itself — one scope line is the whole budget for self-reference.
-- **Pre-completed ACs** — the AC list is exactly what this executor is on the hook for; done work lives in edges and receipts.
+- **Meta-commentary** whose subject is the brief itself — the worker does not need to know how the brief was composed, only what it says.
+- **Pre-completed ACs** — the AC list is exactly what this executor is on the hook for.
 
 Deletion test, per sentence: if this line vanished, would the executor act differently, or success be judged differently? If neither, delete it.
 
