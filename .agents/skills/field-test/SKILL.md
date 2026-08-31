@@ -98,19 +98,7 @@ below are what stay true.
 - Budget at least one blind run: a contextless agent, given only the revised
   surface and a representative task, finds the dead end your checks cannot.
 
-## 8. Gates must be decidable by their reader
-
-**Goal: every halt-or-proceed condition is checkable from what its reader may
-read.**
-
-- A gate that turns on a term defined outside the reader's permitted materials
-  is undecidable, and undecidable gates get resolved by mood — differently by
-  every capable reader.
-- Reference other modules by function, never by their internals. If an
-  instruction needs another module's internals to be intelligible, the boundary
-  is drawn wrong; move the gate's trigger onto something local.
-
-## 9. A tripped guard is information — about one of you
+## 8. A tripped guard is information — about one of you
 
 **Goal: guards get sharper or deleted, never dodged.**
 
@@ -123,7 +111,7 @@ read.**
   open. Rephrasing your change so the check stops seeing it is forbidden, and
   always visible in review.
 
-## 9b. Oddity defaults to drift, not design
+## 8b. Oddity defaults to drift, not design
 
 **Goal: nothing survives review because someone assumes it was meant.**
 
@@ -133,7 +121,7 @@ read.**
 - "The carve-out is coherent" is not that proof — a rationale you can construct
   after the fact is exactly what drift looks like from inside.
 
-## 10. Close the loop on the original observation
+## 9. Close the loop on the original observation
 
 **Goal: "fixed" means the originally-failing observation now passes.**
 
@@ -142,7 +130,7 @@ read.**
 - File what you fixed and what you deliberately left, each with its evidence,
   where the next session will find it.
 
-## 11. Publish the grades where the next round starts
+## 10. Publish the grades where the next round starts
 
 **Goal: the next session starts from your verdicts, not your transcript.**
 

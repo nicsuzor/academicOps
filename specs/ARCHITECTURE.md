@@ -47,10 +47,6 @@ copied in at build time. A second copy of anything in `lib/` is a build failure.
 any shipped artifact. Every such value arrives from the environment or from
 client `userConfig`. Our code and a client's installation are strictly separate.
 
-**Instructions are operative.** Agent, skill, and command files say what to do
-now. No history, no rationale, no changelogs, no deprecation notices, no
-backwards-compatibility notes, no decision logs. Explanation belongs in `specs/`.
-
 **Loose coupling.** A plugin may depend on `lib/`. A plugin never reads another
 plugin's files.
 
