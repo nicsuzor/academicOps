@@ -41,6 +41,18 @@ Abstract means it says what, never how. If you are writing how a component gets 
    - Where existing unparented or misparented tasks already cover part of the expansion, adopt them (`pkb__batch_reparent`) rather than minting duplicate siblings.
    - Mint slugged, human-readable IDs upfront (`id: "aops_<slug>"`), not auto-generated ones.
 
+6. **Write each body to this shape, and nothing else.**
+
+   ```markdown
+   ## Goal — every outcome this component must produce, numbered, one imperative per outcome
+
+   ## Known fragments — [[id]] + ≤1 clause on why to open it; where a starting set exists
+
+   ## Not included — bare directives, one clause each, no rationale; where a real collision risk exists
+   ```
+
+   No section defending the scope, naming the stage the component sits at, warning what happens if it is read wider, or adjudicating overlap with a sibling — the overlap is the edge you wired in step 5, and a prose copy of an edge drifts. A qualifier a heading already carries is not restated beneath it.
+
 ## Output
 
 Return the shape of the expansion, not its contents:

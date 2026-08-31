@@ -29,6 +29,8 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 - **Tasks are atomic:** A task and its subtasks are a cohesive unit of related work that can be done by one person or agent in a single session.
 - **Child tasks** represent a distinct workflow step that is related to but structurally separate from the parent task.
 - **Pointers:** Decisions, findings, and reviews live in notes reached from Pointers via `[[wikilink]]` pointers — never pasted paragraphs or embedded verdicts.
+- **A goal names every outcome, not the one that summarises them:** Write the goal as numbered imperatives — one per artifact the task must produce, change, or delete. A goal that states only the first outcome, or abstracts several into a single noun phrase, has silently narrowed the task.
+- **A body instructs; it never argues:** Scope lines are bare directives ("Do not include X"), never a case for the boundary. Never write a section defending how the task was scoped, naming which stage it belongs to, warning what goes wrong if it is read wider, or adjudicating its overlap with another task — an overlap is an edge, and a boundary a reader has to be persuaded of has not been written as an instruction. Say each qualifier once: a hedge a heading already carries is not restated beneath it.
 
 ## Strategy & Workflow
 
