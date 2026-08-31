@@ -78,12 +78,8 @@ Phases 1–3 and 5 are **not reorderable**. Nothing is removed before a verified
 1. **Baseline.** Record the store's git SHA **before the first write of the batch**, on the sweep's
    own node, and again on the receipt. Auto-sync commits interleave, so a batch is not its own commit
    and the SHA is the only recovery coordinate. **It is always obtainable and its absence is never
-   acceptable.** A container with no shell cannot read it — that is a reason to take it from the host
-   before dispatching, not a reason to omit it. Recovering one that was missed is trivial from the
-   host: `git -C $ACA_DATA log --diff-filter=A -- <receipt path>` gives the commit that first added
-   the receipt, and its parent is the pre-batch state. `pkb__status`'s `git_hash` is the **server
-   binary's** build hash, not the store's commit, and is never a substitute. Serialise: one sweep at
-   a time against the store.
+   acceptable.** Take it from the environment or host configuration before dispatching. Serialise: one
+   sweep at a time against the store.
 2. **Harvest**, per node, through `remember` consolidation mode. **Default `dry_run=true`** for any
    batched pass. Destination-first: the durable content exists at a named destination id **before**
    the source body is touched. **HALT rule** — a worker that cannot write its destination stops and
@@ -96,13 +92,9 @@ Phases 1–3 and 5 are **not reorderable**. Nothing is removed before a verified
    nothing for recoverability to be computed against — so there is no PASS, and the node is not
    eligible for phase 5. "Nothing durable" is a legitimate finding about the _content_; it is never a
    finding that the body is safe to remove.
-4. **Integrity gate. Filesystem `grep` is mandatory — a batch that cannot run it does not run.**
-   Establish inbound references with `grep -rl '<id>' $ACA_DATA`, then add `pkb__search` on top. There
-   is no inbound-edge tool, and even the grep count is a lower bound: frontmatter edges (`parent`,
-   `depends_on`, `contributes_to`) and bare-id prose mentions are not in a wikilink count.
-   **Search alone is not a lower bound, it is noise.** Batch 1 ([[revi_4808a7ce]]) ran search-only and
-   reported "no clear independent inbound reference found" for a node with **40** inbound files, with
-   five further undercounts of 5–15. A gate that can be off by that margin cannot license anything.
+4. **Integrity gate.** Establish inbound references using PKB tools (`pkb__search`, graph queries).
+   Never reach around tools with direct `$ACA_DATA` filesystem access or grep (`halt-on-failure`). If
+   tooling cannot resolve inbound references with certainty or fails, halt and file a bug on GitHub.
 5. **Retire, to a shape that depends on terminal status.**
    - **`cancelled` — collapse to a stub**: title, terminal status, closing date, one-line reason it
      was cancelled, links to the notes that received any harvest, so the id stays resolvable. There
@@ -192,7 +184,7 @@ verified harvest is the failure it exists to prevent.
 - [[aops_f44de72e]] — the 20-node pilot this template's selection rules and batch bound come from
 - [[kb_ac17b13f]] — the pilot's measured cost, and what its self-reported 0%-loss claim does not license
 - [[aops_b6376952]] / [[revi_4808a7ce]] — batch 1, the live run whose two losses are the evidence behind
-  the empty-verdict rule, the mandatory-grep rule, and the SHA rule
+  the empty-verdict rule, the integrity-gate rule, and the SHA rule
 - [[aops_3135feec]] — the forward duty at closure; the reason this sweep is finite
 - [[aops_4bf92d6a]] — read-only triage of cancelled non-task documents; different corpus, different rubric
 - [[kb-487983a5]] — write-to-searchable lag, and why deletion takes three steps

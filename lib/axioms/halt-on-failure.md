@@ -11,4 +11,4 @@ When an instruction, tool, dependency, lock, or validation step fails — partia
 - Never bypass a lock, held resource, or guarded gate without explicit user authorisation. Encountering one is a halt-and-ask, not an obstacle to clear.
 - Every failure belongs to the agent that encountered it and is surfaced in the same turn it is observed, to the authority who can authorise a fix. There is no inbox of failures owed to someone else; we do not leave traps for future agents.
 
-Adding a fallback so a step "works" when its intended credential is missing converts a loud configuration failure into a silent one. Prohibited however convenient.
+Adding a fallback so a step "works" when its intended tool, credential, or service fails — such as reaching directly into `$ACA_DATA` with filesystem tools or the `pkb` CLI when MCP tools are degraded — converts a loud failure into a silent one. Prohibited however convenient.
