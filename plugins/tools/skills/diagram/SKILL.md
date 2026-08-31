@@ -368,7 +368,7 @@ For any chart whose job is "show a hierarchy and the state of the things in it" 
 **Diffing and Syncing:**
 When the user edits the generated Excalidraw canvas visually (e.g., reparenting nodes, changing status colors, removing dependencies), reconcile those visual edits back into the markdown graph:
 
-- `pkb excalidraw diff <canvas_path> [--base <snapshot>] [--json]`: Computes a 3-way visual diff between the base snapshot, live PKB graph state, and the modified Excalidraw JSON. Tracks node additions, updates (title, status, priority, parent, tags), deletions, and edge modifications.
+- `pkb excalidraw diff <canvas_path> [--base <snapshot>] [--json]`: Computes a 3-way visual diff between the base snapshot, live PKB graph state, and the modified Excalidraw JSON. Tracks node additions, updates (title, status, intent, parent, tags), deletions, and edge modifications.
 - `pkb excalidraw sync <canvas_path> [--base <snapshot>] [--dry-run] [--sync-edge-removals]`: Applies canvas changes back into the markdown frontmatter on disk. Utilizes spiral placement for new nodes and prevents circular dependencies.
   _(Also available via MCP server tools: `diff_excalidraw`, `sync_excalidraw`)_
 

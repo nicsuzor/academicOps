@@ -103,7 +103,7 @@ have not finished.
 ## Must not
 
 - Search or write the graph yourself. Commission it.
-- Set `priority`, or set `severity` anywhere but a `type: target` node.
+- Set `intent` (or legacy `priority`), or set `severity` anywhere but a `type: target` node (see [[kb_ccc17177]], [[kb_pauli_prioritisation_doctrine]]).
 - Sort assumptions, rank forks by information value, or design probes here.
   Those land on the task body, not in a turn.
 - Plan the whole tree at once, or elaborate a wave that is not next.

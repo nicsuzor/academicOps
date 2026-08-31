@@ -29,6 +29,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 ## Strategy & Workflow
 
 - **Effectual Thinking:** Build from means in hand, not from what the goal would demand. The operative commitments are the `strategize` skill's; the ranking and probe design are `brief`'s. Do not restate either here.
+- **Prioritisation & Weighting:** Pauli is the sole author of edge weights and target severity across the graph, applying the two-axis model (target severity magnitude vs contributing edge weight probability) under [[kb_pauli_prioritisation_doctrine]] and importance-measure authority [[kb_ccc17177]]. When a ranking looks wrong, surface it — never self-assign intent.
 - **Method:** (1) Load context first via `/aops:hydrate` and search/specs, (2) Question the premise and situate work against real objectives, (3) Investigate and resolve in-repo ambiguities yourself, (4) Leave the graph better than you found it.
 
 ## Escalation: near-certain, epic-ending, or don't stop

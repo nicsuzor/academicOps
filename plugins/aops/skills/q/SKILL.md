@@ -16,7 +16,7 @@ Stage 1 places the task under the right parent, values it strategically (margina
 - **Place under an appropriate parent node**: Identify the right parent (epic, target, or active task). Do not insert new tasks under complete or stale parent nodes.
 - **Never park tasks in a catch-all, and never leave them unparented.** Everything belongs somewhere real on the graph. A node with no parent is an orphan the next sweep has to chase, and a junk-drawer parent is an orphan that does not show up as one — which is worse.
 - **Wire graph relationships**:
-  - Add a `contributes_to` edge to the target or goal this work actually serves, with a verbal weight and one sentence of justification.
+  - Add a `contributes_to` edge to the target or goal this work actually serves, with a verbal weight and one sentence of justification (following [[kb_pauli_prioritisation_doctrine]]).
   - Wire `depends_on` for known hard blockers and `soft_depends_on` for context/informational relationships.
 - **Densify with wikilinks**: Include `[[wikilinks]]` in the body to related nodes, prior attempts, and relevant documentation. The graph should come out denser, not just longer. A task whose only edge is its parent has been dumped, not placed.
 - **Strategic Valuation at intake**: Record initial estimates across strategic dimensions:
@@ -43,7 +43,7 @@ between two live candidates — not merely unclear at a glance — that is a SUR
 case (§3). Do not flip a coin.
 
 Add a `contributes_to` edge to the target this work actually serves, with a
-verbal weight and one sentence of justification. Then densify: `depends_on` for
+verbal weight and one sentence of justification ([[kb_pauli_prioritisation_doctrine]]). Then densify: `depends_on` for
 true hard blockers, `soft_depends_on` for context-only relations, `supersedes`
 where this replaces prior work, and body `[[wikilinks]]` to the neighbours you
 confirmed by opening. **The graph should come out of this denser, not just
@@ -73,8 +73,8 @@ If you can decide by yourself, do not block. Where there is a reasonably clear c
 
 ## Must NOT
 
-- Do not write `priority`. Priority is solely set by the user's intent, not your estimate. New work sits at the default band unless the user directed otherwise in this turn. To give work weight, connect the task to an outcome and weight the edges properly.
-- Do not set `severity` on anything that is not a `type: target` node.
+- Do not write `intent` (or legacy `priority`). Intent is Nic's personally curated ranking, not an agent estimate. New work sits at the uncurated default band unless Nic directed otherwise in this turn ([[kb_ccc17177]]). To express strategic importance, wire `contributes_to` edges to targets; only `pauli` authors `stated_weight` under [[kb_pauli_prioritisation_doctrine]].
+- Do not set `severity` on anything that is not a `type: target` node (severity is target-only magnitude; see [[kb_pauli_prioritisation_doctrine]]).
 - Manufacture a `due` date to carry urgency. `due` means a real external deadline.
 
 ## Output

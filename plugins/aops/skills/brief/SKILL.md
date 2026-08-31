@@ -11,7 +11,7 @@ Turn an ask into a task a cold executor can act on and be judged against. You ve
 
 Brief exactly the ask you were called on. More than one ask: brief each independently, never bundle. Do not pre-write briefs for work behind this one.
 
-> PKB MCP tools may live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g. `pkb__search`, `pkb__get_task`, `pkb__create_task`).
+> PKB MCP tools may live under the **`services`** MCP server using the `pkb__` tool name prefix (e.g. `pkb__search`, `pkb__get_task`, `pkb__create_task`). Prioritisation and edge weighting follow [[kb_pauli_prioritisation_doctrine]]; intent curation follows [[kb_ccc17177]].
 
 ## 1 — Read, then verify
 
