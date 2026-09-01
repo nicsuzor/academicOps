@@ -201,7 +201,7 @@ Field names below are the **controller** export's; in the full export drop the
 - Do not compare command text between a span and the transcript. Hooks may
   rewrite a command before it runs, so the span holds the rewritten form. Align
   on name and time only.
-- `arthur.turn_number` is monotonic **per tracer state file**, reset to `0` at
+- `turn_number` is monotonic **per tracer state file**, reset to `0` at
   that file's init. Every subagent has its own counter and they all share one
   `session.id`, so within an exported session the numbers overlap and repeat.
   Sort by `start_time`.

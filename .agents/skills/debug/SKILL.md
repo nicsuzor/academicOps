@@ -370,7 +370,7 @@ it to collapse a multi-query pass into a single round-trip.
   never carries the parent's id. Correlate by prompt text and time window
   (Recipe F); substring-searching for the parent UUID finds only sessions that
   _mention_ it in conversation text.
-- **`arthur.turn_number` is per-tracer-state** and resets across subagents. Sort
+- **`turn_number` is per-tracer-state** and resets across subagents. Sort
   by `start_time` for session-wide chronology.
 - **Bare timestamps are rejected.** `start_time >= '2026-08-19 22:12:00'` fails
   with `unsupported_syntax`; a time of day needs an explicit offset

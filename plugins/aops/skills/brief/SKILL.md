@@ -17,7 +17,7 @@ Take the components an objective was expanded into, work out the process they ru
    Name the standard the unit will be judged against and where it lives. Record any requirement it reaches that the unit does not cover as a named gap — never absorb it silently, never soften a criterion to fit.
 
 2. **Work out the process this task runs under.**
-   Read the routing index at `plugins/aops/workflows/INDEX.md`, then enumerate the workflow components available — project-local (`$CWD/.agents/templates/*.md`), plugin (`plugins/aops/workflows/*.md`), and personal knowledge base (`type: template`). Enumerate by running the command; never from memory, and never from an index alone.
+   Enumerate the workflow components available — project-local (`$CWD/.agents/templates/*.md`), plugin (`plugins/aops/workflows/*.md`), and personal knowledge base (`type: template`). Enumerate by running the command; never from memory, and never from an index alone.
 
    Read the ones that look relevant and work out how they go together for this task. Weight the process against real consequence: heavier is theatre, lighter is unmitigated risk. Where the work needs something no component supplies, name the gap and stop rather than freelancing a process.
 

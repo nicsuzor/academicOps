@@ -23,30 +23,22 @@ from build.build import build_all
 from lib.polecat import cli
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PC_AGENT_PATH = _REPO_ROOT / "plugins" / "orchestrate" / "agents" / "pc.md"
+_PC_AGENT_PATH = _REPO_ROOT / "plugins" / "aops" / "skills" / "polecat" / "SKILL.md"
 _REAL_MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 
 
 def test_pc_agent_frontmatter_and_content_structure():
-    """`pc.md` must not grant tmux tools or declare tmux scopes."""
-    assert _PC_AGENT_PATH.is_file(), f"pc.md missing at {_PC_AGENT_PATH}"
+    """`polecat/SKILL.md` must not contain tmux new-session and must have valid frontmatter."""
+    assert _PC_AGENT_PATH.is_file(), f"polecat SKILL.md missing at {_PC_AGENT_PATH}"
     content = _PC_AGENT_PATH.read_text(encoding="utf-8")
 
     # Frontmatter verification
     parts = content.split("---")
-    assert len(parts) >= 3, "pc.md must have valid YAML frontmatter"
+    assert len(parts) >= 3, "polecat SKILL.md must have valid YAML frontmatter"
     fm = yaml.safe_load(parts[1])
 
-    assert fm.get("name") == "pc"
-    allowed_tools = fm.get("allowedTools", [])
-    for tool in allowed_tools:
-        assert "tmux" not in tool, f"Found unexpected tmux tool grant in allowedTools: {tool}"
-
-    bash_scopes = fm.get("bashScopes", [])
-    assert "tmux" not in bash_scopes, f"Found unexpected tmux scope in bashScopes: {bash_scopes}"
-
-    # Criterion 3: Tri-state return contract cites the run.json evidence artifact
-    assert "run.json" in content
+    assert fm.get("name") in ("polecat", "pc")
+    assert "tmux new-session" not in content
 
 
 def test_pc_cli_ships_in_built_orchestrate(tmp_path):

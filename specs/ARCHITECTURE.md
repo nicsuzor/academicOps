@@ -59,8 +59,7 @@ plugin's files.
    history, via the `UserPromptSubmit` hook plus `hydrate` / `brief`.
 2. **Workflow composition (`aops`)** — `brief` selects assurance and review
    levels matching risk and blast radius. Routing an ask to its template is a
-   separate job: a direct read of
-   [`plugins/aops/workflows/INDEX.md`](../plugins/aops/workflows/INDEX.md) by
+   separate job: a direct read of templates under `plugins/aops/workflows/` by
    whichever agent holds the ask.
 3. **Containerised execution and dispatch (`ida`)** — dispatch tasks to isolated
    Docker containers (`lib/polecat`, injected into `orchestrate`, launched by
@@ -94,9 +93,7 @@ is there, integrating the new fact, and leaving one correct document.
 The plugin ships a process-template library under `workflows/`. Pauli composes a
 workflow for the unit in front of it by reading templates and matching the
 required QA assurance level to the task. That happens inside `brief`, the only
-composer; [`plugins/aops/workflows/INDEX.md`](../plugins/aops/workflows/INDEX.md)
-carries the routing tree, which any agent reads directly without a skill in
-between.
+composer.
 
 ### ida
 

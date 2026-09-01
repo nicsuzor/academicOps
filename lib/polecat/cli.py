@@ -101,17 +101,25 @@ def load_local_overlay(polecat_home):
     return {}
 
 
+DEFAULT_CANONICAL_ALIASES = {
+    "aops": "academicOps",
+    "academicops": "academicOps",
+    "academic_ops": "academicOps",
+}
+
+
 def resolve_canonical_project(project: str | None, config: Mapping | None = None) -> str | None:
     """Resolve a project name or alias to its canonical project slug.
 
     Reads aliases configured in polecat.yaml:
     - `projects.<slug>.aliases`: list of alias strings or single alias string
-    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `academicOps: aops`),
-      or canonical slug to alias list (e.g. `aops: [academicOps, academicops]`).
+    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `aops: academicOps`),
+      or canonical slug to alias list (e.g. `academicOps: [aops, academicops]`).
 
     If `project` matches a canonical slug or an alias (checked case-insensitively if exact
     case does not hit), returns the canonical slug.
     Also handles `<alias>-<task_id>` prefixes by canonicalizing the prefix.
+    If no alias matches in config, checks default canonical aliases.
     If no alias matches, returns `project`.
     """
     if not project:
@@ -184,6 +192,13 @@ def resolve_canonical_project(project: str | None, config: Mapping | None = None
         canon_prefix = resolve_canonical_project(prefix, config)
         if canon_prefix and canon_prefix != prefix:
             return f"{canon_prefix}-{rest}"
+
+    # 5. Default fallback aliases (e.g. aops -> academicOps)
+    if project_str in DEFAULT_CANONICAL_ALIASES:
+        return DEFAULT_CANONICAL_ALIASES[project_str]
+    for k, v in DEFAULT_CANONICAL_ALIASES.items():
+        if k.lower() == project_str.lower():
+            return v
 
     return project_str
 
@@ -2204,6 +2219,8 @@ def run(
             interactive=interactive,
         )
 
+        canon_project = resolve_canonical_project(project, config) if project else None
+
         env["AOPS_POLECAT_CONTAINER"] = "1"
         env["POLECAT_CREW_NAME"] = session_id
         env["AOPS_SESSION_STATE_DIR"] = container_session_path
@@ -2211,23 +2228,20 @@ def run(
         env["OTEL_RESOURCE_ATTRIBUTES"] = format_otel_resource_attributes(
             existing=env.get("OTEL_RESOURCE_ATTRIBUTES"),
             session_id=session_id,
-            project=project,
+            project=canon_project or project,
             task_id=task,
         )
 
-        task_identifier = None
-        if project and task:
-            task_identifier = f"{project}-{task}"
-        elif task:
-            task_identifier = task
+        if canon_project:
+            env["OTEL_SERVICE_NAME"] = canon_project
+            env["PHOENIX_PROJECT_NAME"] = canon_project
         elif project:
-            task_identifier = project
+            env["OTEL_SERVICE_NAME"] = project
+            env["PHOENIX_PROJECT_NAME"] = project
 
-        if task_identifier is not None:
-            env["GENAI_ENGINE_TASK_ID"] = task_identifier
-            env["OTEL_SERVICE_NAME"] = task_identifier
-        elif "GENAI_ENGINE_TASK_ID" in env:
-            env["OTEL_SERVICE_NAME"] = env["GENAI_ENGINE_TASK_ID"]
+        if task:
+            env["GENAI_ENGINE_TASK_ID"] = task
+            env["AOPS_TASK_ID"] = task
 
         effective_ports = resolve_ports(config, ports)
 

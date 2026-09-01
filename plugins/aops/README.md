@@ -62,8 +62,8 @@ task, which is what makes the brief bind rather than restate the reasoning that
 produced it.
 
 Routing and composition are different jobs. **Routing** picks which template a
-class of work follows; the tree lives in `workflows/INDEX.md` and any agent reads
-it directly. **Composition** assembles a full process for work released for
+class of work follows; the universal templates live in `workflows/` and any agent reads
+them directly. **Composition** assembles a full process for work released for
 dispatch, happens only inside `brief`, and draws on all three template tiers as
 one namespace — a PKB template composes exactly like a shipped one.
 
@@ -104,9 +104,8 @@ There are no slash commands; every entry point is a skill.
 
 ### Templates
 
-`workflows/` is the universal tier of the process-template library.
-`workflows/INDEX.md` is its routing tree, and `workflows/archive/` holds retired
-templates. The other two tiers — project-local `$CWD/.agents/templates/` and PKB
+`workflows/` is the universal tier of the process-template library, and `workflows/archive/`
+holds retired templates. The other two tiers — project-local `$CWD/.agents/templates/` and PKB
 documents carrying `type: template` — live outside this plugin.
 
 ### Hook

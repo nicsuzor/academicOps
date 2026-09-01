@@ -2,12 +2,12 @@
 """
 claude_code_tracer.py — OpenInference tracer for Claude Code hooks.
 
-Ships Claude Code activities as OpenInference traces to Arthur Engine.
+Ships Claude Code activities as OpenTelemetry / OpenInference traces to Phoenix or an OTLP collector.
 
 Trace model:
   - Each user prompt → one trace (CHAIN root + TOOL/RETRIEVER/AGENT children + LLM children)
   - Exiting the session completes the current in-progress trace
-  - Traces are linked by arthur.session attribute
+  - Traces are linked by session.id attribute
 
 Hook events:
   user_prompt_submit — start a new trace; complete previous trace if in progress
@@ -75,17 +75,25 @@ def _load_polecat_config() -> dict:
     return {}
 
 
+DEFAULT_CANONICAL_ALIASES = {
+    "aops": "academicOps",
+    "academicops": "academicOps",
+    "academic_ops": "academicOps",
+}
+
+
 def resolve_canonical_project(project: str | None, config: dict | None = None) -> str | None:
     """Resolve a project name or alias to its canonical project slug.
 
     Reads aliases configured in polecat.yaml:
     - `projects.<slug>.aliases`: list of alias strings or single alias string
-    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `academicOps: aops`),
-      or canonical slug to alias list (e.g. `aops: [academicOps, academicops]`).
+    - top-level `aliases:` dict: mapping from alias to canonical slug (e.g. `aops: academicOps`),
+      or canonical slug to alias list (e.g. `academicOps: [aops, academicops]`).
 
     If `project` matches a canonical slug or an alias (checked case-insensitively if exact
     case does not hit), returns the canonical slug.
     Also handles `<alias>-<task_id>` prefixes by canonicalizing the prefix.
+    If no alias matches in config, checks default canonical aliases.
     If no alias matches, returns `project`.
     """
     if not project:
@@ -98,7 +106,7 @@ def resolve_canonical_project(project: str | None, config: dict | None = None) -
     if not project_str:
         return project
 
-    projects = config.get("projects", {})
+    projects = config.get("projects", {}) if config else {}
     if isinstance(projects, dict) and project_str in projects:
         return project_str
 
@@ -122,7 +130,7 @@ def resolve_canonical_project(project: str | None, config: dict | None = None) -
                     if any(str(a).lower() == project_str.lower() for a in aliases):
                         return str(slug)
 
-    top_aliases = config.get("aliases", {})
+    top_aliases = config.get("aliases", {}) if config else {}
     if isinstance(top_aliases, dict):
         if project_str in top_aliases and isinstance(top_aliases[project_str], str):
             return str(top_aliases[project_str])
@@ -151,36 +159,48 @@ def resolve_canonical_project(project: str | None, config: dict | None = None) -
         if canon_prefix and canon_prefix != prefix:
             return f"{canon_prefix}-{rest}"
 
+    if project_str in DEFAULT_CANONICAL_ALIASES:
+        return DEFAULT_CANONICAL_ALIASES[project_str]
+    for k, v in DEFAULT_CANONICAL_ALIASES.items():
+        if k.lower() == project_str.lower():
+            return v
+
     return project_str
 
 
 def resolve_project_name(
     data: dict | None = None,
-    task_id: str = "",
+    project: str = "",
     config: dict | None = None,
 ) -> str:
     """Resolve project name from environment, config, hook payload cwd, or starting dirname.
 
     Priority:
-    1. Explicit task_id / GENAI_ENGINE_TASK_ID if non-empty
+    1. Explicit project if non-empty
     2. PHOENIX_PROJECT_NAME env var
     3. OTEL_SERVICE_NAME env var
-    4. Hook payload cwd or CLAUDE_PROJECT_DIR or current working directory basename
-    5. Fallback to 'default'
+    4. service.name attribute in OTEL_RESOURCE_ATTRIBUTES env var
+    5. Hook payload cwd or CLAUDE_PROJECT_DIR or current working directory basename
+    6. Fallback to 'default'
 
     Any resolved project name is automatically mapped to its canonical slug if defined
-    in polecat.yaml aliases.
+    in polecat.yaml aliases or default canonical aliases.
     """
     raw_name = ""
-    if task_id:
-        raw_name = task_id
-    elif env_task := os.environ.get("GENAI_ENGINE_TASK_ID", "").strip():
-        raw_name = env_task
+    if project and project.strip():
+        raw_name = project.strip()
     elif env_phoenix := os.environ.get("PHOENIX_PROJECT_NAME", "").strip():
         raw_name = env_phoenix
     elif env_service := os.environ.get("OTEL_SERVICE_NAME", "").strip():
         raw_name = env_service
-    else:
+    elif env_res := os.environ.get("OTEL_RESOURCE_ATTRIBUTES", "").strip():
+        for pair in env_res.split(","):
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                if k.strip() == "service.name" and v.strip():
+                    raw_name = v.strip()
+                    break
+    if not raw_name:
         # Directory resolution
         cwd = ""
         if data and isinstance(data, dict):
@@ -213,11 +233,6 @@ def discover_config(data: dict | None = None) -> dict | None:
         or os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
         or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
     )
-    task_id = (
-        os.environ.get("GENAI_ENGINE_TASK_ID")
-        or os.environ.get("OTEL_SERVICE_NAME")
-        or os.environ.get("PHOENIX_PROJECT_NAME", "")
-    )
     endpoint = (
         os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
         or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -232,9 +247,16 @@ def discover_config(data: dict | None = None) -> dict | None:
     if not endpoint:
         return None
 
-    project_name = resolve_project_name(data, task_id)
-    if not task_id:
-        task_id = project_name
+    project_name = resolve_project_name(data)
+
+    task_id = (
+        os.environ.get("AOPS_TASK_ID", "").strip()
+        or os.environ.get("GENAI_ENGINE_TASK_ID", "").strip()
+    )
+    if task_id:
+        canon_task = resolve_canonical_project(task_id)
+        if task_id == project_name or canon_task == project_name:
+            task_id = ""
 
     cfg = {
         "api_key": api_key,
@@ -1211,8 +1233,9 @@ def _build_and_export_spans(
         StatusCode,
     ) = _otel_imports()
 
-    service_name = config.get("service_name") or config.get("task_id") or "claude-code"
-    project_name = config.get("project_name") or config.get("task_id") or "default"
+    service_name = config.get("service_name") or config.get("project_name") or "academicOps"
+    project_name = config.get("project_name") or "academicOps"
+    task_id = config.get("task_id", "")
     try:
         host_name = socket.gethostname()
     except Exception:
@@ -1222,10 +1245,11 @@ def _build_and_export_spans(
         "service.name": service_name,
         "openinference.project.name": project_name,
         "project.name": project_name,
-        "arthur.task": config.get("task_id", project_name),
-        "arthur.session": session_id,
-        "arthur.user": username,
+        "session.id": session_id,
     }
+    if task_id:
+        resource_attrs["task.id"] = task_id
+        resource_attrs["tag.task_id"] = task_id
     if host_name:
         resource_attrs["host.name"] = host_name
     if username:
@@ -1310,11 +1334,14 @@ def _build_and_export_spans(
             except Exception:
                 pass
 
-            span.set_attribute("arthur_span_version", "arthur_span_v1")
             span.set_attribute("session.id", session_id)
-            span.set_attribute("user.id", username)
+            if username:
+                span.set_attribute("user.id", username)
             span.set_attribute("project.name", project_name)
             span.set_attribute("openinference.project.name", project_name)
+            if task_id:
+                span.set_attribute("task.id", task_id)
+                span.set_attribute("tag.task_id", task_id)
             if host_name:
                 span.set_attribute("host.name", host_name)
             for k, v in rec.get("attributes", {}).items():
@@ -1423,7 +1450,7 @@ def _complete_turn(
         "openinference.span.kind": "CHAIN",
         "session.id": phoenix_session_id,
         "user.id": username,
-        "arthur.turn_number": turn_number,
+        "turn_number": turn_number,
     }
     if prompt_preview:
         root_attrs["input.value"] = prompt_preview
@@ -2084,7 +2111,7 @@ def main() -> None:
 
     config = discover_config()
     if config is None:
-        log.debug("Arthur Engine not configured, skipping tracing.")
+        log.debug("OTel tracer not configured, skipping tracing.")
         sys.exit(0)
 
     try:

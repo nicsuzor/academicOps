@@ -161,6 +161,13 @@ def _load_polecat_config() -> dict[str, Any]:
     return {}
 
 
+DEFAULT_CANONICAL_ALIASES = {
+    "aops": "academicOps",
+    "academicops": "academicOps",
+    "academic_ops": "academicOps",
+}
+
+
 def resolve_canonical_project(
     project: str | None, config: dict[str, Any] | None = None
 ) -> str | None:
@@ -173,7 +180,7 @@ def resolve_canonical_project(
     if not project_str:
         return project
 
-    projects = config.get("projects", {})
+    projects = config.get("projects", {}) if config else {}
     if isinstance(projects, dict) and project_str in projects:
         return project_str
 
@@ -197,7 +204,7 @@ def resolve_canonical_project(
                     if any(str(a).lower() == project_str.lower() for a in aliases):
                         return str(slug)
 
-    top_aliases = config.get("aliases", {})
+    top_aliases = config.get("aliases", {}) if config else {}
     if isinstance(top_aliases, dict):
         if project_str in top_aliases and isinstance(top_aliases[project_str], str):
             return str(top_aliases[project_str])
@@ -223,6 +230,12 @@ def resolve_canonical_project(
         canon_prefix = resolve_canonical_project(prefix, config)
         if canon_prefix and canon_prefix != prefix:
             return f"{canon_prefix}-{rest}"
+
+    if project_str in DEFAULT_CANONICAL_ALIASES:
+        return DEFAULT_CANONICAL_ALIASES[project_str]
+    for k, v in DEFAULT_CANONICAL_ALIASES.items():
+        if k.lower() == project_str.lower():
+            return v
 
     return project_str
 
