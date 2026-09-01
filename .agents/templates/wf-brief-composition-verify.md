@@ -4,8 +4,8 @@ alias:
 - wf-brief-composition-verify
 created: 2026-08-19T03:56:44.330396070+00:00
 id: wf-brief-composition-verify
-last_modified: 2026-08-26T04:00:06.766975846+00:00
-modified: 2026-08-26T04:00:06.766958593+00:00
+last_modified: 2026-09-02T00:00:00.000000000+00:00
+modified: 2026-09-02T00:00:00.000000000+00:00
 permalink: wf-brief-composition-verify
 tags:
 - wf-template
@@ -41,7 +41,7 @@ No further investigation of search path or precedence is needed or permitted in 
 - **Red-before-green ordering**: Every test case in the corpus must be run against baseline/current behaviour to observe and document an actual failure before authoring a proposed remedy. A case that does not fail on baseline cannot prove a remedy.
 - **Green**: Author the minimal structural remedy (gate, hook, or schema check) to pass the failing case.
 - **No-regression**: Full-suite pass required — all previously passing cases in the corpus must remain green when new remedies or modifications land.
-- **Normative constraints** (from `[[wf-tdd-cycle]]`): One behavior per test; test before implementation; never commit with failing tests; never implement beyond the minimum needed to pass.
+- **Normative constraints**: apply `[[wf-tdd-cycle]]`'s Constraints section in full — read it there rather than here, so this copy cannot drift from the canonical one.
 
 ### 2. Evaluation Rules (drawn from `[[wf-qa-verify]]`)
 
