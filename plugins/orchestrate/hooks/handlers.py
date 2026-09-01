@@ -99,6 +99,8 @@ def _format_session_metadata(ctx: HookContext) -> str:
 
     plugins_meta = _get_plugin_version_metadata(ctx)
 
+    pkb_version = os.environ.get("PKB_VERSION") or ctx.raw.get("pkb_version") or "unknown"
+
     parts = [
         f"session: {_scrub(session_id)}" if session_id else "session: unknown",
         f"time: {time_str}",
@@ -107,6 +109,7 @@ def _format_session_metadata(ctx: HookContext) -> str:
     ]
     if plugins_meta:
         parts.append(f"plugins: {_scrub(plugins_meta)}")
+    parts.append(f"pkb: {_scrub(pkb_version)}")
     return " | ".join(parts)
 
 
@@ -156,6 +159,57 @@ def _isolate_credentials(ctx: HookContext) -> bool:
         return False
 
 
+def _get_injected_files(ctx: HookContext) -> list[str]:
+    injected = []
+    cwd = Path(ctx.cwd) if ctx.cwd else Path.cwd()
+
+    # Plugin scope
+    plugin_dir = ctx.hooks_dir.parent.parent
+    axioms_dir = plugin_dir / "rbg" / "axioms"
+    if axioms_dir.exists():
+        injected.append(f" - {axioms_dir.name}/*.md (plugin)")
+    elif (plugin_dir.parent / "lib" / "axioms").exists():
+        injected.append(" - lib/axioms/*.md (plugin)")
+
+    # User scope
+    home = Path.home()
+    user_files = [
+        home / ".claude.md",
+        home / ".gemini.md",
+        home / ".config" / "claude" / "CLAUDE.md",
+    ]
+    aca_data = os.environ.get("ACA_DATA")
+    if aca_data:
+        aca_path = Path(aca_data)
+        user_files.extend(list((aca_path / ".agents" / "rules").glob("*.md")))
+
+    for f in user_files:
+        if f.exists():
+            injected.append(f" - {f.name} (user)")
+
+    # Project scope
+    project_files = [
+        cwd / "CLAUDE.md",
+        cwd / "GEMINI.md",
+        cwd / ".claude.md",
+        cwd / ".agents" / "CORE.md",
+    ]
+
+    proj_rules = cwd / ".agents" / "rules"
+    if proj_rules.exists() and proj_rules.is_dir():
+        project_files.extend(list(proj_rules.glob("*.md")))
+
+    for f in project_files:
+        if f.exists():
+            try:
+                rel = f.relative_to(cwd)
+            except ValueError:
+                rel = f
+            injected.append(f" - {rel} (project)")
+
+    return injected
+
+
 def session_start(ctx: HookContext) -> Result | None:
     metadata = _format_session_metadata(ctx)
     parts = ["aops hook: Session started.", metadata]
@@ -180,6 +234,12 @@ def session_start(ctx: HookContext) -> Result | None:
     if _isolate_credentials(ctx):
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")
         user_parts.insert(0, "Credentials isolated.")
+
+    injected = _get_injected_files(ctx)
+    if injected:
+        files_str = "Injected context files:\n" + "\n".join(injected)
+        parts.append(files_str)
+        user_parts.append(files_str)
 
     return warn("\n\n".join(parts), "\n\n".join(user_parts))
 
