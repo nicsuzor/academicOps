@@ -110,6 +110,18 @@ def _format_session_metadata(ctx: HookContext) -> str:
     if plugins_meta:
         parts.append(f"plugins: {_scrub(plugins_meta)}")
     parts.append(f"pkb: {_scrub(pkb_version)}")
+
+    otel_endpoint = (
+        os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        or os.environ.get("BETA_TRACING_ENDPOINT")
+        or os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT")
+    )
+    if otel_endpoint:
+        service_name = os.environ.get("OTEL_SERVICE_NAME") or "unknown"
+        parts.append(f"tracing: {_scrub(otel_endpoint)} (service: {_scrub(service_name)})")
+    else:
+        parts.append("tracing: unconfigured")
+
     return " | ".join(parts)
 
 
