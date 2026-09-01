@@ -375,13 +375,6 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     # covered by test_pauli_agy_frontmatter.
     assert "mcpServers" not in agy_agent
 
-    # pc declares tools: [Bash] which translates to run_command for agy
-    agy_pc_md = dist_root / "orchestrate-agy" / "agents" / "pc.md"
-    assert agy_pc_md.is_file()
-    pc_fm, _, _ = agy_pc_md.read_text().partition("---\n")[2].partition("---\n")
-    agy_pc = yaml.safe_load(pc_fm)
-    assert agy_pc["tools"] == ["run_command"]
-
     body = body.lstrip("\n")
     assert body.startswith("# Agent System Instructions")
 

@@ -678,9 +678,10 @@ def test_run_constructs_task_id_and_service_name_with_project_and_task(tmp_path,
     )
     assert "GENAI_ENGINE_TASK_ID" in cmd
     assert cmd[cmd.index("GENAI_ENGINE_TASK_ID") - 1] == "-e"
-    assert docker_env["GENAI_ENGINE_TASK_ID"] == "academicOps-aops_ded39198"
+    assert docker_env["GENAI_ENGINE_TASK_ID"] == "aops_ded39198"
     assert "OTEL_SERVICE_NAME" in cmd
-    assert docker_env["OTEL_SERVICE_NAME"] == "academicOps-aops_ded39198"
+    assert docker_env["OTEL_SERVICE_NAME"] == "academicOps"
+    assert docker_env["PHOENIX_PROJECT_NAME"] == "academicOps"
 
 
 def test_run_constructs_task_id_and_service_name_with_task_only(tmp_path, monkeypatch):
@@ -698,10 +699,10 @@ def test_run_constructs_task_id_and_service_name_with_task_only(tmp_path, monkey
         {},
     )
     assert docker_env["GENAI_ENGINE_TASK_ID"] == "aops_ded39198"
-    assert docker_env["OTEL_SERVICE_NAME"] == "aops_ded39198"
 
 
 def test_run_constructs_task_id_and_service_name_with_project_only(tmp_path, monkeypatch):
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID", raising=False)
     cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
@@ -715,8 +716,9 @@ def test_run_constructs_task_id_and_service_name_with_project_only(tmp_path, mon
         ],
         {},
     )
-    assert docker_env["GENAI_ENGINE_TASK_ID"] == "academicOps"
+    assert "GENAI_ENGINE_TASK_ID" not in docker_env
     assert docker_env["OTEL_SERVICE_NAME"] == "academicOps"
+    assert docker_env["PHOENIX_PROJECT_NAME"] == "academicOps"
 
 
 def test_run_preserves_config_genai_engine_task_id_when_neither_project_nor_task(
@@ -734,7 +736,6 @@ def test_run_preserves_config_genai_engine_task_id_when_neither_project_nor_task
         {"telemetry": {"task_id": "config_task_id"}},
     )
     assert docker_env["GENAI_ENGINE_TASK_ID"] == "config_task_id"
-    assert docker_env["OTEL_SERVICE_NAME"] == "config_task_id"
 
 
 def test_run_ignores_ambient_genai_engine_task_id_when_neither_project_nor_task(

@@ -76,8 +76,9 @@
 #
 # Global project aliases mapping (resolves project variants across polecat & OTEL).
 # aliases:
-#   academicOps: aops
-#   academicops: aops
+#   aops: academicOps
+#   academicops: academicOps
+#   academic_ops: academicOps
 
 # Host directory of user-scoped cope/rbg rules (the same shape as
 # $ACA_DATA/.agents/rules/ on a host session), mounted read-only into every

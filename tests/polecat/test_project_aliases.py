@@ -197,11 +197,11 @@ def test_run_normalizes_project_alias_for_otel_and_session(tmp_path, monkeypatch
     assert len(captured_run) == 1
 
     cmd, env = captured_run[0]
-    assert env is not None
     assert "polecat.project=aops" in env["OTEL_RESOURCE_ATTRIBUTES"]
     assert "polecat.task_id=task_fe8e4d2e" in env["OTEL_RESOURCE_ATTRIBUTES"]
-    assert env["GENAI_ENGINE_TASK_ID"] == "aops-task_fe8e4d2e"
-    assert env["OTEL_SERVICE_NAME"] == "aops-task_fe8e4d2e"
+    assert env["GENAI_ENGINE_TASK_ID"] == "task_fe8e4d2e"
+    assert env["OTEL_SERVICE_NAME"] == "aops"
+    assert env["PHOENIX_PROJECT_NAME"] == "aops"
 
     # Check sessions mount path in docker cmd contains /aops
     session_mounts = [arg for arg in cmd if "/logs/" in arg and "/aops" in arg]

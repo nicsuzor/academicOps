@@ -25,11 +25,11 @@ A workflow component is a short markdown file, or knowledge-base document, carry
 
 Components come from three sources:
 
-| Source                  | Where                                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------ |
-| Project-local           | `$CWD/.agents/templates/*.md` — an absent directory is empty, not an error                 |
-| Plugin                  | `plugins/aops/workflows/*.md`, with the routing index at `plugins/aops/workflows/INDEX.md` |
-| Personal knowledge base | documents carrying `type: template`                                                        |
+| Source                  | Where                                                                      |
+| ----------------------- | -------------------------------------------------------------------------- |
+| Project-local           | `$CWD/.agents/templates/*.md` — an absent directory is empty, not an error |
+| Plugin                  | `plugins/aops/workflows/*.md`                                              |
+| Personal knowledge base | documents carrying `type: template`                                        |
 
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
 

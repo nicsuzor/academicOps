@@ -135,14 +135,27 @@ def test_discover_config_genai_env_vars(monkeypatch):
     monkeypatch.setenv("GENAI_ENGINE_API_KEY", "test-key")
     monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "test-task")
     monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://localhost:4318/v1/traces")
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "academicOps")
 
     cfg = claude_code_tracer.discover_config()
     assert cfg == {
         "api_key": "test-key",
         "task_id": "test-task",
         "endpoint": "http://localhost:4318/v1/traces",
-        "project_name": "test-task",
+        "project_name": "academicOps",
     }
+
+
+def test_discover_config_aops_task_id_whitespace(monkeypatch):
+    """Verify discover_config strips AOPS_TASK_ID properly."""
+    monkeypatch.setenv("GENAI_ENGINE_TRACE_ENDPOINT", "http://localhost:4318/v1/traces")
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "academicOps")
+    monkeypatch.setenv("AOPS_TASK_ID", "  test-aops-task  \n")
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID", raising=False)
+
+    cfg = claude_code_tracer.discover_config()
+    assert cfg is not None
+    assert cfg["task_id"] == "test-aops-task"
 
 
 def test_discover_config_otel_env_vars_fallback(monkeypatch):
@@ -150,11 +163,13 @@ def test_discover_config_otel_env_vars_fallback(monkeypatch):
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4318/v1/traces")
     monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-claude-service")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "Authorization=Bearer secret-otel-token")
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID", raising=False)
+    monkeypatch.delenv("AOPS_TASK_ID", raising=False)
 
     cfg = claude_code_tracer.discover_config()
     assert cfg == {
         "api_key": "Authorization=Bearer secret-otel-token",
-        "task_id": "custom-claude-service",
+        "task_id": "",
         "endpoint": "http://otel-collector:4318/v1/traces",
         "project_name": "custom-claude-service",
     }
@@ -164,13 +179,16 @@ def test_discover_config_protocol_env_var(monkeypatch, tmp_path):
     """Verify discover_config detects OTEL_EXPORTER_OTLP_PROTOCOL."""
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "test-proj")
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID", raising=False)
+    monkeypatch.delenv("AOPS_TASK_ID", raising=False)
 
     cfg = claude_code_tracer.discover_config()
     assert cfg == {
         "api_key": "",
-        "task_id": tmp_path.name,
+        "task_id": "",
         "endpoint": "http://localhost:4317",
-        "project_name": tmp_path.name,
+        "project_name": "test-proj",
         "protocol": "grpc",
     }
 
@@ -422,23 +440,27 @@ def test_handlers_collector_unreachable_fail_safe(monkeypatch):
 
 def test_resolve_project_name(monkeypatch, tmp_path):
     """Verify resolve_project_name respects priority order."""
-    # 1. Explicit task_id
-    assert claude_code_tracer.resolve_project_name(task_id="explicit-task") == "explicit-task"
+    monkeypatch.chdir(tmp_path)
 
-    # 2. GENAI_ENGINE_TASK_ID
-    monkeypatch.setenv("GENAI_ENGINE_TASK_ID", "env-genai-task")
-    assert claude_code_tracer.resolve_project_name() == "env-genai-task"
-    monkeypatch.delenv("GENAI_ENGINE_TASK_ID")
+    # 1. Explicit project
+    assert claude_code_tracer.resolve_project_name(project="explicit-proj") == "explicit-proj"
+    # Whitespace-only project is ignored and falls through
+    assert claude_code_tracer.resolve_project_name(project="   ") == tmp_path.name
 
-    # 3. PHOENIX_PROJECT_NAME
+    # 2. PHOENIX_PROJECT_NAME
     monkeypatch.setenv("PHOENIX_PROJECT_NAME", "env-phoenix-proj")
     assert claude_code_tracer.resolve_project_name() == "env-phoenix-proj"
     monkeypatch.delenv("PHOENIX_PROJECT_NAME")
 
-    # 4. OTEL_SERVICE_NAME
+    # 3. OTEL_SERVICE_NAME
     monkeypatch.setenv("OTEL_SERVICE_NAME", "env-otel-svc")
     assert claude_code_tracer.resolve_project_name() == "env-otel-svc"
     monkeypatch.delenv("OTEL_SERVICE_NAME")
+
+    # 4. OTEL_RESOURCE_ATTRIBUTES with service.name
+    monkeypatch.setenv("OTEL_RESOURCE_ATTRIBUTES", "deployment.env=prod,service.name=env-res-svc")
+    assert claude_code_tracer.resolve_project_name() == "env-res-svc"
+    monkeypatch.delenv("OTEL_RESOURCE_ATTRIBUTES")
 
     # 5. Payload cwd
     payload = {"cwd": "/home/user/code/my-repo"}
@@ -450,31 +472,32 @@ def test_resolve_project_name(monkeypatch, tmp_path):
     monkeypatch.delenv("CLAUDE_PROJECT_DIR")
 
     # 7. Fallback to cwd basename
-    assert claude_code_tracer.resolve_project_name() == Path.cwd().name
+    assert claude_code_tracer.resolve_project_name() == tmp_path.name
 
 
 def test_resolve_project_name_with_aliases(monkeypatch, tmp_path):
     """Verify resolve_project_name maps project aliases to canonical names."""
     config = {
         "projects": {
-            "aops": {"aliases": ["academicOps"]},
+            "academicOps": {"aliases": ["aops", "academicops"]},
         }
     }
     monkeypatch.setattr(claude_code_tracer, "_load_polecat_config", lambda: config)
 
     # 1. Payload cwd resolving to alias
-    payload = {"cwd": "/home/user/code/academicOps"}
-    assert claude_code_tracer.resolve_project_name(payload) == "aops"
+    payload = {"cwd": "/home/user/code/aops"}
+    assert claude_code_tracer.resolve_project_name(payload) == "academicOps"
 
     # 2. PHOENIX_PROJECT_NAME set to alias
-    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "academicOps")
-    assert claude_code_tracer.resolve_project_name() == "aops"
+    monkeypatch.setenv("PHOENIX_PROJECT_NAME", "aops")
+    assert claude_code_tracer.resolve_project_name() == "academicOps"
     monkeypatch.delenv("PHOENIX_PROJECT_NAME")
 
-    # 3. task_id with alias prefix
-    assert (
-        claude_code_tracer.resolve_project_name(task_id="academicOps-task_123") == "aops-task_123"
-    )
+    # 3. Default canonical aliases (even with empty config)
+    monkeypatch.setattr(claude_code_tracer, "_load_polecat_config", lambda: {})
+    assert claude_code_tracer.resolve_project_name(project="aops") == "academicOps"
+    assert claude_code_tracer.resolve_project_name(project="academicops") == "academicOps"
+    assert claude_code_tracer.resolve_project_name(project="academicOps") == "academicOps"
 
 
 def test_build_and_export_spans_resource_attributes(monkeypatch):
@@ -512,8 +535,8 @@ def test_build_and_export_spans_resource_attributes(monkeypatch):
 
     config = {
         "endpoint": "http://localhost:4317",
-        "task_id": "test-project",
-        "project_name": "test-project",
+        "task_id": "test-task-123",
+        "project_name": "academicOps",
     }
     records = [
         {
@@ -535,19 +558,84 @@ def test_build_and_export_spans_resource_attributes(monkeypatch):
 
     assert len(created_resources) == 1
     res = created_resources[0]
-    assert res.attributes["openinference.project.name"] == "test-project"
-    assert res.attributes["project.name"] == "test-project"
-    assert res.attributes["arthur.task"] == "test-project"
-    assert res.attributes["arthur.user"] == "tester"
+    assert res.attributes["openinference.project.name"] == "academicOps"
+    assert res.attributes["project.name"] == "academicOps"
+    assert res.attributes["task.id"] == "test-task-123"
+    assert res.attributes["tag.task_id"] == "test-task-123"
+    assert res.attributes["user.id"] == "tester"
+    assert res.attributes["session.id"] == "session-xyz"
     assert "host.name" in res.attributes
 
     # Check span attributes
     span_calls = {call.args[0]: call.args[1] for call in mock_span.set_attribute.call_args_list}
-    assert span_calls["project.name"] == "test-project"
-    assert span_calls["openinference.project.name"] == "test-project"
+    assert span_calls["project.name"] == "academicOps"
+    assert span_calls["openinference.project.name"] == "academicOps"
+    assert span_calls["task.id"] == "test-task-123"
+    assert span_calls["tag.task_id"] == "test-task-123"
     assert span_calls["session.id"] == "session-xyz"
     assert span_calls["user.id"] == "tester"
     assert "host.name" in span_calls
+
+
+def test_build_and_export_spans_empty_username(monkeypatch):
+    """Verify build_and_export_spans omits user.id when username is empty."""
+    created_resources = []
+    mock_span = MagicMock()
+    mock_tracer = MagicMock()
+    mock_tracer.start_span.return_value = mock_span
+
+    class MockTracerProvider:
+        def __init__(self, resource=None):
+            if resource:
+                created_resources.append(resource)
+
+        def add_span_processor(self, processor):
+            pass
+
+        def get_tracer(self, name):
+            return mock_tracer
+
+        def shutdown(self):
+            pass
+
+    orig_otel_imports = claude_code_tracer._otel_imports
+
+    def mock_otel_imports():
+        imports = list(orig_otel_imports())
+        imports[2] = MockTracerProvider
+        return tuple(imports)
+
+    monkeypatch.setattr(claude_code_tracer, "_otel_imports", mock_otel_imports)
+
+    config = {
+        "endpoint": "http://localhost:4317",
+        "task_id": "test-task-123",
+        "project_name": "academicOps",
+    }
+    records = [
+        {
+            "trace_id_hex": "11111111111111111111111111111111",
+            "span_id_hex": "2222222222222222",
+            "name": "test-span",
+            "start_ns": 1000,
+            "end_ns": 2000,
+            "attributes": {},
+        }
+    ]
+
+    claude_code_tracer._build_and_export_spans(
+        config=config,
+        session_id="session-xyz",
+        username="",
+        span_records=records,
+    )
+
+    assert len(created_resources) == 1
+    res = created_resources[0]
+    assert "user.id" not in res.attributes
+
+    span_calls = {call.args[0]: call.args[1] for call in mock_span.set_attribute.call_args_list}
+    assert "user.id" not in span_calls
 
 
 def test_agy_extract_llm_spans_inputs(tmp_path):

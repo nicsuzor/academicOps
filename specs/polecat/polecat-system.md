@@ -38,7 +38,7 @@ This file is the umbrella. The individual designs are
 - [[plugins/aops/skills/pull/SKILL.md]] — worker-side: claim, execute, record, hand
   over — what a seeded `/pull <task-id>` prompt actually does once inside the
   container
-- [[plugins/orchestrate/agents/pc.md]] — coordinator-side: the launcher agent that builds
+- [[plugins/aops/skills/polecat/SKILL.md]] — coordinator-side: the launcher skill that builds
   the `polecat run` command and runs it synchronously (or wrapped under tmux), locally
   or over ssh. It is one route in, not a gate: `run`'s own guarantees hold on any
   invocation, and nothing stops a caller reaching the CLI directly

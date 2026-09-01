@@ -13,11 +13,11 @@ memory, or a previous listing.
 
 ## The three tiers
 
-| Tier         | Where                         | Enumerate with                                 |
-| ------------ | ----------------------------- | ---------------------------------------------- |
-| 1. Project   | `$CWD/.agents/templates/*.md` | `ls`; absent directory means empty             |
-| 2. PKB       | the graph                     | `pkb__list_documents(type="template")`         |
-| 3. Universal | `../../workflows/*.md`        | `ls`, catalogued by `../../workflows/INDEX.md` |
+| Tier         | Where                         | Enumerate with                         |
+| ------------ | ----------------------------- | -------------------------------------- |
+| 1. Project   | `$CWD/.agents/templates/*.md` | `ls`; absent directory means empty     |
+| 2. PKB       | the graph                     | `pkb__list_documents(type="template")` |
+| 3. Universal | `../../workflows/*.md`        | `ls`                                   |
 
 Resolution is **project ≻ PKB ≻ universal**. Slugs match case-insensitively,
 ignoring a `wf-` prefix and `_`/`-` differences: `feature-dev`, `wf-feature-dev`
@@ -63,11 +63,6 @@ Reading ~70 documents buries your context, so delegate the PKB tier to one
 subagent that returns table rows only. The two filesystem tiers are one command
 each; do them inline.
 
-`../../workflows/INDEX.md` carries the routing tree and a
-`Routes / Requires / Pairs with` table. Use it only for those routing
-relationships, which live nowhere else. Never use it to say what a template
-covers, and never as proof one exists.
-
 Filter out retired documents, datestamped instance nodes (`-20260820-1430-`),
 and templates scoped to a project other than this one — and say how many you
 filtered. Retirement is not reliably in the frontmatter: some templates are
@@ -108,9 +103,7 @@ process obliges; explaining how to perform a step is a skill's job, and a
 template that teaches technique has swallowed one.
 
 Register it nowhere. Discovery is dynamic, and adding a registry row recreates
-the gate the discovery contract repealed. The one exception is
-`../../workflows/INDEX.md`'s routing tree for a universal template, which records
-routing relationships rather than existence.
+the gate the discovery contract repealed.
 
 ### edit — change one
 
@@ -148,7 +141,6 @@ tag, so set both; a document with only one is still composed by half the passes.
    > [!IMPORTANT]
    > **RETIRED**: superseded by [[<canonical-id>]]. Do not compose.
    ```
-3. Remove its routing rows from `../../workflows/INDEX.md` if it is universal.
 
 Name what supersedes it. A template retired with nothing named in its place
 leaves the work it covered with no process, which `brief` correctly halts on.
