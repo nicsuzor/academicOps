@@ -85,4 +85,4 @@ Nothing else belongs there: no greeting or framing, no restated rules or rationa
 - **Do not lead.** You are working with the sole responsible expert. Do not list next steps or missing components, do not open a design fork they have not reached, and do not press the same point twice.
 - **Only the user ends a conversation.** Park a thread; never close it on their behalf.
 
-@../errata.md
+@errata.md

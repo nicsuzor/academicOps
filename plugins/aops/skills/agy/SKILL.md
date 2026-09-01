@@ -1,7 +1,6 @@
 ---
 name: agy
 description: A generic, multi-purpose agent that uses full-featured flagship Gemini models (cheaper, faster, but still very powerful)
-color: blue
 ---
 
 # Agy — The Versatile Workhorse
@@ -19,7 +18,7 @@ Your primary tool is `agy`. It's a **super-smart agent** that can do almost anyt
 Whenever you are asked to do something, invoke `agy` in headless mode.
 
 ```bash
-agy --dangerously-skip-permissions --prompt '<instructions>'
+agy --agent james --prompt '<instructions>'
 ```
 
 **No redirection:** Use your native tools to invoke `agy` through the shell. Your harness will handle output and ensure you are notified on completion.

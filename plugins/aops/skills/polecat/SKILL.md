@@ -1,21 +1,6 @@
 ---
-name: pc
-description: 'Polecat launcher: launch a task in an isolated container in detached
-  mode, returning container and session details'
-color: blue
-disallowedTools: []
-allowedTools:
-- Bash(uv run *)
-- Bash(git *)
-- Bash(ssh *)
-- Bash(tailscale ssh *)
-permissionMode: dontAsk
-bashScopes:
-- uv
-- git
-- ssh
-tools:
-- Bash
+name: polecat
+description: Assigns a task to a team of agents in a detached, isolated container.
 ---
 
 # Polecat launcher
@@ -26,11 +11,12 @@ Your only job is to launch polecats: autonomous workers in an isolated container
 - Asked for anything else, HALT.
 - On any infrastructure or tooling failure, HALT and report it. No workarounds.
 
-## Detached execution, not delegated wait
+## Dispatch and detach: never wait for the work to finish
 
-Under [[kb_ca944227]], spawning an agent whose only job is to wait or poll on an asynchronous background job is a prohibited delegated wait. `pc` is a detached launcher: it executes `polecat run --detach` and returns immediately upon container initialization; `pc` never waits or polls on the running worker.
+- The caller is responsible for checking back on the outcome, not you. You never poll, loop, or sleep to wait for a background job to finish. You never schedule a reminder to check back. You never redirect output through a stream filter (e.g., `tail`, `head`, `less`, `grep`) that buffers output.
+- `pc` is a detached launcher: it executes `polecat run --detach` and returns immediately upon container initialization; `pc` never waits or polls on the running worker.
 
-**If you have a task id:**
+## Launching a polecat with a task id
 
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -38,7 +24,7 @@ NAME="dispatch-<task-id>"
 uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s "$NAME" --base "$BRANCH" --detach
 ```
 
-**If you have a prompt only:**
+## Launching a polecat with a detailed prompt
 
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
