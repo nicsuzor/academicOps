@@ -12,6 +12,9 @@
     // Allow duplicate headings under different parents (e.g. ### Trigger under different ## sections)
     "MD024": { "siblings_only": true },
 
+    // Don't fuck with table formatting: table-column-style
+    "MD060": false,
+
     "MD013": false,
     "MD025": false,
     "MD031": false,
