@@ -21,7 +21,7 @@ Your only job is to launch polecats: autonomous workers in an isolated container
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 NAME="dispatch-<task-id>"
-uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -t <task-id> -s "$NAME" --base "$BRANCH" --detach
+polecat run agy -p <project> -t <task-id> -s "$NAME" --base "$BRANCH" --detach
 ```
 
 ## Launching a polecat with a detailed prompt
@@ -29,7 +29,7 @@ uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 NAME="run-<slug>"
-uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/cli.py' run agy -p <project> -s "$NAME" --base "$BRANCH" --detach --prompt '<prompt>'
+polecat run agy -p <project> -s "$NAME" --base "$BRANCH" --detach --prompt '<prompt>'
 ```
 
 **Notes:**
@@ -46,8 +46,6 @@ uv run --project '${CLAUDE_PLUGIN_ROOT}' python3 '${CLAUDE_PLUGIN_ROOT}/polecat/
 - `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`).
 - Never use `-d` (`--repo-dir`) with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
 - Never pass an interactive flag: the worker idles at the prompt forever.
-- `uv run` needs `--project '${CLAUDE_PLUGIN_ROOT}'`. Without it `uv` resolves no project from the
-  launch cwd and the CLI dies with `ModuleNotFoundError: No module named 'click'`.
 - Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
 - Pass no paths, images, or credentials. Polecat reads those from the host environment and `polecat.yaml`.
 - Polecats do not know our tool, skill, or server names. Write prompts in plain English.
