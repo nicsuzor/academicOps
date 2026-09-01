@@ -1,4 +1,6 @@
 {
+  "noBanner": true,
+  "noProgress": true,
   "config": {
     // Ban horizontal line dividers (H39) - our custom rule handles this
     "MD035": false,
@@ -20,6 +22,9 @@
     "MD040": false,
     "MD041": false
   },
-  "customRules": [".markdownlint-rules/no-horizontal-rules.js"],
+  "customRules": [
+    ".markdownlint-rules/no-horizontal-rules.js",
+    ".markdownlint-rules/no-em-dashes.js"
+  ],
   "ignores": ["node_modules/**", ".git/**", ".agents/**", ".aops/**", ".polecat/**", ".venv/**", ".claude/**", "**/archived/**", "dist/**"]
 }

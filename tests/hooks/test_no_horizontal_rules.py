@@ -44,8 +44,8 @@ def test_rule_metadata_and_execution_via_node():
         }}
     }};
     rule.function(paramsWithHr, onError);
-    if (errors.length !== 1 || errors[0].lineNumber !== 5) {{
-        process.stderr.write('Failed to detect hr token correctly\\n');
+    if (errors.length !== 1 || errors[0].lineNumber !== 5 || !errors[0].fixInfo || errors[0].fixInfo.deleteCount !== -1) {{
+        process.stderr.write('Failed to detect hr token correctly or missing fixInfo\\n');
         process.exit(3);
     }}
     

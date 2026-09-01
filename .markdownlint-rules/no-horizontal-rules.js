@@ -13,7 +13,10 @@ module.exports = {
         onError({
           lineNumber: token.lineNumber,
           detail: "Use headings for structure instead of horizontal lines (---, ***, ___)",
-          context: token.line
+          context: token.line,
+          fixInfo: {
+            deleteCount: -1
+          }
         });
       }
     }
