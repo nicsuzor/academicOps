@@ -1948,10 +1948,15 @@ def main():
     help="Mount read-only sessions transcripts directory and set $AOPS_SESSIONS.",
 )
 @click.option(
+    "--model",
+    "-m",
+    help="Model to use (default: None).",
+)
+@click.option(
     "--agent",
     "-a",
     default=None,
-    help="Agent persona to run inside container (default: none).",
+    help="Agent persona to run inside container (default: james).",
 )
 @click.option(
     "--no-agent",
@@ -2018,6 +2023,7 @@ def run(
     base,
     branch,
     with_sessions,
+    model,
     agent,
     no_agent,
     output_format,
@@ -2037,12 +2043,15 @@ def run(
     if detach and interactive:
         fail("cannot run in interactive mode with --detach")
 
+    if model:
+        extra_args = ("--model", model) + extra_args
+
     if no_agent:
         effective_agent = None
     elif agent is not None:
         effective_agent = agent
     else:
-        effective_agent = None
+        effective_agent = "james"
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent, prompt=prompt)
 
