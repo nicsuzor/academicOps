@@ -17,11 +17,11 @@ type: template
 
 ## What this step does
 
-Demonstration protocol for proving a capability actually works, not just asserting it — three-role separation between the agent who writes the job, the agent who executes it, and the agent who grades it, plus durable evidence capture at run time. Composes [[wf-qa]]'s lock-criteria-before-evidence pattern (the VERIFIER role here IS a wf-qa pass) and sits on top of [[wf-verification]]'s floor. Use this when what's being proven is "does X actually work when nobody's coaching it" — a demonstration whose executor saw the pass-conditions is a biased test and proves nothing.
+Demonstration protocol for proving a capability actually works, not just asserting it — three-role separation between the agent who writes the job, the agent who executes it, and the agent who grades it, plus durable evidence capture at run time. Composes [[wf-qa]]'s lock-criteria-before-evidence pattern (the VERIFIER role here IS a wf-qa pass). Use this when what's being proven is "does X actually work when nobody's coaching it" — a demonstration whose executor saw the pass-conditions is a biased test and proves nothing.
 
 ## Core Pattern — three roles, never collapsed
 
-1. **DISPATCHER** — writes the job brief and separately locks the acceptance criteria (composing [[wf-verification]]'s "lock before evidence"). Brief and AC are two different documents from the start; the AC is never shown to the executor.
+1. **DISPATCHER** — writes the job brief and separately locks the acceptance criteria (composing [[wf-qa]]'s "lock criteria before evidence"). Brief and AC are two different documents from the start; the AC is never shown to the executor.
 2. **EXECUTOR** — receives ONLY the job brief: what to do, what's out of bounds, and an explicit license to report inability rather than guess. Never receives: acceptance criteria, pass/fail thresholds, expected results, or the history of prior failed attempts. A brief that leaks any of these is not a blind test — restart with a clean brief.
 3. **VERIFIER** — a separate agent (or the DISPATCHER, never the EXECUTOR) that holds the AC and grades the executor's actual output against it afterward, per [[wf-qa]]. Blindness has to be actively demonstrated, not just asserted — the verifier's writeup states what the executor's prompt did and did not contain.
 

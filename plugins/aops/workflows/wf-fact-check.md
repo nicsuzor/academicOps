@@ -2,28 +2,33 @@
 alias:
 - wf-fact-check-wf-fact-check
 - wf-fact-check
+- wf_fact_b828c939
+category: gate
 created: 2026-07-11T12:41:27.618109282+00:00
-id: wf_fact_b828c939
-last_modified: 2026-07-28T03:01:21.919656746+00:00
-modified: 2026-07-28T03:01:21.919655313+00:00
+description: 'Child workflow for [[wf-qa]]''s evaluate slot: verify factual, empirical, and citation-bearing claims in a draft against their sources. Select for any artifact making checkable factual claims; skip for pure judgment calls or stylistic work with nothing checkable.'
+id: wf-fact-check
+last_modified: 2026-09-01T00:00:00+00:00
+modified: 2026-09-01T00:00:00+00:00
 permalink: wf-fact-check
 tags:
 - wf-template
 - v0.5
 - module-f
-- workflow
-- planner-data
+- qa
 title: wf-fact-check
 type: template
 ---
 
-## wf-fact-check — step: verify claims against sources
+## wf-fact-check — verify claims against sources
 
-**Sequence position**: runs against a draft ([[wf_635eab64]]), parallel to or ahead of [[wf_boundary_7088958d]]/[[wf_qa_b4b7f9c5]].
+Fills [[wf-qa]]'s evaluate slot for factual, empirical, and citation-bearing claims.
 
 ## What this step does
 
-Checks factual and evidentiary claims in the draft against their sources — citations resolve, quoted numbers match the source, described behavior matches actually-observed behavior (not assumed), links are live and point where claimed. This is a narrower, more mechanical-adjacent check than [[wf_qa_b4b7f9c5]]: it verifies claims are TRUE, not that the work is GOOD.
+Checks factual and evidentiary claims in a draft against their sources — citations resolve, quoted
+numbers match the source, described behaviour matches what was actually observed rather than
+assumed, links are live and point where claimed. This is narrower and more mechanical than
+[[wf-qa]]'s general judgment: it verifies claims are TRUE, not that the work is GOOD.
 
 ## Output contract
 
@@ -31,7 +36,7 @@ The fact-check handback must state, per claim checked:
 
 - The claim, the source checked, and the resolving link/command/output.
 - PASS (claim verified against source) or FAIL (claim doesn't hold) — no third state; a claim that couldn't be checked is a FAIL with the reason recorded ("source unavailable", "couldn't reproduce").
-- A summary count: N claims checked, N passed, N failed — so a downstream reviewer doesn't have to re-derive coverage.
+- A summary count: N claims checked, N passed, N failed — so [[wf-qa]] doesn't have to re-derive coverage.
 
 ## Record surface (mandatory)
 
@@ -39,10 +44,9 @@ The ledger, the work log, and the reasoning behind them are working records. The
 
 ## When to include
 
-Any artifact making factual, empirical, or citation-bearing claims: research writing, grant text, anything citing data or prior work, code claiming a behavior ("this fixes X" — did it?). Skip for pure judgment calls or stylistic work with no checkable claims (routine correspondence, brainstorming). When in doubt, include it — it's cheap relative to a wrong claim shipping. Low-stakes email or routine notes: skip. Grant/framework/manuscript work with cited claims: mandatory.
+Any artifact making factual, empirical, or citation-bearing claims: research writing, grant text, anything citing data or prior work, code claiming a behavior ("this fixes X" — did it?). Skip for pure judgment calls or stylistic work with no checkable claims (routine correspondence, brainstorming). When in doubt, include it — it's cheap relative to a wrong claim shipping.
 
 ## Related
 
-- [[wf_635eab64]] — the artifact being checked
-- [[wf_qa_b4b7f9c5]] — the broader "does it work / is it good" check, distinct from this narrower truth check
-- [[note_296e5520]] — SSoT
+- [[wf-qa]] — the parent gate this fills the evaluate slot for
+- [[wf-loop]] — iteration wrapper, where the same claims must be re-checked across rounds

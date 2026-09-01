@@ -24,6 +24,7 @@ Abstract means it says what, never how. If you are writing how a component gets 
    - Where you are reasonably confident about the alternatives that will eventually be available, **fork the graph at that point** and outline each option as its own node.
    - Keep going while you are reasonably confident and adding value.
    - **Stop before you hit implementation details.**
+   - Depth tracks rigor, not just uncertainty: a component whose correctness needs checking splits into its decision and its validation as separate nodes, even where both are certain enough to decide now.
 
 4. **Sort the assumptions, route the unknowns.**
    Sort every assumption into tested versus hoped. For each unknown:
@@ -31,15 +32,20 @@ Abstract means it says what, never how. If you are writing how a component gets 
    - **DEFER** — the missing input is runtime data: say what is missing, and **mint the probe** — the cheapest piece of work that yields the deciding information. Wire the blocked node `depends_on` the probe. A probe usually belongs elsewhere on the graph, not as a sibling or parent of what it blocks.
    - **SURFACE** — a genuine trade-off, a wide blast radius, or the user's own intent: one bullet giving the options, their costs, and your recommendation.
 
+   Every load-bearing assumption carries a confidence level and a contingency — what the graph must change to if it turns out wrong — regardless of which route it takes.
+
    A decision the work depends on that you cannot settle is a halt: name it and stop. Ask the user only where it blocks finishing at all.
 
 5. **Wire what you mint.**
    A node that is created but not connected has been dumped, not decomposed.
    - Parent each node to the objective it decomposes. Never unparented, never a catch-all.
-   - `depends_on` for true hard blockers, `soft_depends_on` for context-only relations, `contributes_to` with a verbal `stated_weight` and one sentence of justification.
+   - `depends_on` for true hard blockers, `soft_depends_on` for context-only relations, `contributes_to` with a verbal `stated_weight` and one sentence of justification. Test which: ask what happens if the dependency never completes — impossible or wrong output is hard, still valid but less-informed is soft.
    - Densify with `[[wikilinks]]` to neighbours you confirmed by opening. **The graph should come out denser, not just longer.**
    - Where existing unparented or misparented tasks already cover part of the expansion, adopt them (`pkb__batch_reparent`) rather than minting duplicate siblings.
    - Mint slugged, human-readable IDs upfront (`id: "aops_<slug>"`), not auto-generated ones.
+   - Where the expansion forks into parallel tracks that must reconverge, wire an explicit convergence node depending on all of them — an unmerged fork is left unfinished, not decomposed.
+   - Where a node unblocks judgment-only work, wire it forward to an explicit follow-up node or owner — an unblock with no successor is a dead end nobody returns to.
+   - At least one node in the expansion must be immediately actionable, not gated behind a probe or a SURFACE decision.
 
 6. **Write each body to this shape, and nothing else.**
 

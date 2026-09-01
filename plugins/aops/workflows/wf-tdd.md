@@ -2,17 +2,19 @@
 alias:
 - wf-tdd-cycle-wf-tdd-cycle
 - wf-tdd-cycle
+- wf_tdd_5b47ec98
 created: 2026-07-11T12:42:45.866926970+00:00
-id: wf_tdd_5b47ec98
-last_modified: 2026-07-28T03:01:21.924973911+00:00
-modified: 2026-07-28T03:01:21.924972208+00:00
-permalink: wf-tdd-cycle
+description: Red-green-refactor cycle for testable code changes. Composed into feature development and bug-fixing workflows. Not a standalone workflow.
+id: wf-tdd
+last_modified: 2026-09-01T00:00:00.000000000+00:00
+modified: 2026-09-01T00:00:00.000000000+00:00
+permalink: wf-tdd
 tags:
 - wf-template
 - v0.4
 - module-f
 - prose-lens
-title: wf-tdd-cycle
+title: wf-tdd
 type: template
 ---
 

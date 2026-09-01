@@ -2,28 +2,30 @@
 alias:
 - wf-signoff-brief-wf-signoff-brief
 - wf-signoff-brief
+- wf_signoff_16985750
 created: 2026-07-11T12:41:54.180479237+00:00
-id: wf_signoff_16985750
-last_modified: 2026-07-28T03:01:21.924482832+00:00
-modified: 2026-07-28T03:01:21.924481029+00:00
-permalink: wf-signoff-brief
+description: Author a concise, one-page human-facing summary digest for decision or release sign-off. Select when presenting completed work or high-stakes choices to the principal. Not for automated agent handovers (use `wf-handover`).
+id: wf-signoff
+last_modified: 2026-09-01T00:00:00.000000000+00:00
+modified: 2026-09-01T00:00:00.000000000+00:00
+permalink: wf-signoff
 tags:
 - wf-template
 - v0.4
 - module-f
 - workflow
 - planner-data
-title: wf-signoff-brief
+title: wf-signoff
 type: template
 ---
 
-## wf-signoff-brief — step: one-page human-facing summary
+## wf-signoff — step: one-page human-facing summary
 
-**Sequence position**: near-final step, after the review lenses have run, before or alongside [[wf_capstone_73d7ce86]].
+**Sequence position**: near-final step, after the review lenses have run, before or alongside [[wf-qa]].
 
 ## What this step does
 
-Produces the one-page prose summary for Nic when a full task or epic completes: what was delivered, against what it was asked to do, with every checked claim carrying a resolvable link. This is the human-facing capstone of the workflow — not a re-review, a synthesis of what the other steps already established (per [[note_296e5520]] §2: "Sign-off brief for Nic on full tasks/epics: one page, prose, every delivered/checked claim carrying a resolvable link").
+Produces the one-page prose summary for Nic when a full task or epic completes: what was delivered, against what it was asked to do, with every checked claim carrying a resolvable link. This is the human-facing capstone of the workflow — not a re-review, a synthesis of what the other steps already established.
 
 ## Output contract
 
@@ -40,5 +42,4 @@ Every task/epic that reaches human sign-off — i.e., anything Nic needs to read
 
 ## Related
 
-- [[wf_capstone_73d7ce86]] — the completeness audit that typically precedes/accompanies this brief
-- [[note_296e5520]] — SSoT, §2
+- [[wf-qa]] — the QA pass that typically precedes/accompanies this brief

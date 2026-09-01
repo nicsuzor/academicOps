@@ -84,8 +84,9 @@ never a narrated delta. Durable episodic records — meeting notes, daily notes 
 are saved with the right type. Durable knowledge becomes a topic note, in prose.
 Never create a timestamped session log.
 
-Report what you wrote: the tool, the title, and the returned id. Not filesystem
-paths.
+Report what you wrote: the tool, the title, the returned id. Not filesystem
+paths. Where a session produced nothing durable, say so explicitly — a
+declared zero beats a forced write.
 
 ### Reconciliation is part of the write
 
