@@ -24,7 +24,17 @@ repos:
         types_or: [python, pyi]
         exclude: \.(md|json|toml)$
 
-  # Markdown/JSON/TOML formatting (dprint auto-fix, like ruff --fix)
+  # House markdown rules (em-dashes, H39) plus the semantic checks dprint
+  # cannot make. Auto-fixes, like ruff --fix. Must run BEFORE dprint: its
+  # substitutions change cell widths, and dprint owns table padding.
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.17.2
+    hooks:
+      - id: markdownlint-cli2
+        args: [--fix]
+
+  # Markdown/JSON/TOML formatting. dprint is the only formatter and has the
+  # last word on layout.
   - repo: local
     hooks:
       - id: dprint
@@ -33,12 +43,6 @@ repos:
         language: system
         types_or: [markdown, json, toml]
         pass_filenames: true
-
-  # Markdown linting (catches issues dprint doesn't fix, including H39)
-  - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.17.2
-    hooks:
-      - id: markdownlint-cli2
 
   # Block new orphan markdown files (Rule R5.6)
   - repo: local

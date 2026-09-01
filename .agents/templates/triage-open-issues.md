@@ -9,8 +9,8 @@ tags: [github, issues, triage, backlog, maintenance, batch]
 ---
 
 > [!IMPORTANT]
-> Close, never delete. An issue closed on a guess is worse than one left open — it removes the
-> only record that the problem was ever reported.
+> Close, not delete. The GitHub API restricts issue deletion to repository admins, a permission
+> level an ordinary triage pass does not hold. Close with a one-line reason naming what was checked.
 
 A backlog of hundreds of open issues is not one task. It is an indefinite number of small ones,
 most of which are already fixed and nobody has checked. This template is the loop that finds out.
@@ -62,5 +62,3 @@ cheaper than untangling a shared branch.
 - **A stated reason on every close.** Someone reopening it in six months needs to know what was
   checked and when.
 - **Do not widen the slice mid-pass.** A pass that grows to fifty issues finishes none of them.
-- **Write permission is not admin.** Assume you cannot delete issues or rewrite history; say so
-  rather than working around it.

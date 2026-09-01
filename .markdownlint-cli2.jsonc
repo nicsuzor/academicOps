@@ -1,33 +1,43 @@
 {
+  // dprint is the only markdown formatter. Every whitespace, list, heading,
+  // emphasis, code-fence and table rule is dprint's; markdownlint carries only
+  // the house rules and the semantic checks dprint cannot make. Adding a
+  // formatting rule here reintroduces the fight and will be reverted.
   "noBanner": true,
   "noProgress": true,
   "config": {
-    // Ban horizontal line dividers (H39) - our custom rule handles this
-    "MD035": false,
+    "default": false,
 
-    // Allow explicit numbering (13. 14. 15.) - AXIOMS.md uses stable numbers as references
-    "MD029": false,
+    // House rules (.markdownlint-rules/), both auto-fixable.
+    "no-em-dashes": true,
+    "no-horizontal-rules": true,
 
-    // Disabled rules - conflict with our conventions or too noisy
-    // Allow duplicate headings under different parents (e.g. ### Trigger under different ## sections)
-    "MD024": { "siblings_only": true },
-
-    // Don't fuck with table formatting: table-column-style
-    "MD060": false,
-
-    "MD013": false,
-    "MD025": false,
-    "MD031": false,
-    "MD032": false,
-    "MD033": false,
-    "MD034": false,
-    "MD036": false,
-    "MD040": false,
-    "MD041": false
+    // Semantics, not layout.
+    "MD001": true, // heading levels increment by one
+    "MD024": { "siblings_only": true }, // duplicate headings under one parent
+    "MD026": true, // trailing punctuation in a heading
+    "MD042": true, // empty links
+    "MD045": true, // images without alt text
+    "MD051": true, // link fragments that resolve to no heading
+    "MD052": true, // undefined reference links
+    "MD053": true // unused link definitions
   },
   "customRules": [
     ".markdownlint-rules/no-horizontal-rules.js",
     ".markdownlint-rules/no-em-dashes.js"
   ],
-  "ignores": ["node_modules/**", ".git/**", ".agents/**", ".aops/**", ".polecat/**", ".venv/**", ".claude/**", "**/archived/**", "dist/**"]
+  // Mirrors dprint.json excludes: the snapshot fixtures are byte-exact
+  // expectations and must never be reformatted.
+  "ignores": [
+    "node_modules/**",
+    ".git/**",
+    ".agents/**",
+    ".aops/**",
+    ".polecat/**",
+    ".venv/**",
+    ".claude/**",
+    "**/archived/**",
+    "dist/**",
+    "tests/transcripts/fixtures/**"
+  ]
 }
