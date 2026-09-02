@@ -30,7 +30,7 @@ For EACH task you have worked, starting with children:
 A. **Construct your report in the following format:**
 
 ```markdown
-### Task: <task-id> (<precis>) — <status: done | cancelled | review | blocked | in_progress >
+### Task: <task-id> (<precis>) — <status: done | cancelled | review | partial | in_progress >
 
 - **Update**: [ 1-3 sentences: what you did, what you learned, what remains ]
 - **Output**: [ reference to any artifacts or work produced: e.g. `<branch>` (uncommitted: yes/no) | `url` | `pkb note id` and title | `filename` (warning: local files will be destroyed on exit)]

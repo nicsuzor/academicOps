@@ -67,3 +67,37 @@ def test_all_skills_mandated_statuses_are_canonical(skill_path: Path):
             f"{skill_path.relative_to(REPO_ROOT)} templates non-canonical statuses: "
             f"{invalid}. Valid statuses: {sorted(VALID_STATUSES)}"
         )
+
+
+def test_no_skill_mandates_literal_blocked_status_write():
+    """Assert no skill file instructs writing or releasing literal 'status: blocked' directly.
+
+    'blocked' is a derived field computed from directed 'blocks' edges, never a value
+    stored in frontmatter directly.
+    """
+    for skill_path in skill_files():
+        text = skill_path.read_text(encoding="utf-8")
+        assert not re.search(r"release the task as\s+['\"]blocked['\"]", text, re.IGNORECASE), (
+            f"{skill_path.relative_to(REPO_ROOT)} instructs releasing task as 'blocked'. "
+            "Blocked status must be derived from directed 'blocks' edges."
+        )
+        assert not re.search(r"released as\s+['\"]blocked['\"]", text, re.IGNORECASE), (
+            f"{skill_path.relative_to(REPO_ROOT)} instructs releasing task as 'blocked'. "
+            "Blocked status must be derived from directed 'blocks' edges."
+        )
+        assert not re.search(r"(?m)^\s*status:\s*\"?blocked\"?", text), (
+            f"{skill_path.relative_to(REPO_ROOT)} contains literal 'status: blocked' frontmatter write."
+        )
+
+
+def test_dump_skill_does_not_template_literal_blocked():
+    """Assert dump skill template does not offer 'blocked' as a writable release status."""
+    dump_skill = PLUGINS_DIR / "aops" / "skills" / "dump" / "SKILL.md"
+    text = dump_skill.read_text(encoding="utf-8")
+    status_template_re = re.compile(r"<status:\s*([^>]+)>", re.IGNORECASE)
+    for match in status_template_re.finditer(text):
+        raw_statuses = [s.strip() for s in match.group(1).split("|")]
+        assert "blocked" not in raw_statuses, (
+            f"{dump_skill.relative_to(REPO_ROOT)} includes 'blocked' in <status: ...> template. "
+            "'blocked' is derived and should not be offered as a writable status."
+        )

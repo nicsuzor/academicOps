@@ -116,10 +116,10 @@ queued → in_progress → merge_ready → done (deliverable accepted)
                 ├→ partial (terminal: chunk handed back, remainder carried by
                 │           continue tasks — see
                 │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
-                └→ blocked (external dependency)
+                └→ blocked (external dependency — derived from directed `blocks` edges, not stored in frontmatter)
 ```
 
-`done` means the deliverable was accepted — evidence + output URL recorded on the
+`blocked` is a derived status computed from directed `blocks` edges on blocking tasks, never stored directly in frontmatter. `done` means the deliverable was accepted — evidence + output URL recorded on the
 PKB task; a merged PR is the code-surface instance of this.
 
 The canonical status set is mem's `VALID_STATUSES`, mirrored in this repository
