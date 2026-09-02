@@ -5,6 +5,12 @@ description: Export one session's OpenTelemetry spans from an Arize Phoenix span
 
 # Session Trace
 
+Read [`references/phoenix-span-store.md`](references/phoenix-span-store.md)
+before filtering, sorting, or trusting a span's duration — it holds the
+identifier-shape table, the rule to filter on `session.id` and never
+`trace_id`, why `turn_number` is not a reliable counter, and why a
+`teammate_spawned` span's duration is not the worker's runtime.
+
 Phoenix holds the higher-fidelity record: attribute values are stored whole, so
 a tool output the markdown transcript truncated is complete here. One fetch
 yields two shapes:
@@ -156,10 +162,10 @@ Field names below are the **controller** export's; in the full export drop the
    turn. `controller_token_totals` isolates the controller's own spend.
 5. `subagents[]` — rank by `collapsed_span_count`: it counts the spans the
    dispatch actually produced, so the largest marks the expensive branch. **Only
-   read `duration_ms` where `duration_is_dispatch_only` is `false`.** A
-   `teammate_spawned` dispatch's AGENT span closes on the spawn
-   acknowledgement, so its `duration_ms` is ~100 ms however long the subagent
-   ran, and sorting such a set by it ranks nothing but spawn latency. Then check
+   read `duration_ms` where `duration_is_dispatch_only` is `false`** — a
+   `teammate_spawned` dispatch's `AGENT` span closes on spawn acknowledgement,
+   not on the subagent's completion (`references/phoenix-span-store.md`), so
+   sorting such a set by it ranks nothing but spawn latency. Then check
    `status` and `status_code` for dispatches that did not complete.
 6. `meta.controller_span_count` against the controller transcript's event count
    — like for like, and they should be close. A shortfall on the _controller_
@@ -197,15 +203,9 @@ Field names below are the **controller** export's; in the full export drop the
 - Do not compare command text between a span and the transcript. Hooks may
   rewrite a command before it runs, so the span holds the rewritten form. Align
   on name and time only.
-- `turn_number` is monotonic **per tracer state file**, reset to `0` at
-  that file's init. Every subagent has its own counter and they all share one
-  `session.id`, so within an exported session the numbers overlap and repeat.
-  Sort by `start_time`.
 - Root `CHAIN` spans have no parent: the tracer emits `claude-code-turn` as a
   genuine trace root with no `parent_span_id`, subagent turns included. Treat a
   null-parent `CHAIN` as the turn root.
-- One trace can span two sessions, because OTel context propagates across
-  inter-agent messages. Filter by session id, never by trace id.
 - Instrumentation is not uniform. Some runs — container-dispatched ones
   especially — emit `CHAIN` spans only. The export still succeeds, the missing
   kinds show as zero in `meta.span_kind_counts`, and the transcript join
