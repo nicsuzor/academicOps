@@ -75,7 +75,7 @@ chmod 777 "$HOME/.config" 2>/dev/null || true
 
 # Task-id-driven seed construction:
 # If POLECAT_TARGET_TASK (or POLECAT_TASK) is provided and no explicit prompt
-# was passed on argv, build and append the expanding /pkb:pull command.
+# was passed on argv, build and append the expanding /aops:pull command.
 TARGET_TASK="${POLECAT_TARGET_TASK:-${POLECAT_TASK:-}}"
 if [ -n "$TARGET_TASK" ] && [ "$#" -gt 0 ]; then
     CMD_NAME="$(basename "${1:-}")"
@@ -89,9 +89,9 @@ if [ -n "$TARGET_TASK" ] && [ "$#" -gt 0 ]; then
         done
         if [ "$HAS_PROMPT" -eq 0 ]; then
             if [ "${NONINTERACTIVE:-0}" = "1" ] || [ "${CI:-0}" = "1" ]; then
-                set -- "$@" "--print" "/pkb:pull $TARGET_TASK"
+                set -- "$@" "--print" "/aops:pull $TARGET_TASK"
             else
-                set -- "$@" "--prompt-interactive" "/pkb:pull $TARGET_TASK"
+                set -- "$@" "--prompt-interactive" "/aops:pull $TARGET_TASK"
             fi
         fi
     elif [ "$CMD_NAME" = "claude" ]; then
@@ -108,7 +108,7 @@ if [ -n "$TARGET_TASK" ] && [ "$#" -gt 0 ]; then
             PREV="$arg"
         done
         if [ "$HAS_POSITIONAL" -eq 0 ]; then
-            set -- "$@" "/pkb:pull $TARGET_TASK"
+            set -- "$@" "/aops:pull $TARGET_TASK"
         fi
     fi
 fi

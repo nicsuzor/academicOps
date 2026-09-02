@@ -165,7 +165,7 @@ def test_run_command_creates_run_json_on_clean_run(tmp_path, monkeypatch):
     assert data["container_name"] == "polecat-session-test1"
     assert data["agent"] == "claude"
     assert data["task_id"] == "aops_9b03ee22"
-    assert data["seeded_prompt"] == "/pkb:pull aops_9b03ee22"
+    assert data["seeded_prompt"] == "/aops:pull aops_9b03ee22"
     assert data["exit_code"] == 0
     assert data["status"] == "success"
     assert data["delivery_guard"] == {"ok": True, "error": None}

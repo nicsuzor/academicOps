@@ -1470,7 +1470,7 @@ def _build_inner_command(
         else:
             inner_cmd.append(prompt)
     elif seeded_from_task:
-        seeded_prompt = f"/pkb:pull {task}"
+        seeded_prompt = f"/aops:pull {task}"
         if agent_cmd == "agy":
             if not effectively_interactive:
                 # `-t` is the canonical production dispatch, so the operator's

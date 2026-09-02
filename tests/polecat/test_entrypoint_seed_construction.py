@@ -2,10 +2,10 @@
 
 Verifies:
 1. When POLECAT_TARGET_TASK is set, entrypoint.sh constructs and appends
-   /pkb:pull <task-id> for both agy and claude.
-2. Under agy with NONINTERACTIVE=1 / CI=1, entrypoint.sh uses --print /pkb:pull <task-id>.
-3. Under agy in interactive mode (NONINTERACTIVE unset), entrypoint.sh uses --prompt-interactive /pkb:pull <task-id>.
-4. Under claude, entrypoint.sh appends /pkb:pull <task-id> as trailing positional.
+   /aops:pull <task-id> for both agy and claude.
+2. Under agy with NONINTERACTIVE=1 / CI=1, entrypoint.sh uses --print /aops:pull <task-id>.
+3. Under agy in interactive mode (NONINTERACTIVE unset), entrypoint.sh uses --prompt-interactive /aops:pull <task-id>.
+4. Under claude, entrypoint.sh appends /aops:pull <task-id> as trailing positional.
 5. When an explicit prompt is provided on argv, entrypoint.sh does not overwrite or duplicate it.
 6. When POLECAT_TARGET_TASK is unset, entrypoint.sh leaves argv untouched.
 """
@@ -48,7 +48,7 @@ def _run_entrypoint_with_mock_bin(tmp_path, agent_name, argv, env_vars=None):
 
 
 def test_entrypoint_claude_seed_construction(tmp_path):
-    """claude dispatch with POLECAT_TARGET_TASK gets /pkb:pull <task-id> appended."""
+    """claude dispatch with POLECAT_TARGET_TASK gets /aops:pull <task-id> appended."""
     proc = _run_entrypoint_with_mock_bin(
         tmp_path,
         "claude",
@@ -57,11 +57,11 @@ def test_entrypoint_claude_seed_construction(tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout.strip()
-    assert "--print /pkb:pull aops_9160e382" in out
+    assert "--print /aops:pull aops_9160e382" in out
 
 
 def test_entrypoint_agy_headless_seed_construction(tmp_path):
-    """agy headless dispatch with POLECAT_TARGET_TASK gets --print /pkb:pull <task-id> appended."""
+    """agy headless dispatch with POLECAT_TARGET_TASK gets --print /aops:pull <task-id> appended."""
     proc = _run_entrypoint_with_mock_bin(
         tmp_path,
         "agy",
@@ -70,11 +70,11 @@ def test_entrypoint_agy_headless_seed_construction(tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout.strip()
-    assert "--print-timeout 30m --print /pkb:pull aops_9160e382" in out
+    assert "--print-timeout 30m --print /aops:pull aops_9160e382" in out
 
 
 def test_entrypoint_agy_interactive_seed_construction(tmp_path):
-    """agy interactive dispatch with POLECAT_TARGET_TASK gets --prompt-interactive /pkb:pull <task-id> appended."""
+    """agy interactive dispatch with POLECAT_TARGET_TASK gets --prompt-interactive /aops:pull <task-id> appended."""
     proc = _run_entrypoint_with_mock_bin(
         tmp_path,
         "agy",
@@ -83,7 +83,7 @@ def test_entrypoint_agy_interactive_seed_construction(tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout.strip()
-    assert "--prompt-interactive /pkb:pull aops_9160e382" in out
+    assert "--prompt-interactive /aops:pull aops_9160e382" in out
 
 
 def test_entrypoint_leaves_explicit_prompt_untouched(tmp_path):
@@ -97,7 +97,7 @@ def test_entrypoint_leaves_explicit_prompt_untouched(tmp_path):
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout.strip()
     assert "--prompt my custom prompt" in out
-    assert "/pkb:pull" not in out
+    assert "/aops:pull" not in out
 
 
 def test_entrypoint_leaves_non_agent_command_untouched(tmp_path):
@@ -111,7 +111,7 @@ def test_entrypoint_leaves_non_agent_command_untouched(tmp_path):
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout.strip()
     assert "-c echo hello" in out
-    assert "/pkb:pull" not in out
+    assert "/aops:pull" not in out
 
 
 def test_entrypoint_no_task_leaves_argv_untouched(tmp_path):

@@ -33,7 +33,7 @@ def test_task_dispatch_is_always_headless(agent_cmd, is_interactive):
         config={},
     )
     assert seeded_from_task is True
-    assert seeded_prompt == "/pkb:pull aops_123"
+    assert seeded_prompt == "/aops:pull aops_123"
     if agent_cmd == "claude":
         assert "--print" in inner_cmd, inner_cmd
 
@@ -67,5 +67,5 @@ def test_interactive_task_dispatch_is_interactive(agent_cmd):
         interactive=True,
     )
     assert seeded_from_task is True
-    assert seeded_prompt == "/pkb:pull aops_123"
+    assert seeded_prompt == "/aops:pull aops_123"
     assert "--print" not in inner_cmd
