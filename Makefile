@@ -159,6 +159,7 @@ install:
 
 clean:
 	@rm -rf $(DIST)
+	@./scripts/clean_global_configs.sh
 	@echo "✓ cleaned"
 
 test:
