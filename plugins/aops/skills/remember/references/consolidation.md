@@ -35,6 +35,23 @@ superficial ones, and one surfaced ambiguity beats one confidently wrong merge.
    Script artifacts are prohibited -- identical boilerplate strings repeated across
    tasks, `title or filename_stem` fallback text, unbalanced `[[ ]]` links.
 
+## Sub-Agent Dispatch
+
+Delegating work to a `pkb:pauli` sub-agent (mining transcripts, quality review,
+any of the batched stages below) requires passing an explicit `tools` list in
+the dispatch call. Pauli's default profile lacks `Bash`, `Glob`, `Edit`, and the
+PKB MCP tools; without an explicit `tools` argument the sub-agent sees only
+`Read` and `Skill` and cannot do the delegated work.
+
+The concrete toolset is environment-specific, not fixed here. An interactive
+session with the PKB MCP server available passes the `mcp__services__pkb__*`
+tools directly. A CI workflow with no MCP server substitutes `Bash`/`Glob`/`Grep`
+against the markdown files, restricts `Edit`/`Write` to whatever that workflow
+is scoped to touch, and omits the PKB MCP tools entirely -- each shipped
+workflow template under `templates/github-workflows/` states its own CI
+toolset explicitly, next to its citation of this section. Read-only work (e.g.
+quality review) omits `Write`/`Edit` regardless of environment.
+
 ## The knowledge-extraction method
 
 Tasks hold the **work record**; they are not knowledge stores (`kb_634e639c`).

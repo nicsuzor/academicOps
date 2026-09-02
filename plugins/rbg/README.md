@@ -56,17 +56,17 @@ flowchart TD
 
 ## What this plugin provides
 
-| Component                    | File                                   | Purpose                                                                                                               |
-| ---------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `PreToolUse` hook            | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                                                  |
-| `PreInvocation` hook         | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                                                               |
-| `Stop` / `SubagentStop` hook | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes at a turn boundary; agy reaches it as `PostInvocation`.                              |
-| Evaluation handler           | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.                                         |
-| Ruleset handler              | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                                                 |
-| Stop handler                 | `hooks/handlers.py` — `rule_check`     | Returns `block` once per chain, directing the agent to run the rule check and cite what makes its findings checkable. |
-| Evaluator client             | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.                                      |
-| Rule loader                  | `hooks/rules.py`                       | Three-layer loading; carries each rule's body as its policy text.                                                     |
-| Hook wording                 | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, `rule-check.md`, and `classifier-prompt.md`. Editable without code.    |
+| Component                    | File                                   | Purpose                                                                                                                                                               |
+| ---------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PreToolUse` hook            | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes on every tool call.                                                                                                                  |
+| `PreInvocation` hook         | `hooks/dispatch.py` (shared, injected) | Entry point agy executes on every turn.                                                                                                                               |
+| `Stop` / `SubagentStop` hook | `hooks/dispatch.py` (shared, injected) | Entry point Claude Code executes at a turn boundary; agy reaches it as `PostInvocation`.                                                                              |
+| Evaluation handler           | `hooks/handlers.py` — `evaluate`       | Loads the rule set, sends the tool call for judgment, injects what came back.                                                                                         |
+| Ruleset handler              | `hooks/handlers.py` — `inject_ruleset` | Injects the live rule roster once per turn. agy only.                                                                                                                 |
+| Stop handler                 | `hooks/handlers.py` — `rule_check`     | Returns `block` once per chain, directing the agent to run the rule check and cite what makes its findings checkable.                                                 |
+| Evaluator client             | `hooks/evaluator.py`                   | Configuration gate, both wire protocols, the deadline, and the fail-open policy.                                                                                      |
+| Rule loader                  | `hooks/rules.py`                       | Three-layer loading; carries each rule's body as its policy text.                                                                                                     |
+| Hook wording                 | `hooks/messages/*.md`                  | `verdict.md`, `verdict.user.md`, `ruleset.md`, `rule-check.md`, `classifier-prompt.md`, `evaluator-outage.md`, and `evaluator-outage.user.md`. Editable without code. |
 
 ## The rule set
 
