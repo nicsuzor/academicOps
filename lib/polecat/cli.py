@@ -2064,6 +2064,26 @@ def run(
 
     # An explicit --repo-dir is the caller's own isolation to own; every other
     # path resolves to a shared checkout and must be cloned first.
+    #
+    # Captured BEFORE the clone below reassigns workspace_dir: this is the
+    # canonical checkout's own local HEAD — the exact commit `make
+    # docker-build`, run in this directory, would stamp into the image via
+    # AOPS_BUILD_COMMIT. resolve_isolated_workspace() below deliberately
+    # resolves its clone's checkout point from a freshly-*fetched upstream
+    # tracking ref* rather than local HEAD when no --base is given (closing
+    # the "silent stale local ref" failure mode: refs_to_try tries
+    # `origin/<branch>` before `HEAD`), which is the right call for what
+    # code a dispatched clone should contain, but is the wrong commit to
+    # judge a *locally built* image against — the upstream tip moves on its
+    # own schedule (this repo merges continuously), so it can advance past a
+    # local build within seconds of it finishing, and re-running `make
+    # docker-build` again cannot close that gap since it only ever stamps
+    # local HEAD. Comparing the image against canonical_head instead keeps
+    # the staleness check anchored to the same "current" the build path
+    # used, while still catching real staleness (local HEAD moves ahead of
+    # an un-rebuilt image) (aops_81849370).
+    canonical_head = _get_git_head(workspace_dir)
+
     clone_cleanup = None
     if repo_dir is None:
         workspace_dir, clone_cleanup = resolve_isolated_workspace(
@@ -2125,7 +2145,15 @@ def run(
             image_provenance,
             workspace_dir,
             dispatch_mode="direct" if repo_dir else ("base" if base else "default"),
-            base_sha=initial_head if not repo_dir else None,
+            # repo_dir: None — the direct-mount dir's own HEAD/dirty state,
+            #   read inside evaluate_staleness().
+            # base explicitly given: the resolved --base ref IS the baseline
+            #   the operator asked to test against (e.g. a frozen release for
+            #   backwards-compat testing) — initial_head, the clone's actual
+            #   checkout point, is correct here and must not be overridden.
+            # base not given (plain default dispatch): canonical_head, not
+            #   initial_head — see the canonical_head comment above for why.
+            base_sha=(None if repo_dir else (initial_head if base else canonical_head)),
             session_id=session_id,
             agent=agent_cmd,
             branch=branch,
