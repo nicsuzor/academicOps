@@ -122,4 +122,4 @@ def test_detach_execution_spawns_docker_with_d_flag(tmp_path, monkeypatch):
     assert data["status"] == "detached"
     assert data["container_id"] == "c12345detached"
     assert data["task_id"] == "aops_test"
-    assert data["seeded_prompt"] == "/pkb:pull aops_test"
+    assert data["seeded_prompt"] == "/aops:pull aops_test"
