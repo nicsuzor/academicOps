@@ -24,9 +24,21 @@ repos:
         types_or: [python, pyi]
         exclude: \.(md|json|toml)$
 
-  # House markdown rules (em-dashes, H39) plus the semantic checks dprint
-  # cannot make. Auto-fixes, like ruff --fix. Must run BEFORE dprint: its
-  # substitutions change cell widths, and dprint owns table padding.
+  # Em-dashes are a character substitution, not markdown structure, so this
+  # runs over the whole file — frontmatter included, which no markdown linter
+  # can reach. Exclusions mirror the `ignores` in .markdownlint-cli2.jsonc.
+  - repo: local
+    hooks:
+      - id: no-em-dashes
+        name: no em-dashes
+        entry: uv run python scripts/no_em_dashes.py
+        language: system
+        types: [markdown]
+        exclude: ^(\.agents/|tests/transcripts/fixtures/)
+
+  # House structure rule (H39) plus the semantic checks dprint cannot make.
+  # Auto-fixes, like ruff --fix. Must run BEFORE dprint: its edits change cell
+  # widths, and dprint owns table padding.
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.17.2
     hooks:

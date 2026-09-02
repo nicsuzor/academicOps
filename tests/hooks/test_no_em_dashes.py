@@ -1,77 +1,64 @@
-"""Unit tests for .markdownlint-rules/no-em-dashes.js."""
+"""Unit tests for scripts/no_em_dashes.py."""
 
 from __future__ import annotations
 
-import json
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-RULE_FILE = REPO_ROOT / ".markdownlint-rules" / "no-em-dashes.js"
+SCRIPT = REPO_ROOT / "scripts" / "no_em_dashes.py"
 
 
-def test_rule_file_exists():
-    assert RULE_FILE.is_file(), f"Expected rule file at {RULE_FILE}"
+def run(*paths: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), *(str(p) for p in paths)],
+        capture_output=True,
+        text=True,
+    )
 
 
-def test_rule_metadata_and_execution_via_node():
-    """Execute the rule function via node to verify em-dash detection and fixInfo."""
-    node_script = f"""
-    const rule = require('{RULE_FILE}');
-    
-    // Check metadata
-    if (!rule.names.includes('no-em-dashes') || !rule.names.includes('no-em-dash')) {{
-        process.stderr.write('Missing rule names\\n');
-        process.exit(1);
-    }}
-    if (rule.parser !== 'none') {{
-        process.stderr.write('Wrong parser\\n');
-        process.exit(2);
-    }}
-    
-    // Test 1: em-dash triggers onError with correct line, column, and fixInfo
-    const errors = [];
-    const onError = (err) => errors.push(err);
-    const paramsWithEmDash = {{
-        lines: [
-            '# Title without dashes',
-            'Some text — with an em-dash',
-            'Another line with — two — em-dashes'
-        ]
-    }};
-    rule.function(paramsWithEmDash, onError);
-    if (errors.length !== 3) {{
-        process.stderr.write(`Expected 3 errors, got ${{errors.length}}\\n`);
-        process.exit(3);
-    }}
-    if (errors[0].lineNumber !== 2 || !errors[0].fixInfo || errors[0].fixInfo.insertText !== '--') {{
-        process.stderr.write('Failed to configure fixInfo correctly on first error\\n');
-        process.exit(4);
-    }}
-    if (errors[1].lineNumber !== 3 || errors[2].lineNumber !== 3) {{
-        process.stderr.write('Failed to detect multiple errors on same line\\n');
-        process.exit(5);
-    }}
-    
-    // Test 2: clean lines produce 0 errors
-    const errorsClean = [];
-    const paramsClean = {{
-        lines: [
-            '# Title without dashes',
-            'Some text -- with double hyphens',
-            'Normal sentence.'
-        ]
-    }};
-    rule.function(paramsClean, (err) => errorsClean.push(err));
-    if (errorsClean.length !== 0) {{
-        process.stderr.write('False positive on clean lines\\n');
-        process.exit(6);
-    }}
+def test_script_exists():
+    assert SCRIPT.is_file(), f"Expected script at {SCRIPT}"
 
-    console.log(JSON.stringify({{ status: 'ok', errorsDetected: errors.length }}));
-    """
-    res = subprocess.run(["node", "-e", node_script], capture_output=True, text=True)
-    assert res.returncode == 0, f"Node script failed: {res.stderr}"
-    data = json.loads(res.stdout.strip())
-    assert data["status"] == "ok"
-    assert data["errorsDetected"] == 3
+
+def test_rewrites_body_and_frontmatter(tmp_path: Path):
+    """The whole file is rewritten, including YAML frontmatter."""
+    target = tmp_path / "doc.md"
+    target.write_text(
+        "---\ndescription: a — b\n---\n\n# Title\n\nbody — text — here\n",
+        encoding="utf-8",
+    )
+
+    res = run(target)
+
+    assert res.returncode == 1, res.stderr
+    assert target.read_text(encoding="utf-8") == (
+        "---\ndescription: a -- b\n---\n\n# Title\n\nbody -- text -- here\n"
+    )
+    assert "3 em-dash(es) rewritten" in res.stdout
+
+
+def test_clean_file_untouched(tmp_path: Path):
+    target = tmp_path / "clean.md"
+    original = "# Title\n\nSome text -- with double hyphens.\n"
+    target.write_text(original, encoding="utf-8")
+
+    res = run(target)
+
+    assert res.returncode == 0
+    assert res.stdout == ""
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_reports_every_changed_file(tmp_path: Path):
+    dirty = tmp_path / "dirty.md"
+    clean = tmp_path / "clean.md"
+    dirty.write_text("a — b\n", encoding="utf-8")
+    clean.write_text("a -- b\n", encoding="utf-8")
+
+    res = run(dirty, clean)
+
+    assert res.returncode == 1
+    assert str(dirty) in res.stdout
+    assert str(clean) not in res.stdout

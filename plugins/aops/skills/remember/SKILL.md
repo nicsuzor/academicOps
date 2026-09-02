@@ -1,6 +1,6 @@
 ---
 name: remember
-description: Write knowledge into the PKB and keep it worth trusting. Capture mode persists facts, decisions, and state as they emerge; consolidation mode turns episodic records into durable knowledge and repairs what has drifted. Use it for anything worth remembering — a decision and its reasoning, a fact about a system or a person, a technique, a constraint, an idea ruled out — and for "save that", "consolidate the graph", "clean up these notes". Every write integrates into what is already there and leaves one correct document. Not for filing bugs (GitHub issues), and not for agent activity or debug traces, which stay in the transcript.
+description: Write knowledge into the PKB and keep it worth trusting. Capture mode persists facts, decisions, and state as they emerge; consolidation mode turns episodic records into durable knowledge and repairs what has drifted. Use it for anything worth remembering -- a decision and its reasoning, a fact about a system or a person, a technique, a constraint, an idea ruled out -- and for "save that", "consolidate the graph", "clean up these notes". Every write integrates into what is already there and leaves one correct document. Not for filing bugs (GitHub issues), and not for agent activity or debug traces, which stay in the transcript.
 ---
 
 # Remember

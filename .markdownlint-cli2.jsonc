@@ -8,8 +8,8 @@
   "config": {
     "default": false,
 
-    // House rules (.markdownlint-rules/), both auto-fixable.
-    "no-em-dashes": true,
+    // House rule (.markdownlint-rules/), auto-fixable. Em-dashes are handled
+    // by scripts/no_em_dashes.py, which can also reach YAML frontmatter.
     "no-horizontal-rules": true,
 
     // Semantics, not layout.
@@ -22,10 +22,7 @@
     "MD052": true, // undefined reference links
     "MD053": true // unused link definitions
   },
-  "customRules": [
-    ".markdownlint-rules/no-horizontal-rules.js",
-    ".markdownlint-rules/no-em-dashes.js"
-  ],
+  "customRules": [".markdownlint-rules/no-horizontal-rules.js"],
   // Mirrors dprint.json excludes: the snapshot fixtures are byte-exact
   // expectations and must never be reformatted.
   "ignores": [
