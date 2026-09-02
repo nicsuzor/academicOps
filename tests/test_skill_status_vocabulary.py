@@ -101,4 +101,3 @@ def test_dump_skill_does_not_template_literal_blocked():
             f"{dump_skill.relative_to(REPO_ROOT)} includes 'blocked' in <status: ...> template. "
             "'blocked' is derived and should not be offered as a writable status."
         )
-
