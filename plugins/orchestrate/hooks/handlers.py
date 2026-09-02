@@ -469,7 +469,7 @@ HANDLERS: dict[str, list] = {
     # Both clients register here: agy's wire event is its own "Stop" (not
     # PostInvocation — dispatch.py's TO_CANONICAL no longer aliases that
     # one onto anything; see the comment there).
-    "Stop": [stop, agy_stop],
-    "PostToolBatch": [h for h in (rule_against_hearsay, premise_check_open_gate) if h is not None],
+    "Stop": [stop, agy_stop, premise_check_open_gate],
+    "PostToolBatch": [h for h in [rule_against_hearsay] if h is not None],
     "SubagentStart": [honest_output],
 }

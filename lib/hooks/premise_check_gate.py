@@ -60,7 +60,7 @@ from dispatch import HookContext, Result, refuse, warn
 # Agent profiles this gate applies to. Narrower than rule_against_hearsay's
 # scope (which also covers orchestrate:james) because this task
 # (task_db1da567) is specifically about Ida.
-_GATED_AGENT_TYPES = ("aops:ida", "pkb:ida")
+_GATED_AGENT_TYPES = ["aops:ida"]
 _GATED_TOOLS = ("Agent", "Task")
 
 # Matches the numbered, bold-led items in hearsay.md's logic-check list, e.g.
@@ -175,8 +175,6 @@ def _is_override_active() -> bool:
 def premise_check_open_gate(ctx: HookContext) -> Result | None:
     """PostToolBatch handler: open the gate when a subagent report lands."""
     if ctx.agent_type not in _GATED_AGENT_TYPES:
-        return None
-    if not any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
         return None
     open_gate(ctx.session_id, claim_id=_derive_claim_id(ctx))
     return None
