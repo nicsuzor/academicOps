@@ -79,22 +79,27 @@ verify against.
 
 ### Fetch failure
 
-Fetch failure fails the dispatch rather than silently substituting a local ref,
-with one narrow, deliberate exception:
-
-- **`--base origin/<name>`** — fail closed unconditionally. The caller named a
-  remote ref; there is no honest local answer.
-- **`--base <ref>`** — verify `<ref>^{commit}` resolves in the canonical checkout.
-  If it does, proceed on it; otherwise fail closed. This exception exists so
-  `--base HEAD~1` and raw SHAs — refs that are legitimately not on `origin` —
-  still work offline. Its cost is real and bounded: where the fetch fails _and_ a
-  same-named stale local branch exists, that run reopens Mode 1. The failure is at
-  least noisy in the git output, and the alternative — refusing every dispatch
-  whenever the network is down — was judged worse.
-
-Proceeding on a stale local SHA in the _general_ case is what produces mass-revert
-commits, so it is never the default: an error that halts dispatch is visible and
+Fetch failure fails the dispatch, unconditionally, for every `--base` form —
+`--base <ref>`, `--base origin/<name>`, and the default (current-branch)
+`base_ref` derived when `--base` is omitted. There is no fallback to
+local-only verification, even when the ref also happens to resolve in the
+canonical checkout (`--base HEAD~1`, a raw SHA, a same-named stale local
+branch). Silently resolving to the wrong base lands work on the wrong tree
+and stays invisible until much later; that is the ambiguity case where
+halting beats guessing. An error that halts dispatch is visible and
 actionable, a dispatch on a stale ref destroys merged work quietly.
+
+This does not distinguish a transient network failure from a `<ref>` that
+never existed on `origin` — both surface as a non-zero `git fetch` exit and
+are treated identically. `git`'s own error text is not a reliable signal to
+branch on (transport errors, auth failures, and "couldn't find remote ref"
+are not consistently distinguishable across git versions and remotes), and
+the two cases share the same governing risk: proceeding without remote
+confirmation. A caller who hits this on a flaky network re-runs; a caller who
+hits it on a typo'd ref gets the same actionable message either way. Divide
+this further only if a concrete failure mode requires it — offline work is
+explicitly out of scope for `resolve_isolated_workspace`, which always
+verifies freshness against `origin` when one is configured.
 
 ## Clone materialisation
 

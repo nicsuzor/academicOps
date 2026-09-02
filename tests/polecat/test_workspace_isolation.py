@@ -688,9 +688,11 @@ def test_canonical_checkout_immutability_during_dispatch(tmp_path):
     cleanup_isolated_workspace(cleanup_info)
 
 
-def test_isolated_workspace_resolves_local_commit_when_fetch_fails(tmp_path):
-    """When base is a valid local commit (e.g. HEAD~1 or SHA) and origin fetch fails,
-    resolve_isolated_workspace verifies the commit locally and succeeds."""
+def test_isolated_workspace_fails_closed_on_fetch_error_for_local_ref(tmp_path):
+    """When base is a valid local commit (e.g. HEAD~1 or SHA) but origin fetch fails,
+    resolve_isolated_workspace must fail closed (SystemExit) rather than falling back
+    to local-only verification. A fetch failure is fail-closed on every `--base` form,
+    with no exception for refs that happen to also resolve locally."""
     canonical = tmp_path / "canonical-local-fallback"
     canonical.mkdir()
     _run("git", "init", cwd=canonical)
@@ -699,7 +701,6 @@ def test_isolated_workspace_resolves_local_commit_when_fetch_fails(tmp_path):
     (canonical / "file1.txt").write_text("commit 1\n")
     _run("git", "add", "file1.txt", cwd=canonical)
     _run("git", "commit", "-m", "first", cwd=canonical)
-    first_sha = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
     (canonical / "file2.txt").write_text("commit 2\n")
     _run("git", "add", "file2.txt", cwd=canonical)
     _run("git", "commit", "-m", "second", cwd=canonical)
@@ -713,17 +714,9 @@ def test_isolated_workspace_resolves_local_commit_when_fetch_fails(tmp_path):
     )
 
     polecat_home = tmp_path / "polecat-home"
-    # base="HEAD~1" cannot be fetched from origin, but resolves locally
-    isolated_path, cleanup_info = resolve_isolated_workspace(
-        canonical, "session-local-base", polecat_home, base="HEAD~1"
-    )
-
-    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
-    assert isolated_sha == first_sha
-    assert (isolated_path / "file1.txt").exists()
-    assert not (isolated_path / "file2.txt").exists()
-
-    cleanup_isolated_workspace(cleanup_info)
+    # base="HEAD~1" resolves locally, but the origin fetch fails, so dispatch must halt.
+    with pytest.raises(SystemExit):
+        resolve_isolated_workspace(canonical, "session-local-base", polecat_home, base="HEAD~1")
 
 
 def test_isolated_workspace_origin_prefix_fails_closed_on_fetch_error(tmp_path):

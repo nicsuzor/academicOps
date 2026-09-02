@@ -854,23 +854,10 @@ def resolve_isolated_workspace(
                     capture_output=True,
                     text=True,
                 )
-            if fetch_res.returncode != 0 and base:
-                local_check = subprocess.run(
-                    [
-                        "git",
-                        "-C",
-                        str(canonical_dir),
-                        "rev-parse",
-                        "--verify",
-                        f"{base_ref}^{{commit}}",
-                    ],
-                    capture_output=True,
-                    text=True,
+            if fetch_res.returncode != 0:
+                fail(
+                    f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
                 )
-                if local_check.returncode != 0:
-                    fail(
-                        f"failed to fetch base ref {base_ref!r} from origin in {canonical_dir}:\n{fetch_res.stderr}"
-                    )
             # Remote ref is tried FIRST to close Mode 1 (silent stale local ref)
             refs_to_try = [f"refs/remotes/origin/{base_ref}", f"origin/{base_ref}"]
             refs_to_try.append(base_ref)
