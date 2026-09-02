@@ -30,7 +30,7 @@ from pathlib import Path
 
 import pytest
 
-from lib.polecat.cli import cleanup_isolated_workspace, resolve_isolated_workspace
+from lib.polecat.cli import _get_git_head, cleanup_isolated_workspace, resolve_isolated_workspace
 from lib.polecat.staleness import ImageProvenance, evaluate_staleness
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -909,3 +909,73 @@ def test_staleness_check_must_compare_against_canonical_head_not_isolated_base_s
     )
     assert fixed["is_stale"] is False
     assert fixed["staleness_status"] == "FRESH_LOCAL_BUILD"
+
+
+def test_staleness_check_still_reports_stale_when_image_is_genuinely_behind_canonical_head(
+    tmp_path,
+):
+    """aops_d903e160 regression: the negative direction of the aops_81849370 fix.
+
+    test_staleness_check_must_compare_against_canonical_head_not_isolated_base_sha
+    (above) proves the fix stops a FALSE positive: an image built from
+    canonical_head is no longer reported stale merely because the isolated
+    clone's upstream-derived base_sha moved on after the build. It never
+    proves the fixed wiring still catches a TRUE positive — an image whose
+    baked commit is genuinely behind the canonical checkout's own HEAD. A
+    baseline that silently matched everything (the "wrong direction" failure
+    mode the PR is held against) would pass that test too and still be
+    useless. This test builds a real git repo, records its HEAD as the
+    commit the image was (hypothetically) built from, then advances the
+    checkout with a further local commit — local development moving on with
+    no rebuild yet, the exact event `canonical_head` exists to catch, and
+    unrelated to the isolated-clone base_sha mechanics the test above covers.
+    canonical_head is computed via `_get_git_head`, the actual helper
+    cli.py's run() calls to produce it (aops_81849370's fix), against the
+    real advanced repo — not a hand-picked string standing in for it.
+    """
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("initial\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+
+    # The commit `make docker-build`, run in `canonical` at this point, would
+    # stamp into the image via AOPS_BUILD_COMMIT.
+    baked_commit = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+
+    # Local work lands after the (simulated) build, with no rebuild yet —
+    # genuine staleness, not a fetch/base_sha artefact.
+    (canonical / "CHANGES.md").write_text("moved on\n")
+    _run("git", "add", "CHANGES.md", cwd=canonical)
+    _run("git", "commit", "-m", "local work after the build", cwd=canonical)
+
+    # Real path, not hand-picked: the same helper cli.py's run() calls to
+    # capture canonical_head, invoked against the real, now-advanced repo.
+    canonical_head = _get_git_head(canonical)
+    assert canonical_head != baked_commit
+
+    ancestry = subprocess.run(
+        ["git", "-C", str(canonical), "merge-base", "--is-ancestor", baked_commit, canonical_head],
+    )
+    assert ancestry.returncode == 0, "baked_commit must be a genuine ancestor of canonical_head"
+
+    image = ImageProvenance(
+        dist_source="local",
+        commit_sha=baked_commit,
+        short_sha=baked_commit[:8],
+        version="0.0.0",
+        is_dirty=False,
+    )
+
+    result = evaluate_staleness(
+        image,
+        canonical,
+        dispatch_mode="default",
+        base_sha=canonical_head,
+        session_id="session-default-dispatch",
+    )
+    assert result["is_stale"] is True
+    assert result["staleness_status"] == "STALE_LOCAL_BUILD"
