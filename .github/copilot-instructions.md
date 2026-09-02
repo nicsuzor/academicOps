@@ -33,7 +33,7 @@ academicOps/
 │   ├── rules/        # RULES.md (project-specific rules; axioms live in lib/axioms/)
 │   └── skills/       # Meta skills for this repo's own dev workflow
 ├── .github/
-│   ├── agents/       # Agent prompts (pr-reviewer, enforcer, mechanic, qa)
+│   ├── agents/       # Agent prompts (enforcer, mechanic, qa, pre-admission-responder)
 │   └── workflows/    # GitHub Actions
 ├── lib/               # Shared source, injected into plugins at build time
 │   ├── axioms/       # The axioms (single source of truth)

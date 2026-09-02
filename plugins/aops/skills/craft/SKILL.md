@@ -24,6 +24,8 @@ Trust a capable, improving agent to exercise judgment through clear processes.
 
 Evaluate every line: if removing it leaves the median task unaffected, delete it or relocate it. Confine rare-path instructions to the specific skill or reference file owning that path, preserving the token budget of files loaded on every run.
 
+**Self-referential rules keep their evidence.** Before cutting an incident or worked example, check whether it is the sole justification for a rule that constrains how this same file gets edited in future (e.g. "keep this list verbatim," "never merge these"). Deleting that evidence does not lighten the rule — it leaves a bare assertion the next editor has no way to verify, weigh against a plausible-looking shortcut, or cite when refusing one. Relocate it to a `specs/` entry the instruction can point to, per principle 5, rather than deleting it outright.
+
 ## The Description Is the Router
 
 A skill's frontmatter description is the only part loaded before invocation. Models under-trigger by default, so descriptions must aggressively advocate for their own selection:

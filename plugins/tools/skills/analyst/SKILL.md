@@ -224,7 +224,11 @@ What binds is methodology, and it is the researcher's call before it is yours.
 - **State and check the assumptions the test rests on** — independence,
   distributional form, homogeneity of variance, whatever it requires — and
   report what you found, including a failed assumption you proceeded past and
-  why.
+  why. Run `scripts/assumption_checks.py`'s `comprehensive_assumption_check()`
+  (or the individual `check_normality`, `check_homogeneity_of_variance`,
+  `check_linearity`, `detect_outliers` functions it composes) against the
+  test's actual data before reporting results; do not assert an assumption
+  holds without having run the check.
 - **Report effect sizes and intervals always**, interpreted in the units the
   research question is asked in. A p-value alone is not a result.
 - **Label exploratory passes as exploratory in the write-up.** Multiple

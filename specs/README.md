@@ -38,6 +38,10 @@
 - [workflows/reconcile.md](workflows/reconcile.md) — GitHub ↔ PKB task-graph reconciliation.
 - [workflows/strategic-review.md](workflows/strategic-review.md) — design intent for the parallel-review-and-reconcile quality gate.
 
+## Tools
+
+- [tools/peer-review-probes.md](tools/peer-review-probes.md) — why the peer-review skill's eleven analytical probes are held verbatim rather than condensed.
+
 ## Future
 
 - [future/polecat-dispatch-from-container-via-ssh.md](future/polecat-dispatch-from-container-via-ssh.md) — accepted design for dispatching polecats from a containerised orchestrator.

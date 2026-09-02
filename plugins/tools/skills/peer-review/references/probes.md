@@ -12,7 +12,8 @@ drafts criterion comments from what they surface.
 
 **Keep all eleven, verbatim.** They are one academic's distilled review style, held exactly
 as written because condensing or merging probes silently drops analytical moves — extend the
-set with probes your field needs, never prune it.
+set with probes your field needs, never prune it. Why verbatim, with the specific probes a
+prior condensation lost: [`specs/tools/peer-review-probes.md`](../../../../../specs/tools/peer-review-probes.md).
 
 **Adapting the set.** The inline examples (jurisdictions, dollar figures, sample sizes,
 "9 workshops", "four jurisdictions × three domains") come from law and social-science
