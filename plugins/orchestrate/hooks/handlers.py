@@ -280,7 +280,8 @@ def honest_output(ctx: HookContext) -> Result | None:
     to provide evidence sufficient to support its claims.
 
     """
-    if ctx.agent_type in ("aops:ida"):
+    # Do not fire on supervisor profiles
+    if ctx.agent_type in ("aops:ida", "orchestrate:james"):
         return None
 
     if ctx.raw.get("background_tasks"):
