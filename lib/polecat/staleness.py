@@ -10,10 +10,13 @@ while strictly enforcing the "warn, never refuse" invariant.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+
+_RELEASE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,89 @@ def _get_git_head_and_dirty(path: Path | str) -> tuple[str, bool]:
         pass
 
     return sha, is_dirty
+
+
+def _latest_release_baseline(workspace_dir: Path | str, workspace_sha: str) -> tuple[str, str]:
+    """Return (tag, sha) of the highest `vX.Y.Z` tag reachable from
+    workspace_sha in the repo at workspace_dir, or ("", "") if none is found
+    or on any git error.
+
+    Tag/branch topology in this repo is a dated observation, never a
+    standing property (kb_3a091c50) — this re-derives it from the workspace's
+    own ancestry on every call rather than trusting a cached or hardcoded
+    ref name. `--merged` already excludes a tag cut on a branch unmerged
+    into workspace_sha's history, so an abandoned release line (e.g. a tag
+    on a branch never folded into dev) is never picked up as the baseline
+    for a workspace that doesn't descend from it.
+    """
+    if not workspace_sha:
+        return "", ""
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(workspace_dir), "tag", "--merged", workspace_sha],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except Exception:
+        return "", ""
+    if res.returncode != 0 or not res.stdout:
+        return "", ""
+
+    candidates = [
+        line.strip() for line in res.stdout.splitlines() if _RELEASE_TAG_RE.match(line.strip())
+    ]
+    if not candidates:
+        return "", ""
+
+    def _version_key(tag: str) -> tuple[int, int, int]:
+        major, minor, patch = tag[1:].split(".")
+        return (int(major), int(minor), int(patch))
+
+    latest_tag = max(candidates, key=_version_key)
+
+    try:
+        sha_res = subprocess.run(
+            ["git", "-C", str(workspace_dir), "rev-parse", latest_tag],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except Exception:
+        return "", ""
+    if sha_res.returncode != 0 or not sha_res.stdout:
+        return "", ""
+
+    return latest_tag, sha_res.stdout.strip()
+
+
+def _is_ancestor_commit(workspace_dir: Path | str, ancestor_sha: str, descendant_sha: str) -> bool:
+    """True if ancestor_sha is reachable from descendant_sha (or equal to
+    it) in the repo at workspace_dir. False on any git error or when the
+    commit is unknown to this repo — an unverifiable ancestry is not
+    evidence of freshness."""
+    if not ancestor_sha or not descendant_sha:
+        return False
+    if ancestor_sha == descendant_sha:
+        return True
+    try:
+        res = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(workspace_dir),
+                "merge-base",
+                "--is-ancestor",
+                ancestor_sha,
+                descendant_sha,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except Exception:
+        return False
+    return res.returncode == 0
 
 
 def inspect_image_provenance(image: str) -> ImageProvenance:
@@ -117,13 +203,19 @@ def format_fresh_header(
     workspace_short: str,
     image_ref: str,
     image_short: str,
+    exact_match: bool = True,
 ) -> str:
+    status_label = (
+        "PLUGINS FRESH [local match]"
+        if exact_match
+        else "PLUGINS FRESH [local, current release baseline]"
+    )
     return (
         "================================================================================\n"
         f"POLECAT DISPATCH: {session_id} [{agent or 'none'}]\n"
         f"Workspace: {workspace_dir} (commit: {workspace_short})\n"
         f"Image:     {image_ref} (local build @ {image_short})\n"
-        "Status:    PLUGINS FRESH [local match]\n"
+        f"Status:    {status_label}\n"
         "================================================================================"
     )
 
@@ -233,7 +325,7 @@ def evaluate_staleness(
         plugins_version_str = f"{image_version} (remote:release)"
     else:
         # Local source build
-        if (
+        commits_differ = bool(
             prov.commit_sha
             and workspace_sha
             and not (
@@ -241,10 +333,41 @@ def evaluate_staleness(
                 or prov.commit_sha.startswith(workspace_sha)
                 or workspace_sha.startswith(prov.commit_sha)
             )
-        ):
+        )
+
+        # A raw SHA mismatch is not, by itself, staleness worth warning
+        # about: two commits differing by dev-loop churn since the last
+        # release (a banner-text tweak, an em-dash fix) is expected and
+        # harmless. Staleness is the image missing an actual release
+        # checkpoint the workspace has moved past. Measure "behind" against
+        # that checkpoint via git ancestry, not against the constantly
+        # moving workspace HEAD.
+        release_tag = ""
+        release_sha = ""
+        image_covers_release = True
+        if commits_differ:
+            release_tag, release_sha = _latest_release_baseline(workspace_dir, workspace_sha)
+            if release_sha:
+                image_covers_release = _is_ancestor_commit(
+                    workspace_dir, release_sha, prov.commit_sha
+                )
+
+        # No release tag is reachable from the workspace (e.g. a shallow
+        # test fixture, or a repo with no tags yet): there is no baseline
+        # to measure "behind" against, so fall back to the plain-inequality
+        # signal rather than silently disabling detection.
+        behind_release = commits_differ and (not release_sha or not image_covers_release)
+
+        if behind_release:
             is_stale = True
             status = "STALE_LOCAL_BUILD"
-            reason = f"image commit {image_short} behind workspace commit {workspace_short}"
+            if release_sha:
+                reason = (
+                    f"image commit {image_short} predates release {release_tag} "
+                    f"({release_sha[:8]}); workspace commit {workspace_short} is at or past it"
+                )
+            else:
+                reason = f"image commit {image_short} behind workspace commit {workspace_short}"
             warning_banner = format_stale_banner(
                 image_commit=image_short,
                 workspace_commit=workspace_short,
@@ -268,6 +391,7 @@ def evaluate_staleness(
             status = "FRESH_LOCAL_BUILD"
             reason = None
             warning_banner = None
+            exact_match = not commits_differ
             header_banner = format_fresh_header(
                 session_id=session_id,
                 agent=agent,
@@ -275,8 +399,13 @@ def evaluate_staleness(
                 workspace_short=workspace_short,
                 image_ref=image_ref,
                 image_short=image_short,
+                exact_match=exact_match,
             )
-            plugins_version_str = f"{image_version} (local:match)"
+            plugins_version_str = (
+                f"{image_version} (local:match)"
+                if exact_match
+                else f"{image_version} (local:current)"
+            )
 
     return {
         "is_stale": is_stale,
