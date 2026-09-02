@@ -36,6 +36,12 @@ try:
 except ImportError:
     task_body_gate_handler = None
 
+try:
+    from premise_check_gate import premise_check_gate_handler, premise_check_open_gate
+except ImportError:
+    premise_check_gate_handler = None
+    premise_check_open_gate = None
+
 Handler = Callable[[HookContext], Result | None]
 
 _BASIC_VARS = (
@@ -453,13 +459,17 @@ HANDLERS: dict[str, list] = {
     # dispatch.py's TO_CANONICAL maps onto this canonical key before handler
     # lookup runs — a "PreInvocation" registration here would never fire.
     "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, honest_output],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, task_body_gate_handler) if h is not None],
+    "PreToolUse": [
+        h
+        for h in (pre_tool, agy_pre_tool, task_body_gate_handler, premise_check_gate_handler)
+        if h is not None
+    ],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
     # Both clients register here: agy's wire event is its own "Stop" (not
     # PostInvocation — dispatch.py's TO_CANONICAL no longer aliases that
     # one onto anything; see the comment there).
     "Stop": [stop, agy_stop],
-    "PostToolBatch": [rule_against_hearsay],
+    "PostToolBatch": [h for h in (rule_against_hearsay, premise_check_open_gate) if h is not None],
     "SubagentStart": [honest_output],
 }
