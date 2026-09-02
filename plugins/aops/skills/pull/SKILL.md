@@ -64,9 +64,9 @@ Check your work against the literal requirements and acceptance criteria set out
 
 **If you cannot complete the task** due to lack of access, skills, tooling, instructions, or infrastructure, or other errors:
 
-- **You must release the task as 'review' (or 'blocked').** This is not your fault: the task is undeliverable as designed.
+- **You must release the task as 'review' (or 'partial').** This is not your fault: the task is undeliverable as designed. Never write `status: blocked` directly into frontmatter — `blocked` is a derived status computed from directed graph edges.
 - **You do not have authority** to repair work by changing the task instructions, acceptance criteria, or the pre-determined required workflow processes that you were initially provided.
-- **Impossible tasks** must be released as 'review' (with mandatory `reason`) to signal that they must be _escalated_ for human direction or re-design, or as 'blocked' (with mandatory `blocker`) if waiting on an unmet prerequisite, before they can be re-dispatched.
+- **Impossible tasks** must be released as 'review' (with mandatory `reason`) to signal that they must be _escalated_ for human direction or re-design. If waiting on an unmet prerequisite, create or update a `blocks`-typed edge on the blocking task pointing at this task instead of writing `status: blocked` directly.
 
 ### 6. Handover (land the plane): Invoke `dump` Skill**
 
