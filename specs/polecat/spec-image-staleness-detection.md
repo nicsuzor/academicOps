@@ -112,19 +112,59 @@ by dispatch mode:
 SHA comparison is prefix-tolerant in both directions, so a short SHA on either
 side still matches.
 
-| Image source | Workspace state            | State                     | Output                      |
-| ------------ | -------------------------- | ------------------------- | --------------------------- |
-| `local`      | commit matches, clean      | `FRESH_LOCAL_BUILD`       | Header, proceed             |
-| `local`      | commit differs             | `STALE_LOCAL_BUILD`       | **Warning banner**, proceed |
-| `local`      | commit matches, tree dirty | `DIRTY_WORKSPACE_UNBAKED` | **Warning banner**, proceed |
-| `remote`     | commit matches             | `FRESH_REMOTE_BUILD`      | Header, proceed             |
-| `remote`     | commit differs             | `REMOTE_RELEASE_RUN`      | Header, proceed             |
+| Image source | Workspace state                                          | State                     | Output                      |
+| ------------ | -------------------------------------------------------- | ------------------------- | --------------------------- |
+| `local`      | commit matches, clean                                    | `FRESH_LOCAL_BUILD`       | Header, proceed             |
+| `local`      | commit differs, image is at or past the release baseline | `FRESH_LOCAL_BUILD`       | Header, proceed             |
+| `local`      | commit differs, image predates the release baseline      | `STALE_LOCAL_BUILD`       | **Warning banner**, proceed |
+| `local`      | commit matches, tree dirty                               | `DIRTY_WORKSPACE_UNBAKED` | **Warning banner**, proceed |
+| `remote`     | commit matches                                           | `FRESH_REMOTE_BUILD`      | Header, proceed             |
+| `remote`     | commit differs                                           | `REMOTE_RELEASE_RUN`      | Header, proceed             |
 
 `DIRTY_WORKSPACE_UNBAKED` fires only where the workspace is dirty and the image
 was _not_ built dirty: an image stamped `aops.build_dirty=1` already contains
 uncommitted work, so the difference is expected. Neither `remote` state sets
 `is_stale`, and neither ever emits the warning banner — that is constraint 2
 enforced in one place.
+
+### `STALE_LOCAL_BUILD` compares against a release baseline, not raw HEAD
+
+A raw SHA mismatch between the image and workspace HEAD is not, by itself,
+evidence of staleness worth an operator's attention: two commits differing
+only by dev-loop churn since the last release (a banner-text tweak, an
+em-dash fix) are both correct, and warning on that difference trains the
+operator to ignore the banner. `STALE_LOCAL_BUILD` instead fires only when
+the image is missing a release checkpoint the workspace has already reached:
+
+1. If `image_commit == workspace_sha` (prefix-tolerant), the image is fresh —
+   no baseline lookup is needed.
+2. Otherwise, resolve the release baseline: the highest `vX.Y.Z`-tagged commit
+   reachable from `workspace_sha` (`git tag --merged <workspace_sha>`,
+   filtered to exact `major.minor.patch` tags — pre-release suffixes like
+   `-rc.1` or `-beta.2` do not count, and `--merged` already excludes a tag
+   cut on a branch that never merged into the workspace's own history, so an
+   abandoned release line is never picked up as the baseline). This is
+   re-derived on every call: tag and branch topology in this repo is a dated
+   observation, never a standing property (`kb_3a091c50`), so nothing here
+   trusts a cached ref name.
+3. If no release tag is reachable from the workspace (a shallow test
+   fixture, or a repo with no tags yet), there is no baseline to measure
+   "behind" against — fall back to the plain-inequality signal so detection
+   is never silently disabled.
+4. If a release baseline is found, the image is stale only when it does
+   **not** contain that baseline commit (`git merge-base --is-ancestor
+   <release_sha> <image_commit>` fails) — i.e. the image was built before the
+   release was cut. An image that already contains the release baseline is
+   `FRESH_LOCAL_BUILD` even when its SHA differs from workspace HEAD; its
+   `plugins_version_str` and header banner say `local:current` /
+   `[local, current release baseline]` rather than `local:match`, since the
+   SHAs genuinely differ.
+
+`aops_97952fe5` (whether a detected mismatch should hard-fail or auto-rebuild
+rather than warn) and `aops_81849370` (why a successful `make docker-build`
+can be immediately followed by a stale-warning launch) are separate, open
+concerns about this same detector; neither is resolved by the release-baseline
+comparison described here.
 
 ## Surfacing
 

@@ -64,6 +64,22 @@ def _init_git_repo(repo_dir: Path) -> str:
     return res.stdout.strip()
 
 
+def _commit(repo_dir: Path, name: str, content: str) -> str:
+    (repo_dir / name).write_text(content)
+    subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", f"add {name}"], cwd=repo_dir, check=True, capture_output=True
+    )
+    res = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo_dir, check=True, capture_output=True, text=True
+    )
+    return res.stdout.strip()
+
+
+def _tag(repo_dir: Path, tag: str, commit: str) -> None:
+    subprocess.run(["git", "tag", tag, commit], cwd=repo_dir, check=True, capture_output=True)
+
+
 def test_staleness_detection_local_fresh(tmp_path):
     """Image commit matches workspace commit, source is local: not stale, fresh header."""
     repo = tmp_path / "repo"
@@ -137,6 +153,65 @@ def test_staleness_detection_local_stale(tmp_path, monkeypatch):
     res = runner.invoke(cli.main, ["run", "claude", "-d", str(repo), "-s", "session-stale-run"])
     assert res.exit_code == 0
     assert "WARNING: POLECAT IMAGE PLUGINS ARE STALE" in res.output
+
+
+def test_staleness_detection_local_within_release_baseline_not_flagged(tmp_path):
+    """Image commit differs from workspace HEAD but both are on the same
+    release line (image already contains the latest release tag): not
+    stale, since the drift since the last release is normal dev-loop churn
+    rather than a missed release."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_git_repo(repo)
+    release_commit = _commit(repo, "banner.py", "v1\n")
+    _tag(repo, "v1.0.0", release_commit)
+    workspace_head = _commit(repo, "banner.py", "v1 with em-dash fixed\n")
+
+    prov = ImageProvenance(
+        dist_source="local",
+        commit_sha=release_commit,
+        short_sha=release_commit[:8],
+        version="1.0.0",
+        is_dirty=False,
+    )
+
+    result = evaluate_staleness(prov, repo, dispatch_mode="direct", session_id="session-current")
+
+    assert result["is_stale"] is False
+    assert result["staleness_status"] == "FRESH_LOCAL_BUILD"
+    assert result["staleness_reason"] is None
+    assert result["warning_banner"] is None
+    assert "current release baseline" in result["header_banner"]
+    assert "local:current" in result["plugins_version_str"]
+    assert workspace_head != release_commit  # sanity: the SHAs genuinely differ
+
+
+def test_staleness_detection_local_predates_release_baseline_flagged_stale(tmp_path):
+    """Image commit predates the latest release tag the workspace has
+    reached: still flagged stale, with a reason naming the missed release."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    pre_release_commit = _init_git_repo(repo)
+    release_commit = _commit(repo, "banner.py", "v1\n")
+    _tag(repo, "v1.0.0", release_commit)
+    _commit(repo, "followup.py", "post-release\n")
+
+    prov = ImageProvenance(
+        dist_source="local",
+        commit_sha=pre_release_commit,
+        short_sha=pre_release_commit[:8],
+        version="0.9.0",
+        is_dirty=False,
+    )
+
+    result = evaluate_staleness(prov, repo, dispatch_mode="direct", session_id="session-behind")
+
+    assert result["is_stale"] is True
+    assert result["staleness_status"] == "STALE_LOCAL_BUILD"
+    assert "predates release v1.0.0" in result["staleness_reason"]
+    assert result["warning_banner"] is not None
+    assert "WARNING: POLECAT IMAGE PLUGINS ARE STALE" in result["warning_banner"]
+    assert "local:stale" in result["plugins_version_str"]
 
 
 def test_staleness_detection_local_dirty_workspace(tmp_path):
