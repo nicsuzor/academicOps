@@ -143,6 +143,33 @@ No evidence **flags it for human review**, never auto-cancels: age is not
 evidence of irrelevance. Where the evidence tools are unavailable in this
 environment, skip the verification and flag the candidates.
 
+**Sent mail, checked per candidate, never swept.** Bound the lookup to the aged
+candidate already in hand: search on its title, its task id, and the
+correspondents it names — never a mailbox-wide window, and never a second sweep
+phase beside this one. Validate the tool before trusting a negative: run one
+known-item query first; an unvalidated empty result is "retrieval unreliable
+this run," never "no email trace" — a search tool with undocumented
+false-negative behaviour makes the two indistinguishable, and reporting the
+second when only the first is true has already put a false finding on this
+graph once.
+
+Where a candidate turns up, an agent reads it and answers one structured
+question, on the model of §4's pull-request classification: does this message
+settle the task's own open question — a completion claim, a go/no-go decision,
+or an answer to something the task was explicitly blocked on, never an
+incidental mention — returning `settles: bool`, `confidence:
+high|medium|low`, and `reason` quoting the decisive phrase. Only `confidence:
+high` with `settles: true` writes the fact; `medium`, `low`, or no candidate
+found flags it for human review under this paragraph's own rule above, and
+never auto-cancels or auto-completes on anything less.
+
+An email-sourced write carries the same evidence a merge carries: the message
+reference (a stable id where the tool provides one, otherwise subject, date,
+and sender), the date sent, and the excerpt that establishes the fact — quoted,
+never paraphrased — plus the confidence and reason returned above. It goes
+through the two-step mutation contract below like every other write this step
+makes: body, then frontmatter status, then a readback.
+
 **Artifact rot.** For `ready` and `queued` tasks aged past about a fortnight,
 verify that the files and symbols the task's criteria name still exist where
 they claim to. Rot triggers the write; age alone does not. A referent you have
