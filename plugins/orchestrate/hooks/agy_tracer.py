@@ -21,7 +21,7 @@ from claude_code_tracer import (
     _load_state,
     _new_span_id,
     _new_trace_id,
-    _phoenix_session_id,
+    _resolve_agent_and_parent_ids,
     _save_state,
     _session_lock,
     _truncate,
@@ -397,6 +397,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
         if tool_response is None:
             tool_response = {"error": error_msg} if is_failure else {}
 
+        tool_call_id = data.get("tool_call_id") or data.get("id") or data.get("tool_use_id")
         span_record = _build_tool_span_record(
             tool_name=tool_name,
             tool_input=current_tool.get("tool_input", tool_input),
@@ -408,13 +409,22 @@ def handle_post_tool(data: dict, config: dict) -> None:
             span_id=span_id,
             is_failure=is_failure,
             error_msg=error_msg,
+            tool_call_id=tool_call_id,
+        )
+
+        phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(
+            state,
+            data,
+            "conversationId",
         )
 
         _build_and_export_spans(
             config=config,
-            session_id=_phoenix_session_id(state),
+            session_id=phoenix_session_id,
             username=state.get("username", "unknown"),
             span_records=[span_record],
+            agent_id=agent_id,
+            parent_session_id=parent_session_id,
         )
 
         pt = state.get("pending_tools", {})
@@ -464,6 +474,31 @@ def handle_stop(data: dict, config: dict) -> None:
         elif ct.get("prompt_preview"):
             prompt_preview = ct["prompt_preview"]
 
+        phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(
+            state,
+            data,
+            "conversationId",
+        )
+        agent_name = (
+            data.get("agent_name")
+            or data.get("agent")
+            or data.get("role")
+            or os.environ.get("AOPS_AGENT_NAME")
+            or ""
+        )
+
+        chain_attrs: dict[str, Any] = {
+            "openinference.span.kind": "AGENT" if ct.get("parent_span_id") else "CHAIN",
+            "session.id": phoenix_session_id,
+        }
+        if agent_id:
+            chain_attrs["agent.id"] = agent_id
+            chain_attrs["subagent.id"] = agent_id
+        if parent_session_id:
+            chain_attrs["parent.session_id"] = parent_session_id
+        if agent_name:
+            chain_attrs["agent.name"] = agent_name
+
         # Emit CHAIN span
         chain_span = {
             "name": prompt_preview,
@@ -474,10 +509,7 @@ def handle_stop(data: dict, config: dict) -> None:
             "span_id_hex": root_span_id,
             "parent_span_id_hex": ct.get("parent_span_id"),
             "force_span_id": True,
-            "attributes": {
-                "openinference.span.kind": "AGENT" if ct.get("parent_span_id") else "CHAIN",
-                "session.id": _phoenix_session_id(state),
-            },
+            "attributes": chain_attrs,
         }
 
         records = [chain_span]
@@ -490,9 +522,11 @@ def handle_stop(data: dict, config: dict) -> None:
 
         _build_and_export_spans(
             config=config,
-            session_id=_phoenix_session_id(state),
+            session_id=phoenix_session_id,
             username=state.get("username", "unknown"),
             span_records=records,
+            agent_id=agent_id,
+            parent_session_id=parent_session_id,
         )
 
         _delete_state(session_id)

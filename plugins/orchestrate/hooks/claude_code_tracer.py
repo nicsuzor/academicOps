@@ -343,6 +343,26 @@ def _phoenix_session_id(state: dict) -> str:
     return state.get("phoenix_session_id") or state["session_id"]
 
 
+def _resolve_agent_and_parent_ids(
+    state: dict,
+    data: dict | None = None,
+    payload_key: str = "session_id",
+) -> tuple[str, str | None, str | None]:
+    """Resolve (phoenix_session_id, local_agent_id, parent_session_id)."""
+    phoenix_session_id = _phoenix_session_id(state)
+    local_agent_id = None
+    if data:
+        local_agent_id = resolve_session_id(data, payload_key, prefer_env=False)
+    if not local_agent_id:
+        local_agent_id = state.get("session_id") or phoenix_session_id
+
+    parent_session_id = None
+    if local_agent_id and phoenix_session_id and local_agent_id != phoenix_session_id:
+        parent_session_id = phoenix_session_id
+
+    return phoenix_session_id, local_agent_id, parent_session_id
+
+
 # ---------------------------------------------------------------------------
 # State file helpers
 # ---------------------------------------------------------------------------
@@ -1218,6 +1238,8 @@ def _build_and_export_spans(
     session_id: str,
     username: str,
     span_records: list[dict],
+    agent_id: str | None = None,
+    parent_session_id: str | None = None,
 ) -> None:
     """Create spans from records and export via OTLP gRPC (with fallbacks)."""
     (
@@ -1247,6 +1269,11 @@ def _build_and_export_spans(
         "project.name": project_name,
         "session.id": session_id,
     }
+    if agent_id:
+        resource_attrs["agent.id"] = agent_id
+        resource_attrs["subagent.id"] = agent_id
+    if parent_session_id:
+        resource_attrs["parent.session_id"] = parent_session_id
     if task_id:
         resource_attrs["task.id"] = task_id
         resource_attrs["tag.task_id"] = task_id
@@ -1335,6 +1362,11 @@ def _build_and_export_spans(
                 pass
 
             span.set_attribute("session.id", session_id)
+            if agent_id:
+                span.set_attribute("agent.id", agent_id)
+                span.set_attribute("subagent.id", agent_id)
+            if parent_session_id:
+                span.set_attribute("parent.session_id", parent_session_id)
             if username:
                 span.set_attribute("user.id", username)
             span.set_attribute("project.name", project_name)
@@ -1404,11 +1436,15 @@ def _emit_pending_llm_spans(
     for sp in new_spans:
         sp["kind"] = SpanKind.CLIENT
 
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
+
     _build_and_export_spans(
         config=config,
-        session_id=_phoenix_session_id(state),
+        session_id=phoenix_session_id,
         username=state.get("username", "unknown"),
         span_records=new_spans,
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
     )
 
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
@@ -1445,13 +1481,26 @@ def _complete_turn(
     # the comment on the Agent/Task branch in handle_pre_tool). Subagent and
     # parent are connected instead via the shared "session.id" attribute.
     username = state.get("username", "unknown")
-    phoenix_session_id = _phoenix_session_id(state)
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
+    agent_name = (
+        state.get("agent_name")
+        or os.environ.get("CLAUDE_AGENT_NAME")
+        or os.environ.get("AOPS_AGENT_NAME")
+        or ""
+    )
     root_attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
         "session.id": phoenix_session_id,
         "user.id": username,
         "turn_number": turn_number,
     }
+    if agent_id:
+        root_attrs["agent.id"] = agent_id
+        root_attrs["subagent.id"] = agent_id
+    if parent_session_id:
+        root_attrs["parent.session_id"] = parent_session_id
+    if agent_name:
+        root_attrs["agent.name"] = agent_name
     if prompt_preview:
         root_attrs["input.value"] = prompt_preview
         root_attrs["input.mime_type"] = "text/plain"
@@ -1476,6 +1525,8 @@ def _complete_turn(
                 "force_span_id": True,
             },
         ],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
     )
 
 
@@ -1495,6 +1546,7 @@ def _build_tool_span_record(
     is_failure: bool = False,
     error_msg: str = "",
     span_id: str | None = None,
+    tool_call_id: str | None = None,
 ) -> dict:
     """Build a span record dict for a tool call (success or failure).
 
@@ -1525,6 +1577,13 @@ def _build_tool_span_record(
         "output.value": output_value,
         "output.mime_type": "application/json",
     }
+
+    if not tool_call_id and isinstance(tool_input, dict):
+        tool_call_id = (
+            tool_input.get("tool_use_id") or tool_input.get("id") or tool_input.get("tool_call_id")
+        )
+    if tool_call_id:
+        attrs["tool.call_id"] = str(tool_call_id)
 
     # agent.name for AGENT spans: prefer subagent_type from input, fall back to tool_name
     if span_kind_str == "AGENT":
@@ -1920,6 +1979,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
     # If an Agent/Task tool is still pending, this tool ran inside that agent
     # (inline subagent pattern). Parent it to the agent span, not the CHAIN root.
     active_agent_span_id = _find_active_agent_span_id(state, pending_key)
+    tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
     span_record = _build_tool_span_record(
         tool_name=tool_name,
         tool_input=tool_input,
@@ -1929,15 +1989,20 @@ def handle_post_tool(data: dict, config: dict) -> None:
         trace_id=current_trace["trace_id"],
         root_span_id=active_agent_span_id or current_trace["root_span_id"],
         span_id=pre_allocated_span_id,
+        tool_call_id=tool_call_id,
     )
+
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state, data)
 
     # Export the tool span before acquiring the lock — this is the slow network
     # I/O and does not mutate state, so it is safe to run outside the lock.
     _build_and_export_spans(
         config=config,
-        session_id=_phoenix_session_id(state),
+        session_id=phoenix_session_id,
         username=state.get("username", "unknown"),
         span_records=[span_record],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
     )
 
     # Acquire an exclusive per-session lock before emitting LLM spans.
@@ -2000,6 +2065,7 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         error_msg = data.get("error", data.get("error_message", "Tool call failed"))
 
     active_agent_span_id = _find_active_agent_span_id(state, pending_key)
+    tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
     span_record = _build_tool_span_record(
         tool_name=tool_name,
         tool_input=tool_input,
@@ -2010,13 +2076,18 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         root_span_id=active_agent_span_id or current_trace["root_span_id"],
         is_failure=True,
         error_msg=error_msg,
+        tool_call_id=tool_call_id,
     )
+
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state, data)
 
     _build_and_export_spans(
         config=config,
-        session_id=_phoenix_session_id(state),
+        session_id=phoenix_session_id,
         username=state.get("username", "unknown"),
         span_records=[span_record],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
     )
 
     with _session_lock(session_id):

@@ -42,7 +42,7 @@ Skill bodies load into working context, where attention heavily degrades in the 
 
 - **Segment clearly:** Place load-bearing constraints first or last, and use strong markdown headers (`##`) to provide structural navigation anchors.
 
-- **Use progressive disclosure:** Move dense reference matter (schemas, style guides) into `references/` files exactly one level deep. Explicitly command the agent to read them at the moment of action (e.g., "Use the Read tool on `references/forms.md` before generating code").
+- **Use progressive disclosure:** Move dense reference matter (schemas, style guides) into `references/` files exactly one level deep. Explicitly command the agent to read them at the moment of action (e.g., "Use the Read tool on `references/evidence.md` before generating code").
 
 - **Provide shape, not logic:** Supply examples of output _shape_ (schemas, skeletons) and withhold worked examples of _logic_ to prevent the agent from blindly overfitting to the specific example.
 

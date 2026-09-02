@@ -318,7 +318,7 @@ def test_handlers_present_env_vars_export_spans(monkeypatch, tmp_path):
 
     exported_records: list[dict] = []
 
-    def mock_export_spans(config, session_id, username, span_records):
+    def mock_export_spans(config, session_id, username, span_records, *args, **kwargs):
         exported_records.extend(span_records)
 
     monkeypatch.setattr(claude_code_tracer, "_build_and_export_spans", mock_export_spans)
@@ -736,7 +736,7 @@ def test_agy_post_tool_extracts_output_from_transcript(tmp_path, monkeypatch):
 
     exported_records = []
 
-    def mock_export(config, session_id, username, span_records):
+    def mock_export(config, session_id, username, span_records, *args, **kwargs):
         exported_records.extend(span_records)
 
     monkeypatch.setattr(agy_tracer, "_build_and_export_spans", mock_export)
@@ -766,3 +766,188 @@ def test_agy_post_tool_extracts_output_from_transcript(tmp_path, monkeypatch):
     tool_span = exported_records[0]
     assert tool_span["name"] == "Bash"
     assert "file1.txt" in tool_span["attributes"]["output.value"]
+
+
+def test_build_and_export_spans_agent_and_parent_session_ids(monkeypatch):
+    """Verify build_and_export_spans populates agent.id, subagent.id, and parent.session_id."""
+    created_resources = []
+    mock_span = MagicMock()
+    mock_tracer = MagicMock()
+    mock_tracer.start_span.return_value = mock_span
+
+    class MockTracerProvider:
+        def __init__(self, resource=None):
+            if resource:
+                created_resources.append(resource)
+
+        def add_span_processor(self, processor):
+            pass
+
+        def get_tracer(self, name):
+            return mock_tracer
+
+        def shutdown(self):
+            pass
+
+    orig_otel_imports = claude_code_tracer._otel_imports
+
+    def mock_otel_imports():
+        imports = list(orig_otel_imports())
+        imports[2] = MockTracerProvider
+        return tuple(imports)
+
+    monkeypatch.setattr(claude_code_tracer, "_otel_imports", mock_otel_imports)
+
+    config = {
+        "endpoint": "http://localhost:4317",
+        "task_id": "test-task-123",
+        "project_name": "academicOps",
+    }
+    records = [
+        {
+            "trace_id_hex": "11111111111111111111111111111111",
+            "span_id_hex": "2222222222222222",
+            "name": "test-subagent-span",
+            "start_ns": 1000,
+            "end_ns": 2000,
+            "attributes": {},
+        }
+    ]
+
+    claude_code_tracer._build_and_export_spans(
+        config=config,
+        session_id="root-session-123",
+        username="suzor",
+        span_records=records,
+        agent_id="subagent-conv-456",
+        parent_session_id="root-session-123",
+    )
+
+    assert len(created_resources) == 1
+    res = created_resources[0]
+    assert res.attributes["agent.id"] == "subagent-conv-456"
+    assert res.attributes["subagent.id"] == "subagent-conv-456"
+    assert res.attributes["parent.session_id"] == "root-session-123"
+
+    span_calls = {call.args[0]: call.args[1] for call in mock_span.set_attribute.call_args_list}
+    assert span_calls["agent.id"] == "subagent-conv-456"
+    assert span_calls["subagent.id"] == "subagent-conv-456"
+    assert span_calls["parent.session_id"] == "root-session-123"
+
+
+def test_build_and_export_spans_omits_parent_session_id_when_none(monkeypatch):
+    """Verify build_and_export_spans omits parent.session_id when it is None."""
+    created_resources = []
+    mock_span = MagicMock()
+    mock_tracer = MagicMock()
+    mock_tracer.start_span.return_value = mock_span
+
+    class MockTracerProvider:
+        def __init__(self, resource=None):
+            if resource:
+                created_resources.append(resource)
+
+        def add_span_processor(self, processor):
+            pass
+
+        def get_tracer(self, name):
+            return mock_tracer
+
+        def shutdown(self):
+            pass
+
+    orig_otel_imports = claude_code_tracer._otel_imports
+
+    def mock_otel_imports():
+        imports = list(orig_otel_imports())
+        imports[2] = MockTracerProvider
+        return tuple(imports)
+
+    monkeypatch.setattr(claude_code_tracer, "_otel_imports", mock_otel_imports)
+
+    config = {
+        "endpoint": "http://localhost:4317",
+        "task_id": "test-task-123",
+        "project_name": "academicOps",
+    }
+    records = [
+        {
+            "trace_id_hex": "11111111111111111111111111111111",
+            "span_id_hex": "2222222222222222",
+            "name": "test-controller-span",
+            "start_ns": 1000,
+            "end_ns": 2000,
+            "attributes": {},
+        }
+    ]
+
+    claude_code_tracer._build_and_export_spans(
+        config=config,
+        session_id="root-session-123",
+        username="suzor",
+        span_records=records,
+        agent_id="root-session-123",
+        parent_session_id=None,
+    )
+
+    assert len(created_resources) == 1
+    res = created_resources[0]
+    assert "parent.session_id" not in res.attributes
+    assert res.attributes["agent.id"] == "root-session-123"
+
+    span_calls = {call.args[0]: call.args[1] for call in mock_span.set_attribute.call_args_list}
+    assert "parent.session_id" not in span_calls
+    assert span_calls["agent.id"] == "root-session-123"
+
+
+def test_build_tool_span_record_captures_tool_call_id():
+    """Verify _build_tool_span_record captures tool_call_id."""
+    # 1. Explicit tool_call_id argument
+    rec1 = claude_code_tracer._build_tool_span_record(
+        tool_name="Bash",
+        tool_input={"command": "ls"},
+        tool_response="output",
+        start_ns=1000,
+        end_ns=2000,
+        trace_id="1" * 32,
+        root_span_id="2" * 16,
+        tool_call_id="call_explicit_123",
+    )
+    assert rec1["attributes"]["tool.call_id"] == "call_explicit_123"
+
+    # 2. Extracted from tool_input id
+    rec2 = claude_code_tracer._build_tool_span_record(
+        tool_name="Read",
+        tool_input={"file_path": "/path/file", "id": "toolu_input_456"},
+        tool_response="content",
+        start_ns=1000,
+        end_ns=2000,
+        trace_id="1" * 32,
+        root_span_id="2" * 16,
+    )
+    assert rec2["attributes"]["tool.call_id"] == "toolu_input_456"
+
+
+def test_resolve_agent_and_parent_ids_controller_vs_subagent(monkeypatch):
+    """Verify _resolve_agent_and_parent_ids resolves IDs for controller vs subagent."""
+    monkeypatch.setenv("AOPS_SESSION_ID", "root-123")
+
+    # Controller session (local session_id matches AOPS_SESSION_ID)
+    state_controller = {"session_id": "root-123", "phoenix_session_id": "root-123"}
+    data_controller = {"session_id": "root-123"}
+    phoenix_id, agent_id, parent_id = claude_code_tracer._resolve_agent_and_parent_ids(
+        state_controller, data_controller
+    )
+    assert phoenix_id == "root-123"
+    assert agent_id == "root-123"
+    assert parent_id is None
+
+    # Subagent session (local session_id differs from AOPS_SESSION_ID)
+    state_subagent = {"session_id": "sub-456", "phoenix_session_id": "root-123"}
+    data_subagent = {"session_id": "sub-456"}
+    phoenix_id, agent_id, parent_id = claude_code_tracer._resolve_agent_and_parent_ids(
+        state_subagent, data_subagent
+    )
+    assert phoenix_id == "root-123"
+    assert agent_id == "sub-456"
+    assert parent_id == "root-123"

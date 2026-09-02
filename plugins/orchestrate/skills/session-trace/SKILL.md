@@ -185,19 +185,15 @@ Field names below are the **controller** export's; in the full export drop the
   Resolve by substring match against `--list-sessions` or local transcripts;
   Phoenix stores and queries full UUIDs for `session.id`.
 - An out-of-process subagent runs its own tracer, its own state file, and its
-  own traces — it does not nest inside the dispatching session's trace. Its
+  own traces -- it does not nest inside the dispatching session's trace. Its
   spans are **deliberately** grouped under the root session's `session.id`,
   resolved once at session init from `$AOPS_SESSION_ID` and stamped on every
   span, so one fetch returns the controller and every subagent together.
-- Because the grouping is by session and not by trace, and no span carries an
-  agent identity, a span alone cannot say which agent produced it. Controller
-  attribution is a timestamp join against the local markdown controller
-  transcript, matching on tool name and nearest start time; without that
-  transcript the export falls back to roots and their direct dispatches and says
-  so in `meta.attribution.method`. The tracer records `agent.name` on `AGENT`
-  spans and nothing else identity-bearing — no `agent.id`, no `tool.call_id` —
-  so attribution stays temporal and the local transcript stays required. Widen
-  `--tolerance-ms` only with care.
+- Spans emitted by subagents carry `agent.id` (and `subagent.id`) matching their
+  distinct conversation UUID, and `parent.session_id` pointing to the root
+  session UUID. Tool spans carry `tool.call_id` when supplied by the harness.
+  Controller attribution in `phoenix_trace.py` joins against the local markdown
+  controller transcript to isolate controller-only events.
 - Do not compare command text between a span and the transcript. Hooks may
   rewrite a command before it runs, so the span holds the rewritten form. Align
   on name and time only.
