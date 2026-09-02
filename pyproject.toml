@@ -189,6 +189,11 @@ refs = ["hooks/dispatch.py"]
 reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
 
 [[tool.refcheck.allow]]
+docs = "plugins/orchestrate/skills/session-trace/SKILL.md"
+refs = ["references/phoenix-span-store.md"]
+reason = "Injected from lib/telemetry/phoenix-span-store.md at build time; present in the build tree, not in the plugin source."
+
+[[tool.refcheck.allow]]
 docs = "templates/github-agent/README.md"
 refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."

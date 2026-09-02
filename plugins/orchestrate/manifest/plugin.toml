@@ -6,6 +6,13 @@
 from = "hooks"
 to = "hooks"
 
+# Canonical Phoenix span-store facts, also read directly by
+# .agents/skills/debug/SKILL.md (a dev-only skill the build never touches) via
+# a relative path into lib/. Keep both sides pointed at this one file.
+[[shared]]
+from = "telemetry/phoenix-span-store.md"
+to = "skills/session-trace/references/phoenix-span-store.md"
+
 # The polecat launcher, invoked as `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py` by the
 # `pc` agent (`plugins/orchestrate/agents/pc.md`). Only the runtime modules are
 # injected: `defaults/` and `entrypoint.sh` under lib/polecat/ are inputs to
