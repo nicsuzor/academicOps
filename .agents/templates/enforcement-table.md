@@ -1,10 +1,10 @@
 ---
-
 title: Enforcement Map Generation
 type: template
 category: process
 description: Create or audit a flat, actionable 4-column enforcement map mapping rules and affordances to concrete implementation mechanisms and escalation severity.
 tags: [enforcement, governance, architecture, audit, template]
+---
 
 # Process: Enforcement Map Generation
 

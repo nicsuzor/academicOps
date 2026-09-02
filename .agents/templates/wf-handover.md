@@ -32,7 +32,7 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
    - **Epic names a shared branch** — a `## Shared feature branch: <name>` heading on the task's epic body: push to that branch, never a new one. The PR is the epic's — search open PRs on that branch first; reuse it if one exists, open it once if this is the first child to land.
    - **No shared branch named** (most tasks, including every task with no epic): push to a per-task branch (`task/<id>-<slug>`) and open its own PR, or reuse an existing one.
    - For polecat worktrees, set status to `merge_ready` instead of pushing directly, either way.
-6. **Output a structured reflection** — minimum fields: Outcome, Accomplishments, Next step — under an `## Framework Reflection` H2 heading so it stays machine-parseable.
+6. **Output a structured reflection** — minimum fields: Outcome, Accomplishments, Next step — under an `## Framework Reflection` H2 heading, held to the same fields and heading every session so the next reader can scan it without re-deriving what happened.
 7. **Summary to user, last output** — what was done, tasks worked, follow-ups, and the resume pointer. Nothing follows this in the transcript.
 
 ## Quick Exit

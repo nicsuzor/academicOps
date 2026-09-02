@@ -129,54 +129,13 @@ The map holds the design, and nothing else.
 
 ## Editing the Excalidraw file
 
-Load the shipped diagram skill before editing. Transform the JSON with a script;
-never hand-edit it and never touch it with `sed` or a heredoc.
-[[wf-design-conversation]]'s Excalidraw rider carries the full
-pre-draw/drawing/iteration checklist; the checks below are the ones referential
-validation alone does not cover.
-
-**Pause the brain auto-sync daemon before the write, not after.** `~/brain` runs
-a daemon that commits writes as they land, as `auto: sync <timestamp>`. Edit
-first and your `git commit` returns `nothing to commit, working tree clean` — the
-daemon already took your change under a message that says nothing about it, and
-there is no recovery short of amending someone else's commit. This is why the
-map's history carries no design rationale at all.
-
-**Take a copy of the file before editing** — in the scratch directory, never
-beside the original and never under a versioned filename. It is the baseline the
-geometry checks below are read against, and it is discarded at the end of the
-pass; git remains the only versioning.
-
-- **The `elements` array must be in strict ascending `index` order.** Excalidraw
-  rejects a file whose array order and fractional indices disagree, and every
-  binding can still be intact. Sort by `index` before writing. This corrupted the
-  map once already: new elements were inserted mid-array carrying indices that
-  sorted last.
-- **Bound text must fit its container**, or the label renders outside the box.
-
-Then verify — valid JSON; every `containerId`, `boundElements` entry and arrow
-binding resolves:
-
-```
-excalidraw-view.py <file> check
-→ OK: N elements, ids unique, index-sorted, all bindings resolve
-```
-
-`excal-edit.py arrows` (crossing count) and `excal-edit.py overlap` catch
-geometry regressions. **Read both as a delta against the pre-edit copy, never as
-an absolute number** — the map has never been at zero crossings and no pass is
-expected to get it there; what matters is that your edit did not make it worse.
-
-What a clean `check` does **not** tell you, all three known and live:
-
-- It fails only on **content** divergence between `text` and `originalText`, not
-  on line-wrap divergence. The map carries 35 wrap-only mismatches that pass.
-  See [[obs_5df02f93]] for what the content case costs.
-- It never inspects `startBinding`/`endBinding`, so a half-bound arrow passes
-  silently ([[task_737c102e]]).
-- `map` mode drops arrow labels entirely, so a `map` reading is not the whole
-  document ([[task_3bff27d4]]) — and on this map the arrow labels carry open
-  design forks.
+Load the shipped diagram skill before editing; never hand-edit the file and
+never touch it with `sed` or a heredoc. [[wf-design-conversation]]'s
+Excalidraw rider (its **Mechanics** section) is the single source for the
+file-mechanics checklist — the pre-edit scratch copy, pausing the brain
+auto-sync daemon before the write, the post-edit validation and verify
+commands, and what a clean `check` does not cover. Follow it as written;
+nothing in map-then-wire changes it.
 
 ## Delegating any of this
 
