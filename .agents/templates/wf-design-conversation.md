@@ -137,17 +137,45 @@ test below.
 - Files are token-heavy. Load the shipped `diagram` skill before editing, and
   transform the file with a script, keyed on element `id` — never hand-edit,
   never touch it with `sed` or a heredoc.
+- Take a copy of the file before editing — in the scratch directory, never
+  beside the original and never under a versioned filename. It is the
+  baseline the geometry checks below are read against, and it is discarded at
+  the end of the pass; git remains the only versioning.
+- Pause the brain auto-sync daemon before the write, not after. `~/brain`
+  runs a daemon that commits writes as they land, as `auto: sync
+  <timestamp>`. Edit first and your `git commit` returns `nothing to commit,
+  working tree clean` — the daemon already took your change under a message
+  that says nothing about it, and there is no recovery short of amending
+  someone else's commit. This is why the map's history carries no design
+  rationale at all.
 - After every edit, validate: well-formed JSON; `type` fields intact; no
   duplicate ids; every `containerId`, `boundElements` entry and arrow binding
   resolves; no bounding-box overlap with neighbours (boundary/zone rectangles
   excepted); the `elements` array in strict ascending `index` order (a file
   can pass every referential check and still be unopenable if array order and
   fractional indices disagree — this corrupted the map once already); bound
-  text fits its container or the label renders outside the box.
-- Auto-sync commits map edits on its own cadence (~5 min in the academicOps
-  map) — don't double-commit on top of it. Git history is the only
-  versioning: never keep a backup copy or a versioned filename. This has been
-  violated at least once in practice
+  text fits its container or the label renders outside the box. Verify with:
+
+  ```
+  excalidraw-view.py <file> check
+  → OK: N elements, ids unique, index-sorted, all bindings resolve
+  ```
+
+  `excal-edit.py arrows` (crossing count) and `excal-edit.py overlap` catch
+  geometry regressions. Read both as a delta against the pre-edit copy, never
+  as an absolute number — the map has never been at zero crossings and no
+  pass is expected to get it there; what matters is that your edit did not
+  make it worse.
+- What a clean `check` does **not** tell you, all three known and live: it
+  fails only on **content** divergence between `text` and `originalText`, not
+  on line-wrap divergence, and the map carries 35 wrap-only mismatches that
+  pass (see [[obs_5df02f93]] for what the content case costs); it never
+  inspects `startBinding`/`endBinding`, so a half-bound arrow passes silently
+  ([[task_737c102e]]); `map` mode drops arrow labels entirely, so a `map`
+  reading is not the whole document ([[task_3bff27d4]]) — and on this map the
+  arrow labels carry open design forks.
+- Git history is the only versioning: never keep a backup copy or a versioned
+  filename. This has been violated at least once in practice
   (`academicops-wired-map.excalidraw.bak-20260730-reconcile`, committed
   2026-07-30) — treat that as the failure mode to avoid, not a precedent.
 
