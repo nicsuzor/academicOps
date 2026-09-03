@@ -4,7 +4,7 @@ alias:
 - temp_007e629e-structural-map-extraction-template-aims-methodology-analytical-theory-contribution
 category: process
 created: 2026-08-22T04:57:20.821171284+00:00
-description: 'Reduce any piece of academic work — draft article, grant application, chapter, proposal, sketch — to a four-part descriptive structural map (Aims / Methodology / Analytical theory / Contribution): no assessment, no suggestions, no rewriting. Not for evaluating or improving the work — that is peer-review''s job, not this template''s.'
+description: 'Reduce any piece of academic work -- draft article, grant application, chapter, proposal, sketch -- to a four-part descriptive structural map (Aims / Methodology / Analytical theory / Contribution): no assessment, no suggestions, no rewriting. Not for evaluating or improving the work -- that is peer-review''s job, not this template''s.'
 id: wf-structural-map
 last_modified: 2026-09-01T00:00:00+00:00
 modified: 2026-09-01T00:00:00+00:00
@@ -19,7 +19,7 @@ title: wf-structural-map
 type: template
 ---
 
-# wf-structural-map — descriptive four-part extraction
+# wf-structural-map -- descriptive four-part extraction
 
 Reduces any piece of academic work to a four-part structural map. **Descriptive only: no
 assessment, no suggestions, no rewriting.** This is a different move from evaluative peer review
@@ -33,25 +33,25 @@ this template will be revised against its findings once that lands.
 
 ## Input
 
-One document, any length or stage of completion, any genre — article, grant application, chapter,
+One document, any length or stage of completion, any genre -- article, grant application, chapter,
 proposal, sketch.
 
 ## Output
 
 Four headed lists, one screen total. Each bullet is a **single clause lifted from the source**,
-trimmed to the claim and nothing else. Keep the author's own words wherever they exist — paraphrase
+trimmed to the claim and nothing else. Keep the author's own words wherever they exist -- paraphrase
 only to make a fragment grammatical, never to improve it. Cap each section at 4 bullets; where more
 candidates exist, keep the ones the rest of the document depends on.
 
-1. **Aims** — what the work sets out to do, in its own framing: the object of study, and the
+1. **Aims** -- what the work sets out to do, in its own framing: the object of study, and the
    question asked of it.
-2. **Methodology** — what will actually be done to produce evidence: design, materials, methods,
-   cases, data sources. Include scope decisions — for example which population, period, or
-   setting — they are method, not detail.
-3. **Analytical theory** — the lens: the concepts through which the evidence will be read, and the
-   tradition being drawn on or argued with. Often stated as a re-framing — "treats X as Y rather
+2. **Methodology** -- what will actually be done to produce evidence: design, materials, methods,
+   cases, data sources. Include scope decisions -- for example which population, period, or
+   setting -- they are method, not detail.
+3. **Analytical theory** -- the lens: the concepts through which the evidence will be read, and the
+   tradition being drawn on or argued with. Often stated as a re-framing -- "treats X as Y rather
    than Z".
-4. **Contribution** — what is new, stated as a delta against existing work: empirical,
+4. **Contribution** -- what is new, stated as a delta against existing work: empirical,
    methodological, theoretical. Separate the three when the document distinguishes them.
 
 ## Rules
@@ -67,7 +67,7 @@ candidates exist, keep the ones the rest of the document depends on.
 ## When to include
 
 Any request to read or summarise someone else's academic work descriptively, before or instead of
-evaluating it. Not for evaluating or improving a document — compose `tools:peer-review` for that.
+evaluating it. Not for evaluating or improving a document -- compose `tools:peer-review` for that.
 
 ## Worked example
 
@@ -77,7 +77,7 @@ Source: a DSA transparency grant proposal, closing paragraph of the introduction
 
 - Investigates how implementation of the DSA sheds light on transparency as a means of mediating
   platform power in content moderation.
-- Explores how different actors — major platforms, national regulators, civil society — interpret,
+- Explores how different actors -- major platforms, national regulators, civil society -- interpret,
   implement and contest transparency requirements.
 
 **Methodology**

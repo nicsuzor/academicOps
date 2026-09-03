@@ -1,8 +1,7 @@
 ---
 name: decompose
 type: command
-description: Stage 2 Expansion -- expand one situated objective into an abstract graph of sub-objectives, decision branches, implied prerequisites, and alternate paths. Stops before implementation detail.
-allowed-tools: [Skill, AskUserQuestion, Read, Grep, Glob, Bash, mcp__services__pkb__get_task, mcp__services__pkb__create_task, mcp__services__pkb__update_task, mcp__services__pkb__update_body, mcp__services__pkb__search, mcp__services__pkb__task_search, mcp__services__pkb__batch_reparent]
+description: Expand one situated objective into an abstract graph of sub-objectives, decision branches, implied prerequisites, and alternate paths. Stops before implementation detail.
 ---
 
 # /decompose -- Expand an objective into an abstract graph
@@ -86,7 +85,7 @@ Your verification notes and the reasoning behind each fork go in your reply to t
 ## Must NOT
 
 - Do not create standalone "decision" tasks or file questions as tasks. Model choices as mutually exclusive option nodes and unknowns as probes.
-- Do not put a person's name in titles or filenames (no `nic: ...`); assignment belongs in `assigned_to`.
+- Do not put a person's name in titles or filenames; assignment belongs in `assigned_to`.
 - Do not prescribe method. An abstract component says what, never how.
 - Do not expand into implementation steps: those come from projecting a component through a composed process, which is a later stage.
 - Do not compose process or select templates.
