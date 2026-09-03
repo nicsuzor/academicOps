@@ -12,7 +12,7 @@ import pytest
 
 # Add required search paths
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_PLUGIN_ROOT = _REPO_ROOT / "plugins" / "orchestrate"
+_PLUGIN_ROOT = _REPO_ROOT / "plugins" / "aops"
 _HOOKS_DIR = _PLUGIN_ROOT / "hooks"
 _LIB_HOOKS_DIR = _REPO_ROOT / "lib" / "hooks"
 
@@ -49,6 +49,15 @@ pytestmark = pytest.mark.skipif(
     not TARGET_ENDPOINT,
     reason="No OTel collector endpoint configured (OTEL_EXPORTER_OTLP_ENDPOINT or GENAI_ENGINE_TRACE_ENDPOINT)",
 )
+
+
+@pytest.fixture(autouse=True)
+def clean_env(tmp_path, monkeypatch):
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+    monkeypatch.setattr(claude_code_tracer, "STATE_DIR", fake_home / ".claude" / "tracer")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
 
 
 def _endpoint() -> str:

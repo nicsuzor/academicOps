@@ -11,14 +11,14 @@ tags: [spec, polecat, provenance, staleness]
 # Polecat Container Image Staleness Detection & Surfacing
 
 Implemented in `lib/polecat/staleness.py`, wired into `lib/polecat/cli.py`,
-`plugins/orchestrate/hooks/handlers.py`, `Dockerfile`, `Makefile`, and
+`plugins/aops/hooks/handlers.py`, `Dockerfile`, `Makefile`, and
 `build/build.py`. Tests: `tests/polecat/test_image_staleness.py`,
 `tests/polecat/test_run_record.py`.
 
 ## The failure mode
 
-A polecat container gets its plugin payload — skills, hooks, agents, MCP wrappers
-— **baked into the image at build time**, while the code under test is
+A polecat container gets its plugin payload -- skills, hooks, agents, MCP wrappers
+-- **baked into the image at build time**, while the code under test is
 **bind-mounted at launch** (`/workspace`). These are two different delivery paths,
 and only one of them updates when a file is edited
 ([polecat-system.md](polecat-system.md), Guarantees 5 and 6).
@@ -106,7 +106,7 @@ by dispatch mode:
 | Dispatch mode                    | Workspace baseline                                                          |
 | -------------------------------- | --------------------------------------------------------------------------- |
 | `-d <path>` (direct mount)       | `git -C <path> rev-parse HEAD`, plus `git status --porcelain` for dirtiness |
-| `-p` / `--base` (isolated clone) | the `base_sha` resolved by `resolve_isolated_workspace()` — never dirty     |
+| `-p` / `--base` (isolated clone) | the `base_sha` resolved by `resolve_isolated_workspace()` -- never dirty    |
 | default (no `-d`, no `--base`)   | same as `-p`: the resolved base, which is the upstream tracking HEAD        |
 
 SHA comparison is prefix-tolerant in both directions, so a short SHA on either
@@ -124,7 +124,7 @@ side still matches.
 `DIRTY_WORKSPACE_UNBAKED` fires only where the workspace is dirty and the image
 was _not_ built dirty: an image stamped `aops.build_dirty=1` already contains
 uncommitted work, so the difference is expected. Neither `remote` state sets
-`is_stale`, and neither ever emits the warning banner — that is constraint 2
+`is_stale`, and neither ever emits the warning banner -- that is constraint 2
 enforced in one place.
 
 ### `STALE_LOCAL_BUILD` compares against a release baseline, not raw HEAD
@@ -136,11 +136,11 @@ em-dash fix) are both correct, and warning on that difference trains the
 operator to ignore the banner. `STALE_LOCAL_BUILD` instead fires only when
 the image is missing a release checkpoint the workspace has already reached:
 
-1. If `image_commit == workspace_sha` (prefix-tolerant), the image is fresh —
+1. If `image_commit == workspace_sha` (prefix-tolerant), the image is fresh --
    no baseline lookup is needed.
 2. Otherwise, resolve the release baseline: the highest `vX.Y.Z`-tagged commit
    reachable from `workspace_sha` (`git tag --merged <workspace_sha>`,
-   filtered to exact `major.minor.patch` tags — pre-release suffixes like
+   filtered to exact `major.minor.patch` tags -- pre-release suffixes like
    `-rc.1` or `-beta.2` do not count, and `--merged` already excludes a tag
    cut on a branch that never merged into the workspace's own history, so an
    abandoned release line is never picked up as the baseline). This is
@@ -149,11 +149,11 @@ the image is missing a release checkpoint the workspace has already reached:
    trusts a cached ref name.
 3. If no release tag is reachable from the workspace (a shallow test
    fixture, or a repo with no tags yet), there is no baseline to measure
-   "behind" against — fall back to the plain-inequality signal so detection
+   "behind" against -- fall back to the plain-inequality signal so detection
    is never silently disabled.
 4. If a release baseline is found, the image is stale only when it does
    **not** contain that baseline commit (`git merge-base --is-ancestor
-   <release_sha> <image_commit>` fails) — i.e. the image was built before the
+   <release_sha> <image_commit>` fails) -- i.e. the image was built before the
    release was cut. An image that already contains the release baseline is
    `FRESH_LOCAL_BUILD` even when its SHA differs from workspace HEAD; its
    `plugins_version_str` and header banner say `local:current` /
@@ -171,7 +171,7 @@ comparison described here.
 ### Host CLI
 
 `run` writes the banner to **stderr**, not stdout, and suppresses it under
-`--quiet` — polecat's stream-separation guarantee
+`--quiet` -- polecat's stream-separation guarantee
 ([polecat-system.md](polecat-system.md), Guarantee 7) applies to these banners
 like any other polecat prose.
 
@@ -217,10 +217,10 @@ Status:    REMOTE RELEASE IMAGE [testing against released plugin baseline]
 `FORWARDED_ENV`, so their values reach the container through the `docker`
 process's own environment rather than on argv): `AOPS_IMAGE_PROVENANCE` (the full
 record as JSON),
-`AOPS_IMAGE_STALE` (`0`/`1`), `AOPS_IMAGE_PLUGINS_VERSION`, and — only when stale
-— `AOPS_IMAGE_STALENESS_WARNING`.
+`AOPS_IMAGE_STALE` (`0`/`1`), `AOPS_IMAGE_PLUGINS_VERSION`, and -- only when stale
+-- `AOPS_IMAGE_STALENESS_WARNING`.
 
-`plugins/orchestrate/hooks/handlers.py` reads them, falling back to
+`plugins/aops/hooks/handlers.py` reads them, falling back to
 `/home/worker/.aops-image-metadata.json`, and appends the version to the session
 metadata line:
 
