@@ -1,0 +1,27 @@
+[[shared]]
+from = "hooks"
+to = "hooks"
+
+[[shared]]
+from = "telemetry/phoenix-span-store.md"
+to = "skills/session-trace/references/phoenix-span-store.md"
+
+[[shared]]
+from = "polecat/__init__.py"
+to = "polecat/__init__.py"
+
+[[shared]]
+from = "polecat/cli.py"
+to = "polecat/cli.py"
+
+[[shared]]
+from = "polecat/env_contract.py"
+to = "polecat/env_contract.py"
+
+[[shared]]
+from = "polecat/notify.py"
+to = "polecat/notify.py"
+
+[[shared]]
+from = "polecat/staleness.py"
+to = "polecat/staleness.py"

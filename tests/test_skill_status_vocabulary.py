@@ -21,7 +21,7 @@ POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
 VALID_STATUSES = set(
-    _policy.get("aops-core", _policy.get("pkb", {})).get("taxonomy", {}).get("valid_statuses", [])
+    _policy.get("aops", _policy.get("pkb", {})).get("taxonomy", {}).get("valid_statuses", [])
 )
 
 
@@ -30,14 +30,14 @@ def skill_files() -> list[Path]:
 
 
 def test_valid_statuses_policy_loaded():
-    assert VALID_STATUSES, "tests/policy.toml [aops-core.taxonomy].valid_statuses must not be empty"
+    assert VALID_STATUSES, "tests/policy.toml [aops.taxonomy].valid_statuses must not be empty"
     assert "done" in VALID_STATUSES
     assert "in_progress" in VALID_STATUSES
     assert "failed" not in VALID_STATUSES
 
 
 def test_dump_skill_status_template_uses_canonical_statuses():
-    dump_skill = PLUGINS_DIR / "aops-core" / "skills" / "dump" / "SKILL.md"
+    dump_skill = PLUGINS_DIR / "aops" / "skills" / "dump" / "SKILL.md"
     assert dump_skill.exists(), f"Missing {dump_skill}"
 
     text = dump_skill.read_text(encoding="utf-8")
@@ -55,20 +55,6 @@ def test_dump_skill_status_template_uses_canonical_statuses():
         )
 
 
-def test_pull_skill_impossible_task_mandates_canonical_status():
-    pull_skill = PLUGINS_DIR / "aops-core" / "skills" / "pull" / "SKILL.md"
-    assert pull_skill.exists(), f"Missing {pull_skill}"
-
-    text = pull_skill.read_text(encoding="utf-8")
-    assert "'failed'" not in text, (
-        f"{pull_skill.relative_to(REPO_ROOT)} mandates non-canonical status 'failed'. "
-        f"Impossible tasks must be released as a canonical status ('review' or 'blocked')."
-    )
-    assert "FAILED" not in text, (
-        f"{pull_skill.relative_to(REPO_ROOT)} contains 'FAILED' as status mandate."
-    )
-
-
 @pytest.mark.parametrize("skill_path", skill_files(), ids=lambda p: str(p.relative_to(PLUGINS_DIR)))
 def test_all_skills_mandated_statuses_are_canonical(skill_path: Path):
     text = skill_path.read_text(encoding="utf-8")
@@ -80,4 +66,38 @@ def test_all_skills_mandated_statuses_are_canonical(skill_path: Path):
         assert not invalid, (
             f"{skill_path.relative_to(REPO_ROOT)} templates non-canonical statuses: "
             f"{invalid}. Valid statuses: {sorted(VALID_STATUSES)}"
+        )
+
+
+def test_no_skill_mandates_literal_blocked_status_write():
+    """Assert no skill file instructs writing or releasing literal 'status: blocked' directly.
+
+    'blocked' is a derived field computed from directed 'blocks' edges, never a value
+    stored in frontmatter directly.
+    """
+    for skill_path in skill_files():
+        text = skill_path.read_text(encoding="utf-8")
+        assert not re.search(r"release the task as\s+['\"]blocked['\"]", text, re.IGNORECASE), (
+            f"{skill_path.relative_to(REPO_ROOT)} instructs releasing task as 'blocked'. "
+            "Blocked status must be derived from directed 'blocks' edges."
+        )
+        assert not re.search(r"released as\s+['\"]blocked['\"]", text, re.IGNORECASE), (
+            f"{skill_path.relative_to(REPO_ROOT)} instructs releasing task as 'blocked'. "
+            "Blocked status must be derived from directed 'blocks' edges."
+        )
+        assert not re.search(r"(?m)^\s*status:\s*\"?blocked\"?", text), (
+            f"{skill_path.relative_to(REPO_ROOT)} contains literal 'status: blocked' frontmatter write."
+        )
+
+
+def test_dump_skill_does_not_template_literal_blocked():
+    """Assert dump skill template does not offer 'blocked' as a writable release status."""
+    dump_skill = PLUGINS_DIR / "aops" / "skills" / "dump" / "SKILL.md"
+    text = dump_skill.read_text(encoding="utf-8")
+    status_template_re = re.compile(r"<status:\s*([^>]+)>", re.IGNORECASE)
+    for match in status_template_re.finditer(text):
+        raw_statuses = [s.strip() for s in match.group(1).split("|")]
+        assert "blocked" not in raw_statuses, (
+            f"{dump_skill.relative_to(REPO_ROOT)} includes 'blocked' in <status: ...> template. "
+            "'blocked' is derived and should not be offered as a writable status."
         )

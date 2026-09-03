@@ -36,6 +36,7 @@ def _base_mocks(monkeypatch, tmp_path):
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
+    monkeypatch.setenv("PKB_MCP_URL", "http://test-pkb.invalid:8026/mcp")
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 

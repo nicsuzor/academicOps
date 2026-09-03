@@ -76,7 +76,71 @@ def test_configured_but_a_file_not_a_directory_is_a_hard_failure(tmp_path, monke
 
 
 # ---------------------------------------------------------------------------
-# resolve_rules_dir wired through `run()`: the actual docker mount
+# resolve_scratch_dir: the config path itself
+# ---------------------------------------------------------------------------
+
+
+def test_absent_scratch_dir_is_a_silent_no_op(monkeypatch):
+    monkeypatch.delenv("POLECAT_SCRATCH_DIR", raising=False)
+    assert cli.resolve_scratch_dir({}) is None
+
+
+def test_cli_scratch_dir_names_the_scratch_dir(tmp_path, monkeypatch):
+    scratch = tmp_path / "scratch-space"
+    monkeypatch.delenv("POLECAT_SCRATCH_DIR", raising=False)
+    assert cli.resolve_scratch_dir({}, cli_scratch_dir=str(scratch)) == scratch
+    assert scratch.is_dir()
+
+
+def test_env_var_names_the_scratch_dir(tmp_path, monkeypatch):
+    scratch = tmp_path / "scratch-space"
+    monkeypatch.setenv("POLECAT_SCRATCH_DIR", str(scratch))
+    assert cli.resolve_scratch_dir({}) == scratch
+    assert scratch.is_dir()
+
+
+def test_config_file_names_the_scratch_dir(tmp_path, monkeypatch):
+    scratch = tmp_path / "scratch-space"
+    monkeypatch.delenv("POLECAT_SCRATCH_DIR", raising=False)
+    assert cli.resolve_scratch_dir({"scratch_dir": str(scratch)}) == scratch
+    assert scratch.is_dir()
+
+
+def test_docker_config_file_names_the_scratch_dir(tmp_path, monkeypatch):
+    scratch = tmp_path / "scratch-space"
+    monkeypatch.delenv("POLECAT_SCRATCH_DIR", raising=False)
+    assert cli.resolve_scratch_dir({"docker": {"scratch_dir": str(scratch)}}) == scratch
+    assert scratch.is_dir()
+
+
+def test_cli_wins_over_env_and_config_for_scratch_dir(tmp_path, monkeypatch):
+    cli_scratch = tmp_path / "cli-scratch"
+    env_scratch = tmp_path / "env-scratch"
+    cfg_scratch = tmp_path / "cfg-scratch"
+    monkeypatch.setenv("POLECAT_SCRATCH_DIR", str(env_scratch))
+    assert (
+        cli.resolve_scratch_dir({"scratch_dir": str(cfg_scratch)}, cli_scratch_dir=str(cli_scratch))
+        == cli_scratch
+    )
+
+
+def test_env_var_wins_over_config_file_for_scratch_dir(tmp_path, monkeypatch):
+    env_scratch = tmp_path / "env-scratch"
+    cfg_scratch = tmp_path / "cfg-scratch"
+    monkeypatch.setenv("POLECAT_SCRATCH_DIR", str(env_scratch))
+    assert cli.resolve_scratch_dir({"scratch_dir": str(cfg_scratch)}) == env_scratch
+
+
+def test_configured_scratch_dir_file_not_a_directory_is_a_hard_failure(tmp_path, monkeypatch):
+    monkeypatch.delenv("POLECAT_SCRATCH_DIR", raising=False)
+    not_a_dir = tmp_path / "a-scratch-file"
+    not_a_dir.write_text("not a directory")
+    with pytest.raises(SystemExit):
+        cli.resolve_scratch_dir({"scratch_dir": str(not_a_dir)})
+
+
+# ---------------------------------------------------------------------------
+# resolve_rules_dir & resolve_scratch_dir wired through `run()`
 # ---------------------------------------------------------------------------
 
 
@@ -94,7 +158,9 @@ def _base_mocks(monkeypatch, tmp_path, config):
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
+    monkeypatch.setenv("PKB_MCP_URL", "http://test-pkb.invalid:8026/mcp")
     monkeypatch.delenv("POLECAT_RULES_DIR", raising=False)
+    monkeypatch.delenv("POLECAT_SCRATCH_DIR", raising=False)
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 
@@ -185,6 +251,73 @@ def test_configured_but_missing_rules_dir_fails_before_any_container_starts(tmp_
     result = CliRunner().invoke(cli.main, ["run", "claude", "-d", str(tmp_path / "repo")])
     assert result.exit_code != 0
     assert captured == [], "no container may start when a configured rules_dir is unreadable"
+
+
+def test_no_scratch_mount_when_unconfigured(tmp_path, monkeypatch):
+    cmd = _capture_docker_cmd(
+        monkeypatch, tmp_path, ["run", "claude", "-d", str(tmp_path / "repo")], {}
+    )
+    assert not any(":/scratch" in mount for mount in _mount_targets(cmd))
+
+
+def test_scratch_dir_mounted_read_write_at_container_scratch(tmp_path, monkeypatch):
+    scratch = tmp_path / "scratch-space"
+    scratch.mkdir()
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo")],
+        {"scratch_dir": str(scratch)},
+    )
+    expected = f"{scratch}:/scratch"
+    assert expected in cmd
+    assert cmd[cmd.index(expected) - 1] == "-v"
+
+
+def test_scratch_dir_cli_option_mounted_at_container_scratch(tmp_path, monkeypatch):
+    scratch = tmp_path / "cli-scratch"
+    scratch.mkdir()
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--scratch-dir", str(scratch)],
+        {},
+    )
+    expected = f"{scratch}:/scratch"
+    assert expected in cmd
+    assert cmd[cmd.index(expected) - 1] == "-v"
+
+
+def test_scratch_alias_cli_option_mounted_at_container_scratch(tmp_path, monkeypatch):
+    scratch = tmp_path / "cli-scratch-alias"
+    scratch.mkdir()
+    cmd = _capture_docker_cmd(
+        monkeypatch,
+        tmp_path,
+        ["run", "claude", "-d", str(tmp_path / "repo"), "--scratch", str(scratch)],
+        {},
+    )
+    expected = f"{scratch}:/scratch"
+    assert expected in cmd
+    assert cmd[cmd.index(expected) - 1] == "-v"
+
+
+def test_configured_but_file_scratch_dir_fails_before_any_container_starts(tmp_path, monkeypatch):
+    not_a_dir = tmp_path / "scratch-file"
+    not_a_dir.write_text("file")
+    _base_mocks(monkeypatch, tmp_path, {"scratch_dir": str(not_a_dir)})
+    captured = []
+
+    def fake_run(cmd, *a, **kw):
+        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+            captured.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    result = CliRunner().invoke(cli.main, ["run", "claude", "-d", str(tmp_path / "repo")])
+    assert result.exit_code != 0
+    assert captured == [], "no container may start when a configured scratch_dir is a file"
 
 
 # ---------------------------------------------------------------------------
@@ -545,9 +678,10 @@ def test_run_constructs_task_id_and_service_name_with_project_and_task(tmp_path,
     )
     assert "GENAI_ENGINE_TASK_ID" in cmd
     assert cmd[cmd.index("GENAI_ENGINE_TASK_ID") - 1] == "-e"
-    assert docker_env["GENAI_ENGINE_TASK_ID"] == "academicOps-aops_ded39198"
+    assert docker_env["GENAI_ENGINE_TASK_ID"] == "aops_ded39198"
     assert "OTEL_SERVICE_NAME" in cmd
-    assert docker_env["OTEL_SERVICE_NAME"] == "academicOps-aops_ded39198"
+    assert docker_env["OTEL_SERVICE_NAME"] == "academicOps"
+    assert docker_env["PHOENIX_PROJECT_NAME"] == "academicOps"
 
 
 def test_run_constructs_task_id_and_service_name_with_task_only(tmp_path, monkeypatch):
@@ -565,10 +699,10 @@ def test_run_constructs_task_id_and_service_name_with_task_only(tmp_path, monkey
         {},
     )
     assert docker_env["GENAI_ENGINE_TASK_ID"] == "aops_ded39198"
-    assert docker_env["OTEL_SERVICE_NAME"] == "aops_ded39198"
 
 
 def test_run_constructs_task_id_and_service_name_with_project_only(tmp_path, monkeypatch):
+    monkeypatch.delenv("GENAI_ENGINE_TASK_ID", raising=False)
     cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
@@ -582,8 +716,9 @@ def test_run_constructs_task_id_and_service_name_with_project_only(tmp_path, mon
         ],
         {},
     )
-    assert docker_env["GENAI_ENGINE_TASK_ID"] == "academicOps"
+    assert "GENAI_ENGINE_TASK_ID" not in docker_env
     assert docker_env["OTEL_SERVICE_NAME"] == "academicOps"
+    assert docker_env["PHOENIX_PROJECT_NAME"] == "academicOps"
 
 
 def test_run_preserves_config_genai_engine_task_id_when_neither_project_nor_task(
@@ -601,7 +736,6 @@ def test_run_preserves_config_genai_engine_task_id_when_neither_project_nor_task
         {"telemetry": {"task_id": "config_task_id"}},
     )
     assert docker_env["GENAI_ENGINE_TASK_ID"] == "config_task_id"
-    assert docker_env["OTEL_SERVICE_NAME"] == "config_task_id"
 
 
 def test_run_ignores_ambient_genai_engine_task_id_when_neither_project_nor_task(

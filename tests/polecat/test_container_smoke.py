@@ -207,4 +207,4 @@ def test_every_declared_plugin_has_at_least_one_check_above():
     # Named rather than merely non-empty: a stale copy of the manifest would
     # still parse and still yield names, so the pin has to be against plugins
     # this repository actually declares (specs/ARCHITECTURE.md's plugin table).
-    assert {"aops-core", "rbg"} <= expected
+    assert {"aops", "rbg"} <= expected

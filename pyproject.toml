@@ -144,7 +144,6 @@ refs = [
   ".claude/settings.json",
   ".claude/settings.local.json",
   "scripts/refresh.sh",
-  "scripts/install-brain-workflows.sh",
   "docs/METHODOLOGY.md",
   "docs/ETHICS.md",
   "dbt_project/dbt_project.yml",
@@ -160,31 +159,11 @@ refs = [
   "data/README.md",
   "data/raw/README.md",
   "data/processed/README.md",
-  "data/projects/automod.md",
-  "data/projects/automod-demo.md",
-  "methods/method_name.md",
-  "methods/scoring.md",
-  "methods/scoring_algorithm.md",
   "methods/diff_in_diff.md",
-  "methods/bigquery_extraction.md",
-  "analyses/calculate_scores.py",
-  "analyses/calculate_quality_scores.py",
   "analyses/did_estimation.py",
-  "analyses/run_regression.py",
-  "codebooks/initial.md",
-  "codebooks/final.md",
   "dbt/schema.yml",
-  "dbt/models/marts/fct_quality_scores.sql",
-  "streamlit/dashboard.py",
-  "tests/test_scoring.py",
-  "scripts/assumption_checks.py",
 ]
 reason = "The research-project layout this skill prescribes — paths in the researcher's own repository."
-
-[[tool.refcheck.allow]]
-docs = "plugins/tools/skills/peer-review/references/probes.md"
-refs = ["reviews/arc/templates/nic-review-style.md"]
-reason = "A path in the user's knowledge base, not in this repository."
 
 [[tool.refcheck.allow]]
 docs = "specs/ARCHITECTURE.md"
@@ -210,9 +189,9 @@ refs = ["hooks/dispatch.py"]
 reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
 
 [[tool.refcheck.allow]]
-docs = "specs/polecat/tmux-interactive-driving.md"
-refs = ["antigravity-cli/settings.json"]
-reason = "Configuration inside the container image, not in this repository."
+docs = "plugins/orchestrate/skills/session-trace/SKILL.md"
+refs = ["references/phoenix-span-store.md"]
+reason = "Injected from lib/telemetry/phoenix-span-store.md at build time; present in the build tree, not in the plugin source."
 
 [[tool.refcheck.allow]]
 docs = "templates/github-agent/README.md"
@@ -220,9 +199,9 @@ refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."
 
 [[tool.refcheck.allow]]
-docs = ".agents/skills/debug/**"
-refs = [".claude/settings.json"]
-reason = "Claude Code configuration file in workspace, not in this repository."
+docs = "specs/ENFORCEMENT-MAP.md"
+refs = ["../.agents/WORKING.md", ".agents/LOCAL.md"]
+reason = "Machine-local rule files. `.gitignore` line 8 ignores `.agents/*` and the negations on lines 9-15 re-include only subdirectories, so neither file is ever tracked and neither can resolve in CI or a clean checkout. The mechanism they carry is real and belongs in the register; only the files are outside the repository."
 
 [tool.basedpyright]
 # Exclude archived files from type checking - they are legacy code kept for reference
@@ -239,7 +218,7 @@ exclude = [
   "plugins/*/agents/", # Exclude non-code agent configs
   "plugins/*/commands/", # Exclude command specs
   "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
-  "plugins/aops-core/workflows/", # Exclude process-template markdown
+  "plugins/aops/workflows/", # Exclude process-template markdown
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
@@ -295,11 +274,11 @@ pythonpath = [".", "lib/py"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-log_cli = true
+log_cli = false
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-addopts = "-n 16 --dist loadgroup -m 'not slow and not integration and not otel_e2e' --import-mode=importlib"
+addopts = "-q --tb=short -n 16 --dist loadgroup -m 'not slow and not integration and not otel_e2e' --import-mode=importlib"
 markers = [
   "slow: marks tests as slow (run with '-m slow')",
   "integration: marks tests as integration tests",

@@ -1,6 +1,6 @@
 # academicOps — build & install. Design: specs/ARCHITECTURE.md.
 
-.PHONY: help build build-test install-dev uninstall-dev install clean test lint format \
+.PHONY: help build build-test install-dev uninstall-dev install clean clean-plugins test lint format \
         docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test \
         verify-docker
 
@@ -26,7 +26,8 @@ help:
 	@echo "make test           - run the pytest suite"
 	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
-	@echo "make clean          - remove dist/"
+	@echo "make clean          - remove dist/, clean global configs and cowork packages"
+	@echo "make clean-plugins  - prune stale plugin caches and cowork packages"
 	@echo "make docker         - build the crew worker image"
 	@echo "make docker-shell   - interactive shell in the crew image"
 	@echo "make docker-push    - push the crew image to ghcr.io"
@@ -75,6 +76,11 @@ build-test: build
 		command claude plugin validate "$(DIST)/$$p-claude" \
 			&& echo "✓ claude $$p validated" \
 			|| { echo "x claude $$p validate failed" >&2; exit 1; }; \
+		if [ -d "$(DIST)/cowork/$$p" ]; then \
+			command claude plugin validate "$(DIST)/cowork/$$p" \
+				&& echo "✓ cowork $$p validated" \
+				|| { echo "x cowork $$p validate failed" >&2; exit 1; }; \
+		fi; \
 		if command -v agy >/dev/null 2>&1; then \
 			agy plugin validate "$(DIST)/$$p-agy" \
 				&& echo "✓ agy $$p validated" \
@@ -108,6 +114,7 @@ define claude_install
 endef
 
 install-dev: build
+	@uv run python -m build.install patch-dev-mcp --dist-root $(DIST)
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@command claude plugin marketplace add $(DIST)
 	@for p in $(STALE_PLUGIN_NAMES); do \
@@ -157,7 +164,10 @@ install:
 
 # --- Maintenance ---
 
-clean:
+clean-plugins:
+	@uv run python scripts/clean_plugins.py
+
+clean: clean-plugins
 	@rm -rf $(DIST)
 	@echo "✓ cleaned"
 
@@ -190,6 +200,9 @@ docker: docker-build
 #   make docker-build AGY_VERSION=1.1.11
 docker-build: build
 	@docker build --build-arg AOPS_DIST_SOURCE=local \
+		--build-arg AOPS_BUILD_COMMIT="$$(git rev-parse HEAD 2>/dev/null)" \
+		--build-arg AOPS_BUILD_DIRTY="$$(if [ -n "$$(git status --porcelain 2>/dev/null)" ]; then echo 1; else echo 0; fi)" \
+		--build-arg AOPS_VERSION="$$(uv run python -m build.version --get 2>/dev/null || echo 0.1.0)" \
 		$(if $(AGY_VERSION),--build-arg AGY_VERSION=$(AGY_VERSION)) \
 		$(if $(CLAUDE_CODE_VERSION),--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION)) \
 		-t $(IMAGE) -t $(notdir $(IMAGE)):latest .

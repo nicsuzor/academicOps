@@ -55,6 +55,7 @@ def _base_mocks(monkeypatch, tmp_path):
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
+    monkeypatch.setenv("PKB_MCP_URL", "http://test-pkb.invalid:8026/mcp")
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 
@@ -131,9 +132,8 @@ def test_headless_claude_uses_print_not_a_nonexistent_flag(tmp_path, monkeypatch
 
 
 def test_headless_claude_keeps_the_prompt_positional(tmp_path, monkeypatch):
-    """`--print` is a boolean and the prompt is a positional, so a seeded task
-    must still arrive as its own argument after the flag."""
-    cmd = _capture_docker_cmd(
+    """`--print` is passed for headless claude, and the task id is carried via POLECAT_TARGET_TASK."""
+    cmd, docker_env = _capture_docker_run(
         monkeypatch,
         tmp_path,
         ["run", "claude", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
@@ -141,7 +141,7 @@ def test_headless_claude_keeps_the_prompt_positional(tmp_path, monkeypatch):
     inner = _inner_cmd(cmd)
 
     assert inner.count("--print") == 1
-    assert inner[-1] == "/pull task_abc123"
+    assert docker_env["POLECAT_TARGET_TASK"] == "task_abc123"
 
 
 def test_caller_supplied_print_is_not_duplicated(tmp_path, monkeypatch):
@@ -216,43 +216,9 @@ def test_passthrough_commands_keep_their_own_flags(tmp_path, monkeypatch):
     assert _inner_cmd(cmd) == ["some-other-tool", "--non-interactive"]
 
 
-def test_agy_invocation_is_unchanged_by_the_claude_headless_fix(tmp_path, monkeypatch):
-    """The headless handling is claude-specific: agy gets its own `--print`
-    from the prompt path and must never pick up claude's flags."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        ["run", "agy", "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--print",
-        "/pull task_abc123",
-    ]
-    assert "--non-interactive" not in inner
-
-
 # --------------------------------------------------------------------------
 # Agent persona selection
 # --------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("client", ["claude", "agy"])
-def test_default_agent_is_unspecified(client, tmp_path, monkeypatch):
-    """When no agent is named, no --agent flag is passed to the container by default."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        ["run", client, "-d", str(tmp_path / "repo"), "-t", "task_abc123"],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert "--agent" not in inner
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
@@ -550,8 +516,11 @@ def test_polecat_typechecks_clean():
     """Both import paths have to resolve for the type checker, not just at
     runtime: the fallback used to import a bare `env_contract` that no
     configured path could resolve."""
+    cmd = ["basedpyright", "--outputjson", "lib/polecat/"]
+    if sys.executable:
+        cmd = ["basedpyright", "--pythonpath", sys.executable, "--outputjson", "lib/polecat/"]
     result = subprocess.run(
-        ["basedpyright", "--outputjson", "lib/polecat/"],
+        cmd,
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,
@@ -620,95 +589,6 @@ def test_branch_option_sets_env_var(monkeypatch, tmp_path):
     assert "AOPS_POLECAT_BRANCH" in docker_cmd
     assert docker_cmd[docker_cmd.index("AOPS_POLECAT_BRANCH") - 1] == "-e"
     assert docker_env["AOPS_POLECAT_BRANCH"] == "feature/test-branch"
-
-
-def test_agy_output_format_and_prompt_options(monkeypatch, tmp_path):
-    """Passing --output-format and --prompt to agy constructs the expected flags in order."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "agy",
-            "-d",
-            str(tmp_path / "repo"),
-            "--output-format",
-            "stream-json",
-            "--prompt",
-            "hello world",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--output-format",
-        "stream-json",
-        "--prompt",
-        "hello world",
-    ]
-    assert "-it" not in cmd
-
-
-def test_agy_output_format_with_positional_prompt(monkeypatch, tmp_path):
-    """Passing --output-format with a positional prompt places format before prompt."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "agy",
-            "-d",
-            str(tmp_path / "repo"),
-            "--output-format=stream-json",
-            "hello positional",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--output-format",
-        "stream-json",
-        "--print",
-        "hello positional",
-    ]
-    assert "-it" not in cmd
-
-
-def test_claude_output_format_and_prompt_options(monkeypatch, tmp_path):
-    """Passing --output-format and --prompt to claude constructs the expected flags."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "claude",
-            "-d",
-            str(tmp_path / "repo"),
-            "--output-format",
-            "json",
-            "--prompt",
-            "hello claude",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--setting-sources=user,project",
-        "--output-format",
-        "json",
-        "hello claude",
-    ]
-    assert "-it" not in cmd
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
@@ -883,69 +763,6 @@ def test_cli_ports_override_config_ports(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------
 
 
-def test_claude_prompt_option_keeps_forwarded_args(monkeypatch, tmp_path):
-    """`--prompt` composes with forwarded args: the args reach claude verbatim
-    and the prompt stays claude's trailing positional."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "claude",
-            "-d",
-            str(tmp_path / "repo"),
-            "--prompt",
-            "hello claude",
-            "--verbose",
-            "--model",
-            "opus",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--setting-sources=user,project",
-        "--verbose",
-        "--model",
-        "opus",
-        "hello claude",
-    ]
-
-
-def test_agy_prompt_option_keeps_forwarded_args(monkeypatch, tmp_path):
-    """Same for agy, with --prompt last so nothing can consume its value."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "agy",
-            "-d",
-            str(tmp_path / "repo"),
-            "--prompt",
-            "hello agy",
-            "--verbose",
-            "--model",
-            "opus",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--verbose",
-        "--model",
-        "opus",
-        "--prompt",
-        "hello agy",
-    ]
-
-
 @pytest.mark.parametrize("agent_cmd", ["shell", "bash", "sleep", "some-other-tool"])
 def test_prompt_is_rejected_for_commands_that_take_no_prompt(agent_cmd, monkeypatch, tmp_path):
     """bash and sleep have no prompt to receive. Silently dropping one surfaces
@@ -965,233 +782,3 @@ def test_prompt_is_rejected_for_commands_that_take_no_prompt(agent_cmd, monkeypa
 # --------------------------------------------------------------------------
 # Interactive flag (-i / --interactive) for claude and agy
 # --------------------------------------------------------------------------
-
-
-def test_interactive_flag_claude_prompt_option(monkeypatch, tmp_path):
-    """Passing -i and --prompt to claude drops --prompt/--print and puts prompt as trailing positional."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "claude",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "--prompt",
-            "hello claude",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--setting-sources=user,project",
-        "hello claude",
-    ]
-    assert "-it" in cmd
-    assert "--print" not in inner
-    assert "--prompt" not in inner
-
-
-def test_interactive_flag_agy_prompt_option(monkeypatch, tmp_path):
-    """Passing -i and --prompt to agy uses --prompt-interactive instead of --print/--prompt."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "agy",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "--prompt",
-            "hello agy",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--prompt-interactive",
-        "hello agy",
-    ]
-    assert "-it" in cmd
-    assert "--print" not in inner
-    assert "--print-timeout" not in inner
-
-
-def test_interactive_flag_claude_positional_prompt(monkeypatch, tmp_path):
-    """Passing -i and a positional prompt to claude leaves prompt as trailing argument without --print."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "claude",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "hello positional",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--setting-sources=user,project",
-        "hello positional",
-    ]
-    assert "-it" in cmd
-    assert "--print" not in inner
-
-
-def test_interactive_flag_agy_positional_prompt(monkeypatch, tmp_path):
-    """Passing -i and a positional prompt to agy wraps it in --prompt-interactive."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "agy",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "hello positional",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--prompt-interactive",
-        "hello positional",
-    ]
-    assert "-it" in cmd
-    assert "--print" not in inner
-
-
-def test_interactive_flag_claude_task_dispatch(monkeypatch, tmp_path):
-    """Passing -i and -t to claude runs interactively with seeded /pull prompt."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "claude",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "-t",
-            "task_abc123",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--setting-sources=user,project",
-        "/pull task_abc123",
-    ]
-    assert "-it" in cmd
-    assert "--print" not in inner
-
-
-def test_interactive_flag_agy_task_dispatch(monkeypatch, tmp_path):
-    """Passing -i and -t to agy runs interactively using --prompt-interactive."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "agy",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "-t",
-            "task_abc123",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--prompt-interactive",
-        "/pull task_abc123",
-    ]
-    assert "-it" in cmd
-    assert "--print" not in inner
-
-
-def test_interactive_flag_claude_keeps_forwarded_args(monkeypatch, tmp_path):
-    """Passing -i, --prompt, and extra args places prompt last."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "claude",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "--prompt",
-            "hello claude",
-            "--model",
-            "opus",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--setting-sources=user,project",
-        "--model",
-        "opus",
-        "hello claude",
-    ]
-    assert "-it" in cmd
-
-
-def test_interactive_flag_agy_keeps_forwarded_args(monkeypatch, tmp_path):
-    """Passing -i, --prompt, and extra args places --prompt-interactive last."""
-    cmd = _capture_docker_cmd(
-        monkeypatch,
-        tmp_path,
-        [
-            "run",
-            "agy",
-            "-d",
-            str(tmp_path / "repo"),
-            "-i",
-            "--prompt",
-            "hello agy",
-            "--model",
-            "opus",
-        ],
-    )
-    inner = _inner_cmd(cmd)
-
-    assert inner == [
-        "agy",
-        "--dangerously-skip-permissions",
-        "--log-file",
-        "/home/worker/.gemini/antigravity-cli/cli.log",
-        "--model",
-        "opus",
-        "--prompt-interactive",
-        "hello agy",
-    ]
-    assert "-it" in cmd

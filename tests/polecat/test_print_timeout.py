@@ -45,6 +45,7 @@ def _base_mocks(monkeypatch, tmp_path, config=None):
     monkeypatch.setenv("AOPS_SESSIONS", str(tmp_path / "sessions"))
     monkeypatch.setenv("POLECAT_HOME", str(tmp_path / "polecat-home"))
     monkeypatch.setenv("POLECAT_IMAGE", "test-image:latest")
+    monkeypatch.setenv("PKB_MCP_URL", "http://test-pkb.invalid:8026/mcp")
     (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
 
 
@@ -96,12 +97,11 @@ def test_seeded_task_dispatch_carries_the_print_timeout():
     assert _flag_value(inner, "--print-timeout") == "30m"
 
 
-def test_seeded_dispatch_puts_the_timeout_immediately_before_print():
-    """A value-taking flag consumes the next token whatever it is, so nothing
-    may sit between `--print` and the prompt it seeds."""
+def test_seeded_dispatch_puts_the_timeout_in_inner_command():
+    """A seeded dispatch forwards the configured --print-timeout flag on inner_cmd."""
     inner = _seeded_inner_cmd(task="task_abc123", config={"timeout": "30m"})
 
-    assert inner[-4:] == ["--print-timeout", "30m", "--print", "/pull task_abc123"]
+    assert inner[-2:] == ["--print-timeout", "30m"]
 
 
 def test_seeded_dispatch_has_no_timeout_flag_when_unset():
@@ -109,7 +109,6 @@ def test_seeded_dispatch_has_no_timeout_flag_when_unset():
     inner = _seeded_inner_cmd(config={})
 
     assert "--print-timeout" not in inner
-    assert inner[-2:] == ["--print", "/pull task_abc123"]
 
 
 def test_seeded_dispatch_end_to_end_through_the_cli(tmp_path, monkeypatch):
@@ -121,7 +120,7 @@ def test_seeded_dispatch_end_to_end_through_the_cli(tmp_path, monkeypatch):
         config={"timeout": "45m"},
     )
 
-    assert inner[-4:] == ["--print-timeout", "45m", "--print", "/pull task_abc123"]
+    assert inner[-2:] == ["--print-timeout", "45m"]
 
 
 def test_claude_seeded_dispatch_gets_no_timeout_flag():

@@ -149,6 +149,9 @@ def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
     """
     allowed = {"${extensionPath}", "${CLAUDE_PLUGIN_ROOT}"}
     for name, server in sorted(servers.items()):
+        if isinstance(server, dict) and "url" in server and "serverUrl" not in server:
+            server["serverUrl"] = server.pop("url")
+            server.pop("type", None)
         leftover = [
             token for token in _PLACEHOLDER_RE.findall(json.dumps(server)) if token not in allowed
         ]

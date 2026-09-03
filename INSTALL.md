@@ -9,12 +9,13 @@
 
 ```bash
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install aops-core@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
+claude plugin install aops@academicOps
+export PKB_MCP_URL=<your PKB MCP endpoint>
 ```
 
-`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way. `--config` is
-valid only against the plugin that declares the key; `pkb_mcp_url` belongs to
-`aops-core` alone.
+`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way.
+`PKB_MCP_URL` is an environment variable, read by whichever plugin needs it —
+no manifest declares a `userConfig` key for it or for anything else.
 
 Nothing has a default. Set the environment variables each plugin needs before
 first use — the full list is in [`README.md`](README.md#configure), and each

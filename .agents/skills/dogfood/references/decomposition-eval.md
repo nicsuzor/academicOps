@@ -16,8 +16,7 @@ instruction testing) pointed at the planner's decomposition instructions.
    below). Have it produce the decomposition as a proposal (no PKB writes).
 3. **Write your hypothesis down first**, then score against the rubric, citing the output.
    A dimension counts as SURFACED only if the planner _reasoned its way to the
-   consideration_ — not if a generic step merely brushed it. (Recording the hypothesis
-   before you read the output is what lets you discover you were wrong.)
+   consideration_ — not if a generic step merely brushed it.
 4. **Review independently.** A second agent (e.g. pauli) scores from scratch — withhold
    your own scores so its read is its own.
 5. **If you edit the skill, re-run blind and re-score the delta. Run ≥2 per condition** —
@@ -58,19 +57,3 @@ It is whether the same _kinds_ of considerations surface. Two classes:
 
 Capture pairs opportunistically from real work. If you want a standing bank, make it
 _several diverse_ pairs treated as calibration snapshots, not a pass/fail gate.
-
-## Worked example (non-blind illustration only)
-
-**Request:** "Find the most frustrating and trickiest issues with the aops framework that
-can only really be addressed by qualitatively applying generally expressed rules, and create
-an initial implementation of the Claude Code 'auto' mode classifier (max 1–3 rules)."
-
-**What the gold standard surfaced that a baseline planner missed:** the
-rejected-as-too-brittle-PR evidence signal (D6), recent daily-note frustrations (D4), the
-transcript-instrumentation prerequisite for evaluating the classifier (D9), and an
-explicitly _non-mechanical_ test plan for a qualitative artifact (D10).
-
-**Result:** scoring a blind decomposition exposed exactly that cluster — strong structure,
-weak task-epistemics. The fix (planner `decompose.md` step 3.5 "Interrogate the task's
-epistemics") closed D4/D6/D9/D10 on a blind re-run (N=1). This pair is retained as
-illustration only — it is now contaminated by appearing here, so it is _not_ a blind fixture.

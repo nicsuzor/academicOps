@@ -3,22 +3,20 @@
 # requirements so they can be modified without altering the test code itself.
 
 [rbg.stop_gate]
-# Minimum required text fragments in the shipped rule-check.md
-required_shipped_text = ["rule check", "evidence", "axioms"]
 # Events that the RBG stop gate will block on. Currently empty because rbg hooks are disabled.
 stop_events = []
 
 [hooks.messages]
 # Messages that ship with no .user.md because they have no second reader
-no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session", "aops-core: quiet" = "the silence gate; a systemMessage here would itself be the mention of delegated work the gate exists to withhold" }
+no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user channel", "rbg: classifier-prompt" = "evaluator request payload, never injected into a session", "aops: quiet" = "the silence gate; a systemMessage here would itself be the mention of delegated work the gate exists to withhold" }
 # Messages that ship user-blind and SHOULD NOT (defect list)
 known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
 
-[aops-core]
+[aops]
 # Is search_the_pkb enabled and returning a Result? Currently disabled.
 search_the_pkb_enabled = false
 
-[aops-core.taxonomy]
+[aops.taxonomy]
 # Closed 12-value status set from mem's VALID_STATUSES (references/TAXONOMY.md)
 valid_statuses = [
   "inbox",

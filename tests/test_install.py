@@ -17,6 +17,7 @@ from build.install import (
     DEFAULTS_SENTINEL,
     InstallError,
     install_automode,
+    patch_dev_mcp,
     uninstall_automode,
 )
 
@@ -337,3 +338,51 @@ def test_uninstall_malformed_state_file_is_hard_error(tmp_path):
 
     with pytest.raises(InstallError, match="install state"):
         uninstall_automode(settings_path, state_path)
+
+
+def test_patch_dev_mcp_replaces_url_and_strips_trailing_slash(tmp_path, monkeypatch):
+    dist = tmp_path / "dist"
+    claude_dir = dist / "aops-claude"
+    cowork_dir = dist / "cowork" / "aops"
+    claude_dir.mkdir(parents=True)
+    cowork_dir.mkdir(parents=True)
+    mcp_content = json.dumps(
+        {
+            "mcpServers": {
+                "services": {
+                    "command": "bash",
+                    "args": ["-c", 'fastmcp run "$PKB_MCP_URL"'],
+                },
+                "services-http": {
+                    "type": "http",
+                    "url": "$PKB_MCP_URL",
+                },
+            }
+        }
+    )
+    (claude_dir / ".mcp.json").write_text(mcp_content)
+    (cowork_dir / ".mcp.json").write_text(mcp_content)
+
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp/")
+    patched = patch_dev_mcp(dist)
+    assert len(patched) == 2
+
+    c_data = json.loads((claude_dir / ".mcp.json").read_text())
+    assert c_data["mcpServers"]["services"]["args"] == [
+        "-c",
+        'fastmcp run "https://pkb.example.ts.net/mcp"',
+    ]
+    assert c_data["mcpServers"]["services-http"]["url"] == "https://pkb.example.ts.net/mcp"
+
+
+def test_patch_dev_mcp_skips_when_unset(tmp_path, monkeypatch):
+    dist = tmp_path / "dist"
+    claude_dir = dist / "aops-claude"
+    claude_dir.mkdir(parents=True)
+    mcp_content = json.dumps({"mcpServers": {"services-http": {"url": "$PKB_MCP_URL"}}})
+    (claude_dir / ".mcp.json").write_text(mcp_content)
+
+    monkeypatch.delenv("PKB_MCP_URL", raising=False)
+    patched = patch_dev_mcp(dist)
+    assert len(patched) == 0
+    assert (claude_dir / ".mcp.json").read_text() == mcp_content

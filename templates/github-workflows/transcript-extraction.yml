@@ -122,8 +122,8 @@ jobs:
 
             ## Instructions
             Read the unified memory skill for knowledge standards and transcript mining guidance:
-              ${{ github.workspace }}/_aops/aops/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/aops/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/aops/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/aops/skills/remember/references/consolidation.md
 
             ## Environment
             - Brain repo (knowledge base): ${{ github.workspace }}

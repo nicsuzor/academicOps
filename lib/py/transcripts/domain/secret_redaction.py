@@ -68,30 +68,46 @@ _SENSITIVE_KEY = re.compile(_SENSITIVE_NAME, re.IGNORECASE)
 def _redact_shell_assign(m: re.Match[str]) -> str:
     # Spare numeric values: ``input_tokens=12345`` is a usage metric, not a
     # credential. Real tokens are never bare integers/floats.
-    if _NUMERIC_VALUE.fullmatch(m.group(4)):
+    prefix = m.group(1) + m.group(2)
+    q = m.group("q")
+    if q:
+        val = m.group("qval")
+        if _NUMERIC_VALUE.fullmatch(val):
+            return m.group(0)
+        return f"{prefix}{q}{REDACTED}{q}"
+    val = m.group("uval")
+    if _NUMERIC_VALUE.fullmatch(val):
         return m.group(0)
-    return f"{m.group(1)}{m.group(2)}{m.group(3)}{REDACTED}{m.group(5)}"
+    return f"{prefix}{REDACTED}"
 
 
 def _redact_yaml_json_assign(m: re.Match[str]) -> str:
-    if _NUMERIC_VALUE.fullmatch(m.group(3)):
+    prefix = m.group(1)
+    q = m.group("q")
+    if q:
+        val = m.group("qval")
+        if _NUMERIC_VALUE.fullmatch(val):
+            return m.group(0)
+        return f"{prefix}{q}{REDACTED}{q}"
+    val = m.group("uval")
+    if _NUMERIC_VALUE.fullmatch(val):
         return m.group(0)
-    return f"{m.group(1)}{m.group(2)}{REDACTED}{m.group(4)}"
+    return f"{prefix}{REDACTED}"
 
 
 _ASSIGN_PATTERNS: list[tuple[re.Pattern[str], Callable[[re.Match[str]], str]]] = [
-    # Shell:  export FOO_TOKEN=value   /   FOO_TOKEN='value'
+    # Shell:  export FOO_TOKEN=value   /   FOO_TOKEN='value'   /   FOO_TOKEN="val ue"
     (
         re.compile(
-            rf"((?:export\s+)?{_SENSITIVE_NAME})(\s*=\s*)(['\"]?)([^\s'\"]+)(['\"]?)",
+            rf"((?:export\s+)?{_SENSITIVE_NAME})(\s*=\s*)(?:(?P<q>\\?['\"])(?P<qval>.*?)(?P=q)|(?P<uval>[^\s'\"<]+))",
             re.IGNORECASE,
         ),
         _redact_shell_assign,
     ),
-    # JSON / YAML:  "FOO_TOKEN": "value"   /   FOO_TOKEN: value
+    # JSON / YAML:  "FOO_TOKEN": "value"   /   FOO_TOKEN: value   /   FOO_TOKEN： "val ue"
     (
         re.compile(
-            rf"(\"?{_SENSITIVE_NAME}\"?\s*:\s*)(['\"]?)([^\s'\",}}]+)(['\"]?)",
+            rf"(\"?{_SENSITIVE_NAME}\"?\s*[:：]\s*)(?:(?P<q>\\?['\"])(?P<qval>.*?)(?P=q)|(?P<uval>[^\s'\",}}<]+))",
             re.IGNORECASE,
         ),
         _redact_yaml_json_assign,

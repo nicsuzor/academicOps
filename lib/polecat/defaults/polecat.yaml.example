@@ -66,10 +66,19 @@
 #     repo: your-repo                 # optional, defaults to slug
 #     default_branch: main            # documentary
 #     sessions_access: false          # optional, mount $AOPS_SESSIONS/logs read-only
+#     aliases:                        # optional project aliases
+#       - your-project-alias
+#       - your_project_alias
 #     mounts:                         # optional, for empirical projects
 #       - host: $AOPS_SESSIONS/secrets/your-project/
 #         container: /run/secrets/project/
 #         mode: ro
+#
+# Global project aliases mapping (resolves project variants across polecat & OTEL).
+# aliases:
+#   aops: academicOps
+#   academicops: academicOps
+#   academic_ops: academicOps
 
 # Host directory of user-scoped cope/rbg rules (the same shape as
 # $ACA_DATA/.agents/rules/ on a host session), mounted read-only into every
@@ -79,6 +88,13 @@
 # hard failure, never a silent skip, because setting this is a claim the
 # directory exists. $POLECAT_RULES_DIR overrides this at the environment.
 # rules_dir: /path/to/your/pkb-checkout/.agents/rules
+
+# Host directory of shared scratch space to mount read-write into the container
+# at `/scratch` (resolve_scratch_dir). Optional: absent means the container
+# starts with no `/scratch` mount — a clean no-op (no default).
+# $POLECAT_SCRATCH_DIR overrides this at the environment, and `--scratch-dir`
+# / `--scratch` overrides both at the CLI.
+# scratch_dir: /path/to/shared/scratch
 
 # cope's evaluator, forwarded into every container. Each field is the plain
 # COPE_EVALUATOR_* variable lower-cased and prefixed here; a host environment

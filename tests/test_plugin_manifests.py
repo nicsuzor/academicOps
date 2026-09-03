@@ -46,18 +46,31 @@ def get_plugin_dirs():
             d.name.endswith("-claude") or d.name.endswith("-agy") or d.name.endswith("-openclaw")
         ):
             plugin_dirs.append(d)
+    cowork_dir = DIST_ROOT / "cowork"
+    if cowork_dir.is_dir():
+        for d in cowork_dir.iterdir():
+            if d.is_dir() and not d.name.startswith("."):
+                plugin_dirs.append(d)
     if not plugin_dirs:
         raise RuntimeError(f"{DIST_ROOT} contains no built plugin directories — run 'make build'")
     return sorted(plugin_dirs)
 
 
-@pytest.mark.parametrize("plugin_dir", get_plugin_dirs(), ids=lambda d: d.name)
+@pytest.mark.parametrize(
+    "plugin_dir",
+    get_plugin_dirs(),
+    ids=lambda d: f"cowork/{d.name}" if d.parent.name == "cowork" else d.name,
+)
 def test_plugin_validates_against_cli(plugin_dir):
     """
     Checks each built plugin package against the native CLI plugin validate command.
     """
     # Determine which CLI to use based on the plugin's target platform
-    if plugin_dir.name.endswith("-claude") or plugin_dir.name.endswith("-openclaw"):
+    if (
+        plugin_dir.name.endswith("-claude")
+        or plugin_dir.name.endswith("-openclaw")
+        or plugin_dir.parent.name == "cowork"
+    ):
         cli_command = ["claude", "plugin", "validate", str(plugin_dir)]
     elif plugin_dir.name.endswith("-agy"):
         cli_command = ["agy", "plugin", "validate", str(plugin_dir)]
@@ -111,7 +124,11 @@ def _resolve_hook_path(plugin_dir: Path, raw_path: str) -> Path:
     return plugin_dir / cleaned
 
 
-@pytest.mark.parametrize("plugin_dir", get_plugin_dirs(), ids=lambda d: d.name)
+@pytest.mark.parametrize(
+    "plugin_dir",
+    get_plugin_dirs(),
+    ids=lambda d: f"cowork/{d.name}" if d.parent.name == "cowork" else d.name,
+)
 def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     """Every hook command/args script path declared in a built plugin's hooks.json
     must resolve to a real file shipped inside that same plugin artifact.
@@ -126,7 +143,11 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     file on disk — this test closes that coverage gap so the same class of
     defect fails a build instead of shipping silently.
     """
-    if plugin_dir.name.endswith("-claude") or plugin_dir.name.endswith("-openclaw"):
+    if (
+        plugin_dir.name.endswith("-claude")
+        or plugin_dir.name.endswith("-openclaw")
+        or plugin_dir.parent.name == "cowork"
+    ):
         hooks_json_path = plugin_dir / "hooks" / "hooks.json"
     elif plugin_dir.name.endswith("-agy"):
         hooks_json_path = plugin_dir / "hooks.json"
@@ -203,22 +224,22 @@ def test_ida_ships_the_quiet_gate_on_claude_only():
     canonical ``Stop`` in the first place (only to the commented-out
     ``PostToolBatch`` key), so nothing on agy was ever live.
 
-    ida is an agent hosted inside the aops-core plugin (plugins/aops-core/agents/ida.md),
-    so its gate ships from ``aops-core-claude``, not a standalone ``ida`` plugin."""
-    events = _claude_hook_events("aops-core-claude")
+    ida is an agent hosted inside the aops plugin (plugins/aops/agents/ida.md),
+    so its gate ships from ``aops-claude``, not a standalone ``ida`` plugin."""
+    events = _claude_hook_events("aops-claude")
     assert "PostToolBatch" in events
     assert "SubagentStop" not in events
-    assert not (DIST_ROOT / "aops-core-agy" / "hooks.json").exists()
+    assert not (DIST_ROOT / "aops-agy" / "hooks.json").exists()
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_ida_ships_no_posttooluse_hook():
-    """``plugins/aops-core/hooks/handlers.py`` registers ``PostToolBatch`` for ida's
+    """``plugins/aops/hooks/handlers.py`` registers ``PostToolBatch`` for ida's
     ``be_quiet`` and nothing else, so a ``PostToolUse`` entry here would spawn
     a hook process on every tool call for a handler that does not exist. The
     hearsay reminder ida used to carry on that event now ships from
     ``orchestrate``, beside the dispatch machinery it binds."""
-    assert "PostToolUse" not in _claude_hook_events("aops-core-claude")
+    assert "PostToolUse" not in _claude_hook_events("aops-claude")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
@@ -248,9 +269,9 @@ def test_orchestrate_ships_the_handback_reminders():
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_aops_core_ships_no_stop_gate():
-    """aops-core's own stop gate is blocked on a server-side prerequisite, not merely
+    """aops's own stop gate is blocked on a server-side prerequisite, not merely
     unbuilt. This pins that it stays unwired rather than being swept in.
 
-    ``PostToolBatch`` is not aops-core's own gate — it is ida's quiet gate,
-    hosted here because ida is an agent inside aops-core (test_ida_ships_the_quiet_gate_on_claude_only)."""
-    assert _claude_hook_events("aops-core-claude") == {"PostToolBatch"}
+    ``PostToolBatch`` is not aops's own gate — it is ida's quiet gate,
+    hosted here because ida is an agent inside aops (test_ida_ships_the_quiet_gate_on_claude_only)."""
+    assert _claude_hook_events("aops-claude") == {"PostToolBatch"}

@@ -47,7 +47,7 @@ _policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8"))
 if str(_LIB_HOOKS) not in sys.path:
     sys.path.insert(0, str(_LIB_HOOKS))
 
-from dispatch import (  # noqa: E402
+from dispatch import (
     CANONICAL_EVENTS,
     TO_CANONICAL,
     HookContext,
@@ -988,8 +988,8 @@ def test_dispatch_survives_an_unwritable_log_path(injected_plugin, tmp_path):
 def _load_orchestrate_handlers():
     import importlib.util
 
-    handlers_path = _REPO_ROOT / "plugins" / "orchestrate" / "hooks" / "handlers.py"
-    spec = importlib.util.spec_from_file_location("orchestrate_handlers", handlers_path)
+    handlers_path = _REPO_ROOT / "plugins" / "aops" / "hooks" / "handlers.py"
+    spec = importlib.util.spec_from_file_location("aops_handlers", handlers_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -1127,7 +1127,7 @@ def test_dispatch_orchestrate_session_start_claude_e2e(tmp_path):
     for py_file in _LIB_HOOKS.glob("*.py"):
         shutil.copy2(py_file, orchestrate_dir / py_file.name)
     shutil.copy2(
-        _REPO_ROOT / "plugins" / "orchestrate" / "hooks" / "handlers.py",
+        _REPO_ROOT / "plugins" / "aops" / "hooks" / "handlers.py",
         orchestrate_dir / "handlers.py",
     )
 

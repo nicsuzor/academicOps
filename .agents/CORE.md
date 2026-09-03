@@ -25,6 +25,7 @@ On top of them:
   now — no history, rationale, changelogs, deprecation notices, backwards-compat
   notes, or decision logs. Explanation goes in `specs/`.
 - **A plugin never reads another plugin's files.** It may read `lib/`.
+- **Installed runtime plugins are strictly read-only.** Never write to or edit `~/.gemini/config/plugins/` or `~/.claude/plugins/`. All modifications belong in the source repository.
 - **Never edit a tracked file through a shell.** No heredoc, `python3 -c`,
   `sed -i`, or `awk`. Use Read/Write/Edit. If they cannot do it, stop and report.
 - **Commit immediately, and push.** After any change, commit with a short,

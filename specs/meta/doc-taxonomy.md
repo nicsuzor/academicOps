@@ -22,8 +22,6 @@ Process templates are instructions too, and live in `plugins/<plugin>/workflows/
 
 This spec answers _which file_ by audience. For how enforcement mechanisms apply (the levers, and the delivery-channel-vs-verdict split), see [enforcement.md](../enforcement/enforcement.md).
 
-<!-- NS: We should make some brief quality and substance notes about what info each doc should and shouldn't contain and how to know it's good. -->
-
 ## Specs — for devs and auditors
 
 Live in `specs/<subsystem>/<name>.md` at the academicOps root.
@@ -35,6 +33,8 @@ Live in `specs/<subsystem>/<name>.md` at the academicOps root.
 **Shouldn't contain**: per-agent log entries, imperative agent instructions (those go in instructions), generated tables (audit-artifact), or provenance.
 
 **No provenance.** A spec states what's true and why, not who decided it, where, or when. PKB task/session IDs, ruling numbers, and "ruled by X on date Y" citations belong in git commit messages and task files — cite them there, not in the spec body. A reference-only section that just enumerates adjacent task IDs with no other content (a "related work" list) belongs in the tracking task, not the spec; if a spec genuinely depends on another spec's content, link that spec by name, not a PKB ID.
+
+**Concise.** A spec earns its length by design intent, not by restating the same claim from several angles or hedging it with qualifiers. Say a thing once, in the fewest words that carry the design intent; where a sibling doc already states it, link rather than re-derive (see "One fact, one file" below).
 
 **A spec declares intended behavior — for any subsystem, including this repo's own tooling — and it may be aspirational.** A spec is a _specification_: what a subsystem is designed to do and why, not a live telemetry feed of what the code happens to do today. Drift between a spec and the code is an expected, ordinary state of the world (it means there's a bug or an unfinished migration to fix — it is not evidence the doc is miscategorized). That's the axis that actually separates a spec from a **state** doc: a state doc claims to be the current-truth SSoT ("this IS what the system does right now"); a spec claims to be the designed target ("this is what the subsystem is for and how it should behave"), and is allowed to be ahead of, or drift from, reality.
 
@@ -77,6 +77,8 @@ Top-level entry points: README.md, INSTALL.md, CHANGELOG.md. Per plugin: `plugin
 **Plugin README.** One audience: the person using the plugin. Its job is to show exactly how the plugin works, in this order: **what it is for** (one sentence), **how it works** (a mermaid flowchart of the real path from a trigger — a user prompt, a hook event, an agent invocation — through its agents, skills, and hooks to an outcome, showing the flow that exists rather than an idealised one), **what it provides** (agents, skills, commands, hooks — a table, one line each), **how it is configured** (every environment variable and `userConfig` field it reads, what each is for, and that there are no defaults), and **what it depends on**. Source-level citation and file-path naming are not required of it — the reader it serves is using the plugin, not extending it. The flowchart is derived from the source and verified against it; it simply does not cite it.
 
 **The split with `specs/`.** Design rationale, why a choice was made, and the seams and gaps go to `specs/`, which serves the developer extending the plugin. A README that argues for the plugin's design is a spec in the wrong place; so is a history, a roadmap, or a changelog.
+
+For task and file naming standards, see [`specs/meta/naming-and-decisions.md`](naming-and-decisions.md).
 
 ---
 

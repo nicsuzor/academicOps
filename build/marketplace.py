@@ -147,9 +147,10 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_dir: Path) -> str | None:
             )
         return None
 
+    while baked.endswith("/"):
+        baked = baked[:-1]
+
     launcher = plugin_dir / "scripts" / "run-mcp.sh"
-    if not launcher.exists():
-        return None
 
     try:
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
@@ -163,12 +164,23 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_dir: Path) -> str | None:
         # concrete endpoint of its own is left alone.
         if "PKB_MCP_URL" not in json.dumps(cfg):
             continue
-        servers[name] = {
-            "command": "bash",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
-            "env": {"PKB_MCP_URL": baked},
-        }
-        rewritten = True
+        if cfg.get("type") == "http" or "url" in cfg:
+            cfg["url"] = cfg.get("url", "").replace("$PKB_MCP_URL", baked)
+            rewritten = True
+        elif "serverUrl" in cfg:
+            cfg["serverUrl"] = cfg.get("serverUrl", "").replace("$PKB_MCP_URL", baked)
+            rewritten = True
+        elif launcher.exists():
+            servers[name] = {
+                "command": "bash",
+                "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
+                "env": {"PKB_MCP_URL": baked},
+            }
+            rewritten = True
+        else:
+            cfg_str = json.dumps(cfg).replace("$PKB_MCP_URL", baked)
+            servers[name] = json.loads(cfg_str)
+            rewritten = True
 
     if not rewritten:
         return None

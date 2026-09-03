@@ -1,273 +1,87 @@
 ---
 name: extract
-description: General extraction/ingestion skill that routes to specific workflows
-  based on input type. Extracts structured information from documents, emails, reviews,
-  feedback, and other sources.
+description: Pull structured information out of a source document and file it in the right place — training pairs from marked-up peer reviews, durable facts from email and correspondence archives, key information from a single document, or a plain format conversion of DOCX/PDF/XLSX/PPTX/MSG to markdown. Use for "extract", "ingest", "parse this", "convert to markdown", "pull the feedback out of this review", "get what matters out of this archive". Routes to the matching workflow and keeps sensitive material out of the public repository. Not for writing knowledge to the PKB directly (use `remember`) and not for authoring or capturing deep-research documents (use `deep-research`).
 ---
 
-# Extraction & Ingestion Skill
+# Extract
 
-General-purpose extraction skill that intelligently routes to specialized workflows based on input type. Extracts structured information from various sources and stores it appropriately (public framework vs. private data).
+Route an input to the matching extraction workflow, then store the result on the correct
+side of the sensitive/public boundary.
 
-## Framework Context
+## Search before creating
 
-Universal axioms apply (enforced by `rbg`). `synthesize-not-accrete` is especially relevant.
-
-## Search Before Creating
-
-**MANDATORY** before creating any new extracted content: search PKB for existing knowledge on the same subject.
+Search the PKB for existing knowledge on the subject before creating any extracted content:
 
 ```
 mcp__services__pkb__search(query="[topic/person/document subject]")
 ```
 
-- If a match exists → augment it rather than creating a duplicate
-- If people are mentioned → retrieve existing relationship context to enrich extraction
-- If no match → proceed with creation
-
-This prevents duplicate memories and grounds extraction in accumulated knowledge. See [[remember]] skill's "search first" step as the model.
-
-## Purpose
-
-Provide a unified entry point for all extraction tasks:
-
-- Training data extraction from feedback documents
-- Archive information extraction (emails, correspondence)
-- Knowledge extraction from documents
-- Review pair extraction for LLM training
-
-## Workflow Routing
-
-When invoked, analyze the input and route to the appropriate workflow:
-
-### 1. Training Data Extraction
-
-**Signals**:
-
-- Input contains review feedback + source document
-- User mentions "training", "extract patterns", "learning", "dataset"
-- Documents contain tracked changes, comments, or annotations
-- Goal is to build LLM training data
-
-**Route to**: "Workflow: Training Data Extraction" below.
-
-**Storage**:
-
-- **Sensitive data** (actual review content, source documents): `$ACA_DATA/processed/review_training/`
-- **Generalized patterns** (depersonalized principles): Framework docs or peer-review skill
-
-### 2. Archive Information Extraction
-
-**Signals**:
-
-- Input is email archive, correspondence, receipts
-- User mentions "archive", "preserve", "remember"
-- Goal is to capture significant events/relationships
-- Source is historical documents
-
-**Route to**: Archive extraction logic (selective extraction, use `Skill(skill="remember")` for storage)
-
-**Storage**: Use `Skill(skill="remember")` for PKB storage
-
-### 3. Document Knowledge Extraction
-
-**Signals**:
-
-- Single document needs key information extracted
-- User mentions "extract", "parse", "ingest"
-- Not training data, not archive
-- Goal is structured information retrieval
-
-**Route to**: Apply the extraction process below directly.
-
-**Storage**: Depends on content - PKB or framework docs
-
-### 4. Document to Markdown Conversion
-
-**Signals**:
-
-- Input is a document file (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC, DOTX)
-- User mentions "convert", "convert to markdown", "docx to markdown", "pdf to markdown"
-- Goal is format conversion, not structured extraction
-
-**Route to**: `scripts/pdf2md.py` for PDFs; pandoc for everything else. Use the tool's own documentation for flags.
-
-**Storage**: Converted `.md` files replace originals in the same directory
-
-## Workflow: Training Data Extraction
-
-### Input Types
-
-#### Type A: Review with Inline Comments (DOCX with tracked changes)
-
-- **Example**: Peer review with inline comments and suggestions
-- **Procedure**: `procedures/review-inline-comments.md`
-- **Output**: Training pairs + generalized principles
-
-#### Type B: Separate Review + Source Documents
-
-- **Example**: `review.txt` + `source.pdf` + `metadata.json`
-- **Workflow**: Review-training extraction (match feedback to source evidence)
-- **Output**: Training pairs matching feedback to source evidence
-
-#### Type C: Revision History
-
-- **Example**: Git history, Google Docs revision history, track changes
-- **Workflow**: Pair each revision with the one before it, then apply the extraction process below
-- **Output**: Before/after pairs with change rationales
-
-### Extraction Process
-
-See `procedures/review-inline-comments.md` for detailed procedure.
-
-**Quick summary**:
-
-1. **Convert to workable format** (preserve markup)
-2. **Extract feedback units** (text + comment pairs)
-3. **Categorize feedback** (type, scope, action)
-4. **Identify patterns** (group similar feedback)
-5. **Generalize principles** (abstract to transferable form)
-6. **Separate sensitive/public** (raw data vs. patterns)
-7. **Store appropriately** (sensitive → $ACA_DATA, patterns → framework)
-
-### Storage Rules
-
-**CRITICAL**: Training data often contains sensitive information (author names, unpublished work, specific critiques).
-
-**Sensitive data** → `$ACA_DATA/processed/review_training/{collection_name}/`:
-
-- `extracted_examples.json` (full text/feedback pairs)
-- `training_pairs.jsonl` (machine-readable format)
-- `collection_summary.md` (with identifying information)
-- Source documents (if retained)
-
-**Generalized patterns** → Framework (public repo):
-
-- `plugins/tools/skills/peer-review/references/` (update with principles)
-- A skill's own `references/` directory (depersonalized examples)
-- No names, no specific unpublished content, no identifying details
-
-### Quality Standards
-
-**High-quality extraction**:
-
-- Clear connection between feedback and source
-- Sufficient context for learning
-- Well-categorized with teaching points
-- Patterns are transferable
-
-**Generalization quality**:
-
-- Principles are specific enough to apply
-- Principles are general enough to transfer
-- Examples span different contexts
-- Limitations are documented
-
-## Workflow: Archive Information Extraction
-
-Apply selective extraction logic.
-
-**Key principle**: Most archival documents have NO long-term value. Be highly selective.
-
-**Extract**: Concrete outcomes, significant relationships, financial records
-**Skip**: Newsletters, invitations, administrative routine, mass communications
-
-**Storage**: Use `Skill(skill="remember")` with proper tags and canonical identifiers.
-
-## Sensitive Data Handling
-
-### What is Sensitive?
-
-- Author names and identifying information
-- Unpublished work content
-- Specific critiques of individuals' work
-- Email content and correspondence
-- Personal information
-- Institutional confidential information
-
-### Storage Location: `$ACA_DATA/processed/`
-
-**Directory structure**:
-
-```
-$ACA_DATA/processed/
-├── review_training/
-│   ├── {collection_name}/
-│   │   ├── extracted_examples.json
-│   │   ├── training_pairs.jsonl
-│   │   ├── collection_summary.md
-│   │   └── source_documents/
-│   └── ...
-├── email_archive/
-│   └── ...
-└── ...
-```
-
-**Access**: This directory is:
-
-- Outside the public academicOps repo
-- In the personal data directory (`$ACA_DATA`)
-- Should be backed up separately
-- Not committed to git
-
-### Depersonalization for Public Framework
-
-When adding examples to public framework docs:
-
-1. Remove all names (use "Author", "Reviewer", or generic placeholders)
-2. Remove specific work titles (use generic descriptions)
-3. Remove institutional affiliations
-4. Generalize to principle, not specific instance
-5. Use constructed examples if real ones can't be depersonalized
-
-## Integration with Other Skills
-
-### When to use `/extract` vs. specialized skills
-
-**Use `/extract`**:
-
-- Unclear what type of extraction is needed
-- Multiple types of documents to process
-- Want intelligent routing to appropriate workflow
-
-**Use specialized skill directly**:
-
-- `Skill(skill="remember")` - When you know you want to add to knowledge base
-
-## Error Handling
-
-| Scenario                       | Behavior                                                 |
-| ------------------------------ | -------------------------------------------------------- |
-| Unclear input type             | Ask user to clarify extraction goal                      |
-| Cannot convert document format | Try alternative conversion, document failure             |
-| Ambiguous feedback             | Flag with `"quality": "ambiguous"`, include with caveats |
-| No clear extraction value      | Ask user if they want to skip or force extraction        |
-| Storage location unclear       | Default to `$ACA_DATA/processed/`, confirm with user     |
-
-## Validation Checklist
-
-Before completing extraction:
-
-**Completeness**:
-
-- [ ] All extractable items identified
-- [ ] All items processed (or skipped with reason)
-- [ ] Output files created in correct locations
-
-**Quality**:
-
-- [ ] Teaching value is clear (for training data)
-- [ ] Categorization is accurate
-- [ ] Context is sufficient
-
-**Sensitivity**:
-
-- [ ] Sensitive data stored in `$ACA_DATA/processed/`
-- [ ] Public framework contains only depersonalized content
-- [ ] No identifying information in public docs
-
-**Documentation**:
-
-- [ ] Extraction process documented
-- [ ] Decisions and ambiguities noted
-- [ ] Collection summary created
+Augment a match rather than creating a second document, and pull existing relationship
+context for any person named in the source, so the extraction is grounded in what is
+already known instead of accreting beside it.
+
+## Routing
+
+| Input                                                                                                                            | Workflow                                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Review feedback plus its source document; tracked changes, comments, annotations; an ask about "training", "patterns", "dataset" | Training data extraction, below                                                                                                                |
+| Email archive, correspondence, receipts, historical documents                                                                    | Archive extraction, below                                                                                                                      |
+| One document whose key information is wanted, not for training                                                                   | Apply the extraction steps below directly; store per the content — PKB or framework docs                                                       |
+| A document file (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC, DOTX) to be turned into markdown                                          | `scripts/pdf2md.py` for PDFs, pandoc for everything else, reading the tool's own documentation for flags. The `.md` lands beside the original. |
+
+Ask the user to state the extraction goal when the input fits none of these cleanly.
+
+## Training data extraction
+
+Sources come in three shapes: a single document carrying both text and inline comments; a
+review and its source document as separate files; or a revision history, where each revision
+is paired with the one before it.
+
+1. Convert to markdown, preserving markup, and read the whole document before extracting.
+2. Extract feedback units — each a text span paired with the comment on it, plus enough
+   surrounding source for the pairing to be learnable.
+3. Categorise each unit by type, scope, and action.
+4. Group similar units and name the principle underneath each group.
+5. Generalise each principle far enough to transfer and specifically enough to apply, and
+   record where it does not hold.
+6. Split the results across the storage boundary below.
+
+Flag a unit whose feedback is ambiguous as `"quality": "ambiguous"` and keep it with the
+caveat attached rather than dropping it or resolving the ambiguity by guess.
+
+## Archive extraction
+
+Most archival documents have no long-term value, so extract selectively: concrete outcomes,
+significant relationships, and financial records. Skip newsletters, invitations,
+administrative routine, and mass communications. Store through `Skill(skill="remember")`
+with tags and canonical identifiers.
+
+## The storage boundary
+
+Training data carries author names, unpublished work, and specific critiques of individuals,
+so it splits in two.
+
+**Sensitive material** goes to `$ACA_DATA/processed/review_training/{collection_name}/` —
+outside any repository, never committed — as `extracted_examples.json` (full text/feedback
+pairs), `training_pairs.jsonl`, `collection_summary.md` (identifying information intact),
+and `source_documents/` where sources are retained. Email material goes under
+`$ACA_DATA/processed/email_archive/`. When the right location is unclear, default to
+`$ACA_DATA/processed/` and confirm with the user.
+
+**Generalised patterns** go to the public framework — principles into
+`plugins/tools/skills/peer-review/references/`, depersonalised examples into the relevant
+skill's own `references/` directory.
+
+Depersonalisation means the published pair carries the reviewer's reasoning and none of the
+identifiers: no names, institutions, grant or manuscript titles, or dates that would
+re-identify the submission; roles ("Author", "Reviewer") in place of people; generic
+descriptions in place of work titles. Where the reasoning cannot survive that strip, the
+pair does not go to the public surface at all — construct a synthetic example carrying the
+same principle instead.
+
+## Before reporting done
+
+Confirm by inspecting the written files, not from intent: every extractable item is either
+processed or skipped with a stated reason; the output files exist at the paths above; the
+public surface contains no identifying information; and the collection summary records the
+decisions and ambiguities the extraction ran into.

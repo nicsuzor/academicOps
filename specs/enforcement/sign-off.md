@@ -8,8 +8,6 @@ tags: [enforcement, framework-architecture, verification, sign-off, review]
 
 # Enforcement — Sign-off (Layer 4)
 
-> **Numbering note.** `Layer 4` here belongs to the **module-boundary layer model** (`Layer 0`–`Layer 4`: the trust-the-method intra-task/turn span, [task-contract.md](task-contract.md), [workflow.md](workflow.md), this file). It is distinct from the permission-frontmatter layers in [agent-authority.md](../agents/agent-authority.md) and the retired repo-level L0–L7 numbering (which [`specs/ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) replaced with a named mechanism index).
-
 ## Layer 4 — Sign-off
 
 The final review and approval over the workflow as a whole unit.

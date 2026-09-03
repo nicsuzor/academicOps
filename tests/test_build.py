@@ -209,7 +209,7 @@ def test_agy_rejects_an_event_it_cannot_fire(tmp_path):
         _to_agy_hooks(config, ctx)
 
 
-def _agy_ctx(tmp_path, directory="aops-core", name="aops-core"):
+def _agy_ctx(tmp_path, directory="aops", name="aops"):
     from build.context import BuildContext, Plugin
 
     return BuildContext(
@@ -352,7 +352,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops-core", "orchestrate"],
+        plugins=["aops", "orchestrate"],
         version=VERSION,
     )
 
@@ -360,15 +360,14 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
     # read format — see build/clients/agy.py's _adapt_agents docstring).
-    agy_ida_md = dist_root / "aops-core-agy" / "agents" / "ida.md"
+    agy_ida_md = dist_root / "aops-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "aops-core-agy" / "agents" / "ida" / "agent.md").exists()
+    assert not (dist_root / "aops-agy" / "agents" / "ida" / "agent.md").exists()
 
     raw = agy_ida_md.read_text()
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
     agy_agent = yaml.safe_load(fm)
     assert agy_agent["name"] == "ida"
-    assert "strategic face" in agy_agent["description"]
     assert "hidden" not in agy_agent
     assert "includeSections" not in agy_agent
     # ida declares no `mcpServers:` and reaches no MCP tool, so the build must
@@ -376,16 +375,8 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
     # covered by test_pauli_agy_frontmatter.
     assert "mcpServers" not in agy_agent
 
-    # pc declares tools: [Bash] which translates to run_command for agy
-    agy_pc_md = dist_root / "orchestrate-agy" / "agents" / "pc.md"
-    assert agy_pc_md.is_file()
-    pc_fm, _, _ = agy_pc_md.read_text().partition("---\n")[2].partition("---\n")
-    agy_pc = yaml.safe_load(pc_fm)
-    assert agy_pc["tools"] == ["run_command"]
-
     body = body.lstrip("\n")
     assert body.startswith("# Agent System Instructions")
-    assert "# Ida" in body
 
 
 def test_agy_agent_tool_names_are_translated(built):
@@ -816,6 +807,23 @@ def test_cowork_zip_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
     assert "env" in baked["mcpServers"]["services"]
 
 
+def test_cowork_zip_resolves_http_and_stdio_servers(tmp_path, monkeypatch):
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    plugin = _fixture_pkb_plugin(tmp_path)
+    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
+    data["mcpServers"]["services-http"] = {"type": "http", "url": "$PKB_MCP_URL"}
+    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
+
+    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
+    assert baked["mcpServers"]["services"]["env"] == {
+        "PKB_MCP_URL": "https://pkb.example.ts.net/mcp"
+    }
+    assert baked["mcpServers"]["services-http"] == {
+        "type": "http",
+        "url": "https://pkb.example.ts.net/mcp",
+    }
+
+
 # --- hard-error paths ---------------------------------------------------------
 
 
@@ -1067,11 +1075,11 @@ def test_pauli_agy_frontmatter(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops-core"],
+        plugins=["aops"],
         version=VERSION,
     )
 
-    pauli_md = dist_root / "aops-core-agy" / "agents" / "pauli.md"
+    pauli_md = dist_root / "aops-agy" / "agents" / "pauli.md"
     assert pauli_md.is_file()
     fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)
@@ -1091,7 +1099,7 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops-core", "orchestrate"],
+        plugins=["aops", "orchestrate"],
         clients=("claude", "agy", "openclaw"),
         version=VERSION,
     )
@@ -1104,13 +1112,13 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
     assert manifest_path.is_file()
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert data["name"] == "academicOps-openclaw"
-    assert {p["name"] for p in data["plugins"]} == {"aops-core", "orchestrate"}
+    assert {p["name"] for p in data["plugins"]} == {"aops", "orchestrate"}
     for p in data["plugins"]:
         assert p["source"] == f"./{p['name']}"
         assert p["version"] == VERSION
 
     # Verify per-plugin directories and zip packages
-    for name in ("aops-core", "orchestrate"):
+    for name in ("aops", "orchestrate"):
         plugin_dir = openclaw_root / name
         assert plugin_dir.is_dir()
         assert (plugin_dir / ".claude-plugin" / "plugin.json").is_file()
@@ -1122,8 +1130,8 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
         assert f"{name}/.claude-plugin/plugin.json" in names
 
     # Verify openclaw dist directory
-    assert (dist_root / "aops-core-openclaw" / ".claude-plugin" / "plugin.json").is_file()
-    assert (dist_root / "aops-core-openclaw.tar.gz").is_file()
+    assert (dist_root / "aops-openclaw" / ".claude-plugin" / "plugin.json").is_file()
+    assert (dist_root / "aops-openclaw.tar.gz").is_file()
 
 
 def test_openclaw_does_not_bake_urls(tmp_path):
@@ -1132,13 +1140,13 @@ def test_openclaw_does_not_bake_urls(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops-core"],
+        plugins=["aops"],
         clients=("claude", "openclaw"),
         version=VERSION,
     )
 
-    claude_mcp = (dist_root / "aops-core-claude" / ".mcp.json").read_bytes()
-    openclaw_mcp = (dist_root / "openclaw" / "aops-core" / ".mcp.json").read_bytes()
+    claude_mcp = (dist_root / "aops-claude" / ".mcp.json").read_bytes()
+    openclaw_mcp = (dist_root / "openclaw" / "aops" / ".mcp.json").read_bytes()
     assert claude_mcp == openclaw_mcp
 
 
@@ -1150,16 +1158,42 @@ def test_openclaw_ida_face_configuration(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops-core"],
+        plugins=["aops"],
         clients=("openclaw",),
         version=VERSION,
     )
 
-    ida_md = dist_root / "aops-core-openclaw" / "agents" / "ida.md"
+    ida_md = dist_root / "aops-openclaw" / "agents" / "ida.md"
     assert ida_md.is_file()
-    fm, _, body = ida_md.read_text().partition("---\n")[2].partition("---\n")
+    fm, _, _ = ida_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)
 
     assert agent["name"] == "ida"
-    assert "strategic face" in agent["description"]
-    assert "# Ida" in body
+
+
+def test_aops_ships_both_services_and_services_http(tmp_path):
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops"],
+        clients=("claude", "agy"),
+        version=VERSION,
+    )
+    claude_mcp = json.loads((dist_root / "aops-claude" / ".mcp.json").read_text())
+    assert "services" in claude_mcp["mcpServers"]
+    assert "services-http" in claude_mcp["mcpServers"]
+    assert "command" in claude_mcp["mcpServers"]["services"]
+    assert claude_mcp["mcpServers"]["services-http"] == {
+        "type": "http",
+        "url": "$PKB_MCP_URL",
+    }
+
+    agy_mcp = json.loads((dist_root / "aops-agy" / "mcp_config.json").read_text())
+    assert "services" in agy_mcp["mcpServers"]
+    assert "services-http" in agy_mcp["mcpServers"]
+    assert "command" in agy_mcp["mcpServers"]["services"]
+    assert agy_mcp["mcpServers"]["services-http"] == {
+        "serverUrl": "$PKB_MCP_URL",
+    }

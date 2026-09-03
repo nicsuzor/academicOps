@@ -45,6 +45,15 @@ _POLICY_FILE = _REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
 
+# The fixed part of the outage notice, read from the file the handler loads, so
+# these assertions bind the wiring and travel with any rewording of the message.
+_OUTAGE_NOTICE = (
+    (_COPE_HOOKS / "messages" / "evaluator-outage.md")
+    .read_text(encoding="utf-8")
+    .split("{detail}")[0]
+    .strip()
+)
+
 
 def _require_evaluate_enabled():
     if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
@@ -314,14 +323,14 @@ def test_layer1_loads_only_always_on_from_the_real_axioms_dir(tmp_path, monkeypa
     assert "AXIOMS-REVIEW" not in loaded
 
 
-def test_the_real_axioms_ship_parked_and_load_to_nothing(tmp_path, monkeypatch, capsys):
-    """The shipped state, as it stands: every axiom carries `trigger: off`, so
-    layer 1 loads no rule at all.
+def test_the_real_axioms_ship_with_only_bounded_execution_live(tmp_path, monkeypatch, capsys):
+    """The shipped state, as it stands: `bounded-execution` is the one axiom
+    carrying `trigger: always_on`, and layer 1 loads it alone.
 
     This is a live decision, not an invariant — rules are being switched back
-    on one at a time, and this test is expected to change when the first one
-    goes live. It is here so that the switch is a thing somebody has to
-    deliberately change, rather than something the suite never notices.
+    on one at a time, and this test is expected to change as each one goes
+    live. It is here so that the switch is a thing somebody has to deliberately
+    change, rather than something the suite never notices.
 
     The other half of the claim is that parking is silent: `off` is somebody
     saying they meant it, and a report on every tool call would train the
@@ -330,7 +339,7 @@ def test_the_real_axioms_ship_parked_and_load_to_nothing(tmp_path, monkeypatch, 
     monkeypatch.delenv("ACA_DATA", raising=False)
     plugin_root = tmp_path / "plugin"
     _copy_axioms(plugin_root / "axioms", live=False)
-    assert rules.load(plugin_root, tmp_path / "project") == {}
+    assert set(rules.load(plugin_root, tmp_path / "project")) == {"bounded-execution"}
     assert rules.DEGRADED_UNMARKED not in capsys.readouterr().err
 
 
@@ -1458,7 +1467,7 @@ def test_evaluate_fails_open_when_the_evaluator_errors(hooks_dir_with_axioms, mo
     result = handlers.evaluate(_bash_ctx(hooks, cwd))
     assert result is not None  # first outage this session: the one-time notice
     assert result.kind is Kind.ADVISE
-    assert "rule evaluator is not answering" in result.inject_text
+    assert _OUTAGE_NOTICE in result.inject_text
     assert "connection refused" in capsys.readouterr().err
 
 
@@ -1469,7 +1478,7 @@ def test_evaluate_fails_open_on_a_malformed_response(hooks_dir_with_axioms, tran
     result = handlers.evaluate(_bash_ctx(hooks, cwd))
     assert result is not None  # first outage this session: the one-time notice
     assert result.kind is Kind.ADVISE
-    assert "rule evaluator is not answering" in result.inject_text
+    assert _OUTAGE_NOTICE in result.inject_text
 
 
 def test_evaluate_says_nothing_when_there_is_no_tool_call(
@@ -1981,7 +1990,7 @@ def test_dispatch_end_to_end_unreachable_evaluator_fails_open(built_cope_plugin,
     assert "not being checked" in result.stderr
 
     out = json.loads(result.stdout)
-    assert "rule evaluator is not answering" in out["hookSpecificOutput"]["additionalContext"]
+    assert _OUTAGE_NOTICE in out["hookSpecificOutput"]["additionalContext"]
     assert "decision" not in out
     assert "permissionDecision" not in out["hookSpecificOutput"]
 
@@ -2082,7 +2091,7 @@ def test_dispatch_end_to_end_reports_the_same_fault_on_every_tool_call(
     assert "rule evaluator did not answer" in first.stderr
     assert "rule evaluator did not answer" in second.stderr
     # First call this session: the one-time notice is on the wire.
-    assert "rule evaluator is not answering" in first.stdout
+    assert _OUTAGE_NOTICE in first.stdout
     # Second call, same session: already announced, so nothing on the wire.
     assert second.stdout.strip() == ""
 
@@ -2164,8 +2173,9 @@ def test_dispatch_agy_never_evaluates_a_tool_call(built_cope_plugin, stub_evalua
         cwd=project_cwd,
         env=_configured_env(stub_evaluator),
     )
-    injected = json.loads(result.stdout)["injectSteps"][0]["ephemeralMessage"]
-    assert "The call that was evaluated" not in injected
+    # The advisory is delivered on agy's inject channel, and the evaluator was
+    # never called — the latter is what proves no tool call was evaluated.
+    assert json.loads(result.stdout)["injectSteps"][0]["ephemeralMessage"]
     assert _StubEvaluator.seen == []
 
 

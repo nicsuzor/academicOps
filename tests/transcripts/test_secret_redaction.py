@@ -107,6 +107,19 @@ class TestRedactSecrets:
         for n in ("12345", "678", "90", "0", "38", "3.4"):
             assert f": {n}" in out, f"metric value {n!r} did not survive"
 
+    def test_token_count_metrics_with_html_breaks_not_redacted(self):
+        # HTML renderers turn newlines into <br>. The assignment regex must not
+        # consume <br> into the metric value, so _NUMERIC_VALUE still matches
+        # and usage metrics in HTML artifacts are spared from redaction (#2406).
+        html_stats = (
+            "stats:<br>  input_tokens: 12345<br>  output_tokens: 678<br>  cache_read_tokens: 90<br>"
+        )
+        out = redact_secrets(html_stats)
+        assert REDACTED not in out
+        assert "input_tokens: 12345<br>" in out
+        assert "output_tokens: 678<br>" in out
+        assert "cache_read_tokens: 90<br>" in out
+
     def test_numeric_shell_assignment_not_redacted(self):
         # The same protection applies to shell-style ``FOO_TOKEN=12345``: a
         # bare integer is never a credential.
@@ -121,6 +134,29 @@ class TestRedactSecrets:
         out2 = redact_secrets('"api_key": "sk-ant-api03-abc123def456"')
         assert "sk-ant-api03-abc123def456" not in out2
         assert REDACTED in out2
+
+    def test_quoted_secret_with_spaces_redacted(self):
+        # Spaces in quoted secrets must not split the match and leak the tail (#2405).
+        text = '"MY_API_KEY": "firsthalf secondhalf9x"'
+        out = redact_secrets(text)
+        assert "firsthalf" not in out
+        assert "secondhalf9x" not in out
+        assert out == f'"MY_API_KEY": "{REDACTED}"'
+
+    def test_escaped_quote_secret_redacted(self):
+        # Escaped quotes in text assignments must be scrubbed cleanly (#2405).
+        text = 'export MY_API_KEY=\\"firsthalf secondhalf9x\\"'
+        out = redact_secrets(text)
+        assert "firsthalf" not in out
+        assert "secondhalf9x" not in out
+        assert out == f'export MY_API_KEY=\\"{REDACTED}\\"'
+
+    def test_fullwidth_colon_redacted(self):
+        # Fullwidth colon must be recognised in JSON/YAML assignments (#2405).
+        text = 'MY_API_KEY： "opaquevalue123"'
+        out = redact_secrets(text)
+        assert "opaquevalue123" not in out
+        assert out == f'MY_API_KEY： "{REDACTED}"'
 
 
 class TestRedactObj:

@@ -10,15 +10,9 @@ name = "Nicolas Suzor"
 email = "nic@suzor.net"
 #
 [[plugins]]
-directory = "aops-core"
-name = "aops-core"
-description = "ida for strategy and pauli for memory."
-category = "productivity"
-
-[[plugins]]
-directory = "orchestrate"
-name = "orchestrate"
-description = "james — the container worker; marsha — QA and UX excellence; adversary — red-team review."
+directory = "aops"
+name = "aops"
+description = "Research workflow automation: strategy (ida), memory (pauli), execution (james), QA (marsha), and red-team (adversary)."
 category = "productivity"
 
 [[plugins]]

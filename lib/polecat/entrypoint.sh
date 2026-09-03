@@ -73,4 +73,44 @@ fi
 # Keep .config traversable for multi-UID runs.
 chmod 777 "$HOME/.config" 2>/dev/null || true
 
+# Task-id-driven seed construction:
+# If POLECAT_TARGET_TASK (or POLECAT_TASK) is provided and no explicit prompt
+# was passed on argv, build and append the expanding /aops:pull command.
+TARGET_TASK="${POLECAT_TARGET_TASK:-${POLECAT_TASK:-}}"
+if [ -n "$TARGET_TASK" ] && [ "$#" -gt 0 ]; then
+    CMD_NAME="$(basename "${1:-}")"
+    if [ "$CMD_NAME" = "agy" ]; then
+        HAS_PROMPT=0
+        for arg in "$@"; do
+            if [ "$arg" = "--prompt" ] || [ "$arg" = "--prompt-interactive" ] || [ "$arg" = "-p" ] || [ "$arg" = "--print" ]; then
+                HAS_PROMPT=1
+                break
+            fi
+        done
+        if [ "$HAS_PROMPT" -eq 0 ]; then
+            if [ "${NONINTERACTIVE:-0}" = "1" ] || [ "${CI:-0}" = "1" ]; then
+                set -- "$@" "--print" "/aops:pull $TARGET_TASK"
+            else
+                set -- "$@" "--prompt-interactive" "/aops:pull $TARGET_TASK"
+            fi
+        fi
+    elif [ "$CMD_NAME" = "claude" ]; then
+        HAS_POSITIONAL=0
+        PREV=""
+        for arg in "$@"; do
+            if [ "$arg" = "$1" ]; then
+                continue
+            fi
+            if [[ "$arg" != -* ]] && [[ "$PREV" != "--output-format" ]] && [[ "$PREV" != "-o" ]] && [[ "$PREV" != "--agent" ]] && [[ "$PREV" != "-a" ]] && [[ "$PREV" != "--model" ]]; then
+                HAS_POSITIONAL=1
+                break
+            fi
+            PREV="$arg"
+        done
+        if [ "$HAS_POSITIONAL" -eq 0 ]; then
+            set -- "$@" "/aops:pull $TARGET_TASK"
+        fi
+    fi
+fi
+
 exec "$@"

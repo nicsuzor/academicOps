@@ -6,31 +6,21 @@ tags: [reference, peer-review, probes]
 
 # Analytical Probes
 
-This is the analytical core of a review: the recurring questions a careful assessor
-asks of _any_ application, independent of scheme. The skill's PREP stage reads the
-application against these probes and drafts criterion comments from what they surface.
+The analytical core of a review: the recurring questions a careful assessor asks of _any_
+application, independent of scheme. PREP reads the application against these probes and
+drafts criterion comments from what they surface.
 
-**Provenance.** The eleven probes below are reproduced **verbatim** from one academic's
-distilled review style (a law / social-science reviewer's ARC Future Fellowship and
-DECRA assessments — source note at the foot of this file). They are reproduced exactly,
-without paraphrase, on purpose: an earlier distillation of this same set into "8 probes"
-silently dropped four of the analytical moves (conceptual-contribution-vs-descriptive,
-citation-integration, translation-pathways, institutional-commitment). Paraphrasing a
-source you mean to preserve _is_ how analytical moves get laundered out. So this file
-keeps the source text intact.
+**Keep all eleven, verbatim.** They are one academic's distilled review style, held exactly
+as written because condensing or merging probes silently drops analytical moves — extend the
+set with probes your field needs, never prune it. Why verbatim, with the specific probes a
+prior condensation lost: [`specs/tools/peer-review-probes.md`](../../../../../specs/tools/peer-review-probes.md).
 
-**How to read this as a different academic.** The probe _set_ is a strong, transferable
-default — keep all eleven. The inline _examples_ (jurisdictions, dollar figures, sample
-sizes, "9 workshops", "four jurisdictions × three domains") are the source academic's,
-drawn from law and social-science grants; read them as illustrations and substitute your
-own discipline's analogues. Extend the set with probes your field needs; do **not** prune
-it down by merging or dropping probes — that is the exact lossy move this file exists to
-prevent. The probes look law/social-science-shaped and are untested on, e.g., biomedical
-or physics grants: treat them as a default you prune-by-addition, not a universal.
+**Adapting the set.** The inline examples (jurisdictions, dollar figures, sample sizes,
+"9 workshops", "four jurisdictions × three domains") come from law and social-science
+grants. Substitute your own discipline's analogues, and treat the set as a strong default
+that is untested on, say, biomedical or physics applications.
 
----
-
-## The eleven probes (verbatim source)
+## The eleven probes
 
 > ## What Nic consistently probes (the analytical signature)
 >
@@ -45,8 +35,6 @@ or physics grants: treat them as a default you prune-by-addition, not a universa
 > 9. **Access and dependency risk** — industry/regulator access assumed without groundwork or fallback.
 > 10. **Real translation pathways** — advisory boards, named regulator engagement, prior legislative impact count; "public-facing resources" alone don't.
 > 11. **Institutional commitment quality** — cash vs in-kind, teaching loads that undercut research intensity, transition risk.
-
----
 
 ## Using the probes in PREP
 
@@ -64,12 +52,3 @@ or physics grants: treat them as a default you prune-by-addition, not a universa
   be grounded in evidence, not asserted. This is the agent's anti-credulity check.
 - Aim feasibility and resourcing critiques (7, 11) at _institutions and structures_, never
   at a vulnerable early-career researcher (see [[review-guidance]]).
-
-## Source
-
-The eleven probes are the verbatim "analytical signature" section of a distilled
-review-style note, recovered from version control (PKB `kb-04a35b30`, originally
-`reviews/arc/templates/nic-review-style.md`). That note was itself distilled from five
-completed Future Fellowship reviews (FT26) and two DECRA reviews (DE27), plus a PKB
-pattern note on revision (`arc-1f789f90`). When adopting this skill, replace this file's
-inline examples with your own and keep the eleven moves intact.

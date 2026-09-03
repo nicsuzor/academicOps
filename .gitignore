@@ -365,3 +365,5 @@ test_result*.json
 archived
 .lmnr/
 .agents/explorer_survey_1/analysis.md
+fix_*.py
+patch_*.py

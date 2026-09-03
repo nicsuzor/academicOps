@@ -567,7 +567,7 @@
 - **build:** drop redundant autoMode manifest key to clear validate warning ([97facd7](https://github.com/nicsuzor/academicOps/commit/97facd7b8b5ec7a1bf873657ff73f3a49d834933))
 - **dispatch:** mandate skill-mediated dispatch + sibling-task PR bundling ([a7637fb](https://github.com/nicsuzor/academicOps/commit/a7637fb1665df9d77b05e1cb34e40be77d349a93))
 - **dispatch:** mandate skill-mediated dispatch + sibling-task PR bundling ([795ede6](https://github.com/nicsuzor/academicOps/commit/795ede6de0dc496dea20c42b1afd32f06874e0ec))
-- **docs:** repoint 7 unambiguous stale aops-core refs ([20bab0e](https://github.com/nicsuzor/academicOps/commit/20bab0e818234aadca4c4e442251fe7788119841))
+- **docs:** repoint 7 unambiguous stale aops refs ([20bab0e](https://github.com/nicsuzor/academicOps/commit/20bab0e818234aadca4c4e442251fe7788119841))
 - **hooks:** rephrase SubagentStop honesty reminder as re-output, not self-audit ([d1d50a3](https://github.com/nicsuzor/academicOps/commit/d1d50a3fda7ab1dd68c3c42bf9ae3912011c980c))
 - **launchd:** remove hardcoded machine paths from envvars plist ([#2254](https://github.com/nicsuzor/academicOps/issues/2254)) ([598afdb](https://github.com/nicsuzor/academicOps/commit/598afdb6de398275cfcc17b854fe61be35b0cfcc))
 - **macos:** restore launchd gh-auth injection + session-scoped SSH isolation ([#2251](https://github.com/nicsuzor/academicOps/issues/2251)) ([7bea600](https://github.com/nicsuzor/academicOps/commit/7bea600aff4173cf502a84deab2081a3e04d377f))
@@ -613,7 +613,7 @@
 
 - retire Gemini CLI as a supported client surface ([#2252](https://github.com/nicsuzor/academicOps/issues/2252)) ([57ca2a6](https://github.com/nicsuzor/academicOps/commit/57ca2a6f2407fb687d2b84d8c70995fb05b14af5))
 - **transcripts:** drop scheduled drift workflow, rely on the pytest ([#2266](https://github.com/nicsuzor/academicOps/issues/2266)) ([5ffea69](https://github.com/nicsuzor/academicOps/commit/5ffea699a1f025abe149f72b145427ac2188fc33))
-- **v0.4:** normalize services MCP rename + aops-core→aops consolidation ([5910671](https://github.com/nicsuzor/academicOps/commit/591067125cce0495aff682d2867a4490da26438e))
+- **v0.4:** normalize services MCP rename + aops→aops consolidation ([5910671](https://github.com/nicsuzor/academicOps/commit/591067125cce0495aff682d2867a4490da26438e))
 
 ## [0.3.79](https://github.com/nicsuzor/academicOps/compare/v0.3.78...v0.3.79) (2026-07-13)
 
@@ -635,7 +635,7 @@
 - **commands:** repoint /q and /maintain to situate and graph-maintenance skills ([76c955e](https://github.com/nicsuzor/academicOps/commit/76c955e5353710009625ffc7cd0fc143b74786c7))
 - correct stale single-prefix PKB MCP tool names in explicit-toollist agents ([#2216](https://github.com/nicsuzor/academicOps/issues/2216)) ([9f14518](https://github.com/nicsuzor/academicOps/commit/9f145189fab280b3e003edee46718343526bea4d))
 - **dev-crew:** sanitize + to - in live-edit mount version paths ([#2226](https://github.com/nicsuzor/academicOps/issues/2226)) ([db06d88](https://github.com/nicsuzor/academicOps/commit/db06d885bea47aa3349ad745ed464913c4675693))
-- **docker:** dist-only local build, drop aops-core/pkb/extras, fix enablement ([c84a952](https://github.com/nicsuzor/academicOps/commit/c84a95207a72f8599366163b4f1f670bb6a3b527))
+- **docker:** dist-only local build, drop aops/pkb/extras, fix enablement ([c84a952](https://github.com/nicsuzor/academicOps/commit/c84a95207a72f8599366163b4f1f670bb6a3b527))
 - **hooks:** accept string tool_output on PostToolUseFailure in normalize_input ([#2215](https://github.com/nicsuzor/academicOps/issues/2215)) ([d283cce](https://github.com/nicsuzor/academicOps/commit/d283cce2065835bea8589bc315d040b7dfff8a55))
 - **transcripts:** subagent identity from meta.json, backfill task_id to frontmatter ([#2213](https://github.com/nicsuzor/academicOps/issues/2213)) ([fab03b1](https://github.com/nicsuzor/academicOps/commit/fab03b12474d173aad9c8361b8c7146409eb5824))
 

@@ -81,6 +81,31 @@ def test_anchor_is_stripped_not_checked(fake_repo: Path) -> None:
     assert refs(fake_repo) == []
 
 
+@pytest.mark.parametrize(
+    "citation",
+    ["lib/real.md:12", "lib/real.md:1-5", "lib/real.md:53,55"],
+    ids=["single-line", "line-range", "line-list"],
+)
+def test_line_citation_is_stripped_not_checked(fake_repo: Path, citation: str) -> None:
+    """A ``path:12`` pinpoint addresses a location inside a file.
+
+    Like a ``#anchor`` it is not part of the filename, so the existence claim
+    it makes is about the file the pinpoint hangs off.
+    """
+    write(fake_repo, "doc.md", f"Enforced at `{citation}`.\n")
+    assert refs(fake_repo) == []
+
+
+def test_line_citation_still_fails_when_the_file_is_gone(fake_repo: Path) -> None:
+    """Stripping the pinpoint must not stop the check catching a dead file.
+
+    The miss reports the citation verbatim, so the pinpoint survives into the
+    error a reader has to act on.
+    """
+    write(fake_repo, "doc.md", "Enforced at `lib/gone.md:12`.\n")
+    assert refs(fake_repo) == ["lib/gone.md:12"]
+
+
 # --- It stays quiet about what is not ours to verify ----------------------
 
 
@@ -154,6 +179,19 @@ def test_clean_strips_anchors_and_rejects_foreign_shapes() -> None:
     assert clean("{{ template }}/a.md") is None
 
 
+def test_clean_strips_a_trailing_line_citation() -> None:
+    assert clean("lib/a.md:12") == "lib/a.md"
+    assert clean("lib/a.md:1-5") == "lib/a.md"
+    assert clean("lib/a.md:53,55") == "lib/a.md"
+    assert clean("lib/a.md:12#heading") == "lib/a.md"
+    # Only a trailing run of digits is a citation. A colon anywhere else, or
+    # followed by anything but digits, is part of the name.
+    assert clean("lib/a:b.md") == "lib/a:b.md"
+    assert clean("lib/a.md:notaline") == "lib/a.md:notaline"
+    # A scheme still wins: the port is not a line number.
+    assert clean("https://example.com:8080/a.md") is None
+
+
 def test_repo_shaped_needs_a_directory_component() -> None:
     top = {"specs", "lib"}
     assert is_repo_shaped("lib/a.md", top)
@@ -176,3 +214,15 @@ def test_repository_has_no_broken_references() -> None:
     misses, unused = RefCheck(REPO_ROOT).run()
     assert not misses, "\n".join(m.render() for m in misses)
     assert not unused, "\n".join(a.render() for a in unused)
+
+
+def test_skill_files_are_in_scope() -> None:
+    """A skill is an agent's instruction surface — a dead relative link inside one
+    is a pointer into nothing. Pin that `[tool.refcheck].include` actually reaches
+    plugins/*/skills/**/*.md, so narrowing the glob later fails loudly here rather
+    than silently dropping coverage."""
+    docs = {d.relative_to(REPO_ROOT).as_posix() for d in RefCheck(REPO_ROOT).documents()}
+    skill_docs = [d for d in docs if d.startswith("plugins/") and "/skills/" in d]
+    assert skill_docs, (
+        "no plugins/*/skills/**/*.md file is in scope — check pyproject.toml [tool.refcheck].include"
+    )

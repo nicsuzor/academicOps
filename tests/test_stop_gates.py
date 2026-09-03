@@ -1,5 +1,5 @@
 """End-to-end tests for ida's quiet gate
-(plugins/aops-core/hooks/handlers.py:be_quiet) and orchestrate's hearsay
+(plugins/aops/hooks/handlers.py:be_quiet) and orchestrate's hearsay
 reminder and honesty advisory
 (plugins/orchestrate/hooks/handlers.py:rule_against_hearsay, honest_output).
 
@@ -38,8 +38,8 @@ def _require_orchestrate_hearsay_enabled():
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
-_IDA_HOOKS = _REPO_ROOT / "plugins" / "aops-core" / "hooks"
-_ORCHESTRATE_HOOKS = _REPO_ROOT / "plugins" / "orchestrate" / "hooks"
+_IDA_HOOKS = _REPO_ROOT / "plugins" / "aops" / "hooks"
+_ORCHESTRATE_HOOKS = _REPO_ROOT / "plugins" / "aops" / "hooks"
 
 
 def _plugin_hooks_dir(tmp_path: Path, plugin_hooks: Path) -> Path:
@@ -185,24 +185,26 @@ def test_orchestrate_honesty_fires_on_claude_subagent_start(orchestrate_hooks):
     assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
 
 
-def test_orchestrate_honesty_skips_ida_on_subagent_start(orchestrate_hooks):
-    """ida speaks to the person and is exempt from the subagent honesty reminder."""
+@pytest.mark.parametrize("agent_type", ["aops:ida", "orchestrate:james"])
+def test_orchestrate_honesty_skips_supervisors_on_subagent_start(orchestrate_hooks, agent_type):
+    """ida and james supervise rather than report: they weigh other agents'
+    evidence instead of producing their own, so the reminder is not theirs."""
     result = _run(
         orchestrate_hooks,
         "claude",
         "SubagentStart",
-        {"hook_event_name": "SubagentStart", "agent_type": "pkb:ida"},
+        {"hook_event_name": "SubagentStart", "agent_type": agent_type},
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
 
 
-def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_ida(orchestrate_hooks):
+def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_a_supervisor(orchestrate_hooks):
     result = _run(
         orchestrate_hooks,
         "claude",
         "SubagentStart",
-        {"hook_event_name": "SubagentStart", "agent_type": "orchestrate:james"},
+        {"hook_event_name": "SubagentStart", "agent_type": "orchestrate:marsha"},
     )
     assert result.returncode == 0
     out = json.loads(result.stdout)
@@ -259,7 +261,7 @@ def test_orchestrate_stop_hook_is_wired_synchronously(orchestrate_hooks):
     the advisory reaches the model neither on that turn nor the next), so the
     honesty advisory only lands from a synchronous entry."""
     manifest = json.loads(
-        (_REPO_ROOT / "plugins" / "orchestrate" / "manifest" / "hooks.template.json").read_text(
+        (_REPO_ROOT / "plugins" / "aops" / "manifest" / "hooks.template.json").read_text(
             encoding="utf-8"
         )
     )

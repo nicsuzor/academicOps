@@ -1,5 +1,5 @@
 # Sleep Cycle: Periodic Consolidation Agent
-# Runs in the brain ($ACA_DATA) repo on a schedule.
+# Runs in the brain ($ACA_DATA) repo via manual dispatch (workflow_dispatch).
 # Launches a Claude agent that works through consolidation phases using judgment.
 #
 # Install: copy this file to $ACA_DATA/.github/workflows/sleep-cycle.yml
@@ -117,26 +117,15 @@ jobs:
           settings: ${{ runner.temp }}/otel-settings.json
           prompt: |
             You are the Sleep Cycle consolidation agent running in maintenance mode.
-            Read the unified memory skill for full instructions:
-              ${{ github.workspace }}/_aops/aops/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/aops/skills/remember/references/consolidation.md
+            Read the remember skill and consolidation reference for full instructions:
+              ${{ github.workspace }}/_aops/plugins/aops/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/aops/skills/remember/references/consolidation.md
 
-            Work through ALL phases in order (0 through 11):
-              Phase 0:  Graph Health (baseline)
-              Phase 1:  Session Backfill
-              Phase 2:  Transcript Mining
-              Phase 3:  Episode Replay
-              Phase 4:  Knowledge Consolidation
-              Phase 5:  Index Refresh
-              Phase 6:  Data Quality Reconciliation
-              Phase 7:  Staleness Sweep
-              Phase 8:  Refile Processing
-              Phase 9:  Graph Maintenance
-              Phase 10: Consolidation Self-Check
-              Phase 11: Brain Sync
+            Work through the consolidation stages in order (Stages 1 through 8) as
+            defined in consolidation.md.
 
-            Use your judgment about what needs attention. Skip phases where there's
-            nothing to do — but always run Phase 0 (baseline) and Phase 11 (sync).
+            Use your judgment about what needs attention. Skip stages where there's
+            nothing to do — but always run Stage 1 (baseline) and Stage 8 (self-check).
 
             ## Values Alignment
 

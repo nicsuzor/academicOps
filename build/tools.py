@@ -80,53 +80,6 @@ def translate_mcp_tool_to_agy(tool_name: str, plugin_name: str = "") -> str:
     return f"mcp_{server_name}_{tool_suffix}"
 
 
-def extract_agy_mcp_servers(frontmatter: dict[str, Any], plugin_name: str = "") -> list[str]:
-    """Extracts unique canonical MCP server names for agy from frontmatter's mcpServers and mcp__ tools."""
-    raw_mcp_servers = frontmatter.get("mcpServers")
-    servers: list[str] = []
-
-    def _add_server(s: str) -> None:
-        if not s or not isinstance(s, str):
-            return
-        if ":" in s:
-            s = s.split(":")[-1]
-        if plugin_name and s.startswith(f"plugin_{plugin_name}_"):
-            s = s[len(f"plugin_{plugin_name}_") :]
-        elif s.startswith("plugin_"):
-            parts = s.split("_")
-            if len(parts) >= 3:
-                s = parts[-1]
-        if plugin_name and s.startswith(f"{plugin_name}_"):
-            s = s[len(f"{plugin_name}_") :]
-
-        if s and s not in servers:
-            servers.append(s)
-
-    if raw_mcp_servers:
-        if isinstance(raw_mcp_servers, str):
-            for item in raw_mcp_servers.split(","):
-                _add_server(item.strip())
-        elif isinstance(raw_mcp_servers, list):
-            for item in raw_mcp_servers:
-                _add_server(str(item).strip())
-
-    for key in ("tools", "disallowedTools"):
-        val = frontmatter.get(key)
-        tool_list = []
-        if isinstance(val, str):
-            tool_list = [t.strip() for t in val.split(",") if t.strip()]
-        elif isinstance(val, list):
-            tool_list = [str(t).strip() for t in val if isinstance(t, str)]
-        for t in tool_list:
-            base_name = t.split("(", 1)[0].strip() if "(" in t else t
-            if base_name.startswith("mcp__"):
-                parts = base_name[5:].split("__")
-                if parts and parts[0]:
-                    _add_server(parts[0])
-
-    return servers
-
-
 def process_agent_tools_agy(
     raw_tools: Any,
     has_tools_key: bool,

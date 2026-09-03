@@ -30,7 +30,8 @@ from pathlib import Path
 
 import pytest
 
-from lib.polecat.cli import cleanup_isolated_workspace, resolve_isolated_workspace
+from lib.polecat.cli import _get_git_head, cleanup_isolated_workspace, resolve_isolated_workspace
+from lib.polecat.staleness import ImageProvenance, evaluate_staleness
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -226,16 +227,19 @@ def test_isolated_workspace_respects_base_option(fake_canonical_repo, tmp_path):
     cleanup_isolated_workspace(cleanup_info)
 
 
-def test_isolated_workspace_defaults_to_config_branch(fake_canonical_repo, tmp_path):
-    """When base is None, isolated workspace must default to the branch specified in polecat.yaml config."""
+def test_isolated_workspace_always_captures_canonical_head_when_base_unspecified(
+    fake_canonical_repo, tmp_path
+):
+    """When base is None, isolated workspace must fork from the canonical repo's current HEAD,
+    never falling back to a hardcoded default_branch or remote default."""
     initial_branch = _run(
         "git", "rev-parse", "--abbrev-ref", "HEAD", cwd=fake_canonical_repo
     ).strip()
+    initial_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
     _run("git", "checkout", "-b", "dev", cwd=fake_canonical_repo)
     (fake_canonical_repo / "dev.txt").write_text("dev content\n")
     _run("git", "add", "dev.txt", cwd=fake_canonical_repo)
     _run("git", "commit", "-m", "dev commit", cwd=fake_canonical_repo)
-    dev_sha = _run("git", "rev-parse", "HEAD", cwd=fake_canonical_repo).strip()
     _run("git", "checkout", initial_branch, cwd=fake_canonical_repo)
 
     polecat_home = tmp_path / "polecat-home"
@@ -245,8 +249,14 @@ def test_isolated_workspace_defaults_to_config_branch(fake_canonical_repo, tmp_p
     )
 
     isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
-    assert isolated_sha == dev_sha
-    assert (isolated_path / "dev.txt").read_text() == "dev content\n"
+    # Must capture initial_branch HEAD, NOT dev
+    assert isolated_sha == initial_sha
+    assert not (isolated_path / "dev.txt").exists()
+    assert cleanup_info["base_ref"] == initial_branch
+
+    # Git config in clone must record polecat.base
+    cfg_base = _run("git", "config", "polecat.base", cwd=isolated_path).strip()
+    assert cfg_base == initial_branch
 
     cleanup_isolated_workspace(cleanup_info)
 
@@ -679,9 +689,11 @@ def test_canonical_checkout_immutability_during_dispatch(tmp_path):
     cleanup_isolated_workspace(cleanup_info)
 
 
-def test_isolated_workspace_resolves_local_commit_when_fetch_fails(tmp_path):
-    """When base is a valid local commit (e.g. HEAD~1 or SHA) and origin fetch fails,
-    resolve_isolated_workspace verifies the commit locally and succeeds."""
+def test_isolated_workspace_fails_closed_on_fetch_error_for_local_ref(tmp_path):
+    """When base is a valid local commit (e.g. HEAD~1 or SHA) but origin fetch fails,
+    resolve_isolated_workspace must fail closed (SystemExit) rather than falling back
+    to local-only verification. A fetch failure is fail-closed on every `--base` form,
+    with no exception for refs that happen to also resolve locally."""
     canonical = tmp_path / "canonical-local-fallback"
     canonical.mkdir()
     _run("git", "init", cwd=canonical)
@@ -690,7 +702,6 @@ def test_isolated_workspace_resolves_local_commit_when_fetch_fails(tmp_path):
     (canonical / "file1.txt").write_text("commit 1\n")
     _run("git", "add", "file1.txt", cwd=canonical)
     _run("git", "commit", "-m", "first", cwd=canonical)
-    first_sha = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
     (canonical / "file2.txt").write_text("commit 2\n")
     _run("git", "add", "file2.txt", cwd=canonical)
     _run("git", "commit", "-m", "second", cwd=canonical)
@@ -704,17 +715,9 @@ def test_isolated_workspace_resolves_local_commit_when_fetch_fails(tmp_path):
     )
 
     polecat_home = tmp_path / "polecat-home"
-    # base="HEAD~1" cannot be fetched from origin, but resolves locally
-    isolated_path, cleanup_info = resolve_isolated_workspace(
-        canonical, "session-local-base", polecat_home, base="HEAD~1"
-    )
-
-    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
-    assert isolated_sha == first_sha
-    assert (isolated_path / "file1.txt").exists()
-    assert not (isolated_path / "file2.txt").exists()
-
-    cleanup_isolated_workspace(cleanup_info)
+    # base="HEAD~1" resolves locally, but the origin fetch fails, so dispatch must halt.
+    with pytest.raises(SystemExit):
+        resolve_isolated_workspace(canonical, "session-local-base", polecat_home, base="HEAD~1")
 
 
 def test_isolated_workspace_origin_prefix_fails_closed_on_fetch_error(tmp_path):
@@ -745,3 +748,234 @@ def test_isolated_workspace_origin_prefix_fails_closed_on_fetch_error(tmp_path):
             polecat_home,
             base="origin/nonexistent-branch",
         )
+
+
+def test_isolated_workspace_non_default_base_branch_metadata(tmp_path):
+    """When a non-default base branch is passed (e.g. v0.9.1 or feature-branch),
+    the isolated workspace creates its worktree from that exact base, sets git config
+    polecat.base, and returns base_ref and base_sha in cleanup_info."""
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("main content\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "main initial", cwd=canonical)
+    _run("git", "branch", "-m", "main", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "main", cwd=canonical)
+
+    # Create release branch v0.9.1 on upstream
+    other_dev = tmp_path / "other-dev"
+    other_dev.mkdir()
+    _run("git", "clone", str(upstream), str(other_dev), cwd=tmp_path)
+    _run("git", "config", "user.email", "test@example.com", cwd=other_dev)
+    _run("git", "config", "user.name", "Test", cwd=other_dev)
+    _run("git", "checkout", "-b", "v0.9.1", cwd=other_dev)
+    (other_dev / "release.txt").write_text("v0.9.1 release\n")
+    _run("git", "add", "release.txt", cwd=other_dev)
+    _run("git", "commit", "-m", "cut v0.9.1", cwd=other_dev)
+    v091_sha = _run("git", "rev-parse", "HEAD", cwd=other_dev).strip()
+    _run("git", "push", "origin", "v0.9.1", cwd=other_dev)
+
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-v091-dispatch", polecat_home, base="v0.9.1"
+    )
+
+    isolated_sha = _run("git", "rev-parse", "HEAD", cwd=isolated_path).strip()
+    assert isolated_sha == v091_sha
+    assert (isolated_path / "release.txt").exists()
+    assert cleanup_info["base_ref"] == "v0.9.1"
+    assert cleanup_info["base_sha"] == v091_sha
+
+    # Verify git config inside the isolated clone
+    assert _run("git", "config", "polecat.base", cwd=isolated_path).strip() == "v0.9.1"
+    assert (
+        _run(
+            "git",
+            "config",
+            "branch.polecat/session-v091-dispatch.base",
+            cwd=isolated_path,
+        ).strip()
+        == "v0.9.1"
+    )
+
+    cleanup_isolated_workspace(cleanup_info)
+
+
+def test_staleness_check_must_compare_against_canonical_head_not_isolated_base_sha(tmp_path):
+    """aops_81849370 regression.
+
+    For the default dispatch path (no --repo-dir, no --base),
+    resolve_isolated_workspace's clone deliberately forks from the
+    freshly-fetched upstream tracking ref rather than the canonical
+    checkout's own local HEAD (the Mode-1 fix exercised above by
+    test_isolated_workspace_fetches_remote_when_local_branch_is_stale). That
+    is the right call for deciding what CODE a dispatched clone should
+    contain — but it is the wrong commit to judge a LOCALLY BUILT image
+    against: `make docker-build` stamps the image with the canonical
+    checkout's own HEAD at build time, so comparing it against the clone's
+    upstream-derived base_sha reports a build that just succeeded as stale
+    whenever origin has moved since (near-guaranteed in a repo with a
+    continuous merge cadence, and unfixable by the warning's own prescribed
+    remedy of re-running `make docker-build`, since that only ever stamps
+    local HEAD again). `lib/polecat/cli.py`'s `run()` now anchors the
+    staleness comparison to the canonical checkout's HEAD (`canonical_head`,
+    captured before the clone call) instead of to
+    resolve_isolated_workspace()'s returned base_sha. This test reproduces
+    both the pre-fix false positive and the post-fix correct result from the
+    same fixture.
+    """
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _run("git", "init", "--bare", cwd=upstream)
+
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("initial\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+    _run("git", "branch", "-m", "dev", cwd=canonical)
+    _run("git", "remote", "add", "origin", str(upstream), cwd=canonical)
+    _run("git", "push", "-u", "origin", "dev", cwd=canonical)
+
+    # The commit `make docker-build`, run in `canonical` right now, would
+    # stamp into the image via AOPS_BUILD_COMMIT.
+    canonical_head = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+
+    # Another agent merges a PR to origin's dev branch in the gap between the
+    # build finishing and this dispatch starting.
+    other_dev = tmp_path / "other-dev"
+    _run("git", "clone", str(upstream), str(other_dev), cwd=tmp_path)
+    _run("git", "config", "user.email", "test@example.com", cwd=other_dev)
+    _run("git", "config", "user.name", "Test", cwd=other_dev)
+    _run("git", "checkout", "dev", cwd=other_dev)
+    (other_dev / "landed_pr.txt").write_text("merged after the local build\n")
+    _run("git", "add", "landed_pr.txt", cwd=other_dev)
+    _run("git", "commit", "-m", "merge PR after build", cwd=other_dev)
+    _run("git", "push", "origin", "dev", cwd=other_dev)
+    upstream_tip = _run("git", "rev-parse", "HEAD", cwd=other_dev).strip()
+    assert upstream_tip != canonical_head
+
+    # Default dispatch: no --base given.
+    polecat_home = tmp_path / "polecat-home"
+    isolated_path, cleanup_info = resolve_isolated_workspace(
+        canonical, "session-default-dispatch", polecat_home, base=None
+    )
+    # Documents the existing, deliberate Mode-1 behavior: the clone forks
+    # from the fetched upstream tip, never from canonical's local HEAD.
+    assert cleanup_info["base_sha"] == upstream_tip
+    assert cleanup_info["base_sha"] != canonical_head
+    cleanup_isolated_workspace(cleanup_info)
+
+    image = ImageProvenance(
+        dist_source="local",
+        commit_sha=canonical_head,
+        short_sha=canonical_head[:8],
+        version="0.0.0",
+        is_dirty=False,
+    )
+
+    # Pre-fix wiring (base_sha = the isolated clone's base_sha): the image
+    # that was just built from canonical_head is reported stale, purely
+    # because origin moved after the build — the bug.
+    buggy = evaluate_staleness(
+        image,
+        canonical,
+        dispatch_mode="default",
+        base_sha=cleanup_info["base_sha"],
+        session_id="session-default-dispatch",
+    )
+    assert buggy["is_stale"] is True
+    assert buggy["staleness_status"] == "STALE_LOCAL_BUILD"
+
+    # Fixed wiring (base_sha = canonical_head, per cli.py's run()): the same
+    # image is correctly reported fresh.
+    fixed = evaluate_staleness(
+        image,
+        canonical,
+        dispatch_mode="default",
+        base_sha=canonical_head,
+        session_id="session-default-dispatch",
+    )
+    assert fixed["is_stale"] is False
+    assert fixed["staleness_status"] == "FRESH_LOCAL_BUILD"
+
+
+def test_staleness_check_still_reports_stale_when_image_is_genuinely_behind_canonical_head(
+    tmp_path,
+):
+    """aops_d903e160 regression: the negative direction of the aops_81849370 fix.
+
+    test_staleness_check_must_compare_against_canonical_head_not_isolated_base_sha
+    (above) proves the fix stops a FALSE positive: an image built from
+    canonical_head is no longer reported stale merely because the isolated
+    clone's upstream-derived base_sha moved on after the build. It never
+    proves the fixed wiring still catches a TRUE positive — an image whose
+    baked commit is genuinely behind the canonical checkout's own HEAD. A
+    baseline that silently matched everything (the "wrong direction" failure
+    mode the PR is held against) would pass that test too and still be
+    useless. This test builds a real git repo, records its HEAD as the
+    commit the image was (hypothetically) built from, then advances the
+    checkout with a further local commit — local development moving on with
+    no rebuild yet, the exact event `canonical_head` exists to catch, and
+    unrelated to the isolated-clone base_sha mechanics the test above covers.
+    canonical_head is computed via `_get_git_head`, the actual helper
+    cli.py's run() calls to produce it (aops_81849370's fix), against the
+    real advanced repo — not a hand-picked string standing in for it.
+    """
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    _run("git", "init", cwd=canonical)
+    _run("git", "config", "user.email", "test@example.com", cwd=canonical)
+    _run("git", "config", "user.name", "Test", cwd=canonical)
+    (canonical / "README.md").write_text("initial\n")
+    _run("git", "add", "README.md", cwd=canonical)
+    _run("git", "commit", "-m", "initial", cwd=canonical)
+
+    # The commit `make docker-build`, run in `canonical` at this point, would
+    # stamp into the image via AOPS_BUILD_COMMIT.
+    baked_commit = _run("git", "rev-parse", "HEAD", cwd=canonical).strip()
+
+    # Local work lands after the (simulated) build, with no rebuild yet —
+    # genuine staleness, not a fetch/base_sha artefact.
+    (canonical / "CHANGES.md").write_text("moved on\n")
+    _run("git", "add", "CHANGES.md", cwd=canonical)
+    _run("git", "commit", "-m", "local work after the build", cwd=canonical)
+
+    # Real path, not hand-picked: the same helper cli.py's run() calls to
+    # capture canonical_head, invoked against the real, now-advanced repo.
+    canonical_head = _get_git_head(canonical)
+    assert canonical_head != baked_commit
+
+    ancestry = subprocess.run(
+        ["git", "-C", str(canonical), "merge-base", "--is-ancestor", baked_commit, canonical_head],
+    )
+    assert ancestry.returncode == 0, "baked_commit must be a genuine ancestor of canonical_head"
+
+    image = ImageProvenance(
+        dist_source="local",
+        commit_sha=baked_commit,
+        short_sha=baked_commit[:8],
+        version="0.0.0",
+        is_dirty=False,
+    )
+
+    result = evaluate_staleness(
+        image,
+        canonical,
+        dispatch_mode="default",
+        base_sha=canonical_head,
+        session_id="session-default-dispatch",
+    )
+    assert result["is_stale"] is True
+    assert result["staleness_status"] == "STALE_LOCAL_BUILD"
