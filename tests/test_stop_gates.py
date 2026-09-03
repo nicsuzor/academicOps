@@ -185,24 +185,26 @@ def test_orchestrate_honesty_fires_on_claude_subagent_start(orchestrate_hooks):
     assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
 
 
-def test_orchestrate_honesty_skips_ida_on_subagent_start(orchestrate_hooks):
-    """ida speaks to the person and is exempt from the subagent honesty reminder."""
+@pytest.mark.parametrize("agent_type", ["aops:ida", "orchestrate:james"])
+def test_orchestrate_honesty_skips_supervisors_on_subagent_start(orchestrate_hooks, agent_type):
+    """ida and james supervise rather than report: they weigh other agents'
+    evidence instead of producing their own, so the reminder is not theirs."""
     result = _run(
         orchestrate_hooks,
         "claude",
         "SubagentStart",
-        {"hook_event_name": "SubagentStart", "agent_type": "pkb:ida"},
+        {"hook_event_name": "SubagentStart", "agent_type": agent_type},
     )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
 
 
-def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_ida(orchestrate_hooks):
+def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_a_supervisor(orchestrate_hooks):
     result = _run(
         orchestrate_hooks,
         "claude",
         "SubagentStart",
-        {"hook_event_name": "SubagentStart", "agent_type": "orchestrate:james"},
+        {"hook_event_name": "SubagentStart", "agent_type": "orchestrate:marsha"},
     )
     assert result.returncode == 0
     out = json.loads(result.stdout)
