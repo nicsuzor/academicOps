@@ -400,9 +400,30 @@ def test_agy_agent_tool_names_are_translated(built):
 
 
 def test_agent_no_tools_key_semantics(built_orchestrate):
-    """marsha.md sets no `tools:` key in source frontmatter.
+    """adversary.md sets no `tools:` key in source frontmatter.
     Claude: leaves tools unset (inherits everything).
-    agy: emits full 21 accepted tools vocabulary.
+    agy: emits the full accepted tools vocabulary.
+    """
+    import yaml
+
+    from build.tools import load_tool_config
+
+    accepted_tools, _ = load_tool_config()
+
+    claude_agent = built_orchestrate / "aops-claude" / "agents" / "adversary.md"
+    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
+    assert "tools" not in claude_fm
+
+    agy_agent = built_orchestrate / "aops-agy" / "agents" / "adversary.md"
+    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
+    assert agy_fm["tools"] == accepted_tools
+
+
+def test_agent_tools_allowlist_survives_agy_translation(built_orchestrate):
+    """marsha.md carries a `tools:` allowlist; both clients must honour it.
+
+    Claude keeps the source names verbatim; agy translates them into its own
+    vocabulary and keeps the MCP server wildcard intact.
     """
     import yaml
 
@@ -412,11 +433,25 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     claude_agent = built_orchestrate / "aops-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
-    assert "tools" not in claude_fm
+    assert claude_fm["tools"] == [
+        "Bash",
+        "Read",
+        "Grep",
+        "Glob",
+        "Skill",
+        "mcp__playwright__*",
+    ]
 
     agy_agent = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert agy_fm["tools"] == accepted_tools
+    assert agy_fm["tools"] == [
+        "run_command",
+        "view_file",
+        "grep_search",
+        "find_by_name",
+        "mcp_playwright_*",
+    ]
+    assert agy_fm["tools"] != accepted_tools
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
@@ -807,7 +842,10 @@ def test_cowork_zip_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
     assert "env" in baked["mcpServers"]["services"]
 
 
-def test_cowork_zip_resolves_http_and_stdio_servers(tmp_path, monkeypatch):
+def test_cowork_zip_collapses_pkb_servers_to_one_stdio_proxy(tmp_path, monkeypatch):
+    """Cowork cannot speak streamable HTTP to an MCP server (see
+    scripts/run-mcp.sh), so whatever transport the Claude dist ships, the zip
+    gets exactly one stdio proxy with the URL resolved into its env."""
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
     plugin = _fixture_pkb_plugin(tmp_path)
     data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
@@ -815,13 +853,32 @@ def test_cowork_zip_resolves_http_and_stdio_servers(tmp_path, monkeypatch):
     (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
 
     baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
-    assert baked["mcpServers"]["services"]["env"] == {
-        "PKB_MCP_URL": "https://pkb.example.ts.net/mcp"
-    }
-    assert baked["mcpServers"]["services-http"] == {
-        "type": "http",
-        "url": "https://pkb.example.ts.net/mcp",
-    }
+    servers = baked["mcpServers"]
+
+    assert servers["services"]["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
+    assert servers["services"]["args"] == ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
+    # The http transport must not survive into the zip: Cowork cannot use it,
+    # and leaving it would reload every PKB tool schema a second time.
+    assert "services-http" not in servers
+    assert [name for name, cfg in servers.items() if cfg.get("type") == "http"] == []
+
+
+def test_cowork_zip_converts_a_lone_http_server_to_stdio(tmp_path, monkeypatch):
+    """The template ships only `services-http`; the zip must still end up with
+    the stdio proxy rather than an http server Cowork cannot connect to."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    plugin = _fixture_pkb_plugin(tmp_path)
+    (plugin / ".mcp.json").write_text(
+        json.dumps({"mcpServers": {"services-http": {"type": "http", "url": "$PKB_MCP_URL"}}}),
+        encoding="utf-8",
+    )
+
+    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
+    servers = baked["mcpServers"]
+
+    assert list(servers) == ["services"]
+    assert servers["services"]["command"] == "bash"
+    assert servers["services"]["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
 
 
 # --- hard-error paths ---------------------------------------------------------
@@ -1087,7 +1144,11 @@ def test_pauli_agy_frontmatter(tmp_path):
     assert agent["name"] == "pauli"
     assert "mcpServers" not in agent
     accepted_tools, _ = load_tool_config()
-    assert agent["tools"] == accepted_tools
+    # pauli carries a `tools:` allowlist: PKB MCP servers only, no host tools.
+    # The three source prefixes collapse to two agy names, because agy strips
+    # the `plugin_<name>_` install-path prefix.
+    assert agent["tools"] == ["mcp_services_*", "mcp_services-http_*"]
+    assert agent["tools"] != accepted_tools
     assert "hidden" not in agent
     assert "includeSections" not in agent
     assert "call_mcp_tool" not in agent["tools"]
@@ -1171,7 +1232,13 @@ def test_openclaw_ida_face_configuration(tmp_path):
     assert agent["name"] == "ida"
 
 
-def test_aops_ships_both_services_and_services_http(tmp_path):
+def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
+    """One PKB endpoint, registered once.
+
+    Registering the same $PKB_MCP_URL under two server names loads every PKB
+    tool schema twice into every agent's static context. Each client gets the
+    single transport it can actually speak.
+    """
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
@@ -1182,18 +1249,16 @@ def test_aops_ships_both_services_and_services_http(tmp_path):
         version=VERSION,
     )
     claude_mcp = json.loads((dist_root / "aops-claude" / ".mcp.json").read_text())
-    assert "services" in claude_mcp["mcpServers"]
-    assert "services-http" in claude_mcp["mcpServers"]
-    assert "command" in claude_mcp["mcpServers"]["services"]
-    assert claude_mcp["mcpServers"]["services-http"] == {
-        "type": "http",
-        "url": "$PKB_MCP_URL",
+    assert claude_mcp["mcpServers"] == {
+        "services-http": {
+            "type": "http",
+            "url": "$PKB_MCP_URL",
+        }
     }
 
     agy_mcp = json.loads((dist_root / "aops-agy" / "mcp_config.json").read_text())
-    assert "services" in agy_mcp["mcpServers"]
-    assert "services-http" in agy_mcp["mcpServers"]
-    assert "command" in agy_mcp["mcpServers"]["services"]
-    assert agy_mcp["mcpServers"]["services-http"] == {
-        "serverUrl": "$PKB_MCP_URL",
+    assert agy_mcp["mcpServers"] == {
+        "services-http": {
+            "serverUrl": "$PKB_MCP_URL",
+        }
     }

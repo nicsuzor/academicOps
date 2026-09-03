@@ -4,10 +4,11 @@
 Covers:
 1. The logic-check sequence is parsed live from hearsay.md -- six questions,
    in order -- so "same number of questions, same order" holds by construction.
-2. record_verdict() rejects a mismatched answer count and never closes the
-   gate on a malformed verdict.
-3. record_verdict() emits a TOOL span (via a stubbed claude_code_tracer) with
-   one attribute per logic-check question, and closes the gate.
+2. record_verdict() requires at least one verdict and rejects more answers
+   than there are questions, and never closes the gate on a malformed verdict.
+3. record_verdict() emits a TOOL span (via a stubbed claude_code_tracer)
+   carrying the six questions as the frame, plus either a single
+   premise_check.verdict or one answer per question, and closes the gate.
 4. record_verdict() still closes the gate (verdict-ran-locally) when the
    tracer is unconfigured, but reports span_emitted=False -- telemetry and
    "the check ran" are separable.
@@ -129,20 +130,65 @@ def test_load_logic_check_questions():
 # ---------------------------------------------------------------------------
 
 
-def test_record_verdict_rejects_wrong_answer_count():
-    session_id = "sess-mismatch"
+def test_record_verdict_rejects_empty_answers():
+    session_id = "sess-empty"
     pcg.arm(session_id, claim_id="claim-1")
 
-    with pytest.raises(ValueError, match="expected 6 answers"):
+    with pytest.raises(ValueError, match="at least one verdict"):
         pcv.record_verdict(
             session_id=session_id,
             claim_id="claim-1",
-            answers=["only", "two"],
+            answers=[],
             tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
         )
 
     # Malformed verdict must not disarm.
     assert pcg.is_armed(session_id) is True
+
+
+def test_record_verdict_rejects_more_answers_than_questions():
+    session_id = "sess-toomany"
+    pcg.arm(session_id, claim_id="claim-1")
+
+    with pytest.raises(ValueError, match="at most 6 answers"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-1",
+            answers=[f"a{i}" for i in range(7)],
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )
+
+    assert pcg.is_armed(session_id) is True
+
+
+def test_record_verdict_accepts_single_verdict_and_disarms():
+    """The normal path: one reasoned verdict, six questions still recorded as
+    the frame that was reasoned through."""
+    session_id = "sess-single"
+    pcg.arm(session_id, claim_id="claim-1")
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-1",
+        answers=["Evidence is sufficient; the one unstated premise is named and checked."],
+        tracer_mod=tracer,
+    )
+
+    assert result["ok"] is True
+    assert result["question_count"] == 6
+    assert result["disarmed"] is True
+
+    attrs = tracer.exported[0]["spans"][0]["attributes"]
+    assert attrs["premise_check.answer_count"] == 1
+    assert attrs["premise_check.question_count"] == 6
+    assert "the one unstated premise" in attrs["premise_check.verdict"]
+    # The six questions survive as the documented frame.
+    for i in range(1, 7):
+        assert f"premise_check.q{i}.question" in attrs
+    assert "premise_check.q1.answer" not in attrs
+
+    assert pcg.is_armed(session_id) is False
 
 
 # ---------------------------------------------------------------------------

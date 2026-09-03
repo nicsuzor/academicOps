@@ -25,8 +25,14 @@ When you receive a report, **do not accept it at face value**. Instead, evaluate
 
 ## Mandatory audit requirement: record your assessment
 
-To record your assessment against each of these questions, call the python script:
+The six questions above are the frame you reason through. What you record is **one verdict** -- a single reasoned judgement on the report as a whole, naming the defects you found and what you are doing about them. Reason through all six; write one.
+
+Relaxing the record does not relax the interrogation. A one-line verdict on a report you did not actually take apart is a worse failure than no verdict at all, because it launders an unexamined claim as an audited one.
+
+Where you cannot investigate a claim yourself, question 1 is discharged by requiring the _reporter_ to name an independent source of record and to quote what supports the claim -- not by going and checking it yourself. A report that names none is incomplete, and incomplete reports go back.
+
+Call the python script:
 
 ```bash
-uv run python3 scripts/verdict.py --report <report_id> --verdict <verdict
+uv run python3 scripts/verdict.py --report <report_id> --verdict "<your reasoned verdict>"
 ```

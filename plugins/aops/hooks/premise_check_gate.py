@@ -200,8 +200,9 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
     reason = (
         f"A subagent report ({claim_id!r}) is pending its logic-check verdict for session "
         f"'{ctx.session_id or 'current'}'. Use the 'premise-check' skill "
-        "(or run scripts/verdict.py with hearsay.md's six-question sequence) before "
-        "dispatching another subagent."
+        "(or run scripts/verdict.py with your one reasoned verdict, thought through "
+        "against hearsay.md's six logic-check questions) before dispatching another "
+        "subagent."
     )
     user_msg = (
         "Blocked: record the logic-check verdict on the last subagent report "
