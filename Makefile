@@ -169,7 +169,6 @@ clean-plugins:
 
 clean: clean-plugins
 	@rm -rf $(DIST)
-	@./scripts/clean_global_configs.sh
 	@echo "✓ cleaned"
 
 test:
