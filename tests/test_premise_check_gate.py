@@ -37,8 +37,8 @@ for p in (_LIB_HOOKS_DIR, _HOOKS_DIR):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-import dispatch  # noqa: E402
-import premise_check_gate as pcg  # noqa: E402  (lib/hooks/premise_check_gate.py)
+import dispatch
+import premise_check_gate as pcg
 
 
 def _load_plugin_module(name: str, path: Path):

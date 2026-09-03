@@ -20,8 +20,8 @@ for p in (_LIB_HOOKS_DIR, _PLUGIN_ROOT, _HOOKS_DIR):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-import claude_code_tracer  # noqa: E402  (plugins/orchestrate/hooks/claude_code_tracer.py)
-from dispatch import HookContext  # noqa: E402  (lib/hooks/dispatch.py)
+import claude_code_tracer
+from dispatch import HookContext
 
 
 def _load_plugin_module(name: str, path: Path):

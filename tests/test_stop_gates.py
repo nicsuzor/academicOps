@@ -39,7 +39,7 @@ def _require_orchestrate_hearsay_enabled():
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
 _IDA_HOOKS = _REPO_ROOT / "plugins" / "aops" / "hooks"
-_ORCHESTRATE_HOOKS = _REPO_ROOT / "plugins" / "orchestrate" / "hooks"
+_ORCHESTRATE_HOOKS = _REPO_ROOT / "plugins" / "aops" / "hooks"
 
 
 def _plugin_hooks_dir(tmp_path: Path, plugin_hooks: Path) -> Path:
@@ -261,7 +261,7 @@ def test_orchestrate_stop_hook_is_wired_synchronously(orchestrate_hooks):
     the advisory reaches the model neither on that turn nor the next), so the
     honesty advisory only lands from a synchronous entry."""
     manifest = json.loads(
-        (_REPO_ROOT / "plugins" / "orchestrate" / "manifest" / "hooks.template.json").read_text(
+        (_REPO_ROOT / "plugins" / "aops" / "manifest" / "hooks.template.json").read_text(
             encoding="utf-8"
         )
     )

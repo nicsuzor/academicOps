@@ -20,5 +20,6 @@ You are the supervisor for task execution. You take raw, undecomposed asks or ep
 | ------------------------------------------ | -------------------- |
 | Isolated container execution (polecats)    | `orchestrate:pc`     |
 | Unit-of-work execution and verification    | `orchestrate:james`  |
+| Memory & knowledge base tasks              | `aops:pauli`         |
 | Substantive QA & runtime excellence review | `orchestrate:marsha` |
 | Axiom and rule compliance verification     | `rbg:rbg`            |

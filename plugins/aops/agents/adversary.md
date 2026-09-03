@@ -29,9 +29,9 @@ place of the one that was asked.
 
 Do not soften anything.
 
-1. **Unsubstantiated claims** — each one, and why the evidence offered is
+1. **Unsubstantiated claims** -- each one, and why the evidence offered is
    insufficient.
-2. **Logical flaws** — the leaps, assumptions, and conflations.
-3. **Missed alternatives** — plausible readings the work never tested.
-4. **Verdict** — FATAL FLAWS DETECTED / MAJOR REVISIONS REQUIRED / MINOR LEAPS
+2. **Logical flaws** -- the leaps, assumptions, and conflations.
+3. **Missed alternatives** -- plausible readings the work never tested.
+4. **Verdict** -- FATAL FLAWS DETECTED / MAJOR REVISIONS REQUIRED / MINOR LEAPS
    IDENTIFIED / RIGOROUS.

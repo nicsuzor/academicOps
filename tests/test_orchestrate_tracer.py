@@ -21,8 +21,8 @@ for p in (_LIB_HOOKS_DIR, _PLUGIN_ROOT, _HOOKS_DIR):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-import claude_code_tracer  # noqa: E402  (plugins/orchestrate/hooks/claude_code_tracer.py)
-from dispatch import HookContext  # noqa: E402  (lib/hooks/dispatch.py)
+import claude_code_tracer
+from dispatch import HookContext
 
 
 def _load_plugin_module(name: str, path: Path):
@@ -494,7 +494,7 @@ def test_resolve_project_name_with_aliases(monkeypatch, tmp_path):
     monkeypatch.delenv("PHOENIX_PROJECT_NAME")
 
     # 3. Default canonical aliases (even with empty config)
-    monkeypatch.setattr(claude_code_tracer, "_load_polecat_config", lambda: {})
+    monkeypatch.setattr(claude_code_tracer, "_load_polecat_config", dict)
     assert claude_code_tracer.resolve_project_name(project="aops") == "academicOps"
     assert claude_code_tracer.resolve_project_name(project="academicops") == "academicOps"
     assert claude_code_tracer.resolve_project_name(project="academicOps") == "academicOps"
@@ -676,8 +676,7 @@ def test_agy_extract_llm_spans_inputs(tmp_path):
         },
     ]
     with open(transcript, "w") as f:
-        for e in entries:
-            f.write(json.dumps(e) + "\n")
+        f.writelines(json.dumps(e) + "\n" for e in entries)
 
     spans = agy_tracer._extract_llm_spans_for_turn_agy(
         transcript_path=str(transcript),
@@ -731,8 +730,7 @@ def test_agy_post_tool_extracts_output_from_transcript(tmp_path, monkeypatch):
         },
     ]
     with open(transcript, "w") as f:
-        for e in entries:
-            f.write(json.dumps(e) + "\n")
+        f.writelines(json.dumps(e) + "\n" for e in entries)
 
     exported_records = []
 
