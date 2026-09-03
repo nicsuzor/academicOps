@@ -94,9 +94,20 @@ def emit_verdict_span(
     )
     record["attributes"]["premise_check.claim_id"] = claim_id
     record["attributes"]["premise_check.question_count"] = len(questions)
-    for i, (question, answer) in enumerate(zip(questions, answers, strict=True), start=1):
+    record["attributes"]["premise_check.answer_count"] = len(answers)
+
+    # The questions are always emitted: they are the frame the supervisor
+    # reasoned through, whatever was recorded. Answers pair to them
+    # positionally only when one was recorded per question; the normal case is
+    # a single reasoned verdict, which lands on premise_check.verdict.
+    for i, question in enumerate(questions, start=1):
         record["attributes"][f"premise_check.q{i}.question"] = tracer_mod._truncate(question)
-        record["attributes"][f"premise_check.q{i}.answer"] = tracer_mod._truncate(answer)
+
+    if len(answers) == len(questions):
+        for i, answer in enumerate(answers, start=1):
+            record["attributes"][f"premise_check.q{i}.answer"] = tracer_mod._truncate(answer)
+    else:
+        record["attributes"]["premise_check.verdict"] = tracer_mod._truncate("\n\n".join(answers))
 
     username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
     tracer_mod._build_and_export_spans(
@@ -119,10 +130,16 @@ def record_verdict(
     if answers is None:
         answers = []
     questions = load_logic_check_questions(hooks_dir)
-    if len(answers) != len(questions):
+    if not answers:
         raise ValueError(
-            f"expected {len(questions)} answers (one per hearsay.md logic-check question), "
-            f"got {len(answers)}"
+            "expected at least one verdict; got none. One reasoned verdict per report "
+            "is the requirement -- the hearsay.md logic-check questions are the frame "
+            "to reason through, not a form to fill in."
+        )
+    if len(answers) > len(questions):
+        raise ValueError(
+            f"expected at most {len(questions)} answers (the hearsay.md logic-check "
+            f"questions), got {len(answers)}"
         )
 
     if tracer_mod is None:
@@ -172,7 +189,11 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         dest="answers",
         required=True,
-        help="Answer per logic-check question, in order. Repeat flag once per question.",
+        help=(
+            "Your reasoned verdict on the report. Normally given once. May be repeated "
+            "to record one answer per logic-check question, in order, but that is not "
+            "required -- the questions are the frame to reason through, not a form."
+        ),
     )
     parser.add_argument(
         "--session",

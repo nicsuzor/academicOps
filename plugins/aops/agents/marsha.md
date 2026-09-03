@@ -2,6 +2,13 @@
 name: marsha
 description: "QA & Excellence -- is this artifact, as presented, AMAZINGLY good? Assumes IT'S BROKEN until proven otherwise and actually runs it; runtime verification and spec-compliance are table-stakes floors, not the bar."
 color: pink
+tools:
+    - Bash
+    - Read
+    - Grep
+    - Glob
+    - Skill
+    - mcp__playwright__*
 ---
 
 # Marsha Agent Directive (Substantive Quality Review)

@@ -1,6 +1,57 @@
 ---
 name: james
 description: takes a unit of work and sees it through to a verified result.
+tools:
+    - Bash
+    - Agent
+    - Skill
+    - Read
+    - Write
+    - Edit
+    - mcp__services__pkb__search
+    - mcp__services__pkb__task_search
+    - mcp__services__pkb__get_task
+    - mcp__services__pkb__get_task_children
+    - mcp__services__pkb__list_tasks
+    - mcp__services__pkb__get_document
+    - mcp__services__pkb__retrieve_memory
+    - mcp__services__pkb__task_summary
+    - mcp__services__pkb__claim_task
+    - mcp__services__pkb__release_task
+    - mcp__services__pkb__complete_task
+    - mcp__services-http__pkb__search
+    - mcp__services-http__pkb__task_search
+    - mcp__services-http__pkb__get_task
+    - mcp__services-http__pkb__get_task_children
+    - mcp__services-http__pkb__list_tasks
+    - mcp__services-http__pkb__get_document
+    - mcp__services-http__pkb__retrieve_memory
+    - mcp__services-http__pkb__task_summary
+    - mcp__services-http__pkb__claim_task
+    - mcp__services-http__pkb__release_task
+    - mcp__services-http__pkb__complete_task
+    - mcp__plugin_aops_services__pkb__search
+    - mcp__plugin_aops_services__pkb__task_search
+    - mcp__plugin_aops_services__pkb__get_task
+    - mcp__plugin_aops_services__pkb__get_task_children
+    - mcp__plugin_aops_services__pkb__list_tasks
+    - mcp__plugin_aops_services__pkb__get_document
+    - mcp__plugin_aops_services__pkb__retrieve_memory
+    - mcp__plugin_aops_services__pkb__task_summary
+    - mcp__plugin_aops_services__pkb__claim_task
+    - mcp__plugin_aops_services__pkb__release_task
+    - mcp__plugin_aops_services__pkb__complete_task
+    - mcp__plugin_aops_services-http__pkb__search
+    - mcp__plugin_aops_services-http__pkb__task_search
+    - mcp__plugin_aops_services-http__pkb__get_task
+    - mcp__plugin_aops_services-http__pkb__get_task_children
+    - mcp__plugin_aops_services-http__pkb__list_tasks
+    - mcp__plugin_aops_services-http__pkb__get_document
+    - mcp__plugin_aops_services-http__pkb__retrieve_memory
+    - mcp__plugin_aops_services-http__pkb__task_summary
+    - mcp__plugin_aops_services-http__pkb__claim_task
+    - mcp__plugin_aops_services-http__pkb__release_task
+    - mcp__plugin_aops_services-http__pkb__complete_task
 ---
 
 # James

@@ -158,28 +158,33 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_dir: Path) -> str | None:
         raise BuildError(f"{mcp_path}: malformed .mcp.json: {e}") from e
 
     servers = data.get("mcpServers", {})
+    # Only servers that defer to the env var at launch — anything with a
+    # concrete endpoint of its own is left alone.
+    pkb_names = [name for name, cfg in servers.items() if "PKB_MCP_URL" in json.dumps(cfg)]
     rewritten = False
-    for name, cfg in list(servers.items()):
-        # Only servers that defer to the env var at launch — anything with a
-        # concrete endpoint of its own is left alone.
-        if "PKB_MCP_URL" not in json.dumps(cfg):
-            continue
-        if cfg.get("type") == "http" or "url" in cfg:
-            cfg["url"] = cfg.get("url", "").replace("$PKB_MCP_URL", baked)
-            rewritten = True
-        elif "serverUrl" in cfg:
-            cfg["serverUrl"] = cfg.get("serverUrl", "").replace("$PKB_MCP_URL", baked)
-            rewritten = True
-        elif launcher.exists():
-            servers[name] = {
-                "command": "bash",
-                "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
-                "env": {"PKB_MCP_URL": baked},
-            }
-            rewritten = True
-        else:
-            cfg_str = json.dumps(cfg).replace("$PKB_MCP_URL", baked)
-            servers[name] = json.loads(cfg_str)
+
+    if pkb_names and launcher.exists():
+        # Cowork cannot speak streamable HTTP to an MCP server, so whichever
+        # transport the Claude dist shipped, the zip gets the stdio proxy —
+        # one server, not one per transport. scripts/run-mcp.sh holds the
+        # contract: it proxies stdio to $PKB_MCP_URL for exactly these clients.
+        for name in pkb_names:
+            del servers[name]
+        servers["services"] = {
+            "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
+            "env": {"PKB_MCP_URL": baked},
+        }
+        rewritten = True
+    else:
+        for name in pkb_names:
+            cfg = servers[name]
+            if cfg.get("type") == "http" or "url" in cfg:
+                cfg["url"] = cfg.get("url", "").replace("$PKB_MCP_URL", baked)
+            elif "serverUrl" in cfg:
+                cfg["serverUrl"] = cfg.get("serverUrl", "").replace("$PKB_MCP_URL", baked)
+            else:
+                servers[name] = json.loads(json.dumps(cfg).replace("$PKB_MCP_URL", baked))
             rewritten = True
 
     if not rewritten:
