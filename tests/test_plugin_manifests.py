@@ -46,18 +46,31 @@ def get_plugin_dirs():
             d.name.endswith("-claude") or d.name.endswith("-agy") or d.name.endswith("-openclaw")
         ):
             plugin_dirs.append(d)
+    cowork_dir = DIST_ROOT / "cowork"
+    if cowork_dir.is_dir():
+        for d in cowork_dir.iterdir():
+            if d.is_dir() and not d.name.startswith("."):
+                plugin_dirs.append(d)
     if not plugin_dirs:
         raise RuntimeError(f"{DIST_ROOT} contains no built plugin directories — run 'make build'")
     return sorted(plugin_dirs)
 
 
-@pytest.mark.parametrize("plugin_dir", get_plugin_dirs(), ids=lambda d: d.name)
+@pytest.mark.parametrize(
+    "plugin_dir",
+    get_plugin_dirs(),
+    ids=lambda d: f"cowork/{d.name}" if d.parent.name == "cowork" else d.name,
+)
 def test_plugin_validates_against_cli(plugin_dir):
     """
     Checks each built plugin package against the native CLI plugin validate command.
     """
     # Determine which CLI to use based on the plugin's target platform
-    if plugin_dir.name.endswith("-claude") or plugin_dir.name.endswith("-openclaw"):
+    if (
+        plugin_dir.name.endswith("-claude")
+        or plugin_dir.name.endswith("-openclaw")
+        or plugin_dir.parent.name == "cowork"
+    ):
         cli_command = ["claude", "plugin", "validate", str(plugin_dir)]
     elif plugin_dir.name.endswith("-agy"):
         cli_command = ["agy", "plugin", "validate", str(plugin_dir)]
@@ -111,7 +124,11 @@ def _resolve_hook_path(plugin_dir: Path, raw_path: str) -> Path:
     return plugin_dir / cleaned
 
 
-@pytest.mark.parametrize("plugin_dir", get_plugin_dirs(), ids=lambda d: d.name)
+@pytest.mark.parametrize(
+    "plugin_dir",
+    get_plugin_dirs(),
+    ids=lambda d: f"cowork/{d.name}" if d.parent.name == "cowork" else d.name,
+)
 def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     """Every hook command/args script path declared in a built plugin's hooks.json
     must resolve to a real file shipped inside that same plugin artifact.
@@ -126,7 +143,11 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     file on disk — this test closes that coverage gap so the same class of
     defect fails a build instead of shipping silently.
     """
-    if plugin_dir.name.endswith("-claude") or plugin_dir.name.endswith("-openclaw"):
+    if (
+        plugin_dir.name.endswith("-claude")
+        or plugin_dir.name.endswith("-openclaw")
+        or plugin_dir.parent.name == "cowork"
+    ):
         hooks_json_path = plugin_dir / "hooks" / "hooks.json"
     elif plugin_dir.name.endswith("-agy"):
         hooks_json_path = plugin_dir / "hooks.json"

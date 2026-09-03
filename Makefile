@@ -76,6 +76,11 @@ build-test: build
 		command claude plugin validate "$(DIST)/$$p-claude" \
 			&& echo "✓ claude $$p validated" \
 			|| { echo "x claude $$p validate failed" >&2; exit 1; }; \
+		if [ -d "$(DIST)/cowork/$$p" ]; then \
+			command claude plugin validate "$(DIST)/cowork/$$p" \
+				&& echo "✓ cowork $$p validated" \
+				|| { echo "x cowork $$p validate failed" >&2; exit 1; }; \
+		fi; \
 		if command -v agy >/dev/null 2>&1; then \
 			agy plugin validate "$(DIST)/$$p-agy" \
 				&& echo "✓ agy $$p validated" \
