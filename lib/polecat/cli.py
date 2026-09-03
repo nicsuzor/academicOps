@@ -435,9 +435,7 @@ def write_run_record(
         if isinstance(started_at, datetime)
         else (started_at or now.isoformat())
     )
-    e_at = (
-        ended_at.isoformat() if isinstance(ended_at, datetime) else (ended_at or now.isoformat())
-    )
+    e_at = ended_at.isoformat() if isinstance(ended_at, datetime) else (ended_at or now.isoformat())
 
     if duration_seconds is None:
         if isinstance(started_at, datetime) and isinstance(ended_at, datetime):
@@ -455,10 +453,7 @@ def write_run_record(
         "transcript_bytes": None,
         "event_count": 0,
     }
-    jsonl_files = [
-        f for f in session_path.glob("*.jsonl")
-        if not f.name.endswith(".polecat.jsonl")
-    ]
+    jsonl_files = [f for f in session_path.glob("*.jsonl") if not f.name.endswith(".polecat.jsonl")]
     if jsonl_files:
         t_file = jsonl_files[0]
         size = t_file.stat().st_size
@@ -491,7 +486,10 @@ def write_run_record(
 
     if not transcript_info["found"]:
         if agent not in ("shell", "sleep", "bash"):
-            if not any(isinstance(d, dict) and d.get("what") in ("transcript", "transcript_missing") for d in degraded_list):
+            if not any(
+                isinstance(d, dict) and d.get("what") in ("transcript", "transcript_missing")
+                for d in degraded_list
+            ):
                 degraded_list.append(
                     {
                         "what": "transcript_missing",
@@ -506,7 +504,11 @@ def write_run_record(
             status = "failed"
         elif delivery_guard and not delivery_guard.get("ok", True):
             status = "delivery_guard_failed"
-        elif any(d.get("what") in ("transcript", "transcript_missing") for d in degraded_list if isinstance(d, dict)):
+        elif any(
+            d.get("what") in ("transcript", "transcript_missing")
+            for d in degraded_list
+            if isinstance(d, dict)
+        ):
             status = "degraded"
         else:
             status = "success"
@@ -527,7 +529,8 @@ def write_run_record(
         "commit_end": commit_end,
         "exit_code": exit_code,
         "status": status,
-        "delivery_guard": delivery_guard or (
+        "delivery_guard": delivery_guard
+        or (
             {"ok": False, "error": f"process exited with code {exit_code}"}
             if exit_code != 0
             else {"ok": True, "error": None}
@@ -813,9 +816,7 @@ def run(
 
     end_time = datetime.now(UTC)
     status = (
-        "detached"
-        if (detach and exit_code == 0)
-        else ("success" if exit_code == 0 else "failed")
+        "detached" if (detach and exit_code == 0) else ("success" if exit_code == 0 else "failed")
     )
 
     if exit_code != 0 and not quiet:

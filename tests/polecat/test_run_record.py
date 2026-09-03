@@ -13,7 +13,6 @@ What the `transcript` key must record is asserted in
 import json
 import subprocess
 from datetime import UTC, datetime
-from pathlib import Path
 
 from click.testing import CliRunner
 

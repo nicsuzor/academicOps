@@ -1,8 +1,7 @@
 """Unit tests for Docker Sandboxes (sbx) command invocation in polecat CLI."""
 
 from pathlib import Path
-import subprocess
-from click.testing import CliRunner
+
 from lib.polecat import cli
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
