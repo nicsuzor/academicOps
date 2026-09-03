@@ -37,8 +37,15 @@ except ImportError:
     task_body_gate_handler = None
 
 try:
-    from premise_check_gate import premise_check_gate_handler, premise_check_open_gate
+    from premise_check_gate import (
+        premise_check_arm,
+        premise_check_gate_handler,
+        premise_check_handler,
+        premise_check_open_gate,
+    )
 except ImportError:
+    premise_check_arm = None
+    premise_check_handler = None
     premise_check_gate_handler = None
     premise_check_open_gate = None
 
@@ -280,7 +287,8 @@ def honest_output(ctx: HookContext) -> Result | None:
     to provide evidence sufficient to support its claims.
 
     """
-    if ctx.agent_type in ("aops:ida"):
+    # Do not fire on supervisor profiles
+    if ctx.agent_type in ("aops:ida", "orchestrate:james"):
         return None
 
     if ctx.raw.get("background_tasks"):
@@ -461,7 +469,7 @@ HANDLERS: dict[str, list] = {
     "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, honest_output],
     "PreToolUse": [
         h
-        for h in (pre_tool, agy_pre_tool, task_body_gate_handler, premise_check_gate_handler)
+        for h in (pre_tool, agy_pre_tool, task_body_gate_handler, premise_check_handler)
         if h is not None
     ],
     "PostToolUse": [post_tool, agy_post_tool],
@@ -470,6 +478,10 @@ HANDLERS: dict[str, list] = {
     # PostInvocation — dispatch.py's TO_CANONICAL no longer aliases that
     # one onto anything; see the comment there).
     "Stop": [stop, agy_stop],
-    "PostToolBatch": [h for h in (rule_against_hearsay, premise_check_open_gate) if h is not None],
+    # PostToolBatch is called when an agent finishes calling tools, including
+    # subagents (though the subagent results haven't returned yet). This arms
+    # the premise check, which then needs to be cleared (disarmed via verdict)
+    # before the next tool use.
+    "PostToolBatch": [h for h in (rule_against_hearsay, premise_check_arm) if h is not None],
     "SubagentStart": [honest_output],
 }

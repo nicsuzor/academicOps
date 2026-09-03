@@ -135,7 +135,7 @@ def test_load_logic_check_questions_missing_source(tmp_path):
 
 def test_record_verdict_rejects_wrong_answer_count():
     session_id = "sess-mismatch"
-    pcg.open_gate(session_id, claim_id="claim-1")
+    pcg.arm(session_id, claim_id="claim-1")
 
     with pytest.raises(ValueError, match="expected 6 answers"):
         pcg.record_verdict(
@@ -146,8 +146,8 @@ def test_record_verdict_rejects_wrong_answer_count():
             tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
         )
 
-    # Malformed verdict must not close the gate.
-    assert pcg.is_gate_open(session_id) is True
+    # Malformed verdict must not disarm.
+    assert pcg.is_armed(session_id) is True
 
 
 # ---------------------------------------------------------------------------
@@ -155,9 +155,9 @@ def test_record_verdict_rejects_wrong_answer_count():
 # ---------------------------------------------------------------------------
 
 
-def test_record_verdict_emits_one_attribute_per_question_and_closes_gate():
+def test_record_verdict_emits_one_attribute_per_question_and_disarms():
     session_id = "sess-emit"
-    pcg.open_gate(session_id, claim_id="claim-2")
+    pcg.arm(session_id, claim_id="claim-2")
 
     answers = [f"answer {i}" for i in range(6)]
     tracer = _StubTracer(
@@ -180,8 +180,8 @@ def test_record_verdict_emits_one_attribute_per_question_and_closes_gate():
     assert attrs["premise_check.claim_id"] == "claim-2"
     assert attrs["premise_check.question_count"] == 6
 
-    # Gate closed.
-    assert pcg.is_gate_open(session_id) is False
+    # Disarmed.
+    assert pcg.is_armed(session_id) is False
     state = pcg.get_state(session_id)
     assert state["last_verdict"]["claim_id"] == "claim-2"
     assert state["last_verdict"]["answers"] == answers
@@ -192,9 +192,9 @@ def test_record_verdict_emits_one_attribute_per_question_and_closes_gate():
 # ---------------------------------------------------------------------------
 
 
-def test_record_verdict_closes_gate_even_when_tracer_unconfigured():
+def test_record_verdict_disarms_even_when_tracer_unconfigured():
     session_id = "sess-unconfigured"
-    pcg.open_gate(session_id, claim_id="claim-3")
+    pcg.arm(session_id, claim_id="claim-3")
 
     answers = [f"answer {i}" for i in range(6)]
     tracer = _StubTracer(config=None)  # discover_config() -> None, silent no-op
@@ -204,7 +204,7 @@ def test_record_verdict_closes_gate_even_when_tracer_unconfigured():
     assert result["span_emitted"] is False
     assert result["span_error"] is None
     assert tracer.exported == []
-    assert pcg.is_gate_open(session_id) is False  # still closed: the check ran locally
+    assert pcg.is_armed(session_id) is False  # still disarmed: the check ran locally
 
 
 # ---------------------------------------------------------------------------
@@ -222,27 +222,27 @@ def _agent_dispatch_ctx(session_id: str, agent_type: str = "aops:ida") -> dispat
     )
 
 
-def test_gate_handler_refuses_next_dispatch_while_open_default_mode():
+def test_handler_refuses_next_dispatch_while_armed_default_mode():
     session_id = "sess-gate-1"
-    pcg.open_gate(session_id, claim_id="claim-4")
+    pcg.arm(session_id, claim_id="claim-4")
 
-    res = pcg.premise_check_gate_handler(_agent_dispatch_ctx(session_id))
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
     assert res is not None
     assert res.kind == dispatch.Kind.REFUSE
     assert "claim-4" in res.inject_text
 
 
-def test_gate_handler_allows_dispatch_once_closed():
+def test_handler_allows_dispatch_once_disarmed():
     session_id = "sess-gate-2"
-    pcg.open_gate(session_id, claim_id="claim-5")
-    pcg.close_gate(session_id, "claim-5", ["q"] * 6, ["a"] * 6)
+    pcg.arm(session_id, claim_id="claim-5")
+    pcg.disarm(session_id, "claim-5", ["q"] * 6, ["a"] * 6)
 
-    assert pcg.premise_check_gate_handler(_agent_dispatch_ctx(session_id)) is None
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
-def test_gate_handler_ignores_non_gated_tool():
+def test_handler_ignores_non_gated_tool():
     session_id = "sess-gate-3"
-    pcg.open_gate(session_id, claim_id="claim-6")
+    pcg.arm(session_id, claim_id="claim-6")
 
     ctx = dispatch.HookContext(
         client="claude",
@@ -251,50 +251,50 @@ def test_gate_handler_ignores_non_gated_tool():
         session_id=session_id,
         agent_type="aops:ida",
     )
-    assert pcg.premise_check_gate_handler(ctx) is None
+    assert pcg.premise_check_handler(ctx) is None
 
 
-def test_gate_handler_ignores_non_gated_agent_type():
+def test_handler_ignores_non_gated_agent_type():
     session_id = "sess-gate-4"
-    pcg.open_gate(session_id, claim_id="claim-7")
+    pcg.arm(session_id, claim_id="claim-7")
 
     ctx = _agent_dispatch_ctx(session_id, agent_type="orchestrate:james")
-    assert pcg.premise_check_gate_handler(ctx) is None
+    assert pcg.premise_check_handler(ctx) is None
 
 
-def test_gate_handler_mode_off(monkeypatch):
+def test_handler_mode_off(monkeypatch):
     session_id = "sess-gate-5"
-    pcg.open_gate(session_id, claim_id="claim-8")
+    pcg.arm(session_id, claim_id="claim-8")
     monkeypatch.setenv("PREMISE_CHECK_GATE_MODE", "off")
 
-    assert pcg.premise_check_gate_handler(_agent_dispatch_ctx(session_id)) is None
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
-def test_gate_handler_mode_warn(monkeypatch):
+def test_handler_mode_warn(monkeypatch):
     session_id = "sess-gate-6"
-    pcg.open_gate(session_id, claim_id="claim-9")
+    pcg.arm(session_id, claim_id="claim-9")
     monkeypatch.setenv("PREMISE_CHECK_GATE_MODE", "warn")
 
-    res = pcg.premise_check_gate_handler(_agent_dispatch_ctx(session_id))
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
     assert res is not None
     assert res.kind == dispatch.Kind.ADVISE
 
 
 @pytest.mark.parametrize("var", ["PREMISE_CHECK_GATE_OVERRIDE", "AOP_FORCE", "AOP_OVERRIDE"])
-def test_gate_handler_override(monkeypatch, var):
+def test_handler_override(monkeypatch, var):
     session_id = "sess-gate-7"
-    pcg.open_gate(session_id, claim_id="claim-10")
+    pcg.arm(session_id, claim_id="claim-10")
     monkeypatch.setenv(var, "1")
 
-    assert pcg.premise_check_gate_handler(_agent_dispatch_ctx(session_id)) is None
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
 # ---------------------------------------------------------------------------
-# 6. Opening the gate
+# 6. Arming the check on PostToolBatch
 # ---------------------------------------------------------------------------
 
 
-def test_open_gate_handler_fires_on_agent_batch_for_scoped_agent():
+def test_arm_handler_fires_on_agent_batch_for_scoped_agent():
     session_id = "sess-open-1"
     ctx = dispatch.HookContext(
         client="claude",
@@ -303,12 +303,12 @@ def test_open_gate_handler_fires_on_agent_batch_for_scoped_agent():
         agent_type="aops:ida",
         tool_calls=({"tool_name": "Agent", "tool_input": {"description": "verify the claim"}},),
     )
-    assert pcg.premise_check_open_gate(ctx) is None
-    assert pcg.is_gate_open(session_id) is True
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(session_id) is True
     assert pcg.get_state(session_id)["claim_id"] == "verify the claim"
 
 
-def test_open_gate_handler_ignores_non_agent_batch():
+def test_arm_handler_ignores_non_agent_batch():
     session_id = "sess-open-2"
     ctx = dispatch.HookContext(
         client="claude",
@@ -317,11 +317,11 @@ def test_open_gate_handler_ignores_non_agent_batch():
         agent_type="aops:ida",
         tool_calls=({"tool_name": "Bash"},),
     )
-    pcg.premise_check_open_gate(ctx)
-    assert pcg.is_gate_open(session_id) is False
+    pcg.premise_check_arm(ctx)
+    assert pcg.is_armed(session_id) is False
 
 
-def test_open_gate_handler_ignores_non_scoped_agent_type():
+def test_arm_handler_ignores_non_scoped_agent_type():
     session_id = "sess-open-3"
     ctx = dispatch.HookContext(
         client="claude",
@@ -330,8 +330,8 @@ def test_open_gate_handler_ignores_non_scoped_agent_type():
         agent_type="orchestrate:james",
         tool_calls=({"tool_name": "Agent"},),
     )
-    pcg.premise_check_open_gate(ctx)
-    assert pcg.is_gate_open(session_id) is False
+    pcg.premise_check_arm(ctx)
+    assert pcg.is_armed(session_id) is False
 
 
 # ---------------------------------------------------------------------------
@@ -341,8 +341,8 @@ def test_open_gate_handler_ignores_non_scoped_agent_type():
 
 def test_handlers_registered_in_handlers_py():
     handlers = _load_plugin_module("orchestrate_handlers_premise_test", _HOOKS_DIR / "handlers.py")
-    assert handlers.premise_check_gate_handler in handlers.HANDLERS["PreToolUse"]
-    assert handlers.premise_check_open_gate in handlers.HANDLERS["PostToolBatch"]
+    assert handlers.premise_check_handler in handlers.HANDLERS["PreToolUse"]
+    assert handlers.premise_check_arm in handlers.HANDLERS["PostToolBatch"]
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +353,7 @@ def test_handlers_registered_in_handlers_py():
 def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
     session_id = "sess-e2e"
 
-    # A subagent report lands.
+    # A subagent is called by Ida.
     batch_ctx = dispatch.HookContext(
         client="claude",
         event="PostToolBatch",
@@ -361,20 +361,21 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
         agent_type="aops:ida",
         tool_calls=({"tool_name": "Agent", "tool_input": {"description": "researched X"}},),
     )
-    pcg.premise_check_open_gate(batch_ctx)
+    pcg.premise_check_arm(batch_ctx)
+    assert pcg.is_armed(session_id) is True
 
     # Dispatching another subagent before the verdict is refused.
-    res = pcg.premise_check_gate_handler(_agent_dispatch_ctx(session_id))
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
     assert res is not None and res.kind == dispatch.Kind.REFUSE
 
-    # The verdict script runs.
+    # The verdict script runs and disarms the check.
     pcg.record_verdict(
-        _HOOKS_DIR,
-        session_id,
-        "researched X",
-        [f"a{i}" for i in range(6)],
+        session_id=session_id,
+        claim_id="researched X",
+        answers=[f"a{i}" for i in range(6)],
         tracer_mod=_StubTracer(config=None),
     )
 
     # Now the dispatch is permitted.
-    assert pcg.premise_check_gate_handler(_agent_dispatch_ctx(session_id)) is None
+    assert pcg.is_armed(session_id) is False
+    assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None

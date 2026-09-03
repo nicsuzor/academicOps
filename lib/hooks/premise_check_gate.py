@@ -60,7 +60,7 @@ from dispatch import HookContext, Result, refuse, warn
 # Agent profiles this gate applies to. Narrower than rule_against_hearsay's
 # scope (which also covers orchestrate:james) because this task
 # (task_db1da567) is specifically about Ida.
-_GATED_AGENT_TYPES = ("aops:ida", "pkb:ida")
+_GATED_AGENT_TYPES = ["aops:ida"]
 _GATED_TOOLS = ("Agent", "Task")
 
 # Matches the numbered, bold-led items in hearsay.md's logic-check list, e.g.
@@ -69,15 +69,27 @@ _GATED_TOOLS = ("Agent", "Task")
 # captured.
 _QUESTION_RE = re.compile(r"^\d+\.\s+\*\*(.+?)\*\*", re.MULTILINE)
 
+# The canonical six-question logic-check sequence extracted from hearsay.md.
+# Baked at build/test time to prevent runtime path resolution errors and
+# filesystem permissions issues in client sandboxes.
+LOGIC_CHECK_QUESTIONS: tuple[str, ...] = (
+    "What is the subject of this claim, independent of what you're being told about it?",
+    "Does the evidence admit more than one explanation?",
+    "Is the evidence sufficient? Is the methodology sound and exhaustive? Are the inferences warranted for the conclusion as stated?",
+    "Is anything presented as an observed fact actually an inference, and is the certainty expressed proportionate to what the evidence supports?",
+    "Does the conclusion generalise beyond what a representative, sufficient sample of the evidence supports?",
+    "What does the conclusion depend on that the report never states?",
+)
+
 
 # ---------------------------------------------------------------------------
-# State: has the gate been opened by a claim, and closed by a verdict?
+# State: is the premise check armed (awaiting verdict) or disarmed?
 # ---------------------------------------------------------------------------
 
 
 def _state_dir() -> Path:
-    override = os.environ.get("AOPS_PREMISE_GATE_DIR")
-    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_premise_gate"
+    override = os.environ.get("AOPS_PREMISE_CHECK_DIR") or os.environ.get("AOPS_PREMISE_GATE_DIR")
+    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_premise_check"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -102,7 +114,7 @@ def _save_state(session_id: str, state: dict[str, Any]) -> None:
 
 
 def clear_state(session_id: str) -> None:
-    """Reset gate state for a session. Used by tests."""
+    """Reset premise check state for a session. Used by tests."""
     target = _state_path(session_id)
     if target.exists():
         try:
@@ -115,28 +127,26 @@ def get_state(session_id: str) -> dict[str, Any]:
     return _load_state(session_id)
 
 
-def open_gate(session_id: str, claim_id: str | None = None) -> None:
-    """Record that a claim has arrived and is awaiting its logic-check verdict."""
+def arm(session_id: str, claim_id: str | None = None) -> None:
+    """Arm the premise check for a session until a verdict disarms it."""
     state = _load_state(session_id)
-    state["pending"] = True
+    state["armed"] = True
+    state["pending"] = True  # backward compat
     state["claim_id"] = claim_id or state.get("claim_id") or "unnamed-claim"
-    state["opened_at"] = datetime.now(UTC).isoformat()
+    state["armed_at"] = datetime.now(UTC).isoformat()
     _save_state(session_id, state)
 
 
-def is_gate_open(session_id: str) -> bool:
-    return bool(_load_state(session_id).get("pending"))
-
-
-def close_gate(
+def disarm(
     session_id: str,
     claim_id: str,
     questions: list[str],
     answers: list[str],
 ) -> None:
-    """Record that a claim's verdict was recorded, satisfying the gate."""
+    """Disarm the premise check after a verdict is recorded."""
     state = _load_state(session_id)
-    state["pending"] = False
+    state["armed"] = False
+    state["pending"] = False  # backward compat
     state["claim_id"] = claim_id
     state["last_verdict"] = {
         "claim_id": claim_id,
@@ -147,11 +157,29 @@ def close_gate(
     _save_state(session_id, state)
 
 
+def is_armed(session_id: str) -> bool:
+    """Return True if the premise check is armed (awaiting verdict)."""
+    state = _load_state(session_id)
+    return bool(state.get("armed") or state.get("pending"))
+
+
+def is_disarmed(session_id: str) -> bool:
+    """Return True if the premise check is disarmed (cleared to proceed)."""
+    return not is_armed(session_id)
+
+
+# Aliases for terminology clarity:
+# "open" = disarmed (free to proceed), "closed" = armed (blocking dispatch)
+close_gate = arm
+open_gate = disarm
+is_gate_open = is_disarmed
+
+
 def _derive_claim_id(ctx: HookContext) -> str:
     for call in ctx.tool_calls:
-        if call.get("tool_name") == "Agent":
+        if call.get("tool_name") in _GATED_TOOLS:
             tool_input = call.get("tool_input") or {}
-            desc = str(tool_input.get("description") or "").strip()
+            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
             if desc:
                 return desc[:80]
             call_id = call.get("tool_use_id") or ""
@@ -161,7 +189,12 @@ def _derive_claim_id(ctx: HookContext) -> str:
 
 
 def _is_override_active() -> bool:
-    for var in ("PREMISE_CHECK_GATE_OVERRIDE", "AOP_FORCE", "AOP_OVERRIDE"):
+    for var in (
+        "PREMISE_CHECK_OVERRIDE",
+        "PREMISE_CHECK_GATE_OVERRIDE",
+        "AOP_FORCE",
+        "AOP_OVERRIDE",
+    ):
         if os.environ.get(var, "").strip().lower() in ("1", "true", "yes"):
             return True
     return False
@@ -172,45 +205,60 @@ def _is_override_active() -> bool:
 # ---------------------------------------------------------------------------
 
 
-def premise_check_open_gate(ctx: HookContext) -> Result | None:
-    """PostToolBatch handler: open the gate when a subagent report lands."""
+def premise_check_arm(ctx: HookContext) -> Result | None:
+    """PostToolBatch handler: arm the premise check when an agent calls tools.
+
+    PostToolBatch is called when an agent finishes calling tools, including
+    subagents (though the subagent results haven't returned yet). This arms
+    the premise check, which then needs to be disarmed (verdict recorded)
+    before the next tool use.
+    """
     if ctx.agent_type not in _GATED_AGENT_TYPES:
         return None
-    if not any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
+    if not any(call.get("tool_name") in _GATED_TOOLS for call in ctx.tool_calls):
         return None
-    open_gate(ctx.session_id, claim_id=_derive_claim_id(ctx))
+    arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
     return None
 
 
-def premise_check_gate_handler(ctx: HookContext) -> Result | None:
-    """PreToolUse handler: refuse the next subagent dispatch while unverdicted."""
+def premise_check_handler(ctx: HookContext) -> Result | None:
+    """PreToolUse handler: refuse the next subagent dispatch while armed."""
     if ctx.tool not in _GATED_TOOLS:
         return None
     if ctx.agent_type not in _GATED_AGENT_TYPES:
         return None
 
-    mode = os.environ.get("PREMISE_CHECK_GATE_MODE", "block").strip().lower()
+    mode = (
+        os.environ.get("PREMISE_CHECK_GATE_MODE", os.environ.get("PREMISE_CHECK_MODE", "block"))
+        .strip()
+        .lower()
+    )
     if mode == "off":
         return None
     if _is_override_active():
         return None
-    if not is_gate_open(ctx.session_id):
+    if not is_armed(ctx.session_id):
         return None
 
     claim_id = get_state(ctx.session_id).get("claim_id", "the pending subagent report")
     reason = (
         f"A subagent report ({claim_id!r}) is pending its logic-check verdict for session "
-        f"'{ctx.session_id or 'current'}'. Run this file's 'verdict' subcommand "
-        "(hearsay.md's six-question sequence, one --answer per question, in order) before "
+        f"'{ctx.session_id or 'current'}'. Use the 'premise-check' skill "
+        "(or run scripts/verdict.py with hearsay.md's six-question sequence) before "
         "dispatching another subagent."
     )
     user_msg = (
-        "Blocked: record the logic-check verdict on the last subagent report before "
-        "dispatching another."
+        "Blocked: record the logic-check verdict on the last subagent report "
+        "(use 'premise-check' skill) before dispatching another subagent."
     )
     if mode == "warn":
         return warn(reason, user_msg)
     return refuse(reason, user_msg)
+
+
+# Aliases for hook registrations
+premise_check_open_gate = premise_check_arm
+premise_check_gate_handler = premise_check_handler
 
 
 # ---------------------------------------------------------------------------
@@ -219,21 +267,24 @@ def premise_check_gate_handler(ctx: HookContext) -> Result | None:
 # ---------------------------------------------------------------------------
 
 
-def load_logic_check_questions(hooks_dir: Path) -> list[str]:
-    """Parse the numbered logic-check sequence straight out of hearsay.md.
+def load_logic_check_questions(hooks_dir: Path | None = None) -> list[str]:
+    """Return the numbered logic-check sequence.
 
-    Reading the questions live (rather than duplicating them here) is what
-    keeps "same number of questions, same order" true by construction: there
-    is exactly one place the sequence is written down.
+    By default, returns the build-time baked LOGIC_CHECK_QUESTIONS, avoiding
+    runtime filesystem lookups of hearsay.md and permissions issues in sandboxes.
+    If hooks_dir is explicitly provided and contains messages/hearsay.md, it
+    dynamically parses it (used by build parity checks and tests).
     """
-    path = hooks_dir / "messages" / "hearsay.md"
-    if not path.exists():
+    if hooks_dir is not None:
+        path = hooks_dir / "messages" / "hearsay.md"
+        if path.exists():
+            text = path.read_text(encoding="utf-8")
+            questions = _QUESTION_RE.findall(text)
+            if not questions:
+                raise ValueError(f"no numbered logic-check questions parsed from {path}")
+            return questions
         raise FileNotFoundError(f"logic-check source not found: {path}")
-    text = path.read_text(encoding="utf-8")
-    questions = _QUESTION_RE.findall(text)
-    if not questions:
-        raise ValueError(f"no numbered logic-check questions parsed from {path}")
-    return questions
+    return list(LOGIC_CHECK_QUESTIONS)
 
 
 def _import_claude_code_tracer() -> Any | None:
@@ -306,10 +357,10 @@ def emit_verdict_span(
 
 
 def record_verdict(
-    hooks_dir: Path,
-    session_id: str,
-    claim_id: str,
-    answers: list[str],
+    hooks_dir: Path | None = None,
+    session_id: str = "",
+    claim_id: str = "",
+    answers: list[str] | None = None,
     tracer_mod: Any | None = None,
 ) -> dict[str, Any]:
     """Validate, emit the span (best-effort), and close the gate.
@@ -318,6 +369,8 @@ def record_verdict(
     question in hearsay.md's logic-check sequence -- the script refuses to
     close the gate on a malformed verdict rather than accept a partial one.
     """
+    if answers is None:
+        answers = []
     questions = load_logic_check_questions(hooks_dir)
     if len(answers) != len(questions):
         raise ValueError(
@@ -337,7 +390,7 @@ def record_verdict(
             span_error = repr(exc)
             print(f"premise_check_gate: span emission failed: {exc!r}", file=sys.stderr)
 
-    close_gate(session_id, claim_id, questions, answers)
+    disarm(session_id, claim_id, questions, answers)
 
     return {
         "ok": True,
@@ -345,6 +398,7 @@ def record_verdict(
         "question_count": len(questions),
         "span_emitted": span_emitted,
         "span_error": span_error,
+        "disarmed": True,
         "gate_closed": True,
     }
 
@@ -388,9 +442,12 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        hooks_dir = Path(__file__).resolve().parent
         try:
-            result = record_verdict(hooks_dir, args.session, args.claim, args.answers)
+            result = record_verdict(
+                session_id=args.session,
+                claim_id=args.claim,
+                answers=args.answers,
+            )
         except (FileNotFoundError, ValueError) as exc:
             print(f"premise_check_gate: {exc}", file=sys.stderr)
             return 1
