@@ -1,8 +1,15 @@
 #!/bin/sh
 # Definitively remove plugins and mcp servers from global configs for claude, agy, claude code, and openclaw.
+#
+# SAFETY: This script mutates and deletes user-scoped state under $HOME. It is intentionally
+# opt-in and must never run implicitly (e.g. from Makefile targets).
 
-CONFIGS="
-$HOME/.claude.json
+set -eu
+
+if [ "${AOPS_ALLOW_GLOBAL_CONFIG_CLEAN:-}" != "1" ]; then
+    echo "clean_global_configs.sh: refusing to modify \$HOME (set AOPS_ALLOW_GLOBAL_CONFIG_CLEAN=1 to run)." >&2
+    exit 0
+fi
 $HOME/.creds/claude/.claude.json
 $HOME/.config/claude/config.json
 $HOME/.claude-code.json
