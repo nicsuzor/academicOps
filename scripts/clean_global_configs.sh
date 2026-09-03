@@ -44,3 +44,9 @@ rm -rf "$HOME/.config/claude/plugins" "$HOME/.config/claude/mcp"
 rm -rf "$HOME/.config/claude-code/plugins" "$HOME/.config/claude-code/mcp"
 rm -rf "$HOME/.config/openclaw/plugins" "$HOME/.config/openclaw/mcp"
 rm -rf "$HOME/.config/agy/plugins" "$HOME/.config/agy/mcp"
+
+# Clean Claude plugin cache and Cowork GUI packages
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/clean_plugins.py" ]; then
+    python3 "$SCRIPT_DIR/clean_plugins.py"
+fi

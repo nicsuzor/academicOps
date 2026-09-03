@@ -5,6 +5,21 @@
     "__base__": {
       "mcpServers": {
         "services": {
+          "command": "bash",
+          "args": [
+            "-c",
+            "uvx --from fastmcp-slim[server] fastmcp run \"$PKB_MCP_URL\""
+          ]
+        },
+        "services-http": {
+          "type": "http",
+          "url": "$PKB_MCP_URL"
+        }
+      }
+    },
+    "agy": {
+      "mcpServers": {
+        "services-http": {
           "serverUrl": "$PKB_MCP_URL"
         }
       }

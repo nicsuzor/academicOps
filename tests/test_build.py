@@ -807,6 +807,23 @@ def test_cowork_zip_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
     assert "env" in baked["mcpServers"]["services"]
 
 
+def test_cowork_zip_resolves_http_and_stdio_servers(tmp_path, monkeypatch):
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    plugin = _fixture_pkb_plugin(tmp_path)
+    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
+    data["mcpServers"]["services-http"] = {"type": "http", "url": "$PKB_MCP_URL"}
+    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
+
+    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
+    assert baked["mcpServers"]["services"]["env"] == {
+        "PKB_MCP_URL": "https://pkb.example.ts.net/mcp"
+    }
+    assert baked["mcpServers"]["services-http"] == {
+        "type": "http",
+        "url": "https://pkb.example.ts.net/mcp",
+    }
+
+
 # --- hard-error paths ---------------------------------------------------------
 
 
@@ -1152,3 +1169,31 @@ def test_openclaw_ida_face_configuration(tmp_path):
     agent = yaml.safe_load(fm)
 
     assert agent["name"] == "ida"
+
+
+def test_aops_ships_both_services_and_services_http(tmp_path):
+    dist_root = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist_root,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["aops"],
+        clients=("claude", "agy"),
+        version=VERSION,
+    )
+    claude_mcp = json.loads((dist_root / "aops-claude" / ".mcp.json").read_text())
+    assert "services" in claude_mcp["mcpServers"]
+    assert "services-http" in claude_mcp["mcpServers"]
+    assert "command" in claude_mcp["mcpServers"]["services"]
+    assert claude_mcp["mcpServers"]["services-http"] == {
+        "type": "http",
+        "url": "$PKB_MCP_URL",
+    }
+
+    agy_mcp = json.loads((dist_root / "aops-agy" / "mcp_config.json").read_text())
+    assert "services" in agy_mcp["mcpServers"]
+    assert "services-http" in agy_mcp["mcpServers"]
+    assert "command" in agy_mcp["mcpServers"]["services"]
+    assert agy_mcp["mcpServers"]["services-http"] == {
+        "serverUrl": "$PKB_MCP_URL",
+    }

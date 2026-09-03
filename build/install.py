@@ -47,6 +47,7 @@ reported as such, not treated as an error.
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -202,14 +203,91 @@ def uninstall_automode(
     return f"removed {len(owned)} aops axiom rule(s) from {settings_path} (autoMode.soft_deny)"
 
 
+def patch_dev_mcp(
+    dist_root: Path,
+    pkb_url: str | None = None,
+) -> list[Path]:
+    """Dev workaround for Claude Cowork.
+
+    Claude Cowork launches MCP servers in an execution environment where
+    environment variables like $PKB_MCP_URL are not expanded or propagated.
+    As a dev workaround during `make install-dev`, replace literal `$PKB_MCP_URL`
+    with the concrete URL from the developer's environment in all .mcp.json files
+    under `dist/`, local Claude plugin caches, and Cowork session directories.
+    """
+    raw_url = pkb_url if pkb_url is not None else os.environ.get("PKB_MCP_URL", "")
+    url = raw_url.strip()
+    if not url:
+        print(
+            "  cowork dev workaround: PKB_MCP_URL unset in environment; "
+            "skipping $PKB_MCP_URL substitution"
+        )
+        return []
+
+    while url.endswith("/"):
+        url = url[:-1]
+
+    patched: list[Path] = []
+
+    # 1. dist_root (.mcp.json in all dist dirs including cowork)
+    if dist_root.exists():
+        for mcp_file in sorted(dist_root.glob("**/.mcp.json")):
+            try:
+                content = mcp_file.read_text(encoding="utf-8")
+                if "$PKB_MCP_URL" in content:
+                    mcp_file.write_text(content.replace("$PKB_MCP_URL", url), encoding="utf-8")
+                    patched.append(mcp_file)
+            except OSError as e:
+                raise InstallError(f"cannot update {mcp_file}: {e}") from e
+
+    # 2. Local Claude plugin cache (e.g. ~/.claude/plugins/cache/aops/)
+    cache_dir = Path.home() / ".claude" / "plugins" / "cache" / "aops"
+    if cache_dir.exists():
+        for mcp_file in sorted(cache_dir.glob("**/.mcp.json")):
+            try:
+                content = mcp_file.read_text(encoding="utf-8")
+                if "$PKB_MCP_URL" in content:
+                    mcp_file.write_text(content.replace("$PKB_MCP_URL", url), encoding="utf-8")
+                    patched.append(mcp_file)
+            except OSError:
+                pass
+
+    # 3. Cowork GUI sessions (rpm plugin directories)
+    candidate_bases = [
+        Path.home() / "Library/Application Support/Claude/local-agent-mode-sessions",
+        Path.home() / ".config/Claude/local-agent-mode-sessions",
+    ]
+    wsl_users = Path("/mnt/c/Users")
+    if wsl_users.exists():
+        for user_dir in wsl_users.iterdir():
+            claude_dir = user_dir / "AppData/Roaming/Claude/local-agent-mode-sessions"
+            if claude_dir.exists():
+                candidate_bases.append(claude_dir)
+
+    for base in candidate_bases:
+        if base.exists():
+            for mcp_file in sorted(base.glob("**/rpm/*/.mcp.json")):
+                try:
+                    content = mcp_file.read_text(encoding="utf-8")
+                    if "$PKB_MCP_URL" in content:
+                        mcp_file.write_text(content.replace("$PKB_MCP_URL", url), encoding="utf-8")
+                        patched.append(mcp_file)
+                except OSError:
+                    pass
+
+    return patched
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Merge/remove aops-owned autoMode entries")
-    parser.add_argument("action", choices=["install", "uninstall"])
+    parser = argparse.ArgumentParser(
+        description="Merge/remove aops-owned autoMode entries and patch dev MCP"
+    )
+    parser.add_argument("action", choices=["install", "uninstall", "patch-dev-mcp"])
     parser.add_argument(
         "--dist-root",
         type=Path,
         default=None,
-        help="Where to find */-claude/axioms.jsonl (install only; default: <repo>/dist)",
+        help="Where to find dist directories (default: <repo>/dist)",
     )
     parser.add_argument("--settings-path", type=Path, default=DEFAULT_SETTINGS_PATH)
     parser.add_argument("--state-path", type=Path, default=DEFAULT_STATE_PATH)
@@ -219,6 +297,15 @@ def main() -> int:
         if args.action == "install":
             dist_root = args.dist_root or (Path(__file__).resolve().parent.parent / "dist")
             message = install_automode(dist_root, args.settings_path, args.state_path)
+            patched = patch_dev_mcp(dist_root)
+            if patched:
+                message += (
+                    f"\n✓ dev workaround: replaced $PKB_MCP_URL in {len(patched)} .mcp.json file(s)"
+                )
+        elif args.action == "patch-dev-mcp":
+            dist_root = args.dist_root or (Path(__file__).resolve().parent.parent / "dist")
+            patched = patch_dev_mcp(dist_root)
+            message = f"dev workaround: replaced $PKB_MCP_URL in {len(patched)} .mcp.json file(s)"
         else:
             message = uninstall_automode(args.settings_path, args.state_path)
     except InstallError as e:
