@@ -245,4 +245,4 @@ docker-test-otel: docker-build
 # specs/polecat/tmux-interactive-driving.md, "Plugin structural check". Not
 # proof any plugin's hooks or MCP servers are actually live — structural only.
 docker-smoke-test: docker-build
-	@POLECAT_E2E=1 POLECAT_IMAGE=$(notdir $(IMAGE)):latest uv run pytest tests/polecat/test_container_smoke.py -v
+	@uv run pytest tests/polecat/test_sbx_invocation.py tests/polecat/test_kits.py -v

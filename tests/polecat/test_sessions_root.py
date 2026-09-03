@@ -84,7 +84,7 @@ def test_run_refuses_to_start_a_container_without_a_sessions_root(tmp_path, monk
     started = {"n": 0}
 
     def fake_run(cmd, *a, **kw):
-        if cmd[:2] == ["docker", "run"]:
+        if cmd and ("sbx" in cmd or "run" in cmd):
             started["n"] += 1
         return subprocess.CompletedProcess(cmd, 0)
 
@@ -104,7 +104,7 @@ def test_run_writes_under_the_configured_sessions_root(tmp_path, monkeypatch):
     real_run = subprocess.run
 
     def fake_run(cmd, *a, **kw):
-        if cmd[:2] == ["docker", "run"]:
+        if cmd and ("sbx" in cmd or "run" in cmd):
             return subprocess.CompletedProcess(cmd, 0)
         return real_run(cmd, *a, **kw)
 

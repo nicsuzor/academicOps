@@ -13,7 +13,7 @@ tags: [spec, polecat, git, freshness]
 How `resolve_isolated_workspace()` (`lib/polecat/cli.py`) picks the commit a
 worker's isolated clone diverges from. This is step 3 of
 [polecat-system.md](polecat-system.md) § What `run` does. Implemented; regression
-tests are `tests/polecat/test_workspace_isolation.py`.
+tests are `tests/polecat/test_sbx_invocation.py`.
 
 ## The two failure modes this design closes
 

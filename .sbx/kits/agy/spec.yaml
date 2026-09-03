@@ -1,0 +1,54 @@
+schemaVersion: "2"
+kind: sandbox
+name: agy
+displayName: "Antigravity CLI (agy)"
+description: "Run Google's Antigravity CLI (agy) in YOLO mode inside an isolated Docker Sandbox seamlessly on your local workspace."
+
+sandbox:
+  image: "docker/sandbox-templates:shell-docker"
+  entrypoint: [agy]
+  command:
+    default: ["--dangerously-skip-permissions", "--mode=accept-edits"]
+
+permissions:
+  network:
+    allow:
+      # CLI installer + self-update manifests and binaries
+      - "antigravity.google:443"
+      - "antigravity-unleash.goog:443"
+      - "antigravity-cli-auto-updater-974169037036.us-central1.run.app:443"
+      # Google OAuth
+      - "accounts.google.com:443"
+      - "oauth2.googleapis.com:443"
+      - "www.googleapis.com:443"
+      # Antigravity / Gemini Code Assist model + agent APIs
+      - "cloudaicompanion.googleapis.com:443"
+      - "cloudcode-pa.googleapis.com:443"
+      - "generativelanguage.googleapis.com:443"
+      # Common dev dependencies and registries
+      - "github.com:443"
+      - "api.github.com:443"
+      - "*.githubusercontent.com:443"
+      - "pypi.org:443"
+      - "files.pythonhosted.org:443"
+      - "registry.npmjs.org:443"
+      - "astral.sh:443"
+
+credentials:
+  - service: antigravity
+    description: Google OAuth session used by Antigravity CLI
+    oauth:
+      tokenEndpoint:
+        host: oauth2.googleapis.com
+        path: /token
+      resourceHosts:
+        - cloudaicompanion.googleapis.com
+        - cloudcode-pa.googleapis.com
+        - generativelanguage.googleapis.com
+        - www.googleapis.com
+
+setup:
+  install:
+    - command: "which agy >/dev/null 2>&1 || curl -fsSL https://antigravity.google/cli/install.sh | bash"
+    - command: "which uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh"
+    - command: "apt-get update && apt-get install -y --no-install-recommends git curl jq ripgrep fd-find python3 python3-pip python3-venv || true"

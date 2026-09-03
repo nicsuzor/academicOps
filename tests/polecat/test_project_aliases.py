@@ -150,7 +150,7 @@ def test_run_normalizes_project_alias_for_otel_and_session(tmp_path, monkeypatch
     captured_run = []
 
     def fake_run(cmd, *a, **kw):
-        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+        if cmd and ("sbx" in cmd or "run" in cmd):
             captured_run.append((list(cmd), kw.get("env")))
         return subprocess.CompletedProcess(cmd, 0, stdout="")
 
@@ -196,13 +196,23 @@ def test_run_normalizes_project_alias_for_otel_and_session(tmp_path, monkeypatch
     assert res.exit_code == 0, res.output
     assert len(captured_run) == 1
 
-    cmd, env = captured_run[0]
-    assert "polecat.project=aops" in env["OTEL_RESOURCE_ATTRIBUTES"]
-    assert "polecat.task_id=task_fe8e4d2e" in env["OTEL_RESOURCE_ATTRIBUTES"]
-    assert env["GENAI_ENGINE_TASK_ID"] == "task_fe8e4d2e"
-    assert env["OTEL_SERVICE_NAME"] == "aops"
-    assert env["PHOENIX_PROJECT_NAME"] == "aops"
+    cmd, _ = captured_run[0]
+    env_args = {}
+    for i, arg in enumerate(cmd):
+        if arg == "-e" and i + 1 < len(cmd):
+            kv = cmd[i + 1]
+            if "=" in kv:
+                k, v = kv.split("=", 1)
+                env_args[k] = v
+            else:
+                env_args[kv] = ""
 
-    # Check sessions mount path in docker cmd contains /aops
-    session_mounts = [arg for arg in cmd if "/logs/" in arg and "/aops" in arg]
-    assert len(session_mounts) > 0, f"Expected session mount to contain /aops, got {cmd}"
+    assert "polecat.project=aops" in env_args["OTEL_RESOURCE_ATTRIBUTES"]
+    assert "polecat.task_id=task_fe8e4d2e" in env_args["OTEL_RESOURCE_ATTRIBUTES"]
+    assert env_args["GENAI_ENGINE_TASK_ID"] == "task_fe8e4d2e"
+    assert env_args["OTEL_SERVICE_NAME"] == "aops"
+    assert env_args["PHOENIX_PROJECT_NAME"] == "aops"
+
+    # Check sessions record is written under aops
+    session_records = list((tmp_path / "sessions").glob("logs/aops/test-session/*/run.json"))
+    assert len(session_records) > 0, f"Expected session record under aops, got {session_records}"

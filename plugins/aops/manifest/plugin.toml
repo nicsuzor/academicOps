@@ -25,3 +25,7 @@ to = "polecat/notify.py"
 [[shared]]
 from = "polecat/staleness.py"
 to = "polecat/staleness.py"
+
+[[shared]]
+from = "polecat/kits"
+to = "polecat/kits"

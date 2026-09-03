@@ -12,8 +12,7 @@ tags: [spec, polecat, provenance, staleness]
 
 Implemented in `lib/polecat/staleness.py`, wired into `lib/polecat/cli.py`,
 `plugins/aops/hooks/handlers.py`, `Dockerfile`, `Makefile`, and
-`build/build.py`. Tests: `tests/polecat/test_image_staleness.py`,
-`tests/polecat/test_run_record.py`.
+`build/build.py`. Tests: `tests/polecat/test_run_record.py`.
 
 ## The failure mode
 

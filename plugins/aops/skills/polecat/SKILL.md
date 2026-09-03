@@ -34,21 +34,14 @@ polecat run agy -p <project> -s "$NAME" --base "$BRANCH" --detach --prompt '<pro
 
 **Notes:**
 
-- `polecat run --detach` is non-blocking: it spawns the container in detached mode and emits the container and session info immediately.
-- `--prompt` **must be last**: everything after it is part of the prompt.
-- **No redirection, no polling.** Never redirect output or pipe to `tail`, `head`, `less` etc. Never poll or loop for output.
-- `--base <branch>`: specifies the base branch to diverge from (fetched fresh from origin before creating the worktree). When omitted, polecat automatically branches from up-to-date upstream HEAD.
-- `-s` sets the session name. The container branch is constructed deterministically as `polecat/<session>`:
-  - Task dispatch (`-s "dispatch-<task-id>"`): `polecat/dispatch-<task-id>`
-  - Prompt run (`-s "run-<slug>"`): `polecat/run-<slug>`
-  - Unset `-s`: `polecat/session-<8 hex>`
-  - **Authorship & limit**: The branch name proves automated polecat provenance (ruling out parallel human work), but encodes the task/session name rather than an attempt ID — multiple dispatches of the same task share the same branch name.
-- `-p <project>` names the target repo. Valid project slugs come from the canonical project registry at `$AOPS_SESSIONS/polecat.yaml` (consult it before resolving a repo name; per-machine workspace paths are mapped in `<polecat_home>/local.yaml`).
-- Never use `-d` (`--repo-dir`) with a linked git worktree: its `.git` file points outside the container mounts and git breaks.
-- Never pass an interactive flag: the worker idles at the prompt forever.
-- Print timeout is configured in `polecat.yaml` (e.g. `timeout: 30m`). No env var fallback.
-- Pass no paths, images, or credentials. Polecat reads those from the host environment and `polecat.yaml`.
-- Polecats do not know our tool, skill, or server names. Write prompts in plain English.
+- `polecat run` uses Docker Sandboxes (`sbx`) with dedicated kits for `claude` and `agy`, running the agent inside an isolated microVM sandbox while seamlessly working directly on the mounted workspace.
+- `polecat run --detach` is non-blocking: it spawns the sandbox container in detached mode and emits the session info immediately.
+- `--prompt`: specifies the prompt in headless/print mode.
+- `-s` sets the session name (passed to `sbx run --name <name>`).
+- `-p <project>` names the target repo (resolved via canonical project aliases in `polecat.yaml` and `local.yaml` paths).
+- `-d` (`--repo-dir`): specifies the host workspace path to mount into the sandbox. Defaults to current working directory.
+- No auto worktrees, cloning, or remote pushing: the sandbox mounts the repository path directly and changes persist natively.
+- Pass no images or complex docker flags: Docker Sandboxes uses the appropriate kit (`lib/polecat/kits/<agent>`).
 
 ## Remote host
 

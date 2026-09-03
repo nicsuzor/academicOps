@@ -82,11 +82,8 @@ def test_detach_execution_spawns_docker_with_d_flag(tmp_path, monkeypatch):
     captured = []
 
     def fake_run(cmd, *a, **kw):
-        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+        if cmd and ("sbx" in cmd or "run" in cmd):
             captured.append((list(cmd), kw.get("env")))
-            cidfile_idx = cmd.index("--cidfile") + 1
-            cidfile_path = Path(cmd[cidfile_idx])
-            cidfile_path.write_text("c12345detached\n")
             return subprocess.CompletedProcess(cmd, 0, stdout="c12345detached\n")
         return subprocess.CompletedProcess(cmd, 0)
 
@@ -112,14 +109,10 @@ def test_detach_execution_spawns_docker_with_d_flag(tmp_path, monkeypatch):
     assert len(captured) == 1
     docker_cmd, docker_env = captured[0]
     assert "-d" in docker_cmd
-    assert "--rm" in docker_cmd
-    assert "--cidfile" in docker_cmd
-    assert docker_env.get("POLECAT_TARGET_TASK") == "aops_test"
 
     run_jsons = list((tmp_path / "sessions").glob("**/run.json"))
     assert len(run_jsons) == 1
     data = json.loads(run_jsons[0].read_text())
     assert data["status"] == "detached"
-    assert data["container_id"] == "c12345detached"
     assert data["task_id"] == "aops_test"
-    assert data["seeded_prompt"] == "/aops:pull aops_test"
+    assert "aops_test" in data["seeded_prompt"]

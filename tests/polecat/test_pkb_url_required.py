@@ -46,7 +46,7 @@ def _invoke(monkeypatch, tmp_path, argv):
     captured = []
 
     def fake_run(cmd, *a, **kw):
-        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+        if cmd and ("sbx" in cmd or "run" in cmd):
             captured.append(list(cmd))
         return subprocess.CompletedProcess(cmd, 0)
 

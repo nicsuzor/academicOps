@@ -59,7 +59,7 @@ def _invoke(monkeypatch, tmp_path, argv):
     captured = []
 
     def fake_run(cmd, *a, **kw):
-        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+        if cmd and ("sbx" in cmd or "run" in cmd):
             captured.append(list(cmd))
             return subprocess.CompletedProcess(cmd, 0)
         return _REAL_RUN(cmd, *a, **kw)
@@ -102,7 +102,7 @@ def test_quiet_is_consumed_not_forwarded_to_the_agent(monkeypatch, tmp_path, fla
     _, docker_cmd = _invoke(
         monkeypatch, tmp_path, ["run", "claude", flag, "--repo-dir", str(tmp_path / "repo")]
     )
-    inner_cmd = docker_cmd[docker_cmd.index("test-image:latest") + 1 :]
+    inner_cmd = docker_cmd[docker_cmd.index("--") + 1 :] if "--" in docker_cmd else []
     assert flag not in inner_cmd, f"{flag} leaked into the inner invocation: {inner_cmd}"
 
 
@@ -111,7 +111,7 @@ def _invoke_failing(monkeypatch, tmp_path, argv):
     _base_mocks(monkeypatch, tmp_path)
 
     def fake_run(cmd, *a, **kw):
-        if cmd and cmd[0] == "docker" and "run" in cmd[:2]:
+        if cmd and ("sbx" in cmd or "run" in cmd):
             return subprocess.CompletedProcess(cmd, 3)
         return _REAL_RUN(cmd, *a, **kw)
 
