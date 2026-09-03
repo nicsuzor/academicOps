@@ -1,7 +1,7 @@
 ---
 name: workflow-library
 type: skill
-description: List, read, add, edit, and retire the workflow templates that `brief` composes from. Use whenever asked what workflows or templates exist, what one covers, whether a kind of work is already covered by a template, or to write, change, or retire one -- "list our workflows", "show me the workflow library", "what processes do we have", "manage our composable workflows". The library spans three tiers and has no registry, so this skill is the only surface that can see or maintain it. Not the harness's built-in `/workflows` progress viewer, which shows running multi-agent jobs and has nothing to do with templates.
+description: List, read, add, edit, and retire the workflow templates that `brief` composes from, and preview how `brief` would assemble them for a stated task without minting one. Use whenever asked what workflows or templates exist, what one covers, whether a kind of work is already covered by a template, how a task would be assembled from components, or to write, change, or retire one -- "list our workflows", "show me the workflow library", "what processes do we have", "manage our composable workflows", "show me how we'd assemble a workflow for X". The library spans three tiers and has no registry, so this skill is the only surface that can see or maintain it. Not the harness's built-in `/workflows` progress viewer, which shows running multi-agent jobs and has nothing to do with templates.
 ---
 
 # /workflow-library -- see and maintain the workflow library
@@ -33,7 +33,7 @@ report "no project tier here" and move on.
 
 ## Modes
 
-Default to `list`.
+Default to `list`. Read a source's process (like `brief`'s) before simulating it -- never reconstruct a stage's method from memory.
 
 ### list -- what does the library cover?
 
@@ -81,6 +81,28 @@ looks:
 Resolve the slug through the tiers, read the winner, and show it. State which
 tier won and name every other tier the slug resolved in. If it resolves nowhere,
 say so and list the near-misses rather than guessing which was meant.
+
+### preview -- how would `brief` assemble this?
+
+Simulate `brief`'s composition step for a stated task, entirely on the record,
+and mint nothing. Read `brief`'s own SKILL.md for its actual steps first --
+this mode borrows its method, it does not reinvent one.
+
+- Enumerate the same three sources `brief` would, exactly as in `list`.
+- Read the ones that look relevant and show how they compose for this task --
+  named fragments filling named slots (e.g. `wf-fact-check` filling `wf-qa`'s
+  evaluate slot), gaps named plainly where no component covers a step the work
+  needs.
+- Show the shape of the resulting task(s) -- Goal / Context / Deliverable /
+  Scope / Constraints / Acceptance criteria, `brief`'s actual body shape --
+  without calling `pkb__decompose_task`, without touching any task's status,
+  without writing to the graph at all.
+- Say plainly, every time, that nothing was minted and this is a preview.
+
+Never cut, dispatch, or write a task from this mode -- that is what makes it
+safe to run on a whim. If the operator wants the real thing next, hand off to
+`brief` explicitly rather than sliding from preview into execution in the same
+turn.
 
 ### new -- add one
 
@@ -174,5 +196,7 @@ relying on a reader knowing what a tag means.
 - Register a new template in a registry.
 - Merge two tiers' versions of one slug.
 - Retire or reclassify a template the operator did not name.
-- Compose a process, brief a task, or dispatch work. This skill maintains the
-  library; `brief` uses it.
+- Compose a process for real, brief a task, or dispatch work outside `preview`.
+  `preview` may show how one would assemble and what it would produce -- but
+  never write, mint, or dispatch from it. This skill maintains the library;
+  `brief` uses it.
