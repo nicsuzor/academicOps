@@ -400,30 +400,9 @@ def test_agy_agent_tool_names_are_translated(built):
 
 
 def test_agent_no_tools_key_semantics(built_orchestrate):
-    """adversary.md sets no `tools:` key in source frontmatter.
+    """marsha.md sets no `tools:` key in source frontmatter.
     Claude: leaves tools unset (inherits everything).
-    agy: emits the full accepted tools vocabulary.
-    """
-    import yaml
-
-    from build.tools import load_tool_config
-
-    accepted_tools, _ = load_tool_config()
-
-    claude_agent = built_orchestrate / "aops-claude" / "agents" / "adversary.md"
-    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
-    assert "tools" not in claude_fm
-
-    agy_agent = built_orchestrate / "aops-agy" / "agents" / "adversary.md"
-    agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert agy_fm["tools"] == accepted_tools
-
-
-def test_agent_tools_allowlist_survives_agy_translation(built_orchestrate):
-    """marsha.md carries a `tools:` allowlist; both clients must honour it.
-
-    Claude keeps the source names verbatim; agy translates them into its own
-    vocabulary and keeps the MCP server wildcard intact.
+    agy: emits full 21 accepted tools vocabulary.
     """
     import yaml
 
@@ -433,25 +412,11 @@ def test_agent_tools_allowlist_survives_agy_translation(built_orchestrate):
 
     claude_agent = built_orchestrate / "aops-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
-    assert claude_fm["tools"] == [
-        "Bash",
-        "Read",
-        "Grep",
-        "Glob",
-        "Skill",
-        "mcp__playwright__*",
-    ]
+    assert "tools" not in claude_fm
 
     agy_agent = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
-    assert agy_fm["tools"] == [
-        "run_command",
-        "view_file",
-        "grep_search",
-        "find_by_name",
-        "mcp_playwright_*",
-    ]
-    assert agy_fm["tools"] != accepted_tools
+    assert agy_fm["tools"] == accepted_tools
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
@@ -1144,11 +1109,7 @@ def test_pauli_agy_frontmatter(tmp_path):
     assert agent["name"] == "pauli"
     assert "mcpServers" not in agent
     accepted_tools, _ = load_tool_config()
-    # pauli carries a `tools:` allowlist: PKB MCP servers only, no host tools.
-    # The three source prefixes collapse to two agy names, because agy strips
-    # the `plugin_<name>_` install-path prefix.
-    assert agent["tools"] == ["mcp_services_*", "mcp_services-http_*"]
-    assert agent["tools"] != accepted_tools
+    assert agent["tools"] == accepted_tools
     assert "hidden" not in agent
     assert "includeSections" not in agent
     assert "call_mcp_tool" not in agent["tools"]

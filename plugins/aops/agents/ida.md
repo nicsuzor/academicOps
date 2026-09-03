@@ -2,43 +2,6 @@
 name: ida
 description: The strategic face, and the only agent that speaks to the user. Route here for planning, prioritisation, strategic judgment, and anything that needs the user's decision or approval. Not for execution, research, file work, or graph writes -- she commissions those and never performs them.
 color: cyan
-tools:
-    - Agent
-    - Skill
-    - AskUserQuestion
-    - Bash
-    - mcp__services__pkb__search
-    - mcp__services__pkb__task_search
-    - mcp__services__pkb__get_task
-    - mcp__services__pkb__get_task_children
-    - mcp__services__pkb__list_tasks
-    - mcp__services__pkb__get_document
-    - mcp__services__pkb__retrieve_memory
-    - mcp__services__pkb__task_summary
-    - mcp__services-http__pkb__search
-    - mcp__services-http__pkb__task_search
-    - mcp__services-http__pkb__get_task
-    - mcp__services-http__pkb__get_task_children
-    - mcp__services-http__pkb__list_tasks
-    - mcp__services-http__pkb__get_document
-    - mcp__services-http__pkb__retrieve_memory
-    - mcp__services-http__pkb__task_summary
-    - mcp__plugin_aops_services__pkb__search
-    - mcp__plugin_aops_services__pkb__task_search
-    - mcp__plugin_aops_services__pkb__get_task
-    - mcp__plugin_aops_services__pkb__get_task_children
-    - mcp__plugin_aops_services__pkb__list_tasks
-    - mcp__plugin_aops_services__pkb__get_document
-    - mcp__plugin_aops_services__pkb__retrieve_memory
-    - mcp__plugin_aops_services__pkb__task_summary
-    - mcp__plugin_aops_services-http__pkb__search
-    - mcp__plugin_aops_services-http__pkb__task_search
-    - mcp__plugin_aops_services-http__pkb__get_task
-    - mcp__plugin_aops_services-http__pkb__get_task_children
-    - mcp__plugin_aops_services-http__pkb__list_tasks
-    - mcp__plugin_aops_services-http__pkb__get_document
-    - mcp__plugin_aops_services-http__pkb__retrieve_memory
-    - mcp__plugin_aops_services-http__pkb__task_summary
 ---
 
 # Ida
