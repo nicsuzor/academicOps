@@ -21,10 +21,10 @@ templates/              Build-time file templates.
 scripts/                Repo tooling, not shipped in any plugin.
 plugins/                Plugin sources. Only what a client needs.
   aops/                 pauli, memory, planning, workflow composition, MCP client
-                        config; ida — the interactive face.
-  orchestrate/          james — the container worker; marsha — QA; adversary;
+                        config; ida -- the interactive face.
+  orchestrate/          james -- the container worker; marsha -- QA; adversary;
                         the review skills; the handback hooks.
-  rbg/                  rbg — rule enforcement: an advisory turn-by-turn evaluator
+  rbg/                  rbg -- rule enforcement: an advisory turn-by-turn evaluator
                         plus a stop-side rule-check gate.
   ts/                   Tailscale bring-up.
   tools/                Domain research skills.
@@ -55,23 +55,23 @@ plugin's files.
 
 ## Core pillars
 
-1. **Prompt situation (`aops`)** — ground incoming prompts in strategic PKB
+1. **Prompt situation (`aops`)** -- ground incoming prompts in strategic PKB
    history via `hydrate` / `brief`, invoked directly by the agent. `aops` wires
    no hook for this; its only shipped hook is `PostToolBatch` (`be_quiet`),
    which reminds `ida` to trim her reply, not prompt grounding.
-2. **Workflow composition (`aops`)** — `brief` selects assurance and review
+2. **Workflow composition (`aops`)** -- `brief` selects assurance and review
    levels matching risk and blast radius. Routing an ask to its template is a
-   separate job: a direct read of templates under `plugins/aops/workflows/` by
+   separate job: a direct read of templates under `plugins/aops/templates/` by
    whichever agent holds the ask.
-3. **Containerised execution and dispatch (`ida`)** — dispatch tasks to isolated
+3. **Containerised execution and dispatch (`ida`)** -- dispatch tasks to isolated
    Docker containers (`lib/polecat`, injected into `orchestrate`, launched by
    `pc`), writing results back to the PKB task record, committing, and pushing.
-4. **Dual-layer rule enforcement (`rbg`)** — as designed: turn-by-turn
+4. **Dual-layer rule enforcement (`rbg`)** -- as designed: turn-by-turn
    local-model evaluation of tool calls (`PreToolUse`), plus a stop gate that
    blocks once per stop-chain and directs the agent to run the RBG
    rule-compliance check (`axioms/` + project + local rules) before stopping
    (`Stop` / `SubagentStop`). `plugins/rbg/hooks/handlers.py`'s `HANDLERS` is
-   currently empty — every entry is commented out — so neither layer is wired
+   currently empty -- every entry is commented out -- so neither layer is wired
    today.
 
 ## Plugins
@@ -79,19 +79,18 @@ plugin's files.
 Directory names are short. `build/marketplace.toml` maps directory →
 marketplace name and is the single source of truth for the built plugin set.
 
-| Directory             | Marketplace name | Owns                                                                                                                                                |
-| --------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins/aops`        | `aops`           | pauli. Memory, effectual planning, workflow composition, PKB MCP client config; ida, the interactive face, and `strategize`, her own thinking pass. |
-| `plugins/orchestrate` | `orchestrate`    | james, the container worker; marsha, QA; adversary; the review skills; the handback hooks; pc, ida's polecat launcher; polecat.                     |
-| `plugins/rbg`         | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate.                                                                 |
-| `plugins/ts`          | `ts`             | Tailscale bring-up for remote sessions.                                                                                                             |
-| `plugins/tools`       | `tools`          | Domain research skills.                                                                                                                             |
-| `plugins/aops-debug`  | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                                                                                          |
+| Directory            | Marketplace name | Owns                                                                                                                                                                                                  |
+| -------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins/aops`       | `aops`           | pauli (memory, effectual planning, workflow composition, PKB MCP client config); ida (interactive face, strategize); james (container worker); marsha (QA); adversary (red-team); handback hooks; pc. |
+| `plugins/rbg`        | `rbg`            | rbg. Rule enforcement: turn-by-turn evaluator advisory and the stop-side rule gate.                                                                                                                   |
+| `plugins/ts`         | `ts`             | Tailscale bring-up for remote sessions.                                                                                                                                                               |
+| `plugins/tools`      | `tools`          | Domain research skills.                                                                                                                                                                               |
+| `plugins/aops-debug` | `aops-debug`     | Debug plugin that dumps raw hook payloads.                                                                                                                                                            |
 
 ### aops
 
 **pauli** is the sole writer to the PKB. No other agent mutates it. The PKB holds
-current state, synthesised — not an append log. Writing to it means reading what
+current state, synthesised -- not an append log. Writing to it means reading what
 is there, integrating the new fact, and leaving one correct document.
 
 The plugin ships a process-template library under `workflows/`. Pauli composes a
@@ -116,16 +115,16 @@ results to stdout. With a task id, the worker writes its result to the task
 record and pushes its branch; with a prompt, it returns the output directly to
 the caller. Detaching is the wrapping tmux session's job when running outside an
 open agent turn. `lib/polecat/` is injected into that plugin
-(`plugins/orchestrate/manifest/plugin.toml`) and read as
+(`plugins/aops/manifest/plugin.toml`) and read as
 `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`.
 
-### orchestrate
+### aops (execution & review)
 
 Ships **james**, the persona a polecat container boots into
 (`lib/polecat/cli.py`, `DEFAULT_AGENT`). He takes one unit of work and sees it
 through: hydrate, claim the task, do the work with whatever his harness gives
-him, and hand back a report carrying its receipts. How he uses his harness —
-subagents, naming, messaging — is his own affair and is not instructed here. He
+him, and hand back a report carrying its receipts. How he uses his harness --
+subagents, naming, messaging -- is his own affair and is not instructed here. He
 does not talk to the user.
 
 **adversary** is a red-team reviewer, commissioned when a claim needs refuting or
@@ -140,36 +139,36 @@ as input rather than truth
 ([`plugins/aops/skills/strategic-review/SKILL.md`](../plugins/aops/skills/strategic-review/SKILL.md)),
 not from packaging.
 
-**The handback doctrine** — what a returning report must carry, and what its
-receiver does with one that carries nothing — is written into each surface that
+**The handback doctrine** -- what a returning report must carry, and what its
+receiver does with one that carries nothing -- is written into each surface that
 carries it:
 
 - The **worker's** half:
-  [`plugins/orchestrate/hooks/messages/honesty.md`](../plugins/orchestrate/hooks/messages/honesty.md),
+  [`plugins/aops/hooks/messages/honesty.md`](../plugins/aops/hooks/messages/honesty.md),
   delivered on `SubagentStart` (Hooks, below).
-- The **receiver's** half reaches an agent through that agent's own body alone —
+- The **receiver's** half reaches an agent through that agent's own body alone --
   [`plugins/aops/agents/ida.md`](../plugins/aops/agents/ida.md) under "What comes
   back", and
-  [`plugins/orchestrate/agents/james.md`](../plugins/orchestrate/agents/james.md)
+  [`plugins/aops/agents/james.md`](../plugins/aops/agents/james.md)
   under "What you accept".
-- [`plugins/orchestrate/hooks/messages/hearsay.md`](../plugins/orchestrate/hooks/messages/hearsay.md)
+- [`plugins/aops/hooks/messages/hearsay.md`](../plugins/aops/hooks/messages/hearsay.md)
   is delivered on `PostToolBatch`.
 
 Proof is attached by the **worker**, because a returning result cannot be amended
 afterwards. The **receiver's** only move on a report without proof is to send it
 back; re-verifying, re-running, or completing the work on the worker's behalf is
-not the receiver's job at any tier. Brief composition is the same shape — the
+not the receiver's job at any tier. Brief composition is the same shape -- the
 goal and why it matters, the criteria the output will be assessed against, and
-the evidence that will be accepted — and it is stated only in
+the evidence that will be accepted -- and it is stated only in
 [`plugins/aops/skills/brief/SKILL.md`](../plugins/aops/skills/brief/SKILL.md).
 
 ### rbg
 
 **rbg** judges rule compliance, applying three rule sources in order:
 
-1. `axioms/` shipped in the plugin — the floor, inviolable
-2. `$CWD/.agents/rules/` — project-local rules
-3. `$ACA_DATA/.agents/rules/` — user-scoped rules from the PKB repo
+1. `axioms/` shipped in the plugin -- the floor, inviolable
+2. `$CWD/.agents/rules/` -- project-local rules
+3. `$ACA_DATA/.agents/rules/` -- user-scoped rules from the PKB repo
 
 Later sources add obligations. They never weaken an axiom.
 
@@ -183,29 +182,29 @@ the RBG rule-compliance check over the three sources above and present
 checkable evidence before it stops. None of this is currently wired:
 `plugins/rbg/hooks/handlers.py`'s `HANDLERS` dict is empty, every one of
 `evaluate`, `inject_ruleset`, and `rule_check` commented out, marked
-`TEMPORARY (2026-08-08, v0.7.1) — rbg's hooks are deliberately unregistered`.
+`TEMPORARY (2026-08-08, v0.7.1) -- rbg's hooks are deliberately unregistered`.
 
 ## Hooks
 
 Every hook is deterministic, lightweight, and single-purpose.
 
-| Plugin        | Event                                                                                  | Client      | Requires                                                                                                                   | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| :------------ | :------------------------------------------------------------------------------------- | :---------- | :------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aops`        | `UserPromptSubmit` — **not built**                                                     | —           | —                                                                                                                          | Nothing today. `plugins/aops/hooks/handlers.py` registers `PostToolBatch` alone and `plugins/aops/manifest/hooks.template.json` declares no `UserPromptSubmit` event. Pillar 1 grounding happens via `hydrate` / `brief`, invoked directly by the agent, not via a hook.                                                                                                                                                                                                                                                                                                         |
-| `aops` (ida)  | `PostToolBatch`                                                                        | Claude Code | none                                                                                                                       | Advisory quiet gate (`be_quiet`, `warn`): reminds ida to strip her reply to load-bearing content before speaking to the person. Fires only when `agent_type` is `aops:ida`. Always the same reminder — the hook has no transcript to judge, only that a batch resolved. In `CONTINUATION_EVENTS`, so the dispatcher's self-loop guard holds it to once per chain. Claude-only by construction: `PostToolBatch` has no agy wire equivalent and `aops` ships no agy `hooks.json`. Parity is owed.                                                                                  |
-| `aops`        | `Stop` / `SubagentStop` — **not built**                                                | —           | —                                                                                                                          | Nothing today. `plugins/aops/hooks/handlers.py` registers `PostToolBatch` alone and `plugins/aops/manifest/hooks.template.json` declares no stop event. The intended gate blocks once per stop-chain while the session still holds an `in_progress` task, directing the agent to record its work and release it; the ruling for it is **fail-CLOSED**, because work counts only once it is recorded on the task. Blocked on a store-side prerequisite: the task API cannot answer which tasks a session holds, and reconstructing that per task is far too slow for a stop hook. |
-| `orchestrate` | `SubagentStart`                                                                        | Claude Code | none                                                                                                                       | Advisory reminder (`honest_output`, `warn`) carrying `plugins/orchestrate/hooks/messages/honesty.md`, the evidence contract — every load-bearing conclusion carries falsifiable evidence, quoted verbatim with pinpoint citations, curated to the altitude of the report's own claims. Skipped when `agent_type` is `aops:ida`. Binds a spawned **worker** at the start of its turn.                                                                                                                                                                                             |
-| `orchestrate` | `PostToolBatch`                                                                        | Claude Code | none                                                                                                                       | Advisory hearsay reminder (`rule_against_hearsay`, `warn`) carrying `plugins/orchestrate/hooks/messages/hearsay.md`: a subagent's report is not evidence. Fires when any tool call in the batch was `Agent`. Binds the **receiver** at the instant a synchronous report lands; `PostToolBatch` fires once after every call in a batch resolves, so a turn that dispatched several subagents is reminded once rather than once per report. Declared `async` on Claude Code.                                                                                                       |
-| `orchestrate` | `SubagentStop` — **not registered**                                                    | —           | —                                                                                                                          | Nothing today. `SubagentStop` is absent from `HANDLERS`, so a subagent handback reaches no orchestrate handler. `plugins/orchestrate/manifest/hooks.template.json` declares the wire event, so the dispatcher runs and returns nothing. The honesty reminder lands on `SubagentStart` instead.                                                                                                                                                                                                                                                                                   |
-| `orchestrate` | `UserPromptSubmit`                                                                     | Both        | `GENAI_ENGINE_API_KEY`, `GENAI_ENGINE_TASK_ID`, `GENAI_ENGINE_TRACE_ENDPOINT`, or an `arthur_config.json` under `.claude/` | **Observability.** Nothing injected. `user_prompt_submit` opens the turn's trace through `claude_code_tracer` and returns `None`. Plugin-owned OTel spans, distinct from Claude Code's native export. Silent no-op when `discover_config()` finds no configuration; every tracer handler is wrapped, so a failure logs a warning and changes nothing about the turn.                                                                                                                                                                                                             |
-| `orchestrate` | `PreToolUse`                                                                           | Claude Code | as above                                                                                                                   | **Observability.** Nothing injected. `pre_tool` records the call's start, creating the trace if `UserPromptSubmit` did not. Matcher `*`.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `orchestrate` | `PostToolUse`                                                                          | Claude Code | as above                                                                                                                   | **Observability.** Nothing injected. `post_tool` sends the completed call's `TOOL` / `RETRIEVER` / `AGENT` span. Matcher `*`.                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `orchestrate` | `PostToolUseFailure`                                                                   | Claude Code | as above                                                                                                                   | **Observability.** Nothing injected. `post_tool_failure` sends an error span. A failed call is a span too; dropping it would leave a trace reading as though the call never happened. Matcher `*`.                                                                                                                                                                                                                                                                                                                                                                               |
-| `orchestrate` | `Stop`                                                                                 | Both        | as above                                                                                                                   | **Observability.** Nothing injected. `stop` completes the trace at the turn boundary and clears the session's tracer state.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `orchestrate` | `SessionStart`                                                                         | Claude Code | `CLAUDE_ENV_FILE`, `AOPS_BOT_GH_TOKEN`, `AOPS_SESSIONS`, `PKB_MCP_URL`                                                     | Appends the session's credential and path variables to `CLAUDE_ENV_FILE`, scoping git and GitHub auth to the bot token: container and worktree sessions must not inherit the operator's own SSH identity or credential helper. Silent no-op when `CLAUDE_ENV_FILE` is unset.                                                                                                                                                                                                                                                                                                     |
-| `rbg`         | `PreToolUse` / `UserPromptSubmit` (agy) / `Stop` / `SubagentStop` — **not registered** | —           | —                                                                                                                          | Nothing today. `plugins/rbg/hooks/handlers.py`'s `HANDLERS` dict is empty — `evaluate` (layer 1), `inject_ruleset`, and `rule_check` (layer 2, `Stop` / `SubagentStop`) are all commented out, marked `TEMPORARY (2026-08-08, v0.7.1) — rbg's hooks are deliberately unregistered`. `plugins/rbg/manifest/hooks.template.json` still declares the wire events, so the dispatcher runs and returns nothing, the same shape as the `orchestrate` `SubagentStop` row above. Pillar 4 as designed — turn-by-turn advisory plus the stop-side rule-check gate — ships no live hook.   |
-| `ts`          | `SessionStart`                                                                         | Claude Code | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`                                                                                    | Launches background `tailscale up` for remote session access over the Tailnet.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `ts`          | `SessionEnd`                                                                           | Claude Code | `TS_SESSION_SYNC_HOST`                                                                                                     | Transmits the session log bundle to the remote sync host, securing session history after termination.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Plugin       | Event                                                                                   | Client      | Requires                                                                                                                   | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| :----------- | :-------------------------------------------------------------------------------------- | :---------- | :------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aops`       | `UserPromptSubmit` -- **not built**                                                     | --          | --                                                                                                                         | Nothing today. `plugins/aops/hooks/handlers.py` registers `PostToolBatch` alone and `plugins/aops/manifest/hooks.template.json` declares no `UserPromptSubmit` event. Pillar 1 grounding happens via `hydrate` / `brief`, invoked directly by the agent, not via a hook.                                                                                                                                                                                                                                                                                                           |
+| `aops` (ida) | `PostToolBatch`                                                                         | Claude Code | none                                                                                                                       | Advisory quiet gate (`be_quiet`, `warn`): reminds ida to strip her reply to load-bearing content before speaking to the person. Fires only when `agent_type` is `aops:ida`. Always the same reminder -- the hook has no transcript to judge, only that a batch resolved. In `CONTINUATION_EVENTS`, so the dispatcher's self-loop guard holds it to once per chain. Claude-only by construction: `PostToolBatch` has no agy wire equivalent and `aops` ships no agy `hooks.json`. Parity is owed.                                                                                   |
+| `aops`       | `Stop` / `SubagentStop` -- **not built**                                                | --          | --                                                                                                                         | Nothing today. `plugins/aops/hooks/handlers.py` registers `PostToolBatch` alone and `plugins/aops/manifest/hooks.template.json` declares no stop event. The intended gate blocks once per stop-chain while the session still holds an `in_progress` task, directing the agent to record its work and release it; the ruling for it is **fail-CLOSED**, because work counts only once it is recorded on the task. Blocked on a store-side prerequisite: the task API cannot answer which tasks a session holds, and reconstructing that per task is far too slow for a stop hook.   |
+| `aops`       | `SubagentStart`                                                                         | Claude Code | none                                                                                                                       | Advisory reminder (`honest_output`, `warn`) carrying `plugins/aops/hooks/messages/honesty.md`, the evidence contract -- every load-bearing conclusion carries falsifiable evidence, quoted verbatim with pinpoint citations, curated to the altitude of the report's own claims. Skipped when `agent_type` is `aops:ida`. Binds a spawned **worker** at the start of its turn.                                                                                                                                                                                                     |
+| `aops`       | `PostToolBatch`                                                                         | Claude Code | none                                                                                                                       | Advisory hearsay reminder (`rule_against_hearsay`, `warn`) carrying `plugins/aops/hooks/messages/hearsay.md`: a subagent's report is not evidence. Fires when any tool call in the batch was `Agent`. Binds the **receiver** at the instant a synchronous report lands; `PostToolBatch` fires once after every call in a batch resolves, so a turn that dispatched several subagents is reminded once rather than once per report. Declared `async` on Claude Code.                                                                                                                |
+| `aops`       | `SubagentStop` -- **not registered**                                                    | --          | --                                                                                                                         | Nothing today. `SubagentStop` is absent from `HANDLERS`, so a subagent handback reaches no aops handler. `plugins/aops/manifest/hooks.template.json` declares the wire event, so the dispatcher runs and returns nothing. The honesty reminder lands on `SubagentStart` instead.                                                                                                                                                                                                                                                                                                   |
+| `aops`       | `UserPromptSubmit`                                                                      | Both        | `GENAI_ENGINE_API_KEY`, `GENAI_ENGINE_TASK_ID`, `GENAI_ENGINE_TRACE_ENDPOINT`, or an `arthur_config.json` under `.claude/` | **Observability.** Nothing injected. `user_prompt_submit` opens the turn's trace through `claude_code_tracer` and returns `None`. Plugin-owned OTel spans, distinct from Claude Code's native export. Silent no-op when `discover_config()` finds no configuration; every tracer handler is wrapped, so a failure logs a warning and changes nothing about the turn.                                                                                                                                                                                                               |
+| `aops`       | `PreToolUse`                                                                            | Claude Code | as above                                                                                                                   | **Observability.** Nothing injected. `pre_tool` records the call's start, creating the trace if `UserPromptSubmit` did not. Matcher `*`.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `aops`       | `PostToolUse`                                                                           | Claude Code | as above                                                                                                                   | **Observability.** Nothing injected. `post_tool` sends the completed call's `TOOL` / `RETRIEVER` / `AGENT` span. Matcher `*`.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `aops`       | `PostToolUseFailure`                                                                    | Claude Code | as above                                                                                                                   | **Observability.** Nothing injected. `post_tool_failure` sends an error span. A failed call is a span too; dropping it would leave a trace reading as though the call never happened. Matcher `*`.                                                                                                                                                                                                                                                                                                                                                                                 |
+| `aops`       | `Stop`                                                                                  | Both        | as above                                                                                                                   | **Observability.** Nothing injected. `stop` completes the trace at the turn boundary and clears the session's tracer state.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `aops`       | `SessionStart`                                                                          | Claude Code | `CLAUDE_ENV_FILE`, `AOPS_BOT_GH_TOKEN`, `AOPS_SESSIONS`, `PKB_MCP_URL`                                                     | Appends the session's credential and path variables to `CLAUDE_ENV_FILE`, scoping git and GitHub auth to the bot token: container and worktree sessions must not inherit the operator's own SSH identity or credential helper. Silent no-op when `CLAUDE_ENV_FILE` is unset.                                                                                                                                                                                                                                                                                                       |
+| `rbg`        | `PreToolUse` / `UserPromptSubmit` (agy) / `Stop` / `SubagentStop` -- **not registered** | --          | --                                                                                                                         | Nothing today. `plugins/rbg/hooks/handlers.py`'s `HANDLERS` dict is empty -- `evaluate` (layer 1), `inject_ruleset`, and `rule_check` (layer 2, `Stop` / `SubagentStop`) are all commented out, marked `TEMPORARY (2026-08-08, v0.7.1) -- rbg's hooks are deliberately unregistered`. `plugins/rbg/manifest/hooks.template.json` still declares the wire events, so the dispatcher runs and returns nothing, the same shape as the `orchestrate` `SubagentStop` row above. Pillar 4 as designed -- turn-by-turn advisory plus the stop-side rule-check gate -- ships no live hook. |
+| `ts`         | `SessionStart`                                                                          | Claude Code | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`                                                                                    | Launches background `tailscale up` for remote session access over the Tailnet.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `ts`         | `SessionEnd`                                                                            | Claude Code | `TS_SESSION_SYNC_HOST`                                                                                                     | Transmits the session log bundle to the remote sync host, securing session history after termination.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ### Events, audiences, and dispositions
 
@@ -229,16 +228,16 @@ neither is an event no handler can be registered for.
 A handler returns one of three dispositions, in descending order of force;
 `_merge` resolves a plugin's handlers by taking the strongest:
 
-- **refusal** (`refuse`) — denies a tool call. Reserved for structural
+- **refusal** (`refuse`) -- denies a tool call. Reserved for structural
   impossibility: the session as configured cannot carry the call out, so letting
   it through produces a hang rather than an outcome. Never a rule verdict.
-- **block** — withholds a stop; the turn continues instead. Honoured only on
-  `BLOCKABLE_EVENTS` (`Stop`, `SubagentStop`), and only on Claude Code — agy has
+- **block** -- withholds a stop; the turn continues instead. Honoured only on
+  `BLOCKABLE_EVENTS` (`Stop`, `SubagentStop`), and only on Claude Code -- agy has
   no blockable mapped event, and its response contract carries no disposition
   field, so a block reaches it as an advisory. Returned on any other event it
   degrades to an advisory and reports the misuse on stderr, so a handler cannot
   mistake an unhonoured field for enforcement.
-- **advisory** — injected context the agent reads and weighs. Everything else.
+- **advisory** -- injected context the agent reads and weighs. Everything else.
 
 **Stop hooks are guarded once per chain in the runtime, not in each handler.** A
 hook that injects on a stop gives the session another turn, which stops again and
@@ -258,16 +257,16 @@ is honoured on its own.
 Dispatch and messaging operate across containerised execution (`polecat`) and
 native session agent teams (`Agent`).
 
-| Path                             | Target (`to=`)                             | Status          | Mechanics                                                                                                                                                                                                            |
-| :------------------------------- | :----------------------------------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Parent → child subagent          | Child `agentId` (e.g. `af67c74fd42144d3b`) | **OPERATIONAL** | Parent receives `agentId` in the `Agent(...)` tool result and targets it directly.                                                                                                                                   |
-| Subagent → main session          | Reserved alias `"main"`                    | **OPERATIONAL** | Queues the message into the top-level main session's next turn.                                                                                                                                                      |
-| Child → parent via `agentId`     | Parent `agentId`                           | **OPERATIONAL** | Works when the parent explicitly passes its own `agentId` in the dispatch brief.                                                                                                                                     |
-| Child → parent via instance name | Parent's spawn `name` (e.g. `"team-lead"`) | **OPERATIONAL** | Resolves when the parent was spawned with an explicit `name`. A parent spawned without one has no name to address and must pass its own `agentId`.                                                                   |
-| Subagent → named peer            | Peer's instance name (e.g. `"rbg-pr2426"`) | **OPERATIONAL** | The name is the address, and keeps resolving after the peer completes — a send resumes it from its transcript. Append the `[ref]` shown by `ListAgents` or by an error only to disambiguate two rows sharing a name. |
-| Multi-tier return (`L2` → `L1`)  | `L1`'s instance name or `agentId`          | **CONDITIONAL** | An `L2` subagent is told neither on spawn. Either works once `L1` puts one of them in the brief.                                                                                                                     |
+| Path                             | Target (`to=`)                             | Status          | Mechanics                                                                                                                                                                                                             |
+| :------------------------------- | :----------------------------------------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parent → child subagent          | Child `agentId` (e.g. `af67c74fd42144d3b`) | **OPERATIONAL** | Parent receives `agentId` in the `Agent(...)` tool result and targets it directly.                                                                                                                                    |
+| Subagent → main session          | Reserved alias `"main"`                    | **OPERATIONAL** | Queues the message into the top-level main session's next turn.                                                                                                                                                       |
+| Child → parent via `agentId`     | Parent `agentId`                           | **OPERATIONAL** | Works when the parent explicitly passes its own `agentId` in the dispatch brief.                                                                                                                                      |
+| Child → parent via instance name | Parent's spawn `name` (e.g. `"team-lead"`) | **OPERATIONAL** | Resolves when the parent was spawned with an explicit `name`. A parent spawned without one has no name to address and must pass its own `agentId`.                                                                    |
+| Subagent → named peer            | Peer's instance name (e.g. `"rbg-pr2426"`) | **OPERATIONAL** | The name is the address, and keeps resolving after the peer completes -- a send resumes it from its transcript. Append the `[ref]` shown by `ListAgents` or by an error only to disambiguate two rows sharing a name. |
+| Multi-tier return (`L2` → `L1`)  | `L1`'s instance name or `agentId`          | **CONDITIONAL** | An `L2` subagent is told neither on spawn. Either works once `L1` puts one of them in the brief.                                                                                                                      |
 
-1. **Addresses are instances.** `SendMessage` addresses an agent **instance** —
+1. **Addresses are instances.** `SendMessage` addresses an agent **instance** --
    by the `name` it was spawned with, by the `agentId` from its spawn result, or
    by the reserved `"main"`. The instance name is the canonical form and keeps
    resolving after the agent completes. A `subagent_type` is not an address:
@@ -299,7 +298,7 @@ contract into containers and scheduled runs:
 - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
 - `OTEL_RESOURCE_ATTRIBUTES=service.name=academicOps,service.version=0.6.0`
 
-The native export carries no knowledge of any plugin's internal state — it sees a
+The native export carries no knowledge of any plugin's internal state -- it sees a
 tool invocation, not a rule evaluated inside `rbg`. Where a plugin needs its own
 spans it builds and exports them itself. `rbg`'s `evaluator_otel_trace.py` emits
 one span per rule evaluation to `COPE_EVALUATOR_OTEL_TRACE_PATH`, as an
@@ -318,7 +317,7 @@ export to a network endpoint instead.
 `build/build.py` assembles `dist/<plugin>-<client>` for each plugin and client.
 
 **The size of `dist/` is not a constraint.** It is a regenerable, untracked
-artifact, and every plugin gets its own copy of what it needs by design — the
+artifact, and every plugin gets its own copy of what it needs by design -- the
 duplication across client trees is the point, not waste. Never trade away an
 asset, a bundled library, or any other content because of what it adds to the
 output tree, and do not raise dist size as a cost when weighing what to ship.
@@ -336,12 +335,12 @@ Stages, in order:
 3. **Adapt to client.** Client adapters in `build/clients/` apply the
    client-specific transformations.
 4. **Package.** Tar per client, plus the marketplace manifests.
-5. **Cowork channel.** `dist/cowork/` — a directory marketplace assembled from
+5. **Cowork channel.** `dist/cowork/` -- a directory marketplace assembled from
    the built claude dists: one directory per plugin, a `<plugin>-v<version>.zip`
    upload archive per plugin, and `.claude-plugin/marketplace.json` naming the
    marketplace `academicOps-cowork`. Claude-only; skipped when `claude` is not in
    the client list.
-6. **OpenClaw channel.** `dist/openclaw/` — a local directory marketplace for the
+6. **OpenClaw channel.** `dist/openclaw/` -- a local directory marketplace for the
    OpenClaw runtime context: one directory per plugin, a
    `<plugin>-v<version>.zip` archive per plugin, and
    `.claude-plugin/marketplace.json` naming the marketplace
@@ -387,7 +386,7 @@ is omitted because agy expects structured server definitions there and drops
 agents whose frontmatter provides string server names; agy agents reach MCP tools
 through workspace-level MCP configs and agy's implicit `call_mcp_tool`, which is
 granted regardless of `tools:` and so is deliberately absent from the vocabulary.
-`hidden` and `includeSections` are not emitted — `test_pauli_agy_frontmatter` in
+`hidden` and `includeSections` are not emitted -- `test_pauli_agy_frontmatter` in
 [`tests/test_build.py`](../tests/test_build.py) holds the whole shape against
 pauli's emitted frontmatter. A name starting `mcp_` bypasses the
 accepted-vocabulary check in `build/tools.py`, so a wrong MCP name passes the
@@ -398,10 +397,10 @@ registers.** The two clients assign opposite meanings to an absent `tools:` key:
 Claude Code reads absence as "inherit the full tool pool", agy reads it as
 "restrict to its ten read-only defaults" (`send_message`, `find_by_name`,
 `grep_search`, `view_file`, `list_dir`, `read_url_content`, `search_web`,
-`schedule`, `generate_image`, `manage_task`) — an agent built without the key
+`schedule`, `generate_image`, `manage_task`) -- an agent built without the key
 cannot write, run a command, or dispatch a subagent. Omission is therefore never
 a safe translation of "unrestricted": the adapter resolves absence to the full
-accepted vocabulary and emits it. The opposite error is equally fatal — a name
+accepted vocabulary and emits it. The opposite error is equally fatal -- a name
 agy does not register aborts the agent at construction
 (`failed to resolve components: unknown component: tool "<name>" not found in
 registry`), so the vocabulary is the set agy actually registers in the shipped
@@ -426,15 +425,15 @@ Claude Code applies always-on rules through `autoMode` in
 
 Two in-session mechanisms as designed, both advisory:
 
-- `autoMode` — Claude Code's own classifier, fed the axioms via `axioms.jsonl`
-- `cope` — hook-based rule evaluation
+- `autoMode` -- Claude Code's own classifier, fed the axioms via `axioms.jsonl`
+- `cope` -- hook-based rule evaluation
 
 They overlap deliberately. Which one works better is an open question, so both
 are meant to ship with neither built as though it were the gate. `cope`
 (`rbg`'s `PreToolUse` evaluator, below) is currently unwired, so only `autoMode`
 is live today.
 
-Real enforcement — a mechanical verdict on whether an agent complied — is a
+Real enforcement -- a mechanical verdict on whether an agent complied -- is a
 separate merge-stage check; nothing here reads the transcript or grades the
 substance of what an agent did. As designed, one mechanism holds a stop open
 rather than merely advising: `rbg`'s rule-check gate (`Stop` / `SubagentStop`,
@@ -444,8 +443,8 @@ only. Each is silent on what it finds.
 
 **This section governs: a gate described anywhere else in this document but
 absent from a plugin's `HANDLERS` does not exist.** `lib/hooks/dispatch.py`
-carries `block` — rendered as Claude Code's top-level
-`{"decision": "block", "reason": ...}`, degrading to the advisory shape on agy —
+carries `block` -- rendered as Claude Code's top-level
+`{"decision": "block", "reason": ...}`, degrading to the advisory shape on agy --
 and `is_continuation`, the once-per-stop-chain guard any such gate needs. By
 this rule, `rbg`'s rule-check gate does not exist today: `HANDLERS` in
 `plugins/rbg/hooks/handlers.py` is empty, so no plugin currently wires a stop

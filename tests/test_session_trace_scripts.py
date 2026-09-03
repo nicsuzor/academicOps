@@ -13,7 +13,7 @@ import pytest
 SCRIPT = (
     Path(__file__).parent.parent
     / "plugins"
-    / "orchestrate"
+    / "aops"
     / "skills"
     / "session-trace"
     / "scripts"

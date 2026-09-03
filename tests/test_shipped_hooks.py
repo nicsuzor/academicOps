@@ -967,9 +967,9 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
             return {w for w, c in _wire_events(c_name).items() if c == canonical} | {canonical}
 
         allowed_missing = set()
-        if name == "orchestrate":
+        if name in ("aops", "orchestrate"):
             allowed_missing.update(_wires_for("SubagentStop"))
-            p = _policy.get("orchestrate", {})
+            p = _policy.get("aops", {}) or _policy.get("orchestrate", {})
             if not p.get("rule_against_hearsay_enabled", True):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):
