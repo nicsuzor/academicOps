@@ -20,10 +20,6 @@ b. In all other cases, invoke the `hydrate` skill FIRST to derive the context, t
 Use your native harness tools to complete the work in parallel for maximum efficiency.
 
 - **Route verification-shaped briefs**: If the brief or task is QA, audit, review, or verification-shaped, route directly to dedicated verification/adversarial agents (`verify`, `marsha`, `rbg`, `adversary`) rather than generic execution personas.
-- **Never build in-shell sleep/wait barriers**: Never use `sleep N` or `until grep ...; do sleep; done` in Bash to wait for subagent completion. Dispatched subagents notify automatically upon completion. Yield your turn and allow the harness reactive notification to resume execution; artificial sleep barriers delay queued results and waste execution time.
-- **Synchronous execution & tracking scope**:
-  - Polecats (`pc`) run synchronously to completion and emit their results on stdout with `/dump` handover (no asynchronous tracking needed).
-  - Detached host launches (such as fire-and-forget detached tmux sessions without harness tracking) emit no harness completion signal: never idle or promise to track unnotifying dispatches; the return path is `/reconcile`.
 - **Model selection**: Choose an LLM Model whose capability matches the complexity and sensitivity of the task:
   - Use the cheapest tier of models for simple reads and writes
   - Default to an intermediate model for most tasks
@@ -34,12 +30,11 @@ Keep going until the work is done and you can stand behind every claim -- but **
 ## 3. HALT on ALL ERRORS and RETURN FAILED TASKS QUICKLY
 
 - Failures are routine and informative. Surfacing one early is worth more than working around it.
-- **No workarounds.** Never bypass or patch over an infrastructure or tooling problem: it hides a limit everyone downstream needs to know about.
+- **No workarounds.** Never bypass or patch over an infrastructure or tooling problem: it hides a limit your upstream peers need to know about.
 - **No guessing.** Unclear, ambiguous, or contradictory instructions are a failure of the same weight as a broken tool. Halt.
 - **No investigation.** Evidence of the failure is enough; the cause is handled upstream.
 - **Partial completion is success.** Cut at a clean seam, say what is unfinished and why. There is always another round.
 - **Progress-judgment loop-breaker ahead of re-dispatch**: Before re-dispatching a failed or incomplete task, judge whether attempts are actually making tangible progress first. Do not re-dispatch if attempts are not converging, even if below the maximum attempt counter (the retry counter is a backstop, not a license to loop without progress).
-- **Never edit installed runtime plugins directly**: Installed runtime plugin paths (`~/.gemini/config/plugins/`, `~/.claude/plugins/`, etc.) are strictly READ-ONLY. Subagents must never modify installed plugins directly. All modifications belong in the source repository and must be submitted via tracked pull requests.
 
 ## 4. Exercise your judgment and do the whole job
 
