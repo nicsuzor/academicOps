@@ -21,17 +21,17 @@ import json
 import os
 import re
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-try:
-    from datetime import UTC, datetime
-except ImportError:
-    from datetime import datetime
-
-    UTC = UTC  # type: ignore[assignment]
-
 from dispatch import HookContext, Result, refuse, warn
+
+
+def _now() -> str:
+    """Current time as an ISO-8601 string carrying the local system UTC offset."""
+    return datetime.now().astimezone().isoformat()
+
 
 # Agent profiles this check applies to
 _GATED_AGENT_TYPES = ["aops:ida"]
@@ -89,7 +89,7 @@ def arm(session_id: str, claim_id: str | None = None) -> None:
     state["armed"] = True
     state["pending"] = True  # backward compat
     state["claim_id"] = claim_id or state.get("claim_id") or "unnamed-claim"
-    state["armed_at"] = datetime.now(UTC).isoformat()
+    state["armed_at"] = _now()
     _save_state(session_id, state)
 
 
@@ -108,7 +108,7 @@ def disarm(
         "claim_id": claim_id,
         "questions": list(questions or []),
         "answers": list(answers or []),
-        "recorded_at": datetime.now(UTC).isoformat(),
+        "recorded_at": _now(),
     }
     _save_state(session_id, state)
 

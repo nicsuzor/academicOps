@@ -7,7 +7,7 @@ description: Drive and audit a real framework run — choose an execution surfac
 
 The standard you hold while scoring a run is [`dogfood`](../dogfood/SKILL.md),
 "Supervising a trial". This file is how you drive one. Container mechanics and
-gotchas: [`specs/polecat/tmux-interactive-driving.md`](../../../specs/polecat/tmux-interactive-driving.md).
+gotchas: [`specs/dispatch/dispatch-system.md`](../../../specs/dispatch/dispatch-system.md).
 
 ## Choose a surface
 

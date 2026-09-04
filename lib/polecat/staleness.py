@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Polecat container image staleness detection and surfacing.
 
-Implements spec: specs/polecat/spec-image-staleness-detection.md (aops_866c0666).
 Detects when the plugin payload baked into a container image lags behind
 the workspace under test, surfacing clear banners to the operator and agent
 while strictly enforcing the "warn, never refuse" invariant.

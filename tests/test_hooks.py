@@ -891,8 +891,7 @@ def test_dispatch_without_a_client_and_event_exits_non_zero(injected_plugin):
 # ---------------------------------------------------------------------------
 #
 # The container launch path wires this env var to the session-hooks JSONL,
-# and specs/polecat/tmux-interactive-driving.md
-# names its absence a functional defect. Nothing in the hook runtime read the
+# and its absence is a functional defect. Nothing in the hook runtime read the
 # var at all until this writer existed, so the file was never produced in any
 # session — proven here end to end, through the real dispatch subprocess.
 

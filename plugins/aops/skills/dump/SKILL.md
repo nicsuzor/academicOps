@@ -11,7 +11,9 @@ If you have hit an error, exhausted your resources, or have been asked to termin
 
 - you must abort immediately, save any progress, and return with minimal explanation and a simple resume path.
 - you must still provide a handover message.
-- if you have a task claimed, you must release it if you can.
+- you must release every task you claimed. A task you could not finish is
+  released unfinished, with the reason; it is never left claimed and never
+  quietly dropped.
 
 ## Handover process
 
@@ -29,7 +31,27 @@ You are running in an isolated, _ephemeral_ environment. Any files left on your 
 
 For EACH task you have worked, starting with children:
 
-A. **Construct your report in the following format:**
+A. **Choose the status.** Incomplete and failed work has a terminal status;
+reaching one is the handover, not a failure of it.
+
+- `done` -- the deliverable meets the acceptance criteria as written. Nothing
+  else earns it.
+- `partial` -- a coherent chunk is delivered and the remainder is carried. Say
+  in **Next** what the remainder is and what carries it.
+- `review` -- the task is undeliverable as designed, or needs a human judgment
+  you do not have authority to make. A `reason` is mandatory. Lack of access,
+  tooling, instructions, or infrastructure lands here; it is not your fault and
+  you do not repair it by rewriting the task.
+- `cancelled` -- the task should not be done at all. Say why.
+- `in_progress` -- only when a named successor is already picking this up in
+  another live session. Ending a session on `in_progress` otherwise leaves the
+  task claimed by a session that no longer exists.
+
+Never write `status: blocked` into frontmatter. `blocked` is derived from
+directed `blocks` edges: create or update the edge on the blocking task pointing
+at this one, and release this task `review` or `partial`.
+
+B. **Construct your report in the following format:**
 
 ```markdown
 ### Task: <task-id> (<precis>) -- <status: done | cancelled | review | partial | in_progress >
@@ -39,11 +61,16 @@ A. **Construct your report in the following format:**
 - **Next**: `<task-id>` [ title ] | [ Plain english instructions, with just enough detail to allow the next agent to pick up the work where you left off. ]
 ```
 
-B. **Release your tasks, children first:** release the task with your session
+C. **Release your tasks, children first:** release the task with your session
 id and your concise report via the PKB MCP tool (`pkb__release_task` or
-`release_task`). If the MCP tool fails or is unavailable, HALT and say so in
-your final report (`halt-on-failure`). Never fall back to direct filesystem
-access in `$ACA_DATA` or the `pkb` CLI.
+`release_task`). Never fall back to direct filesystem access in `$ACA_DATA` or
+the `pkb` CLI.
+
+If the MCP tool fails or is unavailable, stop releasing and carry the verbatim
+error into step 3. Your commits and your final report are then the whole
+handover, so say in it which tasks are still claimed and by which session id.
+A failed release does not licence a second attempt at stopping without a
+report.
 
 ### 3. EMIT FINAL REPORT
 
