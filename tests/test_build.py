@@ -1201,9 +1201,12 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     )
     claude_mcp = json.loads((dist_root / "aops-claude" / ".mcp.json").read_text())
     assert claude_mcp["mcpServers"] == {
-        "services-http": {
-            "type": "http",
-            "url": "$PKB_MCP_URL",
+        "services": {
+            "command": "bash",
+            "args": [
+                "-c",
+                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
+            ],
         }
     }
 
