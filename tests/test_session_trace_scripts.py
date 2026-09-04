@@ -13,7 +13,7 @@ import pytest
 SCRIPT = (
     Path(__file__).parent.parent
     / "plugins"
-    / "aops"
+    / "orchestrate"
     / "skills"
     / "session-trace"
     / "scripts"
@@ -97,7 +97,7 @@ class _PhoenixStub(BaseHTTPRequestHandler):
     spans: list[dict[str, object]] = []
     queries: list[dict[str, list[str]]] = []
 
-    def log_message(self, *args: object) -> None:  # noqa: A003 - silence the access log
+    def log_message(self, *args: object) -> None:
         pass
 
     def _send(self, payload: dict[str, object]) -> None:
@@ -108,7 +108,7 @@ class _PhoenixStub(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler's contract
+    def do_GET(self) -> None:
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         if parsed.path == "/v1/projects":

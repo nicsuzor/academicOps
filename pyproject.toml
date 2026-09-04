@@ -18,7 +18,7 @@ dependencies = [
   "claude-code-log>=1.5.0",
   # OTel span emission, declared for every plugin in
   # templates/plugin/pyproject.template.toml (see plugins/rbg/hooks/evaluator_otel_trace.py,
-  # plugins/aops/hooks/claude_code_tracer.py, plugins/aops/hooks/agy_tracer.py) —
+  # plugins/orchestrate/hooks/claude_code_tracer.py, plugins/orchestrate/hooks/agy_tracer.py) —
   # duplicated here, like every other plugin-scoped dependency, so the shared
   # dev venv basedpyright and pytest run under can resolve it too.
   "opentelemetry-sdk>=1.40.0",
@@ -189,7 +189,7 @@ refs = ["hooks/dispatch.py"]
 reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
 
 [[tool.refcheck.allow]]
-docs = "plugins/aops/skills/session-trace/SKILL.md"
+docs = "plugins/orchestrate/skills/session-trace/SKILL.md"
 refs = ["references/phoenix-span-store.md"]
 reason = "Injected from lib/telemetry/phoenix-span-store.md at build time; present in the build tree, not in the plugin source."
 
@@ -222,7 +222,7 @@ exclude = [
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["plugins/rbg/hooks", "plugins/aops/hooks", "lib/py", "lib/hooks"]
+extraPaths = ["plugins/rbg/hooks", "plugins/orchestrate/hooks", "lib/py", "lib/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:

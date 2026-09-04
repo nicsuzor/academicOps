@@ -71,7 +71,7 @@ _WILDCARD_EVENT = "*"
 if str(_LIB_HOOKS) not in sys.path:
     sys.path.insert(0, str(_LIB_HOOKS))
 
-from dispatch import TO_CANONICAL  # noqa: E402
+from dispatch import TO_CANONICAL
 
 
 def _wire_events(client: str) -> dict[str, str]:
@@ -278,7 +278,7 @@ def _run_shipped_hook(
             env.pop(key, None)
         else:
             env[key] = value
-    return subprocess.run(  # noqa: S602
+    return subprocess.run(
         resolved,
         shell=True,
         cwd=None if client == "claude" else build_dir,
@@ -543,7 +543,7 @@ class _StubReflexesEvaluator(BaseHTTPRequestHandler):
     endpoint, so exercising the built artifact's evaluation path at all means
     standing one up."""
 
-    def do_POST(self):  # noqa: N802 - BaseHTTPRequestHandler's interface
+    def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(length))
         label = 1 if "workaround" in payload.get("criteria_text", "").lower() else 0
@@ -938,15 +938,16 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
         if not registered:
             # If a plugin is entirely disabled by policy, we allow it to register nothing.
             is_disabled = False
-            if name == "rbg" and not _policy.get("rbg", {}).get("evaluate", {}).get(
-                "enabled", True
-            ):
-                is_disabled = True
-            elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
-                is_disabled = True
-            elif name in ("aops", "pkb") and not (
-                _policy.get("aops", {}).get("search_the_pkb_enabled")
-                or _policy.get("pkb", {}).get("search_the_pkb_enabled", False)
+            if (
+                name == "rbg"
+                and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True)
+                or name == "ida"
+                and not _policy.get("ida", {}).get("strip_the_reply_enabled", True)
+                or name in ("aops", "pkb")
+                and not (
+                    _policy.get("aops", {}).get("search_the_pkb_enabled")
+                    or _policy.get("pkb", {}).get("search_the_pkb_enabled", False)
+                )
             ):
                 is_disabled = True
             elif name == "orchestrate":
@@ -967,9 +968,9 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
             return {w for w, c in _wire_events(c_name).items() if c == canonical} | {canonical}
 
         allowed_missing = set()
-        if name in ("aops", "orchestrate"):
+        if name == "orchestrate":
             allowed_missing.update(_wires_for("SubagentStop"))
-            p = _policy.get("aops", {}) or _policy.get("orchestrate", {})
+            p = _policy.get("orchestrate", {})
             if not p.get("rule_against_hearsay_enabled", True):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):

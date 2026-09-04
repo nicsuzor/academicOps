@@ -94,7 +94,7 @@ def _run(build_dir: Path, command: str, payload: dict) -> subprocess.CompletedPr
     """Run the hook the way its client runs it: through a shell, with Claude
     Code's plugin-root variable expanded, and — for agy, which defines no such
     variable — from the plugin root it supplies as the working directory."""
-    return subprocess.run(  # noqa: S602
+    return subprocess.run(
         command.replace("${CLAUDE_PLUGIN_ROOT}", str(build_dir)),
         shell=True,
         cwd=build_dir,

@@ -42,19 +42,19 @@ def test_pc_agent_frontmatter_and_content_structure():
 
 
 def test_pc_cli_ships_in_built_orchestrate(tmp_path):
-    """The built aops plugin must include polecat/cli.py so that
+    """The built orchestrate plugin must include polecat/cli.py so that
     ${CLAUDE_PLUGIN_ROOT}/polecat/cli.py resolves at runtime."""
     dist_root = tmp_path / "dist"
     build_all(
         _REPO_ROOT,
         dist_root,
         marketplace_path=_REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["orchestrate"],
         version="0.0.0-test",
     )
 
     for client in ("claude", "agy"):
-        plugin_dir = dist_root / f"aops-{client}"
+        plugin_dir = dist_root / f"orchestrate-{client}"
         cli_path = plugin_dir / "polecat" / "cli.py"
         assert cli_path.is_file(), f"{plugin_dir} does not contain polecat/cli.py"
 
@@ -74,16 +74,16 @@ def test_pc_cli_ships_in_built_orchestrate(tmp_path):
 def test_pc_dispatch_non_tty_execution(tmp_path, monkeypatch):
     """A pc dispatch launched from a non-TTY, non-interactive shell must execute
     without failing on terminal attachment."""
-    # Build aops dist
+    # Build orchestrate dist
     dist_root = tmp_path / "dist"
     build_all(
         _REPO_ROOT,
         dist_root,
         marketplace_path=_REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["orchestrate"],
         version="0.0.0-test",
     )
-    claude_plugin_root = dist_root / "aops-claude"
+    claude_plugin_root = dist_root / "orchestrate-claude"
 
     # Extract command template from pc.md
     content = _PC_AGENT_PATH.read_text(encoding="utf-8")

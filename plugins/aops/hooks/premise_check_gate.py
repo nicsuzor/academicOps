@@ -35,7 +35,7 @@ from dispatch import HookContext, Result, refuse, warn
 
 # Agent profiles this check applies to
 _GATED_AGENT_TYPES = ["aops:ida"]
-_GATED_TOOLS = ("Agent", "Task")
+_GATED_TOOLS = ["Agent"]
 
 
 # ---------------------------------------------------------------------------
@@ -211,8 +211,3 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
     if mode == "warn":
         return warn(reason, user_msg)
     return refuse(reason, user_msg)
-
-
-# Aliases for hook registrations
-premise_check_open_gate = premise_check_arm
-premise_check_gate_handler = premise_check_handler
