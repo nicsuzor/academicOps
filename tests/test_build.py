@@ -8,7 +8,6 @@ builder end to end until they land.
 """
 
 import json
-import re
 import tarfile
 import zipfile
 from pathlib import Path
@@ -36,43 +35,34 @@ def built(tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="module")
 def built_orchestrate(tmp_path_factory) -> Path:
-    """The real orchestrate plugin, not a fixture — its agents carry the
+    """The real aops plugin, not a fixture — its agents carry the
     per-client frontmatter semantics these tests assert."""
-    dist_root = tmp_path_factory.mktemp("build-dist-orchestrate")
+    dist_root = tmp_path_factory.mktemp("build-dist-aops")
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["orchestrate"],
+        plugins=["aops"],
         version=VERSION,
     )
     return dist_root
 
 
-def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
-    """The polecat launcher agent (`plugins/orchestrate/agents/pc.md`) invokes
-    `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
-    root at all is `plugins/orchestrate/manifest/plugin.toml`, which injects it
-    from `lib/polecat/`.
+def test_polecat_modules_ship_with_orchestrate(built_orchestrate):
+    """Plugin code resolves these modules under `${CLAUDE_PLUGIN_ROOT}/polecat/`.
+    What puts them inside a plugin root at all is
+    `plugins/aops/manifest/plugin.toml`, which injects them from `lib/polecat/`.
 
-    Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
+    Drop those `[[shared]]` stanzas and nothing fails at build time; the import
     fails at runtime, with file-not-found. This is the check that turns that into
     a build-time failure instead.
-
-    The sibling modules are read off cli.py's own fallback imports rather than
-    listed here, because a hand-kept list is exactly what let `notify.py` be
-    added to cli.py and left out of the manifest.
     """
-    siblings = set(
-        re.findall(r"from polecat\.(\w+) import", (PROJECT_ROOT / "lib/polecat/cli.py").read_text())
-    )
-    assert "env_contract" in siblings, "cli.py's fallback imports no longer parse"
+    modules = {"__init__", "env_contract", "notify", "staleness"}
     for client in ("claude", "agy"):
-        polecat = built_orchestrate / f"orchestrate-{client}" / "polecat"
-        assert (polecat / "cli.py").is_file(), f"orchestrate-{client} ships no polecat/cli.py"
-        for module in siblings:
+        polecat = built_orchestrate / f"aops-{client}" / "polecat"
+        for module in modules:
             assert (polecat / f"{module}.py").is_file(), (
-                f"orchestrate-{client} ships cli.py without the {module} it imports"
+                f"aops-{client} ships no polecat/{module}.py"
             )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()
@@ -352,7 +342,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops", "orchestrate"],
+        plugins=["aops"],
         version=VERSION,
     )
 
@@ -410,11 +400,11 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     accepted_tools, _ = load_tool_config()
 
-    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "marsha.md"
+    claude_agent = built_orchestrate / "aops-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert "tools" not in claude_fm
 
-    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
+    agy_agent = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
 
@@ -422,15 +412,15 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
     import yaml
 
-    agy_agent = built_orchestrate / "orchestrate-agy" / "agents" / "james.md"
+    agy_agent = built_orchestrate / "aops-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
 
-    claude_agent = built_orchestrate / "orchestrate-claude" / "agents" / "james.md"
+    claude_agent = built_orchestrate / "aops-claude" / "agents" / "james.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert claude_fm.get("model") == "opus" or "model" not in claude_fm
 
-    agy_marsha = built_orchestrate / "orchestrate-agy" / "agents" / "marsha.md"
+    agy_marsha = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
     agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
     assert agy_marsha_fm["color"] == "pink"
 
@@ -1121,7 +1111,7 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops", "orchestrate"],
+        plugins=["aops"],
         clients=("claude", "agy", "openclaw"),
         version=VERSION,
     )
@@ -1134,13 +1124,13 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
     assert manifest_path.is_file()
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert data["name"] == "academicOps-openclaw"
-    assert {p["name"] for p in data["plugins"]} == {"aops", "orchestrate"}
+    assert {p["name"] for p in data["plugins"]} == {"aops"}
     for p in data["plugins"]:
         assert p["source"] == f"./{p['name']}"
         assert p["version"] == VERSION
 
     # Verify per-plugin directories and zip packages
-    for name in ("aops", "orchestrate"):
+    for name in ("aops",):
         plugin_dir = openclaw_root / name
         assert plugin_dir.is_dir()
         assert (plugin_dir / ".claude-plugin" / "plugin.json").is_file()
@@ -1211,9 +1201,12 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     )
     claude_mcp = json.loads((dist_root / "aops-claude" / ".mcp.json").read_text())
     assert claude_mcp["mcpServers"] == {
-        "services-http": {
-            "type": "http",
-            "url": "$PKB_MCP_URL",
+        "services": {
+            "command": "bash",
+            "args": [
+                "-c",
+                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
+            ],
         }
     }
 

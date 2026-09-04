@@ -65,10 +65,9 @@ def agy_brain_roots(home: Path | str | None = None) -> list[Path]:
 
     Both are agy's own layout under home; it reads no variable that relocates
     them, which is why this takes no `env`. The second is where the brain lands
-    when agy runs under polecat: `lib/polecat/cli.py` gives the agy branch
-    `AGY_SESSION_PATH` (`~/.gemini/tmp/workspace`) as the container path it
-    mounts the session directory at, so `agy-brain` appears beneath it as well as
-    at the brain mount proper.
+    when agy runs in a container: `AGY_SESSION_PATH` (`~/.gemini/tmp/workspace`)
+    is the container-side session directory, so `agy-brain` appears beneath it as
+    well as at the brain mount proper.
     """
     base = _home(home) / ".gemini"
     return [base / "antigravity-cli" / "brain", base / "tmp" / "workspace" / "agy-brain"]
@@ -160,11 +159,10 @@ def find_container_transcripts(
     """Every transcript reachable from the client state roots, newest first.
 
     Inside a container these roots hold what this container's run wrote — but
-    not only that. `lib/polecat/cli.py` derives the session directory it mounts
-    as `<sessions>/logs/<YYYYMMDD>/<session-id>/<project>`, so a second run
-    given the same `-s` on the same day mounts the same directory and sees the
-    earlier run's transcripts too. Read the result as "the conversations under
-    this session directory", and use the mtime ordering to tell runs apart.
+    not only that. Two runs sharing a session directory both write into it, so
+    the later one sees the earlier one's transcripts. Read the result as "the
+    conversations under this session directory", and use the mtime ordering to
+    tell runs apart.
 
     On a host the same call returns the local client state, which is the correct
     answer to the same question asked there.

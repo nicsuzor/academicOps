@@ -890,9 +890,8 @@ def test_dispatch_without_a_client_and_event_exits_non_zero(injected_plugin):
 # dispatch.py: $AOPS_HOOK_LOG_PATH — "did the framework actually fire"
 # ---------------------------------------------------------------------------
 #
-# polecat wires this env var (lib/polecat/cli.py) to
-# polecat-session-hooks.jsonl and specs/polecat/tmux-interactive-driving.md
-# names its absence a functional defect. Nothing in the hook runtime read the
+# The container launch path wires this env var to the session-hooks JSONL,
+# and its absence is a functional defect. Nothing in the hook runtime read the
 # var at all until this writer existed, so the file was never produced in any
 # session — proven here end to end, through the real dispatch subprocess.
 

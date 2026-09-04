@@ -118,6 +118,7 @@ include = [
   "specs/agents/**/*.md",
   "specs/enforcement/**/*.md",
   "specs/meta/**/*.md",
+  "specs/dispatch/**/*.md",
   "specs/polecat/**/*.md",
   "specs/workflows/**/*.md",
   "plugins/**/*.md",
@@ -189,7 +190,7 @@ refs = ["hooks/dispatch.py"]
 reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
 
 [[tool.refcheck.allow]]
-docs = "plugins/orchestrate/skills/session-trace/SKILL.md"
+docs = "plugins/aops/skills/session-trace/SKILL.md"
 refs = ["references/phoenix-span-store.md"]
 reason = "Injected from lib/telemetry/phoenix-span-store.md at build time; present in the build tree, not in the plugin source."
 
@@ -222,7 +223,7 @@ exclude = [
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["plugins/rbg/hooks", "plugins/orchestrate/hooks", "lib/py", "lib/hooks"]
+extraPaths = ["plugins/rbg/hooks", "plugins/aops/hooks", "lib/py", "lib/hooks"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:
@@ -287,6 +288,3 @@ markers = [
   "live: drives real headless clients to measure hook-format conformance (run with '-m live'; skip-if-client-unavailable)",
   "otel_e2e: spins up a real OTel collector (docker) and a real Claude Code session against it (run with '-m otel_e2e'; skip-if-docker-or-credentials-unavailable)",
 ]
-
-[project.scripts]
-polecat = "lib.polecat.cli:main" # resolves via [tool.hatch.build.targets.wheel] packages = ["lib", ...]

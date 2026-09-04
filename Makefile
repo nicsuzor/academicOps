@@ -143,6 +143,21 @@ install-dev: build
 	@uv run pre-commit install >/dev/null 2>&1 || true
 	@echo "Local marketplace '$(LOCAL_MARKETPLACE)' -> $(DIST). Run 'make uninstall-dev' to restore the release channel."
 
+# The agy half of install-dev, with no claude and no host-side state. The aops
+# sandbox kit runs this inside the container so a dispatched worker boots the
+# framework built from the branch it is working on.
+install-agy: build-agy
+	@mkdir -p ~/.gemini/config/plugins
+	@for p in $(PLUGIN_NAMES); do \
+		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
+		if [ -d "$(DIST)/$$p-agy" ]; then \
+			cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"; \
+			agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 || true; \
+		else \
+			echo "x $(DIST)/$$p-agy missing" >&2; exit 1; \
+		fi; \
+	done
+
 uninstall-dev:
 	@for p in $(STALE_PLUGIN_NAMES) $(PLUGIN_NAMES); do \
 		command claude plugin uninstall $$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
@@ -239,10 +254,7 @@ docker-test-otel: docker-build
 	@uv run pytest -m otel_e2e tests/test_telemetry_otel_e2e.py -v
 
 # Not part of `make docker` or `make test` — opt-in, on the image-build path.
-# Boots the real image and re-runs the structural checks a human previously
-# ran by hand (plugin list under claude, agy's plugins/, ACA_DATA, the agy
-# session mount target); see tests/polecat/test_container_smoke.py and
-# specs/polecat/tmux-interactive-driving.md, "Plugin structural check". Not
-# proof any plugin's hooks or MCP servers are actually live — structural only.
+# Checks the sbx kit specs the sandbox launch path depends on. Structural only:
+# not proof any plugin's hooks or MCP servers are actually live.
 docker-smoke-test: docker-build
-	@POLECAT_E2E=1 POLECAT_IMAGE=$(notdir $(IMAGE)):latest uv run pytest tests/polecat/test_container_smoke.py -v
+	@uv run pytest tests/polecat/test_kits.py -v

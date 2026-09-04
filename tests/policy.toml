@@ -49,3 +49,18 @@ honest_output_enabled = true
 [hooks.blocking]
 # No handler is permitted to return a blocking disposition on agy.
 allow_blocking_agy = false
+
+[kits.claude]
+required_network_allow = [
+  "api.anthropic.com:443",
+  "github.com:443",
+  "pypi.org:443",
+]
+
+[kits.agy]
+required_network_allow = [
+  "antigravity.google:443",
+  "accounts.google.com:443",
+  "oauth2.googleapis.com:443",
+  "generativelanguage.googleapis.com:443",
+]

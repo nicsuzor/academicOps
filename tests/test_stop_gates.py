@@ -266,7 +266,7 @@ def test_orchestrate_stop_hook_is_wired_synchronously(orchestrate_hooks):
         )
     )
     for event in ("Stop", "SubagentStop"):
-        for entry in manifest["clients"]["claude"]["hooks"][event]:
+        for entry in manifest["clients"]["claude"]["hooks"].get(event, []):
             for hook in entry["hooks"]:
                 assert not hook.get("async"), f"{event} is declared async"
 
