@@ -457,7 +457,7 @@ def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
 
 
 def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
-    query = prompt.strip()[:200]
+    query = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", prompt).strip()[:200]
     if not query:
         return None
     pkb_bin = _find_pkb_bin(cwd)
@@ -507,14 +507,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
 
-    # If search fails, return existing messages
-    agent_msg, user_msg = load_message_pair(ctx.hooks_dir, "pkb-context")
-    if agent_msg:
-        return warn(agent_msg, user_msg)
     return honest_output(ctx)
-
-
-userpromptsubmit = search_the_pkb
 
 
 HANDLERS: dict[str, list] = {
