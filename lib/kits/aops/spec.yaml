@@ -1,0 +1,27 @@
+schemaVersion: "2"
+kind: mixin
+name: aops
+displayName: "academicOps framework"
+description: "Builds the academicOps plugin set from the sandbox workspace and installs it for the agent, so a dispatched worker runs the framework from the branch it is working on."
+
+permissions:
+  network:
+    allow:
+      - "astral.sh:443"
+      - "pypi.org:443"
+      - "files.pythonhosted.org:443"
+      - "github.com:443"
+      - "api.github.com:443"
+      - "*.githubusercontent.com:443"
+
+setup:
+  install:
+    - command: "which uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh"
+      description: "uv, which drives the build"
+    - command: "apt-get update && apt-get install -y --no-install-recommends make git curl jq ripgrep python3 python3-venv || true"
+      user: "root"
+      description: "Build and search tooling the framework expects on PATH"
+  startup:
+    - command: ["sh", "-c", "cd \"$WORKSPACE_DIR\" && make install-agy"]
+      user: "agent"
+      description: "Build dist/ from the workspace and install the aops plugins for agy"

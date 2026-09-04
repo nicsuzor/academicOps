@@ -38,6 +38,9 @@ credentials:
   - service: antigravity
     description: Google OAuth session used by Antigravity CLI
     oauth:
+      sentinels:
+        accessToken: "agy-oat01-proxy-managed"
+        refreshToken: "agy-ort01-proxy-managed"
       tokenEndpoint:
         host: oauth2.googleapis.com
         path: /token
