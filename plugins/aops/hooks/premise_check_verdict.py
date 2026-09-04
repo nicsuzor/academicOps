@@ -17,11 +17,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-try:
-    from datetime import UTC
-except ImportError:
-    UTC = UTC  # type: ignore[assignment]
-
 from premise_check_gate import disarm
 
 # Matches numbered, bold-led items in hearsay.md's logic-check list
