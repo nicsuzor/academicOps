@@ -442,25 +442,25 @@ def agy_stop(ctx: HookContext) -> Result | None:
     return None
 
 
-def _find_pkb_bin() -> str | None:
+def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
     pkb_bin = shutil.which("pkb")
     if pkb_bin:
         return pkb_bin
-    for candidate in (
-        "/opt/suzor/bin/pkb",
-        "/usr/local/bin/pkb",
-        str(Path.home() / ".cargo" / "bin" / "pkb"),
-    ):
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
+    candidates: list[Path] = []
+    if cwd:
+        candidates.append(Path(cwd) / "pkb")
+    candidates.append(Path.cwd() / "pkb")
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate.resolve())
     return None
 
 
-def _run_pkb_search(prompt: str) -> str | None:
+def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     query = prompt.strip()[:200]
     if not query:
         return None
-    pkb_bin = _find_pkb_bin()
+    pkb_bin = _find_pkb_bin(cwd)
     if not pkb_bin:
         log.warning("pkb binary not found for UserPromptSubmit hook")
         return None
@@ -472,6 +472,7 @@ def _run_pkb_search(prompt: str) -> str | None:
             capture_output=True,
             text=True,
             timeout=15,
+            cwd=str(cwd) if cwd and Path(cwd).is_dir() else None,
             env=env,
         )
         if proc.returncode == 0:
@@ -501,7 +502,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     prompt_str = str(raw_prompt or "").strip()
 
     if prompt_str:
-        output = _run_pkb_search(prompt_str)
+        output = _run_pkb_search(prompt_str, cwd=ctx.cwd)
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)

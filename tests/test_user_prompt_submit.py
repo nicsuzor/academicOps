@@ -37,6 +37,7 @@ def test_user_prompt_submit_pkb_search_success():
         event="UserPromptSubmit",
         raw={"prompt": "what are the axioms of academicOps?"},
         hooks_dir=AOPS_HOOKS,
+        cwd="/workspace",
     )
 
     mock_search_results = (
@@ -45,7 +46,7 @@ def test_user_prompt_submit_pkb_search_success():
 
     with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results) as mock_search:
         res = handlers.search_the_pkb(ctx)
-        mock_search.assert_called_once_with("what are the axioms of academicOps?")
+        mock_search.assert_called_once_with("what are the axioms of academicOps?", cwd="/workspace")
         assert res is not None
         expected_text = (
             "<academicOps PKB search results>\n"
@@ -60,11 +61,11 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
     long_prompt = "a" * 350
     with (
-        patch("shutil.which", return_value="/opt/suzor/bin/pkb"),
+        patch("shutil.which", return_value="/usr/bin/pkb"),
         patch("subprocess.run") as mock_run,
     ):
         mock_proc = subprocess.CompletedProcess(
-            args=["/opt/suzor/bin/pkb", "search", "a" * 200],
+            args=["/usr/bin/pkb", "search", "a" * 200],
             returncode=0,
             stdout="result line\n",
             stderr="",
@@ -72,7 +73,30 @@ def test_user_prompt_submit_truncates_prompt_to_200():
         mock_run.return_value = mock_proc
         out = handlers._run_pkb_search(long_prompt)
         assert out == "result line"
-        assert mock_run.call_args[0][0] == ["/opt/suzor/bin/pkb", "search", "a" * 200]
+        assert mock_run.call_args[0][0] == ["/usr/bin/pkb", "search", "a" * 200]
+
+
+def test_find_pkb_bin_on_path():
+    """_find_pkb_bin resolves pkb when found on PATH."""
+    with patch("shutil.which", return_value="/usr/bin/pkb"):
+        assert handlers._find_pkb_bin() == "/usr/bin/pkb"
+
+
+def test_find_pkb_bin_in_cwd(tmp_path):
+    """_find_pkb_bin resolves pkb from hook cwd when not on PATH."""
+    fake_pkb = tmp_path / "pkb"
+    fake_pkb.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_pkb.chmod(0o755)
+
+    with patch("shutil.which", return_value=None):
+        found = handlers._find_pkb_bin(cwd=str(tmp_path))
+        assert found == str(fake_pkb.resolve())
+
+
+def test_find_pkb_bin_not_found(tmp_path):
+    """_find_pkb_bin returns None when pkb is not on PATH or in cwd."""
+    with patch("shutil.which", return_value=None):
+        assert handlers._find_pkb_bin(cwd=str(tmp_path)) is None
 
 
 def test_user_prompt_submit_fallback_when_prompt_is_empty():
