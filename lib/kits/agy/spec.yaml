@@ -5,7 +5,7 @@ displayName: "Antigravity CLI (agy)"
 description: "Run Google's Antigravity CLI (agy) in YOLO mode inside an isolated Docker Sandbox seamlessly on your local workspace."
 
 sandbox:
-  image: "docker/sandbox-templates:shell-docker"
+  image: "academicops-agent:latest"
   entrypoint: [agy]
   command:
     default: ["--dangerously-skip-permissions", "--mode=accept-edits"]
@@ -33,6 +33,9 @@ permissions:
       - "files.pythonhosted.org:443"
       - "registry.npmjs.org:443"
       - "astral.sh:443"
+      - "*.ts.net:443"
+      - "services-new.stoat-musical.ts.net:443"
+      - "*.stoat-musical.ts.net:443"
 
 credentials:
   - service: antigravity
@@ -49,15 +52,3 @@ credentials:
         - cloudcode-pa.googleapis.com
         - generativelanguage.googleapis.com
         - www.googleapis.com
-
-setup:
-  install:
-    - command: "which agy >/dev/null 2>&1 || curl -fsSL https://antigravity.google/cli/install.sh | bash"
-    # The installer writes to the installing user's ~/.local/bin, which is root's
-    # and is unreadable by the agent user the sandbox actually runs as. Put the
-    # binary on a path every user has.
-    - command: "test -x /usr/local/bin/agy || { install -m 0755 \"$(command -v agy || echo /root/.local/bin/agy)\" /usr/local/bin/agy; }"
-      user: "root"
-      description: "Put agy on a PATH the agent user can reach"
-    - command: "which uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh"
-    - command: "apt-get update && apt-get install -y --no-install-recommends git curl jq ripgrep fd-find python3 python3-pip python3-venv || true"

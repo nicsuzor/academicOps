@@ -33,11 +33,11 @@ running inside the sandbox.
 ## The invocation
 
 ```bash
-sbx create --clone --name <name> --kit lib/kits/agy --kit lib/kits/aops agy .
+sbx create --clone --name <name> -e PKB_MCP_URL --kit lib/kits/agy --kit lib/kits/aops agy .
 ```
 
-Kits are the only configuration. No images, no docker flags, no host paths, and
-no credentials are passed on the command line.
+Kits and forwarded environment variables are the only configuration. No images,
+no docker flags, no host paths, and no credentials are passed on the command line.
 
 Kits merge: one kit of `kind: sandbox` supplies the client, its network
 allowlist, and its credential contract; `lib/kits/aops` is a `kind: mixin` that

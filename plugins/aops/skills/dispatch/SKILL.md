@@ -24,8 +24,10 @@ branch first, or it does not exist inside the sandbox.
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 NAME="dispatch-<task-id>"
 KITS="--kit lib/kits/agy --kit lib/kits/aops"
+ENV_FLAGS=()
+[ -n "${PKB_MCP_URL:-}" ] && ENV_FLAGS+=(-e PKB_MCP_URL)
 
-sbx create --clone --name "$NAME" $KITS agy .
+sbx create --clone --name "$NAME" "${ENV_FLAGS[@]}" $KITS agy .
 ```
 
 `sbx create` returns once the sandbox exists, but the `aops` kit's startup
