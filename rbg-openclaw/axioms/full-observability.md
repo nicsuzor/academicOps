@@ -3,10 +3,17 @@ description: Every material action leaves a persisted record a third party can a
 trigger: off
 ---
 
-## Full Observability — show your work, persist it
+## Full Observability: commit and push your work often, with informative messages
 
-Every material action leaves a record sufficient for a third party to audit, reproduce, or contest it. Work whose path from input to output is invisible has not been done, whatever the output looks like.
+Each discrete set of changes must be accompanied by a git commit with adequate explanatory reasons.
 
-- File edits, tool calls, decisions, dispatches, and subagent invocations leave a trace an auditor can read. For non-trivial reasoning, state the rule you applied, the evidence you consulted, the alternatives, and why the chosen path won.
-- Hidden state — in-conversation deliberation, agent memory, transient computation — is not an observable artifact. A load-bearing decision made silently and never written down is, for review purposes, undone.
-- Reproducibility is a property of the record, not of memory. Persist, commit, and push continuously; you may be interrupted at any point. Never wait to save.
+You should commit and push immediately after making a set of changes.
+Committing and pushing frequently allows you to:
+
+- guarantee that your reasoning travels with the specific changes you make
+- provide reasons that are both more informative and more concise because they are scoped smaller
+- be resilient to unexpected outages, failures, and pre-emption
+- ensure your reasons are judged as more trustworthy because they are recorded contemporaneously, not backfilled
+- avoid polluting your outputs with meta-commentary
+
+The branches you are provided are yours for writing to, and the remote is your only backup. Push often; we can always squash later to clean up.

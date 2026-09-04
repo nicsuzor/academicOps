@@ -7,12 +7,10 @@ tags: [reference, peer-review, external-feedback]
 # Integrating External / Cross-model Feedback
 
 An optional side-stage, used when external review comments or a cross-model (e.g. another
-LLM) pass arrive. Its honest, evidenced value is **distillation** of the academic's
-analytical signature and **corroboration of emphasis** — _not_ new content. In the evidence
-corpus the external-AI donor was ~95% redundant or circular, and the cross-model truth-check
-ran off-screen with an unproven catch rate. So integrate with a hard **distrust default**,
-and do not treat cross-model as the primary safety net — the in-loop adversarial VERIFY is
-what demonstrably catches the BLOCKER.
+LLM) pass arrive. Its value is **distillation** of the academic's analytical signature and
+**corroboration of emphasis** — _not_ new content; such a donor is overwhelmingly redundant
+or circular. Integrate with a hard **distrust default**, and never treat cross-model as the
+primary safety net: the in-loop adversarial VERIFY is what catches the BLOCKER.
 
 ## Distrust-default per-claim adjudication
 

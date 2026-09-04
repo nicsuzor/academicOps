@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "services": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "uvx --from \"fastmcp-slim[server]\" fastmcp run \"$PKB_MCP_URL\""
+      ]
+    }
+  }
+}

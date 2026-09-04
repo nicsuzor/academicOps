@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "services-http": {
+      "serverUrl": "$PKB_MCP_URL"
+    }
+  }
+}

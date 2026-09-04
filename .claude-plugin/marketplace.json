@@ -8,29 +8,19 @@
   },
   "plugins": [
     {
-      "name": "aops-core",
-      "description": "ida for strategy and pauli for memory.",
-      "version": "0.9.0+g434efedb",
+      "name": "aops",
+      "description": "Research workflow automation: strategy (ida), memory (pauli), execution (james), QA (marsha), and red-team (adversary).",
+      "version": "0.9.2",
       "author": {
         "name": "Nicolas Suzor"
       },
-      "source": "./aops-core-claude",
-      "category": "productivity"
-    },
-    {
-      "name": "orchestrate",
-      "description": "james \u2014 the container worker; marsha \u2014 QA and UX excellence; adversary \u2014 red-team review.",
-      "version": "0.9.0+g434efedb",
-      "author": {
-        "name": "Nicolas Suzor"
-      },
-      "source": "./orchestrate-claude",
+      "source": "./aops-claude",
       "category": "productivity"
     },
     {
       "name": "rbg",
       "description": "Automatic in-session rule enforcement.",
-      "version": "0.9.0+g434efedb",
+      "version": "0.9.2",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -40,7 +30,7 @@
     {
       "name": "ts",
       "description": "Tailscale bring-up for remote sessions.",
-      "version": "0.9.0+g434efedb",
+      "version": "0.9.2",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -50,7 +40,7 @@
     {
       "name": "tools",
       "description": "Domain research skills.",
-      "version": "0.9.0+g434efedb",
+      "version": "0.9.2",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -60,7 +50,7 @@
     {
       "name": "aops-debug",
       "description": "Debug plugin that dumps raw hook payloads.",
-      "version": "0.9.0+g434efedb",
+      "version": "0.9.2",
       "author": {
         "name": "Nicolas Suzor"
       },

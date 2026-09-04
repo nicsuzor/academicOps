@@ -1,45 +1,31 @@
 ---
 name: new-project
-type: skill
-category: instruction
-description: >
-  Scaffold research project repositories with smart defaults — repo creation,
-  directory structure, CI/CD, documentation, and PKB integration in one pass.
-triggers:
-  - "new project"
-  - "set up a project"
-  - "create a repo"
-  - "scaffold"
-  - "initialize project"
-  - "/new-project"
-modifies_files: true
-needs_task: false
-mode: conversational
-domain:
-  - operations
-  - research
+description: Scaffold a research project repository end to end — repo creation, directory structure, git hygiene, CI/CD, documentation stubs, issue templates, and PKB registration in one pass, with defaults proposed for approval before anything is written. Use for "new project", "set up a project", "create a repo", "scaffold", "initialize project". Not for adding tooling to a repository that already exists, not for provisioning secrets or credentials, and not for planning the project's work (use `strategize`).
 ---
 
-# Project Scaffolding Guidelines
+# Project Scaffolding
 
-Initialize and configure research project repositories with complete operational infrastructure.
+Initialise a research project repository with complete operational infrastructure.
 
-## Core Directives
+## Gather, then propose
 
-1. **Information Gathering**: Learn the project title, research type (empirical, qualitative, library, mixed), collaboration team scope, data pipeline choice (dbt, DuckDB, MLflow, DVC), and publication formats. Propose sensible defaults before execution.
-2. **Infrastructure Rules**:
-   - Establish git hygiene (add appropriate `.gitignore` and configure pre-commit hooks).
-   - Ensure raw research data directories (`data/raw/`) are configured as immutable.
-   - Create documentation stubs and issue templates.
-3. **Execution**: Follow the setup procedure in `instructions/init` to construct the repository.
+Establish the project title, research type (empirical, qualitative, library, mixed),
+collaboration scope, data pipeline choice (dbt, DuckDB, MLflow, DVC), and publication
+formats. Propose the resulting repository structure and tooling selection to the user, and
+execute only once they approve — scaffolding writes a layout that is expensive to unpick.
 
-## Exclusions
+Add no tool or directory the user has not selected.
 
-- Do not add tools or directories unless explicitly selected by the user.
-- Do not configure secrets or credentials (provide instructions instead).
-- Do not create task logs, milestones, or epics (suggest the user run the `/ida:strategize` slash command instead).
+## Execute
 
-## Output Expectations
+Read `instructions/init.md` and follow it to construct the repository. It carries the git
+hygiene the layout depends on: an appropriate `.gitignore`, pre-commit hooks, `data/raw/`
+configured immutable, documentation stubs, and issue templates.
 
-- Present the proposed repository structure and tooling selection concisely to the user.
-- Once approved, execute, report successful initialization, and list next-step commands.
+Provision no secrets or credentials — report the commands the user must run themselves.
+Create no tasks, milestones, or epics; point the user at `/ida:strategize` instead.
+
+## Report
+
+Report the initialisation result and list the next-step commands, including the ones
+deliberately left for the user.
