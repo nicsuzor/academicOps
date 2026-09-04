@@ -28,30 +28,27 @@
 
 ### Features
 
-* **dispatch:** add aops sandbox kit and move kits to lib/kits ([9d9c866](https://github.com/nicsuzor/academicOps/commit/9d9c866535a834e2a0193c840e74f796f38cfe1a))
-* **hooks:** ground UserPromptSubmit in pkb search with fallback ([152d04f](https://github.com/nicsuzor/academicOps/commit/152d04fa2963a23d8831c300a53360657eacc657))
-* **hooks:** ground UserPromptSubmit in pkb search with fallback ([9474539](https://github.com/nicsuzor/academicOps/commit/947453933abab30952c4cd83d23685d148e319cc))
-
+- **dispatch:** add aops sandbox kit and move kits to lib/kits ([9d9c866](https://github.com/nicsuzor/academicOps/commit/9d9c866535a834e2a0193c840e74f796f38cfe1a))
+- **hooks:** ground UserPromptSubmit in pkb search with fallback ([152d04f](https://github.com/nicsuzor/academicOps/commit/152d04fa2963a23d8831c300a53360657eacc657))
+- **hooks:** ground UserPromptSubmit in pkb search with fallback ([9474539](https://github.com/nicsuzor/academicOps/commit/947453933abab30952c4cd83d23685d148e319cc))
 
 ### Bug Fixes
 
-* **build:** resolve orchestrate-to-aops migration fallout and client mcp splitting ([4bbaa22](https://github.com/nicsuzor/academicOps/commit/4bbaa222270b57e6d908b068ba426b896241ebe6))
-* **build:** ship kits from lib/kits, not lib/polecat/kits ([d5113e3](https://github.com/nicsuzor/academicOps/commit/d5113e379b6c1424ece7cc501bbd8776ffefcda2))
-* **hooks:** address review comments and make test suite green ([7d16446](https://github.com/nicsuzor/academicOps/commit/7d16446a4fc403d307a71622afa74536b2153e76))
-* **hooks:** resolve pkb binary from PATH or hook cwd without hardcoded paths ([57be841](https://github.com/nicsuzor/academicOps/commit/57be841a90476a1e46a56e7c5540c1b93b79ce63))
-* **kits:** put agy on a PATH the sandbox agent user can reach ([06530ca](https://github.com/nicsuzor/academicOps/commit/06530cad5c10a6458f073137c04dee7e3c0ecd1a))
-* resolve review comments, restore tooling dependencies, and align test suite ([3075275](https://github.com/nicsuzor/academicOps/commit/3075275dff775f03e5ecafd91456380c8fd1593c))
-
+- **build:** resolve orchestrate-to-aops migration fallout and client mcp splitting ([4bbaa22](https://github.com/nicsuzor/academicOps/commit/4bbaa222270b57e6d908b068ba426b896241ebe6))
+- **build:** ship kits from lib/kits, not lib/polecat/kits ([d5113e3](https://github.com/nicsuzor/academicOps/commit/d5113e379b6c1424ece7cc501bbd8776ffefcda2))
+- **hooks:** address review comments and make test suite green ([7d16446](https://github.com/nicsuzor/academicOps/commit/7d16446a4fc403d307a71622afa74536b2153e76))
+- **hooks:** resolve pkb binary from PATH or hook cwd without hardcoded paths ([57be841](https://github.com/nicsuzor/academicOps/commit/57be841a90476a1e46a56e7c5540c1b93b79ce63))
+- **kits:** put agy on a PATH the sandbox agent user can reach ([06530ca](https://github.com/nicsuzor/academicOps/commit/06530cad5c10a6458f073137c04dee7e3c0ecd1a))
+- resolve review comments, restore tooling dependencies, and align test suite ([3075275](https://github.com/nicsuzor/academicOps/commit/3075275dff775f03e5ecafd91456380c8fd1593c))
 
 ### Documentation
 
-* enforce task branch naming, container naming after branch, and single PR ([1c10ed7](https://github.com/nicsuzor/academicOps/commit/1c10ed7d6e62f935693474809ff79f1f558e663d))
-
+- enforce task branch naming, container naming after branch, and single PR ([1c10ed7](https://github.com/nicsuzor/academicOps/commit/1c10ed7d6e62f935693474809ff79f1f558e663d))
 
 ### Miscellaneous
 
-* **dev:** release 0.9.1 ([b7c4cf0](https://github.com/nicsuzor/academicOps/commit/b7c4cf026296ff4705db1034052fad88f6db6ac7))
-* update uv.lock for release ([32d2e89](https://github.com/nicsuzor/academicOps/commit/32d2e89a3bd07905a501e49718c928b08b538c93))
+- **dev:** release 0.9.1 ([b7c4cf0](https://github.com/nicsuzor/academicOps/commit/b7c4cf026296ff4705db1034052fad88f6db6ac7))
+- update uv.lock for release ([32d2e89](https://github.com/nicsuzor/academicOps/commit/32d2e89a3bd07905a501e49718c928b08b538c93))
 
 ## [0.9.1](https://github.com/nicsuzor/academicOps/compare/v0.9.0...v0.9.1) (2026-09-03)
 
