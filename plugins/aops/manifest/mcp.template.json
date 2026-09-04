@@ -2,7 +2,8 @@
   "manifestVersion": "1.0",
   "name": "aops",
   "clients": {
-    "__base__": {
+    "__base__": {},
+    "claude": {
       "mcpServers": {
         "services": {
           "command": "bash",
