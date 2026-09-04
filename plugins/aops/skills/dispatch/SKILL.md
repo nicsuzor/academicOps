@@ -15,19 +15,28 @@ Your only job is to launch workers: one task, one sandbox, one private clone.
 
 `--clone` gives the container its own git clone. The container cannot see the
 host's working tree. Anything the worker must see -- a task file, a kit, a
-Makefile target, a plugin change -- is committed and pushed to the dispatch
-branch first, or it does not exist inside the sandbox.
+Makefile target, a plugin change -- is committed and pushed to the task
+branch `<epic_name>-<task_id>` before sandbox creation, or it does not exist
+inside the sandbox.
 
 ## Launch
 
 ```bash
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-NAME="dispatch-<task-id>"
+EPIC_NAME=$(git rev-parse --abbrev-ref HEAD)
+BRANCH="${EPIC_NAME}-${TASK_ID}"
+NAME="${BRANCH}"
 KITS="--kit lib/kits/agy --kit lib/kits/aops"
 ENV_FLAGS=()
 [ -n "${PKB_MCP_URL:-}" ] && ENV_FLAGS+=(-e PKB_MCP_URL)
 
+git checkout -B "$BRANCH" "$EPIC_NAME"
+git push -u origin "$BRANCH"
+
 sbx create --clone --name "$NAME" "${ENV_FLAGS[@]}" $KITS agy .
+if [ -n "${PKB_MCP_URL:-}" ]; then
+  PKB_HOST=$(echo "$PKB_MCP_URL" | sed -E 's|^https?://([^/:]+).*|\1|')
+  sbx policy allow network --sandbox "$NAME" "$PKB_HOST:443" >/dev/null 2>&1 || true
+fi
 ```
 
 `sbx create` returns once the sandbox exists, but the `aops` kit's startup
@@ -45,7 +54,7 @@ for i in $(seq 1 24); do
   sleep 15
 done
 
-sbx run --name "$NAME" --kit lib/kits/agy agy . -- -p "/aops:pull <task-id>"
+sbx run --name "$NAME" --kit lib/kits/agy agy . -- -p "/aops:pull $TASK_ID"
 ```
 
 A `fail` line or the timeout is a HALT. Report the log verbatim; do not retry
@@ -53,16 +62,20 @@ into a sandbox whose framework did not install.
 
 ## Collect
 
-The sandbox's commits reach the host through a git remote named after it. The
-container's branches arrive under `refs/sandboxes/<name>/`:
+The sandbox's commits reach the host through a git remote named after it (`sandbox-$NAME`).
+Fetch the commits and merge the task branch back into `$EPIC_NAME`:
 
 ```bash
 git fetch "sandbox-$NAME"
+git checkout "$EPIC_NAME"
+git merge --ff-only "sandbox-$NAME/$BRANCH" || git merge "sandbox-$NAME/$BRANCH"
+git push origin "$EPIC_NAME"
 sbx rm -f "$NAME"
 ```
 
 Fetch before you remove. `sbx rm -f` destroys the clone and the daemon serving
-it, and uncollected commits go with them.
+it, and uncollected commits go with them. Once all tasks in the epic are complete,
+file a single PR from `$EPIC_NAME`.
 
 ## Notes
 

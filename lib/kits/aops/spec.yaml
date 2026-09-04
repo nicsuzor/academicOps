@@ -13,9 +13,7 @@ permissions:
       - "github.com:443"
       - "api.github.com:443"
       - "*.githubusercontent.com:443"
-      - "*.ts.net:443"
-      - "services-new.stoat-musical.ts.net:443"
-      - "*.stoat-musical.ts.net:443"
+      - "**.ts.net:443"
 
 setup:
   install:

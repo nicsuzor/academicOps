@@ -53,26 +53,33 @@ repository (`$WORKSPACE_DIR`), and mounts the host repository read-only at
 
 **The clone carries only committed work.** The container cannot see the host's
 working tree. Anything the worker must see -- a task file, a kit, a Makefile
-target, a plugin change -- is committed and pushed to the dispatch branch before
-the sandbox is created, or it does not exist inside the sandbox.
+target, a plugin change -- is committed and pushed to the task branch
+`<epic_name>-<task_id>` before the sandbox is created, or it does not exist
+inside the sandbox.
 
-Every epic gets one branch and every worker for that epic clones from it. Sara
-commits and pushes to that branch again between waves, so each wave starts from
-the merged results of the last.
+Every epic gets an overarching epic branch `<epic_name>`. Each task dispatched
+within that epic gets its own unique branch named `<epic_name>-<task_id>` and a
+sandbox container named strictly after the branch (`NAME="<epic_name>-<task_id>"`).
 
 ## Collection
 
-Creating a sandbox creates a host git remote named `sandbox-<name>`, backed by a
+Creating a sandbox creates a host git remote named `sandbox-$NAME`, backed by a
 git daemon serving the container's clone. The container's commits reach the host
 through it, arriving under `refs/sandboxes/<name>/`:
 
 ```bash
 git fetch "sandbox-$NAME"
+git checkout "$EPIC_NAME"
+git merge --ff-only "sandbox-$NAME/$BRANCH" || git merge "sandbox-$NAME/$BRANCH"
+git push origin "$EPIC_NAME"
 sbx rm -f "$NAME"
 ```
 
 Fetch before removing. `sbx rm -f` destroys the clone and the daemon serving it,
-and uncollected commits go with them.
+and uncollected commits go with them. Sara commits and pushes to `$EPIC_NAME`
+between waves so subsequent waves start from the latest integrated state. Once
+all tasks in the epic are complete, a single consolidated PR is filed from
+`<epic_name>` against the target base branch.
 
 ## Startup is asynchronous
 

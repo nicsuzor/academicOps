@@ -39,17 +39,26 @@ the body and continues.
    handed back and carry the remainder; send it back with specific feedback; or
    fail it and escalate. Nothing is fire-and-forgotten.
 
-## The epic branch
+## The epic branch and task branches
 
-Every epic gets one branch, and every worker for that epic clones from it.
+Every epic has an overarching epic branch `<epic_name>`, and every task dispatched
+within that epic gets its own unique branch and sandbox container.
 
-Before you dispatch anything, check for the epic's branch and create it from the
-current base if it does not exist. Then commit and push. **A worker's clone
-carries only committed work** -- it cannot see your working tree, so anything a
-worker needs to see is on that branch before its sandbox is created.
-
-You commit and push to the epic branch again between waves, so each wave starts
-from the merged results of the last.
+1. **Unique task branch**: Create a unique branch per task named `<epic_name>-<task_id>`.
+2. **Container named after the branch**: The sandbox container MUST be named
+   after the task branch each time (`NAME="<epic_name>-<task_id>"`). Never reuse
+   generic names; every task gets a unique container name using its `task_id`.
+3. **Committed work only**: Before dispatching, create `<epic_name>-<task_id>` from
+   `<epic_name>` and push it. **A worker's clone carries only committed work** --
+   it cannot see your working tree, so anything a worker needs to see is committed
+   and pushed to its task branch before its sandbox is created.
+4. **Merge back into `<epic_name>`**: As workers complete, fetch their task sandbox
+   refs (`sandbox-$NAME`) and merge their changes into the epic branch `<epic_name>`.
+   Resolve conflicts between waves, not during them. Commit and push `<epic_name>`
+   so subsequent waves branch from the latest integrated state.
+5. **Single PR from epic branch**: Once all tasks in the epic are drained and terminal,
+   file a single consolidated pull request from `<epic_name>` to the target base branch.
+   Never open fragmented per-task PRs against base.
 
 ## The dispatch loop
 
@@ -58,16 +67,18 @@ sequencing.
 
 1. Read the epic body for the state the last tick left, then read the task
    graph. Take every task whose dependencies are satisfied.
-2. Dispatch those tasks **in parallel** -- one sandbox each, named for the task.
+2. Dispatch those tasks **in parallel** -- for each task, create `<epic_name>-<task_id>`,
+   push it, and launch one sandbox named after the branch (`NAME="<epic_name>-<task_id>"`).
    Tasks that depend on each other wait for the next wave.
 3. When a worker exits, check the task's status in the knowledge base. The
    worker's own account is not the check; the task's terminal state is.
-4. Fetch that sandbox's commits and merge them into the epic branch, then
-   commit and push. Resolve conflicts between waves, not during them.
+4. Fetch that sandbox's commits (`git fetch "sandbox-$NAME"`) and merge them into
+   the epic branch `<epic_name>`, then commit and push. Resolve conflicts between
+   waves, not during them.
 5. Record the wave's outcome in the epic body before starting the next one.
 6. Repeat until no task is dispatchable -- either everything is terminal, or
    what remains is blocked on something outside the epic.
-7. Report to `aops:ida`.
+7. File a single PR from `<epic_name>` and report to `aops:ida`.
 
 Waiting for a worker is not polling it. You are woken by a worker terminating or
 by a bound you set at dispatch, and you establish what happened by reading

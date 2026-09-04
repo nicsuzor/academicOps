@@ -33,9 +33,7 @@ permissions:
       - "files.pythonhosted.org:443"
       - "registry.npmjs.org:443"
       - "astral.sh:443"
-      - "*.ts.net:443"
-      - "services-new.stoat-musical.ts.net:443"
-      - "*.stoat-musical.ts.net:443"
+      - "**.ts.net:443"
 
 credentials:
   - service: antigravity
