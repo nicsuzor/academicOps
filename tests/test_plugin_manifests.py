@@ -229,49 +229,12 @@ def test_ida_ships_the_quiet_gate_on_claude_only():
     events = _claude_hook_events("aops-claude")
     assert "PostToolBatch" in events
     assert "SubagentStop" not in events
-    assert not (DIST_ROOT / "aops-agy" / "hooks.json").exists()
+    assert "PostToolBatch" not in _agy_hook_events("aops-agy")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
-def test_ida_ships_no_posttooluse_hook():
-    """``plugins/aops/hooks/handlers.py`` registers ``PostToolBatch`` for ida's
-    ``be_quiet`` and nothing else, so a ``PostToolUse`` entry here would spawn
-    a hook process on every tool call for a handler that does not exist. The
-    hearsay reminder ida used to carry on that event now ships from
-    ``orchestrate``, beside the dispatch machinery it binds."""
-    assert "PostToolUse" not in _claude_hook_events("aops-claude")
-
-
-@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
-def test_orchestrate_ships_the_handback_reminders():
-    """``PostToolBatch`` binds the *receiver* the instant a subagent's report
-    lands; ``Stop``/``SubagentStop`` bind the *worker* at the last moment its own
-    report can still carry the evidence. Both surfaces ship from orchestrate,
-    which owns dispatch and the handback doctrine.
-
-    The receiver-side reminder rides ``PostToolBatch`` rather than
-    ``PostToolUse``: the batch event fires once after every call in a batch has
-    resolved, so a turn that dispatched several subagents is reminded once
-    rather than once per report.
-
-    Neither reminder is wired to canonical ``Stop`` in
-    ``plugins/orchestrate/hooks/handlers.py`` today (``PostToolBatch`` ->
-    ``rule_against_hearsay`` is commented out; ``HANDLERS["Stop"]`` holds
-    only the two OTel tracer handlers) — the claude-side manifest wiring
-    ships ahead of the feature. agy no longer registers ``PostInvocation``
-    at all: it was the only wire event aliasing onto canonical ``Stop``, and
-    that alias is gone (aops_73e25af2 — PostInvocation fires once per
-    internal invocation/tool-call round-trip, not once per turn), so there
-    is nothing left for it to reach on agy."""
-    assert {"PostToolBatch", "Stop", "SubagentStop"} <= _claude_hook_events("orchestrate-claude")
-    assert "PostInvocation" not in _agy_hook_events("orchestrate-agy")
-
-
-@pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
-def test_aops_core_ships_no_stop_gate():
-    """aops's own stop gate is blocked on a server-side prerequisite, not merely
-    unbuilt. This pins that it stays unwired rather than being swept in.
-
-    ``PostToolBatch`` is not aops's own gate — it is ida's quiet gate,
-    hosted here because ida is an agent inside aops (test_ida_ships_the_quiet_gate_on_claude_only)."""
-    assert _claude_hook_events("aops-claude") == {"PostToolBatch"}
+def test_aops_ships_the_handback_reminders():
+    """``PostToolBatch`` binds the receiver; ``Stop`` binds the worker at handback.
+    Both surfaces ship from aops, which owns dispatch and the handback doctrine."""
+    assert {"PostToolBatch", "Stop"} <= _claude_hook_events("aops-claude")
+    assert "PostInvocation" not in _agy_hook_events("aops-agy")

@@ -502,7 +502,6 @@ HANDLERS: dict[str, list] = {
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
     "Stop": [stop, agy_stop, dump_before_stopping],
-    "SubagentStop": [dump_before_stopping],
     "PostToolBatch": [
         h for h in (rule_against_hearsay, premise_check_arm, be_quiet) if h is not None
     ],

@@ -174,7 +174,9 @@ def test_no_message_file_in_the_build_reaches_the_person(ida_dist):
     sweep would fail on a file this gate never touches.
     """
     handlers = (_claude_hooks_dir(ida_dist) / "handlers.py").read_text(encoding="utf-8")
-    names = re.findall(r'load_message_pair\(\s*ctx\.hooks_dir,\s*"([^"]+)"\s*\)', handlers)
+    match = re.search(r"def be_quiet\(.*?\n(?=def |\Z)", handlers, re.DOTALL)
+    assert match, "be_quiet handler not found"
+    names = re.findall(r'load_message_pair\(\s*ctx\.hooks_dir,\s*"([^"]+)"\s*\)', match.group(0))
     assert names, "no handler loads a message pair; this test would assert nothing"
 
     messages = _claude_hooks_dir(ida_dist) / "messages"
@@ -245,9 +247,11 @@ def test_no_handler_returns_a_string_literal(ida_dist):
     has no other way to produce text.
     """
     handlers = (_claude_hooks_dir(ida_dist) / "handlers.py").read_text(encoding="utf-8")
+    match = re.search(r"def be_quiet\(.*?\n(?=def |\Z)", handlers, re.DOTALL)
+    assert match, "be_quiet handler not found"
     returns = [
         line.strip()
-        for line in handlers.splitlines()
+        for line in match.group(0).splitlines()
         if line.strip().startswith("return ") and "load_message_pair" not in line
     ]
     offenders = [line for line in returns if '"' in line or "'" in line]

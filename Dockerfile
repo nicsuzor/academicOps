@@ -11,6 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js 22 and code quality / agent tooling (@playwright/mcp, markdownlint-cli2, dprint)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g markdownlint-cli2 dprint ccstatusline @playwright/mcp \
+    && npm cache clean --force \
+    && rm -rf /var/lib/apt/lists/*
+
 # Meet sbx requirements:
 # 1. Non-root agent user at UID 1000
 # 2. /home/agent owned by agent
