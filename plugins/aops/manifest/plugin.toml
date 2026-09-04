@@ -27,5 +27,5 @@ from = "polecat/staleness.py"
 to = "polecat/staleness.py"
 
 [[shared]]
-from = "polecat/kits"
-to = "polecat/kits"
+from = "kits"
+to = "kits"
