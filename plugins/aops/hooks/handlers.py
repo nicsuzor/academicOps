@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shlex
+import shutil
 import socket
+import subprocess
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -439,9 +442,83 @@ def agy_stop(ctx: HookContext) -> Result | None:
     return None
 
 
+def _find_pkb_bin() -> str | None:
+    pkb_bin = shutil.which("pkb")
+    if pkb_bin:
+        return pkb_bin
+    for candidate in (
+        "/opt/suzor/bin/pkb",
+        "/usr/local/bin/pkb",
+        str(Path.home() / ".cargo" / "bin" / "pkb"),
+    ):
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def _run_pkb_search(prompt: str) -> str | None:
+    query = prompt.strip()[:200]
+    if not query:
+        return None
+    pkb_bin = _find_pkb_bin()
+    if not pkb_bin:
+        log.warning("pkb binary not found for UserPromptSubmit hook")
+        return None
+    try:
+        env = dict(os.environ)
+        env["NO_COLOR"] = "1"
+        proc = subprocess.run(
+            [pkb_bin, "search", query],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env=env,
+        )
+        if proc.returncode == 0:
+            out = proc.stdout.strip()
+            out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", out).strip()
+            if out:
+                return out
+        else:
+            log.warning("pkb search exited with returncode %s: %s", proc.returncode, proc.stderr)
+    except Exception as exc:
+        log.warning("pkb search execution failed: %s", exc)
+    return None
+
+
+def search_the_pkb(ctx: HookContext) -> Result | None:
+    """Ground every prompt in the PKB before the agent acts on it.
+
+    Tries first to return the output of `pkb search {prompt:200}` wrapped in
+    `<academicOps PKB search results>` tags; if that fails, returns the
+    existing messages.
+    """
+    raw_prompt = ctx.raw.get("prompt")
+    if raw_prompt is None and hasattr(ctx, "prompt"):
+        raw_prompt = ctx.prompt
+    if isinstance(raw_prompt, dict):
+        raw_prompt = raw_prompt.get("text") or raw_prompt.get("content") or ""
+    prompt_str = str(raw_prompt or "").strip()
+
+    if prompt_str:
+        output = _run_pkb_search(prompt_str)
+        if output:
+            msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
+            return warn(msg)
+
+    # If search fails, return existing messages
+    agent_msg, user_msg = load_message_pair(ctx.hooks_dir, "pkb-context")
+    if agent_msg:
+        return warn(agent_msg, user_msg)
+    return honest_output(ctx)
+
+
+userpromptsubmit = search_the_pkb
+
+
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
-    "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, honest_output],
+    "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, search_the_pkb],
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
