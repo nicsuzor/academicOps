@@ -1,0 +1,20 @@
+{
+  "worktree.baseRef": "head",
+  "permissionMode": "auto",
+  "skillListingBudgetFraction": 0.005,
+  "skillOverrides": {
+    "dataviz": "off",
+    "design": "off",
+    "artifact-capabilities": "off",
+    "artifact-diagramming": "off",
+    "artifact-design": "off",
+    "claude-in-chrome": "off",
+    "home-automation": "off",
+    "reflexes": "off",
+    "schedule": "off",
+    "keybindings-help": "off",
+    "init": "off",
+    "claude-api": "name-only",
+    "run": "name-only"
+  }
+}

@@ -2,7 +2,7 @@ schemaVersion: "2"
 kind: mixin
 name: aops
 displayName: "academicOps framework"
-description: "Builds the academicOps plugin set from the sandbox workspace and installs it for the agent, so a dispatched worker runs the framework from the branch it is working on."
+description: "Installs released academicOps plugins from git into the sandbox image during the install phase."
 
 permissions:
   network:
@@ -21,7 +21,25 @@ setup:
     - command: "apt-get update && apt-get install -y --no-install-recommends make git curl jq ripgrep python3 python3-venv || true"
       user: "root"
       description: "Build and search tooling the framework expects on PATH"
-  startup:
-    - command: ["sh", "-c", "cd \"$WORKSPACE_DIR\" && make install-agy"]
+    - command: >-
+        git clone --depth 1 --branch dist https://github.com/nicsuzor/academicOps.git /tmp/aops-dist &&
+        MP_ROOT=/tmp/aops-dist &&
+        MP_NAME=academicOps &&
+        PLUGINS="$(jq -r '.plugins[].name' "$MP_ROOT/.claude-plugin/marketplace.json")" &&
+        mkdir -p /home/agent/.gemini/config/plugins &&
+        for p in $PLUGINS; do
+          src="$MP_ROOT/$p-agy";
+          if [ -d "$src" ]; then
+            cp -R "$src" /home/agent/.gemini/config/plugins/$p &&
+            (command -v agy >/dev/null 2>&1 && agy plugin install "$src" >/dev/null 2>&1 || true);
+          fi;
+        done &&
+        if command -v claude >/dev/null 2>&1; then
+          claude plugin marketplace add "$MP_ROOT" >/dev/null 2>&1 || true;
+          claude plugin marketplace update "$MP_NAME" >/dev/null 2>&1 || true;
+          for p in $PLUGINS; do claude plugin install "$p@$MP_NAME" >/dev/null 2>&1 || true; done;
+        fi &&
+        rm -rf /tmp/aops-dist
       user: "agent"
-      description: "Build dist/ from the workspace and install the aops plugins for agy"
+      description: "Install released academicOps plugins from dist branch"
+
