@@ -9,7 +9,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def test_claude_kit_spec_validity():
     """Claude kit spec.yaml exists, parses, and follows schemaVersion: '2'."""
-    kit_file = _REPO_ROOT / "lib" / "polecat" / "kits" / "claude" / "spec.yaml"
+    kit_file = _REPO_ROOT / "lib" / "kits" / "claude" / "spec.yaml"
     assert kit_file.is_file(), f"Claude kit not found at {kit_file}"
 
     data = yaml.safe_load(kit_file.read_text())
@@ -34,7 +34,7 @@ def test_claude_kit_spec_validity():
 
 def test_agy_kit_spec_validity():
     """Agy kit spec.yaml exists, parses, and follows schemaVersion: '2'."""
-    kit_file = _REPO_ROOT / "lib" / "polecat" / "kits" / "agy" / "spec.yaml"
+    kit_file = _REPO_ROOT / "lib" / "kits" / "agy" / "spec.yaml"
     assert kit_file.is_file(), f"Agy kit not found at {kit_file}"
 
     data = yaml.safe_load(kit_file.read_text())
@@ -64,9 +64,11 @@ def test_agy_kit_spec_validity():
     assert any("agy" in cmd for cmd in install_cmds)
 
 
-def test_sbx_root_kits_parity():
-    """Root .sbx/kits/ mirror matches lib/polecat/kits/."""
-    for agent in ("claude", "agy"):
-        lib_kit = (_REPO_ROOT / "lib" / "polecat" / "kits" / agent / "spec.yaml").read_text()
-        sbx_kit = (_REPO_ROOT / ".sbx" / "kits" / agent / "spec.yaml").read_text()
-        assert lib_kit == sbx_kit, f".sbx/kits/{agent} differs from lib/polecat/kits/{agent}"
+def test_aops_kit_spec_validity():
+    """The aops kit spec.yaml exists, parses, and follows schemaVersion: '2'."""
+    kit_file = _REPO_ROOT / "lib" / "kits" / "aops" / "spec.yaml"
+    assert kit_file.is_file(), f"aops kit not found at {kit_file}"
+
+    data = yaml.safe_load(kit_file.read_text())
+    assert data["schemaVersion"] == "2"
+    assert data["name"] == "aops"

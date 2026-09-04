@@ -1,5 +1,5 @@
 #!/bin/bash
-# Capability matrix for one client in a polecat container: does an agent reach
+# Capability matrix for one client in a sandbox container: does an agent reach
 # its MCP servers, resolve a skill, dispatch a subagent, and hold the
 # permissions it needs to do work?
 #
@@ -10,15 +10,12 @@
 # correct. Edit the cells to match what the project under test actually ships;
 # the four below are the floor.
 #
-# Same environment contract as probe.sh: everything is written into the launch
-# script, because tmux does not inherit a fresh environment.
+# Same contract as probe.sh: everything is written into the launch script,
+# because tmux does not inherit a fresh environment; and the sandbox runs on a
+# private clone carrying ONLY COMMITTED WORK, so commit before probing.
 set -u
 CLIENT="${1:?usage: matrix-probe.sh <claude|agy> [args...]}"
 shift
-
-: "${POLECAT_HOME:?set POLECAT_HOME}"
-: "${POLECAT_IMAGE:?set POLECAT_IMAGE}"
-: "${AOPS_SESSIONS:?set AOPS_SESSIONS — the MCP cell is scored from the session transcript}"
 
 REPO="$(git rev-parse --show-toplevel)"
 SESS="matrix-${CLIENT}-$$"
@@ -28,8 +25,9 @@ LAUNCH="$WORK/launch.sh"
 {
   echo '#!/bin/bash'
   export -p
-  printf 'exec uv run --project %q python %q/lib/polecat/cli.py run -d %q -s %q %q %s\n' \
-    "$REPO" "$REPO" "$REPO" "$SESS" "$CLIENT" "$*"
+  printf 'cd %q\n' "$REPO"
+  printf 'exec sbx run --clone --name %q --kit lib/kits/%q --kit lib/kits/aops %q . %s\n' \
+    "$SESS" "$CLIENT" "$CLIENT" "${*:+-- $*}"
 } > "$LAUNCH"
 chmod +x "$LAUNCH"
 
@@ -61,28 +59,30 @@ cell() {  # name, prompt, success-regex, ticks
 # transcript, never from what it said. Returns 0 only on a real tool-call
 # record.
 mcp_called() {
-  # The log directory is dated in local time, as polecat names it. Its leaf is
-  # the project name under `-p <project>` and `workspace` otherwise, so search
-  # the session directory rather than assuming either.
-  local dir="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$SESS"
-  python3 - "$dir" <<'PY'
+  # Transcripts live inside the sandbox, not on the host, so score them there.
+  # Both client state roots are searched: the run may have used either.
+  sbx exec "$SESS" -- python3 - <<'PY'
 import pathlib, sys
-root = pathlib.Path(sys.argv[1])
+roots = [pathlib.Path.home() / ".claude" / "projects",
+         pathlib.Path.home() / ".gemini" / "antigravity-cli" / "brain"]
 n = 0
 # agy records an MCP call as an ordinary tool call named call_mcp_tool, whose
 # args carry ServerName and ToolName. There is no distinct MCP event type.
 # A subagent writes its own agy-brain/<uuid>/, so recurse: a call made by a
 # delegate is absent from the parent conversation's transcript.
-for f in root.rglob("transcript_full.jsonl"):          # agy
-    for line in f.open(errors="ignore"):
-        if '"call_mcp_tool"' in line:
-            n += 1
-for f in root.rglob("*.jsonl"):                         # claude
-    if "hooks" in f.name or f.name.startswith("transcript"):
+for root in roots:
+    if not root.is_dir():
         continue
-    for line in f.open(errors="ignore"):
-        if '"tool_use"' in line and "mcp__" in line:
-            n += 1
+    for f in root.rglob("transcript_full.jsonl"):          # agy
+        for line in f.open(errors="ignore"):
+            if '"call_mcp_tool"' in line:
+                n += 1
+    for f in root.rglob("*.jsonl"):                         # claude
+        if "hooks" in f.name or f.name.startswith("transcript"):
+            continue
+        for line in f.open(errors="ignore"):
+            if '"tool_use"' in line and "mcp__" in line:
+                n += 1
 print(n)
 sys.exit(0 if n else 1)
 PY
@@ -119,4 +119,5 @@ cell PERMS   "run a shell command to write the word OKWRITE into /tmp/permcheck.
 echo "===== FULL PANE: $CLIENT $* ====="
 tmux capture-pane -t "$SESS" -p -S -800 2>/dev/null | grep -vE '^\s*$'
 tmux kill-session -t "$SESS" 2>/dev/null
+sbx rm -f "$SESS" 2>/dev/null
 rm -rf "$WORK"

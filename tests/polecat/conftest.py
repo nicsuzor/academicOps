@@ -45,7 +45,8 @@ def _strip_real_credentials(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _strip_real_pkb_mcp_url(monkeypatch):
-    """`polecat run` fails closed when no knowledge-base URL resolves. A
+    """The container launch path fails closed when no knowledge-base URL
+    resolves. A
     session running these tests routinely has a real $PKB_MCP_URL exported
     (e.g. inside a polecat container), which would silently make every test
     depend on that ambient value instead of on what it sets up itself. Tests

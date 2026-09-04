@@ -8,7 +8,6 @@ builder end to end until they land.
 """
 
 import json
-import re
 import tarfile
 import zipfile
 from pathlib import Path
@@ -49,30 +48,21 @@ def built_orchestrate(tmp_path_factory) -> Path:
     return dist_root
 
 
-def test_polecat_cli_ships_with_orchestrate(built_orchestrate):
-    """The polecat launcher agent or skill invokes
-    `${CLAUDE_PLUGIN_ROOT}/polecat/cli.py`. What puts that module inside a plugin
-    root at all is `plugins/aops/manifest/plugin.toml`, which injects it
-    from `lib/polecat/`.
+def test_polecat_modules_ship_with_orchestrate(built_orchestrate):
+    """Plugin code resolves these modules under `${CLAUDE_PLUGIN_ROOT}/polecat/`.
+    What puts them inside a plugin root at all is
+    `plugins/aops/manifest/plugin.toml`, which injects them from `lib/polecat/`.
 
-    Drop those `[[shared]]` stanzas and nothing fails at build time; the launch
+    Drop those `[[shared]]` stanzas and nothing fails at build time; the import
     fails at runtime, with file-not-found. This is the check that turns that into
     a build-time failure instead.
-
-    The sibling modules are read off cli.py's own fallback imports rather than
-    listed here, because a hand-kept list is exactly what let `notify.py` be
-    added to cli.py and left out of the manifest.
     """
-    siblings = set(
-        re.findall(r"from polecat\.(\w+) import", (PROJECT_ROOT / "lib/polecat/cli.py").read_text())
-    )
-    assert "env_contract" in siblings, "cli.py's fallback imports no longer parse"
+    modules = {"__init__", "env_contract", "notify", "staleness"}
     for client in ("claude", "agy"):
         polecat = built_orchestrate / f"aops-{client}" / "polecat"
-        assert (polecat / "cli.py").is_file(), f"aops-{client} ships no polecat/cli.py"
-        for module in siblings:
+        for module in modules:
             assert (polecat / f"{module}.py").is_file(), (
-                f"aops-{client} ships cli.py without the {module} it imports"
+                f"aops-{client} ships no polecat/{module}.py"
             )
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()

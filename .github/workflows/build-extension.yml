@@ -269,7 +269,7 @@ jobs:
             git push origin dist
           fi
 
-      # ── Docker: publish the polecat worker/crew image (stable only, A3) ──────
+      # ── Docker: publish the worker/crew image (stable only, A3) ──────────────
       # Built AFTER the dist publish so the image's `git clone --branch dist` (see
       # Dockerfile) pulls the version just shipped. Prereleases never publish the
       # image — `:latest` must track the stable channel, exactly like the dist branch.

@@ -12,7 +12,7 @@ tags: [spec, polecat, git, freshness]
 
 How `resolve_isolated_workspace()` (`lib/polecat/cli.py`) picks the commit a
 worker's isolated clone diverges from. This is step 3 of
-[polecat-system.md](polecat-system.md) § What `run` does. Implemented; regression
+[dispatch-system.md](../dispatch/dispatch-system.md) § The clone. Implemented; regression
 tests are `tests/polecat/test_sbx_invocation.py`.
 
 ## The two failure modes this design closes
@@ -20,10 +20,10 @@ tests are `tests/polecat/test_sbx_invocation.py`.
 Resolution reads refs from the shared host checkout, which can disagree with
 `origin` in two ways:
 
-| Mode                      | Condition                                                           | Consequence if unhandled                                                                                                        |
-| ------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **1 — silent stale base** | Local ref exists but is behind remote                               | Worker branches from an old commit, runs, exits 0 with a plausible commit that is a **revert of merged upstream work**. Silent. |
-| **2 — unresolvable ref**  | Ref exists on `origin` but was never fetched into the host checkout | `rev-parse` fails; dispatch is blocked on legitimate branches pushed from another worktree or agent. Loud.                      |
+| Mode                       | Condition                                                           | Consequence if unhandled                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **1 -- silent stale base** | Local ref exists but is behind remote                               | Worker branches from an old commit, runs, exits 0 with a plausible commit that is a **revert of merged upstream work**. Silent. |
+| **2 -- unresolvable ref**  | Ref exists on `origin` but was never fetched into the host checkout | `rev-parse` fails; dispatch is blocked on legitimate branches pushed from another worktree or agent. Loud.                      |
 
 Mode 1 is the governing defect: a fix that only makes Mode 2 refs resolve, while
 still preferring a local ref, fails the safety bar. Everything below follows from
@@ -32,7 +32,7 @@ preferring the remote.
 ## Binding rules
 
 1. **Never default to a remote default branch.** No path and no error branch falls
-   back to `main`, `master`, or `origin`'s HEAD — that would silently retarget a
+   back to `main`, `master`, or `origin`'s HEAD -- that would silently retarget a
    dispatch made from a feature branch.
 2. **Freshness is verified against `origin` at dispatch time**, never inferred from
    a ref resolving locally.
@@ -62,7 +62,7 @@ With an `origin` remote configured:
   ```
 
   falling back to `git fetch origin <base_ref>`. Then resolve in order
-  `refs/remotes/origin/<base_ref>`, `origin/<base_ref>`, `<base_ref>` — the
+  `refs/remotes/origin/<base_ref>`, `origin/<base_ref>`, `<base_ref>` -- the
   remote-tracking ref is tried **first**, which is what closes Mode 1, and the
   fetch is what closes Mode 2.
 
@@ -71,7 +71,7 @@ With an `origin` remote configured:
 
 - **`HEAD`.** If HEAD tracks an upstream (`git rev-parse --abbrev-ref
   --symbolic-full-name @{u}`), fetch `origin` and resolve the upstream ref,
-  falling back to `HEAD`. With no upstream, resolve `HEAD` — a local-only branch
+  falling back to `HEAD`. With no upstream, resolve `HEAD` -- a local-only branch
   has no upstream truth to diverge from, so local HEAD is the only coherent base.
 
 With no `origin` remote, resolve `base_ref` locally. There is no upstream to
@@ -79,7 +79,7 @@ verify against.
 
 ### Fetch failure
 
-Fetch failure fails the dispatch, unconditionally, for every `--base` form —
+Fetch failure fails the dispatch, unconditionally, for every `--base` form --
 `--base <ref>`, `--base origin/<name>`, and the default (current-branch)
 `base_ref` derived when `--base` is omitted. There is no fallback to
 local-only verification, even when the ref also happens to resolve in the
@@ -90,14 +90,14 @@ halting beats guessing. An error that halts dispatch is visible and
 actionable, a dispatch on a stale ref destroys merged work quietly.
 
 This does not distinguish a transient network failure from a `<ref>` that
-never existed on `origin` — both surface as a non-zero `git fetch` exit and
+never existed on `origin` -- both surface as a non-zero `git fetch` exit and
 are treated identically. `git`'s own error text is not a reliable signal to
 branch on (transport errors, auth failures, and "couldn't find remote ref"
 are not consistently distinguishable across git versions and remotes), and
 the two cases share the same governing risk: proceeding without remote
 confirmation. A caller who hits this on a flaky network re-runs; a caller who
 hits it on a typo'd ref gets the same actionable message either way. Divide
-this further only if a concrete failure mode requires it — offline work is
+this further only if a concrete failure mode requires it -- offline work is
 explicitly out of scope for `resolve_isolated_workspace`, which always
 verifies freshness against `origin` when one is configured.
 
@@ -109,7 +109,7 @@ git -C <clone_path> checkout -B <branch_name> <base_sha>
 ```
 
 `origin` in the clone is then **removed and re-added** at the canonical repo's own
-upstream URL — not merely repointed. `git clone --local` seeds
+upstream URL -- not merely repointed. `git clone --local` seeds
 `refs/remotes/origin/*` from the _source checkout's own local branches_, which were
 never fetched from any remote; once the URL matches GitHub those fabricated refs
 are indistinguishable from real remote-tracking refs. Dropping and re-adding the

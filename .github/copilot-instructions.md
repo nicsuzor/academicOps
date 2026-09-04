@@ -1,4 +1,4 @@
-# academicOps — Copilot Coding Agent Instructions
+# academicOps -- Copilot Coding Agent Instructions
 
 ## Project Overview
 
@@ -41,7 +41,6 @@ academicOps/
 │   └── py/            # Shared Python helpers
 ├── build/              # Build system (build.py, install.py, client adapters)
 ├── plugins/            # Plugin sources: aops, pkb, ida, cope, ts, tools
-│   └── aops/polecat/  # Polecat container executor
 ├── tests/              # Test suite, mirroring the source structure
 └── specs/              # Design specifications
 ```
@@ -77,15 +76,15 @@ Closes: <task-id>
 
 ### What NOT to Do
 
-- Do NOT modify files under `.agents/rules/` — these are inviolable.
-- Do NOT add tests inside `plugins/` — tests go in the root `tests/` directory.
-- Do NOT create backup or archive files — git is the backup system.
+- Do NOT modify files under `.agents/rules/` -- these are inviolable.
+- Do NOT add tests inside `plugins/` -- tests go in the root `tests/` directory.
+- Do NOT create backup or archive files -- git is the backup system.
 - Do NOT disable pre-commit hooks or CI checks.
 - Do NOT modify `.github/workflows/` without explicit justification.
 
 ## Pre-commit Hooks
 
-This project uses pre-commit hooks: dprint (markdown/json/toml) only — see
+This project uses pre-commit hooks: dprint (markdown/json/toml) only -- see
 `.pre-commit-config.yaml`. Run `uv run pre-commit run --all-files` to check before committing.
 Ruff and basedpyright are enforced separately, by `make lint` / CI, not by pre-commit.
 
@@ -93,5 +92,5 @@ Ruff and basedpyright are enforced separately, by `make lint` / CI, not by pre-c
 
 PRs are reviewed by automated agents (enforcer/rbg + qa/marsha in Stage 1, mechanic in
 Stage 2 after the human Environment-gate approval). The pipeline runs on PR open/push.
-Write clear PR descriptions explaining what changed and why — the agents use this to
+Write clear PR descriptions explaining what changed and why -- the agents use this to
 evaluate scope compliance.

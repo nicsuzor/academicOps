@@ -7,12 +7,13 @@ import logging
 import os
 import shlex
 import socket
+import sys
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import HookContext, Result, block, load_message_pair, warn
 
 log = logging.getLogger("aops.handlers")
 
@@ -305,6 +306,61 @@ def be_quiet(ctx: HookContext) -> Result | None:
     return None
 
 
+def _is_james(ctx: HookContext) -> bool:
+    """Is this session the worker persona the handover gate belongs to?
+
+    Two sources, because the persona reaches a hook two different ways.
+    ``agent_type`` is populated when james runs as a dispatched subagent and is
+    empty for a top-level session, which is exactly the shape a sandboxed
+    worker has; ``AOPS_AGENT_NAME`` is the environment's name for the persona a
+    session booted into, already the tracers' fallback for the same question
+    (``claude_code_tracer.py``, ``agy_tracer.py``).
+
+    Both are affirmative tests. An unlabelled session is not james, so the gate
+    stays off for ida, sara, and a person's own session rather than holding
+    every stop in the fleet.
+    """
+    agent_type = ctx.agent_type or ""
+    if agent_type.endswith(":james"):
+        return True
+    return (os.environ.get("AOPS_AGENT_NAME") or "").strip().lower().endswith("james")
+
+
+def dump_before_stopping(ctx: HookContext) -> Result | None:
+    """Withhold james' stop until the work is committed and handed over.
+
+    Blocking, and the only handler here that is. A worker's commits and its
+    report are the only things that survive an ephemeral container, and a stop
+    is the last moment either can still be produced.
+
+    Once per stop-chain, and that guard is dispatch.py's, not this handler's:
+    the block gives the session another turn, and the re-entry carries
+    ``stop_hook_active``, which ``is_continuation`` drops before any handler
+    loads. So a worker that has already run ``dump`` stops on its next attempt.
+
+    ``background_tasks`` holds it silent while work is still running: nothing is
+    being handed back yet, so there is nothing to hand over, and firing here
+    would spend the chain's one block on a turn that is not the handback.
+    """
+    if not _is_james(ctx):
+        return None
+    if ctx.raw.get("background_tasks"):
+        return None
+
+    reason, user_text = load_message_pair(ctx.hooks_dir, "dump-gate")
+    if not reason:
+        # A block is an instruction to do something. With no text there is no
+        # instruction, and blocking would cost the agent a turn to be told
+        # nothing — worse than not blocking. Fail open and say why.
+        print(
+            "DEGRADED: aops: hooks/messages/dump-gate.md is missing or empty, so the handover "
+            "gate cannot be asked for; letting the stop through",
+            file=sys.stderr,
+        )
+        return None
+    return block(reason, user_text)
+
+
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     """Extract and normalize payload dictionary for claude_code_tracer."""
     data = dict(ctx.raw)
@@ -445,7 +501,8 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop],
+    "Stop": [stop, agy_stop, dump_before_stopping],
+    "SubagentStop": [dump_before_stopping],
     "PostToolBatch": [
         h for h in (rule_against_hearsay, premise_check_arm, be_quiet) if h is not None
     ],

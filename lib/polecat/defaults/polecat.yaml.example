@@ -4,13 +4,15 @@
 # on purpose: it sets no defaults, and polecat has none. Copy it, uncomment
 # what you need, and fill in values that belong to your machine.
 #
-# Where polecat looks for the real file (lib/polecat/cli.py,
-# load_config): $AOPS_POLECAT_CONFIG if set, otherwise polecat.yaml under
+# Where the real file is looked for (`plugins/aops/hooks/claude_code_tracer.py`,
+# `_load_config`): $AOPS_POLECAT_CONFIG if set, otherwise polecat.yaml under
 # $AOPS_SESSIONS. Having no config file at all is legal — every required value
 # can arrive from the environment instead.
 #
-# Three values are REQUIRED. `polecat run` exits non-zero naming the one that is
-# missing; it never guesses.
+# The project registry below is the part that is still read: the tracer resolves
+# canonical project aliases from it, and `new-project` registers a project by
+# editing it. Nothing here sets a default; a value absent from both this file
+# and the environment stays absent.
 #
 #   POLECAT_HOME  or  polecat_home below   (resolve_polecat_home)
 #   POLECAT_IMAGE or  docker.image below   (resolve_image)

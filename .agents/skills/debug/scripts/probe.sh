@@ -1,23 +1,25 @@
 #!/bin/bash
-# One-cell probe: boot a polecat container on the given client, ask it one
+# One-cell probe: boot a sandbox container on the given client, ask it one
 # question, print the verdict verbatim, clean up.
 #
 #   probe.sh <claude|agy> "<prompt>" "<success-regex>" [client args...]
 #
 # Exits 0 when the success regex appears in the pane, 1 on timeout or on a
-# recognised refusal. Reads POLECAT_HOME, POLECAT_IMAGE, GIT_AUTHOR_NAME,
-# GIT_AUTHOR_EMAIL, GEMINI_CONFIG_DIR and any variable the server commands in
-# your plugins interpolate (e.g. an MCP endpoint) from the calling environment —
-# tmux does not inherit a fresh environment, so every one is written into the
-# launch script rather than assumed.
+# recognised refusal.
+#
+# The sandbox runs on a private clone that carries ONLY COMMITTED WORK — it
+# cannot see this checkout's working tree. Commit anything the probe depends on
+# before running it.
+#
+# Reads GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL and any variable the server commands
+# in your plugins interpolate (e.g. an MCP endpoint) from the calling
+# environment — tmux does not inherit a fresh environment, so every one is
+# written into the launch script rather than assumed.
 set -u
 CLIENT="${1:?usage: probe.sh <claude|agy> <prompt> <success-regex> [args...]}"
 PROMPT="${2:?missing prompt}"
 SUCCESS="${3:?missing success regex}"
 shift 3
-
-: "${POLECAT_HOME:?set POLECAT_HOME}"
-: "${POLECAT_IMAGE:?set POLECAT_IMAGE (e.g. the notdir of the Makefile IMAGE, :latest)}"
 
 REPO="$(git rev-parse --show-toplevel)"
 SESS="probe-${CLIENT}-$$"
@@ -29,8 +31,9 @@ LAUNCH="$WORK/launch.sh"
   # Forward the whole environment rather than a guessed subset: a variable an
   # MCP server command interpolates is invisible here and fails silently there.
   export -p
-  printf 'exec uv run --project %q python %q/lib/polecat/cli.py run -d %q -s %q %q %s\n' \
-    "$REPO" "$REPO" "$REPO" "$SESS" "$CLIENT" "$*"
+  printf 'cd %q\n' "$REPO"
+  printf 'exec sbx run --clone --name %q --kit lib/kits/%q --kit lib/kits/aops %q . %s\n' \
+    "$SESS" "$CLIENT" "$CLIENT" "${*:+-- $*}"
 } > "$LAUNCH"
 chmod +x "$LAUNCH"
 
@@ -62,5 +65,6 @@ done
 echo "===== VERDICT: $CLIENT $* (rc=$RC) ====="
 tmux capture-pane -t "$SESS" -p -S -200 2>/dev/null | grep -vE '^\s*$' | tail -30
 tmux kill-session -t "$SESS" 2>/dev/null
+sbx rm -f "$SESS" 2>/dev/null
 rm -rf "$WORK"
 exit $RC

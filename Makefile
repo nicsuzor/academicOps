@@ -254,10 +254,7 @@ docker-test-otel: docker-build
 	@uv run pytest -m otel_e2e tests/test_telemetry_otel_e2e.py -v
 
 # Not part of `make docker` or `make test` — opt-in, on the image-build path.
-# Boots the real image and re-runs the structural checks a human previously
-# ran by hand (plugin list under claude, agy's plugins/, ACA_DATA, the agy
-# session mount target); see tests/polecat/test_container_smoke.py and
-# specs/polecat/tmux-interactive-driving.md, "Plugin structural check". Not
-# proof any plugin's hooks or MCP servers are actually live — structural only.
+# Checks the sbx kit specs the sandbox launch path depends on. Structural only:
+# not proof any plugin's hooks or MCP servers are actually live.
 docker-smoke-test: docker-build
-	@uv run pytest tests/polecat/test_sbx_invocation.py tests/polecat/test_kits.py -v
+	@uv run pytest tests/polecat/test_kits.py -v

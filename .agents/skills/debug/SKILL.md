@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a `polecat run` container under tmux for live interaction, and pull authoritative telemetry from the Phoenix MCP span store. Use when asked to debug a polecat, run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, skills, or the Dockerfile actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
+description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up an `sbx` sandbox container under tmux for live interaction, and pull authoritative telemetry from the Phoenix MCP span store. Use when asked to debug a polecat, run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, skills, or the Dockerfile actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
 ---
 
 # Driving a framework run
@@ -105,41 +105,40 @@ claude's session jsonl. That is what `matrix-probe.sh`'s MCP cell does.
 
 ## Launch a container under tmux
 
+**Commit first.** `--clone` carries ONLY COMMITTED WORK. The container gets a
+private git clone; it cannot see the host's working tree. Anything the worker
+must be able to read has to be committed before you launch.
+
 Write the invocation into a launch script rather than passing an inline command
-string to `tmux new-session`: inline commands break on shell expansion, nested
-quoting, and virtualenv path resolution (`uv run python`) inside `/bin/sh -c`.
+string to `tmux new-session`: inline commands break on shell expansion and
+nested quoting inside `/bin/sh -c`.
 
 ```bash
 CHECKOUT="$(git rev-parse --show-toplevel)"
-export TMUX_NAME="polecat-debug-$RANDOM"
-LAUNCH_SCRIPT="/tmp/launch-${TMUX_NAME}.sh"
+export SBX_NAME="debug-$RANDOM"
+LAUNCH_SCRIPT="/tmp/launch-${SBX_NAME}.sh"
 
 cat > "$LAUNCH_SCRIPT" <<EOF
 #!/usr/bin/env bash
-export POLECAT_HOME="${POLECAT_HOME:-$HOME/.polecat}"
-export POLECAT_IMAGE="${POLECAT_IMAGE:-ghcr.io/nicsuzor/aops-crew:latest}"
-export AOPS_SESSIONS="${AOPS_SESSIONS:-$HOME/src/sessions}"
-export GEMINI_CONFIG_DIR="${GEMINI_CONFIG_DIR:-$HOME/.gemini}"
-export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-AcademicOps Bot}"
-export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-bot@academicops.org}"
-export AOPS_BOT_GH_TOKEN="${AOPS_BOT_GH_TOKEN:-dummy_token_for_test}"
-
-exec uv run --project "$CHECKOUT" python "$CHECKOUT/lib/polecat/cli.py" \
-  run -d "$CHECKOUT" -s "$TMUX_NAME" claude -- -p "call pkb get_status() and return results"
+cd "$CHECKOUT"
+exec sbx create --clone --name "$SBX_NAME" \
+  --kit lib/kits/agy --kit lib/kits/aops \
+  agy .
 EOF
 chmod +x "$LAUNCH_SCRIPT"
 
-tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 "$LAUNCH_SCRIPT"
+tmux new-session -d -s "$SBX_NAME" -x 220 -y 50 "$LAUNCH_SCRIPT"
 ```
 
-- **Always place `--` before the agent's own flags and prompt**, because
-  `lib/polecat/cli.py` defines `@click.option("-p", "--project")` on `run` and
-  Click otherwise swallows the agent's `-p`:
-
-  ```bash
-  uv run python lib/polecat/cli.py run -p <project> -s <session> claude -- -p "call pkb get_status() and return results"
-  uv run python lib/polecat/cli.py run -p <project> -s <session> agy -- -p "call pkb get_status() and return results"
-  ```
+- **`--clone`** gives the container a private clone of the repository at the same
+  path it occupies on the host, mounts the host repository read-only at
+  `/run/sandbox/source`, and adds a host git remote `sandbox-<name>` so you can
+  `git fetch sandbox-<name>` the container's commits back.
+- **Swap the kit for the client.** `--kit lib/kits/claude` for `claude`,
+  `--kit lib/kits/agy` for `agy`. `--kit lib/kits/aops` is required either way:
+  it builds the plugins from the sandbox workspace and installs them, which is
+  what makes `/aops:pull` resolve inside the container.
+- **`sbx exec <name> -- <cmd>`** runs a command in a sandbox that already exists.
 
 - **Always pass `-x 220 -y 50`** to `tmux new-session`, so TUI headers, input
   boxes, and status lines render without wrapping corruption.
@@ -157,26 +156,28 @@ where `claude` accepts a positional prompt. Both take `--agent <name>`
 ```bash
 # Readiness: poll the pane. claude — wait for the '❯' prompt box.
 # agy — wait 2-3s for the auth race to clear and the plan name to render.
-tmux capture-pane -t "$TMUX_NAME" -p -S -2000
+tmux capture-pane -t "$SBX_NAME" -p -S -2000
 
 # Send prompt text with -l (literal), so tmux does not parse it as keys.
-tmux send-keys -t "$TMUX_NAME" -l "your prompt text here"
-tmux send-keys -t "$TMUX_NAME" Enter
+tmux send-keys -t "$SBX_NAME" -l "your prompt text here"
+tmux send-keys -t "$SBX_NAME" Enter
 
 # TUI menu navigation (e.g. AskUserQuestion)
-tmux send-keys -t "$TMUX_NAME" Down Down Enter
+tmux send-keys -t "$SBX_NAME" Down Down Enter
 ```
 
 `capture-pane` reflects what an attached user sees. It is an ephemeral buffer
 that dies with the tmux session, so capture anything you intend to cite.
 
-Teardown — container cleanup is automatic, because `lib/polecat/cli.py` invokes
-`docker run --rm`:
+Teardown — the sandbox outlives the tmux session, so remove it explicitly. Fetch
+anything the container committed before you do; `sbx rm` destroys the clone:
 
 ```bash
-tmux send-keys -t "$TMUX_NAME" -l "/exit"; tmux send-keys -t "$TMUX_NAME" Enter
-sleep 2   # let the client flush its transcript buffer through the bind-mount
-tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
+git fetch "sandbox-$SBX_NAME"
+tmux send-keys -t "$SBX_NAME" -l "/exit"; tmux send-keys -t "$SBX_NAME" Enter
+sleep 2   # let the client flush its transcript buffer
+tmux kill-session -t "$SBX_NAME" 2>/dev/null || true
+sbx rm -f "$SBX_NAME"
 ```
 
 ## Authoritative telemetry (Phoenix MCP)
@@ -208,29 +209,26 @@ recipes (A0 through H) that apply those facts.
   means telemetry is not being forwarded — check
   `GENAI_ENGINE_TRACE_ENDPOINT` in the container's environment.
 
-## Host filesystem audit
+## Filesystem audit
 
-Container artifacts land at
-`$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/workspace/`.
+A sandbox writes to its own filesystem, not to a host directory. Reach its
+artifacts with `sbx exec`, using the in-container paths in the next section:
 
 ```bash
-SESS_DIR="$AOPS_SESSIONS/logs/$(date +%Y%m%d)/$TMUX_NAME/workspace"
-jq '{schema_version, status, exit_code, delivery_guard, transcript, degraded}' "$SESS_DIR/run.json"
-jq -c '.' "$SESS_DIR/polecat-session-hooks.jsonl" | head -n 10
+sbx exec "$SBX_NAME" -- ls -la ~/.claude/projects
+sbx exec "$SBX_NAME" -- sh -c 'jq -c . "$AOPS_SESSION_STATE_DIR"/*-session-hooks.jsonl | head -n 10'
 uv run pytest tests/transcripts/test_polecat_discovery.py -v
 ```
 
-Pass assertions: `run.json` has `.schema_version == 1`, `.status == "success"`,
-`.delivery_guard.ok == true`, and `.transcript.found == true` with
-`event_count > 0`. Every `polecat-session-hooks.jsonl` line conforms to the
-five-field schema `ts` (ISO 8601, microsecond UTC), `client` (`claude`|`agy`),
-`event`, `session_id`, `tool`.
+Every session-hooks line conforms to the five-field schema `ts` (ISO 8601,
+microsecond UTC), `client` (`claude`|`agy`), `event`, `session_id`, `tool`.
+
+Commits the worker made come back over the host remote the sandbox registered:
+`git fetch sandbox-$SBX_NAME && git log --oneline FETCH_HEAD`.
 
 ## Read durable state from inside a container
 
-`$AOPS_SESSIONS` is never forwarded into a single-repository container, so every
-path above names a host directory you cannot reach. What you can reach is each
-client's own state root:
+A sandbox holds each client's own state root:
 
 | Whose conversation               | Where it lands inside the container                                                                                           |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -238,9 +236,8 @@ client's own state root:
 | A worker you spawned via `Agent` | `<the same project dir>/<your-session-uuid>/subagents/agent-*.jsonl`, with a `.meta.json` beside it naming the agent that ran |
 | An `agy` worker you launched     | `~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl` and `transcript_full.jsonl`       |
 
-`$AOPS_SESSION_STATE_DIR` names the host-mounted directory, so
-`polecat-session-hooks.jsonl` sits beside your own transcript and is readable
-live. `run.json` is not there: the host writes it after the container exits.
+`$AOPS_SESSION_STATE_DIR` names the session state directory, so the session-hooks
+log sits beside your own transcript and is readable live.
 
 List all of them, newest first, tagged by client, kind, agent, and parent
 session — `--kind subagent` narrows to workers, `--json` makes it
@@ -255,8 +252,8 @@ score its claims against; its own report is not evidence that anything ran.
 
 ## Validate a dev change
 
-Run this after modifying `plugins/*/hooks`, `lib/`, skills,
-`lib/polecat/cli.py`, `entrypoint.sh`, or the Dockerfile. Walk the layers in
+Run this after modifying `plugins/*/hooks`, `lib/`, skills, `lib/kits/`,
+`entrypoint.sh`, or the Dockerfile. Walk the layers in
 order and stop at the first failure. Run the whole walk twice, once per client.
 Quote verbatim excerpts from `capture-pane`, session logs, and Phoenix output in
 your report.

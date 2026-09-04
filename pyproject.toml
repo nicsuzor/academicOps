@@ -118,6 +118,7 @@ include = [
   "specs/agents/**/*.md",
   "specs/enforcement/**/*.md",
   "specs/meta/**/*.md",
+  "specs/dispatch/**/*.md",
   "specs/polecat/**/*.md",
   "specs/workflows/**/*.md",
   "plugins/**/*.md",
@@ -287,6 +288,3 @@ markers = [
   "live: drives real headless clients to measure hook-format conformance (run with '-m live'; skip-if-client-unavailable)",
   "otel_e2e: spins up a real OTel collector (docker) and a real Claude Code session against it (run with '-m otel_e2e'; skip-if-docker-or-credentials-unavailable)",
 ]
-
-[project.scripts]
-polecat = "lib.polecat.cli:main" # resolves via [tool.hatch.build.targets.wheel] packages = ["lib", ...]

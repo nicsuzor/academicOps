@@ -20,7 +20,7 @@ A polecat container gets its plugin payload -- skills, hooks, agents, MCP wrappe
 -- **baked into the image at build time**, while the code under test is
 **bind-mounted at launch** (`/workspace`). These are two different delivery paths,
 and only one of them updates when a file is edited
-([polecat-system.md](polecat-system.md), Guarantees 5 and 6).
+([dispatch-system.md](../dispatch/dispatch-system.md), Guarantees).
 
 So an operator who edits plugin code and dispatches without `make docker-build`
 runs the _old_ plugins against the _new_ workspace. The stale code usually
@@ -171,7 +171,7 @@ comparison described here.
 
 `run` writes the banner to **stderr**, not stdout, and suppresses it under
 `--quiet` -- polecat's stream-separation guarantee
-([polecat-system.md](polecat-system.md), Guarantee 7) applies to these banners
+([dispatch-system.md](../dispatch/dispatch-system.md), Guarantees) applies to these banners
 like any other polecat prose.
 
 Fresh local:
