@@ -35,15 +35,13 @@ except ImportError as exc:
 try:
     from premise_check_gate import (
         premise_check_arm,
-        premise_check_gate_handler,
         premise_check_handler,
-        premise_check_open_gate,
     )
 except ImportError:
     premise_check_arm = None
     premise_check_handler = None
-    premise_check_gate_handler = None
-    premise_check_open_gate = None
+    premise_check_handler = None
+    premise_check_arm = None
 
 Handler = Callable[[HookContext], Result | None]
 
