@@ -132,7 +132,7 @@ install-dev: build
 	done
 	@mkdir -p ~/.gemini/config/plugins
 	@for p in $(PLUGIN_NAMES); do \
-		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall "$(DIST)/$$p-agy" && echo "✓ agy $$p installed" || echo "x agy $$p install failed"); \
+		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall "$$p" && echo "✓ agy $$p uninstalled" || echo "x agy $$p uninstall failed"); \
 		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
 		if [ -d "$(DIST)/$$p-agy" ]; then \
 			cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"; \
