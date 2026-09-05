@@ -2,7 +2,7 @@ schemaVersion: "2"
 kind: mixin
 name: aops
 displayName: "academicOps framework"
-description: "Installs released academicOps plugins from git into the sandbox image during the install phase."
+description: "Installs academicOps plugins into the sandbox: baseline from git dist during image install, and current dev plugins from the workspace during container startup."
 
 permissions:
   network:
@@ -37,5 +37,42 @@ setup:
         fi &&
         rm -rf /tmp/aops-dist
       user: "agent"
-      description: "Install released academicOps plugins from dist branch"
+      description: "Install baseline academicOps plugins from dist branch"
+  startup:
+    - command:
+        - "sh"
+        - "-c"
+        - >-
+          DIST_SRC="";
+          if [ -d "/run/sandbox/source/dist" ]; then
+            DIST_SRC="/run/sandbox/source/dist";
+          elif [ -d "$WORKSPACE_DIR/dist" ]; then
+            DIST_SRC="$WORKSPACE_DIR/dist";
+          elif [ -f "$WORKSPACE_DIR/Makefile" ]; then
+            cd "$WORKSPACE_DIR" && make build-agy && DIST_SRC="$WORKSPACE_DIR/dist";
+          fi;
+          if [ -n "$DIST_SRC" ] && [ -d "$DIST_SRC" ]; then
+            PLUGINS="aops rbg ts tools aops-debug";
+            mkdir -p /home/agent/.gemini/config/plugins;
+            for stale in orchestrate aops-core; do
+              command -v agy >/dev/null 2>&1 && agy plugin uninstall "$stale" >/dev/null 2>&1 || true;
+              rm -rf /home/agent/.gemini/config/plugins/"$stale";
+            done;
+            for p in $PLUGINS; do
+              src="$DIST_SRC/$p-agy";
+              if [ -d "$src" ]; then
+                rm -rf /home/agent/.gemini/config/plugins/"$p";
+                cp -R "$src" /home/agent/.gemini/config/plugins/"$p";
+                command -v agy >/dev/null 2>&1 && agy plugin install "$src" >/dev/null 2>&1 || true;
+              fi;
+            done;
+            if command -v claude >/dev/null 2>&1; then
+              claude plugin marketplace remove aops >/dev/null 2>&1 || true;
+              claude plugin marketplace add "$DIST_SRC" >/dev/null 2>&1 || true;
+              for p in $PLUGINS; do claude plugin install "$p@aops" >/dev/null 2>&1 || true; done;
+            fi;
+          fi;
+          echo "=== dispatcher complete ==="
+      user: "agent"
+      description: "Copy and install current dev version of academicOps plugins from workspace into the sandbox"
 

@@ -14,7 +14,7 @@ IMAGE ?= ghcr.io/nicsuzor/aops-crew
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
 PLUGIN_NAMES = $(shell uv run python -c "import tomllib, pathlib; d = tomllib.loads(pathlib.Path('build/marketplace.toml').read_text()); print(' '.join(p['name'] for p in d['plugins']))" 2>/dev/null)
-STALE_PLUGIN_NAMES = aops aops-cope aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts pkb
+STALE_PLUGIN_NAMES = aops-core orchestrate aops-cope aops-extras aops-ida aops-jr aops-pkb aops-tools aops-ts pkb
 
 help:
 	@echo "make build          - assemble dist/ for every plugin, clients (Claude, agy, openclaw)"
@@ -148,6 +148,10 @@ install-dev: build
 # framework built from the branch it is working on.
 install-agy: build-agy
 	@mkdir -p ~/.gemini/config/plugins
+	@for p in $(STALE_PLUGIN_NAMES); do \
+		command -v agy >/dev/null 2>&1 && agy plugin uninstall $$p >/dev/null 2>&1 || true; \
+		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
+	done
 	@for p in $(PLUGIN_NAMES); do \
 		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
 		if [ -d "$(DIST)/$$p-agy" ]; then \
@@ -156,6 +160,25 @@ install-agy: build-agy
 		else \
 			echo "x $(DIST)/$$p-agy missing" >&2; exit 1; \
 		fi; \
+	done
+
+# Copy and install the current dev plugins into all local sbx containers.
+install-sbx: build
+	@for sbx_name in $$(sbx ls 2>/dev/null | awk 'NR>1 {print $$1}'); do \
+		echo "Updating plugins in sbx container: $$sbx_name"; \
+		sbx exec "$$sbx_name" -- mkdir -p /home/agent/.gemini/config/plugins >/dev/null 2>&1 || true; \
+		for p in $(STALE_PLUGIN_NAMES); do \
+			sbx exec "$$sbx_name" -- sh -c "command -v agy >/dev/null 2>&1 && agy plugin uninstall $$p >/dev/null 2>&1 || true; rm -rf /home/agent/.gemini/config/plugins/$$p" >/dev/null 2>&1 || true; \
+		done; \
+		for p in $(PLUGIN_NAMES); do \
+			if [ -d "$(DIST)/$$p-agy" ]; then \
+				sbx exec "$$sbx_name" -- rm -rf /home/agent/.gemini/config/plugins/$$p >/dev/null 2>&1 || true; \
+				sbx cp -L "$(DIST)/$$p-agy" "$$sbx_name:/home/agent/.gemini/config/plugins/$$p" >/dev/null 2>&1 || true; \
+				sbx exec "$$sbx_name" -- sh -c "command -v agy >/dev/null 2>&1 && agy plugin install /home/agent/.gemini/config/plugins/$$p >/dev/null 2>&1 || true" >/dev/null 2>&1 || true; \
+			fi; \
+		done; \
+		sbx exec "$$sbx_name" -- sh -c "if command -v claude >/dev/null 2>&1; then claude plugin marketplace remove aops >/dev/null 2>&1 || true; claude plugin marketplace add $(DIST) >/dev/null 2>&1 || true; for p in $(PLUGIN_NAMES); do claude plugin install \"\$$p@aops\" >/dev/null 2>&1 || true; done; fi" >/dev/null 2>&1 || true; \
+		echo "✓ $$sbx_name plugins updated"; \
 	done
 
 uninstall-dev:
@@ -206,22 +229,10 @@ format:
 
 docker: docker-build
 
-# The agent CLIs install "latest" from their vendor install scripts at build
-# time, so their Docker layers only refresh when their ARG value changes.
-# Nothing varied these before, so the layers froze at first-build state and the
-# image silently kept an old agy/claude indefinitely — observed 2026-08-08 as an
-# image pinned to agy 1.1.10 while 1.1.11 was current, which cost the container
-# its MCP tools. Pass a value that differs from the last build to refresh:
-#   make docker-build AGY_VERSION=1.1.11
-docker-build: build
-	@docker build --build-arg AOPS_DIST_SOURCE=local \
-		--build-arg AOPS_BUILD_COMMIT="$$(git rev-parse HEAD 2>/dev/null)" \
-		--build-arg AOPS_BUILD_DIRTY="$$(if [ -n "$$(git status --porcelain 2>/dev/null)" ]; then echo 1; else echo 0; fi)" \
-		--build-arg AOPS_VERSION="$$(uv run python -m build.version --get 2>/dev/null || echo 0.1.0)" \
-		$(if $(AGY_VERSION),--build-arg AGY_VERSION=$(AGY_VERSION)) \
-		$(if $(CLAUDE_CODE_VERSION),--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION)) \
-		-t $(IMAGE) -t $(notdir $(IMAGE)):latest .
-	@echo "✓ built $(IMAGE)"
+# Builds the lightweight sbx base image (aops-crew:latest).
+docker-build:
+	@docker build -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
+	@echo "✓ built $(IMAGE) and aops-crew:latest"
 
 # The environment contract is defined once, in lib/polecat/env_contract.py,
 # and shared with polecat's own `docker run` (specs/ARCHITECTURE.md "Observability").
@@ -239,8 +250,8 @@ docker-shell: docker-build
 # source, which is the only form of this build whose green result is evidence.
 # Slow by construction; use `docker-build` for the edit loop and this before
 # certifying.
-verify-docker: build
-	@docker build --no-cache --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
+verify-docker:
+	@docker build --no-cache -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
 	@echo "✓ clean build: $(IMAGE) — every layer rebuilt from source"
 
 docker-push:

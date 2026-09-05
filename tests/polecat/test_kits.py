@@ -78,7 +78,7 @@ def test_agy_kit_spec_validity():
         install_cmds = [item["command"] for item in data["setup"]["install"]]
         assert any("agy" in cmd for cmd in install_cmds)
     else:
-        assert data.get("sandbox", {}).get("image") == "academicops-agent:latest"
+        assert data.get("sandbox", {}).get("image") == "aops-crew:latest"
 
 
 def test_aops_kit_spec_validity():
