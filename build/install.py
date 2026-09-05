@@ -209,11 +209,18 @@ def patch_dev_mcp(
 ) -> list[Path]:
     """Dev workaround for Claude Cowork.
 
-    Claude Cowork launches MCP servers in an execution environment where
-    environment variables like $PKB_MCP_URL are not expanded or propagated.
-    As a dev workaround during `make install-dev`, replace literal `$PKB_MCP_URL`
-    with the concrete URL from the developer's environment in all .mcp.json files
-    under `dist/`, local Claude plugin caches, and Cowork session directories.
+    Everywhere else, `$PKB_MCP_URL` / `${PKB_MCP_URL}` in a shipped .mcp.json
+    resolves from the environment at MCP-server-launch time — no substitution
+    needed as long as PKB_MCP_URL is exported in the shell that starts the
+    client (Claude Code CLI, agy). Claude Cowork is the one exception: it
+    launches MCP servers in an execution environment where env vars are not
+    expanded or propagated, so a literal value has to be baked in.
+
+    This patches two places with that literal value: `dist/` itself (so a
+    directory-marketplace Cowork install — see build/marketplace.py's
+    _bake_cowork_mcp_json for the manual zip-upload install — gets a working
+    URL) and any existing Cowork GUI session directories, which hold their own
+    copy of the plugin's .mcp.json.
     """
     raw_url = pkb_url if pkb_url is not None else os.environ.get("PKB_MCP_URL", "")
     url = raw_url.strip()
@@ -240,19 +247,7 @@ def patch_dev_mcp(
             except OSError as e:
                 raise InstallError(f"cannot update {mcp_file}: {e}") from e
 
-    # 2. Local Claude plugin cache (e.g. ~/.claude/plugins/cache/aops/)
-    cache_dir = Path.home() / ".claude" / "plugins" / "cache" / "aops"
-    if cache_dir.exists():
-        for mcp_file in sorted(cache_dir.glob("**/.mcp.json")):
-            try:
-                content = mcp_file.read_text(encoding="utf-8")
-                if "$PKB_MCP_URL" in content:
-                    mcp_file.write_text(content.replace("$PKB_MCP_URL", url), encoding="utf-8")
-                    patched.append(mcp_file)
-            except OSError:
-                pass
-
-    # 3. Cowork GUI sessions (rpm plugin directories)
+    # 2. Cowork GUI sessions (rpm plugin directories)
     candidate_bases = [
         Path.home() / "Library/Application Support/Claude/local-agent-mode-sessions",
         Path.home() / ".config/Claude/local-agent-mode-sessions",
@@ -296,12 +291,10 @@ def main() -> int:
     try:
         if args.action == "install":
             dist_root = args.dist_root or (Path(__file__).resolve().parent.parent / "dist")
+            # patch-dev-mcp is a separate, earlier step in `make install-dev`
+            # (it must run before `claude plugin install` copies dist/ into
+            # the plugin cache) — not repeated here.
             message = install_automode(dist_root, args.settings_path, args.state_path)
-            patched = patch_dev_mcp(dist_root)
-            if patched:
-                message += (
-                    f"\n✓ dev workaround: replaced $PKB_MCP_URL in {len(patched)} .mcp.json file(s)"
-                )
         elif args.action == "patch-dev-mcp":
             dist_root = args.dist_root or (Path(__file__).resolve().parent.parent / "dist")
             patched = patch_dev_mcp(dist_root)

@@ -96,20 +96,15 @@ build-test: build
 
 # --- Install ---
 
-# Claude Code plugins can define `userConfig` fields for things like MCP server
-# URLs (e.g. `pkb_mcp_url`). If the environment has a matching upper-case
-# variable (e.g. `PKB_MCP_URL`), we forward it automatically.
+# Plugin MCP configs reference $PKB_MCP_URL / ${PKB_MCP_URL} directly and
+# resolve it from the environment at MCP-server-launch time — no plugin
+# declares a `userConfig` field for it, so there is nothing to forward via
+# `claude plugin install --config`. Assumes PKB_MCP_URL is exported in the
+# shell; the one exception (Claude Cowork, whose launch environment doesn't
+# propagate env vars) is handled by `make install-dev`'s patch-dev-mcp step,
+# not here.
 define claude_install
-	config=""; \
-	if [ -f "$(DIST)/$(1)-claude/.claude-plugin/plugin.json" ]; then \
-		keys=$$(uv run python -c "import json, pathlib; d=json.loads(pathlib.Path('$(DIST)/$(1)-claude/.claude-plugin/plugin.json').read_text()); print(' '.join(d.get('userConfig', {}).keys()))" 2>/dev/null); \
-		for k in $$keys; do \
-			env_k=$$(echo $$k | tr '[:lower:]' '[:upper:]'); \
-			val=$$(eval echo \$$$$env_k); \
-			if [ -n "$$val" ]; then config="$$config --config $$k=$$val"; fi; \
-		done; \
-	fi; \
-	command claude plugin install $(1)@$(2) $$config && echo "✓ $(1)@$(2) installed" \
+	command claude plugin install $(1)@$(2) && echo "✓ $(1)@$(2) installed" \
 		|| { echo "x $(1)@$(2) install failed" >&2; exit 1; }
 endef
 
