@@ -3,7 +3,7 @@
 ## Requirements
 
 - [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), or Antigravity
-- Docker, only if you want polecat's containerised workers
+- Docker, only if you want containerised worker sandboxes (`sbx` / `pc`)
 
 ## From the release channel
 
@@ -14,11 +14,11 @@ export PKB_MCP_URL=<your PKB MCP endpoint>
 ```
 
 `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way.
-`PKB_MCP_URL` is an environment variable, read by whichever plugin needs it —
+`PKB_MCP_URL` is an environment variable, read by whichever plugin needs it --
 no manifest declares a `userConfig` key for it or for anything else.
 
 Nothing has a default. Set the environment variables each plugin needs before
-first use — the full list is in [`README.md`](README.md#configure), and each
+first use -- the full list is in [`README.md`](README.md#configure), and each
 plugin's own `plugins/<dir>/README.md` documents its complete surface.
 
 ## From source
@@ -36,11 +36,9 @@ activates pre-commit.
 
 `make uninstall-dev` reverses it and restores the release channel.
 
-## Polecat
+## Docker Sandboxes (`sbx` / `pc`)
 
-Polecat is the containerised worker runner, shipped inside the `ida` plugin. It
-needs Docker, a `polecat.yaml` project registry, and the environment listed under
-[Polecat containers](README.md#polecat-containers-aops).
+Isolated worker sandboxes run via Docker Sandboxes (`sbx`) using kits defined under `lib/kits/` (`lib/kits/claude`, `lib/kits/agy`, and `lib/kits/aops`). The `pc` / `polecat.sh` wrapper script (`scripts/polecat.sh`, symlinked to `~/.local/bin/pc`) handles environment forwarding and kit assembly across repositories. See `specs/dispatch/dispatch-system.md`.
 
 ## Design
 

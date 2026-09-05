@@ -43,6 +43,13 @@ setup:
         - "sh"
         - "-c"
         - >-
+          if [ -n "${AOPS_BRANCH:-}" ] && [ -d "$WORKSPACE_DIR/.git" ]; then
+            cd "$WORKSPACE_DIR" && (
+              git checkout "$AOPS_BRANCH" 2>/dev/null ||
+              git checkout -b "$AOPS_BRANCH" "origin/$AOPS_BRANCH" 2>/dev/null ||
+              git checkout -b "$AOPS_BRANCH" 2>/dev/null
+            ) || true;
+          fi;
           DIST_SRC="";
           if [ -d "/run/sandbox/source/dist" ]; then
             DIST_SRC="/run/sandbox/source/dist";

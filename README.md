@@ -6,7 +6,7 @@ academicOps is a streamlined suite of six plugins for Claude Code and Antigravit
 
 1. **Prompt Situation (`aops`):** Intercepts incoming prompts and grounds them in strategic history from the PKB.
 2. **Workflow Composition (`aops`):** Selects appropriate risk-matched review and QA assurance levels for the task.
-3. **Containerized Execution & Dispatch (`orchestrate`):** Dispatches tasks to safe, isolated Docker containers (`polecat`), writing results back to the PKB task record, committing changes, and pushing.
+3. **Containerized Execution & Dispatch (`aops`):** Dispatches tasks to safe, isolated Docker sandboxes (`sbx` / `pc`), writing results back to the PKB task record, committing changes, and pushing.
 4. **Dual-Layer Rule Enforcement (`rbg`):** Runs a turn-by-turn local model evaluator on tool calls, advisory only; plus a stop gate that withholds the stop once per chain, directing the agent to verify RBG rule compliance (`axioms/` + project + local rules) and present checkable evidence before handing back.
 
 ## How It Works
@@ -15,11 +15,11 @@ academicOps is a streamlined suite of six plugins for Claude Code and Antigravit
 flowchart TD
     U([User Prompt]) --> P1["<b>1. Ground & Situate</b><br/>(aops / UserPromptSubmit)<br/>Grounds prompt in PKB history"]
     P1 --> P2["<b>2. Compose Workflow</b><br/>(aops / workflow)<br/>Selects risk-matched QA assurance depth"]
-    P2 --> P3["<b>3. Dispatch & Containerize</b><br/>(orchestrate / polecat)<br/>Runs isolated in Docker container,<br/>updates PKB, commits & pushes"]
+    P2 --> P3["<b>3. Dispatch & Containerize</b><br/>(aops / sbx)<br/>Runs isolated in Docker container,<br/>updates PKB, commits & pushes"]
     
     subgraph Enforcement["<b>4. Dual-Layer Rule Enforcement</b>"]
-        E1["<b>Layer 1: Turn-by-Turn COPE</b><br/>(rbg / PreToolUse)<br/>Parallel local model checks tool calls — advisory"]
-        E2["<b>Layer 2: Stop Gate</b><br/>(rbg / Stop & SubagentStop)<br/>Blocks once per chain — run the RBG<br/>rule check and show the evidence"]
+        E1["<b>Layer 1: Turn-by-Turn COPE</b><br/>(rbg / PreToolUse)<br/>Parallel local model checks tool calls -- advisory"]
+        E2["<b>Layer 2: Stop Gate</b><br/>(rbg / Stop & SubagentStop)<br/>Blocks once per chain -- run the RBG<br/>rule check and show the evidence"]
     end
 
     P3 -.-> E1
@@ -45,8 +45,8 @@ Every hook across the plugins is deterministic, lightweight, and single-purpose.
 | `rbg`         | `PreToolUse`            | Claude Code              | `COPE_EVALUATOR_*` (Local Reflexes LLM model)  | Parallel rule compliance advisory with matched rule text & reasoning.                                                                                                                                                                                                                                                | **Pillar 4 (Enforcement L1):** Non-blocking, turn-by-turn evaluation of tool calls against active rules via a fast local model.                                  |
 | `rbg`         | `UserPromptSubmit`      | AGY (`PreInvocation`)    | Live rule set files                            | Summary roster of active rules for the turn.                                                                                                                                                                                                                                                                         | Provides rule visibility on surfaces that lack tool-call interception.                                                                                           |
 | `orchestrate` | `PostToolBatch`         | Claude Code              | none                                           | Non-blocking reminder carrying the handback doctrine: a subagent's report is second-hand, so expect proof with it and send back anything without proof. Emits nothing unless the batch contains an `Agent` call.                                                                                                     | Binds the **receiver** the instant a synchronous report lands. Verifying, re-running, or completing the work on the worker's behalf is never the receiver's job. |
-| `orchestrate` | `Stop` / `SubagentStop` | Both                     | none                                           | Blocking reminder (`block`) carrying the same handback doctrine plus the worker-side register: name what you did not do, Observed vs Reported, "changed, unverified" until the originally-failing behaviour is observed passing. Fires blocking so the harness sets `stop_hook_active` to prevent repeat injections. | Binds the **worker** at its own stop — the last moment its report can still carry the evidence, since a returned result cannot be amended after it lands.        |
-| `aops`        | `Stop`                  | Claude Code (ida face)   | none                                           | Advisory quiet gate: strip the reply down to load-bearing content before speaking to the person.                                                                                                                                                                                                                     | Face-scoped by its event. `SubagentStop` is deliberately not wired — it fires on a stopping subagent's own context, which sends no reply to the person.          |
+| `orchestrate` | `Stop` / `SubagentStop` | Both                     | none                                           | Blocking reminder (`block`) carrying the same handback doctrine plus the worker-side register: name what you did not do, Observed vs Reported, "changed, unverified" until the originally-failing behaviour is observed passing. Fires blocking so the harness sets `stop_hook_active` to prevent repeat injections. | Binds the **worker** at its own stop -- the last moment its report can still carry the evidence, since a returned result cannot be amended after it lands.       |
+| `aops`        | `Stop`                  | Claude Code (ida face)   | none                                           | Advisory quiet gate: strip the reply down to load-bearing content before speaking to the person.                                                                                                                                                                                                                     | Face-scoped by its event. `SubagentStop` is deliberately not wired -- it fires on a stopping subagent's own context, which sends no reply to the person.         |
 | `rbg`         | `Stop` / `SubagentStop` | Both                     | `stop_hook_active` / `background_tasks` checks | Blocks once per stop-chain (`decision: "block"`), directing the agent to invoke the RBG rule checker (`axioms` + project + local rules) and present checkable evidence before stopping. Silent on the continuation stop and while background work runs. Advisory-only on AGY.                                        | **Pillar 4 (Enforcement L2):** Every turn ends with a rule-compliance review. The hook obliges the check; it never runs or grades it.                            |
 | `ts`          | `SessionStart`          | Claude Code              | `CLAUDE_CODE_REMOTE=true`, `TS_AUTHKEY`        | Launches background `tailscale up` for remote connectivity.                                                                                                                                                                                                                                                          | Enables remote session access over Tailnet.                                                                                                                      |
 | `ts`          | `SessionEnd`            | Claude Code              | `TS_SESSION_SYNC_HOST`                         | Transmits session log bundle to remote sync host.                                                                                                                                                                                                                                                                    | Secures session history after termination.                                                                                                                       |
@@ -55,7 +55,7 @@ Every hook across the plugins is deterministic, lightweight, and single-purpose.
 
 academicOps uses Claude Code's native OpenTelemetry export forwarded through a local Tailnet server to GCP:
 
-- **Local Collector Relay:** Session and Polecat container traces send OTLP spans to a local Tailnet OTLP collector endpoint (`OTEL_EXPORTER_OTLP_ENDPOINT`).
+- **Local Collector Relay:** Session and sandbox container traces send OTLP spans to a local Tailnet OTLP collector endpoint (`OTEL_EXPORTER_OTLP_ENDPOINT`).
 - **GCP Export:** The collector relays traces directly to GCP Cloud Trace (`cloudtrace.googleapis.com`) and Cloud Logging.
 - **Contract Variables:**
   - `CLAUDE_CODE_ENABLE_TELEMETRY=true`
@@ -65,12 +65,12 @@ academicOps uses Claude Code's native OpenTelemetry export forwarded through a l
 
 ## The Plugins
 
-Install what you need — plugins are separately installable and loosely coupled:
+Install what you need -- plugins are separately installable and loosely coupled:
 
 | Plugin        | Owns                                                                                                                   |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `aops`        | pauli. Memory, effectual planning, workflow composition, PKB MCP client config; ida, the interactive face.             |
-| `orchestrate` | james, dispatch; marsha, QA; the review skills; the handback hooks; the polecat container launcher.                    |
+| `aops`        | pauli. Memory, effectual planning, workflow composition, dispatch, PKB MCP client config; ida, the interactive face.   |
+| `orchestrate` | james; marsha, QA; the review skills; the handback hooks.                                                              |
 | `rbg`         | Automatic in-session rule enforcement, via turn-by-turn `PreToolUse` hook and a `Stop`/`SubagentStop` rule-check gate. |
 | `tools`       | Domain research skills (analyst, peer-review, pdf, extract, diagram, etc.).                                            |
 | `ts`          | Tailscale bring-up for remote sessions.                                                                                |
@@ -85,17 +85,17 @@ claude plugin install aops@academicOps --config pkb_mcp_url=<your PKB MCP endpoi
 
 `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way.
 
-Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
+Requirements: Claude Code (or Antigravity), and Docker if you want containerised sandbox workers (`sbx` / `pc`).
 
 ## Where work runs
 
-When `orchestrate` dispatches a unit, it picks one of three surfaces by the size and cost of the work:
+When dispatching a unit of work, one of three surfaces is picked by the size and cost of the work:
 
-| Surface                  | When it is picked            | What it does                                                              |
-| :----------------------- | :--------------------------- | :------------------------------------------------------------------------ |
-| **In-session subagent**  | Small units                  | Runs in this session, cheapest model per effort type; commits and pushes. |
-| **Isolated async agent** | Substantial, or has subtasks | Own branch or worktree; pushes before reclaim. No return path by design.  |
-| **Polecat container**    | Cost-sensitive               | Docker container running `agy`, seeded with the task id, headless.        |
+| Surface                           | When it is picked            | What it does                                                              |
+| :-------------------------------- | :--------------------------- | :------------------------------------------------------------------------ |
+| **In-session subagent**           | Small units                  | Runs in this session, cheapest model per effort type; commits and pushes. |
+| **Isolated async agent**          | Substantial, or has subtasks | Own branch or worktree; pushes before reclaim. No return path by design.  |
+| **Docker sandbox (`sbx` / `pc`)** | Cost-sensitive / isolated    | Docker container running `agy` or `claude`, seeded with the task id.      |
 
 Asynchronous work writes its result to the task record and pushes its branch; nothing waits on it.
 
