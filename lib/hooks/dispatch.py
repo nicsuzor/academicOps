@@ -39,6 +39,7 @@ class HookContext:
     tool_calls: tuple[dict[str, Any], ...] = ()
     raw: dict[str, Any] = field(default_factory=dict)
     hooks_dir: Path = field(default_factory=Path)
+    _aops_date: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class Kind(Enum):
