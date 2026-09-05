@@ -570,7 +570,7 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop, dump_before_stopping],
+    "Stop": [stop, agy_stop],  # dump_before_stopping
     "PostToolBatch": [
         h for h in (rule_against_hearsay, premise_check_arm, be_quiet) if h is not None
     ],
