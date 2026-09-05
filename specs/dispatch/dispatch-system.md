@@ -108,12 +108,9 @@ framework did not install is never seeded.
    the client's auto-approval flags live in the kits, versioned with the
    repository.
 
-## Open defect: agy cannot authenticate in the sandbox
+## agy authenticates via the credentials proxy
 
-A dispatched `agy -p "..."` fails with
-`Error: authentication required. Run 'agy' to log in, then retry.` Docker's
-documentation states that proxy-managed OAuth is unsupported for third-party
-sandbox agents, so the OAuth sentinels in `lib/kits/agy/spec.yaml` do not resolve
-to a usable session inside the container.
-
-This blocks automated `agy` dispatch. The kit stays as it is; Nic holds this one.
+A dispatched `agy -p "..."` authenticates inside the sandbox: the OAuth
+sentinels in `lib/kits/agy/spec.yaml` resolve to a usable session through the
+sandbox credentials proxy, so automated `agy` dispatch works without manual
+login.
