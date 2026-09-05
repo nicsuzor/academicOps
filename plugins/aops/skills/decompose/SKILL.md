@@ -30,7 +30,6 @@ Abstract means it says what, never how. If you are writing how a component gets 
    - **DECIDE** -- a clear best option exists: make the call and record it in one bullet. If you can decide yourself, do not block; do not manufacture a roadblock where minimal effort settles the question.
    - **DEFER** -- the missing input is runtime data: say what is missing, and **mint the probe** -- the cheapest piece of work that yields the deciding information (`classification: spike`). Wire the blocked node `depends_on` the probe. A probe usually belongs elsewhere on the graph, not as a sibling or parent of what it blocks.
    - **SURFACE** -- a genuine trade-off, a wide blast radius, or the user's own intent: represent the competing alternatives as **mutually exclusive option nodes** on the graph. Choosing an option branch completes/adopts it and cancels the competing option, unblocking downstream dependencies. **Never create a standalone "decision" task.**
-   - **Idempotent expansion**: Always check if components of the expansion already exist on the graph. If you find existing matches, **do not create new duplicate tasks**. Update the existing tasks with any new information if necessary, and return the existing tasks. Our goal is to clear out tasks eventually.
 
    Every load-bearing assumption carries a confidence level and a contingency -- what the graph must change to if it turns out wrong -- regardless of which route it takes.
 
@@ -42,10 +41,6 @@ Abstract means it says what, never how. If you are writing how a component gets 
    - Parent each node to the objective it decomposes. Never unparented, never a catch-all.
    - **Parent/child is already an edge:** Setting `parent_id` establishes hierarchy; do not wire redundant edges between siblings or descendants under the same parent without specific interactions.
    - `depends_on` for true hard blockers, `soft_depends_on` for context-only relations, `contributes_to` with a verbal `stated_weight` and one sentence of justification. Test which: ask what happens if the dependency never completes -- impossible or wrong output is hard, still valid but less-informed is soft.
-   - Densify with `[[wikilinks]]` to neighbours you confirmed by opening. **The graph should come out denser, not just longer.**
-   - **Idempotent expansion**: Always check if components of the expansion already exist on the graph. If you find existing matches, **do not create new duplicate tasks**. Update the existing tasks with any new information if necessary, and return the existing tasks. Our goal is to clear out tasks eventually.
-   - Where existing unparented or misparented tasks already cover part of the expansion, adopt them (`pkb__batch_reparent`) rather than minting duplicate siblings.
-   - **Handle disorganisation**: If you find any disorganisation, duplication, or structural graph issues during this process, immediately consolidate (keep it DRY). Kick off to another skill (like `reconcile`) if one is specially adapted to cleaning structural graph issues.
    - Densify with `[[wikilinks]]` to neighbours you confirmed by opening. **The graph should come out denser, not just longer.**
    - **Idempotent expansion**: Always check if components of the expansion already exist on the graph. If you find existing matches, **do not create new duplicate tasks**. Update the existing tasks with any new information if necessary, and return the existing tasks. Our goal is to clear out tasks eventually.
    - Where existing unparented or misparented tasks already cover part of the expansion, adopt them (`pkb__batch_reparent`) rather than minting duplicate siblings.
