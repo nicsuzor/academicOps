@@ -56,8 +56,13 @@ bare environment where `$PKB_MCP_URL` is unexpanded. To support this:
      and `{"serverUrl": "$PKB_MCP_URL"}` for `agy`).
 2. **`make install-dev` dev workaround**:
    Cowork does not expand environment variables at runtime. During `make install-dev`,
-   `build.install patch_dev_mcp` substitutes `$PKB_MCP_URL` across built `.mcp.json` files
-   and local plugin caches with the concrete `$PKB_MCP_URL` from the user's host environment.
+   `build.install patch-dev-mcp` substitutes `$PKB_MCP_URL` with the concrete value from
+   the user's host environment, across `dist/`'s own `.mcp.json` files (which `claude
+   plugin install` then copies into its plugin cache verbatim, carrying the substitution
+   with it) and any existing Cowork GUI session directories. Everywhere else -- normal
+   Claude Code and `agy` use, in or out of Cowork -- `$PKB_MCP_URL` is assumed to already
+   be exported in the launching shell and resolves at MCP-server-launch time; nothing
+   forwards or re-declares it.
 3. **`make clean` Cowork package pruning**:
    `make clean` (and `make clean-plugins`) invokes `scripts/clean_plugins.py`, which
    cleans uninstalled Cowork session packages and removes session-level plugin data caches.
