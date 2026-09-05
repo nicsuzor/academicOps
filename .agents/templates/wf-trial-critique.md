@@ -10,8 +10,8 @@ tags: [dogfood, trial, blind-run, critique, spec, fragment]
 
 **This is a fragment.** It is one step inside a composed workflow — the generic
 half of "test X", which `brief` weaves together with the workflow specific to
-whatever X is. Never dispatch it standalone: on its own it has no X, no spec,
-and no next iteration to feed.
+whatever X is. It takes its X, its spec, and its next iteration from the
+template it is composed with.
 
 ## When to select this
 

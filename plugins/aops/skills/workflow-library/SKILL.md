@@ -180,14 +180,12 @@ obligations; what must be true to exit. A **process** template says how a class
 of work proceeds. A **gate** template is an obligation that blocks acceptance;
 those carry the `wf-` prefix and are composed into other templates.
 
-Some templates are fragments -- sub-steps that only make sense composed into
-another process, and that must never be dispatched standalone. In the PKB tier
-the `planner-data` tag currently marks exactly the fragment set, so it is a good
-first cut, but nobody enforces it; fragments also announce themselves in their
-first heading (`## <slug> -- step: …`). Confirm against the document, because a
-fragment mistaken for a dispatchable template sends a worker at half a process.
-When you write a new fragment, say so in its body in plain words rather than
-relying on a reader knowing what a tag means.
+Some templates are fragments -- sub-steps that carry one half of a process and
+are composed into another template to make a whole one. They announce themselves
+in their first heading (`## <slug> -- step: …`), and in the PKB tier the
+`planner-data` tag marks the fragment set. Read the document to tell which kind
+you have, and say so in plain words in the body when you write a new fragment
+rather than relying on a reader knowing what a tag means.
 
 ## Must not
 
