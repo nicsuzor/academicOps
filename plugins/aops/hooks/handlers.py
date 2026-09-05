@@ -282,6 +282,7 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind agents to present substantiating evidence with their claims."""
     # Do not fire on supervisor profiles (Ida and James)
+    # <!-- NS: fix the magic values here -- we have a constant somewhere else -->
     if ctx.agent_type in (
         "aops:ida",
         "aops:james",
@@ -567,12 +568,12 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
     "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, search_the_pkb],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
+    "PreToolUse": [
+        h for h in (pre_tool, agy_pre_tool) if h is not None
+    ],  # premise_check_handler disabled
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
     "Stop": [stop, agy_stop],  # dump_before_stopping
-    "PostToolBatch": [
-        h for h in (rule_against_hearsay, premise_check_arm, be_quiet) if h is not None
-    ],
+    "PostToolBatch": [h for h in (rule_against_hearsay, be_quiet) if h is not None],
     "SubagentStart": [honest_output],
 }

@@ -37,16 +37,19 @@ Capture and placement only. You do not expand an ask into its components, name i
 
    **Handle disorganisation immediately (Keep it DRY):** If you find any disorganisation, duplication, or structural graph issues while placing the task, immediately consolidate. Kick off to another skill (like `reconcile` or a structural cleanup skill) if one is specially adapted to cleaning structural graph issues.
 
-5. **Wire the edges.**
+5. **Record** the task:
+   The task you produce should be a straightforward edit and translation of your input.
+   - This is not the time for investigation; quickly record the user's ask and return.
+   - Leave ambiguity in the task; a later stage will resolve it with additional detail. Your role is only to make sure the task is recorded and placed correctly on the graph.
+
+6. **Densify: Wire the edges.**
    - `contributes_to` the target or goal this work actually serves, with a verbal `stated_weight` (`critical`, `high`, `medium`, `low`) and one sentence of justification ([[kb_pauli_prioritisation_doctrine]]).
    - `depends_on` for known hard blockers, `soft_depends_on` for context or informational relations, `supersedes` where this replaces prior work.
 
-6. **Densify.**
    Wire an edge to every neighbour you confirmed by opening -- related work, prior attempts, what this supersedes. **The graph should come out denser, not just longer.** A task whose only edge is its parent has not been placed, it has been dumped.
 
    - **Parent/child is already an edge:** Setting `parent_id` automatically places the node in the parent tree. Do **not** wire redundant edges to other descendants or siblings under the parent unless there are specific, genuine interactions (such as a sequential dependency `depends_on`, `supersedes`, or cross-branch data flow).
    - **Density is edges, never prose:** A task body never links another task and never describes its relation to one: that structure is the edge, and a prose copy of it goes stale while the edge stays correct. `[[wikilinks]]` in a body point at knowledge the executor must open -- notes, references, documentation.
-   - **Task bodies are strictly concise:** Follow the canonical task body template in [`specs/meta/naming-and-decisions.md`](../../../../specs/meta/naming-and-decisions.md); never add extra reference sections or background narratives.
 
 7. **Value it at intake.**
    Record initial estimates, populating only what you actually established. Do not fabricate precision the ask does not support.
