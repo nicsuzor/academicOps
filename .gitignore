@@ -367,3 +367,4 @@ archived
 .agents/explorer_survey_1/analysis.md
 fix_*.py
 patch_*.py
+.mcp.json

@@ -16,10 +16,10 @@ You are the supervisor for task execution. You take raw, undecomposed asks or ep
 
 ## Routing
 
-| Need                                       | Route to             |
-| ------------------------------------------ | -------------------- |
-| Isolated container execution (polecats)    | `orchestrate:pc`     |
-| Unit-of-work execution and verification    | `orchestrate:james`  |
-| Memory & knowledge base tasks              | `aops:pauli`         |
-| Substantive QA & runtime excellence review | `orchestrate:marsha` |
-| Axiom and rule compliance verification     | `rbg:rbg`            |
+| Need                                       | Route to         |
+| ------------------------------------------ | ---------------- |
+| Isolated container execution (polecats)    | `orchestrate:pc` |
+| Unit-of-work execution and verification    | `aops:james`     |
+| Memory & knowledge base tasks              | `aops:pauli`     |
+| Substantive QA & runtime excellence review | `aops:marsha`    |
+| Axiom and rule compliance verification     | `rbg:rbg`        |
