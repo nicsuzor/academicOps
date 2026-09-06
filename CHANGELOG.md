@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.9.3](https://github.com/nicsuzor/academicOps/compare/v0.9.2...v0.9.3) (2026-09-06)
+
+
+### Features
+
+* **dispatch:** add programmatic branch checkout and sbx pc wrapper ([f6c5251](https://github.com/nicsuzor/academicOps/commit/f6c52519fa7d68c0d2a95b2aa52474cd0cad790d))
+* **templates:** add wf-decompose-knob, the subject half of the knob trial ([1d8c69f](https://github.com/nicsuzor/academicOps/commit/1d8c69fd21efe24aca3b0e977f0a13940d2e7b80))
+* **templates:** add wf-decompose-trial, replacing the over-engineered knob ([f7c41fa](https://github.com/nicsuzor/academicOps/commit/f7c41fa773bf0f2c2484d6415fba2fcbec6c9510))
+* **templates:** add wf-trial-critique generic blind-run fragment ([aa644cd](https://github.com/nicsuzor/academicOps/commit/aa644cdd4bc26f5bbbcf2da8f96e1556b1500278))
+
+
+### Bug Fixes
+
+* **build:** stop baking PKB_MCP_URL into places that already resolve it live ([a161da4](https://github.com/nicsuzor/academicOps/commit/a161da443ed9b783f27446bcedcf6b8b4cd6a8de))
+* **sbx:** drop AOPS_BRANCH checkout-on-shared-clone, isolate via worktree instead ([bd68285](https://github.com/nicsuzor/academicOps/commit/bd6828530dc9f9a34d3baf8aad119c05cd126e03))
+* **sbx:** finish aops-crew image rename and add dev-plugin refresh ([eb56885](https://github.com/nicsuzor/academicOps/commit/eb56885e6d1194bcccedff9c702c24b9640d5b0b))
+* **sbx:** qualify agy kit image to ghcr.io coordinates ([ad28b11](https://github.com/nicsuzor/academicOps/commit/ad28b11215044ecd7379bc5c77d9ee39060e3c2f))
+
+
+### Documentation
+
+* **dispatch:** correct agy OAuth spec, sandbox auth works, not blocked ([e623029](https://github.com/nicsuzor/academicOps/commit/e6230298890768811ab147e8e18e089aca0e967c))
+
+
+### Miscellaneous
+
+* **dev:** release 0.9.2 ([c4c3ef5](https://github.com/nicsuzor/academicOps/commit/c4c3ef5f8bcad6cabe10aec2d5342f1b4368f1bc))
+* drop lib/agy/spec.yaml from crewsbx ([5dab121](https://github.com/nicsuzor/academicOps/commit/5dab12142c2cfc0772adb06720184eecd9d83a37))
+
 ## [0.9.2](https://github.com/nicsuzor/academicOps/compare/v0.9.1...v0.9.2) (2026-09-04)
 
 ### Features
