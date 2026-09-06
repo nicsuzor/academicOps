@@ -5,7 +5,7 @@ displayName: "Antigravity CLI (agy)"
 description: "Run Google's Antigravity CLI (agy) in YOLO mode inside an isolated Docker Sandbox seamlessly on your local workspace."
 
 sandbox:
-  image: "aops-crew:latest"
+  image: "ghcr.io/nicsuzor/aops-crew:latest"
   entrypoint: [agy]
   command:
     default: ["--dangerously-skip-permissions", "--mode=accept-edits"]
