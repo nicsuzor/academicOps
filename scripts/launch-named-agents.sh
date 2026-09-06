@@ -27,10 +27,10 @@ tmux select-layout -t "$SESSION_NAME:0" tiled
 
 # 6. Launch commands in respective panes
 # Pane 0.0: ida (nicdev container, /workspace/junior/ida)
-tmux send-keys -t "$SESSION_NAME:0.0" "docker exec -it -w /workspace/junior/ida nicdev claude -n ida --agent ida" C-m
+tmux send-keys -t "$SESSION_NAME:0.0" "docker exec -it -w /workspace/junior/ida nicdev sh ida.sh" C-m
 
 # Pane 0.1: sara (local WSL host runner)
-tmux send-keys -t "$SESSION_NAME:0.1" "cd ~/junior/dispatch && claude -n sara --agent sara" C-m
+tmux send-keys -t "$SESSION_NAME:0.1" "cd ~/junior/dispatch && sh cl.sh" C-m
 
 # Pane 0.2: pauli (nicdev container, /data)
 tmux send-keys -t "$SESSION_NAME:0.2" "docker exec -it -w /data nicdev claude -n pauli --agent pauli" C-m
