@@ -1,89 +1,67 @@
 ---
 name: verify
-description: Judgement-based QA pass. Does this artifact meet its goal and serve its user? Demands excellence, not compliance.
+description: Judgement-based QA pass verifying artifacts against acceptance criteria and fitness rubrics. Assumes artifacts are broken until runtime verification proves excellence.
 ---
 
 # Verify
 
-A rigorous QA review: correctness, complete implementation, fitness for purpose. Default posture -- **assume it is broken**. The burden is on the artifact to prove it works.
+Rigorous quality review evaluating correctness, completion, and fitness for purpose. Default posture: assume the artifact is broken until proven working. Bound to `marsha`.
 
-Bound to marsha. Run under another disposition and the bar silently softens.
+## 1. Classify the Bar
 
-## 1. Classify the bar
+- **Mechanical**: Verify strictly against acceptance criteria.
+- **Fitness / Mixed**: Verify against acceptance criteria and the spec's fitness rubric. If the rubric is missing on a fitness task, return `REVISE -- fitness rubric missing`.
 
-- **Mechanical** -- verify against the acceptance criteria.
-- **Fitness or mixed** -- verify against the acceptance criteria _and_ the spec's fitness rubric. If a fitness task has no rubric, return `REVISE -- fitness rubric missing`.
+## 2. Mandatory Forcing Checks
 
-For a content or instruction artifact -- a skill, agent body, prompt, doc, spec -- the governing standard usually lives in a skill rather than in a rules file. Identify the skill that owns quality for that artifact type and verify against it.
+All four checks must be answered explicitly in the report before rendering a `PASS`:
+0. **Premise test**: Is the underlying premise sound, or would a sharp principal reject it? (Bad premise = `FAIL`).
 
-## 2. Forcing checks
+1. **Sentinel and placeholder audit**: Check for and report empty or placeholder values (`N/A`, `TODO`, etc.).
+2. **Principal's-eye top-line read**: Quote the primary user-facing output verbatim and verify correctness for the actual end user.
+3. **Floor versus ceiling**: Answer explicitly: "Exceptional, or merely working?" Merely working fails fitness tasks.
 
-Write an explicit answer to each in the report. A `PASS` verdict is unavailable until all four are written.
+## 3. Immediate Fail Triggers
 
-0. **Premise test, before you read the diff.** Apply the `strategic-review` skill's §2 as written and record its one-sentence verdict here. A bad premise is a `FAIL`.
-1. **Sentinel and empty-state audit.** Count and list every empty or placeholder field (`N/A`, `TODO`, `DERIVER_MISSING`). Missing primary value-signals are a `FAIL`.
-2. **Principal's-eye top-line read.** Quote the most prominent headline element verbatim and say whether it is correct for the end user. On a "show me my X" surface this means reproducing the principal's own view -- their account, host, launch context -- and confirming _their_ instance is present. A generic instance is a `FAIL`.
-3. **Floor versus ceiling.** State verbatim: "exceptional, or merely working?" Merely working is not a `PASS` on a fitness task.
+Render an immediate `FAIL` on:
 
-## 3. Halt triggers -- immediate FAIL
+- Bad premise or invalidated requirements.
+- Sentinel values or placeholder text in production outputs.
+- Silent exception swallowing without error logging.
+- Tests that assert existence or tautologies rather than functional behavior.
+- Data that diverges from primary source records.
+- Edits made directly to runtime install directories instead of source repos.
 
-Stop and write the verdict when you see any of:
+## 4. Visual Verification
 
-- A bad premise (forcing check 0).
-- Primary fields rendering as sentinels or placeholders.
-- A headline element that is wrong for the end user.
-- Repeated or empty section headers; placeholder text in production output.
-- Overlapping or clipped text in rendered visual output.
-- Suspiciously short output for a complex operation.
-- Silent error swallowing -- a caught exception with no log.
-- A test suite checking existence instead of content.
-- Data that looks plausible but does not match its source.
-- Modifications targeting installed runtime plugin directories (`~/.gemini/config/plugins/`, `~/.claude/plugins/`) rather than the source repository.
+Evaluate live rendered screenshots (1920x1080) across three dimensions:
 
-## 4. Visual artifacts
+- **Legibility**: Overlapping text, poor contrast, or unreadable sizing.
+- **Layout**: Clipped elements, collapsed margins, and unintended whitespace.
+- **Hierarchy**: Geometry and visual weight matched to semantic importance.
 
-For any rendered output -- a screenshot, dashboard, chart, slide -- critically evaluate three structural dimensions and cite specific regions. Do not state what is present; judge whether it works.
-
-- **Legibility** -- overlapping or clipped text, contrast failures, sizes unreadable at the displayed zoom.
-- **Layout** -- elements breaking their bounding boxes, wrong z-order, crashed margins, orphan whitespace.
-- **Hierarchy** -- is emphasis matched to importance? Where position or area carries meaning, does the geometry actually encode it, or has a label crashed it?
-
-A defect obscuring the artifact's primary semantic encoding is a structural failure, not a polish concern. Cognitive-load and emotional-response questions are design-time; they belong to the spec's fitness rubric, not here.
-
-For a web surface: navigate, wait for page-ready, capture at 1920×1080, and drive the affected flow -- not just the test suite.
-
-## 5. Report
+## 5. Verification Report Schema
 
 ```markdown
 ## Verification Report
 
-**Bar:** [mechanical / fitness / mixed]
-**Verdict:** [PASS / FAIL / REVISE]
+**Bar**: [mechanical | fitness | mixed]
+**Verdict**: [PASS | FAIL | REVISE]
 
-### Concrete observations
+### Concrete Observations
 
-[Observed defects with explicit basis tags ([observed], [attempted-and-failed], [exhaustively-searched], [not-observed], [inferred], [assumed]), file paths, line numbers, and verbatim log excerpts]
+[Observed findings with basis tags ([observed], [attempted-and-failed], etc.) and file:line citations]
 
-### Forcing checks
+### Forcing Checks
 
-0. **Premise test:** [the sharp-principal sentence, written before the diff read]
-1. **Sentinel and empty-state audit:** [count and list]
-2. **Principal's-eye top-line read:** [headline quoted, and whether it is correct]
-3. **Floor vs ceiling:** ["exceptional, or merely working?" -- answered]
-
-### Process compliance
-
-[Local-rule violations, cited by rule; or the sources you read and found nothing in]
-
-### Judgement
-
-[Prose evaluation against the acceptance criteria and the fitness rubric]
+0. **Premise test**: [One sentence assessment]
+1. **Sentinel audit**: [Counts and occurrences]
+2. **Principal's-eye read**: [Verbatim headline and validation]
+3. **Floor vs ceiling**: ["Exceptional, or merely working?" answered]
 
 ### Recommendation
 
-[On FAIL or REVISE: specific remediation and its user impact. For brief-sourced work,
-address the critique to the brief -- name which element was unmet or ambiguous, so
-re-dispatch is a brief update rather than a new plan.]
+[Specific remediations and affected criteria for FAIL/REVISE verdicts]
 ```
 
-Where the verified artifact has a task record, write the verdict and its evidence onto that record as well as returning it. The evidence contract binds the handback to the task record; a report that only ever existed in this turn has not crossed a boundary.
+Record the verdict and evidence on the associated task record upon completion.
