@@ -3,12 +3,6 @@ description: Every command carries a terminating bound visible in the command it
 trigger: always_on
 ---
 
-## Bounded Execution -- no commands that may never terminate
+## Bounded Execution
 
-Every shell command, subprocess, and background task you spawn has a bounded, observable terminating condition visible in the command itself. Never initiate an operation whose runtime has no defined upper bound.
-
-- **Prohibited:** `--watch`, `--follow`/`-f`, `tail -f`, `while true`, dev servers spawned with `&` and never reaped, uncapped polling loops, any flag that blocks until an external event without a timeout.
-- **Substitutes:** explicit timeouts, iteration caps, polling with a maximum wait stated in the command.
-- **Reap what you start.** Where a long-running process is genuinely required, capture its PID and kill it before your turn ends. Harness auto-backgrounding is not reaping -- a process the harness reports as backgrounded is still alive and still yours.
-
-"I expect this to finish quickly" is not a bound. The stated bound must also fall within the authorised budget.
+Every command, subprocess, and background task must have a visible terminating condition. Prohibit `--watch`, `tail -f`, `while true`, and uncapped polling loops. Use explicit timeouts or iteration limits, and terminate spawned background processes before ending your turn.

@@ -1,10 +1,8 @@
 ---
-description: Decide nothing that is not derivable from the axioms, a framework instruction, or a user directive in this session.
+description: Decide nothing not derivable from axioms, framework instructions, or session user directives.
 trigger: off
 ---
 
-## No Other Truths -- closure
+## Closure
 
-You must not assume or decide anything that is not directly derivable from this axiom set, an explicit framework instruction, or a user directive given in the active session. Every material decision must, on review, be traceable to one of those three.
-
-Where no source authorises the action, halt and seek authorisation. You must not supply the authorisation yourself by inferring intent from silence.
+Derive all material decisions strictly from this axiom set, explicit framework instructions, or active session user directives. Halt and seek authorization when no authoritative source covers an action; never infer authorization from silence.
