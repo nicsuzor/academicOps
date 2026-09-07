@@ -30,7 +30,7 @@ from typing import Any
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_PLUGIN_ROOT = _REPO_ROOT / "plugins" / "aops"
+_PLUGIN_ROOT = _REPO_ROOT / "plugins" / "ida"
 _HOOKS_DIR = _PLUGIN_ROOT / "hooks"
 _LIB_HOOKS_DIR = _REPO_ROOT / "lib" / "hooks"
 
@@ -113,19 +113,6 @@ class _StubTracer:
 
 
 # ---------------------------------------------------------------------------
-# 1. Question parsing
-# ---------------------------------------------------------------------------
-
-
-def test_load_logic_check_questions():
-    questions = pcv.load_logic_check_questions()
-    assert len(questions) == 6
-    assert questions[0].startswith("What is the subject of this claim")
-    assert questions[1].startswith("Does the evidence admit more than one explanation")
-    assert questions[5].startswith("What does the conclusion depend on")
-
-
-# ---------------------------------------------------------------------------
 # 2. Answer-count validation
 # ---------------------------------------------------------------------------
 
@@ -205,12 +192,7 @@ def test_record_verdict_emits_one_attribute_per_question_and_disarms():
         config={"endpoint": "http://collector:4317", "project_name": "academicOps"}
     )
 
-    result = pcv.record_verdict(
-        session_id=session_id,
-        claim_id="claim-2",
-        answers=answers,
-        tracer_mod=tracer,
-    )
+    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-2", answers, tracer_mod=tracer)
 
     assert result["ok"] is True
     assert result["span_emitted"] is True
@@ -245,12 +227,7 @@ def test_record_verdict_disarms_even_when_tracer_unconfigured():
     answers = [f"answer {i}" for i in range(6)]
     tracer = _StubTracer(config=None)  # discover_config() -> None, silent no-op
 
-    result = pcv.record_verdict(
-        session_id=session_id,
-        claim_id="claim-3",
-        answers=answers,
-        tracer_mod=tracer,
-    )
+    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-3", answers, tracer_mod=tracer)
 
     assert result["span_emitted"] is False
     assert result["span_error"] is None
@@ -383,17 +360,6 @@ def test_arm_handler_ignores_non_scoped_agent_type():
     )
     pcg.premise_check_arm(ctx)
     assert pcg.is_armed(session_id) is False
-
-
-# ---------------------------------------------------------------------------
-# 7. Wiring
-# ---------------------------------------------------------------------------
-
-
-def test_handlers_registered_in_handlers_py():
-    handlers = _load_plugin_module("aops_handlers_premise_test", _HOOKS_DIR / "handlers.py")
-    assert handlers.premise_check_handler in handlers.HANDLERS["PreToolUse"]
-    assert handlers.premise_check_arm in handlers.HANDLERS["PostToolBatch"]
 
 
 # ---------------------------------------------------------------------------

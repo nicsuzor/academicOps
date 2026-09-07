@@ -16,7 +16,7 @@ related:
 
 # Conceptual Review Workflow
 
-Multi-agent review of an intellectual artifact — a spec, proposal, design doc, research plan, or
+Multi-agent review of an intellectual artifact -- a spec, proposal, design doc, research plan, or
 manuscript draft. Author and reviewer are separate identities; no agent reviews its own output.
 
 ## Composable lens registry
@@ -40,8 +40,8 @@ question.
 Selection rules:
 
 - A given review selects **3–4 lenses**, not all of them. Breadth kills depth.
-- **Self-consistency runs as a background check on every pass.** The _primary_ lens — the one
-  driving the top concern — shifts by phase: pass 1 leads with **axiom compliance + strategic
+- **Self-consistency runs as a background check on every pass.** The _primary_ lens -- the one
+  driving the top concern -- shifts by phase: pass 1 leads with **axiom compliance + strategic
   alignment** ("should we build this?"), pass 2 with **assumption hygiene** ("can we build this
   correctly?").
 - Lenses compose by domain. Research reviews use methodological coherence, literature awareness,
@@ -89,7 +89,7 @@ I'm accepting the risk because X"). The reviewer records the override and stops 
 
 ## Orchestration
 
-Orchestration — who goes next, which concerns are open, when to re-engage — is delegated to
+Orchestration -- who goes next, which concerns are open, when to re-engage -- is delegated to
 GitHub's review system, not tracked separately.
 
 - **Light**: in-session conversation or issue comment. No orchestration; the review is immediate
@@ -107,7 +107,7 @@ governs _how to review_; GitHub governs _when and where_.
 
 ## Out of scope
 
-- Domain-specific applications — separate specs; see [[specs/workflows/research-decomposition.md]].
+- Domain-specific applications -- separate specs; see [[specs/workflows/research-decomposition.md]].
 - New MCP tools or task schema changes.
 - Multi-model review orchestration.
 - Automated execution.
@@ -124,8 +124,8 @@ governs _how to review_; GitHub governs _when and where_.
 
 ## Related
 
-- [[plugins/aops/agents/pauli.md]] — upstream; strategic planning under uncertainty
-- [[specs/workflows/research-decomposition.md]] — downstream domain application
-- [[plugins/aops/skills/brief/SKILL.md]] — records this workflow's review obligations as
+- [[plugins/pkb/agents/pauli.md]] -- upstream; strategic planning under uncertainty
+- [[specs/workflows/research-decomposition.md]] -- downstream domain application
+- [[plugins/aops/skills/brief/SKILL.md]] -- records this workflow's review obligations as
   acceptance criteria on the task body
-- [[polecat-swarms]] — execution layer; consumes reviewed artifacts
+- [[polecat-swarms]] -- execution layer; consumes reviewed artifacts

@@ -13,7 +13,7 @@ define what excellence looks like. The rubric lives on the spec or epic body
 under `## Fitness Rubric`.
 
 Authoring and red-teaming are premise-and-fit judgment, not template-filling, so
-this runs as `aops:pauli` (`plugins/aops/agents/pauli.md`).
+this runs as `aops:pauli` (`plugins/pkb/agents/pauli.md`).
 
 ## When a rubric is required
 

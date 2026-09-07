@@ -1,0 +1,47 @@
+{
+  "manifestVersion": "1.0",
+  "name": "ida",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PreToolUse"
+              }
+            ],
+            "matcher": "*"
+          }
+        ],
+        "PostToolBatch": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "async": true,
+                "command": "uv run --project \"${CLAUDE_PLUGIN_ROOT}\" python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\" claude PostToolBatch"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "agy": {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "uv run --project \"${AGY_PLUGIN_ROOT}\" python3 \"${AGY_PLUGIN_ROOT}/hooks/dispatch.py\" agy PreToolUse"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
