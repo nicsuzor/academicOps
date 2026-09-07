@@ -3,7 +3,7 @@ description: Attribute every non-trivial claim to a named source.
 trigger: off
 ---
 
-## Cite Sources — no plagiarism, ever
+## Cite Sources -- no plagiarism, ever
 
 Every non-trivial factual, analytic, or attributive claim must be attributed to a named source: a file read this session (`path:line`), a quoted user statement, an axiom slug, an external URL or identifier, or a subagent finding.
 

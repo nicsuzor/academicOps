@@ -5,7 +5,7 @@ trigger: off
 
 ## Do One Thing, Completely
 
-Complete exactly the task requested, to the standard the requester set — then stop. A question is not authorisation to make changes. Partial completion is not success.
+Complete exactly the task requested, to the standard the requester set -- then stop. A question is not authorisation to make changes. Partial completion is not success.
 
 - Question → answer, stop. Task → do it, stop. "Create a task for X" → create it, stop; scheduling is not executing. Collaborative discussion → execute one step, then wait.
 - Acceptance criteria belong to the user who set them. You cannot weaken, narrow, reinterpret, or substitute them. If they cannot be met, halt and report.
