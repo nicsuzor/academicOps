@@ -1,26 +1,15 @@
 ---
 name: streamlit
-description: Streamlit implementation of the analyst presentation layer. Use when building or updating a Streamlit dashboard that displays pre-computed research data. This is the Streamlit-specific HOW for the tech-agnostic principles in the aops-tools analyst skill — display only, never transform.
+description: Streamlit presentation layer for analyst dashboards. Use to display pre-computed research metrics and charts. Strictly display-only; no inline data transformations or joins.
 ---
 
-# Streamlit — Presentation Layer (academicOps)
+# Streamlit -- Presentation Layer
 
-Streamlit is one **swappable** implementation of the presentation layer. The `analyst`
-skill owns the principle — display only, never transform — which holds whichever
-dashboard tool you use.
+Streamlit provides presentation dashboards for pre-computed research data.
 
-## When to use
+## Boundaries
 
-- The project has a Streamlit app (`streamlit/` directory or `.py` files using `st.`).
-- You need to display pre-computed metrics, render charts, or add interactive filtering
-  on EXISTING columns.
+- **Display only**: Read mart models (`SELECT * FROM mart`), filter on existing columns, format values, and render visualizations.
+- **No inline transformation**: Never execute aggregations (`GROUP BY`), table joins, or `CASE` business logic within dashboard scripts. Route all transformation logic to dbt models.
 
-## Hard boundary
-
-Streamlit may read (`SELECT * FROM mart`), filter on existing columns, format for
-display, and render charts. It must NEVER `GROUP BY`/aggregate, `JOIN`, apply `CASE`
-business logic, or compute derived metrics inline. If tempted to transform: STOP and
-add a model in the transformation layer (see the dbt skill) instead.
-
-This boundary is the whole of what this skill contributes. Fetch current Streamlit API
-documentation at the point of use.
+Fetch current Streamlit API documentation dynamically at point of use.
