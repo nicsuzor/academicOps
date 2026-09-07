@@ -1,0 +1,26 @@
+{
+  "manifestVersion": "1.0",
+  "name": "pkb",
+  "clients": {
+    "__base__": {
+      "name": "pkb",
+      "description": "pauli for memory: the sole writer to the Personal Knowledge Base, plus the PKB MCP server.",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "license": "MIT",
+      "keywords": [
+        "academicOps",
+        "aops",
+        "pauli",
+        "pkb",
+        "memory",
+        "knowledge-graph"
+      ]
+    },
+    "claude": {
+      "mcpServers": "./.mcp.json"
+    },
+    "agy": {}
+  }
+}

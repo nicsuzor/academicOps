@@ -1,4 +1,4 @@
-"""Behavioral tests for plugins/aops/scripts/run-mcp.sh.
+"""Behavioral tests for plugins/pkb/scripts/run-mcp.sh.
 
 The launcher's own header states its contract: the PKB MCP endpoint has "no
 default, no config-file fallback, and no local server to fall back to". Every
@@ -16,7 +16,7 @@ import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RUN_MCP = REPO_ROOT / "plugins" / "aops" / "scripts" / "run-mcp.sh"
+RUN_MCP = REPO_ROOT / "plugins" / "pkb" / "scripts" / "run-mcp.sh"
 
 # Resolved once, up front: a test that strips PATH down to an empty directory
 # (to prove run-mcp.sh can't find `uvx`) must still be able to launch `bash`

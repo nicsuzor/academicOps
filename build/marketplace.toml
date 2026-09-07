@@ -12,7 +12,19 @@ email = "nic@suzor.net"
 [[plugins]]
 directory = "aops"
 name = "aops"
-description = "Research workflow automation: strategy (ida), memory (pauli), execution (james), QA (marsha), and red-team (adversary)."
+description = "Research workflow automation: execution (james), QA (marsha), unattended dispatch (sara), and red-team (adversary)."
+category = "productivity"
+
+[[plugins]]
+directory = "ida"
+name = "ida"
+description = "The strategic face, and the only agent that speaks to the user."
+category = "productivity"
+
+[[plugins]]
+directory = "pkb"
+name = "pkb"
+description = "Memory: pauli, the sole writer to the Personal Knowledge Base, and the PKB MCP server."
 category = "productivity"
 
 [[plugins]]

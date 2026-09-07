@@ -1,10 +1,10 @@
 {
   "manifestVersion": "1.0",
-  "name": "aops",
+  "name": "ida",
   "clients": {
     "__base__": {
-      "name": "aops",
-      "description": "james for execution, marsha for QA, sara for unattended dispatch, adversary for red-team.",
+      "name": "ida",
+      "description": "The strategic face, and the only agent that speaks to the user.",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -12,11 +12,9 @@
       "keywords": [
         "academicOps",
         "aops",
-        "james",
-        "marsha",
-        "sara",
-        "adversary",
-        "planning"
+        "ida",
+        "strategy",
+        "premise-check"
       ]
     },
     "claude": {},

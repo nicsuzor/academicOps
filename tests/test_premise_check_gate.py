@@ -30,7 +30,7 @@ from typing import Any
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_PLUGIN_ROOT = _REPO_ROOT / "plugins" / "orchestrate"
+_PLUGIN_ROOT = _REPO_ROOT / "plugins" / "ida"
 _HOOKS_DIR = _PLUGIN_ROOT / "hooks"
 _LIB_HOOKS_DIR = _REPO_ROOT / "lib" / "hooks"
 
@@ -40,6 +40,7 @@ for p in (_LIB_HOOKS_DIR, _HOOKS_DIR):
 
 import dispatch
 import premise_check_gate as pcg
+import premise_check_verdict as pcv
 
 
 def _load_plugin_module(name: str, path: Path):
@@ -117,7 +118,7 @@ class _StubTracer:
 
 
 def test_load_logic_check_questions_matches_hearsay_md():
-    questions = pcg.load_logic_check_questions(_HOOKS_DIR)
+    questions = pcv.load_logic_check_questions(_HOOKS_DIR)
     assert len(questions) == 6
     assert questions[0].startswith("What is the subject of this claim")
     assert questions[1].startswith("Does the evidence admit more than one explanation")
@@ -126,7 +127,7 @@ def test_load_logic_check_questions_matches_hearsay_md():
 
 def test_load_logic_check_questions_missing_source(tmp_path):
     with pytest.raises(FileNotFoundError):
-        pcg.load_logic_check_questions(tmp_path)
+        pcv.load_logic_check_questions(tmp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +210,7 @@ def test_record_verdict_emits_one_attribute_per_question_and_disarms():
         config={"endpoint": "http://collector:4317", "project_name": "academicOps"}
     )
 
-    result = pcg.record_verdict(_HOOKS_DIR, session_id, "claim-2", answers, tracer_mod=tracer)
+    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-2", answers, tracer_mod=tracer)
 
     assert result["ok"] is True
     assert result["span_emitted"] is True
@@ -244,7 +245,7 @@ def test_record_verdict_disarms_even_when_tracer_unconfigured():
     answers = [f"answer {i}" for i in range(6)]
     tracer = _StubTracer(config=None)  # discover_config() -> None, silent no-op
 
-    result = pcg.record_verdict(_HOOKS_DIR, session_id, "claim-3", answers, tracer_mod=tracer)
+    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-3", answers, tracer_mod=tracer)
 
     assert result["span_emitted"] is False
     assert result["span_error"] is None
@@ -385,7 +386,7 @@ def test_arm_handler_ignores_non_scoped_agent_type():
 
 
 def test_handlers_registered_in_handlers_py():
-    handlers = _load_plugin_module("orchestrate_handlers_premise_test", _HOOKS_DIR / "handlers.py")
+    handlers = _load_plugin_module("ida_handlers_premise_test", _HOOKS_DIR / "handlers.py")
     assert handlers.premise_check_handler in handlers.HANDLERS["PreToolUse"]
     assert handlers.premise_check_arm in handlers.HANDLERS["PostToolBatch"]
 
@@ -414,7 +415,7 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
     assert res is not None and res.kind == dispatch.Kind.REFUSE
 
     # The verdict script runs and disarms the check.
-    pcg.record_verdict(
+    pcv.record_verdict(
         session_id=session_id,
         claim_id="researched X",
         answers=[f"a{i}" for i in range(6)],

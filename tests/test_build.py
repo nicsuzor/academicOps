@@ -1097,11 +1097,11 @@ def test_pauli_agy_frontmatter(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["pkb"],
         version=VERSION,
     )
 
-    pauli_md = dist_root / "aops-agy" / "agents" / "pauli.md"
+    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
     assert pauli_md.is_file()
     fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)
@@ -1162,13 +1162,13 @@ def test_openclaw_does_not_bake_urls(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["pkb"],
         clients=("claude", "openclaw"),
         version=VERSION,
     )
 
-    claude_mcp = (dist_root / "aops-claude" / ".mcp.json").read_bytes()
-    openclaw_mcp = (dist_root / "openclaw" / "aops" / ".mcp.json").read_bytes()
+    claude_mcp = (dist_root / "pkb-claude" / ".mcp.json").read_bytes()
+    openclaw_mcp = (dist_root / "openclaw" / "pkb" / ".mcp.json").read_bytes()
     assert claude_mcp == openclaw_mcp
 
 
@@ -1180,12 +1180,12 @@ def test_openclaw_ida_face_configuration(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         clients=("openclaw",),
         version=VERSION,
     )
 
-    ida_md = dist_root / "aops-openclaw" / "agents" / "ida.md"
+    ida_md = dist_root / "ida-openclaw" / "agents" / "ida.md"
     assert ida_md.is_file()
     fm, _, _ = ida_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)
@@ -1205,11 +1205,11 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["pkb"],
         clients=("claude", "agy"),
         version=VERSION,
     )
-    claude_mcp = json.loads((dist_root / "aops-claude" / ".mcp.json").read_text())
+    claude_mcp = json.loads((dist_root / "pkb-claude" / ".mcp.json").read_text())
     assert claude_mcp["mcpServers"] == {
         "services": {
             "command": "bash",
@@ -1220,7 +1220,7 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
         }
     }
 
-    agy_mcp = json.loads((dist_root / "aops-agy" / "mcp_config.json").read_text())
+    agy_mcp = json.loads((dist_root / "pkb-agy" / "mcp_config.json").read_text())
     assert agy_mcp["mcpServers"] == {
         "services-http": {
             "serverUrl": "$PKB_MCP_URL",

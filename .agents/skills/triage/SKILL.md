@@ -17,7 +17,7 @@ description: "Triage a corpus, classify, and dispatch outputs. Three modes: retr
 starting any mode.** Its in-scope/out-of-scope split and its anonymisation clause
 bind all three modes, not `retro` alone.
 
-Every mode dispatches to `pauli` (`plugins/aops/agents/pauli.md`): the premise
+Every mode dispatches to `pauli` (`plugins/pkb/agents/pauli.md`): the premise
 test these reviews turn on, and the graph mutation `sweep` performs, are both
 hers.
 
