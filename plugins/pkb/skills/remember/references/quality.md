@@ -1,50 +1,32 @@
-# What a Good Note Looks Like
+# Note Quality Standards
 
-Five signals, in order of importance.
+Evaluate knowledge notes against five core criteria:
 
-1. **Traceable.** Every claim carries a source -- a memory id, a session
-   reference, a PR number, a date.
-2. **In the user's voice.** First person, grounded in specific experience. Not an
-   agent's summary of what the user probably meant, and not generic advice.
-3. **One topic.** A stray section bolted onto the end is the most common quality
-   failure. If it does not belong under the title, it belongs in a different note.
-4. **Concrete.** Numbers, names, specific incidents. A principle with no instance
-   behind it is a platitude.
-5. **At the right abstraction.** Not file paths and environment variables; not
-   universal truths either. The test: would this help someone working on a
-   _different_ component?
+1. **Traceable**: Every claim cites its source (memory ID, session reference, PR number, date).
+2. **User voice**: Grounded in specific user experience rather than generic assistant summaries.
+3. **Single topic**: Dedicated to one coherent subject without trailing unrelated sections.
+4. **Concrete**: Grounded in real numbers, names, and incidents rather than abstract platitudes.
+5. **Right abstraction**: Generalises enough to inform adjacent work without hardcoding transient environment paths.
 
-## Synthesis, not concatenation
+## Synthesis vs. Concatenation
 
-Having named the principle the sources are all instances of, show how each
-specific behaviour follows from it. The sweet spot is four to six sources: below
-three there is usually not enough to synthesise, and the result reads as a
-restated problem rather than distilled knowledge.
+Identify the unifying principle across instances rather than concatenating source bullet points. The ideal source depth is four to six inputs.
 
-## What to watch for
+## Antipatterns
 
-- **Stray sections** -- content that does not relate to the note's topic. Trim it
-  out to where it belongs.
-- **Overlap** -- two notes covering the same ground with different organisation.
-  Merge into the stronger one and delete the weaker.
-- **Over-abstraction** -- a single weak source elevated to a universal principle.
-- **Under-attribution** -- a claim with no source.
-- **Fabrication** -- a claim not present in the source at all. The worst failure
-  here, because it is indistinguishable from a real one on later reading.
-- **Editorialising** -- value judgments added on top of what the source said.
-- **Detail that ages** -- specific tool names and versions that will be wrong in a
-  year. Prefer the principle, unless the tooling _is_ the point.
-- **Lazy filing** -- project-specific insight dumped into a generic knowledge
-  directory to avoid deciding where it goes.
-- **Sensitive content unmarked** -- institutional detail, financial or personal
-  material. Mark it so it is recognisable.
+- **Stray sections**: Unrelated content appended to a note. Move to dedicated notes.
+- **Overlap**: Parallel notes on the same topic. Merge into the canonical note and delete the duplicate.
+- **Fabrication**: Assertions not found in the underlying sources.
+- **Under-attribution**: Unreferenced claims.
+- **Aging detail**: Ephemeral version strings or tooling trivia that expire quickly.
+- **Unmarked sensitive content**: Unflagged personal, institutional, or financial data.
 
-## The test
+## Quality Test
 
-1. Can every claim be traced to a source?
-2. Does it sound like the user, or like an agent writing a report?
-3. Is there one clear topic, or did sections get bolted on?
-4. Would it help someone who was not there?
-5. Does the synthesis say something the sources do not say individually?
+Before finalizing a note, verify:
 
-A no to the last one means it was not worth consolidating.
+1. Can every claim be traced to an explicit source?
+2. Is the voice grounded in user experience rather than assistant exposition?
+3. Does the note address exactly one topic?
+4. Is the insight transferable to future work?
+5. Does the synthesis reveal principles not stated in any single source?
