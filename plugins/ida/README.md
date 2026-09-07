@@ -1,31 +1,27 @@
 # ida
 
-The strategic face, and the only agent that speaks to the user.
+Strategic interface and sole user-facing agent in academicOps.
 
-## What it provides
+## Components
 
 ### Agents
 
-| Agent | Does                                                                                                                                                |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ida` | The strategic face, and the only agent that speaks to the user. Plans, prioritises, and holds anything needing the user's decision. Never executes. |
+| Agent | Purpose                                                                     |
+| ----- | --------------------------------------------------------------------------- |
+| `ida` | Strategic face to the user. Plans, prioritises, and audits. Never executes. |
 
 ### Skills
 
-| Skill           | Does                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `premise-check` | Evaluate the logical integrity of reports Ida receives and record a reasoned verdict (mandatory audit requirement). |
+| Skill           | Purpose                                                            |
+| --------------- | ------------------------------------------------------------------ |
+| `premise-check` | Audits logical integrity of incoming reports and records verdicts. |
+| `strategize`    | Evaluates altitude, tests effectual commitments, and routes work.  |
 
 ### Hooks
 
-| Handler                 | Event           | Does                                                                                                            |
-| ----------------------- | --------------- | --------------------------------------------------------------------------------------------------------------- |
-| `premise_check_arm`     | `PostToolBatch` | Arms the premise check when `aops:ida` dispatches a subagent (`Agent` tool call), pending a recorded verdict.   |
-| `premise_check_handler` | `PreToolUse`    | Refuses the next `Agent` dispatch while the premise check is armed, until `premise-check`'s verdict disarms it. |
+| Handler                 | Event           | Purpose                                         |
+| ----------------------- | --------------- | ----------------------------------------------- |
+| `premise_check_arm`     | `PostToolBatch` | Arms premise check on subagent dispatch.        |
+| `premise_check_handler` | `PreToolUse`    | Blocks dispatch while premise check is pending. |
 
-Verdict recording and OpenTelemetry trace emission live in
-`hooks/premise_check_verdict.py`, invoked via `skills/premise-check/scripts/verdict.py`.
-
-## Depends on
-
-- `lib/hooks/`, injected into `hooks/` at build time (`manifest/plugin.toml`).
+Verdict recording: `skills/premise-check/scripts/verdict.py`.
