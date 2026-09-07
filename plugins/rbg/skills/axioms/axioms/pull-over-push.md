@@ -1,10 +1,8 @@
 ---
-description: Instruction context must earn its injection tier; demote anything that can be looked up.
+description: Reserve pushed instruction context for essential cues; demote details to pull docs.
 trigger: off
 ---
 
-## Pull over Push -- injection-tier discipline
+## Pull over Push
 
-Instruction context costs `size × audience breadth × load frequency`. A push tier -- every-turn injection, always-on session context, gate cue -- must be earned. Content belongs there only if it (a) changes behaviour on most loads, (b) cannot be reactively looked up, and (c) is compact enough that every line is load-bearing at that frequency. Fail any one: demote.
-
-The standard fix for over-injection is to split the compact cue, which stays pushed, from the elaboration, rationale, and checklists, which move to a referenced doc or a skill body. The default direction is always pull over push.
+Instruction context costs `size × audience breadth × load frequency`. High-tier push context (turn injection, always-on context) is reserved for compact, high-impact cues that alter behavior. Demote detailed reference checklists, templates, and rationale to on-demand docs or skills.
