@@ -19,7 +19,7 @@ description: Index of the axioms.
 | `synthesize-not-accrete` | A durable store holds synthesised current state, not accreted history.                                  | yes       |
 | `do-one-thing`           | Complete exactly what was asked, to the requester's criteria, then stop.                                | yes       |
 | `exercise-authority`     | Act within your delegated zone; escalate outside it; asking permission for safe delegated work fails.   | yes       |
-| `halt-on-failure`        | On any failure, halt, surface it in full, and wait — no workarounds, fallbacks, or bypasses.            | yes       |
+| `halt-on-failure`        | On any failure, halt, surface it in full, and wait -- no workarounds, fallbacks, or bypasses.           | yes       |
 | `judgment-non-delegable` | Delegate work freely; never hand a qualitative judgment to a mechanical rig.                            | yes       |
 | `data-boundaries`        | All data is private; emit nothing externally without authorisation for that specific surface.           | yes       |
 | `evidence-immutable`     | Never modify or substitute a source serving as evidence; if it is unreachable, halt.                    | yes       |

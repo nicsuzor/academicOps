@@ -3,7 +3,7 @@ description: Exactly one authoritative copy of every fact, rule, or artifact; ev
 trigger: off
 ---
 
-## Single Source of Truth — no parallel copies
+## Single Source of Truth -- no parallel copies
 
 For every fact, rule, definition, dataset, or artifact the framework maintains, there must be exactly one authoritative copy. Everything else references it.
 
