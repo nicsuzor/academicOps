@@ -11,7 +11,7 @@ Assemble workflow templates and prepare tasks for cold execution. The brief tran
 
 0. **Task initialization**: If no task ID was provided, create one via `/q` using the provided description.
 1. **Verify premises**: Re-verify world claims (paths, schemas, runtime states) before cementing them into constraints. Halt if a premise is invalid.
-2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`./workflows/`), and PKB (`type: template`) tiers. 
+2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`./workflows/`), and PKB (`type: template`) tiers.
    - Read the templates and combine their steps into a logical order (e.g., failing tests first, implementation, then QA).
    - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, the brief must preserve that ambiguity.
 3. **Determine task boundaries**:

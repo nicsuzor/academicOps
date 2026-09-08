@@ -13,7 +13,7 @@ type: template
 
 ## What this step does
 
-Universal QA step establishing criteria, evaluator independence, and evidence standards. 
+Universal QA step establishing criteria, evaluator independence, and evidence standards.
 
 ## Procedure
 
