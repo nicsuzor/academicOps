@@ -6,8 +6,11 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
-PKB_SERVER=""
+PKB_MCP_URL=""
 EMAIL_SERVER=""
+
+export no_proxy="${no_proxy:+$no_proxy,}ts.net,.ts.net"
+export NO_PROXY="$no_proxy"
 
 # 0) Accept apt release-info changes up front. The base image's ondrej/php PPA
 #    renamed its Label ("PPA for PHP" -> "Use packages.sury.org/php instead"),
@@ -60,5 +63,5 @@ claude plugin install tools@academicOps
 claude plugin install rbg@academicOps
 
 # env vars don't resolve this early in the boot process, declare them above.
-claude mcp add --transport http --scope local services ${PKB_SERVER}
-claude mcp add --transport http --scope local email ${EMAIL_SERVER}
+claude mcp add --transport http --scope user services ${PKB_MCP_URL}
+claude mcp add --transport http --scope user email ${EMAIL_SERVER}
