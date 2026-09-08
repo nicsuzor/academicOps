@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Hook arm/disarm lifecycle for premise checking.
 
+<!-- NS: let's change this to require a premise check verdict before contacting the user or finishing a task. Try to make a list of events where it makes sense to require consideration of logical consistency and sufficiency of evidence before proceeding. Candidates include: Stop; whatever tool call the Channels plugins use; AskUserQuestion; Dump? Maybe supplement by telling Pauli not to write an update if it's not accompanied by a recorded premise check (leave for later)? -->
+
 Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents:
 
