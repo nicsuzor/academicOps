@@ -36,8 +36,10 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 Simulate how `brief` would assemble workflow templates for a stated objective:
 
 1. Enumerate and read relevant candidate templates across tiers.
-2. Show the assembled structure (slots, gates, and fragments) and resulting task brief shape.
-3. Plainly mark output as a non-minted preview. Never write tasks or mutate the graph.
+2. Read the templates and combine their steps into a single, logical sequence (e.g., TDD red tests first, then implementation, then QA integration tests at the end).
+3. Do not ad lib extra requirements or guess at scope. Pass through any ambiguity in the prompt directly to the workflow.
+4. Show the assembled sequence of steps and resulting task brief shape.
+5. Plainly mark output as a non-minted preview. Never write tasks or mutate the graph.
 
 ### new
 
