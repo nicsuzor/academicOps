@@ -37,10 +37,3 @@ If an **incomplete task** appears to cover ground shared with the ask, lead with
 
 - `<id>` [<status>] -- <title> -- overlaps on <shared scope or touched files>
 ```
-
-## Must Not
-
-- Write to the PKB (no task creation, edits, memories, or edge mutations).
-- Open full bodies or quote beyond the returned snippet.
-- Synthesise prose summaries or restate the ask.
-- Rank by raw similarity score or pad the list with marginal hits.

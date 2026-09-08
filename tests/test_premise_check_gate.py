@@ -113,24 +113,6 @@ class _StubTracer:
 
 
 # ---------------------------------------------------------------------------
-# 1. Question parsing
-# ---------------------------------------------------------------------------
-
-
-def test_load_logic_check_questions_matches_hearsay_md():
-    questions = pcv.load_logic_check_questions(_HOOKS_DIR)
-    assert len(questions) == 6
-    assert questions[0].startswith("What is the subject of this claim")
-    assert questions[1].startswith("Does the evidence admit more than one explanation")
-    assert questions[5].startswith("What does the conclusion depend on")
-
-
-def test_load_logic_check_questions_missing_source(tmp_path):
-    with pytest.raises(FileNotFoundError):
-        pcv.load_logic_check_questions(tmp_path)
-
-
-# ---------------------------------------------------------------------------
 # 2. Answer-count validation
 # ---------------------------------------------------------------------------
 

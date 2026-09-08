@@ -14,11 +14,11 @@ export PKB_MCP_URL=<your PKB MCP endpoint>
 ```
 
 `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way.
-`PKB_MCP_URL` is an environment variable, read by whichever plugin needs it —
+`PKB_MCP_URL` is an environment variable, read by whichever plugin needs it --
 no manifest declares a `userConfig` key for it or for anything else.
 
 Nothing has a default. Set the environment variables each plugin needs before
-first use — the full list is in [`README.md`](README.md#configure), and each
+first use -- the full list is in [`README.md`](README.md#configure), and each
 plugin's own `plugins/<dir>/README.md` documents its complete surface.
 
 ## From source
@@ -31,8 +31,7 @@ make install-dev
 
 `make install-dev` builds `dist/`, registers it as a local marketplace named
 `aops`, installs every plugin from it into Claude Code (and Antigravity when
-`agy` is on `PATH`), merges the axioms into `~/.claude/settings.json`, and
-activates pre-commit.
+`agy` is on `PATH`), and activates pre-commit.
 
 `make uninstall-dev` reverses it and restores the release channel.
 
