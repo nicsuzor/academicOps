@@ -216,11 +216,27 @@ def patch_dev_mcp(
     launches MCP servers in an execution environment where env vars are not
     expanded or propagated, so a literal value has to be baked in.
 
-    This patches two places with that literal value: `dist/` itself (so a
+    This patches two places with that literal value: `dist/cowork/` (so a
     directory-marketplace Cowork install — see build/marketplace.py's
     _bake_cowork_mcp_json for the manual zip-upload install — gets a working
     URL) and any existing Cowork GUI session directories, which hold their own
     copy of the plugin's .mcp.json.
+
+    SCOPE IS LOAD-BEARING (fixed 2026-09-08). This used to glob
+    `dist_root/**/.mcp.json`, which reached far past Cowork and rewrote
+    dist/<name>-claude and dist/openclaw/<name> as well. Those are consumed by
+    Claude Code and agy, which DO expand the variable at launch, so the effect
+    was to freeze whatever URL happened to be exported in the shell that last
+    ran `make install-dev` into an artifact with no placeholder left to
+    resolve. It stayed wrong until someone rebuilt from a correctly-configured
+    shell, and it failed silently — the client just reported a connection
+    error. That is exactly what happened when services-new was decommissioned:
+    every non-Cowork dist still carried the dead host's URL.
+
+    build/marketplace.py's _bake_cowork_mcp_json is the matching authority for
+    the zip path, and its docstring states the same rule: "Only the zip is
+    rewritten. dist/<name>-claude and the dist/cowork/<name> directory copy
+    keep the env-var form."
     """
     raw_url = pkb_url if pkb_url is not None else os.environ.get("PKB_MCP_URL", "")
     url = raw_url.strip()
@@ -236,9 +252,10 @@ def patch_dev_mcp(
 
     patched: list[Path] = []
 
-    # 1. dist_root (.mcp.json in all dist dirs including cowork)
-    if dist_root.exists():
-        for mcp_file in sorted(dist_root.glob("**/.mcp.json")):
+    # 1. dist/cowork ONLY — never the sibling dists. See the scope note above.
+    cowork_root = dist_root / "cowork"
+    if cowork_root.exists():
+        for mcp_file in sorted(cowork_root.glob("**/.mcp.json")):
             try:
                 content = mcp_file.read_text(encoding="utf-8")
                 if "$PKB_MCP_URL" in content:

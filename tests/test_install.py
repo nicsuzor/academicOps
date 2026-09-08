@@ -365,14 +365,23 @@ def test_patch_dev_mcp_replaces_url_and_strips_trailing_slash(tmp_path, monkeypa
 
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp/")
     patched = patch_dev_mcp(dist)
-    assert len(patched) == 2
 
-    c_data = json.loads((claude_dir / ".mcp.json").read_text())
-    assert c_data["mcpServers"]["services"]["args"] == [
+    # Cowork gets the literal baked in: it launches MCP servers in a bare
+    # environment where $PKB_MCP_URL does not expand.
+    assert patched == [cowork_dir / ".mcp.json"]
+    w_data = json.loads((cowork_dir / ".mcp.json").read_text())
+    assert w_data["mcpServers"]["services"]["args"] == [
         "-c",
         'fastmcp run "https://pkb.example.ts.net/mcp"',
     ]
-    assert c_data["mcpServers"]["services-http"]["url"] == "https://pkb.example.ts.net/mcp"
+    assert w_data["mcpServers"]["services-http"]["url"] == "https://pkb.example.ts.net/mcp"
+
+    # REGRESSION (2026-09-08): the sibling claude dist must keep the
+    # placeholder. Claude Code and agy expand it at launch, so baking a literal
+    # here freezes whatever URL the building shell happened to export into an
+    # artifact that can no longer follow the single source in ~/.env. That is
+    # how every dist kept pointing at services-new after it was decommissioned.
+    assert (claude_dir / ".mcp.json").read_text() == mcp_content
 
 
 def test_patch_dev_mcp_skips_when_unset(tmp_path, monkeypatch):
