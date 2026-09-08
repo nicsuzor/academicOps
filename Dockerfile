@@ -1,5 +1,5 @@
 # --- aops dist/ source selection ---------------------------------------
-# The image needs the built dist/aops-* tree + .claude-plugin/marketplace.json.
+# The image needs the built dist/ tree + .claude-plugin/marketplace.json.
 # Two interchangeable sources, selected by AOPS_DIST_SOURCE. Both land at
 # /aops-dist, but nested one level differently (the published `dist` BRANCH
 # publishes plugin dirs + .claude-plugin/ at its own root, while the local
@@ -167,7 +167,7 @@ RUN npm install -g markdownlint-cli2 dprint ccstatusline @playwright/mcp && npm 
 # than chown'd to worker: polecat crew containers run as the invoking host
 # UID (`docker run -u $(id -u):$(id -g)`, lib/polecat/cli.py), which
 # is worker's UID 1000 only by coincidence on a given host. A plain chown
-# leaves any other UID unable to write /data (e.g. cope/rbg's layer-3 rules
+# leaves any other UID unable to write /data (e.g. rbg's layer-3 rules
 # mount lands under here), silently and only on someone else's machine. Same
 # pattern as the /home/worker chmod below — world-writable inside one
 # container's own filesystem is not a container-isolation weakening; each
@@ -285,10 +285,7 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 #
 # WHICH plugins install is read from the marketplace manifest shipped in the
 # dist tree, which build/marketplace.py renders from build/marketplace.toml —
-# the single source of truth for the plugin set (specs/ARCHITECTURE.md's plugin
-# table). Every declared plugin except `ida` installs — polecat containers run
-# autonomous worker agents, so `ida` (the interactive face) is explicitly not
-# installed for either agy or claude.
+# the single source of truth for the plugin set. Every declared plugin installs.
 #
 # The Gemini CLI extension surface is deprecated and intentionally not
 # installed here (matches `make install`, which doesn't install it either).
@@ -297,7 +294,7 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 # aops-dist-remote above for why these differ): local's /aops-dist/dist IS
 # the self-contained marketplace root build/build.py produces; the published
 # `dist` branch has `.claude-plugin/` AND every plugin dir (aops-claude,
-# aops-agy, ...) at its own root — see build-extension.yml's
+# aops-agy, pkb-claude, ...) at its own root — see build-extension.yml's
 # "Publish distribution to dist" step. Both shapes put every plugin dir
 # directly under $MP_ROOT, so all COPY/install targets below are
 # $MP_ROOT-relative and need no further local/remote branching. Each plugin's
@@ -309,7 +306,7 @@ COPY --chown=worker:worker lib/polecat/defaults/docker_gemini_fixups.py /home/wo
 # `academicOps` release install on the same machine — but that coexistence
 # concern doesn't apply inside this ephemeral image, and
 # lib/polecat/cli.py's setup_staging() stages `pluginConfigs` under the
-# key `aops-pkb@academicOps`. A local build that installed as `aops-pkb@aops` would
+# key `aops@academicOps`. A local build that installed as `aops@aops` would
 # silently fail to receive that staged config (pkb_mcp_url never reaching the
 # plugin), so we rewrite the local marketplace.json's name to `academicOps`
 # before installing, making local builds install under the exact same key
@@ -330,7 +327,7 @@ RUN umask 000 \
     else \
         MP_ROOT=/tmp/aops-dist; \
     fi \
-    && PLUGINS="$(jq -r '.plugins[].name | select(. != "ida")' "$MP_ROOT/.claude-plugin/marketplace.json")" \
+    && PLUGINS="$(jq -r '.plugins[].name' "$MP_ROOT/.claude-plugin/marketplace.json")" \
     && { [ -n "$PLUGINS" ] || { echo "FATAL: no plugins declared in $MP_ROOT/.claude-plugin/marketplace.json" >&2; exit 1; }; } \
     && echo "Installing plugins: $(echo $PLUGINS)" \
     && claude plugin marketplace add "$MP_ROOT" \
@@ -345,7 +342,6 @@ RUN umask 000 \
     && jq -n --arg plugins "$PLUGINS" \
         '($plugins | split("\n") | map(select(length > 0)) | map({key: ("/home/worker/.gemini/config/plugins/" + .), value: "TRUST_FOLDER"}) | from_entries) + {"/home/worker/.config": "TRUST_FOLDER"}' \
         > /home/worker/.gemini/trustedFolders.json \
-    && mkdir -p /home/worker/.gemini/antigravity-cli/plugins \
     && for p in $PLUGINS; do \
         src="$MP_ROOT/$p-agy"; \
         { [ -d "$src" ] || { echo "FATAL: $p is declared in the marketplace but has no agy build at $src" >&2; exit 1; }; } \
@@ -379,18 +375,6 @@ RUN umask 000 \
     && rm -f /home/worker/.claude/settings.json.bak \
     && jq -e '.hooks.PreToolUse[0].hooks[0].command == "rtk hook claude"' /home/worker/.claude/settings.json >/dev/null \
     && chmod -R a+rwX /home/worker/.claude
-
-# No pkb binary is installed: PKB is a REMOTE MCP server. The pkb plugin's
-# scripts/run-mcp.sh resolves PKB_MCP_URL from the environment and runs
-# `uvx fastmcp run "$PKB_MCP_URL"`. No URL is baked into this image.
-#
-# Warm uv's cache with that command's dependencies. Cold, `uvx --from
-# fastmcp-slim[server]` resolves and downloads 67 packages on first use, which
-# runs past the window a client waits for an MCP server to hand back its tool
-# list — the server is left starting, no tools are declared, and the agent
-# reports the MCP server as unavailable rather than as slow. Resolving them at
-# build time makes the runtime start a cache hit. No URL is involved.
-RUN uvx --from 'fastmcp-slim[server]' fastmcp --version >/dev/null 2>&1 || true
 
 # Install the default ccstatusline config.
 # These defaults are overridden at runtime if the host stages replacements.
