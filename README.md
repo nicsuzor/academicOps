@@ -85,7 +85,7 @@ claude plugin install aops@academicOps --config pkb_mcp_url=<your PKB MCP endpoi
 
 `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way.
 
-Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
+Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerized workers.
 
 ## Where work runs
 
