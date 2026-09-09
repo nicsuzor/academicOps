@@ -1,4 +1,4 @@
-hello
+# academicOps
 
 You can delegate execution to AI without delegating judgment.
 
