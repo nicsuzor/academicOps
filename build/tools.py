@@ -1,5 +1,6 @@
 """Tool vocabulary and translation mapping for academicOps client adapters."""
 
+import fnmatch
 import re
 import tomllib
 from pathlib import Path
@@ -117,7 +118,14 @@ def process_agent_tools_agy(
         for tool_name in tools_list:
             has_scope = "(" in tool_name
             base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
-            if base_name.startswith("mcp__"):
+            if "*" in base_name and not base_name.startswith("mcp__"):
+                matches = [k for k in tool_map if fnmatch.fnmatch(k, base_name)]
+                if matches:
+                    for k in matches:
+                        expanded.extend(tool_map[k])
+                else:
+                    rejected.add(tool_name)
+            elif base_name.startswith("mcp__"):
                 translated_mcp = translate_mcp_tool_to_agy(base_name, plugin_name)
                 if translated_mcp:
                     expanded.append(translated_mcp)
@@ -161,7 +169,11 @@ def process_agent_tools_agy(
         for tool_name in disallowed_list:
             has_scope = "(" in tool_name
             base_name = tool_name.split("(", 1)[0].strip() if has_scope else tool_name
-            if base_name.startswith("mcp__"):
+            if "*" in base_name and not base_name.startswith("mcp__"):
+                matches = [k for k in tool_map if fnmatch.fnmatch(k, base_name)]
+                for k in matches:
+                    denied_tools.extend(tool_map[k])
+            elif base_name.startswith("mcp__"):
                 translated_mcp = translate_mcp_tool_to_agy(base_name, plugin_name)
                 if translated_mcp:
                     denied_tools.append(translated_mcp)
@@ -229,7 +241,16 @@ def process_agent_tools_claude(
 
     for tool_name in tools_list:
         base_name = tool_name.split("(", 1)[0].strip() if "(" in tool_name else tool_name
-        if base_name.startswith("mcp__") or base_name in tool_map:
+        if "*" in base_name and not base_name.startswith("mcp__"):
+            matches = [k for k in tool_map if fnmatch.fnmatch(k, base_name)]
+            if matches:
+                for k in matches:
+                    if k not in seen:
+                        seen.add(k)
+                        final_tools.append(k)
+            else:
+                rejected.add(tool_name)
+        elif base_name.startswith("mcp__") or base_name in tool_map:
             if tool_name not in seen:
                 seen.add(tool_name)
                 final_tools.append(tool_name)

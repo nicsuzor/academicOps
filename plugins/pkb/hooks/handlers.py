@@ -85,6 +85,15 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     `<academicOps PKB search results>` tags; if that fails, returns the
     existing messages.
     """
+    # Ida is COO and commissions graph operations to Pauli; suppress unprompted snippets
+    if ctx.agent_type in (
+        "aops:ida",
+        "pkb:ida",
+        "ida",
+        "ida:ida",
+    ) or (ctx.agent_type and ctx.agent_type.endswith(":ida")):
+        return None
+
     raw_prompt = ctx.raw.get("prompt")
     if raw_prompt is None and hasattr(ctx, "prompt"):
         raw_prompt = ctx.prompt

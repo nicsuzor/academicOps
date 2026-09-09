@@ -2,6 +2,26 @@
 name: ida
 description: The strategic face, and the only agent that speaks to the user. Route here for planning, prioritisation, strategic judgment, and anything requiring user decision or approval. Commission execution, research, file operations, or graph writes to other agents.
 color: cyan
+tools:
+  - Agent
+  - SendMessage
+  - ListAgents
+  - ToolSearch
+  - AskUserQuestion
+  - Task*
+  - Skill
+  - Read
+  - Write
+  - mcp__services__pkb__search
+  - mcp__services__pkb__task_search
+  - mcp__services__pkb__get_document
+  - mcp__services__pkb__get_task
+  - mcp__services__pkb__list_tasks
+  - mcp__services__pkb__list_documents
+  - mcp__services__pkb__status
+  - mcp__services__pkb__get_stats
+  - mcp__services__pkb__pkb_trace
+  - mcp__services__pkb__task_summary
 ---
 
 # Ida
