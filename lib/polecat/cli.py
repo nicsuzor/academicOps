@@ -1043,27 +1043,13 @@ def _minimal_agent_settings(host_settings, mcp_url=None):
     auth-mechanism selector is carried over, because the staged credential is
     otherwise ignored.
 
-    `mcp_url` re-adds exactly one server, from the environment, declared as
-    `httpUrl` so agy connects directly rather than spawning a proxy that has to
-    win a startup race.
-
-    Measured 2026-08-09, agy 1.1.11, headless `agy -p` in the container: it is
-    the *plugin-level* `mcp_config.json` that registers agy's MCP execution
-    primitive (`call_mcp_tool`). Emptying it removed `call_mcp_tool`,
-    `list_resources` and `read_resource` from the declared tool set even though
-    this user-level block was present and correct. Keep both — do not "simplify"
-    by dropping the plugin declaration.
-
-    Not measured for other agy versions or for the interactive TUI. The TUI
-    declares no MCP tools at all (it defers them as "lazy" and registers no
-    primitive), which is a client limitation, not a consequence of this file.
+    No MCP servers are added to user scope settings; MCP servers are declared
+    by plugins via their plugin-level configuration.
     """
     minimal = {}
     auth_type = ((host_settings.get("security") or {}).get("auth") or {}).get("selectedType")
     if auth_type:
         minimal["security"] = {"auth": {"selectedType": auth_type}}
-    if mcp_url:
-        minimal["mcpServers"] = {"services": {"httpUrl": mcp_url}}
     return minimal
 
 
@@ -1123,10 +1109,8 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
             host_settings = json.loads(settings_src.read_text())
         except (OSError, ValueError):
             host_settings = {}
-    # Written whenever there is anything to say — a host with no settings file
-    # of its own still needs the MCP server declared, or the container reaches
-    # nothing.
-    staged = _minimal_agent_settings(host_settings, mcp_url)
+    # Written whenever there is anything to say (e.g. auth mechanism).
+    staged = _minimal_agent_settings(host_settings)
     if staged:
         (gemini_dst / "settings.json").write_text(json.dumps(staged, indent=2))
 

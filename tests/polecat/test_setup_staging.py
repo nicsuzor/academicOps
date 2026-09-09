@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from lib.polecat.cli import setup_staging
+from lib.polecat.cli import _minimal_agent_settings, setup_staging
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -125,3 +125,37 @@ def test_credential_files_still_replicated(fake_gemini_home, tmp_path):
     assert (
         gemini_dst / "antigravity-cli" / "installation_id"
     ).read_text() == "fake-agy-installation-id"
+
+
+def test_setup_staging_does_not_add_mcpservers_with_mcp_url(fake_gemini_home, tmp_path):
+    """Providing mcp_url must not inject mcpServers into agy or Claude user settings."""
+    staging_dir = tmp_path / "staging"
+    staging_dir.mkdir()
+
+    setup_staging(str(staging_dir), MCP_URL, str(fake_gemini_home))
+
+    gemini_settings = json.loads((staging_dir / ".gemini" / "settings.json").read_text())
+    assert "mcpServers" not in gemini_settings
+    assert gemini_settings["security"]["auth"]["selectedType"] == "oauth-personal"
+
+    claude_settings = json.loads((staging_dir / ".claude" / "settings.json").read_text())
+    assert "mcpServers" not in claude_settings
+    assert claude_settings["pluginConfigs"]["aops@academicOps"]["options"]["pkb_mcp_url"] == MCP_URL
+
+
+def test_minimal_agent_settings_never_adds_mcpservers():
+    """_minimal_agent_settings must never produce an mcpServers block, even if passed mcp_url."""
+    host_settings = {
+        "security": {"auth": {"selectedType": "oauth-personal"}},
+        "mcpServers": {
+            "context7": {"httpUrl": LEAKED_INTERNAL_URL},
+            "services": {"httpUrl": "https://old.example/mcp"},
+        },
+    }
+    res = _minimal_agent_settings(host_settings, mcp_url=MCP_URL)
+    assert "mcpServers" not in res
+    assert res == {"security": {"auth": {"selectedType": "oauth-personal"}}}
+
+    res_no_url = _minimal_agent_settings(host_settings)
+    assert "mcpServers" not in res_no_url
+    assert res_no_url == {"security": {"auth": {"selectedType": "oauth-personal"}}}
