@@ -82,27 +82,15 @@ Resolve the slug through the tiers, read the winner, and show it. State which
 tier won and name every other tier the slug resolved in. If it resolves nowhere,
 say so and list the near-misses rather than guessing which was meant.
 
-### preview -- how would `brief` assemble this?
+### preview
 
-Simulate `brief`'s composition step for a stated task, entirely on the record,
-and mint nothing. Read `brief`'s own SKILL.md for its actual steps first --
-this mode borrows its method, it does not reinvent one.
+Simulate how `brief` would assemble workflow templates for a stated objective:
 
-- Enumerate the same three sources `brief` would, exactly as in `list`.
-- Read the ones that look relevant and show how they compose for this task --
-  named fragments filling named slots (e.g. `wf-fact-check` filling `wf-qa`'s
-  evaluate slot), gaps named plainly where no component covers a step the work
-  needs.
-- Show the shape of the resulting task(s) -- Goal / Context / Deliverable /
-  Scope / Constraints / Acceptance criteria, `brief`'s actual body shape --
-  without calling `pkb__decompose_task`, without touching any task's status,
-  without writing to the graph at all.
-- Say plainly, every time, that nothing was minted and this is a preview.
-
-Never cut, dispatch, or write a task from this mode -- that is what makes it
-safe to run on a whim. If the operator wants the real thing next, hand off to
-`brief` explicitly rather than sliding from preview into execution in the same
-turn.
+1. Enumerate and read relevant candidate templates across tiers.
+2. Read the templates and combine their steps into a single, logical sequence (e.g., TDD red tests first, then implementation, then QA integration tests at the end).
+3. Do not ad lib extra requirements or guess at scope. Pass through any ambiguity in the prompt directly to the workflow.
+4. Show the assembled sequence of steps and resulting task brief shape.
+5. Plainly mark output as a non-minted preview. Never write tasks or mutate the graph.
 
 ### new -- add one
 

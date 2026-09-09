@@ -18,22 +18,13 @@ Prepare a task for execution by assembling instructions from component workflow 
 
    Name the standard the unit will be judged against and where it lives. Record any requirement it reaches that the unit does not cover as a named gap -- never absorb it silently, never soften a criterion to fit.
 
-2. **Assemble the required process from relevant workflow component templates.**
-   Enumerate the workflow components available -- project-local (`$CWD/.agents/templates/*.md`), `brief` skill package (`./workflows/*.md`), and personal knowledge base (search PKB for `type: template`).
-
-   Read the ones that look relevant and work out how they go together for this task. Weight the process against real consequence: heavier is theatre, lighter is unmitigated risk. Where the work needs something no component supplies, name the gap and stop rather than freelancing a process.
-
-3. **Identify task boundaries from the assembled workflow**
-
-   Default: do not cut the work into multiple tasks.
-   - Each briefed task should be the largest dispatchable unit of work that can be completed within a single session.
-   - Create a single task with each step in the assembled process as a subtask (a checklist item; part of the task itself).
-   - **Never cut on size or feel:** only cut where the workflow strictly requires work to be split into separate sessions. For example, cut the work into multiple dispatchable tasks if (and only if) the workflow has forks, loops, unresolved decision points, or requires independent planning or review processes.
-   - Each task must be complete and self-contained, with its own acceptance criteria and evidence requirements.
-
-   When cutting work into multiple tasks, create each task as a child of the original task. Sequence tasks by wiring a `depends_on` edge on the later task if (and only if) one unit genuinely needs another's output. Otherwise, let them run in parallel.
-
-   Where new cuts are genuinely needed, mint the cut with `pkb__decompose_task(parent_id=..., subtasks=[...])`, which writes it in one operation and resolves sibling dependencies by positional reference (`$1`, `$2`). Use slugged, human-readable IDs and verb-led imperative titles (e.g. `Implement X`, `Verify Y`). Never put a person's name in a title or filename -- assignment belongs in `assigned_to`. An epic's child units ship together on one branch and one pull request, never scattered.
+2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`./workflows/`), and PKB (`type: template`) tiers.
+   - Read the templates and combine their steps into a logical order (e.g., failing tests first, implementation, then QA).
+   - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, the brief must preserve that ambiguity.
+3. **Determine task boundaries**:
+   - Default to a single dispatchable unit for a single session, laying out the assembled workflow steps as a linear checklist.
+   - Cut into separate tasks only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
+   - Wire `depends_on` edges only where one unit genuinely requires another's output. Mint multi-task cuts using `pkb__decompose_task`.
 
 4. **Idempotency & Cleanup:** Before minting a new task, check if a dispatchable unit covering the work already exists. If it does, **do not duplicate it**. Update the existing task with any necessary new information (like new acceptance criteria) and return the existing task. If you encounter any disorganisation, duplication, or structural graph issues, immediately consolidate (keep it DRY) and re-parent the task using the `/q` skill to clean up.
 
