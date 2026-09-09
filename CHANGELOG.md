@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.9.0](https://github.com/nicsuzor/academicOps/compare/v0.9.2...v0.9.0) (2026-09-08)
+## [0.9.3](https://github.com/nicsuzor/academicOps/compare/v0.9.2...v0.9.3) (2026-09-09)
 
 ### Features
 
