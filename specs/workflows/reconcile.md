@@ -13,7 +13,7 @@ related:
 
 # GH ↔ PKB Reconcile
 
-The reconcile procedure itself lives in `plugins/aops/skills/reconcile/SKILL.md` and is not
+The reconcile procedure itself lives in `plugins/pkb/skills/reconcile/SKILL.md` and is not
 restated here. This spec carries the design constraints that bind it, the frontmatter and
 event-log surfaces it reads and writes, and the target shape of the GitHub-issue leg it does not
 yet cover.
@@ -23,12 +23,12 @@ yet cover.
 The skill's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
 one is covered.
 
-| Gap                                                                                    | State                                         |
-| -------------------------------------------------------------------------------------- | --------------------------------------------- |
-| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built — forward-issue leg, below          |
-| Closed-not-merged PR that was legitimately superseded                                  | Built — the skill's pull-request routing step |
-| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built — forward-issue leg, below          |
-| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built — reverse direction, M3             |
+| Gap                                                                                    | State                                          |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built -- forward-issue leg, below          |
+| Closed-not-merged PR that was legitimately superseded                                  | Built -- the skill's pull-request routing step |
+| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built -- forward-issue leg, below          |
+| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3             |
 
 ## Design constraints
 
@@ -68,7 +68,7 @@ The face does not touch the knowledge base, so its engagement sweep is a delegat
 commissions an agent that runs the skill and returns one synthesized result.
 
 **The reverse direction is not a fourth context.** What a task's completion resolves on the issue
-tracker belongs on the release path that already writes the task — `dump` and `pull` — on a
+tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on a
 different trigger, which reconcile does not run.
 
 ## Frontmatter markers
@@ -76,14 +76,14 @@ different trigger, which reconcile does not run.
 Two task frontmatter fields, PKB-lint validated. Both are legal on one task simultaneously; the
 same issue number appearing in both emits a lint warning, not a hard block.
 
-**`closes_issues: [N, M]`** — this task's completion resolves the listed GH issues. On completion,
+**`closes_issues: [N, M]`** -- this task's completion resolves the listed GH issues. On completion,
 the agent on the release path comments on each citing the closing commit SHA, and for
 framework-owned repos also closes the issue. Validation: integer values; warn if a listed issue is
 already closed at write time.
 
-**`gates_on: [N, M]`** — this task is blocked or monitored by the listed GH issues. When a listed
+**`gates_on: [N, M]`** -- this task is blocked or monitored by the listed GH issues. When a listed
 issue closes, the forward sweep writes a `needs_user_call` event; detection never auto-completes
-the task. **Not built** — no skill reads this field today.
+the task. **Not built** -- no skill reads this field today.
 
 ## Event log
 
@@ -100,12 +100,12 @@ short-lived and append-only, and that the next sweep can read it to render what 
 decision. Over-structuring is the failure mode: a field only ever read as natural-language
 context stays prose.
 
-## Forward-issue leg — target shape
+## Forward-issue leg -- target shape
 
 Structured surfaces, matched mechanically:
 
 - `closes_issues: [N]` / `gates_on: [N]` → `gh issue view N --json state`.
-- `closingIssuesReferences` from the GH API — the structured field, never regex over commit text.
+- `closingIssuesReferences` from the GH API -- the structured field, never regex over commit text.
 
 Prose surfaces, read by an agent that returns a typed JSON answer with a confidence enum. One
 question: does this manually-closed issue correspond to a PKB task? (issue title, body, labels;
@@ -117,8 +117,8 @@ to `needs_user_call` regardless of confidence. `needs_user_call` also covers an 
 with `state_reason: not_planned` or `duplicate`, and a `gates_on` event firing on a task with
 multiple blocking issues.
 
-This routing governs **matching** only. The skill's own cancellation authority — a world-fact
-established under a written evidence burden — is separate and does not route through it.
+This routing governs **matching** only. The skill's own cancellation authority -- a world-fact
+established under a written evidence burden -- is separate and does not route through it.
 
 ## DRY discipline
 
@@ -132,7 +132,7 @@ Blocked on the forward-issue leg landing first. A one-off agent session, run aft
 and before the forward sweep runs on a cadence.
 
 The agent considers all open GH issues across framework repos and all PKB tasks in the taxonomy's
-actionable set, reads the prose, and classifies each relationship — does this task close that
+actionable set, reads the prose, and classifies each relationship -- does this task close that
 issue, is it gated on it, or is there no relationship. Uncertain cases go to the event log with
 the ambiguous phrase quoted, surfacing in the next sweep's result. Closed and done records are
 read-only.
@@ -144,13 +144,13 @@ is permitted; the relationship classification is always agent-read, never regex.
 
 Sequencing checkpoints, not implementation tickets.
 
-- **M1 — Skill exists and is invocable.** One skill, PKB lint validates the new frontmatter
+- **M1 -- Skill exists and is invocable.** One skill, PKB lint validates the new frontmatter
   fields, a handful of cases worked end-to-end by hand.
-- **M2 — Forward sweeps adopted.** Engagement and batch contexts both reach the skill; no other
+- **M2 -- Forward sweeps adopted.** Engagement and batch contexts both reach the skill; no other
   skill carries closure-loop logic. DRY audit clean.
-- **M3 — Reverse direction adopted at release.** `dump` and `pull` read `closes_issues:` and act
+- **M3 -- Reverse direction adopted at release.** `dump` and `pull` read `closes_issues:` and act
   on it on the release path, not by invoking reconcile. No new hooks.
-- **M4 — Backfill run.**
+- **M4 -- Backfill run.**
 
 ## Open question
 

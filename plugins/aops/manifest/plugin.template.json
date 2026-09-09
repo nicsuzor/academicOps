@@ -4,7 +4,7 @@
   "clients": {
     "__base__": {
       "name": "aops",
-      "description": "ida for strategy and pauli for memory.",
+      "description": "james for execution, marsha for QA, sara for unattended dispatch, adversary for red-team.",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -12,16 +12,14 @@
       "keywords": [
         "academicOps",
         "aops",
-        "pauli",
-        "ida",
-        "memory",
-        "planning",
-        "knowledge-graph"
+        "james",
+        "marsha",
+        "sara",
+        "adversary",
+        "planning"
       ]
     },
-    "claude": {
-      "mcpServers": "./.mcp.json"
-    },
+    "claude": {},
     "agy": {}
   }
 }

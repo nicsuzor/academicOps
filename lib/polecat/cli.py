@@ -1174,22 +1174,6 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None, prompt=None):
             "positional: claude, agy, shell, bash, or sleep."
         )
 
-    if agent_cmd == "ida" or agent == "ida":
-        fail(
-            "ida is the interactive face plugin and is not installed in polecat containers. "
-            "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg) via "
-            "claude or agy."
-        )
-
-    for idx, arg in enumerate(extra_args):
-        if arg == "--agent=ida" or (
-            arg == "--agent" and idx + 1 < len(extra_args) and extra_args[idx + 1] == "ida"
-        ):
-            fail(
-                "ida is the interactive face plugin and is not installed in polecat containers. "
-                "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg)."
-            )
-
     # Neither agent CLI has a --non-interactive flag; both exit on an unknown one.
     if agent_cmd in ("claude", "agy") and "--non-interactive" in extra_args:
         fail(
@@ -1943,7 +1927,7 @@ def main():
     "--agent",
     "-a",
     default=None,
-    help="Agent persona to run inside container (default: james).",
+    help="Agent persona to run inside container (default: ida).",
 )
 @click.option(
     "--no-agent",
@@ -2038,7 +2022,7 @@ def run(
     elif agent is not None:
         effective_agent = agent
     else:
-        effective_agent = "james"
+        effective_agent = "ida"
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent, prompt=prompt)
 
