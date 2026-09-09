@@ -215,8 +215,8 @@ def test_no_agent_flag_disables_default_agent(client, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
-def test_default_agent_is_ida(client, tmp_path, monkeypatch):
-    """When neither --agent nor --no-agent is passed, --agent ida is passed to the container."""
+def test_default_agent_is_james(client, tmp_path, monkeypatch):
+    """When neither --agent nor --no-agent is passed, --agent james is passed to the container."""
     cmd = _capture_docker_cmd(
         monkeypatch,
         tmp_path,
@@ -225,7 +225,7 @@ def test_default_agent_is_ida(client, tmp_path, monkeypatch):
     inner = _inner_cmd(cmd)
 
     assert inner.count("--agent") == 1
-    assert inner[inner.index("--agent") + 1] == "ida"
+    assert inner[inner.index("--agent") + 1] == "james"
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])

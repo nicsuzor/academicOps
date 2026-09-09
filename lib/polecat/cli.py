@@ -1911,7 +1911,7 @@ def main():
     "--agent",
     "-a",
     default=None,
-    help="Agent persona to run inside container (default: ida).",
+    help="Agent persona to run inside container (default: james).",
 )
 @click.option(
     "--no-agent",
@@ -2006,7 +2006,7 @@ def run(
     elif agent is not None:
         effective_agent = agent
     else:
-        effective_agent = "ida"
+        effective_agent = "james"
 
     _reject_bad_agent_cmd(agent_cmd, extra_args, agent=effective_agent, prompt=prompt)
 
