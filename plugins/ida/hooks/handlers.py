@@ -14,6 +14,5 @@ Handler = Callable[[HookContext], Result | None]
 HANDLERS: dict[str, list] = {
     "PreToolUse": [scratchpad_write_gate, premise_check_handler],
     "Stop": [citation_enforcement_gate],
-    "SubagentStop": [citation_enforcement_gate],
     # "PostToolBatch": [premise_check_arm],
 }
