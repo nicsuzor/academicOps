@@ -1415,7 +1415,7 @@ def _build_inner_command(
         # and naming both silently dropped the args.
         inner_cmd.extend(extra_args)
         if agent_cmd == "agy":
-            if effectively_interactive:
+            if interactive:
                 inner_cmd.extend(["--prompt-interactive", prompt])
             else:
                 # agy's `--prompt` is an alias for `--print`, so this is headless too
@@ -1447,7 +1447,7 @@ def _build_inner_command(
                 "--conversation",
             }
             if not agy_prompt_flags.intersection(extra_args):
-                if effectively_interactive:
+                if interactive:
                     inner_cmd.extend(["--prompt-interactive", extra_args[0], *extra_args[1:]])
                 else:
                     # Autonomous dispatch runs headless so the agent completes its loop

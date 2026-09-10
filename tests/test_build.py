@@ -1212,7 +1212,11 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
 
     agy_mcp = json.loads((dist_root / "pkb-agy" / "mcp_config.json").read_text())
     assert agy_mcp["mcpServers"] == {
-        "services-http": {
-            "serverUrl": "$PKB_MCP_URL",
+        "services": {
+            "command": "bash",
+            "args": [
+                "-c",
+                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
+            ],
         }
     }

@@ -69,3 +69,82 @@ def test_interactive_task_dispatch_is_interactive(agent_cmd):
     assert seeded_from_task is True
     assert seeded_prompt == "/pkb:pull aops_123"
     assert "--print" not in inner_cmd
+
+
+def test_agy_free_text_prompt_without_interactive_flag_is_headless():
+    """When a free text prompt is run with agy without -i, it must use --print,
+
+    even if the invoking shell is interactive (has a TTY).
+    """
+    inner_cmd, _, _, seeded_prompt = _build_inner_command(
+        "agy",
+        ("free text prompt",),
+        is_interactive=True,
+        explicit_headless=False,
+        task=None,
+        config={},
+        interactive=False,
+    )
+    assert "--prompt-interactive" not in inner_cmd, inner_cmd
+    assert "--print" in inner_cmd, inner_cmd
+    assert "free text prompt" in inner_cmd
+    assert seeded_prompt == "free text prompt"
+
+
+def test_agy_free_text_prompt_with_interactive_flag_uses_prompt_interactive():
+    """When a free text prompt is run with agy with -i (interactive=True),
+
+    it must use --prompt-interactive.
+    """
+    inner_cmd, _, _, seeded_prompt = _build_inner_command(
+        "agy",
+        ("free text prompt",),
+        is_interactive=True,
+        explicit_headless=False,
+        task=None,
+        config={},
+        interactive=True,
+    )
+    assert "--prompt-interactive" in inner_cmd, inner_cmd
+    assert "--print" not in inner_cmd, inner_cmd
+    assert "free text prompt" in inner_cmd
+    assert seeded_prompt == "free text prompt"
+
+
+def test_agy_explicit_prompt_without_interactive_flag_is_headless():
+    """When --prompt is passed to agy without -i, it must use --prompt,
+
+    not --prompt-interactive.
+    """
+    inner_cmd, _, _, seeded_prompt = _build_inner_command(
+        "agy",
+        (),
+        is_interactive=True,
+        explicit_headless=False,
+        task=None,
+        prompt="hello world",
+        config={},
+        interactive=False,
+    )
+    assert "--prompt-interactive" not in inner_cmd, inner_cmd
+    assert "--prompt" in inner_cmd, inner_cmd
+    assert "hello world" in inner_cmd
+    assert seeded_prompt == "hello world"
+
+
+def test_agy_explicit_prompt_with_interactive_flag_uses_prompt_interactive():
+    """When --prompt is passed to agy with -i, it must use --prompt-interactive."""
+    inner_cmd, _, _, seeded_prompt = _build_inner_command(
+        "agy",
+        (),
+        is_interactive=True,
+        explicit_headless=False,
+        task=None,
+        prompt="hello world",
+        config={},
+        interactive=True,
+    )
+    assert "--prompt-interactive" in inner_cmd, inner_cmd
+    assert "--prompt" not in inner_cmd, inner_cmd
+    assert "hello world" in inner_cmd
+    assert seeded_prompt == "hello world"
