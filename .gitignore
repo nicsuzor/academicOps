@@ -1,6 +1,10 @@
 # Claude code
 .claude/*
 !.claude/skills
+# Agent definitions and setup are source, not local state -- .claude/* was
+# silently keeping them out of the repo.
+!.claude/agents
+!.claude/setup.sh
 .gemini/
 !.gemini/sandbox.Dockerfile
 .aops/
