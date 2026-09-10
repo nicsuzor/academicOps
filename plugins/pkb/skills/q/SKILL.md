@@ -20,6 +20,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
    - `depends_on`, `soft_depends_on`, `supersedes`: Link dependencies. Omit redundant sibling edges under the same parent.
    - Task structure lives in edges, never in prose.
 6. **Value at intake**: Record marginal benefit, synergies, value of information, and effort where established. Never write `focus_score`.
+7. **Intent**: Set `intent` only when the user's own words name a band or its unambiguous equivalent (`critical`/`P0` → 0, `high` → 1, `active`/`do it now` → 2, `planned` → 3, `backlog`/`someday` → 4). Otherwise leave it unset and carry importance in `contributes_to` `stated_weight`. Never infer a band from tone, from urgency in the triggering incident, or from the parent's value.
 
 ## Output
 
@@ -31,5 +32,5 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 - Create standalone "decision" tasks or file questions as tasks (model alternatives as mutually exclusive option nodes and unknowns as spikes).
 - Include personal names in titles or filenames.
-- Write `intent` (or legacy `priority`), or set `severity` on non-target nodes.
+- Write `intent` (or legacy `priority`) on your own judgement, or set `severity` on non-target nodes.
 - Promote or release work for dispatch (leave at `inbox`).
