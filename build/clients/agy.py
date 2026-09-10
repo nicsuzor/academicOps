@@ -34,6 +34,7 @@ _PLUGIN_ROOT_RE = re.compile(r'"?\$\{AGY_PLUGIN_ROOT\}/([^"\s]*)"?')
 _PLUGIN_ROOT_BARE_RE = re.compile(r'"\$\{AGY_PLUGIN_ROOT\}"')
 _COMMAND_TYPE_RE = re.compile(r"(?m)^type:\s*command\s*$")
 _PLACEHOLDER_RE = re.compile(r"\$\{[^}]*\}")
+_SHELL_VAR_RE = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 
 # agy's five hook events, split by the structure each one takes. The tool
@@ -165,6 +166,23 @@ def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
                 f"(${{extensionPath}} and ${{CLAUDE_PLUGIN_ROOT}} are the only tokens "
                 f"the aops-crew image's post-install fixup resolves; this one is not "
                 f"among them.)"
+            )
+        # `serverUrl` reaches an HTTP client, never a shell, so a bare `$NAME`
+        # ships as those literal characters and the server is dialled at a URL
+        # that cannot resolve. agy loads the file as a unit: one such entry
+        # costs the plugin every MCP tool it declares, including the servers
+        # alongside it that were configured correctly. A `$NAME` inside
+        # `command`/`args` is different — that text is handed to a shell, which
+        # expands it — so this check is scoped to `serverUrl` alone.
+        shell_var = _SHELL_VAR_RE.search(str(server.get("serverUrl", "")))
+        if shell_var:
+            raise BuildError(
+                f"{ctx.plugin.directory}: manifest/mcp.template.json puts "
+                f"{shell_var.group(0)} in the serverUrl of MCP server {name!r} "
+                f"(client=agy). serverUrl is dialled by an HTTP client, not a "
+                f"shell, so the variable never expands and the whole plugin's "
+                f"mcp_config.json fails to load. Use a stdio `command` that runs "
+                f"through a shell, or supply the resolved URL another way."
             )
         # agy's own rule, enforced by the CLI: "MCP server %q must have either
         # command or serverUrl" / "cannot have both".

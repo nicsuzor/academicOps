@@ -260,6 +260,27 @@ def test_agy_allows_the_two_placeholders_its_post_install_fixup_resolves(tmp_pat
     }
 
 
+def test_agy_rejects_a_shell_variable_in_an_mcp_server_url(tmp_path):
+    """A bare `$NAME` in serverUrl never expands: agy dials the URL over HTTP
+    without a shell, the load of the whole mcp_config.json fails, and the
+    plugin's correctly configured stdio servers lose their tools with it."""
+    from build.clients.agy import _checked_mcp
+
+    with pytest.raises(BuildError, match="serverUrl"):
+        _checked_mcp({"services-http": {"serverUrl": "$PKB_MCP_URL"}}, _agy_ctx(tmp_path))
+    with pytest.raises(BuildError, match="serverUrl"):
+        _checked_mcp({"services-http": {"url": "$PKB_MCP_URL/mcp"}}, _agy_ctx(tmp_path))
+
+    literal = {"services-http": {"serverUrl": "https://example.invalid/mcp"}}
+    assert _checked_mcp(literal, _agy_ctx(tmp_path)) == {"mcpServers": literal}
+
+    # The same text inside a stdio command is expanded by the shell that runs it.
+    shell = {
+        "services": {"command": "bash", "args": ["-c", 'fastmcp run "$PKB_MCP_URL"']},
+    }
+    assert _checked_mcp(shell, _agy_ctx(tmp_path)) == {"mcpServers": shell}
+
+
 def test_agy_rejects_an_mcp_server_that_is_neither_stdio_nor_remote(tmp_path):
     """agy's own rule: a server must have either `command` or `serverUrl`, and
     cannot have both."""
