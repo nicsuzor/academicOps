@@ -71,14 +71,23 @@ Simulate how `brief` would assemble workflow templates for a stated objective:
 2. Delete the artifact (`rm` for files, `pkb__delete` for PKB nodes).
 3. Name the superseding workflow in the release message or commit.
 
+A template carries only what a composing agent needs to select it and to know
+the step is finished -- the same sufficient-and-no-more standard `/brief`
+composes to ([[aops_brief_workflow_assembly]]). Nothing else is mandatory:
+inventing exclusions, contraindications, or gates the work doesn't call for
+overshoots it. No fixed kind is required either -- components sit on one flat
+spine, not sorted into types ([[aops-composable-workflow-system]] §6); a
+template stating an obligation that blocks acceptance rather than a process
+that proceeds conventionally carries a `wf-` prefix, no frontmatter field
+needed to say so.
+
 ## Template Schema
 
 ```yaml
 ---
 title: <human name>
 type: template
-category: process | gate
-description: <selection criteria and explicit exclusions>
+description: <one line: what class of work this covers, so a composer can select it>
 tags: [...]
 ---
 ```
