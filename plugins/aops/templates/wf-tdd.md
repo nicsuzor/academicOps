@@ -1,5 +1,4 @@
 ---
-category: process
 description: Testing standards and red-green-refactor cycle for testable code changes.
 id: wf-tdd
 tags:
@@ -11,27 +10,30 @@ type: template
 
 ## What this step does
 
-Enforces red-green-refactor cycles for machine-checkable code changes.
+Red-green-refactor development for any testable code change, where correctness is machine-checkable.
 
 ## Procedure
 
-1. **Red**: Write a failing test for a single behavior asserting on public interfaces and observable inputs/outputs.
-2. **Verify failure**: Execute the test and capture the failure trace. The test must fail on the assertion itself, not on syntax or environment errors.
-3. **Green**: Write the minimal implementation required to satisfy the test.
-4. **Verify pass**: Run the test suite and confirm passing status.
-5. **Refactor**: Improve design while ensuring the full test suite remains green.
+1. **Red** -- write a failing test for ONE behavior, asserting on its public API or observable I/O -- never on internal state or a mock's call log. The expected value must be one the implementation has to derive, not a literal about to be pasted into it.
+2. **Verify failure** -- run the test and capture the failure trace before implementing. It must fail on the assertion, not on a syntax, import, or fixture error. A test that passes immediately, or fails for the wrong reason, is not red: halt and rewrite it.
+3. **Green** -- minimal implementation to pass, nothing more.
+4. **Verify pass** -- run the test and cite the passing output; a claimed pass with no run is not verified.
+5. **Refactor** (optional) -- only while tests stay green; if it breaks a test, undo the refactor rather than pushing forward on a broken base.
+6. **Repeat** if acceptance criteria remain; otherwise commit.
 
-## Testing Standards
+## Constraints (normative)
 
-- **Behavioral assertions**: Test public interfaces and side effects; avoid asserting on internal state or mock histories.
-- **Non-tautological**: Do not assert against hardcoded constants duplicated directly from the implementation.
-- **Edge cases and errors**: Cover boundary conditions, empty inputs, and expected exceptions.
-- Commit code only with passing tests; never commit failing tests or untested implementations.
+- One behavior per test, one behavior per cycle. Test before code.
+- Black-box only: assert inputs → output or observable effect, never internals.
+- No tautologies -- never assert against a hardcoded value inserted solely to satisfy that assertion.
+- At least 2-3 distinct cases per non-trivial behavior, including boundary and error conditions.
+- Never commit with a failing test, or a failing test without its implementation.
+- Never implement beyond the minimum needed to pass the current test.
 
-## Output Contract
+## Output contract
 
-Handback must report:
+State which behaviors were covered by which tests, the red failure trace for each as proof the test was genuine, confirmation the full suite is green (not just the new test -- refactor steps can regress siblings), and any refactor steps taken. If a cycle was abandoned or reworked mid-cycle, say so.
 
-- Behaviors covered and corresponding test identifiers.
-- Captured red failure trace demonstrating genuine pre-implementation failure.
-- Full test suite execution log verifying all tests pass.
+## When to include
+
+Any testable code change with machine-checkable correctness. Composes as the implementation phase inside a larger [[wf-qa]]-gated feature: the TDD cycle produces the artifact; [[wf-qa]] independently checks it's actually right.

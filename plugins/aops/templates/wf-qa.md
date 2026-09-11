@@ -1,7 +1,6 @@
 ---
 alias:
   - wf-qa
-category: gate
 description: Universal QA gate -- assemble criteria, critically evaluate live output, effect, or artifact, and return a per-criterion qualitative assessment with evidence.
 id: wf-qa
 title: Quality Assurance Workflow
@@ -10,21 +9,21 @@ type: template
 
 ## What this step does
 
-Universal QA instructions, qualitatively critiquing live outputs, effects, or artifacts against established acceptance criteria.
+Universal QA gate: assemble criteria, evaluate independently, return a per-criterion verdict with evidence.
 
 ## Procedure
 
-1. **Assemble Criteria**: Record acceptance criteria verbatim from the task specification before inspecting outputs.
+1. **Assemble criteria** -- record acceptance criteria verbatim from the task specification before inspecting outputs.
+2. **Evaluate** -- run a practical, live test or evaluation of the artifact against those criteria. The evaluator must be independent of the artifact's author.
+3. **Report per criterion**:
+   - **Criterion** -- verbatim from step 1.
+   - **Status** -- `MET` or `UNMET`. A criterion that can't be checked is `UNMET` with the reason recorded, never skipped or assumed.
+   - **Evidence** -- pinpoint citation: `file:line`, command output, or the visual region a viewer would look at.
 
-2. **Evaluate**: Perform a practical, live evaluation of the artifact based on the criteria.
+## Output contract
 
-- Composition note: This step should be in a separate task to design and development stages: the evaluator should be independent of the artifact author.
+The handback is the itemized report itself -- every criterion accounted for, none silently dropped. A report missing evidence for a `MET` criterion is not a pass.
 
-- This step requires a _critical_, _qualitative_ assessment of the _outputs_ against the _acceptance criteria_. It is not sufficient to analyse the source, methodology, inputs, or test results; or to rely on hypothetical or attested descriptions of the outputs.
-- The evaluator must examine the live artifact as it is actually produced, in situ, with real inputs. For code this means actually running a real process; documents and interfaces must be rendered and assessed visually; the substance of the output has to be carefully critiqued.
-- A qualitative test means this step cannot be reduced to a pass/fail result. The artifact must be assessed against each criterion in context -- its purpose, audience, standards, congruency with existing work, compliance with genre expectations, aesthetic fit, etc. These questions always use a qualitative, continuous scale expressed textually; they cannot and should not be reduced to a numerical or binary rating.
+## When to include
 
-3. **Confirm per-criterion**: Return an itemized report containing:
-   - **Criterion**: Verbatim requirement from step 1.
-   - **Evaluation**: Summary of overall critique
-   - **Reasons**: A short assessment against each of the criteria (short form dot points preferred, each with pinpoint citation (`file:line`, extracted output, visual region)).
+Any artifact that must be judged before it is accepted -- code, prose, a design, a decision -- whenever criteria exist to judge it against.

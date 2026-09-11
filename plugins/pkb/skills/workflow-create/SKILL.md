@@ -16,7 +16,7 @@ Extract the structural architecture of a completed, user-approved process and au
    - **Improvised defaults**: Encode unreviewed choices as flexible defaults, not doctrine.
 3. **Capture pattern, not narrative**: Extract the coordination mechanics (blind parallel reviews, synthesis stages, independent gates) rather than session-specific events.
 4. **Specify purpose, not method**: Define entry triggers, exit conditions, and criteria; leave tactical execution to future executors.
-5. **Enforce scope boundaries**: Include explicit selection criteria and contraindications in frontmatter.
+5. **Minimum content, not maximum**: Include only enough for a composing agent to select the template and know when the step is finished -- the same sufficient-and-no-more standard `workflow-library`'s schema states ([[aops_brief_workflow_assembly]]). Do not invent exclusions, contraindications, or gates the evidence didn't produce.
 
 ## Validation and Delivery
 
