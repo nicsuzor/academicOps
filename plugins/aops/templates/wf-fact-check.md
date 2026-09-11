@@ -12,18 +12,28 @@ type: template
 
 ## What this step does
 
-Fills `[[wf-qa]]`'s evaluate slot to verify factual, empirical, and citation-bearing claims against primary sources. Ensures citations resolve, values match sources, and claimed runtime behaviors were directly observed.
+Checks factual and evidentiary claims in a draft against their sources -- citations resolve, quoted
+numbers match the source, described behaviour matches what was actually observed rather than
+assumed, links are live and point where claimed. This is narrower and more mechanical than
+[[wf-qa]]'s general judgment: it verifies claims are TRUE, not that the work is GOOD.
 
-## Output Contract
+## Output contract
 
-For each claim evaluated, report:
+The fact-check handback must state, per claim checked:
 
-- **Claim and source**: Quoted statement and primary source pointer.
-- **Verdict**: Binary `PASS` or `FAIL` (record failure reason if unresolvable).
-- **Summary count**: Number of claims checked, passed, and failed.
+- The claim, the source checked, and the resolving link/command/output.
+- PASS (claim verified against source) or FAIL (claim doesn't hold) -- no third state; a claim that couldn't be checked is a FAIL with the reason recorded ("source unavailable", "couldn't reproduce").
+- A summary count: N claims checked, N passed, N failed -- so [[wf-qa]] doesn't have to re-derive coverage.
 
-Durable ledgers and detailed reasoning logs attach to the commissioning PKB task. Pull requests and shared repositories receive only the final summary counts and overall verdict.
+## Record surface (mandatory)
 
-## When to Include
+The ledger, the work log, and the reasoning behind them are working records. Their durable home is the PKB, attached to the commissioning task -- never a public or shared artifact repository. The repository under review receives only the completed work itself and, where the surrounding process requires a report (a PR review gate, an editor sign-off), a summary -- verdict and counts, with a pointer to the task that holds the record -- not the internal ledger or narrative. This applies to every project, not any one repo: a reasoning log committed to a shared repo publishes the team's internal deliberations alongside the work.
 
-Include for research drafts, grant proposals, benchmark reports, or code claiming specific bug fixes. Skip for purely stylistic edits or exploratory discussions with no empirical claims.
+## When to include
+
+Any artifact making factual, empirical, or citation-bearing claims: research writing, grant text, anything citing data or prior work, code claiming a behavior ("this fixes X" -- did it?). When in doubt, include it -- it's cheap relative to a wrong claim shipping.
+
+## Related
+
+- [[wf-qa]] -- the parent gate this fills the evaluate slot for
+- [[wf-loop]] -- iteration wrapper, where the same claims must be re-checked across rounds

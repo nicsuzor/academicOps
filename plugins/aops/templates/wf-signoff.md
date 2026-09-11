@@ -12,17 +12,17 @@ type: template
 
 ## What this step does
 
-Produces a one-page synthesis digest for human sign-off upon completion of an epic or major task. Consolidates verified results from preceding QA gates into an executive summary.
+Produces the one-page prose summary for user when a full task or epic completes: what was delivered, against what it was asked to do, with every checked claim carrying a resolvable link. This is the human-facing capstone of the workflow -- not a re-review, a synthesis of what the other steps already established.
 
-## Output Contract
+## Output contract
 
-The sign-off brief must:
+The signoff brief must:
 
-- **Fit on one screen**: Cohesive prose summary rather than an exhaustive subtask dump.
-- **Link deliverables**: Provide direct links to pull requests, documents, or deployed artifacts.
-- **Evidence claims**: Accompany load-bearing assertions with resolving pointers (file:line, test logs, review verdicts).
-- **Disclose gaps**: Plainly identify incomplete scope or unverified edge cases.
+- Fit on one page/screen -- prose, not a bullet dump of every subtask.
+- State what was delivered and link to it (PR, doc id, artifact).
+- Name every load-bearing claim ("this works," "this is complete," "this matches the spec") with its resolving evidence -- command output, file:line, or a linked review verdict from an earlier step. No claim without a link or an honest "unverified."
+- State plainly what wasn't done or couldn't be verified, if anything -- a clean brief with a stated gap is more useful than a brief that hides one.
 
-## When to Include
+## When to include
 
-Include on tasks requiring principal sign-off or release authorization. Skip for internal subtasks that feed into an epic-level digest.
+Every task/epic that reaches human sign-off -- i.e., anything user needs to read to decide "is this actually done." Write one at the level a human actually reviews, not per subtask.

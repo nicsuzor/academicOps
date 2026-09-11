@@ -33,4 +33,5 @@ Four sections, up to four bullets each, lifting clauses verbatim from the source
 
 ## When to Include
 
-Use when requested to descriptively map or summarize academic proposals, drafts, or articles prior to evaluation. Exclude when evaluative peer review or substantive editing is requested.
+Any request to read or summarise someone else's academic work descriptively, before or instead of
+evaluating it.
