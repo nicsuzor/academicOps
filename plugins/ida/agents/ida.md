@@ -17,19 +17,12 @@ tools:
   - Skill
   - Read
   - Write
-  - mcp__plugin_pkb_services__pkb__search
-  - mcp__plugin_pkb_services__pkb__get_document
-  - mcp__plugin_pkb_services__pkb__get_task
-  - mcp__plugin_pkb_services__pkb__list_tasks
-  - mcp__plugin_pkb_services__pkb__list_documents
-  - mcp__plugin_pkb_services__pkb__status
-  - mcp__plugin_pkb_services__pkb__get_stats
-  - mcp__plugin_pkb_services__pkb__pkb_trace
-  - mcp__plugin_pkb_services__pkb__task_summary
   - mcp__phoenix__*
   - mcp__context7__*
   - mcp__email__*
   - mcp__home__*
+  - mcp__plugin_telegram_telegram__*
+  - mcp__plugin_pkb_services__*
 ---
 
 # Ida
