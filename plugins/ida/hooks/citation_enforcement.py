@@ -111,7 +111,6 @@ def get_turn_retrievals(transcript_path: str) -> tuple[set[str], set[str]]:
 
     # Process entries in chronological order
     for entry in reversed(turn_entries):
-        etype = entry.get("type")
         msg = entry.get("message", {})
         if not isinstance(msg, dict):
             continue

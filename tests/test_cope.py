@@ -965,7 +965,7 @@ def test_sink_for_writes_one_record_per_rule_including_clean_ones(
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch, COPE_EVALUATOR_API_KEY="super-secret")
     transport.respond = lambda payload: {
-        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "label": 1 if "fallback" in payload["criteria_text"].lower() else 0,
         "confidence": 0.8,
         "explanation": "why",
     }
@@ -1037,7 +1037,7 @@ def test_trace_destination_that_cannot_be_written_does_not_break_the_tool_call(
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
     transport.respond = lambda payload: {
-        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "label": 1 if "fallback" in payload["criteria_text"].lower() else 0,
         "confidence": 0.8,
     }
     # A file where the trace's parent directory needs to be: mkdir(parents=True)
@@ -1132,7 +1132,7 @@ def test_otel_sink_for_writes_one_span_per_rule_including_clean_ones(
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch, COPE_EVALUATOR_API_KEY="super-secret")
     transport.respond = lambda payload: {
-        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "label": 1 if "fallback" in payload["criteria_text"].lower() else 0,
         "confidence": 0.8,
         "explanation": "why",
     }
@@ -1328,7 +1328,7 @@ def test_otel_trace_destination_that_cannot_be_written_breaks_the_tool_call(
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
     transport.respond = lambda payload: {
-        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "label": 1 if "fallback" in payload["criteria_text"].lower() else 0,
         "confidence": 0.8,
     }
     blocker = tmp_path / "blocker"
@@ -1393,7 +1393,7 @@ def test_evaluate_injects_the_rule_the_evaluator_flagged(
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
     transport.respond = lambda payload: {
-        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "label": 1 if "fallback" in payload["criteria_text"].lower() else 0,
         "confidence": 0.95,
     }
     result = handlers.evaluate(_bash_ctx(hooks, cwd, "git commit --no-verify -m x"))
@@ -1435,7 +1435,7 @@ def test_the_evaluators_own_reasoning_is_surfaced_when_it_gives_one(
     hooks, cwd = hooks_dir_with_axioms
     _configure(monkeypatch)
     transport.respond = lambda payload: {
-        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "label": 1 if "fallback" in payload["criteria_text"].lower() else 0,
         "confidence": 0.9,
         "explanation": "the --no-verify flag skips the pre-commit gate",
     }
@@ -1505,7 +1505,7 @@ def test_evaluate_says_nothing_when_there_is_no_tool_call(
 
 def _flag_workarounds(transport) -> None:
     transport.respond = lambda payload: {
-        "label": 1 if "workaround" in payload["criteria_text"].lower() else 0,
+        "label": 1 if "fallback" in payload["criteria_text"].lower() else 0,
         "confidence": 0.95,
     }
 
@@ -1779,7 +1779,7 @@ class _StubEvaluator(BaseHTTPRequestHandler):
     marker the test planted, so the end-to-end assertions cover a real HTTP
     round trip — headers, JSON, urllib, the lot — not a patched call."""
 
-    marker = "workaround"
+    marker = "fallback"
     seen: list[dict] = []
 
     def do_POST(self):  # noqa: N802 - BaseHTTPRequestHandler's interface
@@ -1947,7 +1947,7 @@ def test_dispatch_end_to_end_is_silent_when_nothing_is_flagged(
         assert result.returncode == 0, f"stderr: {result.stderr!r}"
         assert result.stdout.strip() == ""
     finally:
-        _StubEvaluator.marker = "workaround"
+        _StubEvaluator.marker = "fallback"
 
 
 def test_dispatch_end_to_end_unconfigured_is_a_silent_no_op(built_cope_plugin, project_cwd):
