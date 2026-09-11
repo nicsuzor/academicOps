@@ -24,6 +24,10 @@ tools:
   - mcp__services__pkb__get_stats
   - mcp__services__pkb__pkb_trace
   - mcp__services__pkb__task_summary
+  - mcp__phoenix__*
+  - mcp__context7__*
+  - mcp__email__*
+  - mcp__home__*
 ---
 
 # Ida

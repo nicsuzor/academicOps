@@ -4,7 +4,6 @@ description: Custodian of the Personal Knowledge Base and effectual strategist. 
 color: blue
 tools:
   - SendMessage
-  - Bash(agy *)
   - Bash(git *)
   - Bash(gh *)
   - ListAgents
@@ -17,6 +16,7 @@ tools:
   - mcp__services__pkb__*
   - mcp__plugin_pkb_services__pkb__*
   - mcp__pkb__*
+  - mcp__phoenix__*
 permissionMode: dontAsk
 ---
 
