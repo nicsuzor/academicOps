@@ -1,7 +1,6 @@
 ---
 alias:
   - wf-fact-check
-category: gate
 description: Fills wf-qa evaluate slot for factual, empirical, and citation-bearing claims against primary sources. Skip for pure judgment or stylistic work.
 id: wf-fact-check
 tags:

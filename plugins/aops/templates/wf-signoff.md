@@ -1,7 +1,6 @@
 ---
 alias:
   - wf-signoff
-category: gate
 description: Author a concise, one-page human-facing summary digest for decision or release sign-off.
 id: wf-signoff
 tags:

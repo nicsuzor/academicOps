@@ -1,7 +1,6 @@
 ---
 alias:
   - wf-qa-visual
-category: process
 description: Fills wf-qa evaluate slot for rendered output -- capture artifact images and judge multimodally against criteria.
 id: wf-qa-visual
 status: ready

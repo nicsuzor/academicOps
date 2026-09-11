@@ -1,7 +1,6 @@
 ---
 alias:
   - wf-qa
-category: gate
 description: Universal QA gate -- assemble criteria, critically evaluate live output, effect, or artifact, and return a per-criterion qualitative assessment with evidence.
 id: wf-qa
 title: Quality Assurance Workflow

@@ -1,5 +1,4 @@
 ---
-category: process
 description: Testing standards and red-green-refactor cycle for testable code changes.
 id: wf-tdd
 tags:

@@ -1,7 +1,6 @@
 ---
 alias:
   - wf-structural-map
-category: process
 description: Reduce academic work to a four-part descriptive structural map (Aims / Methodology / Analytical theory / Contribution) without evaluation or rewriting.
 id: wf-structural-map
 tags:
