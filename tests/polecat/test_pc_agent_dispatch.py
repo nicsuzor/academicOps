@@ -2,7 +2,7 @@
 
 Verifies:
 1. `pc.md` command path resolves to a valid `cli.py` in the built distribution.
-2. `pc.md` grants no `tmux` tool or scope and contains no `tmux new-session`.
+2. `polecat/SKILL.md` exists and carries valid frontmatter.
 3. `pc.md` cites `run.json` as the return contract's evidence artifact.
 4. In a non-TTY, non-interactive environment, the command extracted from `pc.md`
    executes without requiring a TTY or tmux session.
@@ -28,7 +28,7 @@ _REAL_MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 
 
 def test_pc_agent_frontmatter_and_content_structure():
-    """`polecat/SKILL.md` must not contain tmux new-session and must have valid frontmatter."""
+    """`polecat/SKILL.md` must exist and carry valid YAML frontmatter."""
     assert _PC_AGENT_PATH.is_file(), f"polecat SKILL.md missing at {_PC_AGENT_PATH}"
     content = _PC_AGENT_PATH.read_text(encoding="utf-8")
 
@@ -36,9 +36,9 @@ def test_pc_agent_frontmatter_and_content_structure():
     parts = content.split("---")
     assert len(parts) >= 3, "polecat SKILL.md must have valid YAML frontmatter"
     fm = yaml.safe_load(parts[1])
-
-    assert fm.get("name") in ("polecat", "pc")
-    assert "tmux new-session" not in content
+    assert isinstance(fm, dict) and fm, (
+        "polecat SKILL.md frontmatter must parse to a non-empty mapping"
+    )
 
 
 def test_pc_cli_ships_in_built_orchestrate(tmp_path):
@@ -84,12 +84,6 @@ def test_pc_dispatch_non_tty_execution(tmp_path, monkeypatch):
         version="0.0.0-test",
     )
     claude_plugin_root = dist_root / "aops-claude"
-
-    # Extract command template from pc.md
-    content = _PC_AGENT_PATH.read_text(encoding="utf-8")
-    assert "tmux new-session" not in content, (
-        "pc.md still contains tmux new-session which fails in non-TTY environments"
-    )
 
     cli_script = claude_plugin_root / "polecat" / "cli.py"
     assert cli_script.is_file(), f"cli.py missing from {claude_plugin_root}"

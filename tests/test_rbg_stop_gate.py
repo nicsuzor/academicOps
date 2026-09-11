@@ -398,11 +398,22 @@ def test_the_manifest_name_matches_the_marketplace_name():
     name, and `_render_manifests` lets a template's own `name` win over it — so
     a stale template name ships in `plugin.json` while the directory, the
     marketplace entry, and every `plugin:agent` invocation string use the real
-    one."""
+    one. The expected name is read from `marketplace.toml` itself, not
+    restated here, so this only fails when the two configs actually diverge."""
+    marketplace = tomllib.loads(
+        (REPO_ROOT / "build" / "marketplace.toml").read_text(encoding="utf-8")
+    )
+    entry = next(p for p in marketplace["plugins"] if p["directory"] == "rbg")
+    expected_name = entry["name"]
+
     manifest_dir = REPO_ROOT / "plugins" / "rbg" / "manifest"
     for template in sorted(manifest_dir.glob("*.template.json")):
         data = json.loads(template.read_text(encoding="utf-8"))
-        assert data.get("name") == "rbg", f"{template.name} declares {data.get('name')!r}"
+        assert data.get("name") == expected_name, (
+            f"{template.name} declares {data.get('name')!r}, marketplace.toml says {expected_name!r}"
+        )
         base = data.get("clients", {}).get("__base__", {})
         if "name" in base:
-            assert base["name"] == "rbg", f"{template.name} __base__ declares {base['name']!r}"
+            assert base["name"] == expected_name, (
+                f"{template.name} __base__ declares {base['name']!r}, marketplace.toml says {expected_name!r}"
+            )
