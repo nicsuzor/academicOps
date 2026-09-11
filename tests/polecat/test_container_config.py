@@ -528,6 +528,31 @@ def test_default_agent_teams_env_var_in_docker_env_args():
 
 
 # ---------------------------------------------------------------------------
+# CONTAINER_SET_ENV: print-mode background wait ceiling disabled
+# ---------------------------------------------------------------------------
+
+
+def test_print_bg_wait_ceiling_env_var_in_container_set_env():
+    from lib.polecat.env_contract import CONTAINER_SET_ENV
+
+    assert CONTAINER_SET_ENV.get("CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS") == "0"
+
+
+def test_print_bg_wait_ceiling_env_var_forwarded_by_default(monkeypatch):
+    config = {"git_identity": {"name": "botnicbot", "email": "botnicbot@users.noreply.github.com"}}
+    env = cli.get_env_forwards(config)
+    assert env.get("CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS") == "0"
+
+
+def test_print_bg_wait_ceiling_env_var_in_docker_env_args():
+    from lib.polecat.env_contract import docker_env_args
+
+    args = docker_env_args()
+    assert "-e" in args
+    assert "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0" in args
+
+
+# ---------------------------------------------------------------------------
 # format_otel_resource_attributes & polecat resource attribute injection
 # ---------------------------------------------------------------------------
 
