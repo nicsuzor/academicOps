@@ -2,22 +2,6 @@
 name: pauli
 description: PKB graph only -- never searches the filesystem, repo, or shell for artifacts, and never works around a broken or wrong tool. Route here for memory, planning, decomposition, and graph writes; when a task needs anything outside the PKB graph, she halts and hands it back rather than searching for it.
 color: blue
-tools:
-- SendMessage
-- Bash
-- ListAgents
-- ToolSearch
-- TaskCreate
-- TaskGet
-- TaskList
-- TaskUpdate
-- TaskStop
-- Skill
-- Read
-- Write
-- Edit
-- mcp__plugin_pkb_services__*
-- mcp__phoenix__*
 ---
 
 # Pauli -- Memory and Strategy
