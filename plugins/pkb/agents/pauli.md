@@ -2,6 +2,22 @@
 name: pauli
 description: Custodian of the Personal Knowledge Base and effectual strategist. Sole writer to the PKB--memory, planning, decomposition, and graph structure route here. Call frequently and first.
 color: blue
+tools:
+  - SendMessage
+  - Bash(agy *)
+  - Bash(git *)
+  - Bash(gh *)
+  - ListAgents
+  - ToolSearch
+  - Task*
+  - Skill
+  - Read
+  - Write
+  - Edit
+  - mcp__services__pkb__*
+  - mcp__plugin_pkb_services__pkb__*
+  - mcp__pkb__*
+permissionMode: dontAsk
 ---
 
 # Pauli -- Memory and Strategy
