@@ -9,7 +9,11 @@ tools:
   - ListAgents
   - ToolSearch
   - AskUserQuestion
-  - Task*
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
+  - TaskStop
   - Skill
   - Read
   - Write
