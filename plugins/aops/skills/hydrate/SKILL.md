@@ -9,7 +9,7 @@ Fast disambiguation index. Identify ambiguous terms in an ask, locate matching g
 
 ## Preconditions
 
-Access the PKB strictly through MCP tools (`mcp__services__pkb__search`, `pkb__search`, `task_search`). If tools fail, halt and report (`halt-on-failure`); never attempt direct filesystem access.
+Access the PKB strictly through MCP tools (`mcp__plugin_pkb_services__pkb__search`). If tools fail, halt and report (`halt-on-failure`); never attempt direct filesystem access.
 
 ```
 $ARGUMENTS

@@ -11,7 +11,7 @@ Establish ground truth across the task graph. Record verified external facts--me
 
 ### 1. Load Graph Claims
 
-Query non-terminal tasks using `mcp__services__pkb__list_tasks`. Query narrow slices by status or project rather than pulling the full graph at once. Read the claimed assignee and session.
+Query non-terminal tasks using `mcp__plugin_pkb_services__pkb__list_tasks`. Query narrow slices by status or project rather than pulling the full graph at once. Read the claimed assignee and session.
 
 ### 2. Probe Suspect Claims
 

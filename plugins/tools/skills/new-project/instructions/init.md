@@ -71,9 +71,9 @@ Create `.agents/INDEX.md` listing `README.md`, `.agents/CORE.md`, `docs/METHODOL
 Check for existing node, then create:
 
 ```python
-results = mcp__services__pkb__task_search(query="<title or slug>", limit=10)
+results = mcp__plugin_pkb_services__pkb__task_search(query="<title or slug>", limit=10)
 # If matching project node exists, halt and prompt user. Else:
-mcp__services__pkb__create_task(
+mcp__plugin_pkb_services__pkb__create_task(
   title="Project: <title>",
   type="project",
   body="<description>",

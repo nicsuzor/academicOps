@@ -213,4 +213,4 @@ seedling they chose to develop, or an existing plan needing restructuring.
 - [[specs/workflows/conceptual-review-workflow.md]] -- the review layer this spec instantiates
 - [[plugins/pkb/agents/pauli.md]] -- strategic planning; specialised here for research
 - [[specs/polecat/polecat-system.md]] -- execution layer; consumes decomposed task graphs
-- PKB task-graph MCP tools (`mcp__services__pkb__*`) -- structured task-graph output
+- PKB task-graph MCP tools (`mcp__plugin_pkb_services__pkb__*`) -- structured task-graph output

@@ -8,7 +8,7 @@ Consolidation synthesises episodic records into durable knowledge and maintains 
 - **Destination-first persistence**: Verify destination note writes by ID before modifying or deleting any source task body or episodic note. If the destination write fails, halt immediately.
 - **Halt on tool failure**: When a tool fails, emit `HALT: <tool_name>` and report immediately; never use workarounds or perform destructive partial edits.
 - **Control context volume**: Query slices by `status` or `project` rather than pulling full unindexed graphs.
-- **Sub-agent tooling**: Sub-agents dispatched to `pkb:pauli` require an explicit `tools` list in the dispatch call (e.g. `mcp__services__pkb__*`).
+- **Sub-agent tooling**: Sub-agents dispatched to `pkb:pauli` require an explicit `tools` list in the dispatch call (e.g. `mcp__plugin_pkb_services__*` -- a server-level pattern; `mcp__<server>__pkb__*` matches nothing).
 
 ## Knowledge Extraction Method
 

@@ -6,8 +6,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
@@ -17,10 +15,9 @@ for p in (LIB_HOOKS, IDA_HOOKS, PKB_HOOKS):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
+from citation_enforcement import citation_enforcement_gate
 from dispatch import HookContext, Kind
 from scratchpad_gate import is_allowed_scratchpad_path, scratchpad_write_gate
-from citation_enforcement import citation_enforcement_gate, get_turn_retrievals
-
 
 # --- Scratchpad Write Gate Tests ---
 
@@ -88,8 +85,8 @@ def test_scratchpad_gate_blocks_pkb_writes_for_ida():
         "pkb__batch_merge",
         "pkb__decompose_task",
         "pkb__claim_task",
-        "mcp__services__pkb__create_task",
-        "mcp__services__pkb__update_task",
+        "mcp__plugin_pkb_services__pkb__create_task",
+        "mcp__plugin_pkb_services__pkb__update_task",
     ]
     for tool_name in write_tools:
         ctx = HookContext(

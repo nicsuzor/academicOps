@@ -12,7 +12,7 @@ Extract structured data from diverse document sources while enforcing strict pri
 Search existing PKB knowledge before extracting to augment rather than duplicate:
 
 ```
-mcp__services__pkb__search(query="[topic/person/subject]")
+mcp__plugin_pkb_services__pkb__search(query="[topic/person/subject]")
 ```
 
 ## Routing

@@ -12,40 +12,6 @@ tools:
   - Read
   - Write
   - Edit
-  - mcp__services__pkb__append
-  - mcp__services__pkb__apply_consolidation_batch
-  - mcp__services__pkb__batch_create_epics
-  - mcp__services__pkb__batch_merge
-  - mcp__services__pkb__batch_update
-  - mcp__services__pkb__claim_task
-  - mcp__services__pkb__create
-  - mcp__services__pkb__create_task
-  - mcp__services__pkb__decompose_task
-  - mcp__services__pkb__delete
-  - mcp__services__pkb__detect_weight_divergence
-  - mcp__services__pkb__diff_excalidraw
-  - mcp__services__pkb__edit_body
-  - mcp__services__pkb__export_graph
-  - mcp__services__pkb__find_duplicates
-  - mcp__services__pkb__get_consolidation_cluster
-  - mcp__services__pkb__get_dependency_tree
-  - mcp__services__pkb__get_document
-  - mcp__services__pkb__get_stats
-  - mcp__services__pkb__get_task
-  - mcp__services__pkb__graph_excalidraw
-  - mcp__services__pkb__list_documents
-  - mcp__services__pkb__list_tasks
-  - mcp__services__pkb__pkb_trace
-  - mcp__services__pkb__refresh_graph
-  - mcp__services__pkb__release_task
-  - mcp__services__pkb__repair_index_orphans
-  - mcp__services__pkb__search
-  - mcp__services__pkb__status
-  - mcp__services__pkb__sync_excalidraw
-  - mcp__services__pkb__task_summary
-  - mcp__services__pkb__top_n_by_metric
-  - mcp__services__pkb__update_body
-  - mcp__services__pkb__update_task
   - mcp__plugin_pkb_services__pkb__append
   - mcp__plugin_pkb_services__pkb__apply_consolidation_batch
   - mcp__plugin_pkb_services__pkb__batch_create_epics
@@ -90,7 +56,7 @@ You are Pauli: logician, effectual strategist, and sole writer to the Personal K
 ## Sole Writer & Tool Boundary
 
 - **Sole writer**: All captures, tasks, edges, and consolidations pass through you.
-- **MCP tools only**: Access the PKB exclusively via MCP tools (`mcp__services__pkb__*`) or dedicated skills (`/aops:remember`, `/aops:brief`).
+- **MCP tools only**: Access the PKB exclusively via MCP tools (`mcp__plugin_pkb_services__pkb__*`) or dedicated skills (`/aops:remember`, `/aops:brief`).
 - **No filesystem workarounds**: Never use shell tools (`grep`, `cat`, `sed`, `glob`) or the `pkb` CLI on `$ACA_DATA` (`halt-on-failure`). If a tool fails, halt and report; never route around it.
 
 ## Graph Invariants & Task Structure

@@ -56,7 +56,7 @@ Body layout: one-paragraph context block with `[[wikilinks]]` to tasks/epics, se
 
 ### 5. Update Task & Cleanup
 
-- Update sourcing task via `mcp__services__pkb__update_task`: set `research_output` to note ID, status to `done`, and record completion evidence.
+- Update sourcing task via `mcp__plugin_pkb_services__pkb__update_task`: set `research_output` to note ID, status to `done`, and record completion evidence.
 - Remove working files from `/tmp/`.
 
 ## Failure Handling

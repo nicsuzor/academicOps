@@ -32,19 +32,19 @@ PKB_WRITE_TOOLS = frozenset(
         "pkb__batch_merge",
         "pkb__batch_create_epics",
         "pkb__apply_consolidation_batch",
-        "mcp__services__pkb__create",
-        "mcp__services__pkb__create_task",
-        "mcp__services__pkb__update_task",
-        "mcp__services__pkb__update_body",
-        "mcp__services__pkb__edit_body",
-        "mcp__services__pkb__append",
-        "mcp__services__pkb__delete",
-        "mcp__services__pkb__decompose_task",
-        "mcp__services__pkb__claim_task",
-        "mcp__services__pkb__batch_update",
-        "mcp__services__pkb__batch_merge",
-        "mcp__services__pkb__batch_create_epics",
-        "mcp__services__pkb__apply_consolidation_batch",
+        "mcp__plugin_pkb_services__pkb__create",
+        "mcp__plugin_pkb_services__pkb__create_task",
+        "mcp__plugin_pkb_services__pkb__update_task",
+        "mcp__plugin_pkb_services__pkb__update_body",
+        "mcp__plugin_pkb_services__pkb__edit_body",
+        "mcp__plugin_pkb_services__pkb__append",
+        "mcp__plugin_pkb_services__pkb__delete",
+        "mcp__plugin_pkb_services__pkb__decompose_task",
+        "mcp__plugin_pkb_services__pkb__claim_task",
+        "mcp__plugin_pkb_services__pkb__batch_update",
+        "mcp__plugin_pkb_services__pkb__batch_merge",
+        "mcp__plugin_pkb_services__pkb__batch_create_epics",
+        "mcp__plugin_pkb_services__pkb__apply_consolidation_batch",
     }
 )
 
@@ -139,9 +139,9 @@ def scratchpad_write_gate(ctx: HookContext) -> Result | None:
         tool_name.startswith(pfx)
         for pfx in (
             "pkb__batch_",
-            "mcp__services__pkb__batch_",
+            "mcp__plugin_pkb_services__pkb__batch_",
             "pkb__merge_",
-            "mcp__services__pkb__merge_",
+            "mcp__plugin_pkb_services__pkb__merge_",
         )
     ):
         return refuse(

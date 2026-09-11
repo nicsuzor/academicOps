@@ -13,16 +13,15 @@ tools:
   - Skill
   - Read
   - Write
-  - mcp__services__pkb__search
-  - mcp__services__pkb__task_search
-  - mcp__services__pkb__get_document
-  - mcp__services__pkb__get_task
-  - mcp__services__pkb__list_tasks
-  - mcp__services__pkb__list_documents
-  - mcp__services__pkb__status
-  - mcp__services__pkb__get_stats
-  - mcp__services__pkb__pkb_trace
-  - mcp__services__pkb__task_summary
+  - mcp__plugin_pkb_services__pkb__search
+  - mcp__plugin_pkb_services__pkb__get_document
+  - mcp__plugin_pkb_services__pkb__get_task
+  - mcp__plugin_pkb_services__pkb__list_tasks
+  - mcp__plugin_pkb_services__pkb__list_documents
+  - mcp__plugin_pkb_services__pkb__status
+  - mcp__plugin_pkb_services__pkb__get_stats
+  - mcp__plugin_pkb_services__pkb__pkb_trace
+  - mcp__plugin_pkb_services__pkb__task_summary
   - mcp__phoenix__*
   - mcp__context7__*
   - mcp__email__*
