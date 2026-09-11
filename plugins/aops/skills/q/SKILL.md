@@ -31,9 +31,12 @@ Capture and placement only. You do not expand an ask into its components, name i
 
    `project` comes from the parent; where re-parenting moves a node to a different project, move the slug with it. If the right parent is genuinely ambiguous between two live candidates -- not merely unclear at a glance -- put the choice to the user. Do not flip a coin.
 
+   Before minting, search for the governing epic. Work one executor would do in one sitting on the same surface (same file, skill, or component) becomes subtasks on that one task id, not sibling tasks. Work on a different surface, or needing a different executor, becomes a separate child task of the same epic, so the epic can be handed to `sara` whole with its children run roughly concurrently. A project root is a container, not an epic -- do not use it as the grouping target; group related children into a named epic beneath it instead. Full rule and rationale at [[kb_pauli_intake_consolidation_doctrine]].
+
 4. **Idempotent capture: Adopt existing work rather than duplicating it.**
    Before creating a new task, always search the graph context to see if a matching task already exists. If you find an existing match, **do not add a new duplicate task**. Instead, check the graph context, update the existing task with any new information from the ask, and place it correctly. Our goal is to clear out tasks eventually, and we certainly don't want duplicate and stale tasks lying around.
    Where unparented, misparented, or pre-existing tasks already cover the idea, adopt them under the parent with `pkb__batch_reparent(ids=[...], new_parent="<parent-id>", dry_run=False)` instead of creating duplicate nodes. Mint slugged, human-readable IDs upfront (`id: "aops_<slug>"`) rather than leaving `id` empty for auto-generation.
+   Search for the governing epic before adopting, too: if the match is same-surface work an existing task's executor would do in one sitting, adopt it as a subtask of that task rather than a sibling ([[kb_pauli_intake_consolidation_doctrine]]).
 
    **Handle disorganisation immediately (Keep it DRY):** If you find any disorganisation, duplication, or structural graph issues while placing the task, immediately consolidate. Kick off to another skill (like `reconcile` or a structural cleanup skill) if one is specially adapted to cleaning structural graph issues.
 
@@ -43,7 +46,7 @@ Capture and placement only. You do not expand an ask into its components, name i
    - Leave ambiguity in the task; a later stage will resolve it with additional detail. Your role is only to make sure the task is recorded and placed correctly on the graph.
 
 6. **Densify: Wire the edges.**
-   - `contributes_to` the target or goal this work actually serves, with a verbal `stated_weight` (`critical`, `high`, `medium`, `low`) and one sentence of justification ([[kb_pauli_prioritisation_doctrine]]).
+   - `contributes_to` the target or goal this work actually serves, with a verbal `stated_weight` from the Renooij-Witteman scale (`certain`, `probable`, `expected`, `fifty-fifty`, `uncertain`, `improbable`, `impossible`) and one sentence of justification -- full scale and elicitation anchors at [[kb_pauli_prioritisation_doctrine]].
    - `depends_on` for known hard blockers, `soft_depends_on` for context or informational relations, `supersedes` where this replaces prior work.
 
    Wire an edge to every neighbour you confirmed by opening -- related work, prior attempts, what this supersedes. **The graph should come out denser, not just longer.** A task whose only edge is its parent has not been placed, it has been dumped.
@@ -62,8 +65,10 @@ Capture and placement only. You do not expand an ask into its components, name i
 
 ## Output
 
+A user-invoked `/q` ends at status `queued` -- the user asking for it directly is itself the authority to queue. An agent-originated capture (the agent noticing something worth recording on its own initiative, not the user asking) ends at status `inbox`.
+
 ```
-- Captured [TASK-ID] - [TASK-TITLE] (under [PARENT TASK-ID])
+- Captured [TASK-ID] - [TASK-TITLE] (under [PARENT TASK-ID]) - status: [queued|inbox]
 ... [ Repeat if necessary ]
 ```
 
@@ -74,5 +79,5 @@ Capture and placement only. You do not expand an ask into its components, name i
 - Do not write `intent` (or legacy `priority`). Intent is Nic's personally curated ranking, not an agent estimate; new work sits at the uncurated default band unless Nic directed otherwise in this turn ([[kb_ccc17177]]). Express strategic importance by wiring `contributes_to` with `stated_weight`; only `pauli` authors `stated_weight` ([[kb_pauli_prioritisation_doctrine]]).
 - Do not set `severity` on anything that is not a `type: target` node -- severity is target-only magnitude.
 - Do not manufacture a `due` date to carry urgency. `due` means a real external deadline.
-- Do not release work for dispatch at intake. Intake leaves a node at `inbox`.
+- Do not release work for dispatch at intake. A user-invoked `/q` leaves its node (new or adopted) at `queued`; an agent-originated capture leaves its node at `inbox`. Neither status means the work has been dispatched.
 - Do not expand the ask into components, name its forks, or mint probes. That is the next stage.
