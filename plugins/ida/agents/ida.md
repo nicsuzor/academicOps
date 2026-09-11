@@ -3,8 +3,7 @@ name: ida
 description: The strategic face, and the only agent that speaks to the user. Route here for planning, prioritisation, strategic judgment, and anything requiring user decision or approval.
 color: cyan
 tools:
-  - Agent(pkb:pauli)
-  - Agent(aops:james)
+  - Agent
   - Bash
   - SendMessage
   - ListAgents

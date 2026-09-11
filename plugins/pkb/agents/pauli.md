@@ -4,8 +4,7 @@ description: Custodian of the Personal Knowledge Base and effectual strategist. 
 color: blue
 tools:
   - SendMessage
-  - Bash(git *)
-  - Bash(gh *)
+  - Bash
   - ListAgents
   - ToolSearch
   - Task*
@@ -13,11 +12,75 @@ tools:
   - Read
   - Write
   - Edit
-  - mcp__services__pkb__*
-  - mcp__plugin_pkb_services__pkb__*
-  - mcp__pkb__*
+  - mcp__services__pkb__append
+  - mcp__services__pkb__apply_consolidation_batch
+  - mcp__services__pkb__batch_create_epics
+  - mcp__services__pkb__batch_merge
+  - mcp__services__pkb__batch_update
+  - mcp__services__pkb__claim_task
+  - mcp__services__pkb__create
+  - mcp__services__pkb__create_task
+  - mcp__services__pkb__decompose_task
+  - mcp__services__pkb__delete
+  - mcp__services__pkb__detect_weight_divergence
+  - mcp__services__pkb__diff_excalidraw
+  - mcp__services__pkb__edit_body
+  - mcp__services__pkb__export_graph
+  - mcp__services__pkb__find_duplicates
+  - mcp__services__pkb__get_consolidation_cluster
+  - mcp__services__pkb__get_dependency_tree
+  - mcp__services__pkb__get_document
+  - mcp__services__pkb__get_stats
+  - mcp__services__pkb__get_task
+  - mcp__services__pkb__graph_excalidraw
+  - mcp__services__pkb__list_documents
+  - mcp__services__pkb__list_tasks
+  - mcp__services__pkb__pkb_trace
+  - mcp__services__pkb__refresh_graph
+  - mcp__services__pkb__release_task
+  - mcp__services__pkb__repair_index_orphans
+  - mcp__services__pkb__search
+  - mcp__services__pkb__status
+  - mcp__services__pkb__sync_excalidraw
+  - mcp__services__pkb__task_summary
+  - mcp__services__pkb__top_n_by_metric
+  - mcp__services__pkb__update_body
+  - mcp__services__pkb__update_task
+  - mcp__plugin_pkb_services__pkb__append
+  - mcp__plugin_pkb_services__pkb__apply_consolidation_batch
+  - mcp__plugin_pkb_services__pkb__batch_create_epics
+  - mcp__plugin_pkb_services__pkb__batch_merge
+  - mcp__plugin_pkb_services__pkb__batch_update
+  - mcp__plugin_pkb_services__pkb__claim_task
+  - mcp__plugin_pkb_services__pkb__create
+  - mcp__plugin_pkb_services__pkb__create_task
+  - mcp__plugin_pkb_services__pkb__decompose_task
+  - mcp__plugin_pkb_services__pkb__delete
+  - mcp__plugin_pkb_services__pkb__detect_weight_divergence
+  - mcp__plugin_pkb_services__pkb__diff_excalidraw
+  - mcp__plugin_pkb_services__pkb__edit_body
+  - mcp__plugin_pkb_services__pkb__export_graph
+  - mcp__plugin_pkb_services__pkb__find_duplicates
+  - mcp__plugin_pkb_services__pkb__get_consolidation_cluster
+  - mcp__plugin_pkb_services__pkb__get_dependency_tree
+  - mcp__plugin_pkb_services__pkb__get_document
+  - mcp__plugin_pkb_services__pkb__get_stats
+  - mcp__plugin_pkb_services__pkb__get_task
+  - mcp__plugin_pkb_services__pkb__graph_excalidraw
+  - mcp__plugin_pkb_services__pkb__list_documents
+  - mcp__plugin_pkb_services__pkb__list_tasks
+  - mcp__plugin_pkb_services__pkb__pkb_trace
+  - mcp__plugin_pkb_services__pkb__refresh_graph
+  - mcp__plugin_pkb_services__pkb__release_task
+  - mcp__plugin_pkb_services__pkb__repair_index_orphans
+  - mcp__plugin_pkb_services__pkb__search
+  - mcp__plugin_pkb_services__pkb__status
+  - mcp__plugin_pkb_services__pkb__sync_excalidraw
+  - mcp__plugin_pkb_services__pkb__task_summary
+  - mcp__plugin_pkb_services__pkb__top_n_by_metric
+  - mcp__plugin_pkb_services__pkb__update_body
+  - mcp__plugin_pkb_services__pkb__update_task
   - mcp__phoenix__*
-permissionMode: dontAsk
 ---
 
 # Pauli -- Memory and Strategy
