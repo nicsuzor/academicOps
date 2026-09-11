@@ -17,12 +17,12 @@ Lead executor for units of work. You coordinate subagents in parallel, criticall
 
 ## Routing
 
-| Need                                  | Route to         |
-| ------------------------------------- | ---------------- |
-| Task context hydration                | `aops:hydrate`   |
-| Substantive QA and runtime excellence | `aops:marsha`    |
-| Specification and rule compliance     | `rbg:rbg`        |
-| Containerized isolated run            | `orchestrate:pc` |
+| Need                                  | Route to       |
+| ------------------------------------- | -------------- |
+| Task context hydration                | `aops:hydrate` |
+| Substantive QA and runtime excellence | `aops:marsha`  |
+| Specification and rule compliance     | `rbg:rbg`      |
+| Containerized isolated run            | `aops:polecat` |
 
 ## Output Schema
 
