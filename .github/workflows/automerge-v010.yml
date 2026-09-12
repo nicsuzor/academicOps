@@ -21,7 +21,10 @@
 # Goal ("nothing lands while v0.10 is red"): `Lint`/`Pytest` also run on push
 # to v0.10 directly (see lint.yml/pytest.yml `on.push`), so v0.10's tip
 # always carries its own check-runs. This workflow reads those too and blocks
-# merging if they are not green, even when the PR's own checks pass.
+# merging if they are not green, even when the PR's own checks pass. This
+# only works if the squash-merge push itself is made with a token whose
+# pushes GitHub Actions will actually dispatch — see the `GH_TOKEN` comment
+# below.
 #
 # Type Check is excluded from both required lists here, same as it is from
 # dev's required-checks ruleset (.github/rulesets/pr-review-and-merge.yml) —
@@ -86,7 +89,14 @@ jobs:
       pull-requests: write
       checks: read
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # NOT secrets.GITHUB_TOKEN: GitHub Actions silently drops any push
+      # triggered by that token, so a squash-merge done with it would never
+      # fire lint.yml/pytest.yml's `on.push`, leaving v0.10's new tip with no
+      # check-runs at all — permanently failing the base-health check for
+      # every PR after the first bot-driven merge. AOPS_BOT_GH_TOKEN is the
+      # same fix lint.yml already applies to its own autofix-commit push
+      # (see lint.yml's checkout step).
+      GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
       REPO: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
       FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
