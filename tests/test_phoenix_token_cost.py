@@ -142,7 +142,7 @@ def test_task_attribution_prefers_claim_over_read():
 def test_label_from_list_agents_then_labels_file():
     m = _load()
     fx = _fixture()
-    assert m.label_session(S1, [], fx["tools"], [], {}) == "desk-1"
+    assert m.label_session(S1, [], fx["tools"], [], {}) == "desk-1 [abc123]"
     assert m.label_session(S1, [], fx["tools"], [], {"aaaaaaaa": "override"}) == "override"
     assert m.label_session(S2, fx["chains"], [], [], {}) == "agy polecat @box"
 
@@ -168,7 +168,7 @@ def test_cli_from_file_ranks_by_cost_and_flags_uncounted(tmp_path):
     rows = payload["rows"]
     assert [r["session"][:8] for r in rows] == ["aaaaaaaa", "bbbbbbbb"]
     top = rows[0]
-    assert top["role"] == "desk-1"
+    assert top["role"] == "desk-1 [abc123]"
     assert top["task"].startswith("aops_deadbeef")
     assert top["calls"] == 2
     assert (top["in"], top["out"], top["cache_read"], top["cache_write"]) == (200, 150, 2700, 100)

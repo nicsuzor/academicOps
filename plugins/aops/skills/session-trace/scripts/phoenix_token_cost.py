@@ -105,8 +105,9 @@ TASK_ID_RE = re.compile(
 
 CHANNEL_RE = re.compile(r'<channel source="(?:plugin:)?([a-z]+)')
 # ``ListAgents`` output opens with "This session is <name> [<ref>]" -- the only place a
-# Claude Code session states its own name.
-SELF_NAME_RE = re.compile(r"This session is ([^\s\[]+)")
+# Claude Code session states its own name. The ref is kept: names get reused across
+# sessions in one day (two distinct ``ida-07`` sessions on 2026-09-12).
+SELF_NAME_RE = re.compile(r"This session is ([^\s\[]+(?: \[[0-9a-f]+\])?)")
 INJECTED_RE = re.compile(
     r"^\s*<(?:cross-session-message|channel|task-notification|system-reminder)"
 )
