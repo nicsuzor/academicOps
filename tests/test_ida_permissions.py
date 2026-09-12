@@ -102,6 +102,34 @@ def test_scratchpad_gate_blocks_pkb_writes_for_ida():
         assert f"PKB write tool '{tool_name}' is prohibited for Ida" in res.inject_text
 
 
+def test_scratchpad_gate_blocks_pkb_writes_under_any_endpoint_prefix():
+    """The prefix between the plugin wrapper and the op name is transport-derived
+    (Docker MCP gateway, Bifrost, or a direct connection each produce a different
+    one, or none) -- the gate must not depend on which one is live."""
+    write_tools = [
+        # Direct connection through the Claude Code plugin wrapper, no gateway
+        # prefix at all.
+        "mcp__plugin_pkb_services__create_task",
+        "mcp__plugin_pkb_services__update_body",
+        # A gateway using a hyphen rather than a double underscore.
+        "mcp__plugin_pkb_services__pkb-create_task",
+        # Batch/merge ops not individually enumerated.
+        "mcp__plugin_pkb_services__pkb__batch_reparent",
+        "mcp__plugin_pkb_services__merge_duplicates",
+    ]
+    for tool_name in write_tools:
+        ctx = HookContext(
+            client="claude",
+            event="PreToolUse",
+            tool=tool_name,
+            agent_type="ida:ida",
+            raw={"tool_name": tool_name, "tool_input": {"id": "task_123"}},
+        )
+        res = scratchpad_write_gate(ctx)
+        assert res is not None, f"Expected refusal for {tool_name}"
+        assert res.kind is Kind.REFUSE
+
+
 def test_scratchpad_gate_blocks_write_outside_scratchpad():
     ctx = HookContext(
         client="claude",

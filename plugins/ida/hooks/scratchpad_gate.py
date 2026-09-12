@@ -7,8 +7,19 @@ from pathlib import Path
 
 from dispatch import HookContext, Result, refuse
 
-# PKB write tools that must be blocked for Ida
-PKB_WRITE_TOOLS = frozenset(
+# PKB write operations that must be blocked for Ida. The Claude Code plugin
+# wrapper (`mcp__plugin_pkb_services__`) is stable -- it comes from this repo's
+# own plugin name and MCP config key. What is NOT stable is the segment the
+# backend behind $PKB_MCP_URL adds on top of that (a gateway's per-catalog-key
+# tool-name prefix, a different gateway's own convention, or nothing at all on
+# a direct connection). Matching on the operation name's suffix, rather than
+# enumerating every prefix combination, survives any such endpoint move.
+# Over-matching is the safe failure here: the only cost of a false positive is
+# Ida being told to delegate a write it may not even have attempted, while a
+# false negative lets a write through the gate exists to stop.
+PKB_PLUGIN_PREFIX = "mcp__plugin_pkb_services__"
+
+PKB_WRITE_OPS = frozenset(
     {
         "create",
         "create_task",
@@ -19,34 +30,44 @@ PKB_WRITE_TOOLS = frozenset(
         "delete",
         "decompose_task",
         "claim_task",
-        "pkb__create",
-        "pkb__create_task",
-        "pkb__update_task",
-        "pkb__update_body",
-        "pkb__edit_body",
-        "pkb__append",
-        "pkb__delete",
-        "pkb__decompose_task",
-        "pkb__claim_task",
-        "pkb__batch_update",
-        "pkb__batch_merge",
-        "pkb__batch_create_epics",
-        "pkb__apply_consolidation_batch",
-        "mcp__plugin_pkb_services__pkb__create",
-        "mcp__plugin_pkb_services__pkb__create_task",
-        "mcp__plugin_pkb_services__pkb__update_task",
-        "mcp__plugin_pkb_services__pkb__update_body",
-        "mcp__plugin_pkb_services__pkb__edit_body",
-        "mcp__plugin_pkb_services__pkb__append",
-        "mcp__plugin_pkb_services__pkb__delete",
-        "mcp__plugin_pkb_services__pkb__decompose_task",
-        "mcp__plugin_pkb_services__pkb__claim_task",
-        "mcp__plugin_pkb_services__pkb__batch_update",
-        "mcp__plugin_pkb_services__pkb__batch_merge",
-        "mcp__plugin_pkb_services__pkb__batch_create_epics",
-        "mcp__plugin_pkb_services__pkb__apply_consolidation_batch",
+        "batch_update",
+        "batch_merge",
+        "batch_create_epics",
+        "apply_consolidation_batch",
     }
 )
+
+# Operation-name prefixes that cover writes not individually enumerated above
+# (e.g. `batch_reparent`, `merge_duplicates`).
+PKB_WRITE_OP_PREFIXES = ("batch_", "merge_")
+
+_NAME_SEPARATORS = ("__", "_", "-")
+
+
+def _matches_pkb_write_op(remainder: str) -> bool:
+    """True if remainder is a PKB write op, with zero or more prefix segments."""
+    if remainder in PKB_WRITE_OPS:
+        return True
+    if any(remainder.endswith(f"{sep}{op}") for op in PKB_WRITE_OPS for sep in _NAME_SEPARATORS):
+        return True
+    for prefix in PKB_WRITE_OP_PREFIXES:
+        if remainder.startswith(prefix):
+            return True
+        if any(f"{sep}{prefix}" in remainder for sep in _NAME_SEPARATORS):
+            return True
+    return False
+
+
+def _is_pkb_write_tool(tool_name: str) -> bool:
+    """True if tool_name resolves to a PKB write op under any transport prefix."""
+    if not tool_name:
+        return False
+    if tool_name.startswith(PKB_PLUGIN_PREFIX):
+        return _matches_pkb_write_op(tool_name[len(PKB_PLUGIN_PREFIX) :])
+    # No Claude Code plugin wrapper in front: a raw JSON-RPC client, or a
+    # client whose tool-naming shape differs from Claude Code's.
+    return _matches_pkb_write_op(tool_name)
+
 
 FORBIDDEN_OPERATIONAL_TOOLS = frozenset(
     {
@@ -135,15 +156,7 @@ def scratchpad_write_gate(ctx: HookContext) -> Result | None:
         )
 
     # 2. Deny PKB write tools
-    if tool_name in PKB_WRITE_TOOLS or any(
-        tool_name.startswith(pfx)
-        for pfx in (
-            "pkb__batch_",
-            "mcp__plugin_pkb_services__pkb__batch_",
-            "pkb__merge_",
-            "mcp__plugin_pkb_services__pkb__merge_",
-        )
-    ):
+    if _is_pkb_write_tool(tool_name):
         return refuse(
             f"PKB write tool '{tool_name}' is prohibited for Ida. Delegate graph writes to Pauli."
         )
