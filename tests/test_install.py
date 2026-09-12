@@ -17,6 +17,7 @@ from build.install import (
     DEFAULTS_SENTINEL,
     InstallError,
     install_automode,
+    patch_agy_mcp,
     patch_dev_mcp,
     uninstall_automode,
 )
@@ -375,3 +376,64 @@ def test_patch_dev_mcp_skips_when_unset(tmp_path, monkeypatch):
     patched = patch_dev_mcp()
     assert patched == []
     assert (session_dir / ".mcp.json").read_text() == mcp_content
+
+
+def test_patch_agy_mcp_rewrites_the_literal_placeholder_and_strips_trailing_slash(tmp_path):
+    """`agy plugin install` copies a plugin's built mcp_config.json verbatim
+    into ~/.gemini/config/plugins/<name>/ — agy has no `--config`/userConfig
+    substitution, so the literal `YOUR_PKB_URL` placeholder
+    (mcp.template.json's `agy` client) is rewritten here, post-copy."""
+    plugins_dir = tmp_path / "plugins"
+    pkb_dir = plugins_dir / "pkb"
+    pkb_dir.mkdir(parents=True)
+    mcp_content = json.dumps(
+        {
+            "mcpServers": {
+                "services": {"command": "bash", "args": ["-c", 'fastmcp run "YOUR_PKB_URL"']}
+            }
+        }
+    )
+    (pkb_dir / "mcp_config.json").write_text(mcp_content)
+
+    patched = patch_agy_mcp(plugins_dir, "https://pkb.example.ts.net/mcp/")
+
+    assert patched == [pkb_dir / "mcp_config.json"]
+    data = json.loads((pkb_dir / "mcp_config.json").read_text())
+    assert data["mcpServers"]["services"]["args"] == [
+        "-c",
+        'fastmcp run "https://pkb.example.ts.net/mcp"',
+    ]
+
+
+def test_patch_agy_mcp_skips_when_unset(tmp_path):
+    plugins_dir = tmp_path / "plugins"
+    pkb_dir = plugins_dir / "pkb"
+    pkb_dir.mkdir(parents=True)
+    mcp_content = json.dumps(
+        {
+            "mcpServers": {
+                "services": {"command": "bash", "args": ["-c", 'fastmcp run "YOUR_PKB_URL"']}
+            }
+        }
+    )
+    (pkb_dir / "mcp_config.json").write_text(mcp_content)
+
+    patched = patch_agy_mcp(plugins_dir, "")
+    assert patched == []
+    assert (pkb_dir / "mcp_config.json").read_text() == mcp_content
+
+
+def test_patch_agy_mcp_leaves_plugins_without_the_placeholder_alone(tmp_path):
+    plugins_dir = tmp_path / "plugins"
+    other_dir = plugins_dir / "other"
+    other_dir.mkdir(parents=True)
+    mcp_content = json.dumps({"mcpServers": {"services": {"serverUrl": "https://example.invalid"}}})
+    (other_dir / "mcp_config.json").write_text(mcp_content)
+
+    patched = patch_agy_mcp(plugins_dir, "https://pkb.example.ts.net/mcp")
+    assert patched == []
+    assert (other_dir / "mcp_config.json").read_text() == mcp_content
+
+
+def test_patch_agy_mcp_missing_plugins_dir_is_a_no_op(tmp_path):
+    assert patch_agy_mcp(tmp_path / "nonexistent", "https://pkb.example.ts.net/mcp") == []

@@ -9,7 +9,7 @@
           "command": "bash",
           "args": [
             "-c",
-            "uvx --from \"fastmcp-slim[server]\" fastmcp run \"$PKB_MCP_URL\""
+            "uvx --from \"fastmcp-slim[server]\" fastmcp run \"${user_config.pkb_mcp_url}\""
           ]
         }
       }
@@ -20,7 +20,7 @@
           "command": "bash",
           "args": [
             "-c",
-            "uvx --from \"fastmcp-slim[server]\" fastmcp run \"$PKB_MCP_URL\""
+            "uvx --from \"fastmcp-slim[server]\" fastmcp run \"YOUR_PKB_URL\""
           ]
         }
       }

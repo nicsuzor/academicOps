@@ -19,7 +19,14 @@
       ]
     },
     "claude": {
-      "mcpServers": "./.mcp.json"
+      "mcpServers": "./.mcp.json",
+      "userConfig": {
+        "pkb_mcp_url": {
+          "type": "string",
+          "title": "PKB MCP URL",
+          "description": "The PKB MCP server's streamable-HTTP endpoint (e.g. https://pkb.your-tailnet.ts.net/mcp). `claude plugin install pkb@<marketplace> --config pkb_mcp_url=<url>` bakes it in at install time."
+        }
+      }
     },
     "agy": {}
   }

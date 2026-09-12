@@ -54,6 +54,7 @@ from typing import Any
 
 DEFAULT_SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 DEFAULT_STATE_PATH = Path.home() / ".claude" / ".aops-automode-state.json"
+DEFAULT_GEMINI_PLUGINS_DIR = Path.home() / ".gemini" / "config" / "plugins"
 
 # The splice point at which Claude Code inserts its own built-in rules for a
 # section. An array written without it discards those built-ins entirely.
@@ -265,11 +266,62 @@ def patch_dev_mcp(pkb_url: str | None = None) -> list[Path]:
     return patched
 
 
+def patch_agy_mcp(plugins_dir: Path | None = None, pkb_url: str | None = None) -> list[Path]:
+    """Install-time rewrite for the `agy` client's local plugin install.
+
+    `agy plugin install <dir>` copies a plugin's built mcp_config.json
+    verbatim into ~/.gemini/config/plugins/<name>/ — agy has no
+    `--config`/userConfig substitution, unlike Claude Code (see
+    mcp.template.json's `claude` client, which uses
+    `${user_config.pkb_mcp_url}` instead). The `agy` client's `services`
+    server therefore ships the literal placeholder `YOUR_PKB_URL`
+    (plugins/pkb/manifest/mcp.template.json), which this rewrites to the
+    concrete value right after the copy — so no later `agy` session needs
+    $PKB_MCP_URL re-exported by hand.
+
+    Mirrors patch_dev_mcp's Cowork-session rewrite: a plain text
+    substitution, never touching dist/, and a no-op — not a failure — with
+    PKB_MCP_URL unset (`.agents/CORE.md`, "No defaults").
+    """
+    plugins_dir = plugins_dir or DEFAULT_GEMINI_PLUGINS_DIR
+    raw_url = pkb_url if pkb_url is not None else os.environ.get("PKB_MCP_URL", "")
+    url = raw_url.strip()
+    if not url:
+        print(
+            "  agy dev workaround: PKB_MCP_URL unset in environment; "
+            "skipping YOUR_PKB_URL substitution"
+        )
+        return []
+
+    while url.endswith("/"):
+        url = url[:-1]
+
+    patched: list[Path] = []
+    if not plugins_dir.exists():
+        return patched
+
+    # agy's per-client MCP manifest is `mcp_config.json` (build/clients/agy.py),
+    # not claude's `.mcp.json` — this is the file `agy plugin install` actually
+    # copies into a plugin's install directory.
+    for mcp_file in sorted(plugins_dir.glob("*/mcp_config.json")):
+        try:
+            content = mcp_file.read_text(encoding="utf-8")
+            if "YOUR_PKB_URL" in content:
+                mcp_file.write_text(content.replace("YOUR_PKB_URL", url), encoding="utf-8")
+                patched.append(mcp_file)
+        except OSError:
+            pass
+
+    return patched
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Merge/remove aops-owned autoMode entries and patch dev MCP"
     )
-    parser.add_argument("action", choices=["install", "uninstall", "patch-dev-mcp"])
+    parser.add_argument(
+        "action", choices=["install", "uninstall", "patch-dev-mcp", "patch-agy-mcp"]
+    )
     parser.add_argument(
         "--dist-root",
         type=Path,
@@ -278,18 +330,28 @@ def main() -> int:
     )
     parser.add_argument("--settings-path", type=Path, default=DEFAULT_SETTINGS_PATH)
     parser.add_argument("--state-path", type=Path, default=DEFAULT_STATE_PATH)
+    parser.add_argument(
+        "--gemini-plugins-dir",
+        type=Path,
+        default=DEFAULT_GEMINI_PLUGINS_DIR,
+        help="Where agy's installed plugins live (default: ~/.gemini/config/plugins)",
+    )
     args = parser.parse_args()
 
     try:
         if args.action == "install":
             dist_root = args.dist_root or (Path(__file__).resolve().parent.parent / "dist")
-            # patch-dev-mcp is a separate, earlier step in `make install-dev`
-            # (it must run before `claude plugin install` copies dist/ into
-            # the plugin cache) — not repeated here.
+            # patch-dev-mcp/patch-agy-mcp are separate, earlier steps in
+            # `make install-dev` (they must run before `claude plugin
+            # install`/the agy copy land dist/ into the plugin caches) — not
+            # repeated here.
             message = install_automode(dist_root, args.settings_path, args.state_path)
         elif args.action == "patch-dev-mcp":
             patched = patch_dev_mcp()
             message = f"dev workaround: replaced $PKB_MCP_URL in {len(patched)} .mcp.json file(s)"
+        elif args.action == "patch-agy-mcp":
+            patched = patch_agy_mcp(args.gemini_plugins_dir)
+            message = f"agy dev workaround: replaced YOUR_PKB_URL in {len(patched)} mcp_config.json file(s)"
         else:
             message = uninstall_automode(args.settings_path, args.state_path)
     except InstallError as e:

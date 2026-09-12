@@ -814,6 +814,26 @@ def test_cowork_resolves_url_from_build_env_into_literal_http_server(tmp_path, m
     assert "run-mcp.sh" not in baked
 
 
+def test_cowork_detects_the_userconfig_placeholder_form(tmp_path, monkeypatch):
+    """The claude client's pkb server defers via `${user_config.pkb_mcp_url}`
+    (its userConfig substitution), not `$PKB_MCP_URL` — Cowork has neither
+    env vars nor userConfig, so this form must bake to a literal too."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    mcp_path = _fixture_pkb_mcp_json(
+        tmp_path,
+        {
+            "services": {
+                "command": "bash",
+                "args": ["-c", 'fastmcp run "${user_config.pkb_mcp_url}"'],
+            }
+        },
+    )
+    baked = json.loads(_bake_cowork_mcp_json(mcp_path, "plug") or "{}")
+    assert baked["mcpServers"] == {
+        "services": {"type": "http", "url": "https://pkb.example.ts.net/mcp"}
+    }
+
+
 def test_cowork_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
     mcp_path = _fixture_pkb_mcp_json(tmp_path)
@@ -856,7 +876,8 @@ def test_cowork_collapses_pkb_servers_to_one_http_server(tmp_path, monkeypatch):
 def test_cowork_directory_and_zip_carry_the_literal_http_server(tmp_path, monkeypatch):
     """End to end: with PKB_MCP_URL exported, both the dist/cowork/<name>
     directory copy and its zip carry the literal http server, and the claude
-    dist keeps the env-var form for Claude Code to expand at launch."""
+    dist keeps the `${user_config.pkb_mcp_url}` placeholder for `claude
+    plugin install --config pkb_mcp_url=...` to resolve at install time."""
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
     dist = tmp_path / "dist"
     build_all(
@@ -868,7 +889,7 @@ def test_cowork_directory_and_zip_carry_the_literal_http_server(tmp_path, monkey
         version=VERSION,
     )
     claude_mcp = (dist / "pkb-claude" / ".mcp.json").read_text()
-    assert "$PKB_MCP_URL" in claude_mcp
+    assert "${user_config.pkb_mcp_url}" in claude_mcp
     assert "pkb.example.ts.net" not in claude_mcp
 
     dir_mcp = json.loads((dist / "cowork" / "pkb" / ".mcp.json").read_text())
@@ -1244,9 +1265,13 @@ def test_openclaw_ida_face_configuration(tmp_path):
 def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     """One PKB endpoint, registered once.
 
-    Registering the same $PKB_MCP_URL under two server names loads every PKB
+    Registering the same PKB endpoint under two server names loads every PKB
     tool schema twice into every agent's static context. Each client gets the
-    single transport it can actually speak.
+    single transport it can actually speak, and its own install-time
+    placeholder: `claude` resolves `${user_config.pkb_mcp_url}` via
+    `--config` (Claude Code's own userConfig substitution); `agy` has no such
+    mechanism, so it ships the literal `YOUR_PKB_URL` text, rewritten after
+    install by `build.install.patch_agy_mcp`.
     """
     dist_root = tmp_path / "dist"
     build_all(
@@ -1263,7 +1288,7 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
             "command": "bash",
             "args": [
                 "-c",
-                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
+                'uvx --from "fastmcp-slim[server]" fastmcp run "${user_config.pkb_mcp_url}"',
             ],
         }
     }
@@ -1274,7 +1299,7 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
             "command": "bash",
             "args": [
                 "-c",
-                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
+                'uvx --from "fastmcp-slim[server]" fastmcp run "YOUR_PKB_URL"',
             ],
         }
     }

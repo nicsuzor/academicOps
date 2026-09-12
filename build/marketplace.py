@@ -107,19 +107,22 @@ def generate_production_marketplace(decl: dict[str, Any], version: str, dist_roo
 
 def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
     """The Cowork channel's .mcp.json: every server that defers to
-    $PKB_MCP_URL collapsed into one `type: http` server whose URL is the
-    literal value of PKB_MCP_URL in the build environment — or None to ship
-    the file as the claude dist built it.
+    $PKB_MCP_URL, or to the claude client's `${user_config.pkb_mcp_url}`
+    install-time placeholder, collapsed into one `type: http` server whose
+    URL is the literal value of PKB_MCP_URL in the build environment — or
+    None to ship the file as the claude dist built it.
 
     Cowork launches a plugin's MCP servers from a bare environment: no login
     shell, no launchctl setenv, nothing the plugin's own config did not carry
-    in. `${PKB_MCP_URL}` in a url does not expand there (the client reports
-    "Missing environment variables"), and a stdio command that reads it gets
-    the empty string. Neither install path — directory marketplace or zip
-    upload — has a way to supply the value after the fact, so the URL has to
-    be in the artifact. A literal `type: http` url is the one form Cowork
-    connects with (tested 2026-09-11), so that is what the channel ships; the
-    stdio launcher (scripts/run-mcp.sh) is not used here.
+    in, and no `--config`/userConfig substitution either. `${PKB_MCP_URL}` in
+    a url does not expand there (the client reports "Missing environment
+    variables"), a stdio command that reads it gets the empty string, and
+    `${user_config.pkb_mcp_url}` is never resolved. Neither install path —
+    directory marketplace or zip upload — has a way to supply the value after
+    the fact, so the URL has to be in the artifact. A literal `type: http`
+    url is the one form Cowork connects with (tested 2026-09-11), so that is
+    what the channel ships; the stdio launcher (scripts/run-mcp.sh) is not
+    used here.
 
     The URL is read from the build environment and never committed. An unset
     PKB_MCP_URL is NOT a build failure: the published channel is built without
@@ -137,9 +140,11 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
         raise BuildError(f"{mcp_path}: malformed .mcp.json: {e}") from e
 
     servers = data.get("mcpServers", {})
-    # Only servers that defer to the env var at launch — anything with a
-    # concrete endpoint of its own is left alone.
-    pkb_names = [name for name, cfg in servers.items() if "PKB_MCP_URL" in json.dumps(cfg)]
+    # Only servers that defer to the env var (`$PKB_MCP_URL`) or the claude
+    # client's userConfig placeholder (`${user_config.pkb_mcp_url}`) at
+    # launch — anything with a concrete endpoint of its own is left alone.
+    # Case-insensitive: catches both spellings with one check.
+    pkb_names = [name for name, cfg in servers.items() if "pkb_mcp_url" in json.dumps(cfg).lower()]
     if not pkb_names:
         return None
 
