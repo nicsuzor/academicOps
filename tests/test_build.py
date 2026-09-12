@@ -1166,8 +1166,12 @@ def test_pauli_agy_frontmatter(tmp_path):
     # agent with no `tools:` key does (see test_agent_no_tools_key_semantics).
     # SendMessage, Bash, TaskCreate/Get/List/Update/Stop all collapse onto
     # run_command/send_message/manage_task; Skill and ListAgents/ToolSearch
-    # have no agy counterpart and drop out; the three `mcp__*` wildcards
-    # normalise onto their server names.
+    # have no agy counterpart and drop out; the `mcp__*` wildcard normalises
+    # onto its server name. `mcp__phoenix__*` and `mcp__email__*` were
+    # dropped from source (aops_codemode_grant_sweep): Bifrost's Code Mode
+    # rollout collapsed the standalone email/home/phoenix MCP connections
+    # into the same `services` connection pkb already used, so those
+    # wildcards no longer resolved to anything.
     assert agent["tools"] == [
         "send_message",
         "run_command",
@@ -1176,8 +1180,6 @@ def test_pauli_agy_frontmatter(tmp_path):
         "write_to_file",
         "replace_file_content",
         "mcp_services_*",
-        "mcp_phoenix_*",
-        "mcp_email_*",
     ]
     assert "hidden" not in agent
     assert "includeSections" not in agent
