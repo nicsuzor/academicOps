@@ -37,7 +37,7 @@ def has_user_context(session: NormalizedSession) -> bool:
             if "USER Objective:" in event.content or "Conversation Logs" in event.content:
                 return False
         if event.type == "tool_output" and event.content:
-            if "tailscale-up.sh" in event.content or "session-end-sync.sh" in event.content:
+            if "tailscale-up.sh" in event.content:
                 return False
 
     return True
