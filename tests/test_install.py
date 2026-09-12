@@ -340,58 +340,38 @@ def test_uninstall_malformed_state_file_is_hard_error(tmp_path):
         uninstall_automode(settings_path, state_path)
 
 
-def test_patch_dev_mcp_replaces_url_and_strips_trailing_slash(tmp_path, monkeypatch):
-    dist = tmp_path / "dist"
-    claude_dir = dist / "aops-claude"
-    cowork_dir = dist / "cowork" / "aops"
-    claude_dir.mkdir(parents=True)
-    cowork_dir.mkdir(parents=True)
-    mcp_content = json.dumps(
-        {
-            "mcpServers": {
-                "services": {
-                    "command": "bash",
-                    "args": ["-c", 'fastmcp run "$PKB_MCP_URL"'],
-                },
-                "services-http": {
-                    "type": "http",
-                    "url": "$PKB_MCP_URL",
-                },
-            }
-        }
+def test_patch_dev_mcp_patches_cowork_sessions_and_strips_trailing_slash(tmp_path, monkeypatch):
+    """Existing Cowork GUI sessions hold their own copy of a plugin's
+    .mcp.json from whenever it was installed; those get the literal. dist/
+    is not this function's business: the build already bakes dist/cowork,
+    and the sibling dists must keep the placeholder for Claude Code and agy
+    to expand at launch."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    session_dir = (
+        tmp_path / "Library/Application Support/Claude/local-agent-mode-sessions/s1/rpm/pkb"
     )
-    (claude_dir / ".mcp.json").write_text(mcp_content)
-    (cowork_dir / ".mcp.json").write_text(mcp_content)
+    session_dir.mkdir(parents=True)
+    mcp_content = json.dumps({"mcpServers": {"services-http": {"url": "$PKB_MCP_URL"}}})
+    (session_dir / ".mcp.json").write_text(mcp_content)
 
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp/")
-    patched = patch_dev_mcp(dist)
+    patched = patch_dev_mcp()
 
-    # Cowork gets the literal baked in: it launches MCP servers in a bare
-    # environment where $PKB_MCP_URL does not expand.
-    assert patched == [cowork_dir / ".mcp.json"]
-    w_data = json.loads((cowork_dir / ".mcp.json").read_text())
-    assert w_data["mcpServers"]["services"]["args"] == [
-        "-c",
-        'fastmcp run "https://pkb.example.ts.net/mcp"',
-    ]
-    assert w_data["mcpServers"]["services-http"]["url"] == "https://pkb.example.ts.net/mcp"
-
-    # REGRESSION (2026-09-08): the sibling claude dist must keep the
-    # placeholder. Claude Code and agy expand it at launch, so baking a literal
-    # here freezes whatever URL the building shell happened to export into an
-    # artifact that can no longer follow the single source in ~/.env. That is
-    # how every dist kept pointing at services-new after it was decommissioned.
-    assert (claude_dir / ".mcp.json").read_text() == mcp_content
+    assert patched == [session_dir / ".mcp.json"]
+    data = json.loads((session_dir / ".mcp.json").read_text())
+    assert data["mcpServers"]["services-http"]["url"] == "https://pkb.example.ts.net/mcp"
 
 
 def test_patch_dev_mcp_skips_when_unset(tmp_path, monkeypatch):
-    dist = tmp_path / "dist"
-    claude_dir = dist / "aops-claude"
-    claude_dir.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    session_dir = (
+        tmp_path / "Library/Application Support/Claude/local-agent-mode-sessions/s1/rpm/pkb"
+    )
+    session_dir.mkdir(parents=True)
     mcp_content = json.dumps({"mcpServers": {"services-http": {"url": "$PKB_MCP_URL"}}})
-    (claude_dir / ".mcp.json").write_text(mcp_content)
+    (session_dir / ".mcp.json").write_text(mcp_content)
 
     monkeypatch.delenv("PKB_MCP_URL", raising=False)
-    patched = patch_dev_mcp(dist)
-    assert len(patched) == 0
-    assert (claude_dir / ".mcp.json").read_text() == mcp_content
+    patched = patch_dev_mcp()
+    assert patched == []
+    assert (session_dir / ".mcp.json").read_text() == mcp_content

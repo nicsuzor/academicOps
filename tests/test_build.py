@@ -764,24 +764,22 @@ def test_cowork_dist(built):
     assert "fixture-alpha/.claude-plugin/plugin.json" in names
 
 
-def test_cowork_directory_copy_is_never_rewritten(built):
-    """The dist/cowork/<name> directory copy is byte-identical to the claude
-    dist. A directory-marketplace install can supply the endpoint with
-    `claude plugin install --config`, so it has no reason to carry one, and
-    this is the copy `make build` leaves on disk."""
+def test_cowork_directory_copy_matches_claude_dist_when_url_unset(built, monkeypatch):
+    """Built without PKB_MCP_URL (the `built` fixture), dist/cowork/<name> is
+    byte-identical to the claude dist: nothing to bake, so nothing rewritten."""
     claude_mcp = (built / "fixture-alpha-claude" / ".mcp.json").read_bytes()
     cowork_mcp = (built / "cowork" / "fixture-alpha" / ".mcp.json").read_bytes()
     assert claude_mcp == cowork_mcp
 
 
-def _fixture_pkb_plugin(tmp_path: Path) -> Path:
-    plugin = tmp_path / "plug"
-    (plugin / "scripts").mkdir(parents=True)
-    (plugin / "scripts" / "run-mcp.sh").write_text("#!/bin/bash\n", encoding="utf-8")
-    (plugin / ".mcp.json").write_text(
+def _fixture_pkb_mcp_json(tmp_path: Path, servers: dict | None = None) -> Path:
+    mcp_path = tmp_path / ".mcp.json"
+    mcp_path.write_text(
         json.dumps(
             {
-                "mcpServers": {
+                "mcpServers": servers
+                if servers is not None
+                else {
                     "services": {
                         "command": "bash",
                         "args": ["-c", 'fastmcp run "$PKB_MCP_URL"'],
@@ -791,80 +789,95 @@ def _fixture_pkb_plugin(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
-    return plugin
+    return mcp_path
 
 
-def test_cowork_zip_ships_no_url_when_build_env_has_none(tmp_path, monkeypatch):
-    """The published zips are built without PKB_MCP_URL and must ship without
+def test_cowork_ships_no_url_when_build_env_has_none(tmp_path, monkeypatch):
+    """The published channel is built without PKB_MCP_URL and must ship without
     an endpoint — unset is not a build failure, it just yields an unrewritten
     (and, in Cowork, non-functional) MCP config."""
     monkeypatch.delenv("PKB_MCP_URL", raising=False)
-    plugin = _fixture_pkb_plugin(tmp_path)
-    assert _bake_cowork_mcp_json(plugin / ".mcp.json", plugin) is None
+    assert _bake_cowork_mcp_json(_fixture_pkb_mcp_json(tmp_path), "plug") is None
 
 
-def test_cowork_zip_resolves_url_from_build_env(tmp_path, monkeypatch):
-    """A local build with PKB_MCP_URL exported produces a usable zip: the
-    upload install path has no --config, so the endpoint has to travel in the
-    artifact, via the stdio launcher's env block."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    baked = _bake_cowork_mcp_json(plugin / ".mcp.json", plugin)
+def test_cowork_resolves_url_from_build_env_into_literal_http_server(tmp_path, monkeypatch):
+    """A local build with PKB_MCP_URL exported produces a usable channel: no
+    Cowork install path can supply the endpoint afterwards, so it travels in
+    the artifact as a literal `type: http` url — the one form Cowork connects
+    with. No stdio launcher, no env block, no placeholder."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp/")
+    baked = _bake_cowork_mcp_json(_fixture_pkb_mcp_json(tmp_path), "plug")
     assert baked is not None
-    server = json.loads(baked)["mcpServers"]["services"]
-    assert server["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
-    assert server["args"] == ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
+    servers = json.loads(baked)["mcpServers"]
+    assert servers == {"services": {"type": "http", "url": "https://pkb.example.ts.net/mcp"}}
+    assert "PKB_MCP_URL" not in baked
+    assert "run-mcp.sh" not in baked
 
 
-def test_cowork_zip_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
+def test_cowork_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
+    mcp_path = _fixture_pkb_mcp_json(tmp_path)
+    data = json.loads(mcp_path.read_text(encoding="utf-8"))
     data["mcpServers"]["other"] = {"command": "other-server", "args": ["--stdio"]}
-    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
+    mcp_path.write_text(json.dumps(data), encoding="utf-8")
 
-    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
+    baked = json.loads(_bake_cowork_mcp_json(mcp_path, "plug") or "{}")
     assert baked["mcpServers"]["other"] == {"command": "other-server", "args": ["--stdio"]}
-    assert "env" in baked["mcpServers"]["services"]
+    assert baked["mcpServers"]["services"] == {
+        "type": "http",
+        "url": "https://pkb.example.ts.net/mcp",
+    }
 
 
-def test_cowork_zip_collapses_pkb_servers_to_one_stdio_proxy(tmp_path, monkeypatch):
-    """Cowork cannot speak streamable HTTP to an MCP server (see
-    scripts/run-mcp.sh), so whatever transport the Claude dist ships, the zip
-    gets exactly one stdio proxy with the URL resolved into its env."""
+def test_cowork_untouched_when_no_server_defers_to_the_env_var(tmp_path, monkeypatch):
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
-    data["mcpServers"]["services-http"] = {"type": "http", "url": "$PKB_MCP_URL"}
-    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
-
-    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
-    servers = baked["mcpServers"]
-
-    assert servers["services"]["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
-    assert servers["services"]["args"] == ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
-    # The http transport must not survive into the zip: Cowork cannot use it,
-    # and leaving it would reload every PKB tool schema a second time.
-    assert "services-http" not in servers
-    assert [name for name, cfg in servers.items() if cfg.get("type") == "http"] == []
-
-
-def test_cowork_zip_converts_a_lone_http_server_to_stdio(tmp_path, monkeypatch):
-    """The template ships only `services-http`; the zip must still end up with
-    the stdio proxy rather than an http server Cowork cannot connect to."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    (plugin / ".mcp.json").write_text(
-        json.dumps({"mcpServers": {"services-http": {"type": "http", "url": "$PKB_MCP_URL"}}}),
-        encoding="utf-8",
+    mcp_path = _fixture_pkb_mcp_json(
+        tmp_path, {"other": {"type": "http", "url": "https://other.example/mcp"}}
     )
+    assert _bake_cowork_mcp_json(mcp_path, "plug") is None
 
-    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
-    servers = baked["mcpServers"]
 
-    assert list(servers) == ["services"]
-    assert servers["services"]["command"] == "bash"
-    assert servers["services"]["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
+def test_cowork_collapses_pkb_servers_to_one_http_server(tmp_path, monkeypatch):
+    """Whatever transports the claude dist ships for the PKB endpoint, the
+    channel gets exactly one http server — a second entry at the same url
+    would load every PKB tool schema twice."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    mcp_path = _fixture_pkb_mcp_json(tmp_path)
+    data = json.loads(mcp_path.read_text(encoding="utf-8"))
+    data["mcpServers"]["services-http"] = {"type": "http", "url": "${PKB_MCP_URL}"}
+    mcp_path.write_text(json.dumps(data), encoding="utf-8")
+
+    baked = json.loads(_bake_cowork_mcp_json(mcp_path, "plug") or "{}")
+    assert baked["mcpServers"] == {
+        "services": {"type": "http", "url": "https://pkb.example.ts.net/mcp"}
+    }
+
+
+def test_cowork_directory_and_zip_carry_the_literal_http_server(tmp_path, monkeypatch):
+    """End to end: with PKB_MCP_URL exported, both the dist/cowork/<name>
+    directory copy and its zip carry the literal http server, and the claude
+    dist keeps the env-var form for Claude Code to expand at launch."""
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    dist = tmp_path / "dist"
+    build_all(
+        PROJECT_ROOT,
+        dist,
+        marketplace_path=REAL_MARKETPLACE,
+        plugins=["pkb"],
+        clients=("claude",),
+        version=VERSION,
+    )
+    claude_mcp = (dist / "pkb-claude" / ".mcp.json").read_text()
+    assert "$PKB_MCP_URL" in claude_mcp
+    assert "pkb.example.ts.net" not in claude_mcp
+
+    dir_mcp = json.loads((dist / "cowork" / "pkb" / ".mcp.json").read_text())
+    assert dir_mcp["mcpServers"] == {
+        "services": {"type": "http", "url": "https://pkb.example.ts.net/mcp"}
+    }
+    with zipfile.ZipFile(dist / "cowork" / f"pkb-v{VERSION}.zip") as zf:
+        zip_mcp = json.loads(zf.read("pkb/.mcp.json"))
+    assert zip_mcp == dir_mcp
 
 
 # --- hard-error paths ---------------------------------------------------------

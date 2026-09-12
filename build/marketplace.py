@@ -105,53 +105,32 @@ def generate_production_marketplace(decl: dict[str, Any], version: str, dist_roo
     return out
 
 
-def _bake_cowork_mcp_json(mcp_path: Path, plugin_dir: Path) -> str | None:
-    """The zip variant's .mcp.json, with $PKB_MCP_URL resolved at build time —
-    or None to zip the file unchanged.
+def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
+    """The Cowork channel's .mcp.json: every server that defers to
+    $PKB_MCP_URL collapsed into one `type: http` server whose URL is the
+    literal value of PKB_MCP_URL in the build environment — or None to ship
+    the file as the claude dist built it.
 
-    Cowork plugins are installed by uploading the zip through the desktop app
-    (Customize -> Add plugins -> Upload a file). The MCP server it launches
-    from that install gets a bare environment: no login shell, no launchctl
-    setenv, nothing the plugin's own config did not carry in. The claude dist's
-    server config defers to `$PKB_MCP_URL` at launch, which in Cowork expands
-    to the empty string — `fastmcp run ""` exits immediately and the client
-    reports "Connection closed" (observed 2026-08-29). There is no --config
-    equivalent on the upload path to supply it after the fact, so the URL has
-    to be in the artifact.
-
-    So the zip swaps that server for the stdio launcher the plugin already
-    ships (scripts/run-mcp.sh) with the URL resolved into its env block. The
-    launcher is used rather than an inline `uvx` line because the same bare
-    environment routinely lacks uvx on PATH, and probing for it is exactly
-    what run-mcp.sh does.
+    Cowork launches a plugin's MCP servers from a bare environment: no login
+    shell, no launchctl setenv, nothing the plugin's own config did not carry
+    in. `${PKB_MCP_URL}` in a url does not expand there (the client reports
+    "Missing environment variables"), and a stdio command that reads it gets
+    the empty string. Neither install path — directory marketplace or zip
+    upload — has a way to supply the value after the fact, so the URL has to
+    be in the artifact. A literal `type: http` url is the one form Cowork
+    connects with (tested 2026-09-11), so that is what the channel ships; the
+    stdio launcher (scripts/run-mcp.sh) is not used here.
 
     The URL is read from the build environment and never committed. An unset
-    PKB_MCP_URL is NOT a build failure: the published zips are built without
-    one, and are expected to ship without one — which means Cowork's services
-    MCP does not work from a published zip, and will not until there is a way
-    to configure it after install. Only a local build with PKB_MCP_URL
-    exported produces a usable Cowork zip. The warning below is the whole
+    PKB_MCP_URL is NOT a build failure: the published channel is built without
+    one and ships the claude dist's env-var form unchanged, which means its
+    services MCP does not work in Cowork. Only a local build with PKB_MCP_URL
+    exported produces a usable Cowork channel. The warning below is the whole
     signal, so don't quiet it.
 
-    Only the zip is rewritten. dist/<name>-claude and the dist/cowork/<name>
-    directory copy keep the env-var form, which is correct for Claude Code and
-    for a directory-marketplace install (`claude plugin install --config`).
+    Only dist/cowork/ is rewritten. dist/<name>-claude keeps the env-var form,
+    which Claude Code resolves at launch.
     """
-    baked = os.environ.get("PKB_MCP_URL", "").strip()
-    if not baked:
-        if "PKB_MCP_URL" in mcp_path.read_text(encoding="utf-8"):
-            print(
-                f"  cowork zip: {plugin_dir.name} — PKB_MCP_URL unset at build time; "
-                "the zip ships with no PKB endpoint and its services MCP will fail "
-                "at first use"
-            )
-        return None
-
-    while baked.endswith("/"):
-        baked = baked[:-1]
-
-    launcher = plugin_dir / "scripts" / "run-mcp.sh"
-
     try:
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
@@ -161,34 +140,28 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_dir: Path) -> str | None:
     # Only servers that defer to the env var at launch — anything with a
     # concrete endpoint of its own is left alone.
     pkb_names = [name for name, cfg in servers.items() if "PKB_MCP_URL" in json.dumps(cfg)]
-    rewritten = False
-
-    if pkb_names and launcher.exists():
-        # Cowork cannot speak streamable HTTP to an MCP server, so whichever
-        # transport the Claude dist shipped, the zip gets the stdio proxy —
-        # one server, not one per transport. scripts/run-mcp.sh holds the
-        # contract: it proxies stdio to $PKB_MCP_URL for exactly these clients.
-        for name in pkb_names:
-            del servers[name]
-        servers["services"] = {
-            "command": "bash",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
-            "env": {"PKB_MCP_URL": baked},
-        }
-        rewritten = True
-    else:
-        for name in pkb_names:
-            cfg = servers[name]
-            if cfg.get("type") == "http" or "url" in cfg:
-                cfg["url"] = cfg.get("url", "").replace("$PKB_MCP_URL", baked)
-            elif "serverUrl" in cfg:
-                cfg["serverUrl"] = cfg.get("serverUrl", "").replace("$PKB_MCP_URL", baked)
-            else:
-                servers[name] = json.loads(json.dumps(cfg).replace("$PKB_MCP_URL", baked))
-            rewritten = True
-
-    if not rewritten:
+    if not pkb_names:
         return None
+
+    baked = os.environ.get("PKB_MCP_URL", "").strip()
+    if not baked:
+        print(
+            f"  cowork: {plugin_name} — PKB_MCP_URL unset at build time; "
+            "the channel ships with no PKB endpoint and its services MCP will "
+            "fail at first use"
+        )
+        return None
+
+    # The streamable-HTTP endpoint is served without a trailing slash; a
+    # trailing slash 404s.
+    while baked.endswith("/"):
+        baked = baked[:-1]
+
+    # One server, not one per transport: a second entry pointing at the same
+    # endpoint would load every PKB tool schema twice.
+    for name in pkb_names:
+        del servers[name]
+    servers["services"] = {"type": "http", "url": baked}
     return json.dumps(data, indent=2) + "\n"
 
 
@@ -198,9 +171,10 @@ def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) ->
     on every restart, so a directory source is required), plus per-plugin
     upload zips for the manual path.
 
-    The directory copy reuses the claude dists verbatim. The zips do not: their
-    .mcp.json gets $PKB_MCP_URL resolved at build time, because the upload path
-    has no way to supply it afterwards (see _bake_cowork_mcp_json)."""
+    Both are the claude dist with one difference: .mcp.json gets $PKB_MCP_URL
+    resolved into a literal http server at build time, because neither Cowork
+    install path can supply it afterwards (see _bake_cowork_mcp_json). The zip
+    is the directory copy, verbatim."""
     cowork_root = dist_root / "cowork"
     if cowork_root.exists():
         shutil.rmtree(cowork_root)
@@ -215,6 +189,12 @@ def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) ->
 
         dst = cowork_root / name
         shutil.copytree(src, dst, ignore=ignore())
+        mcp_path = dst / ".mcp.json"
+        if mcp_path.is_file():
+            baked = _bake_cowork_mcp_json(mcp_path, name)
+            if baked is not None:
+                mcp_path.write_text(baked, encoding="utf-8")
+                print(f"  cowork: {name} — PKB_MCP_URL baked into .mcp.json as a literal http url")
         plugins.append(
             {
                 "name": name,
@@ -229,17 +209,8 @@ def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) ->
         zip_path = cowork_root / f"{name}-v{version}.zip"
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for path in sorted(dst.rglob("*")):
-                if not path.is_file():
-                    continue
-                arcname = str(path.relative_to(cowork_root))
-                baked = None
-                if path.name == ".mcp.json" and path.parent == dst:
-                    baked = _bake_cowork_mcp_json(path, dst)
-                if baked is not None:
-                    zf.writestr(arcname, baked)
-                    print(f"  cowork zip: {name} — PKB_MCP_URL baked into .mcp.json")
-                else:
-                    zf.write(path, arcname)
+                if path.is_file():
+                    zf.write(path, str(path.relative_to(cowork_root)))
 
     data = {
         "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
