@@ -140,7 +140,17 @@ jobs:
           # event: it was opened non-draft directly, bypassing the
           # draft-until-reviewed step entirely. See file header.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            READY_EVENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/timeline" --paginate --jq '[.[] | select(.event == "ready_for_review")] | length')
+            # `gh api --paginate` combined with `--jq` runs the filter once per
+            # page and prints one result per page instead of one result for
+            # the combined set (cli/cli#5347) — a timeline over one page
+            # (>30 events, common on any PR with more than a handful of
+            # comments/commits/labels) would print e.g. "0\n1", which fails
+            # the `-eq` integer test below with a bash error and — because
+            # that error makes the `if` condition false — falls through to
+            # `ready=true`, silently bypassing this gate. So: no `--jq` on the
+            # `gh api` call; pull raw (possibly multi-document) JSON and let
+            # `jq -s` (slurp) merge every page into one array before filtering.
+            READY_EVENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/timeline" --paginate | jq -s '[.[][] | select(.event == "ready_for_review")] | length')
             if [ "$READY_EVENTS" -eq 0 ]; then
               echo "not ready: PR #$PR_NUMBER carries no ready_for_review marker (opened non-draft, never passed through draft review) — refusing merge."
               echo "ready=false" >> "$GITHUB_OUTPUT"
