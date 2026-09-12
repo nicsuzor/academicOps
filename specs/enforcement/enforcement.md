@@ -75,6 +75,8 @@ Within each mechanism category, enforcement strength escalates along an explicit
 
 The canonical doctrine of enforcement is the **enforcement pyramid**: escalate the strength of prose instructions first, and only **reluctantly** move to non-instruction enforcement, within which tooling affordances are preferred to code prohibitions.
 
+Nic, 2026-08-26: _"the canonical explanation is the enforcement pyramid, which says we try escalating strength of prose instructions first and only RELUCTANTLY move to non-instruction enforcement, of which tooling is usually preferred to code prohibitions."_ This does not lower the bar for escalating out of instructions at all: a rung tried and not held is evidence to escalate one step, and a further, stronger instruction attempt remains a legitimate next move.
+
 The escalation sequence runs in strict order. A cheaper rung must be demonstrably exhausted with evidence before advancing to the next:
 
 1. **Instruction, at escalating severity** (`suggestion` → `advisory` → `imperative` → `absolute`). The default and starting rung. Reach here first.
