@@ -57,8 +57,10 @@ this contract does not restate.
   claiming is legible as an unanswered dispatch rather than as work nobody
   picked up. **Cheap read-only probes are exempt** — nothing is lost by running
   one again, so claiming for them buys graph noise instead of recoverability. A
-  launch-time claim with no worker claim behind it is precisely the stale-claim
-  signal a reconcile sweep probes and, finding nothing, requeues to `ready`.
+  launch-time claim with no worker claim behind it is precisely the
+  never-landed-dispatch signal Sara's tick reviews, requeuing it to `ready`
+  where warranted — `/reconcile` no longer probes or resets claims
+  ([[aops_epic_task_lifecycle]]).
 - **Task naming invariant** — task titles must be brief, descriptive, verb-led statements of a concrete thing to achieve (e.g. `Implement X`, `Verify Y`). A task title or filename never carries a person's name or persona prefix; assignment belongs exclusively in `assigned_to` / `assignee` frontmatter fields. See [`specs/meta/naming-and-decisions.md`](../meta/naming-and-decisions.md).
 - **Decisions as graph relationships** — decisions and questions must never be created as standalone "decision" tasks. Open architectural choices are represented as mutually exclusive or mutually blocking option nodes where choosing one branch resolves the conflict, and missing information is modelled as a probe task (`classification: probe`). In-turn questions are put directly via `AskUserQuestion`.
 - **Task body brevity invariant** — task bodies are strictly concise (50–150 words for atomic tasks), structured only around Goal, Deliverable, Scope, Acceptance criteria, and Pointers. Extraneous narrative sections (`Background`, `References`, `Implementation Plan`) and prose task links are prohibited.
