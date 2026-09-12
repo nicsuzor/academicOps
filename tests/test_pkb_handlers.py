@@ -141,6 +141,50 @@ def test_find_pkb_bin_not_found(tmp_path):
         assert handlers._find_pkb_bin(cwd=str(tmp_path)) is None
 
 
+def test_run_pkb_search_uses_measured_timeout():
+    """subprocess timeout matches the measured backend-latency ceiling, not the old 15s guess."""
+    with (
+        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("subprocess.run") as mock_run,
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout="result\n", stderr=""
+        )
+        handlers._run_pkb_search("q")
+        assert mock_run.call_args.kwargs["timeout"] == handlers._SEARCH_TIMEOUT_SECONDS
+        assert handlers._SEARCH_TIMEOUT_SECONDS < 15
+
+
+def test_run_pkb_search_caps_oversized_output():
+    """Output larger than the injection budget is truncated with a marker, regardless of source."""
+    huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
+    with (
+        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("subprocess.run") as mock_run,
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout=huge, stderr=""
+        )
+        out = handlers._run_pkb_search("q")
+        assert out is not None
+        assert len(out) == handlers._MAX_INJECT_CHARS
+        assert out.endswith(handlers._TRUNCATION_MARKER)
+
+
+def test_run_pkb_search_leaves_normal_output_untouched():
+    """Output well under the cap passes through byte-for-byte."""
+    normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
+    with (
+        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("subprocess.run") as mock_run,
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout=normal, stderr=""
+        )
+        out = handlers._run_pkb_search("q")
+        assert out == normal
+
+
 def test_user_prompt_submit_fallback_when_prompt_is_empty():
     """When prompt is empty, search_the_pkb falls back to existing messages (honesty)."""
     ctx = HookContext(
