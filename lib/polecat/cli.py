@@ -2452,5 +2452,41 @@ def default_branch(project):
         click.echo(str(value))
 
 
+@main.command("add-dirs")  # pyright: ignore[reportFunctionMemberAccess]
+def add_dirs():
+    """Print, one per line, every host directory a directly-invoked agent CLI
+    (e.g. `agy`, outside any polecat container) may legitimately read or edit
+    on this machine: each registered project's host checkout, plus
+    `$AOPS_SESSIONS` itself. A caller wraps each line in its own `--add-dir`.
+
+    Project slugs are the canonical registry: `projects` in polecat.yaml
+    ($AOPS_SESSIONS/polecat.yaml, see `load_config`). Each slug's host path is
+    this machine's own mapping: `paths` in `<polecat_home>/local.yaml` — the
+    same lookup `_resolve_workspace` uses for `--project`. A registered project
+    with no entry there is silently skipped: not every project is checked out
+    on every machine. There is no list here to hard-code or let drift; add or
+    remove a project by editing polecat.yaml or local.yaml, never this command.
+    """
+    config = load_config()
+    polecat_home = resolve_polecat_home(config)
+    overlay_paths = load_local_overlay(polecat_home).get("paths", {})
+    projects = config.get("projects", {}) if config else {}
+
+    dirs: set[Path] = set()
+    if isinstance(projects, Mapping) and isinstance(overlay_paths, Mapping):
+        for slug in projects:
+            raw_path = overlay_paths.get(slug)
+            if not raw_path:
+                continue
+            path = expand(raw_path).resolve()
+            if path.is_dir():
+                dirs.add(path)
+
+    dirs.add(resolve_sessions_root())
+
+    for path in sorted(dirs):
+        click.echo(str(path))
+
+
 if __name__ == "__main__":
     main()
