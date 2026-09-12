@@ -241,3 +241,4 @@ jobs:
             BRANCH=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefName --jq .headRefName)
             gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH"
           fi
+# throwaway proof: this PR is opened non-draft directly, no draft->ready transition, to prove aops_d8085e5b's marker gate refuses it. Safe to close after the run log is captured.
