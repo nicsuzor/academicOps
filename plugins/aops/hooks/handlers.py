@@ -221,8 +221,48 @@ def _check_stale_baked_plugins() -> str | None:
     return None
 
 
+def _record_session_own_branch(ctx: HookContext) -> None:
+    """Best-effort: remember this session's branch at container start.
+
+    `AOPS_SESSION_STATE_DIR` is set once per container by the polecat CLI
+    (lib/polecat/cli.py) and is not something a running session can
+    reassign for a later tool call -- each Bash invocation is a fresh
+    subprocess with no carried shell state, so a session cannot `export`
+    its way out of this. Writing the branch here, at session start, before
+    any adversarial cwd-switching could happen, gives `guard_own_pr_ready`
+    a session-identity-keyed fact to check in addition to the current
+    cwd's branch -- closing the "second clone at a different path, same
+    session" bypass (aops_3c133222 dispatch log, 2026-09-12 06:20 UTC).
+    Never raises: a session-start hook must not fail the session over this.
+    """
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if not state_dir:
+        return
+    branch = _own_git_branch(ctx.cwd)
+    if not branch:
+        return
+    try:
+        Path(state_dir).mkdir(parents=True, exist_ok=True)
+        (Path(state_dir) / _OWN_BRANCH_STATE_FILENAME).write_text(branch)
+    except OSError:
+        pass
+
+
+def _recorded_session_own_branch() -> str | None:
+    """The branch `_record_session_own_branch` saved for this container, if any."""
+    state_dir = os.environ.get("AOPS_SESSION_STATE_DIR")
+    if not state_dir:
+        return None
+    try:
+        text = (Path(state_dir) / _OWN_BRANCH_STATE_FILENAME).read_text()
+    except OSError:
+        return None
+    return text.strip() or None
+
+
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
+    _record_session_own_branch(ctx)
     metadata = _format_session_metadata(ctx)
     parts = ["aops hook: Session started.", metadata]
     user_parts = [metadata]
@@ -433,6 +473,7 @@ _SHELL_TOOL_NAMES = frozenset({"Bash", "run_command"})
 _PR_READY_RE = re.compile(r"\bgh\s+pr\s+ready\b")
 _GRAPHQL_READY_RE = re.compile(r"markPullRequestReadyForReview")
 _TICKET = "aops_3c133222"
+_OWN_BRANCH_STATE_FILENAME = "own_pr_ready_guard_branch.txt"
 
 
 def _own_git_branch(cwd: str) -> str | None:
@@ -516,6 +557,17 @@ def guard_own_pr_ready(ctx: HookContext) -> Result | None:
     session marking its own PR ready -- refused. A different branch (a
     review run's own clone, checked out at the base ref, never the original
     PR's branch) is a different PR or a genuinely independent one -- allowed.
+
+    "This session's own branch" is not just `ctx.cwd`'s current branch: a
+    session that opens a second clone at a different path, on a different
+    branch, is still this session (observed on #2658 -- the authoring run
+    flipped its own PR ready from an "independent v0.10 clone" that was in
+    fact its own second checkout). `_recorded_session_own_branch` reads a
+    branch this same container recorded at SessionStart, before any
+    cwd-switching -- keyed by session identity (`AOPS_SESSION_STATE_DIR`,
+    set once per container, not reassignable from inside a later tool
+    call), not by whichever directory this particular command happens to
+    run in. Both sources are checked; either matching is a refusal.
     """
     if ctx.tool not in _SHELL_TOOL_NAMES:
         return None
@@ -538,8 +590,8 @@ def guard_own_pr_ready(ctx: HookContext) -> Result | None:
     if is_undo:
         return None
 
-    own_branch = _own_git_branch(ctx.cwd)
-    if own_branch is None:
+    own_branches = {b for b in (_own_git_branch(ctx.cwd), _recorded_session_own_branch()) if b}
+    if not own_branches:
         return refuse(
             f"refused ({_TICKET}): could not determine this session's own "
             "branch, so whether this PR belongs to this run cannot be "
@@ -547,18 +599,18 @@ def guard_own_pr_ready(ctx: HookContext) -> Result | None:
             "resolve manually or have a separate review run do this."
         )
 
-    if ref is None or ref == own_branch:
+    if ref is None or ref in own_branches:
         return refuse(
             f"refused ({_TICKET}): `gh pr ready` with no argument (or "
-            f"targeting this run's own branch, {own_branch!r}) operates on "
-            "this session's own PR. A run may not mark its own PR ready for "
-            "review -- a separate review run must do this."
+            f"targeting this run's own branch, {ref or next(iter(own_branches))!r}) "
+            "operates on this session's own PR. A run may not mark its own "
+            "PR ready for review -- a separate review run must do this."
         )
 
     opaque_ref = ref.lstrip("#").isdigit() or "github.com" in ref
     if not opaque_ref:
-        # A bare branch name that is not this session's own branch cannot be
-        # this session's own PR -- no lookup needed.
+        # A bare branch name that is none of this session's own branches
+        # cannot be this session's own PR -- no lookup needed.
         return None
 
     head_branch = _pr_head_branch(ref.lstrip("#"), ctx.cwd)
@@ -571,7 +623,7 @@ def guard_own_pr_ready(ctx: HookContext) -> Result | None:
             "this."
         )
 
-    if head_branch == own_branch:
+    if head_branch in own_branches:
         return refuse(
             f"refused ({_TICKET}): PR {ref} has head branch {head_branch!r}, "
             "this session's own branch. A run may not mark its own PR ready "

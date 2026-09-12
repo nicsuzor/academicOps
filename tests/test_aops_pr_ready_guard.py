@@ -29,7 +29,14 @@ if str(AOPS_HOOKS) not in sys.path:
 handlers_spec = importlib.util.spec_from_file_location("aops_handlers", AOPS_HOOKS / "handlers.py")
 assert handlers_spec is not None and handlers_spec.loader is not None
 handlers = importlib.util.module_from_spec(handlers_spec)
-sys.modules["handlers"] = handlers
+# Deliberately NOT registered as sys.modules["handlers"]: that name collides
+# with plugins/rbg/hooks/handlers.py, which other test files (test_cope.py)
+# import under the bare name "handlers". Under pytest-xdist, whichever file
+# runs first in a worker process wins that global slot for every test after
+# it -- this exact collision made tests/test_cope.py fail with
+# `AttributeError: module 'aops_handlers' has no attribute 'evaluate'` once
+# this file was added (it shifted xdist's grouping). Nothing in this file
+# patches via the string "handlers.*", so no registration is needed.
 handlers_spec.loader.exec_module(handlers)
 
 from dispatch import HookContext, Kind  # type: ignore[import-not-found]
@@ -306,3 +313,101 @@ def test_pr_head_branch_returns_none_on_failure(monkeypatch):
 
     monkeypatch.setattr(handlers.subprocess, "run", raising_run)
     assert handlers._pr_head_branch("2653", "/workspace") is None
+
+
+# ---------------------------------------------------------------------------
+# session-identity-keyed branch, recorded at SessionStart
+#
+# A branch-only check is defeated by a second clone at a different path in
+# the same session (observed on #2658: the authoring run flipped its own PR
+# ready from an "independent v0.10 clone" that was, in fact, its own second
+# checkout). `AOPS_SESSION_STATE_DIR` is set once per container, before any
+# such cwd-switching, so a branch recorded there at SessionStart is a fact
+# about the session, not about whichever directory a later command happens
+# to run in.
+# ---------------------------------------------------------------------------
+
+
+def test_record_session_own_branch_writes_state_file_at_session_start(monkeypatch, tmp_path):
+    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        cwd="/workspace",
+        raw={},
+        hooks_dir=AOPS_HOOKS,
+    )
+    with patch.object(handlers, "_own_git_branch", return_value="polecat/own-pr-ready-block-s1"):
+        handlers.session_start(ctx)
+    state_file = tmp_path / handlers._OWN_BRANCH_STATE_FILENAME
+    assert state_file.read_text().strip() == "polecat/own-pr-ready-block-s1"
+
+
+def test_record_session_own_branch_is_a_noop_without_state_dir(monkeypatch):
+    monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
+    ctx = HookContext(client="claude", event="SessionStart", cwd="/workspace", raw={})
+    with patch.object(handlers, "_own_git_branch", return_value="polecat/s1"):
+        handlers.session_start(ctx)  # must not raise
+
+
+def test_record_session_own_branch_is_a_noop_when_branch_unknown(monkeypatch, tmp_path):
+    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
+    ctx = HookContext(client="claude", event="SessionStart", cwd="/workspace", raw={})
+    with patch.object(handlers, "_own_git_branch", return_value=None):
+        handlers.session_start(ctx)
+    assert not (tmp_path / handlers._OWN_BRANCH_STATE_FILENAME).exists()
+
+
+def test_recorded_session_own_branch_reads_state_file(monkeypatch, tmp_path):
+    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
+    (tmp_path / handlers._OWN_BRANCH_STATE_FILENAME).write_text("polecat/own-pr-ready-block-s1\n")
+    assert handlers._recorded_session_own_branch() == "polecat/own-pr-ready-block-s1"
+
+
+def test_recorded_session_own_branch_is_none_without_state_dir(monkeypatch):
+    monkeypatch.delenv("AOPS_SESSION_STATE_DIR", raising=False)
+    assert handlers._recorded_session_own_branch() is None
+
+
+def test_recorded_session_own_branch_is_none_when_file_absent(monkeypatch, tmp_path):
+    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
+    assert handlers._recorded_session_own_branch() is None
+
+
+def test_guard_refuses_the_second_clone_bypass_observed_on_2658(monkeypatch, tmp_path):
+    """The exact incident this task exists to close.
+
+    The session's *current* cwd is a second, independent-looking clone on
+    `v0.10` -- a bare `_own_git_branch(ctx.cwd)` check would allow this, as
+    it did on the real #2658 incident. The branch recorded at this
+    session's SessionStart (before the second clone existed) is the PR's
+    actual head branch, so the guard must catch it anyway.
+    """
+    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
+    (tmp_path / handlers._OWN_BRANCH_STATE_FILENAME).write_text("polecat/own-pr-ready-block-s1")
+
+    ctx = _ctx("gh pr ready 2658", cwd="/tmp/aops-review-sim")
+    with (
+        patch.object(handlers, "_own_git_branch", return_value="v0.10"),
+        patch.object(handlers, "_pr_head_branch", return_value="polecat/own-pr-ready-block-s1"),
+    ):
+        res = handlers.guard_own_pr_ready(ctx)
+
+    assert res is not None
+    assert res.kind is Kind.REFUSE
+    assert "polecat/own-pr-ready-block-s1" in res.inject_text
+
+
+def test_guard_still_allows_a_genuinely_different_session(monkeypatch, tmp_path):
+    """No recorded branch, and cwd's branch differs from the PR: allowed."""
+    monkeypatch.setenv("AOPS_SESSION_STATE_DIR", str(tmp_path))
+    # This session never opened polecat/own-pr-ready-block-s1 -- nothing recorded.
+
+    ctx = _ctx("gh pr ready 2658", cwd="/tmp/aops-review-sim")
+    with (
+        patch.object(handlers, "_own_git_branch", return_value="v0.10"),
+        patch.object(handlers, "_pr_head_branch", return_value="polecat/own-pr-ready-block-s1"),
+    ):
+        res = handlers.guard_own_pr_ready(ctx)
+
+    assert res is None
