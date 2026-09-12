@@ -46,7 +46,7 @@ Store authored prompts in the sourcing PKB probe task:
 <pasteable prompt text>
 ```
 
-## Acceptance Criteria
+## What Done Looks Like
 
 - [ ] Run prompt in <tool>
 - [ ] Verify `Works Cited` and `Weakest links` sections exist prior to capture
