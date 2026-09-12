@@ -12,21 +12,28 @@ Spawns autonomous workers in isolated, detached containers via `polecat run --de
 ### Task Dispatch
 
 ```bash
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
+BRANCH=$(polecat default-branch -p <project>)
+BRANCH="${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
 polecat run agy -p <project> -t <task-id> -s "dispatch-<task-id>" --base "$BRANCH" --detach
 ```
 
 ### Prompt Dispatch
 
 ```bash
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
+BRANCH=$(polecat default-branch -p <project>)
+BRANCH="${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
 polecat run agy -p <project> -s "run-<slug>" --base "$BRANCH" --detach --prompt '<prompt>'
 ```
 
 ## Options and Rules
 
 - `--prompt`: Must be the final argument; everything following is captured as prompt text.
-- `--base <branch>`: Base branch to diverge from. Defaults to upstream HEAD when omitted.
+- `--base <branch>`: Base branch to diverge from. Always state it explicitly — resolve the
+  project's configured active line first (`polecat default-branch -p <project>`), which
+  `polecat run` fetches fresh before branching. Only fall back to the invoking session's
+  current branch when the project has none configured. Never let `--base` default silently:
+  `polecat run` itself falls back to the canonical checkout's current branch, which is
+  whatever a shared checkout happens to be sitting on and is not the active line.
 - `-s <session>`: Sets session name. Branch is created as `polecat/<session>`.
 - `-p <project>`: Canonical repository slug from `$AOPS_SESSIONS/polecat.yaml`.
 - **Detached operation**: Do not pipe to stream filters (`tail`, `head`, `grep`) or poll for output. Caller handles downstream tracking.

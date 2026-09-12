@@ -107,7 +107,7 @@ def test_pc_dispatch_non_tty_execution(tmp_path, monkeypatch):
 
 
 def test_no_stale_ida_pc_references(tmp_path):
-    """Every reference in plugins/ and dist/ must use orchestrate:pc, not ida:pc."""
+    """Every reference in plugins/ and dist/ must use aops:polecat, not ida:pc."""
     # Build all plugins into a temporary dist directory
     dist_root = _REPO_ROOT / "dist"
     if not dist_root.exists():

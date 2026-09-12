@@ -767,8 +767,13 @@ def resolve_isolated_workspace(
     path to mount, so a container never writes to a shared checkout.
 
     The clone is created from the commit specified in `base` if provided,
-    otherwise falling back to `branch`, then the `branch` key in `config`
-    (polecat.yaml), and defaulting to HEAD if none is set.
+    otherwise from the canonical checkout's own current branch (or `HEAD` if
+    detached). `config` is never consulted for this — see
+    specs/polecat/spec-base-ref-resolution.md rule 1: silently retargeting an
+    omitted `--base` to a configured branch would clobber a dispatch cut from
+    a feature branch. A caller that wants a project's configured active line
+    used by default must resolve it itself (`polecat default-branch -p
+    <project>`) and pass it as an explicit `--base`.
 
     The clone is standalone rather than a linked worktree: a linked worktree's
     `.git` is a pointer to an admin directory on the host that the container
@@ -1890,7 +1895,10 @@ def main():
 )
 @click.option(
     "--base",
-    help="Base commit or branch to create private branch from (default: branch in polecat.yaml).",
+    help="Base commit or branch to create private branch from (default: canonical "
+    "checkout's current branch — never a configured or hardcoded value; see "
+    "'polecat default-branch' to resolve a project's configured active line "
+    "and pass it here explicitly).",
 )
 @click.option(
     "--branch",
@@ -2416,6 +2424,32 @@ def run(
             "subtask or re-dispatching.\n"
             f"Workspace preserved for inspection: {workspace_dir}"
         )
+
+
+@main.command("default-branch")  # pyright: ignore[reportFunctionMemberAccess]
+@click.option("--project", "-p", required=True, help="Project name, resolved via local.yaml paths.")
+def default_branch(project):
+    """Print a project's configured active-line branch, or nothing if unset.
+
+    Reads `projects.<slug>.default_branch` from polecat.yaml. This is a
+    dispatcher-side lookup only: `resolve_isolated_workspace()` itself never
+    consults this key and never will (spec-base-ref-resolution.md rule 1 —
+    the launcher must not silently retarget a dispatch cut from a feature
+    branch). A caller that wants dispatches against a project to track that
+    project's active line rather than whatever the shared canonical checkout
+    happens to be sitting on reads this value and passes it as an explicit
+    `--base` to `polecat run`. Exits 0 with empty output when the project has
+    no `default_branch` configured; callers fall back to their own default
+    (typically the invoking session's current branch) rather than treating
+    an unset value as an error.
+    """
+    config = load_config()
+    canonical_project = resolve_canonical_project(project, config)
+    projects = config.get("projects", {}) if config else {}
+    project_cfg = projects.get(canonical_project) if isinstance(projects, Mapping) else None
+    value = project_cfg.get("default_branch") if isinstance(project_cfg, Mapping) else None
+    if value:
+        click.echo(str(value))
 
 
 if __name__ == "__main__":

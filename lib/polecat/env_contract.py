@@ -89,10 +89,17 @@ CONTAINER_AUTH_ENV = (
 # creates its own per-session file and overrides this value, so this path is
 # the one used by clients that supply none. It sits outside every bind mount,
 # so what it holds dies with the container instead of persisting on the host.
+#
+# CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 disables Claude Code print mode's
+# default 600s ceiling on background tasks: run intent-weight-s1 (task
+# mem_intent_ready_weight, mem/main) delegated QA as a background subagent
+# and print mode killed it at 600s, leaving uncommitted work and no PR
+# (Nic's ruling, 2026-09-11). Unrecognised by agy, so harmless on that lane.
 CONTAINER_SET_ENV = {
     "CLAUDE_ENV_FILE": "/tmp/aops-session.env",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
+    "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0",
 }
 
 #: Host tokens that mean "this machine" on the host and "this container" inside
