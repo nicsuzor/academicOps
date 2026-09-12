@@ -1,0 +1,53 @@
+# Trigger for the aops /pkb:reconcile pass -- the schedule that fires without
+# Nic remembering to run it. Fires aops-reconcile.service, which runs
+# aops-reconcile-run.sh (Step 1: /pkb:reconcile; Step 2: capture pickup, wired
+# once aops_capture_intake_route lands -- see that script's comments for why
+# pickup is a separate step on this same trigger rather than folded into the
+# reconcile pass itself).
+#
+# Install (user-scope systemd, no root):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/systemd-user/aops-reconcile.timer   ~/.config/systemd/user/
+#   cp scripts/systemd-user/aops-reconcile.service ~/.config/systemd/user/
+#   mkdir -p "${POLECAT_HOME:-$HOME/.aops}"
+#   cp scripts/systemd-user/aops-reconcile-run.sh  "${POLECAT_HOME:-$HOME/.aops}/"
+#   chmod +x "${POLECAT_HOME:-$HOME/.aops}/aops-reconcile-run.sh"
+#   systemctl --user daemon-reload
+#
+# First live run -- required before enabling the timer:
+#   systemctl --user start aops-reconcile.service
+#   journalctl --user -u aops-reconcile.service -n 100 --no-pager
+#   Confirm in the run's output that a real PKB write executed
+#   (update_task or release_task on a non-terminal task, not just a read)
+#   and that the tool call resolved -- reconcile's SKILL.md addresses PKB
+#   tools by the `mcp__plugin_pkb_services__pkb__*` plugin prefix, and
+#   aops_reconcile_headless_trigger_probe found that prefix's transport
+#   (plugin:pkb:services) failing to connect headlessly on this same host
+#   one probe-run earlier (CONNECTION_CLOSED) -- confirm which transport
+#   is live before trusting any unattended run. Do not enable the timer
+#   until a write is verified.
+#
+# Enable only after the check above passes:
+#   systemctl --user enable --now aops-reconcile.timer
+#
+# Verify / inspect:
+#   systemctl --user list-timers aops-reconcile.timer
+#   journalctl --user -u aops-reconcile.service --since "1 day ago"
+#
+# Uninstall:
+#   systemctl --user disable --now aops-reconcile.timer
+#   rm ~/.config/systemd/user/aops-reconcile.timer
+#   rm ~/.config/systemd/user/aops-reconcile.service
+#   rm "${POLECAT_HOME:-$HOME/.aops}/aops-reconcile-run.sh"
+#   systemctl --user daemon-reload
+
+[Unit]
+Description=Periodic trigger for the aops /pkb:reconcile pass and capture pickup
+
+[Timer]
+OnCalendar=*-*-* 06,12,18:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
