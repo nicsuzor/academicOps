@@ -11,7 +11,7 @@ Assemble workflow templates and prepare tasks for cold execution. The brief tran
 
 0. **Task initialization**: If no task ID was provided, create one via `/q` using the provided description.
 1. **Verify premises**: Re-verify world claims (paths, schemas, runtime states) before cementing them into constraints. Halt if a premise is invalid.
-2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`plugins/aops/templates/`), and PKB (`type: template`) tiers. Halt if a required process component is missing.
+2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`plugins/pkb/workflows/`), and PKB (`type: template`) tiers. Halt if a required process component is missing.
 3. **Determine task boundaries**:
    - Default to a single dispatchable unit for a single session, embedding workflow steps as internal checklist items.
    - Cut into separate tasks only when independent sessions are strictly required (e.g. forks, loops, independent reviews).

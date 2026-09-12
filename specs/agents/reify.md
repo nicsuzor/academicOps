@@ -19,7 +19,7 @@ making further routing decisions:
 | Execution steps | The workflow interpreted for _this_ request as concrete numbered steps, `CHECKPOINT:`-prefixed where the workflow mandates verification |
 | Guardrails      | The constraints the selected workflow imposes                                                                                           |
 
-The workflow catalog is `plugins/aops/templates/` and its `wf-*.md`
+The workflow catalog is `plugins/pkb/workflows/` and its `wf-*.md`
 templates. Selection is interpretive, not mechanical: the hydrator reads the
 template and generates steps for the specific request. A plan that instructs the
 main agent to go read a workflow file has failed -- the whole cost saving is that
