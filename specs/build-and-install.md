@@ -67,8 +67,9 @@ feature:
    copies a plugin's built `mcp_config.json` verbatim. Its `services` server
    therefore ships the literal text `YOUR_PKB_URL` in place of the URL.
    `build.install patch-agy-mcp` rewrites that placeholder to the concrete
-   value in `~/.gemini/config/plugins/<name>/.mcp.json` right after the copy
-   -- `make install-dev` runs it once, after installing every plugin for agy.
+   value in `~/.gemini/config/plugins/<name>/mcp_config.json` right after the
+   copy -- `make install-dev` runs it once, after installing every plugin for
+   agy.
    With `$PKB_MCP_URL` unset it is a no-op, not a failure: the plugin installs
    with the placeholder left in place, unusable until reconfigured.
 3. **Cowork bakes the URL at build time.**
