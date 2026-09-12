@@ -41,7 +41,7 @@ are separate marketplace names specifically so one install can never silently
 shadow the other: `claude plugin marketplace add` is a no-op when a name already
 exists, so both `install-dev` and `install` remove their own marketplace name
 before re-adding it. `aops`'s `services` MCP server resolves `$PKB_MCP_URL`
-from the environment at launch (`ARCHITECTURE.md`, "No defaults" -- the URL is
+from the environment at launch (`.agents/CORE.md`, "No defaults" -- the URL is
 never committed, and there is no fallback).
 
 **MCP server configuration:**
