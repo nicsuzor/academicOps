@@ -28,7 +28,7 @@ handlers = importlib.util.module_from_spec(handlers_spec)
 sys.modules["handlers"] = handlers
 handlers_spec.loader.exec_module(handlers)
 
-from dispatch import HookContext  # type: ignore[import-not-found]
+from dispatch import HookContext, load_message_pair  # type: ignore[import-not-found]
 
 
 @pytest.fixture
@@ -151,12 +151,13 @@ def test_user_prompt_submit_fallback_when_prompt_is_empty():
         agent_type="worker",
     )
 
+    expected_inject, expected_user = load_message_pair(PKB_HOOKS, "honesty")
+
     res = handlers.search_the_pkb(ctx)
     assert res is not None
     assert "<academicOps PKB search results>" not in res.inject_text
-    assert "<id>honesty.md</id>" in res.inject_text
-    assert res.user_text is not None
-    assert "Honesty floor" in res.user_text
+    assert res.inject_text == expected_inject
+    assert res.user_text == expected_user
 
 
 def test_user_prompt_submit_fallback_when_pkb_search_fails():
@@ -169,11 +170,13 @@ def test_user_prompt_submit_fallback_when_pkb_search_fails():
         agent_type="worker",
     )
 
+    expected_inject, _ = load_message_pair(PKB_HOOKS, "honesty")
+
     with patch.object(handlers, "_run_pkb_search", return_value=None):
         res = handlers.search_the_pkb(ctx)
         assert res is not None
         assert "<academicOps PKB search results>" not in res.inject_text
-        assert "<id>honesty.md</id>" in res.inject_text
+        assert res.inject_text == expected_inject
 
 
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
@@ -197,10 +200,10 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
     specific = data.get("hookSpecificOutput", {})
     assert specific.get("hookEventName") == "UserPromptSubmit"
     content = specific.get("additionalContext", "")
-    # Either PKB search result or fallback honesty message
-    assert (
-        content.startswith("<academicOps PKB search results>") or "<id>honesty.md</id>" in content
-    )
+    # Either PKB search result or the fallback honesty message, byte-for-byte
+    # the file as staged for this run — not a literal restated here.
+    expected_inject, _ = load_message_pair(staged_hooks, "honesty")
+    assert content.startswith("<academicOps PKB search results>") or content == expected_inject
 
 
 def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
@@ -224,4 +227,5 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     steps = data.get("injectSteps", [])
     assert len(steps) > 0
     msg = steps[0].get("ephemeralMessage", "")
-    assert msg.startswith("<academicOps PKB search results>") or "<id>honesty.md</id>" in msg
+    expected_inject, _ = load_message_pair(staged_hooks, "honesty")
+    assert msg.startswith("<academicOps PKB search results>") or msg == expected_inject

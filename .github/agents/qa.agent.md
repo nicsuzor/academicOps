@@ -49,7 +49,7 @@ If `.agents/rules/RULES.md` exists in this checkout, read it before issuing a ve
 - Placeholder text (`{variable}`, `TODO`, `FIXME`)
 - Suspiciously short output for a complex operation
 - "Success" claims without the actual output shown
-- Tests that check existence but not content
+- Tests that check existence but not the _runtime_ content or effect a change produces (a response body, a computed value, a rendered output) -- this does not mean asserting that an agent, skill, settings, or instruction file contains a given string, tool name, or skill name; a test of that shape is itself a defect (it mirrors configuration instead of exercising behavior), not a fix for this flag
 - Silent error handling (try/except swallowing errors)
 
 ## Procedure

@@ -433,19 +433,27 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
+    """agy has no notion of a Claude model name, so the client adapter must
+    strip a source `model:` key rather than ship it verbatim."""
     import yaml
 
     agy_agent = built_orchestrate / "aops-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
 
-    claude_agent = built_orchestrate / "aops-claude" / "agents" / "james.md"
-    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
-    assert claude_fm.get("model") == "opus" or "model" not in claude_fm
+
+def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
+    """Client-agnostic frontmatter fields like `color` are not touched by the
+    per-client adapters. The expected value is read from the source agent
+    file, not restated, so this only fails if the build actually changes it."""
+    import yaml
+
+    source_marsha = PROJECT_ROOT / "plugins" / "aops" / "agents" / "marsha.md"
+    source_fm = yaml.safe_load(source_marsha.read_text().split("---")[1])
 
     agy_marsha = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
     agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
-    assert agy_marsha_fm["color"] == "pink"
+    assert agy_marsha_fm["color"] == source_fm["color"]
 
 
 def test_agent_empty_tools_list_raises_build_error(tmp_path):

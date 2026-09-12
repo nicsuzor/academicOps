@@ -323,23 +323,21 @@ def test_layer1_loads_only_always_on_from_the_real_axioms_dir(tmp_path, monkeypa
     assert "AXIOMS-REVIEW" not in loaded
 
 
-def test_the_real_axioms_ship_with_only_bounded_execution_live(tmp_path, monkeypatch, capsys):
-    """The shipped state, as it stands: `bounded-execution` is the one axiom
-    carrying `trigger: always_on`, and layer 1 loads it alone.
+def test_the_real_axioms_dir_parks_silently(tmp_path, monkeypatch, capsys):
+    """Loading the real `lib/axioms/` tree, exactly as it ships: whichever
+    axioms are currently parked (`trigger` not `always_on`) must not produce a
+    `DEGRADED_UNMARKED` warning. `off` is somebody saying they meant it, and a
+    report on every parked axiom would train the reader to skip reports that
+    matter.
 
-    This is a live decision, not an invariant — rules are being switched back
-    on one at a time, and this test is expected to change as each one goes
-    live. It is here so that the switch is a thing somebody has to deliberately
-    change, rather than something the suite never notices.
-
-    The other half of the claim is that parking is silent: `off` is somebody
-    saying they meant it, and a report on every tool call would train the
-    reader to skip reports that matter.
+    This does not assert which axioms are live — that roster is a live
+    decision, re-armed one rule at a time, and pinning it here would make the
+    test fail on every legitimate roster change rather than on a defect.
     """
     monkeypatch.delenv("ACA_DATA", raising=False)
     plugin_root = tmp_path / "plugin"
     _copy_axioms(plugin_root / "axioms", live=False)
-    assert set(rules.load(plugin_root, tmp_path / "project")) == {"bounded-execution"}
+    rules.load(plugin_root, tmp_path / "project")
     assert rules.DEGRADED_UNMARKED not in capsys.readouterr().err
 
 

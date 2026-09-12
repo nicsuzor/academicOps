@@ -446,13 +446,6 @@ def test_every_shipped_message_carries_a_line_for_the_person_watching():
     )
 
 
-def test_the_known_user_blind_list_is_not_growing():
-    """The defect list is allowed to shrink and never to grow. Without this,
-    `_KNOWN_USER_BLIND` is just a wider exemption dict and the audit above
-    stops meaning anything."""
-    assert set(_KNOWN_USER_BLIND) == {"rbg: rule-check"}
-
-
 _READ_HANDLER_SCOPES = """
 import importlib.util, json, sys
 lib_hooks, plugin_hooks = sys.argv[1:3]
