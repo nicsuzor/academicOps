@@ -57,7 +57,7 @@ Semantic labels on existing task types. No new task types, no schema changes.
 
 | Primitive           | Purpose                                    | Maps to       |
 | ------------------- | ------------------------------------------ | ------------- |
-| **spike**           | Resolve an unknown before planning further | `learn`       |
+| **probe**           | Resolve an unknown before planning further | `learn`       |
 | **lit-review**      | Systematic examination of existing work    | `learn`       |
 | **methodology**     | Design and justify analytical approach     | `task`        |
 | **ethics**          | IRB, consent, data governance              | `task` + gate |
@@ -71,7 +71,7 @@ Semantic labels on existing task types. No new task types, no schema changes.
 
 ```mermaid
 graph LR
-    spike --> litreview[lit-review]
+    probe --> litreview[lit-review]
     litreview --> methodology
     methodology --> pilot
     methodology --> ethics
@@ -79,12 +79,12 @@ graph LR
     pilot -.soft.-> datacollection
     datacollection --> analysis
     analysis --> writing
-    spike -.soft.-> methodology
+    probe -.soft.-> methodology
     litreview -.soft.-> analysis
     collaboration --> methodology
 ```
 
-- **spike → lit-review → methodology** is the discovery sequence: establish tractability, survey
+- **probe → lit-review → methodology** is the discovery sequence: establish tractability, survey
   existing work, then design the approach informed by what exists.
 - **ethics is a HARD gate before data-collection.** Non-negotiable, and often gated on external
   approval with unpredictable timelines. Treating ethics as a parallel task is a failure.
@@ -99,16 +99,16 @@ graph LR
 Deviate where the project shape demands it:
 
 - **Secondary data**: no data-collection; analysis depends on methodology plus a data-access
-  spike that validates the dataset contains the expected variables under appropriate terms.
+  probe that validates the dataset contains the expected variables under appropriate terms.
 - **Theoretical**: no data-collection or analysis; substitute a conceptual-development primitive
-  (mapped to `task`), giving spike → lit-review → methodology → conceptual-development → writing.
-- **Replication**: methodology is mostly fixed by the original study; the spike targets
+  (mapped to `task`), giving probe → lit-review → methodology → conceptual-development → writing.
+- **Replication**: methodology is mostly fixed by the original study; the probe targets
   reproduction feasibility -- data access, computational requirements, original authors'
   cooperation.
 
 ## Decomposition rules
 
-1. **Start with unknowns.** Every unknown becomes a spike or pilot. Information-gathering precedes
+1. **Start with unknowns.** Every unknown becomes a probe or pilot. Information-gathering precedes
    commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption carries a confidence level, a
    validation path, and a contingency.
@@ -164,7 +164,7 @@ explicitly to re-examine foundations.
    confidence tag (high/medium/low) and a one-line validation path.
 3. **Literature pointers** (2–5 items) -- adjacent work, enough to avoid reinventing and to locate
    the idea in an intellectual neighbourhood. Not a literature review.
-4. **Spikes** (1–3 items) -- concrete questions with a cheap way to answer each, resolvable in
+4. **Probes** (1–3 items) -- concrete questions with a cheap way to answer each, resolvable in
    hours, not weeks.
 5. **Go/no-go prompt** -- "develop this into a project plan (forest mode), park it, or abandon it?"
 
@@ -173,7 +173,7 @@ estimates, no dependency chains, no MVC, and no Mermaid diagrams, and it leaves 
 `inbox` without acceptance criteria until the researcher chooses to develop it.
 
 **Transition to forest.** The assumption inventory seeds the assumptions table, each assumption
-gaining a fuller validation path and contingency. The spikes become the first task nodes. The
+gaining a fuller validation path and contingency. The probes become the first task nodes. The
 literature pointers scope the lit-review primitive. The interest statement anchors the MVC.
 
 ## Forest mode

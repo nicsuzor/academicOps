@@ -22,7 +22,7 @@ Tasks are actionable units of work. Their titles must communicate clear operatio
 1. **Verb-Led Imperative:** Every task title begins with an active imperative verb describing the concrete outcome to achieve (e.g., `Implement X`, `Refactor Y`, `Verify Z`, `Extract A from B`).
 2. **Brief and Descriptive:** Titles must be concise (typically 4–10 words) yet sufficiently descriptive that an executor or supervisor understands the objective without reading the body.
 3. **No Person's Name in Titles or Filenames:** A task title, note title, or filename must **never** contain a person's name or moniker (e.g., `nic: decision: ...`, `nic-task-...`, `for-nic.md`). Assignment and human involvement belong exclusively in frontmatter metadata fields (`assigned_to:`, `assignee:`).
-4. **No Artificial Type Prefixes:** Do not encode categories into titles (e.g., avoid `DECISION: ...`, `SPIKE: ...`, `TASK: ...`). Node taxonomy and classification are expressed through frontmatter (`type:`, `classification:`) and graph topology.
+4. **No Artificial Type Prefixes:** Do not encode categories into titles (e.g., avoid `DECISION: ...`, `PROBE: ...`, `TASK: ...`). Node taxonomy and classification are expressed through frontmatter (`type:`, `classification:`) and graph topology.
 
 ## 2. Filename Standard
 
@@ -70,8 +70,8 @@ flowchart TD
    - The options are wired as mutually blocking or conflicting branches. Progress on downstream work is blocked until one option is chosen and the unselected alternative is cancelled or deleted.
 2. **Dynamic Emergence of Questions:**
    - Open architectural decisions are surfaced dynamically by agents inspecting graph topology (detecting unresolved option forks on the critical path) rather than by querying a bucket of stale "decision" tickets.
-3. **Empirical Unknowns as Spikes/Probes:**
-   - Where a decision depends on missing runtime data or benchmarks, mint an empirical probe task (`classification: spike`, e.g. `Benchmark SQLite vs DuckDB query latency`). Wire the blocked work `depends_on` the probe.
+3. **Empirical Unknowns as Probes:**
+   - Where a decision depends on missing runtime data or benchmarks, mint an empirical probe task (`classification: probe`, e.g. `Benchmark SQLite vs DuckDB query latency`). Wire the blocked work `depends_on` the probe.
 4. **Resolution by Pruning:**
    - Deciding an option consists of selecting the winning node, completing/adopting it, and cancelling/pruning the competing node (`status: cancelled`). This immediately unblocks downstream dependency edges without manual decision-task administrative overhead.
 

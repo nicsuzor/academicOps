@@ -9,12 +9,12 @@ Structure prompts for deep research tools and ingest outputs into the PKB.
 
 ## Routing
 
-- **Authoring prompts**: User needs to formulate an investigation spike. Route to [[prompt-authoring]].
+- **Authoring prompts**: User needs to formulate an investigation probe. Route to [[prompt-authoring]].
 - **Capturing outputs**: User provides a Google Doc URL or ID from an external run. Route to [[pkb-capture]].
 
 ## Lifecycle Overview
 
-1. **Frame spike task**: Create a PKB spike task containing the crafted prompt.
+1. **Frame probe task**: Create a PKB probe task containing the crafted prompt.
 2. **Execute externally**: Run the prompt in Gemini Deep Research, ChatGPT Pro, or Perplexity.
 3. **Capture**: Download document, transcribe rasterized equations/diagrams, and store as a knowledge note.
 4. **Complete task**: Update sourcing task with `research_output` linking to the knowledge note.

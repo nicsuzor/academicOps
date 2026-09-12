@@ -64,5 +64,5 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 Agents must never create standalone "decision" tasks or file questions as backlog tickets.
 
 - **Represent forks as mutually exclusive option nodes:** Architectural choices and trade-offs are modelled on the graph as competing option nodes with mutual blocking edges. Choosing an option resolves the conflict and cancels the competing node, unblocking downstream dependencies.
-- **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: spike`).
+- **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.
