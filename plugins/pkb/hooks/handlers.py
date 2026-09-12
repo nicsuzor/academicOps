@@ -16,6 +16,22 @@ log = logging.getLogger("pkb.handlers")
 
 Handler = Callable[[HookContext], Result | None]
 
+# Measured 2026-09-12 (scripts/measure_pkb_injection.py, n=30 live fires
+# across two prompt families): backend search latency p95 ~1.35s, median
+# ~1.29s. 5s clears that with >3x margin while cutting the worst-case block
+# on a stalled backend from 15s to 5s -- this hook is synchronous ahead of
+# every prompt, so a hang here is a hang for the whole turn.
+_SEARCH_TIMEOUT_SECONDS = 5
+
+# Same measurement run: payload size for 5 results was 3.5-6.4KB (p95). This
+# hook fires on every single UserPromptSubmit -- the highest-frequency
+# injection point in the framework -- and had no ceiling of its own,
+# inheriting whatever the `pkb` CLI's default result count/format produced.
+# Set well above the measured p95 so normal output is never touched; it only
+# bites if the backend's output grows unexpectedly large.
+_MAX_INJECT_CHARS = 8000
+_TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
+
 
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind agents to present substantiating evidence with their claims."""
@@ -47,6 +63,20 @@ def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
     return None
 
 
+def _cap_output(out: str) -> str:
+    """Bound injected payload size, independent of what the backend returns.
+
+    A per-turn hook has no natural upper limit from its caller -- the CLI's
+    own result count and formatting decide payload size today. This is the
+    hook's own ceiling, not a substitute for the backend returning a
+    reasonable number of results.
+    """
+    if len(out) <= _MAX_INJECT_CHARS:
+        return out
+    cutoff = _MAX_INJECT_CHARS - len(_TRUNCATION_MARKER)
+    return out[:cutoff].rstrip() + _TRUNCATION_MARKER
+
+
 def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     query = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", prompt).strip()[:200]
     if not query:
@@ -62,7 +92,7 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
             [pkb_bin, "search", query],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=_SEARCH_TIMEOUT_SECONDS,
             cwd=str(cwd) if cwd and Path(cwd).is_dir() else None,
             env=env,
         )
@@ -70,7 +100,7 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
             out = proc.stdout.strip()
             out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", out).strip()
             if out:
-                return out
+                return _cap_output(out)
         else:
             log.warning("pkb search exited with returncode %s: %s", proc.returncode, proc.stderr)
     except Exception as exc:
