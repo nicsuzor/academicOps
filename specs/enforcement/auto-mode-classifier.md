@@ -19,15 +19,16 @@ framework's prose rules (`environment` / `allow` / `soft_deny` /
 A denial comes back to the agent as a tool result with a reason, on the
 expectation the agent finds a safer path rather than routes around it.
 
-**Relationship to "advisory" (`ARCHITECTURE.md`, Enforcement).** A `deny`
-verdict does block that one tool-call attempt -- that is an inherent property
-of how Claude Code's own auto mode works, not something this framework can
-soften. It is "advisory" in the sense that matters at the framework level:
-a denial produces no recorded, retrievable compliance verdict, is scoped to
-steering the current session's next action, and never gates a merge or a
-release -- that gate is the separate merge-stage check `ARCHITECTURE.md`
-names as real enforcement. Neither `autoMode` nor `cope` is designed as the
-authoritative record of whether a rule was followed.
+**Relationship to "advisory" ([enforcement.md](enforcement.md), Governing
+principle).** A `deny` verdict does block that one tool-call attempt -- that is
+an inherent property of how Claude Code's own auto mode works, not something
+this framework can soften. It is "advisory" in the sense that matters at the
+framework level: a denial produces no recorded, retrievable compliance
+verdict, is scoped to steering the current session's next action, and never
+gates a merge or a release -- that gate is the separate blocking-gate
+mechanism [enforcement.md](enforcement.md) names as real enforcement. Neither
+`autoMode` nor `cope` is designed as the authoritative record of whether a
+rule was followed.
 
 ## Admission criteria -- a rule belongs in the classifier iff _all_ hold
 
