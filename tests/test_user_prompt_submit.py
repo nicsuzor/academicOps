@@ -24,7 +24,10 @@ import importlib.util
 handlers_spec = importlib.util.spec_from_file_location("aops_handlers", AOPS_HOOKS / "handlers.py")
 assert handlers_spec is not None and handlers_spec.loader is not None
 handlers = importlib.util.module_from_spec(handlers_spec)
-sys.modules["handlers"] = handlers
+# Deliberately NOT registered as sys.modules["handlers"]: that name collides
+# with plugins/rbg/hooks/handlers.py, which tests/test_cope.py imports under
+# the bare name "handlers". See tests/test_aops_pr_ready_guard.py for the
+# full account of the xdist cross-test pollution this caused.
 handlers_spec.loader.exec_module(handlers)
 
 
