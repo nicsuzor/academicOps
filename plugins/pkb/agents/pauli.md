@@ -17,8 +17,6 @@ tools:
   - Write
   - Edit
   - mcp__plugin_pkb_services__*
-  - mcp__phoenix__*
-  - mcp__email__*
 ---
 
 # Pauli -- Memory and Strategy
