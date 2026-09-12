@@ -12,8 +12,10 @@ Assemble workflow templates and prepare tasks for cold execution. The brief tran
 0. **Task initialization**: If no task ID was provided, create one via `/q` using the provided description.
 1. **Verify premises**: Re-verify world claims (paths, schemas, runtime states) before cementing them into constraints. Halt if a premise is invalid.
 2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`../../workflows/`, resolved relative to this skill's own directory), and PKB (`type: template`) tiers. Halt if a required process component is missing.
+   - Read the templates and combine their steps into a logical order (e.g., failing tests first, implementation, then QA).
+   - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, the brief must preserve that ambiguity.
 3. **Determine task boundaries**:
-   - Default to a single dispatchable unit for a single session, embedding workflow steps as internal checklist items.
+   - Default to a single dispatchable unit for a single session, laying out the assembled workflow steps as a linear checklist.
    - Cut into separate tasks only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
    - Wire `depends_on` edges only where one unit genuinely requires another's output. Mint multi-task cuts using `pkb__decompose_task`.
 4. **Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates.
