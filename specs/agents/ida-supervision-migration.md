@@ -40,7 +40,7 @@ The standard is invocable by ida already. Driving is orchestrate's and stays the
 Surface selection, image freshness, the build-install-probe cycle, waiting on exit signals, reopening a unit whose record claims a delivery that is absent, commissioning certification from marsha: all of it stays, for three reasons.
 
 1. **Context.** Driving reads everything adjudication reads and then more -- the transcript, the probe output, the diff, the container logs. The _ordering_ is therefore analytic: driving cannot cost ida less than adjudicating, and that alone keeps driving out of the agent whose defining constraint is staying light enough to keep pace with a user working in parallel.
-2. **Auditability.** Ida reaches the graph only by commissioning `aops:pauli`, and workers only through `orchestrate:pc`; she is not a writer to the store. That chokepoint is what makes "what can this agent do?" answerable from one file. Granting ida spawn or write authority dissolves it, at exactly the moment nobody is watching.
+2. **Auditability.** Ida reaches the graph only by commissioning `aops:pauli`, and workers only through `aops:polecat`; she is not a writer to the store. That chokepoint is what makes "what can this agent do?" answerable from one file. Granting ida spawn or write authority dissolves it, at exactly the moment nobody is watching.
 3. **Latency.** An agent that may be blocked on a forty-minute build cannot also be the agent that answers the user within a turn.
 
 None of the three weakens as trust grows. They are properties of the role, not of the confidence placed in it.
