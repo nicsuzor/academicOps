@@ -372,3 +372,6 @@ archived
 fix_*.py
 patch_*.py
 .mcp.json
+
+# aops_v010_green_landing: comment-only demonstration commit proving
+# automerge-v010.yml merges a green, zero-review PR unattended.

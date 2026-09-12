@@ -58,7 +58,7 @@ Create baseline markdown stubs:
 ## Step 5: Research tooling (selected only)
 
 - **Empirical data**: Create `data/raw/` (immutable source data), `data/processed/`, and `src/`.
-- **dbt**: Create `dbt_project/` with `dbt_project.yml`, `profiles.yml` (DuckDB target at `../data/processed/<name>.duckdb`), `models/schema.yml` (declaring `sources: [raw]`), `models/staging/.gitkeep`, `models/marts/.gitkeep`, `data/cache/.gitignore` (`*`), and executable `scripts/refresh.sh` running `uv run dbt build`.
+- **dbt**: Create `dbt_project/` with `dbt_project.yml`, `profiles.yml` (DuckDB target at `../data/processed/<name>.duckdb`), models/schema.yml (declaring `sources: [raw]`), `models/staging/.gitkeep`, `models/marts/.gitkeep`, `data/cache/.gitignore` (`*`), and executable `scripts/refresh.sh` running `uv run dbt build`.
 - **Quarto**: Create `manuscript/_quarto.yml` (type: manuscript, `execute: {freeze: true, echo: false}`, bibliography: `references.bib`), `manuscript/index.qmd`, empty `references.bib`, and optional `_setup.qmd` for read-only DuckDB connection.
 - **MLflow / DVC**: If chosen, add `mlflow` to deps and create `experiments/`; run `dvc init`, configure remote, and track `data/raw/`.
 
