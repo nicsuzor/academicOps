@@ -28,7 +28,7 @@ What changed, at file:line. For fixes: root cause + evidence (run IDs, commit SH
 
 ## Risk & blast radius
 
-What could break, who's affected (one project vs shared infra/CI/all PRs), reversibility, any gate/security implication.
+What could break, who's affected (one project vs shared infra/CI/all PRs), reversibility, any check/security implication.
 
 ## Sequencing
 
