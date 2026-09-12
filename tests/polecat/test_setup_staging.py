@@ -140,7 +140,7 @@ def test_setup_staging_does_not_add_mcpservers_with_mcp_url(fake_gemini_home, tm
 
     claude_settings = json.loads((staging_dir / ".claude" / "settings.json").read_text())
     assert "mcpServers" not in claude_settings
-    assert claude_settings["pluginConfigs"]["aops@academicOps"]["options"]["pkb_mcp_url"] == MCP_URL
+    assert claude_settings["pluginConfigs"]["pkb@academicOps"]["options"]["pkb_mcp_url"] == MCP_URL
 
 
 def test_minimal_agent_settings_never_adds_mcpservers():

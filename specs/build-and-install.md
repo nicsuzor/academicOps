@@ -40,37 +40,59 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 are separate marketplace names specifically so one install can never silently
 shadow the other: `claude plugin marketplace add` is a no-op when a name already
 exists, so both `install-dev` and `install` remove their own marketplace name
-before re-adding it. `aops`'s `services` MCP server resolves `$PKB_MCP_URL`
-from the environment at launch (`.agents/CORE.md`, "No defaults" -- the URL is
-never committed, and there is no fallback).
+before re-adding it. `pkb`'s `services` MCP server takes its endpoint from an
+install-time placeholder, never a committed default (`.agents/CORE.md`, "No
+defaults") -- see "MCP server configuration" below for the form each client
+takes.
 
 **MCP server configuration:**
-Cowork installs a plugin either via directory marketplace or manual zip upload
-(desktop app → Customize → Add plugins → Upload a file). Plugins run with a
-bare environment where `$PKB_MCP_URL` is unexpanded. To support this:
+The PKB `services` MCP server ships in `plugins/pkb`: a FastMCP stdio launcher
+(`uvx --from fastmcp-slim[server] fastmcp run <endpoint>`). Every surface needs
+the literal endpoint in place before first use; which mechanism supplies it
+differs by client, because only Claude Code has an install-time substitution
+feature:
 
-1. **The PKB `services` MCP server** ships in `plugins/pkb`: a FastMCP stdio
-   launcher (`uvx --from fastmcp-slim[server] fastmcp run "$PKB_MCP_URL"`), the
-   same command for both the `claude` and `agy` clients.
-2. **The Cowork channel bakes the URL at build time**:
-   Cowork does not expand environment variables at runtime, and neither install path can
-   supply a value afterwards. `build.marketplace` therefore collapses every server that
-   defers to `$PKB_MCP_URL` into one `services` server of the form
-   `{"type": "http", "url": <literal>}` in `dist/cowork/<name>/.mcp.json` (and so in the
-   zip, which is that directory verbatim), with the literal read from `PKB_MCP_URL` in
-   the build environment. A literal `type: http` url is the one form Cowork connects
-   with; the stdio launcher is not used in this channel. With `PKB_MCP_URL` unset the
-   build warns and ships the channel unrewritten -- the published channel is built that
-   way and its `services` MCP does not work in Cowork. `dist/<name>-claude` is never
-   rewritten: Claude Code expands the variable at launch.
-3. **`make install-dev` dev workaround**:
-   `build.install patch-dev-mcp` substitutes `$PKB_MCP_URL` with the concrete value from
-   the user's host environment in any existing Cowork GUI session directories, which hold
-   their own copy of a plugin's `.mcp.json` from whenever it was installed. It never
-   touches `dist/`. Everywhere else -- normal Claude Code and `agy` use, in or out of
-   Cowork -- `$PKB_MCP_URL` is assumed to already be exported in the launching shell and
-   resolves at MCP-server-launch time; nothing forwards or re-declares it.
-4. **`make clean` Cowork package pruning**:
+1. **`claude` client -- `userConfig` + `--config`.**
+   `plugins/pkb/manifest/mcp.template.json` declares a `pkb_mcp_url` userConfig
+   option and the launcher reads `"${user_config.pkb_mcp_url}"`. Claude Code
+   substitutes that at install time from whatever `--config pkb_mcp_url=<url>`
+   supplies (`claude plugin install pkb@<marketplace> --config
+   pkb_mcp_url=<url>`), storing the value the same way `/plugin configure`
+   would -- no shell export needed afterwards, on any surface that goes
+   through `claude plugin install`: `make install-dev` (passes `--config` when
+   `$PKB_MCP_URL` is set in the installing shell) and `.claude/setup.sh` (the
+   Claude Code web bootstrap, which already calls `--config pkb_mcp_url=`).
+2. **`agy` client -- literal placeholder, rewritten post-install.**
+   agy has no `--config`/userConfig substitution: `agy plugin install <dir>`
+   copies a plugin's built `mcp_config.json` verbatim. Its `services` server
+   therefore ships the literal text `YOUR_PKB_URL` in place of the URL.
+   `build.install patch-agy-mcp` rewrites that placeholder to the concrete
+   value in `~/.gemini/config/plugins/<name>/mcp_config.json` right after the
+   copy -- `make install-dev` runs it once, after installing every plugin for
+   agy.
+   With `$PKB_MCP_URL` unset it is a no-op, not a failure: the plugin installs
+   with the placeholder left in place, unusable until reconfigured.
+3. **Cowork bakes the URL at build time.**
+   Cowork does not expand environment variables at runtime and has no
+   userConfig either, and neither install path (directory marketplace or
+   manual zip upload) can supply a value afterwards. `build.marketplace`
+   therefore collapses every server that defers to `$PKB_MCP_URL` or
+   `${user_config.pkb_mcp_url}` into one `services` server of the form
+   `{"type": "http", "url": <literal>}` in `dist/cowork/<name>/.mcp.json` (and
+   so in the zip, which is that directory verbatim), with the literal read
+   from `PKB_MCP_URL` in the build environment. A literal `type: http` url is
+   the one form Cowork connects with; the stdio launcher is not used in this
+   channel. With `PKB_MCP_URL` unset the build warns and ships the channel
+   unrewritten -- the published channel is built that way and its `services`
+   MCP does not work in Cowork. `dist/<name>-claude` and `dist/<name>-agy` are
+   never rewritten by this step: they keep their own placeholder for (1) or
+   (2) above to resolve.
+4. **`make install-dev`'s Cowork-session dev workaround.**
+   `build.install patch-dev-mcp` substitutes `$PKB_MCP_URL` with the concrete
+   value from the user's host environment in any existing Cowork GUI session
+   directories, which hold their own copy of a plugin's `.mcp.json` from
+   whenever it was installed. It never touches `dist/`.
+5. **`make clean` Cowork package pruning**:
    `make clean` (and `make clean-plugins`) invokes `scripts/clean_plugins.py`, which
    cleans uninstalled Cowork session packages and removes session-level plugin data caches.
 
