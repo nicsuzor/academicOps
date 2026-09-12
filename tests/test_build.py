@@ -363,7 +363,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         version=VERSION,
     )
 
@@ -371,9 +371,11 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
     # read format — see build/clients/agy.py's _adapt_agents docstring).
-    agy_ida_md = dist_root / "aops-agy" / "agents" / "ida.md"
+    # ida.md moved from the aops plugin to the ida plugin (move ida and pauli,
+    # f4f02058c); the built path moved with it.
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "aops-agy" / "agents" / "ida" / "agent.md").exists()
+    assert not (dist_root / "ida-agy" / "agents" / "ida" / "agent.md").exists()
 
     raw = agy_ida_md.read_text()
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
@@ -1101,8 +1103,6 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
 def test_pauli_agy_frontmatter(tmp_path):
     import yaml
 
-    from build.tools import load_tool_config
-
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
@@ -1119,8 +1119,24 @@ def test_pauli_agy_frontmatter(tmp_path):
 
     assert agent["name"] == "pauli"
     assert "mcpServers" not in agent
-    accepted_tools, _ = load_tool_config()
-    assert agent["tools"] == accepted_tools
+    # pauli carries an explicit, curated `tools:` allowlist (restrict pauli,
+    # 19c354af3) — she does not inherit the full agy vocabulary the way an
+    # agent with no `tools:` key does (see test_agent_no_tools_key_semantics).
+    # SendMessage, Bash, TaskCreate/Get/List/Update/Stop all collapse onto
+    # run_command/send_message/manage_task; Skill and ListAgents/ToolSearch
+    # have no agy counterpart and drop out; the three `mcp__*` wildcards
+    # normalise onto their server names.
+    assert agent["tools"] == [
+        "send_message",
+        "run_command",
+        "manage_task",
+        "view_file",
+        "write_to_file",
+        "replace_file_content",
+        "mcp_services_*",
+        "mcp_phoenix_*",
+        "mcp_email_*",
+    ]
     assert "hidden" not in agent
     assert "includeSections" not in agent
     assert "call_mcp_tool" not in agent["tools"]
