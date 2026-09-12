@@ -47,4 +47,6 @@ sign-off — see [evidence-contract.md#substance-over-form](evidence-contract.md
 
 `v0.10` has no maintainer-approval gate: `automerge-v010.yml` squash-merges a
 PR once `Lint`/`Pytest` are green on its head and on `v0.10`'s own tip, and a
-same-SHA `APPROVED` review is recorded.
+same-SHA `APPROVED` review is recorded from a login other than the PR's
+author or last-commit author. A same-account approval never satisfies this
+until a second bot identity exists.

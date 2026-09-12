@@ -11,16 +11,21 @@
 # applies the same rule brain's `needs.<job>.result == 'success'` gate does:
 # anything other than a genuine `success` blocks the merge.
 #
-# "Recorded independent review" = a GitHub PR review in state APPROVED whose
-# `commit_id` equals the PR's current head SHA (a stale approval from before
-# the last push does not count). The account that opens these PRs is the same
-# account that can post this review, so — unlike a human-maintainer gate —
-# this workflow cannot distinguish an authoring run's own approval from an
-# independent reviewer's by GitHub identity. It relies on dispatch discipline
-# (review tasks are separately dispatched from, and never run by, the
-# authoring session) rather than an identity check. A second bot identity
-# would close that gap; that's an infra decision for Nic, left as a checklist
-# item rather than implemented here.
+# "Recorded independent review" = a GitHub PR review whose LATEST submission
+# by that reviewer at the PR's current head SHA is state APPROVED (a stale
+# approval from before the last push does not count; neither does an approval
+# the same reviewer later retracted with a CHANGES_REQUESTED/COMMENTED review
+# at the same SHA) AND whose author is neither the PR's opener nor the login
+# that authored the head commit. The account that opens these
+# PRs is the same account that can post this review, so this workflow cannot
+# yet distinguish a genuinely independent reviewer from the authoring run by
+# GitHub identity — but it CAN and does refuse an approval that is trivially
+# self-dealing (same login as the PR author or as the last commit's author).
+# Until a second bot identity exists, this means a same-account approval never
+# satisfies the gate — that is the correct fail-closed behaviour, not a bug:
+# dispatch discipline alone is not verifiable from inside this workflow, so it
+# is not trusted as the sole guard. A second bot identity (infra decision for
+# Nic) would let genuinely independent bot reviews start landing PRs.
 #
 # Goal 3 ("nothing lands while v0.10 is red"): `Lint`/`Pytest` also run on
 # push to v0.10 directly (see lint.yml/pytest.yml `on.push`), so v0.10's tip
@@ -90,7 +95,10 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "head_sha=$(echo "$DATA" | jq -r .head.sha)" >> "$GITHUB_OUTPUT"
+          HEAD_SHA=$(echo "$DATA" | jq -r .head.sha)
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "author_login=$(echo "$DATA" | jq -r .user.login)" >> "$GITHUB_OUTPUT"
+          echo "pusher_login=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.author.login // ""')" >> "$GITHUB_OUTPUT"
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify checks, base health, and review, then merge
@@ -98,6 +106,8 @@ jobs:
         run: |
           set -euo pipefail
           HEAD_SHA="${{ steps.pr.outputs.head_sha }}"
+          AUTHOR_LOGIN="${{ steps.pr.outputs.author_login }}"
+          PUSHER_LOGIN="${{ steps.pr.outputs.pusher_login }}"
 
           # Both lists deliberately omit Type Check — see file header.
           REQUIRED_PR_CHECKS=("Lint / Lint" "Pytest / Pytest")
@@ -122,10 +132,18 @@ jobs:
             exit 0
           fi
 
+          # Use each reviewer's LATEST review at this SHA, not any APPROVED
+          # review ever posted at this SHA — otherwise a reviewer who approves
+          # and then reconsiders (posts CHANGES_REQUESTED at the same commit,
+          # no new push) would still have their retracted approval counted.
+          # A same-SHA APPROVED review also does not count if its author is
+          # the PR's own opener or the login that authored the head commit —
+          # that is self-approval, not an independent review. See file header.
           APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-            --jq "[.[] | select(.state == \"APPROVED\" and .commit_id == \"$HEAD_SHA\")] | length")
+            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\")] | group_by(.user.login) | map(max_by(.submitted_at)) \
+              | [.[] | select(.state == \"APPROVED\" and .user.login != \"$AUTHOR_LOGIN\" and .user.login != \"$PUSHER_LOGIN\")] | length")
           if [ "$APPROVED" -lt 1 ]; then
-            echo "not ready: no APPROVED review recorded on head $HEAD_SHA"
+            echo "not ready: no independent APPROVED review recorded on head $HEAD_SHA (PR author: $AUTHOR_LOGIN, last commit author: $PUSHER_LOGIN)"
             exit 0
           fi
 
