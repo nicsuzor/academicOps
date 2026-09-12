@@ -1234,6 +1234,13 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     Registering the same $PKB_MCP_URL under two server names loads every PKB
     tool schema twice into every agent's static context. Each client gets the
     single transport it can actually speak.
+
+    Both go through scripts/run-mcp.sh rather than an inline `uvx` line. The
+    launch environment needs normalising — uvx off a minimal PATH, a writable
+    uv cache, a trailing slash on the URL, a sandbox proxy that would swallow
+    the upstream connection — and an inline copy per client is a second place
+    for that to drift out of date. Each client gets the plugin-root token its
+    own installer resolves.
     """
     dist_root = tmp_path / "dist"
     build_all(
@@ -1248,10 +1255,7 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     assert claude_mcp["mcpServers"] == {
         "services": {
             "command": "bash",
-            "args": [
-                "-c",
-                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
-            ],
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
         }
     }
 
@@ -1259,9 +1263,6 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     assert agy_mcp["mcpServers"] == {
         "services": {
             "command": "bash",
-            "args": [
-                "-c",
-                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
-            ],
+            "args": ["${extensionPath}/scripts/run-mcp.sh"],
         }
     }

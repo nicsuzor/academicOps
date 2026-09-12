@@ -1,9 +1,9 @@
 #!/bin/bash
 # run-mcp.sh — stdio launcher for the PKB MCP server.
 #
-# For clients that cannot speak streamable HTTP directly: it proxies stdio to
-# the server at $PKB_MCP_URL. Claude Code does not use this script — its
-# .mcp.json points at the HTTP endpoint itself.
+# It proxies stdio to the server at $PKB_MCP_URL. Every client launches the
+# server through this script, so this is the only place the launch environment
+# is normalised.
 #
 # $PKB_MCP_URL must arrive in this process's environment. There is no default,
 # no config-file fallback, and no local server to fall back to. The launching
@@ -50,6 +50,25 @@ fi
 while [[ "$PKB_MCP_URL" == */ ]]; do
     PKB_MCP_URL="${PKB_MCP_URL%/}"
 done
+
+# Sandboxed clients route all outbound HTTPS through an agent proxy whose relay
+# cannot tunnel to a private endpoint: it accepts the connection and resets it
+# mid-exchange. The proxy still starts and answers `initialize` locally, so the
+# client reports a connected server with zero tools and no error. The endpoint
+# is dialled direct instead — its own host, taken from the URL, never a
+# hard-coded one.
+_pkb_host="${PKB_MCP_URL#*://}"
+_pkb_host="${_pkb_host%%/*}"
+case "$_pkb_host" in
+    \[*\]*) _pkb_host="${_pkb_host%%\]*}]" ;; # bracketed IPv6 literal
+    *) _pkb_host="${_pkb_host%%:*}" ;;
+esac
+if [[ -n "$_pkb_host" ]]; then
+    no_proxy="${no_proxy:+$no_proxy,}$_pkb_host"
+    export no_proxy
+    export NO_PROXY="$no_proxy"
+fi
+unset _pkb_host
 
 # uv needs a writable cache directory; a minimal environment can point it at an
 # unwritable path.

@@ -158,9 +158,14 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_dir: Path) -> str | None:
         raise BuildError(f"{mcp_path}: malformed .mcp.json: {e}") from e
 
     servers = data.get("mcpServers", {})
-    # Only servers that defer to the env var at launch — anything with a
+    # Only servers that resolve the endpoint at launch — either by naming the
+    # env var, or by deferring to the launcher that reads it. Anything with a
     # concrete endpoint of its own is left alone.
-    pkb_names = [name for name, cfg in servers.items() if "PKB_MCP_URL" in json.dumps(cfg)]
+    pkb_names = [
+        name
+        for name, cfg in servers.items()
+        if "PKB_MCP_URL" in json.dumps(cfg) or "run-mcp.sh" in json.dumps(cfg)
+    ]
     rewritten = False
 
     if pkb_names and launcher.exists():

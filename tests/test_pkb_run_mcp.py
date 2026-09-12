@@ -1,11 +1,15 @@
 """Behavioral tests for plugins/pkb/scripts/run-mcp.sh.
 
 The launcher's own header states its contract: the PKB MCP endpoint has "no
-default, no config-file fallback, and no local server to fall back to". Every
-case here pins the fail-loud half of that — an absent or unusable
-precondition must produce an actionable non-zero exit, never a hang and never
-a silent empty success on stdout, which the client would read as a server that
-started and said nothing.
+default, no config-file fallback, and no local server to fall back to", and
+every client launches the server through this one script, so this is where the
+launch environment is normalised.
+
+Two halves, both pinned here. An absent or unusable precondition must produce
+an actionable non-zero exit — never a hang and never a silent empty success on
+stdout, which the client would read as a server that started and said nothing.
+And the environment the script hands to the server must be one the upstream
+connection can actually be made from.
 """
 
 from __future__ import annotations
@@ -61,6 +65,64 @@ def test_run_mcp_fails_loudly_with_an_empty_pkb_mcp_url():
     )
     assert result.returncode != 0
     assert "PKB_MCP_URL" in result.stderr
+
+
+def _observed_launch_env(tmp_path, url: str, **overrides: str) -> dict[str, str]:
+    """The environment the exec'd server process actually receives, captured by
+    standing a stub `uvx` in for the real one and having it dump its own env."""
+    stub_bin = tmp_path / "stub-bin"
+    stub_bin.mkdir()
+    stub = stub_bin / "uvx"
+    stub.write_text("#!/bin/bash\nenv\n", encoding="utf-8")
+    stub.chmod(0o755)
+    result = subprocess.run(
+        [BASH_BIN, str(RUN_MCP)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=_clean_launcher_env(
+            PKB_MCP_URL=url,
+            PATH=f"{stub_bin}:{os.environ.get('PATH', '')}",
+            HOME=str(tmp_path),
+            USER="testuser",
+            UV_CACHE_DIR=str(tmp_path / "uv-cache"),
+            **overrides,
+        ),
+    )
+    assert result.returncode == 0, result.stderr
+    return dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
+
+
+def test_run_mcp_dials_the_endpoint_host_direct(tmp_path):
+    """A sandboxed client routes outbound HTTPS through an agent proxy whose
+    relay resets a tunnel to a private endpoint mid-exchange. The stdio proxy
+    still starts and answers `initialize` locally, so the client sees a
+    connected server with zero tools and no error — the failure has no symptom
+    at the point it happens. The launcher exempts the endpoint's own host from
+    the proxy so the upstream connection is made directly."""
+    env = _observed_launch_env(tmp_path, "https://pkb.example.ts.net:8020/mcp")
+    assert env.get("no_proxy") == "pkb.example.ts.net"
+    assert env.get("NO_PROXY") == "pkb.example.ts.net"
+
+
+def test_run_mcp_appends_to_an_existing_no_proxy(tmp_path):
+    """The sandbox's own exemptions (loopback, cluster-local, package indexes)
+    are load-bearing for everything else the server process does, so the host
+    is added to them, never substituted for them."""
+    env = _observed_launch_env(
+        tmp_path,
+        "https://pkb.example.ts.net:8020/mcp",
+        no_proxy="localhost,127.0.0.1,pypi.org",
+    )
+    assert env.get("no_proxy") == "localhost,127.0.0.1,pypi.org,pkb.example.ts.net"
+    assert env.get("NO_PROXY") == env.get("no_proxy")
+
+
+def test_run_mcp_keeps_a_bracketed_ipv6_host_intact(tmp_path):
+    """`[::1]:8020` — the port separator and the address separators are the same
+    character, so a naive strip leaves `[` and exempts nothing."""
+    env = _observed_launch_env(tmp_path, "http://[fd7a::1]:8020/mcp")
+    assert env.get("no_proxy") == "[fd7a::1]"
 
 
 def test_run_mcp_fails_loudly_when_uvx_is_unreachable(tmp_path):
