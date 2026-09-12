@@ -2,7 +2,6 @@
 # Required environment variables (set in the session env before running):
 #   TS_AUTHKEY=YOUR_KEY
 #   PKB_MCP_URL=YOUR_PKB
-#   AOPS_TS_SYNC_DEST=SYNC_SERVER_SSH_FORM
 
 set -euo pipefail
 

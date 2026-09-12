@@ -44,3 +44,9 @@ sign-off — see [evidence-contract.md#substance-over-form](evidence-contract.md
 - **Fixers** (informational): `responder` (pre-admission), `mechanic`
   (post-admission dev and conflict resolve), the `@claude` assistant, and the
   `force-review` escape hatch.
+
+`v0.10` has no review gate at all: `automerge-v010.yml` squash-merges a PR
+once `Lint`/`Pytest` are green on its head and on `v0.10`'s own tip —
+mechanical checks only. A Claude-bot or GitHub Copilot approval, if present,
+is neither read nor required. Independent review is dispatch discipline
+recorded on the PKB graph, not a GitHub gate.

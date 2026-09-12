@@ -11,7 +11,7 @@ Perform root-cause analysis on systemic failure classes. Diagnose observable mec
 
 1. **Diagnose systemic cause**: Focus on the class of error rather than proximate mistakes.
    - Ground findings in observable external mechanisms (checks, gates, context placement). Never speculate on agent psychology, attention, or internal states.
-   - Inspect `specs/ENFORCEMENT-MAP.md` to identify applicable enforcement controls and verify whether they are active, disconnected, or missing.
+   - Inspect the mechanisms in `specs/enforcement/` to identify applicable enforcement controls and verify whether they are active, disconnected, or missing.
 2. **Determine scope**:
    - _Project_: Project-specific guidelines or configurations.
    - _User/PKB_: User preferences, habits, or personalized knowledge.

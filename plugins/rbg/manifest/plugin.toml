@@ -1,3 +1,11 @@
 [[shared]]
 from = "hooks"
 to = "hooks"
+
+[[shared]]
+from = "axioms"
+to = "axioms"
+
+[[shared]]
+from = "axioms"
+to = "skills/axioms/axioms"

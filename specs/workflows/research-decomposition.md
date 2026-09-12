@@ -29,8 +29,8 @@ domain is academic research: domain primitives, sequencing rules, review lenses,
 maturity-gated modes. It replaces no stage of that pipeline and restates none of them.
 
 - `plugins/pkb/skills/q/SKILL.md` -- placement and valuation
-- `plugins/aops/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
-- `plugins/aops/skills/brief/SKILL.md` -- process composition and sizing; cuts to the primitives
+- `plugins/pkb/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
+- `plugins/pkb/skills/brief/SKILL.md` -- process composition and sizing; cuts to the primitives
   below and records review obligations as acceptance criteria on the task body
 - `specs/workflows/conceptual-review-workflow.md` -- the review layer; runs the lenses below in
   place of its general registry, with its critique protocol, convergence rules, and formality
