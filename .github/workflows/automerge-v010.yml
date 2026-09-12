@@ -18,6 +18,22 @@
 # not query PR reviews at all. Independent review is dispatch discipline
 # recorded on the PKB graph, not a GitHub gate (aops_automerge_mechanical_checks_only).
 #
+# Mechanical marker required (aops_d8085e5b): a PR opened non-draft and
+# merged straight through skips the draft-until-reviewed dispatch discipline
+# above entirely if nothing on the GitHub side enforces it — one missed
+# brief and unreviewed code lands. So this workflow additionally requires
+# that the PR's own timeline carry a `ready_for_review` event before it will
+# merge (`pull_request` trigger only; see the marker check in the first
+# step). That event already fires whenever a review run flips a draft ready
+# with `gh pr ready <N>` — the existing dispatch convention observed across
+# review runs — so no review brief changes. A PR opened non-draft from the
+# start never gets this event and is refused, named in the run log, even
+# though its checks may be green. This is still not a review gate: the
+# event only proves the PR passed through draft state at some point, not
+# that anyone reviewed it — but it closes the specific gap where dispatch
+# discipline is the only thing stopping unreviewed code, by making the
+# draft→ready transition mechanically required rather than merely expected.
+#
 # Goal ("nothing lands while v0.10 is red"): `Lint`/`Pytest` also run on push
 # to v0.10 directly (see lint.yml/pytest.yml `on.push`), so v0.10's tip
 # always carries its own check-runs. This workflow reads those too and blocks
@@ -117,6 +133,21 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          # Mechanical marker gate (aops_d8085e5b) — pull_request trigger only;
+          # workflow_dispatch is the unchanged manual waiver path. Refuse a
+          # non-draft PR that never carries a `ready_for_review` timeline
+          # event: it was opened non-draft directly, bypassing the
+          # draft-until-reviewed step entirely. See file header.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            READY_EVENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/timeline" --paginate --jq '[.[] | select(.event == "ready_for_review")] | length')
+            if [ "$READY_EVENTS" -eq 0 ]; then
+              echo "not ready: PR #$PR_NUMBER carries no ready_for_review marker (opened non-draft, never passed through draft review) — refusing merge."
+              echo "ready=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
           HEAD_SHA=$(echo "$DATA" | jq -r .head.sha)
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "ready=true" >> "$GITHUB_OUTPUT"
