@@ -31,14 +31,6 @@ Enumerate all three tiers live. Return a unified table: **slug \| tier \| covera
 
 Resolve the template slug across tiers in precedence order. Output the winning content, identify winning and shadowed tiers, or list near-misses if missing.
 
-### preview
-
-Simulate how `brief` would assemble workflow templates for a stated objective:
-
-1. Enumerate and read relevant candidate templates across tiers.
-2. Show the assembled structure (slots, gates, and fragments) and resulting task brief shape.
-3. Plainly mark output as a non-minted preview. Never write tasks or mutate the graph.
-
 ### new
 
 1. Check existing library to avoid duplicating covered workflows.
