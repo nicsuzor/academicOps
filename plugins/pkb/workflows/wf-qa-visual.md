@@ -19,8 +19,8 @@ and how it is judged. Criteria assembly and the verdict contract belong to the p
 restated here. Do not dispatch it standalone -- without the parent there are no criteria to judge
 against.
 
-Iteration is not part of this workflow: compose [[wf-loop]] around the parent gate, which owns
-round caps and the separation between whoever revises and whoever judges.
+Iteration is not part of this workflow: the composing brief owns round caps and the separation
+between whoever revises and whoever judges.
 
 ## Capture
 

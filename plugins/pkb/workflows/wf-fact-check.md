@@ -36,4 +36,3 @@ Any artifact making factual, empirical, or citation-bearing claims: research wri
 ## Related
 
 - [[wf-qa]] -- the parent gate this fills the evaluate slot for
-- [[wf-loop]] -- iteration wrapper, where the same claims must be re-checked across rounds
