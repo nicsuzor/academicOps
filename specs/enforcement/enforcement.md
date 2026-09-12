@@ -14,7 +14,7 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 - **Stated Purpose:** Defines the theoretical foundation, mechanism categories, and escalation model governing how the framework restrains, steers, and verifies agent behavior without programmatic micro-management.
 - **Primary Audience:** Framework architects, system developers, and compliance auditors designing, modifying, or reviewing enforcement mechanisms and policies.
-- **Current Truth / SSoT:** For the empirical register of active rules, mechanisms, severity levels, and pinpoints, see [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md). Nothing here restates the live table.
+- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is owed but not yet shipped on this branch. Nothing here restates a live table that does not exist.
 
 ## Governing principle -- agents all the way down
 
@@ -35,9 +35,9 @@ Before escalating severity, establish that the failure is not a cost or defaults
 
 ## The table schema (4 columns)
 
-The empirical register [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) is structured in 4 columns:
+The empirical register, where it exists, is structured in 4 columns:
 
-1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../lib/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/aops/agents/ida.md)`) paired with the operative obligation or steering intent.
+1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../lib/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
 2. **Mechanism** -- The carrier category from the 10-term controlled vocabulary.
 3. **Severity** -- The escalation index within the mechanism.
 4. **Detail** -- The pinpoint verification reference (`path:line` + operative snippet, handler function, or CI workflow) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
@@ -119,14 +119,13 @@ Every plugin hook shares one runtime, `lib/hooks/dispatch.py`, injected at build
 
 Two flows, deliberately separated as witness and judge, so the volume and direction of framework change is governed by cross-incident pattern rather than by the salience of the most recent failure.
 
-1. **Diagnose and route** ([`learn`](../../plugins/pkb/skills/learn/SKILL.md)) -- an agent that hits friction traces it to the structural cause and routes the lesson to the one destination its scope claims. It proposes no fix to anything governing future sessions; writing a standing rule needs the user to have asked.
+1. **Diagnose and route** ([`learn`](../../plugins/aops/skills/learn/SKILL.md)) -- an agent that hits friction traces it to the structural cause and routes the lesson to the one destination its scope claims. It proposes no fix to anything governing future sessions; writing a standing rule needs the user to have asked.
 2. **Improve the framework** (the [`triage`](../../.agents/skills/triage/SKILL.md) skill's sweep mode) -- a detached pass over the accumulated issue queue on a cadence the user sets, proposing a mechanism only where recurrence or explicit direction justifies it.
 
 A single incident that is a **bug** is fixed immediately from one report. A single incident that is an **escalation proposal** is logged and waits for the pattern.
 
 ## Sibling documents
 
-- [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) -- the current-state authoritative register.
 - [task-contract.md](task-contract.md) -- the work-unit contract.
 - [workflow.md](workflow.md) -- the workflow shape and the review-depth call.
 - [sign-off.md](sign-off.md) -- workflow-level review, instantiated as the PR pipeline.

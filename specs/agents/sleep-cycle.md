@@ -23,7 +23,7 @@ agent budget and a per-phase batch limit (default 100).
 The procedure that agent follows lives in the `remember` skill --
 [`plugins/pkb/skills/remember/SKILL.md`](../../plugins/pkb/skills/remember/SKILL.md)
 (maintenance mode) and
-[`references/consolidation.md`](../../plugins/pkb/skills/remember/references/consolidation.md),
+[`plugins/pkb/skills/remember/references/consolidation.md`](../../plugins/pkb/skills/remember/references/consolidation.md),
 which owns the stage list, batch limits, extraction tests, and defect classes.
 This document is the rationale behind that workflow, not a second copy of it;
 nothing here restates a stage.
@@ -90,8 +90,8 @@ not pushed by capture.
 
 **Session insights feed it, and are specified elsewhere.** Backfilling
 per-session insight JSON is the cycle's first phase; the extraction contract is
-[session-insights-prompt.md](session-insights-prompt.md) and the pipeline
-metrics are [session-insights-metrics-schema.md](session-insights-metrics-schema.md).
+[session-insights-prompt.md](../future/session-insights-prompt.md) and the pipeline
+metrics are [session-insights-metrics-schema.md](../future/session-insights-metrics-schema.md).
 
 **Data quality precedes structural work.** Graph maintenance operates on orphan
 counts, flat-task counts, and container sizes. With hundreds of duplicates and

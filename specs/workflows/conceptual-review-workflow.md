@@ -126,6 +126,6 @@ governs _how to review_; GitHub governs _when and where_.
 
 - [[plugins/pkb/agents/pauli.md]] -- upstream; strategic planning under uncertainty
 - [[specs/workflows/research-decomposition.md]] -- downstream domain application
-- [[plugins/aops/skills/brief/SKILL.md]] -- records this workflow's review obligations as
+- [[plugins/pkb/skills/brief/SKILL.md]] -- records this workflow's review obligations as
   acceptance criteria on the task body
 - [[polecat-swarms]] -- execution layer; consumes reviewed artifacts

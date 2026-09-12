@@ -9,7 +9,7 @@ tags: [framework, routing, context]
 
 # Prompt Hydration
 
-`aops:hydrate` (`plugins/pkb/skills/hydrate/SKILL.md`) searches the PKB for
+`aops:hydrate` (`plugins/aops/skills/hydrate/SKILL.md`) searches the PKB for
 ambiguous words in a prompt might mean and returns a shortlist of ids.
 
 ## When it runs

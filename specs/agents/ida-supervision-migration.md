@@ -122,13 +122,13 @@ The user learns of a failed autonomous run in the same register as a successful 
 
 ### The authority envelope is neither declared nor enforced
 
-`plugins/aops/agents/ida.md` frontmatter declares `name`, `description`, and `color` alone -- no `tools`, no `subagents`, no `skills`. Her routing discipline is carried entirely in prose. Prose is enough for a co-worked session, where a user is present to notice a violation within a turn; it is not enough for a day-long unattended run, which is the exact condition under which nobody notices.
+`plugins/ida/agents/ida.md` frontmatter declares `name`, `description`, and `color` alone -- no `tools`, no `subagents`, no `skills`. Her routing discipline is carried entirely in prose. Prose is enough for a co-worked session, where a user is present to notice a violation within a turn; it is not enough for a day-long unattended run, which is the exact condition under which nobody notices.
 
 Both halves are required, and declaration alone does not buy it. They are separable -- restoring the frontmatter is a repair to this repository, making the declaration bind is an upstream harness matter -- but they are not alternatives. A declared envelope that does not bind is untrustworthy, so treating declaration as sufficient would gate stage 1 on something known not to work. The enforcement half is demonstrated, not assumed: a spawned ida offered a tool outside its declaration cannot call it, shown in a recorded trial scored from the tool-call record rather than from ida's account of its own capabilities.
 
 ### No hook fires the disclosure at ida's turn boundary
 
-The `aops` `Stop`/`SubagentStop` gate is not built, and ida is explicitly excluded from the `SubagentStart` honesty reminder that reaches every other agent ([`../ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md), [`../ARCHITECTURE.md`](../ARCHITECTURE.md)). The obligation named non-negotiable in "What must not migrate" is therefore held by ida's own body and by nothing else. That is tolerable while a user is present for every turn; reconnecting it is a precondition for stage 2, where ida's call first decides alone.
+The `aops` `Stop`/`SubagentStop` gate is not built, and ida is explicitly excluded from the `SubagentStart` honesty reminder that reaches every other agent ([`../ARCHITECTURE.md`](../ARCHITECTURE.md)). The obligation named non-negotiable in "What must not migrate" is therefore held by ida's own body and by nothing else. That is tolerable while a user is present for every turn; reconnecting it is a precondition for stage 2, where ida's call first decides alone.
 
 ## The unmeasured premise
 

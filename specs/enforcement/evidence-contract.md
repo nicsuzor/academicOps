@@ -157,8 +157,7 @@ mechanical quality verdict, which the framework forbids. Two carriers instead:
    with checkable evidence or a stated failure reason, and a receiver-side
    reminder tells a caller to send back a report that arrived without proof.
    Beyond the reminders, the boundary-check and QA-around reviewers judge whether
-   the evidence holds. Which handlers carry this, and whether each is currently
-   live, is recorded in [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md).
+   the evidence holds.
 2. **Structurally, presence-only** — `release_task`/`complete_task` make the
    required fields mandatory and advertise them as such, through non-empty checks
    and never content inspection.
