@@ -1,0 +1,17 @@
+# Service body for aops-reconcile.timer. See that file for install,
+# first-live-run verification, and uninstall instructions.
+#
+# No host, path, or credential is hardcoded here: env comes from
+# $HOME/.env.local (the same single machine-local source of truth the
+# macOS launchd path uses, see scripts/macos-launchd/), and the script
+# location comes from $POLECAT_HOME with a %h/.aops fallback.
+
+[Unit]
+Description=Run the aops /pkb:reconcile pass headlessly, then capture pickup
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.env.local
+ExecStart=/bin/sh -c '"${POLECAT_HOME:-%h/.aops}/aops-reconcile-run.sh"'
+StandardOutput=journal
+StandardError=journal

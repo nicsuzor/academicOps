@@ -71,6 +71,28 @@ commissions an agent that runs the skill and returns one synthesized result.
 tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on a
 different trigger, which reconcile does not run.
 
+## Trigger
+
+On-demand's invocation is `scripts/systemd-user/aops-reconcile.timer` (install and verification
+steps in its header comment): a user-scope systemd timer firing `claude -p "/pkb:reconcile"` on a
+schedule, needing nothing from Nic to fire. The timer's service runs a thin shell entrypoint with
+no reconciliation logic of its own -- it only launches the agent that runs this skill, consistent
+with the constraint above that agents do this work, not scripts.
+
+Capture pickup ([[aops_capture_intake_route]]) shares this trigger as a separate step in the same
+entrypoint script, invoked on its own, not folded into the reconcile prompt: reconcile maintains
+truth about existing claims and must not invent scope, while routing a capture to task, note, or
+discard is judgment work belonging to `pkb:q`. Sharing the trigger shares the cost of the read;
+sharing the pass would not.
+
+Before the timer is enabled, the entrypoint must run once manually and the run must be confirmed
+to have executed a real PKB write (`update_task` or `release_task`), not only reads -- the write
+path is untested headlessly. That run should also confirm which transport resolves this skill's
+`mcp__plugin_pkb_services__pkb__*` calls: a same-day probe on this host found the `plugin:pkb:services`
+transport those names imply failing to connect headlessly (`CONNECTION_CLOSED`), with only the
+separately-configured `services` HTTP server resolving the same tool calls. Whether that gap is
+still open when this trigger is installed is a fact to check at install time, not to assume.
+
 ## Frontmatter markers
 
 Two task frontmatter fields, PKB-lint validated. Both are legal on one task simultaneously; the
