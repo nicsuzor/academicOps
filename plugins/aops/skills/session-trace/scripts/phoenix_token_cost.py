@@ -606,6 +606,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.from_file:
             saved = json.loads(Path(args.from_file).expanduser().read_text())
             project_name = str(saved.get("project", "(file)"))
+            # Report the window the spans were fetched for, not the time of the rerun,
+            # so an offline table carries the same header as the live one.
+            if saved.get("window"):
+                since, until = (parse_when(w, UTC) for w in saved["window"])
             llm_raw, tools, chains, agents = (
                 list(saved.get(k, [])) for k in ("llm", "tools", "chains", "agents")
             )
@@ -631,6 +635,7 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(
                 {
                     "project": project_name,
+                    "window": [iso(since), iso(until)],
                     "llm": llm_raw,
                     "tools": tools,
                     "chains": chains,

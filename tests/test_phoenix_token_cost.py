@@ -201,6 +201,28 @@ def test_cli_by_task_splits_session(tmp_path):
     assert tasks[("aaaaaaaa", "aops_deadbeef")] == 1
 
 
+def test_from_file_reports_saved_window(tmp_path):
+    fixture = tmp_path / "spans.json"
+    saved = _fixture()
+    saved["window"] = ["2026-09-11T14:00:00Z", "2026-09-12T05:00:00Z"]
+    fixture.write_text(json.dumps(saved))
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--since",
+            "2026-09-12",
+            "--from-file",
+            str(fixture),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(result.stdout)["meta"]["window"] == saved["window"]
+
+
 def test_missing_base_url_fails_closed():
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--since", "2026-09-12", "--base-url", "", "--project", "x"],
