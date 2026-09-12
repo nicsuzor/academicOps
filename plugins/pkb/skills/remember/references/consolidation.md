@@ -4,11 +4,22 @@ Consolidation synthesises episodic records into durable knowledge and maintains 
 
 ## Safety Controls
 
-- **Dry run by default**: Bulk operations (`batch_update`, `batch_reparent`, `batch_merge`, `batch_archive`) default to `dry_run=true`. Set `dry_run=false` only after inspecting previews.
+- **Dry run by default**: Bulk operations (`batch_update`, `batch_merge`, `apply_consolidation_batch`) default to `dry_run=true`. Set `dry_run=false` only after inspecting previews.
 - **Destination-first persistence**: Verify destination note writes by ID before modifying or deleting any source task body or episodic note. If the destination write fails, halt immediately.
 - **Halt on tool failure**: When a tool fails, emit `HALT: <tool_name>` and report immediately; never use workarounds or perform destructive partial edits.
 - **Control context volume**: Query slices by `status` or `project` rather than pulling full unindexed graphs.
 - **Sub-agent tooling**: Sub-agents dispatched to `pkb:pauli` require an explicit `tools` list in the dispatch call (e.g. `mcp__plugin_pkb_services__*` -- a server-level pattern; `mcp__<server>__pkb__*` matches nothing).
+
+## Focus
+
+A cycle may be given a focus: a keyword, a topic, or a path. With a focus:
+
+- **Seed the working set**: Union of `pkb__search(query="<focus>")` and a literal search of the brain for the term (`grep -rli "<focus>"`) across notes, memories, tasks, and specs, plus nodes one `[[wikilink]]` hop out from any hit.
+- **Scope the stages**: Run Stages 3, 4, 5, and 8 over the working set only. Skip transcript mining unless the focus names a session.
+- **Establish current truth before consolidating**: For each claim in the working set, identify its source of record (the live configuration, repository, code, or spec the claim describes) and check the claim against it. A claim the source no longer supports is superseded: replace it in the canonical note; delete or archive nodes whose only content is superseded claims. Contradictions between live sources are preserved with both cited. A claim with no reachable source is marked `confidence: speculative`, never deleted on suspicion.
+- **Report the working set**: The summary lists every node in the working set with its outcome (verified, superseded, merged, deleted, unverifiable).
+
+Without a focus, stages run in order as listed below.
 
 ## Knowledge Extraction Method
 
@@ -49,16 +60,16 @@ Audit generated notes for:
 
 ## Cycle Stages
 
-1. **Baseline**: Run `graph_stats` and `pkb_orphans(types=["note","knowledge","memory"], include_all=true, limit=0)`. Record initial metrics.
+1. **Baseline**: Run `pkb__status` and `pkb__get_stats`. Record document count and index freshness.
 2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle). Synthesise durable topics, record provenance (`sources: ["Session <id> (<date>)"]`), and update frontmatter `mined: <date>`. Do not edit transcript bodies.
 3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Create Maps of Content (`type: moc`) for clusters of 5+ notes. Delete episodic notes once verified at destination.
 4. **Reconcile data quality**:
    - _Duplicates_: Inspect candidates from `find_duplicates(mode="both")` semantically before merging.
    - _Staleness_: Delegate task staleness and closure to `/aops:reconcile`.
    - _Misclassifications_: Reclassify informational tasks to memories or invoke `/aops:q` to reposition.
-5. **Sweep orphans**: Review actionable tasks and notes flagged by `pkb_orphans()`.
+5. **Sweep orphans**: Review tag-orphan notes surfaced by `pkb__get_consolidation_cluster` and tasks with no parent or project (`pkb__batch_update(orphan=true, dry_run=true)` lists them).
 6. **Process refiles**: Reposition tasks flagged with `refile` using `/aops:q` and clear the flag.
-7. **Maintain graph**: Verify `metrics_hash` against baseline to confirm convergence.
+7. **Maintain graph**: Run `pkb__refresh_graph`, then compare `pkb__status` against the baseline to confirm convergence.
 8. **Audit output**: Verify that new or updated notes satisfy the extraction tests and defect checklist.
 
 ## Summary Report
