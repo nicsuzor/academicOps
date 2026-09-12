@@ -45,8 +45,8 @@ sign-off — see [evidence-contract.md#substance-over-form](evidence-contract.md
   (post-admission dev and conflict resolve), the `@claude` assistant, and the
   `force-review` escape hatch.
 
-`v0.10` has no maintainer-approval gate: `automerge-v010.yml` squash-merges a
-PR once `Lint`/`Pytest` are green on its head and on `v0.10`'s own tip, and a
-same-SHA `APPROVED` review is recorded from a login other than the PR's
-author or last-commit author. A same-account approval never satisfies this
-until a second bot identity exists.
+`v0.10` has no review gate at all: `automerge-v010.yml` squash-merges a PR
+once `Lint`/`Pytest` are green on its head and on `v0.10`'s own tip —
+mechanical checks only. A Claude-bot or GitHub Copilot approval, if present,
+is neither read nor required. Independent review is dispatch discipline
+recorded on the PKB graph, not a GitHub gate.

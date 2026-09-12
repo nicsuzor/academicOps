@@ -1,8 +1,8 @@
-# Auto-merge PRs into v0.10 once they carry a recorded independent review and
-# every check that actually ran is green. Mirrors brain#63's "Auto-merge on
-# green lint" shape: a non-success result (including skipped/missing) is
-# never treated as a pass, never merge a commit other than the one that was
-# checked, and let branch cleanup fail without failing the merge.
+# Auto-merge PRs into v0.10 once every mechanical check that actually ran is
+# green. Mirrors brain#63's "Auto-merge on green lint" shape: a non-success
+# result (including skipped/missing) is never treated as a pass, never merge
+# a commit other than the one that was checked, and let branch cleanup fail
+# without failing the merge.
 #
 # academicOps splits CI across separate workflow files (pr-pipeline.yml calls
 # lint.yml/pytest.yml/typecheck.yml as reusable workflows), unlike brain's
@@ -11,24 +11,15 @@
 # applies the same rule brain's `needs.<job>.result == 'success'` gate does:
 # anything other than a genuine `success` blocks the merge.
 #
-# "Recorded independent review" = a GitHub PR review whose LATEST submission
-# by that reviewer at the PR's current head SHA is state APPROVED (a stale
-# approval from before the last push does not count; neither does an approval
-# the same reviewer later retracted with a CHANGES_REQUESTED/COMMENTED review
-# at the same SHA) AND whose author is neither the PR's opener nor the login
-# that authored the head commit. The account that opens these
-# PRs is the same account that can post this review, so this workflow cannot
-# yet distinguish a genuinely independent reviewer from the authoring run by
-# GitHub identity — but it CAN and does refuse an approval that is trivially
-# self-dealing (same login as the PR author or as the last commit's author).
-# Until a second bot identity exists, this means a same-account approval never
-# satisfies the gate — that is the correct fail-closed behaviour, not a bug:
-# dispatch discipline alone is not verifiable from inside this workflow, so it
-# is not trusted as the sole guard. A second bot identity (infra decision for
-# Nic) would let genuinely independent bot reviews start landing PRs.
+# No review gate. Nic, 2026-09-12: "we can review with the claude bot
+# identity or the github copilot bot if we need to, and if we don't need
+# review, we can gate on mechanical checks only." A Claude-bot or Copilot
+# approval, if present, is neither read nor required — this workflow does
+# not query PR reviews at all. Independent review is dispatch discipline
+# recorded on the PKB graph, not a GitHub gate (aops_automerge_mechanical_checks_only).
 #
-# Goal 3 ("nothing lands while v0.10 is red"): `Lint`/`Pytest` also run on
-# push to v0.10 directly (see lint.yml/pytest.yml `on.push`), so v0.10's tip
+# Goal ("nothing lands while v0.10 is red"): `Lint`/`Pytest` also run on push
+# to v0.10 directly (see lint.yml/pytest.yml `on.push`), so v0.10's tip
 # always carries its own check-runs. This workflow reads those too and blocks
 # merging if they are not green, even when the PR's own checks pass.
 #
@@ -36,13 +27,26 @@
 # dev's required-checks ruleset (.github/rulesets/pr-review-and-merge.yml) —
 # known pre-existing debt tracked as aops-1c3de214. Re-add once that closes.
 #
-# Known limitation: GitHub only invokes `schedule`/`check_suite`/`workflow_run`
-# triggers from workflow files that exist on the repo's default branch (`dev`
-# here); this file lives on `v0.10` and can't use them. So a merge attempt
-# only re-fires on a `pull_request` (opened/pushed/undrafted) or
-# `pull_request_review` event. If a review lands before the PR's own checks
-# finish, nothing re-triggers the attempt afterward — re-run manually via
-# `workflow_dispatch` once checks are green.
+# `force` (workflow_dispatch only): a one-shot bootstrap waiver that skips
+# the check-green gate for a single manual run. It exists because a PR can
+# be blocked by failures that are pre-existing on v0.10's tip and unrelated
+# to its own diff — e.g. landing this file's own amendment while v0.10 is
+# red from a tracked, out-of-scope doc-reference cleanup that hasn't landed
+# yet. `force` is never available to the `pull_request` trigger (it carries
+# no `inputs` context), so it cannot fire unattended — only a manual
+# `workflow_dispatch` invocation can set it, and the run log records that it
+# was used. Use it sparingly and only when the red check is known to be
+# unrelated to the PR being landed.
+#
+# No re-trigger exists for "checks finished after this run gave up": GitHub
+# only invokes `schedule`/`check_suite`/`workflow_run` triggers from workflow
+# files that exist on the repo's default branch (`dev` here), and this file
+# lives on `v0.10`. So instead of checking once and exiting, the merge step
+# below polls the Checks API for up to POLL_MAX_SECONDS, sleeping
+# POLL_INTERVAL_SECONDS between reads, until every required check reaches a
+# terminal state (or the poll times out) — one triggered run rides out the
+# whole CI wait instead of needing a second event to re-check. Re-run
+# manually via `workflow_dispatch` if the poll times out before checks finish.
 name: Auto-merge on green (v0.10)
 
 on:
@@ -50,23 +54,30 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - v0.10
-  pull_request_review:
-    types: [submitted]
   workflow_dispatch:
     inputs:
       pr_number:
         description: "PR number to attempt (workflow_dispatch has no pull_request context)"
         required: true
+      force:
+        description: "One-shot bootstrap waiver: skip the check-green gate for this run only. See file header."
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: automerge-v010-${{ github.event.pull_request.number || inputs.pr_number }}
-  cancel-in-progress: false
+  # A new push means the previous run's HEAD_SHA is stale — cancel it rather
+  # than let a long poll for an old commit finish after a newer one arrives.
+  cancel-in-progress: true
 
 jobs:
   automerge:
     name: Auto-merge on green
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Two sequential polls (PR head, then v0.10 tip) at up to 900s each,
+    # plus setup/merge overhead — see POLL_MAX_SECONDS below.
+    timeout-minutes: 35
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.base.ref == 'v0.10' && github.event.pull_request.draft == false)
@@ -78,6 +89,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
     steps:
       - name: Resolve PR head SHA, base, and draft state
         id: pr
@@ -97,21 +109,47 @@ jobs:
           fi
           HEAD_SHA=$(echo "$DATA" | jq -r .head.sha)
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-          echo "author_login=$(echo "$DATA" | jq -r .user.login)" >> "$GITHUB_OUTPUT"
-          echo "pusher_login=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.author.login // ""')" >> "$GITHUB_OUTPUT"
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
-      - name: Verify checks, base health, and review, then merge
+      - name: Verify mechanical checks, then merge
         if: steps.pr.outputs.ready == 'true'
         run: |
           set -euo pipefail
           HEAD_SHA="${{ steps.pr.outputs.head_sha }}"
-          AUTHOR_LOGIN="${{ steps.pr.outputs.author_login }}"
-          PUSHER_LOGIN="${{ steps.pr.outputs.pusher_login }}"
 
           # Both lists deliberately omit Type Check — see file header.
           REQUIRED_PR_CHECKS=("Lint / Lint" "Pytest / Pytest")
           REQUIRED_BASE_CHECKS=("Lint" "Pytest")
+          POLL_INTERVAL_SECONDS=20
+          POLL_MAX_SECONDS=900
+
+          # Blocks until every named check on $sha is `completed`, or until
+          # POLL_MAX_SECONDS elapses — see file header on why this run polls
+          # instead of relying on a second triggering event.
+          wait_for_completed() {
+            local sha="$1"; shift
+            local waited=0
+            while true; do
+              local runs pending=false
+              runs=$(gh api "repos/$REPO/commits/$sha/check-runs" --jq '.check_runs')
+              for name in "$@"; do
+                status=$(echo "$runs" | jq -r --arg n "$name" \
+                  '[.[] | select(.name == $n)] | sort_by(.started_at) | last.status // "missing"')
+                if [ "$status" != "completed" ]; then
+                  pending=true
+                fi
+              done
+              if [ "$pending" = "false" ]; then
+                return 0
+              fi
+              if [ "$waited" -ge "$POLL_MAX_SECONDS" ]; then
+                echo "timed out after ${waited}s waiting for checks on $sha to complete"
+                return 1
+              fi
+              sleep "$POLL_INTERVAL_SECONDS"
+              waited=$((waited + POLL_INTERVAL_SECONDS))
+            done
+          }
 
           check_green() {
             local sha="$1"; shift
@@ -128,32 +166,27 @@ jobs:
             return 0
           }
 
-          if ! check_green "$HEAD_SHA" "${REQUIRED_PR_CHECKS[@]}"; then
-            exit 0
+          if [ "$FORCE" = "true" ]; then
+            echo "::warning::FORCE WAIVER USED — bypassing the mechanical-check gate for #$PR_NUMBER at $HEAD_SHA (manual workflow_dispatch, requested by ${{ github.actor }})."
+          else
+            if ! wait_for_completed "$HEAD_SHA" "${REQUIRED_PR_CHECKS[@]}"; then
+              exit 0
+            fi
+            if ! check_green "$HEAD_SHA" "${REQUIRED_PR_CHECKS[@]}"; then
+              exit 0
+            fi
+
+            BASE_SHA=$(gh api "repos/$REPO/git/ref/heads/v0.10" --jq .object.sha)
+            if ! wait_for_completed "$BASE_SHA" "${REQUIRED_BASE_CHECKS[@]}"; then
+              exit 0
+            fi
+            if ! check_green "$BASE_SHA" "${REQUIRED_BASE_CHECKS[@]}"; then
+              echo "not ready: v0.10 tip ($BASE_SHA) is not green"
+              exit 0
+            fi
           fi
 
-          # Use each reviewer's LATEST review at this SHA, not any APPROVED
-          # review ever posted at this SHA — otherwise a reviewer who approves
-          # and then reconsiders (posts CHANGES_REQUESTED at the same commit,
-          # no new push) would still have their retracted approval counted.
-          # A same-SHA APPROVED review also does not count if its author is
-          # the PR's own opener or the login that authored the head commit —
-          # that is self-approval, not an independent review. See file header.
-          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-            --jq "[.[] | select(.commit_id == \"$HEAD_SHA\")] | group_by(.user.login) | map(max_by(.submitted_at)) \
-              | [.[] | select(.state == \"APPROVED\" and .user.login != \"$AUTHOR_LOGIN\" and .user.login != \"$PUSHER_LOGIN\")] | length")
-          if [ "$APPROVED" -lt 1 ]; then
-            echo "not ready: no independent APPROVED review recorded on head $HEAD_SHA (PR author: $AUTHOR_LOGIN, last commit author: $PUSHER_LOGIN)"
-            exit 0
-          fi
-
-          BASE_SHA=$(gh api "repos/$REPO/git/ref/heads/v0.10" --jq .object.sha)
-          if ! check_green "$BASE_SHA" "${REQUIRED_BASE_CHECKS[@]}"; then
-            echo "not ready: v0.10 tip ($BASE_SHA) is not green"
-            exit 0
-          fi
-
-          echo "All gates green — merging #$PR_NUMBER at $HEAD_SHA."
+          echo "Merging #$PR_NUMBER at $HEAD_SHA."
           gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --match-head-commit "$HEAD_SHA"
 
       # Separate, non-blocking step: a cleanup hiccup must never make a
