@@ -1057,96 +1057,18 @@ def test_rbg_wires_claude_pretooluse(dist_root):
     assert "PreToolUse" not in agy_wired
 
 
-# --- 5. ts: the session transcript leaves the box, and takes no defaults ------
-
-
-def _ts_session_end(dist_root: Path, payload: dict, env_overrides: dict[str, str | None]):
-    build_dir = dist_root / "ts-claude"
-    return _run_shipped_hook(
-        "claude",
-        build_dir,
-        _command_for("claude", build_dir, "SessionEnd"),
-        payload,
-        env_overrides=env_overrides,
-    )
-
-
-def test_ts_ships_an_executable_session_end_hook(dist_root):
-    script = dist_root / "ts-claude" / "hooks" / "session-end-sync.sh"
-    assert script.is_file()
-    assert os.access(script, os.X_OK)
-    assert "session-end-sync.sh" in _command_for("claude", dist_root / "ts-claude", "SessionEnd")
+# --- 5. ts: no hooks on agy ----------------------------------------------------
 
 
 def test_ts_ships_no_agy_hooks_at_all(dist_root):
-    """ts's two hooks are both session-level, and agy has no session-level hook
-    event: its `hooks.json` fires PreToolUse, PostToolUse, PreInvocation,
-    PostInvocation and Stop, and nothing else. So ts has no hooks on agy, which
-    is stated by shipping no `hooks.json` rather than an empty one — and
-    certainly not by wiring a `SessionStart` that never fires."""
+    """ts's hook is session-level, and agy has no session-level hook event: its
+    `hooks.json` fires PreToolUse, PostToolUse, PreInvocation, PostInvocation
+    and Stop, and nothing else. So ts has no hooks on agy, which is stated by
+    shipping no `hooks.json` rather than an empty one — and certainly not by
+    wiring a `SessionStart` that never fires."""
     assert not (dist_root / "ts-agy" / "hooks.json").exists()
     assert _canonical_or_none("agy", "SessionStart") is None
     assert _canonical_or_none("agy", "SessionEnd") is None
-
-
-def test_ts_session_end_bakes_no_host_or_search_path(dist_root):
-    """No host, endpoint, or path may be baked into a shipped artifact
-    (specs/ARCHITECTURE.md, Binding constraints). The regression this guards is
-    a client-installation search path used as a fallback when the configured
-    source directory is unset."""
-    text = (dist_root / "ts-claude" / "hooks" / "session-end-sync.sh").read_text(encoding="utf-8")
-    assert ".claude/plugins/cache" not in text
-    assert "$HOME/" not in text
-    assert "${HOME}" not in text
-
-
-def test_ts_session_end_renderer_contract_is_live(dist_root, tmp_path):
-    """The hook renders transcripts by running a module out of the checkout at
-    `AOPS_SRC_DIR`. That is the whole reason it needs no baked search path — so
-    prove the target exists and the exact invocation works, rather than
-    shipping a hook whose one useful path is aspirational.
-
-    The alternative to rendering is shipping the raw, UNREDACTED JSONL, which
-    is opt-in precisely because a silently-dead renderer must not become the
-    default route for unredacted session data.
-    """
-    script = (dist_root / "ts-claude" / "hooks" / "session-end-sync.sh").read_text(encoding="utf-8")
-    assert "lib/py/transcripts/runner.py" in script
-    assert "-m transcripts.runner" in script
-
-    fixture = _REPO_ROOT / "tests" / "transcripts" / "fixtures" / "claude_session.jsonl"
-    env = dict(os.environ, AOPS_SESSIONS=str(tmp_path), PYTHONPATH=str(_REPO_ROOT / "lib" / "py"))
-    proc = subprocess.run(
-        [sys.executable, "-m", "transcripts.runner", str(fixture), "--no-sync"],
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=120,
-    )
-    assert proc.returncode == 0, f"stderr: {proc.stderr!r}"
-    rendered = sorted(p.name for p in (tmp_path / "transcripts").rglob("*") if p.is_file())
-    assert rendered, f"renderer produced nothing; stderr: {proc.stderr!r}"
-
-
-def test_ts_session_end_no_op_when_not_a_remote_session(dist_root):
-    """The hook must cost nothing and say nothing in a local session."""
-    proc = _ts_session_end(dist_root, _PAYLOADS["SessionEnd"], {"CLAUDE_CODE_REMOTE": None})
-    assert proc.returncode == 0
-    assert proc.stdout == ""
-
-
-def test_ts_session_end_no_destination_is_a_clean_no_op_not_an_error(dist_root):
-    """A missing destination is the unconfigured case, not a failure: exit 0,
-    nothing on stdout (SessionEnd stdout reaches the model), and a diagnostic
-    on stderr saying which variable is unset."""
-    proc = _ts_session_end(
-        dist_root,
-        _PAYLOADS["SessionEnd"],
-        {"CLAUDE_CODE_REMOTE": "true", "AOPS_TS_SYNC_DEST": None},
-    )
-    assert proc.returncode == 0
-    assert proc.stdout == ""
-    assert "AOPS_TS_SYNC_DEST" in proc.stderr
 
 
 def test_rbg_does_not_wire_claude_userpromptsubmit(dist_root):
