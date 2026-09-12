@@ -18,7 +18,7 @@ Expand a situated objective into smaller, abstract components: sub-objectives, d
    - Separate decision points from their validation nodes.
 4. **Resolve unknowns**:
    - **Decide**: Choose the obvious path and record the rationale in one bullet.
-   - **Defer**: Mint an empirical probe task (`classification: spike`) for missing runtime data. Wire dependent nodes to `depends_on` the probe.
+   - **Defer**: Mint an empirical probe task (`classification: probe`) for missing runtime data. Wire dependent nodes to `depends_on` the probe.
    - **Surface**: Model genuine trade-offs as mutually exclusive option nodes. Choosing an option marks it complete and cancels competing options. Never create a standalone "decision" task.
    - **Idempotency**: Search the graph before minting. Update existing tasks rather than creating duplicates.
 5. **Wire the graph**:

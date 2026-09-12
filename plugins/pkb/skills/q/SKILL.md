@@ -11,7 +11,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 ## Workflow
 
-1. **Classify level**: Goal (identity state), Target (milestone/stakes), Epic (multi-unit body), Task (single session), or Spike (`classification: spike` for uncertainty).
+1. **Classify level**: Goal (identity state), Target (milestone/stakes), Epic (multi-unit body), Task (single session), or Probe (`classification: probe` for uncertainty).
 2. **Title**: Write a concise, verb-led imperative (e.g. `Implement X`). Never include personal names.
 3. **Parent**: Assign a valid, active parent (epic, target, or active task). Never leave tasks unparented or in catch-alls.
 4. **Search and adopt**: Search existing tasks before creating. If a matching task exists, update it or reparent with `pkb__batch_reparent(ids=[...], new_parent="<parent_id>", dry_run=False)`. Mint human-readable IDs (`id: "aops_<slug>"`).
@@ -30,7 +30,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 ## Must Not
 
-- Create standalone "decision" tasks or file questions as tasks (model alternatives as mutually exclusive option nodes and unknowns as spikes).
+- Create standalone "decision" tasks or file questions as tasks (model alternatives as mutually exclusive option nodes and unknowns as probes).
 - Include personal names in titles or filenames.
 - Write `intent` (or legacy `priority`) on your own judgement, or set `severity` on non-target nodes.
 - Promote or release work for dispatch (leave at `inbox`).

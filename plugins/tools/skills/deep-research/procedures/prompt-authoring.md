@@ -29,12 +29,12 @@ Use when cataloguing tools, datasets, or literature:
 
 ## Task Template
 
-Store authored prompts in the sourcing PKB spike task:
+Store authored prompts in the sourcing PKB probe task:
 
 ````markdown
-# Spike: <goal>
+# Probe: <goal>
 
-**Type**: spike | **Effort**: 0.5d | **Tool**: Gemini Deep Research
+**Type**: probe | **Effort**: 0.5d | **Tool**: Gemini Deep Research
 
 ## Problem
 

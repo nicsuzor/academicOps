@@ -46,7 +46,7 @@ topic: <topic>
 source: <tool-name> -- <gdoc-url>
 gdoc_id: <doc-id>
 date: <YYYY-MM-DD>
-spike: <task-id>
+probe: <task-id>
 feeds: [<downstream-task-ids>]
 tags: [deep-research, <topic-tags>]
 ---
