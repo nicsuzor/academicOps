@@ -44,3 +44,7 @@ sign-off — see [evidence-contract.md#substance-over-form](evidence-contract.md
 - **Fixers** (informational): `responder` (pre-admission), `mechanic`
   (post-admission dev and conflict resolve), the `@claude` assistant, and the
   `force-review` escape hatch.
+
+`v0.10` has no maintainer-approval gate: `automerge-v010.yml` squash-merges a
+PR once `Lint`/`Pytest` are green on its head and on `v0.10`'s own tip, and a
+same-SHA `APPROVED` review is recorded.

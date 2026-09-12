@@ -1,0 +1,151 @@
+# Auto-merge PRs into v0.10 once they carry a recorded independent review and
+# every check that actually ran is green. Mirrors brain#63's "Auto-merge on
+# green lint" shape: a non-success result (including skipped/missing) is
+# never treated as a pass, never merge a commit other than the one that was
+# checked, and let branch cleanup fail without failing the merge.
+#
+# academicOps splits CI across separate workflow files (pr-pipeline.yml calls
+# lint.yml/pytest.yml/typecheck.yml as reusable workflows), unlike brain's
+# single lint.yml — so there is no one job graph to `needs:` into. This
+# workflow reads the Checks API for the PR head SHA directly instead, and
+# applies the same rule brain's `needs.<job>.result == 'success'` gate does:
+# anything other than a genuine `success` blocks the merge.
+#
+# "Recorded independent review" = a GitHub PR review in state APPROVED whose
+# `commit_id` equals the PR's current head SHA (a stale approval from before
+# the last push does not count). The account that opens these PRs is the same
+# account that can post this review, so — unlike a human-maintainer gate —
+# this workflow cannot distinguish an authoring run's own approval from an
+# independent reviewer's by GitHub identity. It relies on dispatch discipline
+# (review tasks are separately dispatched from, and never run by, the
+# authoring session) rather than an identity check. A second bot identity
+# would close that gap; that's an infra decision for Nic, left as a checklist
+# item rather than implemented here.
+#
+# Goal 3 ("nothing lands while v0.10 is red"): `Lint`/`Pytest` also run on
+# push to v0.10 directly (see lint.yml/pytest.yml `on.push`), so v0.10's tip
+# always carries its own check-runs. This workflow reads those too and blocks
+# merging if they are not green, even when the PR's own checks pass.
+#
+# Type Check is excluded from both required lists here, same as it is from
+# dev's required-checks ruleset (.github/rulesets/pr-review-and-merge.yml) —
+# known pre-existing debt tracked as aops-1c3de214. Re-add once that closes.
+#
+# Known limitation: GitHub only invokes `schedule`/`check_suite`/`workflow_run`
+# triggers from workflow files that exist on the repo's default branch (`dev`
+# here); this file lives on `v0.10` and can't use them. So a merge attempt
+# only re-fires on a `pull_request` (opened/pushed/undrafted) or
+# `pull_request_review` event. If a review lands before the PR's own checks
+# finish, nothing re-triggers the attempt afterward — re-run manually via
+# `workflow_dispatch` once checks are green.
+name: Auto-merge on green (v0.10)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - v0.10
+  pull_request_review:
+    types: [submitted]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to attempt (workflow_dispatch has no pull_request context)"
+        required: true
+
+concurrency:
+  group: automerge-v010-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    name: Auto-merge on green
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.base.ref == 'v0.10' && github.event.pull_request.draft == false)
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+    steps:
+      - name: Resolve PR head SHA, base, and draft state
+        id: pr
+        run: |
+          DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          BASE_REF=$(echo "$DATA" | jq -r .base.ref)
+          IS_DRAFT=$(echo "$DATA" | jq -r .draft)
+          if [ "$BASE_REF" != "v0.10" ]; then
+            echo "PR #$PR_NUMBER targets $BASE_REF, not v0.10 — nothing to do."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "PR #$PR_NUMBER is a draft — nothing to do."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "head_sha=$(echo "$DATA" | jq -r .head.sha)" >> "$GITHUB_OUTPUT"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify checks, base health, and review, then merge
+        if: steps.pr.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          HEAD_SHA="${{ steps.pr.outputs.head_sha }}"
+
+          # Both lists deliberately omit Type Check — see file header.
+          REQUIRED_PR_CHECKS=("Lint / Lint" "Pytest / Pytest")
+          REQUIRED_BASE_CHECKS=("Lint" "Pytest")
+
+          check_green() {
+            local sha="$1"; shift
+            local runs
+            runs=$(gh api "repos/$REPO/commits/$sha/check-runs" --jq '.check_runs')
+            for name in "$@"; do
+              conclusion=$(echo "$runs" | jq -r --arg n "$name" \
+                '[.[] | select(.name == $n)] | sort_by(.started_at) | last.conclusion // "missing"')
+              if [ "$conclusion" != "success" ]; then
+                echo "not ready: '$name' on $sha is '$conclusion', not success"
+                return 1
+              fi
+            done
+            return 0
+          }
+
+          if ! check_green "$HEAD_SHA" "${REQUIRED_PR_CHECKS[@]}"; then
+            exit 0
+          fi
+
+          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq "[.[] | select(.state == \"APPROVED\" and .commit_id == \"$HEAD_SHA\")] | length")
+          if [ "$APPROVED" -lt 1 ]; then
+            echo "not ready: no APPROVED review recorded on head $HEAD_SHA"
+            exit 0
+          fi
+
+          BASE_SHA=$(gh api "repos/$REPO/git/ref/heads/v0.10" --jq .object.sha)
+          if ! check_green "$BASE_SHA" "${REQUIRED_BASE_CHECKS[@]}"; then
+            echo "not ready: v0.10 tip ($BASE_SHA) is not green"
+            exit 0
+          fi
+
+          echo "All gates green — merging #$PR_NUMBER at $HEAD_SHA."
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --match-head-commit "$HEAD_SHA"
+
+      # Separate, non-blocking step: a cleanup hiccup must never make a
+      # successful merge look failed.
+      - name: Delete merged branch
+        if: steps.pr.outputs.ready == 'true'
+        continue-on-error: true
+        run: |
+          MERGED=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq '.state == "MERGED"')
+          if [ "$MERGED" = "true" ]; then
+            BRANCH=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefName --jq .headRefName)
+            gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH"
+          fi
