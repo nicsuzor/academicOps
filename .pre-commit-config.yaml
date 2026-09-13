@@ -1,6 +1,13 @@
 # Pre-commit hooks for academicOps framework governance
 # See https://pre-commit.com for more info
 
+# `make install-dev` runs `pre-commit install` unconditionally, so declaring
+# post-checkout/post-merge here is what makes a plain `git pull`/`git merge`
+# on this repo refresh the installed plugin cache automatically (see the
+# refresh-plugin-install hook below) -- no separate opt-in step on the host.
+default_install_hook_types: [pre-commit, post-checkout, post-merge]
+default_stages: [pre-commit]
+
 repos:
   # Commit-time secret backstop (Layer 2, aops_8c697102). Complements the
   # write-time scrub in lib/py/transcripts/domain/secret_redaction.py (Layer 1)
@@ -63,5 +70,21 @@ repos:
         name: Check no new orphan markdown (R5.6)
         entry: uv run python scripts/check_no_new_orphan_md.py
         language: system
+        pass_filenames: false
+        always_run: true
+
+  # Both Claude Code and agy install plugins by COPYING built content into a
+  # version-keyed cache (specs/build-and-install.md, "Local install"); an edit
+  # to plugins/, lib/, or build/ is invisible to an already-installed session
+  # until dist/ is rebuilt and reinstalled. A `git pull`/`git merge` that lands
+  # such a change is exactly the moment that goes stale, so the refresh runs
+  # here instead of waiting on a developer to remember `make install-dev`.
+  - repo: local
+    hooks:
+      - id: refresh-plugin-install
+        name: refresh installed plugin cache (post-checkout/post-merge)
+        entry: make install-dev
+        language: system
+        stages: [post-checkout, post-merge]
         pass_filenames: false
         always_run: true
