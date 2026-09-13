@@ -9,6 +9,7 @@ Invoked as: python3 docker_gemini_fixups.py <subcommand>
 import argparse
 import glob
 import json
+import os
 import pathlib
 
 GEMINI_HOME = pathlib.Path("/home/worker/.gemini")
@@ -16,12 +17,30 @@ KNOWN_MARKETPLACES = pathlib.Path("/home/worker/.claude/plugins/known_marketplac
 
 
 def fixup_mcp_config_paths() -> None:
-    """Resolve ${extensionPath} / ${CLAUDE_PLUGIN_ROOT} placeholders in mcp_config.json.
+    """Resolve ${extensionPath}/${CLAUDE_PLUGIN_ROOT} and YOUR_PKB_URL placeholders.
 
     `gemini extensions install` and `agy plugin install` ship mcp_config.json
-    files with unresolved template placeholders; replace them with the actual
-    on-disk directory of each config file.
+    files with unresolved `${extensionPath}`/`${CLAUDE_PLUGIN_ROOT}` template
+    placeholders; replace them with the actual on-disk directory of each
+    config file.
+
+    The `agy` client has no template-substitution mechanism at all (see
+    `plugins/pkb/manifest/mcp.template.json`'s `agy` client), so the `pkb`
+    plugin's `services` server ships the literal text `YOUR_PKB_URL` in place
+    of its endpoint. On a host `make install-dev`, `build.install
+    patch_agy_mcp` rewrites that placeholder right after `agy plugin install`
+    runs. A polecat container's image is built long before `$PKB_MCP_URL` is
+    known (`.agents/CORE.md`, "No defaults"), so this Dockerfile-invoked
+    build-time call leaves `YOUR_PKB_URL` in place -- `entrypoint.sh` calls
+    this same command again at container start, once `$PKB_MCP_URL` is set in
+    the container's own environment, which is when the substitution below
+    actually fires. Unset (a `--no-pkb` dispatch), it is a no-op, matching
+    `patch_agy_mcp`'s own behaviour.
     """
+    pkb_mcp_url = os.environ.get("PKB_MCP_URL", "").strip()
+    while pkb_mcp_url.endswith("/"):
+        pkb_mcp_url = pkb_mcp_url[:-1]
+
     for path_str in glob.glob(str(GEMINI_HOME / "**" / "mcp_config.json"), recursive=True):
         path = pathlib.Path(path_str)
         data = path.read_text()
@@ -30,6 +49,8 @@ def fixup_mcp_config_paths() -> None:
         resolved = data.replace("${extensionPath}", plugin_dir).replace(
             "${CLAUDE_PLUGIN_ROOT}", plugin_dir
         )
+        if pkb_mcp_url and "YOUR_PKB_URL" in resolved:
+            resolved = resolved.replace("YOUR_PKB_URL", pkb_mcp_url)
         if resolved != data:
             json.loads(resolved)  # confirm the replacement didn't corrupt the JSON
             path.write_text(resolved)

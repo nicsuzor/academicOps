@@ -73,6 +73,17 @@ fi
 # Keep .config traversable for multi-UID runs.
 chmod 777 "$HOME/.config" 2>/dev/null || true
 
+# The agy client's pkb `services` server ships with the literal placeholder
+# YOUR_PKB_URL baked in (plugins/pkb/manifest/mcp.template.json's agy client
+# has no template-substitution mechanism to resolve it at image-build time,
+# before $PKB_MCP_URL is known -- see docker_gemini_fixups.py's
+# fixup_mcp_config_paths for the full mechanism). Re-run it now that
+# $PKB_MCP_URL is in this container's own environment: a no-op with the URL
+# unset (--no-pkb) or without the script (a non-crew AGENT_CMD image).
+if [ -f "$HOME/docker_gemini_fixups.py" ]; then
+    python3 "$HOME/docker_gemini_fixups.py" fixup-mcp-config-paths
+fi
+
 # Task-id-driven seed construction:
 # If POLECAT_TARGET_TASK (or POLECAT_TASK) is provided and no explicit prompt
 # was passed on argv, build and append the expanding /pkb:pull command.
