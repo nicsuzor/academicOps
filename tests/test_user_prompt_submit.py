@@ -26,8 +26,10 @@ assert handlers_spec is not None and handlers_spec.loader is not None
 handlers = importlib.util.module_from_spec(handlers_spec)
 # Deliberately NOT registered as sys.modules["handlers"]: that name collides
 # with plugins/rbg/hooks/handlers.py, which tests/test_cope.py imports under
-# the bare name "handlers". See tests/test_aops_pr_ready_guard.py for the
-# full account of the xdist cross-test pollution this caused.
+# the bare name "handlers". Under pytest-xdist, whichever module registers
+# that slot first wins it for every test in the worker, so a bare "handlers"
+# registration here causes test_cope.py's handlers.evaluate(...) calls to
+# raise AttributeError against the wrong module.
 handlers_spec.loader.exec_module(handlers)
 
 
