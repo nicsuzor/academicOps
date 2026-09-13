@@ -98,7 +98,33 @@ feature:
 
 Both Claude Code and `agy` install by **copying** the built plugin content into
 their own plugin caches -- an edit to `plugins/` is invisible to an installed
-session until `make install-dev` rebuilds and reinstalls.
+session until `make install-dev` rebuilds and reinstalls. Concretely, `claude
+plugin install <plugin>@<marketplace>` copies the plugin directory the
+marketplace's `.claude-plugin/marketplace.json` `source` field points at into
+`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`
+(`installed_plugins.json` records the mapping); a subagent spawned from that
+session loads its `agents/*.md` from that cache path, not from the working
+tree. The version segment is the git-derived string from `build/version.py`
+(`get_current_version`), so an uncommitted or unbuilt change never collides
+with an already-installed version -- but nothing re-copies an existing version
+directory in place, so the cache only ever reflects whatever the last
+`make install-dev`/`make install` run built.
+
+**Refresh is automatic on a normal `git pull`.** `.pre-commit-config.yaml` sets
+`default_install_hook_types: [pre-commit, post-checkout, post-merge]` and
+defines a local `refresh-plugin-install` hook staged on `post-checkout` and
+`post-merge` that runs `make install-dev`. `make install-dev` already runs
+`uv run pre-commit install` unconditionally, so the first `make install-dev` a
+developer ever runs on a checkout wires up both hook types; every `git merge`
+or `git checkout` after that (a `git pull` is a fetch + merge) rebuilds `dist/`
+and reinstalls the local `aops` marketplace before the next session or
+subagent spawn reads it. This does not reach a `polecat` container -- those
+bake plugin content into the image at build time (`Dockerfile`,
+`AOPS_DIST_SOURCE`) and carry their own staleness check
+(`plugins/aops/hooks/handlers.py`'s `_check_stale_baked_plugins`, driven by
+`/home/worker/.aops-image-metadata.json` and the `AOPS_IMAGE_STALE`/
+`AOPS_IMAGE_STALENESS_WARNING` env vars `lib/polecat/cli.py` sets before
+launch) -- rebuilding the image is the only refresh path there.
 
 ## 2. Release path (`dev` → tag → publish)
 
