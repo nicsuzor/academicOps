@@ -72,6 +72,19 @@ feature:
    agy.
    With `$PKB_MCP_URL` unset it is a no-op, not a failure: the plugin installs
    with the placeholder left in place, unusable until reconfigured.
+
+   A polecat container is a third `agy` install path, distinct from both
+   `make install-dev` and a bare `agy plugin install`: the aops-crew image
+   runs `agy plugin install` at `docker build` time, long before
+   `$PKB_MCP_URL` is known, so the image ships with `YOUR_PKB_URL` baked in
+   and no host `make install-dev` ever runs inside it to rewrite it.
+   `lib/polecat/defaults/docker_gemini_fixups.py`'s `fixup-mcp-config-paths`
+   command (already invoked once at image-build time, to resolve
+   `${extensionPath}`/`${CLAUDE_PLUGIN_ROOT}`) also resolves `YOUR_PKB_URL`
+   when `$PKB_MCP_URL` is set in its own environment; `entrypoint.sh` calls it
+   a second time at container start, once the container's own environment
+   (forwarded by `polecat run`, `polecat-system` step 5) actually carries the
+   URL.
 3. **Cowork bakes the URL at build time.**
    Cowork does not expand environment variables at runtime and has no
    userConfig either, and neither install path (directory marketplace or
