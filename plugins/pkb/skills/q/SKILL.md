@@ -14,7 +14,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 1. **Classify level**: Goal (identity state), Target (milestone/stakes), Epic (multi-unit body), Task (single session), or Probe (`classification: probe` for uncertainty).
 2. **Title**: Write a concise, verb-led imperative (e.g. `Implement X`). Never include personal names.
 3. **Parent**: Assign a valid, active parent (epic, target, or active task). Never leave tasks unparented or in catch-alls.
-4. **Search and adopt**: Search existing tasks before creating. If a matching task exists, update it or reparent with `pkb__batch_reparent(ids=[...], new_parent="<parent_id>", dry_run=False)`. Mint human-readable IDs (`id: "aops_<slug>"`).
+4. **Search and adopt**: Search existing tasks before creating. If a matching task exists, update it or reparent with `pkb.batch_reparent(ids=[...], new_parent="<parent_id>", dry_run=False)`. Mint human-readable IDs (`id: "aops_<slug>"`).
 5. **Densify graph edges**:
    - `contributes_to`: Point to target or goal with `stated_weight` (`critical`, `high`, `medium`, `low`) and a one-sentence justification ([[kb_pauli_prioritisation_doctrine]]).
    - `depends_on`, `soft_depends_on`, `supersedes`: Link dependencies. Omit redundant sibling edges under the same parent.

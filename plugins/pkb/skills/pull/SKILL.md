@@ -11,7 +11,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 1. Claim Task
 
-- Call `pkb__claim_task` with your assigned task ID. If missing, locate it via `pkb__task_search`.
+- Call `pkb.claim_task` (the `services` MCP server's PKB tool, invoked via its code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` running `pkb.claim_task(id=...)`) with your assigned task ID. If missing, locate it via `pkb.search`.
 - Authority extends strictly to the claimed task and its descendants. If blocked by external dependencies, complete what is possible and release remaining work.
 
 ### 2. Resolve Project-Local Workflow

@@ -18,7 +18,7 @@ Finalize session work and provide a structured handover before exit.
 
 ### 2. Release Claimed Tasks
 
-For each claimed task (releasing child tasks first), call `pkb__release_task` with the appropriate terminal status:
+For each claimed task (releasing child tasks first), call `pkb.release_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.release_task(...)`) with the appropriate terminal status:
 
 - `done`: All acceptance criteria are fully met with verified evidence.
 - `partial`: A functional increment is delivered; remaining work is explicitly documented under Next.

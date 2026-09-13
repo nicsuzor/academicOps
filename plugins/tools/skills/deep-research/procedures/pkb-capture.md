@@ -9,7 +9,7 @@ parent_skill: deep-research
 
 ### 1. Pre-flight & Download
 
-- Verify sourcing task exists in PKB (`task_search`) and `rclone lsd gdrive:` succeeds.
+- Verify sourcing task exists in PKB (`pkb.search`) and `rclone lsd gdrive:` succeeds.
 - Download artifacts to temporary workspace:
   ```bash
   scripts/fetch.sh <gdoc-url-or-id> /tmp/deep-research-<date>/<slug>
@@ -56,7 +56,7 @@ Body layout: one-paragraph context block with `[[wikilinks]]` to tasks/epics, se
 
 ### 5. Update Task & Cleanup
 
-- Update sourcing task via `mcp__plugin_pkb_services__pkb__update_task`: set `research_output` to note ID, status to `done`, and record completion evidence.
+- Update sourcing task via `pkb.update_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`): set `research_output` to note ID, status to `done`, and record completion evidence.
 - Remove working files from `/tmp/`.
 
 ## Failure Handling

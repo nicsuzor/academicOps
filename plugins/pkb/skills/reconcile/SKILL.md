@@ -9,9 +9,11 @@ Establish ground truth across the task graph. Record verified external facts--me
 
 ## Protocol
 
+Every `pkb.<op>(...)` call below runs through the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`), not a directly-invocable flat tool.
+
 ### 1. Load Graph Claims
 
-Query non-terminal tasks using `mcp__plugin_pkb_services__pkb__list_tasks`. Query narrow slices by status or project rather than pulling the full graph at once.
+Query non-terminal tasks using `pkb.list_tasks` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`). Query narrow slices by status or project rather than pulling the full graph at once.
 
 ### 2. Fold in Finished PRs
 
@@ -26,9 +28,9 @@ Examine pull requests closed within the specified time window. Match to tasks by
 Apply [[kb_graph_hygiene_rules]] to every task set `done` in §2 this run, and as a backstop to any task already `status: done` carrying no harvest audit receipt (one bypassed this step in an earlier run):
 
 1. **Durability Bar.** Run each factual claim in the task body through the 4-filter tree: persistence beyond the task's lifecycle, not episodic narration or debris (retry logs, diffs, commit SHAs -- git holds those), matches one of the 5 durable categories (architectural invariant, empirical finding, policy/standing decision, domain concept, living procedure), not already captured in a canonical note. No survivors: skip to step 4.
-2. **Destination Rule.** For each surviving proposition, resolve a destination via `pkb__search(type="knowledge")` or an existing topic MOC. Existing note: synthesize the fact in via `pkb__update_body` (never append as a dated changelog). No note: `pkb__create(type="knowledge", id="kb_<slug>", ...)` parented to the domain MOC. Universal invariant or standing user directive: route to `plugins/rbg/skills/axioms/` or a dedicated standing-decision node. The destination must resolve to an explicit id before any write.
-3. **Pre-Deletion Verification Gate.** Before deleting the source, confirm in order: (1) `pkb__get_document(destination_id)` resolves; (2) its `modified` timestamp is at or after the write; (3) the extracted proposition text reads back from the returned body; (4) any external wikilinks to the source are reparented to the destination; (5) write the audit receipt `{source_id, destination_id, verified_at, verified_facts}`. Any failure: `HALT: pre_deletion_verification_failed(source_id, destination_id, check_num)` and leave the source in place -- do not retry against a different destination in the same pass.
-4. **Outright deletion.** Once step 3 passes (or step 1 found nothing to extract), `pkb__delete(source_id)`. No tombstone, no `status: archived`, no archive copy -- git holds the history.
+2. **Destination Rule.** For each surviving proposition, resolve a destination via `pkb.search(type="knowledge")` or an existing topic MOC. Existing note: synthesize the fact in via `pkb.update_body` (never append as a dated changelog). No note: `pkb.create(type="knowledge", id="kb_<slug>", ...)` parented to the domain MOC. Universal invariant or standing user directive: route to `plugins/rbg/skills/axioms/` or a dedicated standing-decision node. The destination must resolve to an explicit id before any write.
+3. **Pre-Deletion Verification Gate.** Before deleting the source, confirm in order: (1) `pkb.get_document(destination_id)` resolves; (2) its `modified` timestamp is at or after the write; (3) the extracted proposition text reads back from the returned body; (4) any external wikilinks to the source are reparented to the destination; (5) write the audit receipt `{source_id, destination_id, verified_at, verified_facts}`. Any failure: `HALT: pre_deletion_verification_failed(source_id, destination_id, check_num)` and leave the source in place -- do not retry against a different destination in the same pass.
+4. **Outright deletion.** Once step 3 passes (or step 1 found nothing to extract), `pkb.delete(source_id)`. No tombstone, no `status: archived`, no archive copy -- git holds the history.
 
 ### 4. Route Closed Unmerged PRs
 
@@ -47,7 +49,7 @@ Apply [[kb_graph_hygiene_rules]] Rule Set 3 to near-duplicate clusters found amo
 1. **Differential Fact Audit.** Extract the atomic propositions from each node in the cluster and partition into shared agreement, contradictions (resolve against ground truth -- code, commits, recorded user directives, with the resolution recorded), and single-source facts unique to each side.
 2. **Single-Source Guard.** Every single-source fact gets an explicit disposition: fold into the synthesized node, or a recorded reason for deliberate exclusion. An unhandled single-source fact halts the merge -- `HALT: unhandled_single_source_fact` -- silence is never consent to drop it.
 3. **Synthesize, never concatenate.** Write one minimal node carrying the shared facts, the resolved contradictions, and every folded-in single-source fact, onto the surviving id. Union-of-everything is a failure outcome, not a safe default.
-4. **Same gate, same deletion.** Run the synthesized write through §3 step 3's Pre-Deletion Verification Gate against the surviving node as destination, then `pkb__delete` the merged-away node outright.
+4. **Same gate, same deletion.** Run the synthesized write through §3 step 3's Pre-Deletion Verification Gate against the surviving node as destination, then `pkb.delete` the merged-away node outright.
 
 ### 6. Staleness, Rot, and Cancellation
 
@@ -65,9 +67,9 @@ Governs status demotions and cancellations in §4 and §6. Hygiene deletions in 
 
 Every status demotion or cancellation must follow this order:
 
-1. **Body**: Write evidence/annotation via `pkb__update_body` or `pkb__append`.
-2. **Status**: Update frontmatter status via `pkb__update_task(id="<id>", updates={"status": "inbox"|"cancelled"})`. Never use `pkb__batch_update` for status changes.
-3. **Readback**: Call `pkb__get_task` to confirm frontmatter status persisted.
+1. **Body**: Write evidence/annotation via `pkb.update_body` or `pkb.append`.
+2. **Status**: Update frontmatter status via `pkb.update_task(id="<id>", updates={"status": "inbox"|"cancelled"})`. Never use `pkb.batch_update` for status changes.
+3. **Readback**: Call `pkb.get_task` to confirm frontmatter status persisted.
 
 ### 7. Demote Affected Dependents to Inbox
 
@@ -97,8 +99,8 @@ Return a single structured summary:
 - Reset stale or abandoned claims, or forward completed-but-uncertified work to the dispatcher -- both are Sara's outcomes (`partial`, `merge_ready`, `review`, or back to `queued`).
 - Cancel or complete tasks based solely on age, quietness, or duplication.
 - Cancel without writing auditable evidence to the node body.
-- Update task bodies without updating frontmatter status via `pkb__update_task`.
-- Use `pkb__batch_update` for status changes.
+- Update task bodies without updating frontmatter status via `pkb.update_task`.
+- Use `pkb.batch_update` for status changes.
 - Write `focus_score`, `intent`, `priority`, or `severity`.
 - Promote tasks into `queued`.
 - Re-plan or second-guess recorded human decisions.

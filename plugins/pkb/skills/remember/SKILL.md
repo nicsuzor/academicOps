@@ -18,10 +18,12 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 
 ## Capture Workflow
 
-1. **Search**: Run `pkb__search(query="<topic>")`.
+1. **Search**: Run `pkb.search(query="<topic>")`.
 2. **Find canonical note**: Maintain one canonical note per primary topic (concept, tool, project). If a topic note exists, update it rather than creating a new one.
-3. **Augment in place**: Rewrite the relevant section to reflect current state via `pkb__update_body`. Replace superseded facts; do not append dated entries or provenance narratives. Grounding evidence lives in its own node linked by `[[wikilink]]`.
-4. **Create when novel**: Use `pkb__create` for documents or `pkb__create_memory` for atomic facts only when no canonical topic matches.
+3. **Augment in place**: Rewrite the relevant section to reflect current state via `pkb.update_body`. Replace superseded facts; do not append dated entries or provenance narratives. Grounding evidence lives in its own node linked by `[[wikilink]]`.
+4. **Create when novel**: Use `pkb.create(type="knowledge", ...)` for documents or `pkb.create(type="memory", ...)` for atomic facts only when no canonical topic matches.
+
+All PKB calls above go through the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` running the `pkb.<op>(...)` call. There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
 
 ### Graph Integration
 

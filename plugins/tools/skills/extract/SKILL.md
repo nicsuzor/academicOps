@@ -9,10 +9,10 @@ Extract structured data from diverse document sources while enforcing strict pri
 
 ## Pre-Extraction Search
 
-Search existing PKB knowledge before extracting to augment rather than duplicate:
+Search existing PKB knowledge before extracting to augment rather than duplicate, via the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`):
 
 ```
-mcp__plugin_pkb_services__pkb__search(query="[topic/person/subject]")
+pkb.search(query="[topic/person/subject]")
 ```
 
 ## Routing
