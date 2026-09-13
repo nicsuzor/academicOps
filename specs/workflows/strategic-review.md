@@ -12,7 +12,7 @@ related: [[conceptual-review]], [[workflows-workflow]]
 
 ## Purpose & Design Intent
 
-Strategic Review is the framework's primary multi-agent quality gate for intellectual artifacts — including specifications, design proposals, research manuscripts, pull requests, and architecture changes.
+Strategic Review is the framework's primary multi-agent quality gate for intellectual artifacts -- including specifications, design proposals, research manuscripts, pull requests, and architecture changes.
 
 Its core design intent is to eliminate the failure mode of **self-grading** and **monolithic shallow critique** by establishing:
 
@@ -48,17 +48,14 @@ The workflow is implemented operationally via `plugins/aops/skills/strategic-rev
 
 ## Core Guarantees & Lifecycle
 
-### 1. The Premise Test
+### 1. The Strategic Fit Check
 
-Before inspecting code details or prose phrasing, the reviewer evaluates whether the premise of the change is sound:
-
-- **Sharp-Principal Reaction**: An unconstrained one-sentence judgment on whether the artifact solves the right problem at the right altitude.
-- **Mechanism Check**: Verifies whether an existing mechanism already accomplishes the goal, and whether the proposal contradicts or re-litigates a settled architectural decision.
+Before inspecting code details or prose phrasing, `pauli` runs the Strategic Fit Check defined in its own agent instructions (`plugins/pkb/agents/pauli.md`, Reviewer Mode) and returns a `FIT`/`MISFIT` verdict per `plugins/aops/skills/strategic-review/SKILL.md`.
 
 ### 2. Specialized Reviewer Roles
 
 - **`rbg` (Axioms & Rules)**: Enforces compliance with core framework axioms, project-local rules, permission boundaries, and governance constraints.
-- **`pauli` (Strategic Critique & Architectural Fit)**: Tests premise validity, root-cause placement, system-level coherence, and avoidance of shallow workarounds.
+- **`pauli` (Strategic Fit)**: Tests necessity, parsimony, and precedent -- see the Strategic Fit Check above.
 - **`marsha` (Excellence & Runtime Fitness)**: Probes runtime execution correctness, empirical evidence, test coverage, and end-user fitness.
 
 ### 3. Lens Selection
@@ -67,7 +64,7 @@ Reviewers do not perform broad, superficial sweeps. They selectively apply 3–4
 
 ### 4. Severity & Disposition Rubric
 
-- **REJECT**: Fundamental defect in premise, architecture, or safety — requires cancellation or full redesign.
+- **REJECT**: Fundamental defect in premise, architecture, or safety -- requires cancellation or full redesign.
 - **REVISE**: Substantial rework required within the accepted scope.
 - **FIX**: Clear, deterministic resolution exists (syntax, missing validation, straightforward test fix).
 - **TRIVIAL**: Cosmetic, typographical, or formatting improvement.
