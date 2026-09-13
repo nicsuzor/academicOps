@@ -130,3 +130,9 @@ Polecat (`lib/polecat/`, injected into `plugins/aops`) launches isolated
 Docker containers that boot into the `james` persona and run one unit of
 work to completion, writing results back to the PKB task record. See
 [polecat-system.md](polecat/polecat-system.md) for the full contract.
+
+`lib/polecat/server.py` exposes the same dispatch contract as plain MCP
+tools (`dispatch`/`inspect`/`stop`), built from `lib/polecat/Dockerfile.server`
+and run as its own long-lived container on the WSL host, registered on
+Bifrost as a plain tool server. See
+[polecat-mcp-server.md](polecat/polecat-mcp-server.md).

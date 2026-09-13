@@ -30,7 +30,12 @@ from pathlib import Path
 
 import pytest
 
-from lib.polecat.cli import _get_git_head, cleanup_isolated_workspace, resolve_isolated_workspace
+from lib.polecat.cli import (
+    PolecatError,
+    _get_git_head,
+    cleanup_isolated_workspace,
+    resolve_isolated_workspace,
+)
 from lib.polecat.staleness import ImageProvenance, evaluate_staleness
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -506,9 +511,9 @@ def test_isolated_workspace_does_not_fabricate_origin_refs(tmp_path):
 
 
 def test_isolated_workspace_fails_on_unresolvable_ref(fake_canonical_repo, tmp_path):
-    """When base ref cannot be resolved locally or on origin, resolve_isolated_workspace fails with SystemExit."""
+    """When base ref cannot be resolved locally or on origin, resolve_isolated_workspace fails with PolecatError."""
     polecat_home = tmp_path / "polecat-home"
-    with pytest.raises(SystemExit):
+    with pytest.raises(PolecatError):
         resolve_isolated_workspace(
             fake_canonical_repo,
             "session-bad-ref",
@@ -625,7 +630,7 @@ def test_isolated_workspace_fetches_remote_only_branch_without_prior_fetch(tmp_p
 
 def test_isolated_workspace_fails_closed_on_unreachable_remote(tmp_path):
     """When an explicit base is specified and origin remote is unreachable/fails to fetch,
-    resolve_isolated_workspace must fail closed (SystemExit), never proceed on stale local SHA."""
+    resolve_isolated_workspace must fail closed (PolecatError), never proceed on stale local SHA."""
     canonical = tmp_path / "canonical-unreachable"
     canonical.mkdir()
     _run("git", "init", cwd=canonical)
@@ -644,7 +649,7 @@ def test_isolated_workspace_fails_closed_on_unreachable_remote(tmp_path):
     )
 
     polecat_home = tmp_path / "polecat-home"
-    with pytest.raises(SystemExit):
+    with pytest.raises(PolecatError):
         resolve_isolated_workspace(
             canonical, "session-unreachable-remote", polecat_home, base="some-feature"
         )
@@ -691,7 +696,7 @@ def test_canonical_checkout_immutability_during_dispatch(tmp_path):
 
 def test_isolated_workspace_fails_closed_on_fetch_error_for_local_ref(tmp_path):
     """When base is a valid local commit (e.g. HEAD~1 or SHA) but origin fetch fails,
-    resolve_isolated_workspace must fail closed (SystemExit) rather than falling back
+    resolve_isolated_workspace must fail closed (PolecatError) rather than falling back
     to local-only verification. A fetch failure is fail-closed on every `--base` form,
     with no exception for refs that happen to also resolve locally."""
     canonical = tmp_path / "canonical-local-fallback"
@@ -716,13 +721,13 @@ def test_isolated_workspace_fails_closed_on_fetch_error_for_local_ref(tmp_path):
 
     polecat_home = tmp_path / "polecat-home"
     # base="HEAD~1" resolves locally, but the origin fetch fails, so dispatch must halt.
-    with pytest.raises(SystemExit):
+    with pytest.raises(PolecatError):
         resolve_isolated_workspace(canonical, "session-local-base", polecat_home, base="HEAD~1")
 
 
 def test_isolated_workspace_origin_prefix_fails_closed_on_fetch_error(tmp_path):
     """When base starts with origin/ and remote fetch fails, resolve_isolated_workspace
-    must fail closed (SystemExit)."""
+    must fail closed (PolecatError)."""
     canonical = tmp_path / "canonical-origin-prefix-fail"
     canonical.mkdir()
     _run("git", "init", cwd=canonical)
@@ -741,7 +746,7 @@ def test_isolated_workspace_origin_prefix_fails_closed_on_fetch_error(tmp_path):
     )
 
     polecat_home = tmp_path / "polecat-home"
-    with pytest.raises(SystemExit):
+    with pytest.raises(PolecatError):
         resolve_isolated_workspace(
             canonical,
             "session-origin-prefix-fail",

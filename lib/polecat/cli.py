@@ -6,6 +6,7 @@ environment or from the operator's config file. Nothing is defaulted here:
 a missing required value is a loud failure, never a guess.
 """
 
+import functools
 import json
 import os
 import re
@@ -15,6 +16,7 @@ import sys
 import tempfile
 import uuid
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn
@@ -64,10 +66,49 @@ HEADLESS_FLAGS = {"-p", "--print"}
 CONTAINER_ACA_DATA = "/data"
 
 
+class PolecatError(Exception):
+    """A missing requirement or a run that must not report success.
+
+    Raised by `fail()` and left uncaught through the whole `execute_run()`
+    call graph, so a non-CLI caller (the MCP server) gets a catchable
+    exception instead of the process exiting under it. The Click commands
+    are the only place this is caught and turned into the CLI's own
+    stderr-message-plus-exit-1 contract (`_cli_entry` below) — every
+    resolve_*/fail() call site stays exactly as loud as it always was for a
+    CLI invocation.
+    """
+
+
 def fail(message: str) -> NoReturn:
-    """Report and exit non-zero. Nothing proceeds on a missing requirement."""
-    click.echo(f"Error: {message}", err=True)
-    sys.exit(1)
+    """Report a fatal error. Nothing proceeds on a missing requirement.
+
+    Raises rather than exits, so this is safe to call from inside a
+    long-lived process (the MCP server) as well as the CLI. `_cli_entry`
+    is what makes a CLI invocation still exit non-zero with the message on
+    stderr.
+    """
+    raise PolecatError(message)
+
+
+@dataclass
+class RunResult:
+    """What `execute_run()` produced. The CLI `run` command reduces this to
+    an exit code; the MCP server's `dispatch` tool returns it (minus the raw
+    `Path`s) as the tool result."""
+
+    detached: bool
+    returncode: int | None
+    session_id: str
+    session_dir: Path
+    workspace_dir: Path
+    container_id: str | None
+    container_name: str
+    run_record_path: Path
+    seeded_prompt: str | None
+    delivery_ok: bool
+    delivery_err: str | None
+    image: str
+    task_id: str | None
 
 
 def load_config():
@@ -1865,6 +1906,27 @@ def _execute_with_seed_verification(
     return returncode
 
 
+def _cli_entry(fn):
+    """Turn a `PolecatError` raised anywhere in a Click command's call graph
+    into this CLI's own contract: the message on stderr, prefixed `Error:`,
+    and a non-zero exit. Every `resolve_*`/`fail()` call site raises rather
+    than exits (see `fail()`), so this is the one place that behavior is
+    translated back into a process exit for a CLI invocation specifically —
+    a non-CLI caller (the MCP server) imports `execute_run` directly and
+    catches `PolecatError` on its own terms instead.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except PolecatError as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(1)
+
+    return wrapper
+
+
 @click.group()
 def main():
     """Polecat: run an agent CLI inside an isolated container."""
@@ -1976,6 +2038,7 @@ def main():
     "debugging interactively. Errors are always reported.",
 )
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
+@_cli_entry
 def run(
     agent_cmd,
     project,
@@ -2003,6 +2066,73 @@ def run(
 
     Anything after AGENT_CMD that is not one of this command's own options is
     forwarded verbatim to the inner invocation.
+    """
+    result = execute_run(
+        agent_cmd=agent_cmd,
+        project=project,
+        repo_dir=repo_dir,
+        session_name=session_name,
+        mcp_url=mcp_url,
+        no_pkb=no_pkb,
+        task=task,
+        base=base,
+        branch=branch,
+        with_sessions=with_sessions,
+        model=model,
+        agent=agent,
+        no_agent=no_agent,
+        output_format=output_format,
+        prompt=prompt,
+        interactive=interactive,
+        detach=detach,
+        quiet=quiet,
+        ports=ports,
+        scratch_dir=scratch_dir,
+        extra_args=extra_args,
+    )
+    if result.detached:
+        return
+    if result.returncode != 0:
+        sys.exit(result.returncode)
+
+
+def execute_run(
+    *,
+    agent_cmd,
+    project,
+    repo_dir,
+    session_name,
+    mcp_url,
+    no_pkb,
+    task,
+    base,
+    branch,
+    with_sessions,
+    model,
+    agent,
+    no_agent,
+    output_format,
+    prompt,
+    interactive,
+    detach,
+    quiet,
+    ports,
+    scratch_dir,
+    extra_args,
+):
+    """Run AGENT_CMD (claude, agy, shell, sleep) in a container.
+
+    The plain-function core of `polecat run`, importable by any caller — the
+    Click command above is now a thin CLI adapter, and the MCP server tool
+    handler (`lib/polecat/mcp_server.py`) calls this directly rather than
+    shelling out to the CLI, so there is exactly one implementation of the
+    dispatch contract in [[polecat-system]] (specs/polecat/polecat-system.md).
+
+    Raises `PolecatError` (via `fail()`) on any resolution or delivery
+    failure, instead of exiting the process — safe to call from inside a
+    long-lived server. Returns a `RunResult` on every other path, including a
+    non-zero container exit: only the CLI command above turns that into
+    `sys.exit`.
     """
     if detach and interactive:
         fail("cannot run in interactive mode with --detach")
@@ -2406,10 +2536,21 @@ def run(
                 pass
 
     if detach:
-        return
-
-    if returncode != 0:
-        sys.exit(returncode)
+        return RunResult(
+            detached=True,
+            returncode=0,
+            session_id=session_id,
+            session_dir=session_dir,
+            workspace_dir=workspace_dir,
+            container_id=container_id,
+            container_name=container_name,
+            run_record_path=run_record_path,
+            seeded_prompt=seeded_prompt,
+            delivery_ok=delivery_ok,
+            delivery_err=delivery_err,
+            image=image,
+            task_id=task,
+        )
 
     if not delivery_ok:
         # Detection ends here; repair belongs to the dispatcher, which owns
@@ -2426,9 +2567,26 @@ def run(
             f"Workspace preserved for inspection: {workspace_dir}"
         )
 
+    return RunResult(
+        detached=False,
+        returncode=returncode,
+        session_id=session_id,
+        session_dir=session_dir,
+        workspace_dir=workspace_dir,
+        container_id=container_id,
+        container_name=container_name,
+        run_record_path=run_record_path,
+        seeded_prompt=seeded_prompt,
+        delivery_ok=delivery_ok,
+        delivery_err=delivery_err,
+        image=image,
+        task_id=task,
+    )
+
 
 @main.command("default-branch")  # pyright: ignore[reportFunctionMemberAccess]
 @click.option("--project", "-p", required=True, help="Project name, resolved via local.yaml paths.")
+@_cli_entry
 def default_branch(project):
     """Print a project's configured active-line branch, or nothing if unset.
 
@@ -2454,6 +2612,7 @@ def default_branch(project):
 
 
 @main.command("add-dirs")  # pyright: ignore[reportFunctionMemberAccess]
+@_cli_entry
 def add_dirs():
     """Print, one per line, every host directory a directly-invoked agent CLI
     (e.g. `agy`, outside any polecat container) may legitimately read or edit

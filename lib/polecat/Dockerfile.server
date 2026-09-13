@@ -1,0 +1,48 @@
+# The aops polecat MCP server: `execute_run()` (lib/polecat/cli.py) exposed as
+# plain MCP tools (dispatch/inspect/stop — lib/polecat/server.py), instead of
+# a CLI a caller has to shell out to. Runs as its own long-lived container on
+# the WSL host, distinct from the aops-crew worker image the root Dockerfile
+# builds: this one runs `docker` against the *host's* daemon to launch worker
+# containers, the worker image is what gets launched.
+#
+# Build context is the repo root (`docker build -f lib/polecat/Dockerfile.server .`)
+# because it needs pyproject.toml/uv.lock plus lib/ itself.
+#
+# No endpoint, port, credential, or host path is baked in here: every value
+# `execute_run()` and `server.py` resolve (POLECAT_HOME, POLECAT_IMAGE,
+# AOPS_SESSIONS, PKB_MCP_URL, git identity, POLECAT_MCP_HOST/PORT, the bot
+# GitHub token, the Docker socket itself) is supplied at `docker run` time —
+# see specs/polecat/polecat-mcp-server.md for the full run invocation.
+
+FROM docker:27-cli AS docker-cli
+
+FROM python:3.12-slim-bookworm
+
+# The `docker` CLI talks to the host daemon over the socket mounted at
+# runtime (`-v /var/run/docker.sock:/var/run/docker.sock`) — this image never
+# runs its own daemon and never gets `--privileged`.
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
+
+RUN useradd -m -d /home/worker -s /bin/bash worker
+
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1
+
+# Dependency layer keyed only on the lockfile, same reasoning as the worker
+# image's own `uv sync --no-install-project` (Dockerfile): survives every
+# change that doesn't touch pyproject.toml/uv.lock.
+RUN pip install --no-cache-dir uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --no-dev
+
+# Only the source this server actually imports — not plugins/, build/,
+# specs/, tests/, lib/py, lib/agy, lib/hooks, lib/telemetry: those belong to
+# the framework's own build, not to this service's runtime.
+COPY lib/polecat ./lib/polecat
+
+RUN chown -R worker:worker /app
+USER worker
+
+ENTRYPOINT ["/app/.venv/bin/python", "-m", "lib.polecat.server"]

@@ -179,7 +179,7 @@ def test_unset_value_adds_no_flag():
 @pytest.mark.parametrize("value", ["30 minutes", "half an hour", "30x", "m30", "-"])
 def test_garbage_fails_fast(value):
     """An unparseable value fails loudly rather than being silently ignored."""
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli._print_timeout_args({"timeout": value})
 
 

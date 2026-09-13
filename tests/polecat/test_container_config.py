@@ -63,7 +63,7 @@ def test_configured_but_missing_directory_is_a_hard_failure(tmp_path, monkeypatc
     — that is indistinguishable from the operator never having configured it."""
     monkeypatch.delenv("POLECAT_RULES_DIR", raising=False)
     missing = tmp_path / "does-not-exist"
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.resolve_rules_dir({"rules_dir": str(missing)})
 
 
@@ -71,7 +71,7 @@ def test_configured_but_a_file_not_a_directory_is_a_hard_failure(tmp_path, monke
     monkeypatch.delenv("POLECAT_RULES_DIR", raising=False)
     not_a_dir = tmp_path / "a-file"
     not_a_dir.write_text("not a directory")
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.resolve_rules_dir({"rules_dir": str(not_a_dir)})
 
 
@@ -135,7 +135,7 @@ def test_configured_scratch_dir_file_not_a_directory_is_a_hard_failure(tmp_path,
     monkeypatch.delenv("POLECAT_SCRATCH_DIR", raising=False)
     not_a_dir = tmp_path / "a-scratch-file"
     not_a_dir.write_text("not a directory")
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.resolve_scratch_dir({"scratch_dir": str(not_a_dir)})
 
 
@@ -434,7 +434,7 @@ def test_get_env_forwards_requires_git_identity(monkeypatch):
     """Calling get_env_forwards without git_identity in config fails loudly."""
     for name in ("COPE_EVALUATOR_URL", "COPE_EVALUATOR_PROTOCOL", "COPE_EVALUATOR_MODEL"):
         monkeypatch.delenv(name, raising=False)
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.get_env_forwards()
 
 
@@ -457,14 +457,14 @@ def test_resolve_git_identity_success():
 def test_missing_git_identity_block_fails(monkeypatch):
     monkeypatch.setenv("GIT_AUTHOR_NAME", "operator-name")
     monkeypatch.setenv("GIT_AUTHOR_EMAIL", "operator-email@example.com")
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.resolve_git_identity({})
 
 
 def test_incomplete_git_identity_fails():
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.resolve_git_identity({"git_identity": {"name": "botnicbot"}})
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.resolve_git_identity({"git_identity": {"email": "bot@example.com"}})
 
 

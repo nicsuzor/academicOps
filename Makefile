@@ -2,7 +2,7 @@
 
 .PHONY: help build build-test install-dev uninstall-dev install clean clean-plugins test lint format \
         docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test \
-        verify-docker
+        verify-docker polecat-server-build polecat-server-push
 
 ROOT := $(shell pwd)
 DIST := $(ROOT)/dist
@@ -38,6 +38,8 @@ help:
 	@echo "make verify-docker  - clean (--no-cache) image build; required before"
 	@echo "                        certifying a change, so no cached layer can"
 	@echo "                        produce a false-green result"
+	@echo "make polecat-server-build - build the polecat MCP server image"
+	@echo "make polecat-server-push  - push the polecat MCP server image to ghcr.io"
 
 # --- Build ---
 
@@ -252,3 +254,18 @@ docker-test-otel: docker-build
 # proof any plugin's hooks or MCP servers are actually live — structural only.
 docker-smoke-test: docker-build
 	@POLECAT_E2E=1 POLECAT_IMAGE=$(notdir $(IMAGE)):latest uv run pytest tests/polecat/test_container_smoke.py -v
+
+# --- Polecat MCP server (specs/polecat/polecat-mcp-server.md) ---
+# A second, unrelated image: the long-lived server that dispatches polecat
+# workers, not a worker itself. Runs on the WSL host with the host Docker
+# socket and the same host paths `polecat run` already needs — see the spec
+# for the full `docker run` invocation this builds towards.
+POLECAT_SERVER_IMAGE ?= ghcr.io/nicsuzor/aops-polecat-server
+
+polecat-server-build:
+	@docker build -f lib/polecat/Dockerfile.server \
+		-t $(POLECAT_SERVER_IMAGE) -t $(notdir $(POLECAT_SERVER_IMAGE)):latest .
+	@echo "✓ built $(POLECAT_SERVER_IMAGE)"
+
+polecat-server-push:
+	@docker push $(POLECAT_SERVER_IMAGE)

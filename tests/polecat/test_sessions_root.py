@@ -53,16 +53,16 @@ def test_resolve_sessions_root_expands_user_and_vars(monkeypatch, tmp_path):
 
 def test_resolve_sessions_root_fails_loudly_when_unset(monkeypatch):
     monkeypatch.delenv("AOPS_SESSIONS", raising=False)
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(cli.PolecatError) as exc:
         cli.resolve_sessions_root()
-    assert exc.value.code == 1
+    assert "AOPS_SESSIONS" in str(exc.value)
 
 
 def test_resolve_sessions_root_fails_loudly_when_empty(monkeypatch):
     monkeypatch.setenv("AOPS_SESSIONS", "")
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(cli.PolecatError) as exc:
         cli.resolve_sessions_root()
-    assert exc.value.code == 1
+    assert "AOPS_SESSIONS" in str(exc.value)
 
 
 def test_resolve_sessions_root_reads_no_config_key(monkeypatch, tmp_path):
@@ -71,7 +71,7 @@ def test_resolve_sessions_root_reads_no_config_key(monkeypatch, tmp_path):
     unset environment — that would be a fallback wearing a different hat."""
     monkeypatch.delenv("AOPS_SESSIONS", raising=False)
     monkeypatch.setattr(cli, "load_config", lambda: {"sessions_root": str(tmp_path / "nope")})
-    with pytest.raises(SystemExit):
+    with pytest.raises(cli.PolecatError):
         cli.resolve_sessions_root()
 
 
