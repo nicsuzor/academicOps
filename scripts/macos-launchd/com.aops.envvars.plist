@@ -5,7 +5,8 @@
   so GUI-launched processes (Claude.app -> Claude Code / Cowork tabs) inherit
   them. Interactive terminal shells do NOT need this -- they read ~/.env.local.
 
-  This only exports the bot PAT + AOPS directory vars globally. It does NOT set
+  This exports the bot PAT, AOPS directory vars, and the GENAI_ENGINE_* tracing
+  vars globally (see launchd-env.sh for the exact whitelist). It does NOT set
   any global SSH lockdown or git-config hijack -- that would re-break VS Code
   and other GUI apps (note-4d4a97c2). Session-scoped credential isolation for
   Claude/bot sessions is applied per-session by the aops plugin's SessionStart
@@ -24,6 +25,11 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
   Verify (token is masked):
       launchctl getenv AOPS_SESSIONS
       launchctl getenv GH_TOKEN | awk '{ if (length($0)) print "set, len="length($0); else print "UNSET" }'
+      launchctl getenv GENAI_ENGINE_TRACE_ENDPOINT   # expect http://<AOPS_SERVICES_HOST>:4316
+      launchctl getenv GENAI_ENGINE_TRACE_PROTOCOL
+      launchctl getenv GENAI_ENGINE_TASK_ID
+  Restart Claude.app fully (quit, not just close-window) after install/update --
+  launchctl setenv only reaches processes launched after it runs.
 
   Update:
       Edit either file -> unload+load -> kickstart -> fully quit Claude.app.
@@ -35,14 +41,26 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
       rm ~/Library/LaunchAgents/com.aops.envvars.plist
 
   Paths used:
+    $HOME/.env              -- dotfiles-managed shared config: defines
+                               AOPS_SERVICES_HOST and derives
+                               GENAI_ENGINE_TRACE_ENDPOINT from it
+                               ("http://$AOPS_SERVICES_HOST:4316"). Sourced
+                               first so .env.local can override.
     $HOME/.env.local        -- single machine-local source of truth: exports
                                AOPS_SESSIONS, POLECAT_HOME, ACA_DATA, and the
                                bot PAT (AOPS_BOT_GH_TOKEN). No machine-specific
                                paths live in this committed plist.
     ${POLECAT_HOME:-$HOME/.aops}/launchd-env.sh
-                            -- bot PAT + directory pass-through: does all the
-                               launchctl setenv from the environment that
-                               ~/.env.local established (see launchd-env.sh)
+                            -- bot PAT + directory + tracing pass-through:
+                               does all the launchctl setenv from the
+                               environment that ~/.env and ~/.env.local
+                               established (see launchd-env.sh). It forwards
+                               GENAI_ENGINE_TRACE_ENDPOINT/PROTOCOL/TASK_ID
+                               only if they are already set by ~/.env -- if
+                               `launchctl getenv GENAI_ENGINE_TRACE_PROTOCOL`
+                               or `...TASK_ID` come back empty after install,
+                               add those two vars to ~/.env (dotfiles), not to
+                               this plist or to ~/.claude/settings.json.
 -->
 <plist version="1.0">
 <dict>
@@ -52,7 +70,7 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
     <array>
         <string>/bin/sh</string>
         <string>-c</string>
-        <string>[ -f "$HOME/.env.local" ] &amp;&amp; . "$HOME/.env.local"; [ -f "${POLECAT_HOME}/launchd-env.sh" ] &amp;&amp; . "${POLECAT_HOME}/launchd-env.sh"</string>
+        <string>[ -f "$HOME/.env" ] &amp;&amp; . "$HOME/.env"; [ -f "$HOME/.env.local" ] &amp;&amp; . "$HOME/.env.local"; [ -f "${POLECAT_HOME}/launchd-env.sh" ] &amp;&amp; . "${POLECAT_HOME}/launchd-env.sh"</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

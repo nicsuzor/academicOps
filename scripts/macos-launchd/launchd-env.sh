@@ -9,15 +9,23 @@
 # Install: copy to "$POLECAT_HOME/launchd-env.sh" (default ~/.aops/launchd-env.sh).
 # The plist looks there by default -- adjust the plist if you keep it elsewhere.
 #
-# SCOPE: This file only exports the bot PAT (AOPS_BOT_GH_TOKEN and its
-# GH_TOKEN/GITHUB_TOKEN aliases) plus AOPS directory vars into the GLOBAL
-# per-user launchd context. It deliberately does NOT set any global SSH
-# lockdown (SSH_AUTH_SOCK / GIT_SSH_COMMAND) or global git-config hijack
-# (GIT_CONFIG_*): doing so globally re-breaks VS Code and every other GUI app
-# that relies on the user's personal SSH identity (documented failure
-# note-4d4a97c2). Session-scoped credential isolation for Claude/bot sessions
-# is instead applied per-session by the aops plugin's SessionStart hook via
+# SCOPE: This file forwards the bot PAT (AOPS_BOT_GH_TOKEN and its
+# GH_TOKEN/GITHUB_TOKEN aliases), AOPS directory vars, and the GENAI_ENGINE_*
+# tracing vars into the GLOBAL per-user launchd context -- but only for
+# whatever the plist already sourced (~/.env, ~/.env.local) into this
+# process's environment before it runs; it never invents a value. It
+# deliberately does NOT set any global SSH lockdown (SSH_AUTH_SOCK /
+# GIT_SSH_COMMAND) or global git-config hijack (GIT_CONFIG_*): doing so
+# globally re-breaks VS Code and every other GUI app that relies on the
+# user's personal SSH identity (documented failure note-4d4a97c2).
+# Session-scoped credential isolation for Claude/bot sessions is instead
+# applied per-session by the aops plugin's SessionStart hook via
 # CLAUDE_ENV_FILE.
+#
+# TRACING: GENAI_ENGINE_TRACE_ENDPOINT must come from ~/.env, derived there
+# from AOPS_SERVICES_HOST (e.g. "http://$AOPS_SERVICES_HOST:4316"). Never
+# hardcode a services host here or in the plist -- that would create a second
+# literal alongside ~/.env's.
 
 # --- AOPS directories ---
 [ -n "$AOPS_SESSIONS" ] && launchctl setenv AOPS_SESSIONS "$AOPS_SESSIONS"
