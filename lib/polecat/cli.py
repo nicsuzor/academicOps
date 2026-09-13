@@ -2124,7 +2124,7 @@ def execute_run(
 
     The plain-function core of `polecat run`, importable by any caller — the
     Click command above is now a thin CLI adapter, and the MCP server tool
-    handler (`lib/polecat/mcp_server.py`) calls this directly rather than
+    handler (`lib/polecat/server.py`) calls this directly rather than
     shelling out to the CLI, so there is exactly one implementation of the
     dispatch contract in [[polecat-system]] (specs/polecat/polecat-system.md).
 

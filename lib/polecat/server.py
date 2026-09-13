@@ -2,8 +2,12 @@
 MCP tools instead of a CLI a caller has to shell out to.
 
 Runs as its own container on the WSL host, with the host Docker socket and
-the host paths `polecat run` already needs (`$POLECAT_HOME`, `$AOPS_SESSIONS`,
-an optional rules dir) mounted in — see specs/polecat/polecat-mcp-server.md.
+every host path `polecat run` already needs mounted in at its own host path:
+`$POLECAT_HOME`, `$AOPS_SESSIONS`, **each repository checkout in
+`local.yaml`'s `paths` map** (the clone happens in this process, so the source
+has to resolve here), and an optional rules dir, scratch dir, and
+`$GEMINI_CONFIG_DIR` — see specs/polecat/polecat-mcp-server.md for the full
+invocation and for why the mount list is not just `$POLECAT_HOME`.
 Registered on Bifrost as a plain tool server (`tools/list` shows `dispatch` /
 `inspect` / `stop` directly), not code mode: unlike the PKB proxy, there is no
 `executeToolCode` layer here.
@@ -21,6 +25,7 @@ import glob
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from fastmcp import FastMCP
@@ -115,15 +120,47 @@ async def dispatch(
     return _run_result_to_dict(result)
 
 
+#: `docker inspect`/`docker stop` against a name that does not exist. Anything
+#: else on stderr is a daemon or permission fault, which must not be reported
+#: as an absent container.
+_NO_SUCH_CONTAINER = ("no such object", "no such container")
+
+#: Bound on every docker CLI call. A wedged daemon must not hold a thread-pool
+#: slot forever (lib/axioms/bounded-execution.md). `docker stop` gets room for
+#: the default 10s SIGTERM grace period plus overhead.
+_INSPECT_TIMEOUT = 30
+_STOP_TIMEOUT = 60
+
+
+def _is_absent(stderr: str) -> bool:
+    lowered = stderr.lower()
+    return any(marker in lowered for marker in _NO_SUCH_CONTAINER)
+
+
 def _docker_inspect(name: str) -> dict | None:
-    """`docker inspect <name>`'s first element, or None if no such container."""
-    res = subprocess.run(
-        ["docker", "inspect", name],
-        capture_output=True,
-        text=True,
-    )
+    """`docker inspect <name>`'s first element, or None if no such container.
+
+    A non-zero exit that is *not* "no such object" — an unreachable daemon, a
+    socket permission denial — raises rather than returning None: reporting
+    "not running" for a container this server simply cannot see would let a
+    caller conclude a live session had finished.
+    """
+    try:
+        res = subprocess.run(
+            ["docker", "inspect", name],
+            capture_output=True,
+            text=True,
+            timeout=_INSPECT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise PolecatError(
+            f"docker inspect {name} did not return within {_INSPECT_TIMEOUT}s. "
+            "The Docker daemon is unreachable or wedged."
+        ) from e
     if res.returncode != 0:
-        return None
+        if _is_absent(res.stderr):
+            return None
+        raise PolecatError(f"docker inspect {name} failed: {res.stderr.strip()}")
     parsed = json.loads(res.stdout)
     return parsed[0] if parsed else None
 
@@ -202,10 +239,29 @@ async def stop(session_id: str) -> dict:
             "reason": "not running",
         }
 
-    res = await asyncio.to_thread(
-        subprocess.run, ["docker", "stop", name], capture_output=True, text=True
-    )
+    def _stop() -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["docker", "stop", name],
+            capture_output=True,
+            text=True,
+            timeout=_STOP_TIMEOUT,
+        )
+
+    try:
+        res = await asyncio.to_thread(_stop)
+    except subprocess.TimeoutExpired as e:
+        raise PolecatError(f"docker stop {name} did not return within {_STOP_TIMEOUT}s.") from e
     if res.returncode != 0:
+        # Containers run `--rm`, so one that exits between the inspect above
+        # and this call is already reaped. That is the documented no-op, not a
+        # failure — it is the normal race for a run that is finishing.
+        if _is_absent(res.stderr):
+            return {
+                "session_id": session_id,
+                "container_name": name,
+                "stopped": False,
+                "reason": "not running",
+            }
         raise PolecatError(f"docker stop {name} failed: {res.stderr.strip()}")
     return {"session_id": session_id, "container_name": name, "stopped": True, "reason": None}
 
@@ -230,7 +286,17 @@ def _resolve_bind() -> tuple[str, int]:
 
 
 def main() -> None:
-    host, port = _resolve_bind()
+    """Entry point for the console script and the image ENTRYPOINT.
+
+    A `PolecatError` here is an operator misconfiguration, not a bug: report it
+    the way the CLI does and exit non-zero, so a restarting container logs one
+    actionable line rather than the same traceback on every loop.
+    """
+    try:
+        host, port = _resolve_bind()
+    except PolecatError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     mcp.run(transport="http", host=host, port=port)
 
 

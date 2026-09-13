@@ -67,6 +67,10 @@ def test_polecat_modules_ship_with_orchestrate(built_orchestrate):
         # Image-build inputs, not plugin content — they must NOT be shipped.
         assert not (polecat / "defaults").exists()
         assert not (polecat / "entrypoint.sh").exists()
+        # The MCP server is a standalone deployable service, not plugin
+        # content: it ships as its own image, never inside a plugin root.
+        assert not (polecat / "server.py").exists()
+        assert not (polecat / "Dockerfile.server").exists()
 
 
 # --- stage 1/2: shared injection + include resolution -----------------------

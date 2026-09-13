@@ -23,6 +23,15 @@ FROM python:3.12-slim-bookworm
 # runs its own daemon and never gets `--privileged`.
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 
+# `execute_run()` performs the whole staging phase — `git clone --local` of the
+# resolved workspace, the base-ref fetch, the branch checkout — in *this*
+# process, so `git` is a runtime requirement of the server, not just of the
+# worker. `python:3.12-slim-bookworm` does not carry it (the root Dockerfile
+# installs it explicitly for the same reason), and a missing binary surfaces as
+# a bare FileNotFoundError rather than a PolecatError.
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd -m -d /home/worker -s /bin/bash worker
 
 WORKDIR /app

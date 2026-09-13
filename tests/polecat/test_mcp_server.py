@@ -11,6 +11,7 @@ one more than this file needs.
 
 import asyncio
 import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from unittest import mock
@@ -156,19 +157,80 @@ def test_stop_stops_a_running_container():
         result = _run(server.stop(session_id="session-abc123"))
     assert result["stopped"] is True
     mocked_run.assert_called_once_with(
-        ["docker", "stop", "polecat-session-abc123"], capture_output=True, text=True
+        ["docker", "stop", "polecat-session-abc123"],
+        capture_output=True,
+        text=True,
+        timeout=server._STOP_TIMEOUT,
     )
 
 
-def test_stop_raises_on_docker_failure():
+def test_stop_treats_a_container_reaped_mid_call_as_the_documented_noop():
+    """Containers run `--rm`, so one that exits between the inspect and the
+    stop is already gone. That race is the normal case for a run that is
+    finishing, and the spec promises it is never an error."""
     container = {"State": {"Running": True}}
-    completed = mock.Mock(returncode=1, stderr="no such container")
+    completed = mock.Mock(
+        returncode=1,
+        stderr="Error response from daemon: No such container: polecat-session-abc123",
+    )
     with (
         mock.patch.object(server, "_docker_inspect", return_value=container),
         mock.patch("subprocess.run", return_value=completed),
     ):
-        with pytest.raises(PolecatError, match="no such container"):
+        result = _run(server.stop(session_id="session-abc123"))
+    assert result["stopped"] is False
+    assert result["reason"] == "not running"
+
+
+def test_stop_raises_on_a_real_docker_failure():
+    container = {"State": {"Running": True}}
+    completed = mock.Mock(
+        returncode=1,
+        stderr="Cannot connect to the Docker daemon at unix:///var/run/docker.sock.",
+    )
+    with (
+        mock.patch.object(server, "_docker_inspect", return_value=container),
+        mock.patch("subprocess.run", return_value=completed),
+    ):
+        with pytest.raises(PolecatError, match="Cannot connect to the Docker daemon"):
             _run(server.stop(session_id="session-abc123"))
+
+
+# ---------------------------------------------------------------------------
+# _docker_inspect: an unreachable daemon is not an absent container
+# ---------------------------------------------------------------------------
+
+
+def test_docker_inspect_returns_none_only_for_an_absent_container():
+    completed = mock.Mock(
+        returncode=1,
+        stdout="",
+        stderr="Error: No such object: polecat-session-abc123",
+    )
+    with mock.patch("subprocess.run", return_value=completed):
+        assert server._docker_inspect("polecat-session-abc123") is None
+
+
+def test_docker_inspect_raises_when_the_daemon_is_unreachable():
+    """Reporting "not running" for a container this server merely cannot see
+    would let a caller conclude a live session had finished."""
+    completed = mock.Mock(
+        returncode=1,
+        stdout="",
+        stderr="Cannot connect to the Docker daemon at unix:///var/run/docker.sock.",
+    )
+    with mock.patch("subprocess.run", return_value=completed):
+        with pytest.raises(PolecatError, match="Cannot connect to the Docker daemon"):
+            server._docker_inspect("polecat-session-abc123")
+
+
+def test_docker_inspect_is_bounded():
+    with mock.patch(
+        "subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd="docker inspect", timeout=30),
+    ):
+        with pytest.raises(PolecatError, match="did not return within"):
+            server._docker_inspect("polecat-session-abc123")
 
 
 # ---------------------------------------------------------------------------
