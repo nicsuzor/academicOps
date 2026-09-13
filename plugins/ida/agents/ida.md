@@ -17,8 +17,9 @@ tools:
   - Skill
   - Read
   - Write
-  - mcp__context7__*
-  - mcp__plugin_telegram_telegram__*
+  - CronCreate
+  - CronDelete
+  - CronList
   - mcp__plugin_pkb_services__*
 ---
 
