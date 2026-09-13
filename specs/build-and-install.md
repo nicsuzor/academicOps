@@ -126,6 +126,20 @@ bake plugin content into the image at build time (`Dockerfile`,
 `AOPS_IMAGE_STALENESS_WARNING` env vars `lib/polecat/cli.py` sets before
 launch) -- rebuilding the image is the only refresh path there.
 
+The refresh has no staleness check -- `build.build` and the install loop in
+`make install-dev` run unconditionally, so every `post-checkout`/`post-merge`
+firing does a full rebuild and a full uninstall/reinstall of every plugin for
+both clients, measured at 40-55s on a warm cache. That lands on every
+`checkout`/`merge`/`pull`/`rebase` completion on this repo, not just ones that
+touch `plugins/`, `lib/`, or `build/`. It also writes outside `dist/` and
+`~/.claude/plugins`: `patch-dev-mcp` and `patch-agy-mcp` touch
+`~/.gemini/config/plugins/`, and `build.install install` merges this repo's
+axiom rules into `~/.claude/settings.json`. `post-checkout`/`post-merge` are
+non-blocking in git -- a failure here (e.g. `claude` absent from `PATH`) prints
+and exits nonzero but does not fail the checkout or merge itself -- so a
+`claude`-less environment gets a noisy, harmless failure on every such
+operation rather than a silent skip.
+
 ## 2. Release path (`dev` → tag → publish)
 
 `release-please` manages version bumps from conventional commits; merging the
