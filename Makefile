@@ -26,7 +26,7 @@ help:
 	@echo "make test           - run the pytest suite"
 	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
-	@echo "make clean          - remove dist/, clean global configs and cowork packages"
+	@echo "make clean          - remove dist/"
 	@echo "make clean-plugins  - prune stale plugin caches and cowork packages"
 	@echo "make docker         - build the crew worker image"
 	@echo "make docker-shell   - interactive shell in the crew image"
@@ -173,7 +173,7 @@ install:
 clean-plugins:
 	@uv run python scripts/clean_plugins.py
 
-clean: clean-plugins
+clean:
 	@rm -rf $(DIST)
 	@echo "✓ cleaned"
 

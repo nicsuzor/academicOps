@@ -31,6 +31,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 | `make lint`          | `ruff check .`.                                                                                                  |
 | `make format`        | `ruff format .` + `dprint fmt`.                                                                                  |
 | `make clean`         | Removes `dist/`.                                                                                                 |
+| `make clean-plugins` | Prunes stale plugin caches and Cowork packages via `scripts/clean_plugins.py`.                                   |
 | `make docker`        | Alias for `make docker-build`.                                                                                   |
 | `make docker-build`  | `make build`, then `docker build --build-arg AOPS_DIST_SOURCE=local` from this checkout's own `dist/`.           |
 | `make docker-shell`  | `docker-build`, then an interactive shell in the image.                                                          |
@@ -105,8 +106,8 @@ feature:
    value from the user's host environment in any existing Cowork GUI session
    directories, which hold their own copy of a plugin's `.mcp.json` from
    whenever it was installed. It never touches `dist/`.
-5. **`make clean` Cowork package pruning**:
-   `make clean` (and `make clean-plugins`) invokes `scripts/clean_plugins.py`, which
+5. **`make clean-plugins` Cowork package pruning**:
+   `make clean-plugins` invokes `scripts/clean_plugins.py`, which
    cleans uninstalled Cowork session packages and removes session-level plugin data caches.
 
 Both Claude Code and `agy` install by **copying** the built plugin content into
