@@ -5,17 +5,17 @@ description: List, read, add, edit, and retire workflow templates across project
 
 # Workflow Library
 
-Manage composable workflow templates (`type: template`) across three resolution tiers.
+Manage composable workflow templates (`type: template`) across three resolution tiers. Every `pkb.<op>(...)` call below runs through the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`), not a directly-invocable flat tool.
 
 ## Tiers and Resolution
 
 Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tiers completely; never merge text across tiers.
 
-| Tier         | Location                      | Enumeration Command                    |
-| ------------ | ----------------------------- | -------------------------------------- |
-| 1. Project   | `$CWD/.agents/templates/*.md` | `ls $CWD/.agents/templates/*.md`       |
-| 2. PKB       | PKB graph                     | `pkb__list_documents(type="template")` |
-| 3. Universal | `../../workflows/*.md`        | `ls ../../workflows/*.md`              |
+| Tier         | Location                      | Enumeration Command                   |
+| ------------ | ----------------------------- | ------------------------------------- |
+| 1. Project   | `$CWD/.agents/templates/*.md` | `ls $CWD/.agents/templates/*.md`      |
+| 2. PKB       | PKB graph                     | `pkb.list_documents(type="template")` |
+| 3. Universal | `../../workflows/*.md`        | `ls ../../workflows/*.md`             |
 
 ## Modes
 
@@ -45,7 +45,7 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 Update existing templates in place.
 
 - **Filesystem**: Edit file directly.
-- **PKB**: Pass only the markdown body below the closing `---` to `pkb__update_body` to prevent frontmatter duplication.
+- **PKB**: Pass only the markdown body below the closing `---` to `pkb.update_body` to prevent frontmatter duplication.
 
 ### preview
 
@@ -59,8 +59,8 @@ Simulate how `brief` would assemble workflow templates for a stated objective:
 
 ### retire
 
-1. Check for tasks governing retirement (`pkb__task_search`). Halt if unfulfilled dependencies exist.
-2. Delete the artifact (`rm` for files, `pkb__delete` for PKB nodes).
+1. Check for tasks governing retirement (`pkb.search`). Halt if unfulfilled dependencies exist.
+2. Delete the artifact (`rm` for files, `pkb.delete` for PKB nodes).
 3. Name the superseding workflow in the release message or commit.
 
 A template carries only what a composing agent needs to select it and to know

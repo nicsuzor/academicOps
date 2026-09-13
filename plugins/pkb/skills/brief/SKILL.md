@@ -15,7 +15,7 @@ Assemble workflow templates and prepare tasks for cold execution. The brief tran
 3. **Determine task boundaries**:
    - Default to a single dispatchable unit for a single session, embedding workflow steps as internal checklist items.
    - Cut into separate tasks only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
-   - Wire `depends_on` edges only where one unit genuinely requires another's output. Mint multi-task cuts using `pkb__decompose_task`.
+   - Wire `depends_on` edges only where one unit genuinely requires another's output. Mint multi-task cuts using `pkb.decompose_task`.
 4. **Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates.
 5. **Write the brief**:
    Draft the body (budget 150-400 words) using this structure:

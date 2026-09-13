@@ -68,12 +68,12 @@ Create `.agents/INDEX.md` listing `README.md`, `.agents/CORE.md`, `docs/METHODOL
 
 ## Step 7: PKB integration
 
-Check for existing node, then create:
+Check for existing node, then create, via the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`):
 
 ```python
-results = mcp__plugin_pkb_services__pkb__task_search(query="<title or slug>", limit=10)
+results = pkb.search(query="<title or slug>", limit=10)
 # If matching project node exists, halt and prompt user. Else:
-mcp__plugin_pkb_services__pkb__create_task(
+pkb.create_task(
   title="Project: <title>",
   type="project",
   body="<description>",
