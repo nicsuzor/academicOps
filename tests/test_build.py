@@ -390,6 +390,15 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     body = body.lstrip("\n")
     assert body.startswith("# Agent System Instructions")
+    assert "schedule" in agy_agent["tools"]
+
+    claude_ida_md = dist_root / "ida-claude" / "agents" / "ida.md"
+    assert claude_ida_md.is_file()
+    claude_raw = claude_ida_md.read_text()
+    claude_fm = yaml.safe_load(claude_raw.partition("---\n")[2].partition("---\n")[0])
+    assert "CronCreate" in claude_fm["tools"]
+    assert "CronDelete" in claude_fm["tools"]
+    assert "CronList" in claude_fm["tools"]
 
 
 def test_agy_agent_tool_names_are_translated(built):
