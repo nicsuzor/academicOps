@@ -9,7 +9,7 @@ parent_skill: deep-research
 
 ### 1. Pre-flight & Download
 
-- Verify sourcing task exists in PKB (`task_search`) and `rclone lsd gdrive:` succeeds.
+- Verify sourcing task exists in PKB (`pkb.search`) and `rclone lsd gdrive:` succeeds.
 - Download artifacts to temporary workspace:
   ```bash
   scripts/fetch.sh <gdoc-url-or-id> /tmp/deep-research-<date>/<slug>
