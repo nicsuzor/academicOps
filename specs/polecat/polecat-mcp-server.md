@@ -59,7 +59,13 @@ server lets `PolecatError` surface as the MCP tool call's own error.
 
 Runs `execute_run()` off the event loop thread (`asyncio.to_thread`), so a
 long foreground dispatch does not block `inspect`/`stop` calls against other
-sessions on the same server. Parameters mirror the CLI's own: `task`,
+sessions on the same server — up to saturation. `to_thread` uses the default
+executor (`min(32, cpu+4)` threads) and nothing caps concurrent dispatches,
+so each `detach=False` dispatch holds a thread for its container's whole
+lifetime and everything queues once they are all held. Cap concurrency with a
+dedicated sized executor before relying on this under load.
+
+Parameters mirror the CLI's own: `task`,
 `project`, `repo_dir`, `agent_cmd` (default `claude`), `prompt`, `base`,
 `branch`, `model`, `agent`, `detach`, `with_sessions`. With `task` and no
 `prompt`, seeds `/pkb:pull <task>` exactly as `polecat run -t <task>` does.
@@ -67,6 +73,11 @@ sessions on the same server. Parameters mirror the CLI's own: `task`,
 `detach=False` (the default) blocks until the container exits and the
 delivery guard has run — a synchronous dispatch, exactly like a foreground
 `polecat run`. `detach=True` returns once the container has started.
+
+Prefer `detach=True` plus `inspect` for anything long. An agent run lasts
+minutes to hours, and an HTTP client will usually time out before a
+foreground dispatch returns — leaving a container running whose `session_id`
+the caller never received, and so cannot `inspect` or `stop`.
 
 Returns the `RunResult` dataclass as a plain dict (`Path` fields stringified,
 so the result is JSON-safe): `session_id`, `container_id`, `container_name`,
@@ -77,6 +88,11 @@ A resolution failure (unset `$POLECAT_HOME`/`$POLECAT_IMAGE`, an unresolvable
 workspace, a missing image, a failed delivery guard, ...) surfaces as an MCP
 tool error carrying `PolecatError`'s message, never a silent no-op and never
 a crashed server.
+
+Because a failed delivery guard raises, `delivery_ok`/`delivery_err` are only
+ever `True`/`None` in a result returned from a non-detached dispatch: on that
+path a delivery failure is the raised error, not a field to test. They carry
+information only for `detach=True`, where the guard has not run yet.
 
 ### `inspect`
 

@@ -82,17 +82,25 @@ async def dispatch(
     `detach=True` returns as soon as the container starts, without waiting
     for it to finish or verifying delivery — use `inspect`/`stop` afterward.
     `detach=False` (the default) blocks until the container exits and the
-    delivery guard has run, exactly like a foreground `polecat run`.
+    delivery guard has run, exactly like a foreground `polecat run`. An agent
+    run lasts minutes to hours, so an HTTP client will usually time out first
+    and never receive the `session_id` of the container it started; prefer
+    `detach=True` plus `inspect` for anything long.
 
     Raises an MCP tool error (surfacing `PolecatError`'s message) on any
     resolution failure — an unset `$POLECAT_HOME`/`$POLECAT_IMAGE`/
     `$AOPS_SESSIONS`, an unresolvable workspace, a missing image — never a
-    silent no-op.
+    silent no-op. A failed delivery guard raises too, so on this path
+    `delivery_ok`/`delivery_err` are only ever `True`/`None` in a returned
+    result: a foreground delivery failure is the raised error, not a field.
     """
     # execute_run() is synchronous (subprocess.run under the hood, blocking
     # for the life of the container on a foreground dispatch) — run it off
-    # the event loop thread so a slow dispatch does not stall `inspect` /
-    # `stop` calls against other sessions on this same server.
+    # the event loop thread so a dispatch does not stall `inspect` / `stop`
+    # calls against other sessions. `to_thread` uses the default executor
+    # (min(32, cpu+4) threads) and nothing here caps concurrent dispatches,
+    # so that holds until the pool saturates: each foreground dispatch holds
+    # a thread for its container's whole lifetime.
     result = await asyncio.to_thread(
         execute_run,
         agent_cmd=agent_cmd,
@@ -172,14 +180,28 @@ def _find_run_record(session_id: str) -> dict | None:
     the project is known from `session_id` alone, so this globs for it rather
     than reconstructing the path."""
     sessions_base = resolve_sessions_root()
+
+    def _mtime(p: str) -> float:
+        # A run finishing concurrently can replace or remove the file between
+        # the glob and the sort; an unreadable candidate sorts last rather
+        # than failing the whole call.
+        try:
+            return Path(p).stat().st_mtime
+        except OSError:
+            return -1.0
+
     matches = sorted(
         glob.glob(str(sessions_base / "logs" / "*" / session_id / "*" / "run.json")),
-        key=lambda p: Path(p).stat().st_mtime,
+        key=_mtime,
         reverse=True,
     )
-    if not matches:
-        return None
-    return json.loads(Path(matches[0]).read_text())
+    for match in matches:
+        try:
+            return json.loads(Path(match).read_text())
+        except (OSError, json.JSONDecodeError):
+            # Half-written or vanished; try the next-most-recent candidate.
+            continue
+    return None
 
 
 @mcp.tool()
