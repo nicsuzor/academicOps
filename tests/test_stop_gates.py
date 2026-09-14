@@ -185,7 +185,7 @@ def test_orchestrate_honesty_fires_on_claude_subagent_start(orchestrate_hooks):
     assert out["hookSpecificOutput"]["additionalContext"] == _honesty_md()
 
 
-@pytest.mark.parametrize("agent_type", ["aops:ida", "orchestrate:james"])
+@pytest.mark.parametrize("agent_type", ["ida:ida", "aops:james"])
 def test_orchestrate_honesty_skips_supervisors_on_subagent_start(orchestrate_hooks, agent_type):
     """ida and james supervise rather than report: they weigh other agents'
     evidence instead of producing their own, so the reminder is not theirs."""
@@ -204,7 +204,7 @@ def test_orchestrate_honesty_fires_for_a_named_agent_that_is_not_a_supervisor(or
         orchestrate_hooks,
         "claude",
         "SubagentStart",
-        {"hook_event_name": "SubagentStart", "agent_type": "orchestrate:marsha"},
+        {"hook_event_name": "SubagentStart", "agent_type": "aops:marsha"},
     )
     assert result.returncode == 0
     out = json.loads(result.stdout)

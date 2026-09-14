@@ -36,10 +36,8 @@ _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 def honest_output(ctx: HookContext) -> Result | None:
     """Remind agents to present substantiating evidence with their claims."""
     if ctx.agent_type in (
-        "aops:ida",
+        "ida:ida",
         "aops:james",
-        "orchestrate:james",
-        "pkb:ida",
     ) or (ctx.agent_type and ctx.agent_type.endswith((":ida", ":james"))):
         return None
 
@@ -116,12 +114,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     existing messages.
     """
     # Ida is COO and commissions graph operations to Pauli; suppress unprompted snippets
-    if ctx.agent_type in (
-        "aops:ida",
-        "pkb:ida",
-        "ida",
-        "ida:ida",
-    ) or (ctx.agent_type and ctx.agent_type.endswith(":ida")):
+    if ctx.agent_type in ("ida:ida",) or (ctx.agent_type and ctx.agent_type.endswith(":ida")):
         return None
 
     raw_prompt = ctx.raw.get("prompt")

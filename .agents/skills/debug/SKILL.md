@@ -150,7 +150,7 @@ staged with an `antigravity-oauth-token`, renders
 (`username (Google AI Ultra)`) appears, writes its logs to files rather than
 stdout, and requires an explicit `-i`/`--prompt-interactive` or `-p`/`--print`
 where `claude` accepts a positional prompt. Both take `--agent <name>`
-(`@orchestrate:james` for `claude`, `james` for `agy`).
+(`@aops:james` for `claude`, `james` for `agy`).
 
 ## Drive it
 

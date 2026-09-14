@@ -240,7 +240,7 @@ def test_record_verdict_disarms_even_when_tracer_unconfigured():
 # ---------------------------------------------------------------------------
 
 
-def _agent_dispatch_ctx(session_id: str, agent_type: str = "aops:ida") -> dispatch.HookContext:
+def _agent_dispatch_ctx(session_id: str, agent_type: str = "ida:ida") -> dispatch.HookContext:
     return dispatch.HookContext(
         client="claude",
         event="PreToolUse",
@@ -277,7 +277,7 @@ def test_handler_ignores_non_gated_tool():
         event="PreToolUse",
         tool="Bash",
         session_id=session_id,
-        agent_type="aops:ida",
+        agent_type="ida:ida",
     )
     assert pcg.premise_check_handler(ctx) is None
 
@@ -286,7 +286,7 @@ def test_handler_ignores_non_gated_agent_type():
     session_id = "sess-gate-4"
     pcg.arm(session_id, claim_id="claim-7")
 
-    ctx = _agent_dispatch_ctx(session_id, agent_type="orchestrate:james")
+    ctx = _agent_dispatch_ctx(session_id, agent_type="aops:james")
     assert pcg.premise_check_handler(ctx) is None
 
 
@@ -328,7 +328,7 @@ def test_arm_handler_fires_on_agent_batch_for_scoped_agent():
         client="claude",
         event="PostToolBatch",
         session_id=session_id,
-        agent_type="aops:ida",
+        agent_type="ida:ida",
         tool_calls=({"tool_name": "Agent", "tool_input": {"description": "verify the claim"}},),
     )
     assert pcg.premise_check_arm(ctx) is None
@@ -342,7 +342,7 @@ def test_arm_handler_ignores_non_agent_batch():
         client="claude",
         event="PostToolBatch",
         session_id=session_id,
-        agent_type="aops:ida",
+        agent_type="ida:ida",
         tool_calls=({"tool_name": "Bash"},),
     )
     pcg.premise_check_arm(ctx)
@@ -355,7 +355,7 @@ def test_arm_handler_ignores_non_scoped_agent_type():
         client="claude",
         event="PostToolBatch",
         session_id=session_id,
-        agent_type="orchestrate:james",
+        agent_type="aops:james",
         tool_calls=({"tool_name": "Agent"},),
     )
     pcg.premise_check_arm(ctx)
@@ -375,7 +375,7 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
         client="claude",
         event="PostToolBatch",
         session_id=session_id,
-        agent_type="aops:ida",
+        agent_type="ida:ida",
         tool_calls=({"tool_name": "Agent", "tool_input": {"description": "researched X"}},),
     )
     pcg.premise_check_arm(batch_ctx)

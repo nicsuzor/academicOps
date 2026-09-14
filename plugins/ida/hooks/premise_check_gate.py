@@ -36,7 +36,7 @@ def _now() -> str:
 
 
 # Agent profiles this check applies to
-_GATED_AGENT_TYPES = ["aops:ida"]
+_GATED_AGENT_TYPES = ["ida:ida"]
 _GATED_TOOLS = ["Agent"]
 
 

@@ -63,7 +63,7 @@ def test_scratchpad_gate_blocks_edit_for_ida():
         client="claude",
         event="PreToolUse",
         tool="Edit",
-        agent_type="aops:ida",
+        agent_type="ida:ida",
         raw={"tool_name": "Edit", "tool_input": {"file_path": "/workspace/README.md"}},
     )
     res = scratchpad_write_gate(ctx)

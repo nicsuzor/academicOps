@@ -257,7 +257,7 @@ def session_start(ctx: HookContext) -> Result | None:
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
     """Remind the dispatcher that a subagent's report is not evidence."""
     # Only fire on supervisor profiles
-    if ctx.agent_type in ("aops:ida", "aops:james", "orchestrate:james"):
+    if ctx.agent_type in ("ida:ida", "aops:james"):
         if any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
             return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
@@ -269,10 +269,8 @@ def honest_output(ctx: HookContext) -> Result | None:
     # Do not fire on supervisor profiles (Ida and James)
     # <!-- NS: fix the magic values here -- we have a constant somewhere else -->
     if ctx.agent_type in (
-        "aops:ida",
+        "ida:ida",
         "aops:james",
-        "orchestrate:james",
-        "pkb:ida",
     ) or (ctx.agent_type and ctx.agent_type.endswith((":ida", ":james"))):
         return None
 
@@ -285,7 +283,7 @@ def honest_output(ctx: HookContext) -> Result | None:
 def be_quiet(ctx: HookContext) -> Result | None:
     """Remind the face to strip its reply down to what is load-bearing."""
     # Only fire on Ida
-    if ctx.agent_type == "aops:ida":
+    if ctx.agent_type == "ida:ida":
         if ctx.raw.get("background_tasks"):
             return None
         return warn(*load_message_pair(ctx.hooks_dir, "quiet"))

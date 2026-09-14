@@ -87,12 +87,12 @@ SCRATCHPAD_CANONICAL_PREFIX = "/opt/nic/tmp/claude-1000/"
 def is_ida(ctx: HookContext) -> bool:
     if ctx.agent_type:
         agent_type = ctx.agent_type.lower()
-        if agent_type in ("ida", "ida:ida", "aops:ida", "pkb:ida") or agent_type.endswith(":ida"):
+        if agent_type in ("ida", "ida:ida") or agent_type.endswith(":ida"):
             return True
     raw_agent = ctx.raw.get("agent_type") or ctx.raw.get("subagentType") or ctx.raw.get("agent")
     if raw_agent:
         raw_agent = str(raw_agent).lower()
-        if raw_agent in ("ida", "ida:ida", "aops:ida", "pkb:ida") or raw_agent.endswith(":ida"):
+        if raw_agent in ("ida", "ida:ida") or raw_agent.endswith(":ida"):
             return True
     return False
 
