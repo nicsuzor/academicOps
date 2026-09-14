@@ -17,6 +17,7 @@ tools:
   - Skill
   - Read
   - Write
+  - Edit
   - CronCreate
   - CronDelete
   - CronList
