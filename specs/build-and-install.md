@@ -48,7 +48,7 @@ takes.
 
 **MCP server configuration:**
 The PKB `services` MCP server ships in `plugins/pkb`: a FastMCP stdio launcher,
-`scripts/run-mcp.sh`, which execs `uvx --from fastmcp-slim[server] fastmcp run
+`plugins/pkb/scripts/run-mcp.sh`, which execs `uvx --from fastmcp-slim[server] fastmcp run
 <endpoint>`. Every client launches through that one script, taking the endpoint
 from its first argument or from `$PKB_MCP_URL`, whichever the client
 substituted; an unexpanded `${...}` placeholder in either is discarded. Every surface needs
@@ -98,7 +98,7 @@ feature:
    `YOUR_PKB_URL`) with the literal read from `PKB_MCP_URL` in the build
    environment, in `dist/cowork/<name>/.mcp.json` and so in the zip, which is
    that directory verbatim. It is a substitution, not a rewrite: every client
-   ships the identical server shape -- one `scripts/run-mcp.sh` launcher
+   ships the identical server shape -- one `plugins/pkb/scripts/run-mcp.sh` launcher
    carrying the endpoint in both `args` and `env`, so whichever substitution a
    client performs, one of them lands -- and only the endpoint's _source_
    differs between the package and the zip, so the two cannot drift apart.
@@ -132,36 +132,11 @@ tree. The version segment is the git-derived string from `build/version.py`
 with an already-installed version -- but nothing re-copies an existing version
 directory in place, so the cache only ever reflects whatever the last
 `make install-dev`/`make install` run built.
-
-**Refresh is automatic on a normal `git pull`.** `.pre-commit-config.yaml` sets
-`default_install_hook_types: [pre-commit, post-checkout, post-merge]` and
-defines a local `refresh-plugin-install` hook staged on `post-checkout` and
-`post-merge` that runs `make install-dev`. `make install-dev` already runs
-`uv run pre-commit install` unconditionally, so the first `make install-dev` a
-developer ever runs on a checkout wires up both hook types; every `git merge`
-or `git checkout` after that (a `git pull` is a fetch + merge) rebuilds `dist/`
-and reinstalls the local `aops` marketplace before the next session or
-subagent spawn reads it. This does not reach a `polecat` container -- those
-bake plugin content into the image at build time (`Dockerfile`,
-`AOPS_DIST_SOURCE`) and carry their own staleness check
-(`plugins/aops/hooks/handlers.py`'s `_check_stale_baked_plugins`, driven by
-`/home/worker/.aops-image-metadata.json` and the `AOPS_IMAGE_STALE`/
-`AOPS_IMAGE_STALENESS_WARNING` env vars `lib/polecat/cli.py` sets before
-launch) -- rebuilding the image is the only refresh path there.
-
-The refresh has no staleness check -- `build.build` and the install loop in
-`make install-dev` run unconditionally, so every `post-checkout`/`post-merge`
-firing does a full rebuild and a full uninstall/reinstall of every plugin for
-both clients, measured at 40-55s on a warm cache. That lands on every
-`checkout`/`merge`/`pull`/`rebase` completion on this repo, not just ones that
-touch `plugins/`, `lib/`, or `build/`. It also writes outside `dist/` and
-`~/.claude/plugins`: `patch-dev-mcp` and `patch-agy-mcp` touch
-`~/.gemini/config/plugins/`, and `build.install install` merges this repo's
-axiom rules into `~/.claude/settings.json`. `post-checkout`/`post-merge` are
-non-blocking in git -- a failure here (e.g. `claude` absent from `PATH`) prints
-and exits nonzero but does not fail the checkout or merge itself -- so a
-`claude`-less environment gets a noisy, harmless failure on every such
-operation rather than a silent skip.
+There is no automatic refresh on `git pull`, `git merge`, or `git checkout`.
+`make install-dev` is run by hand to rebuild `dist/` and refresh the local
+plugin cache whenever plugin definitions, instructions, or dependencies change.
+In a `polecat` container, plugin content is baked into the image at build time
+(`Dockerfile`, `AOPS_DIST_SOURCE`), and rebuilding the image is the refresh path.
 
 ## 2. Release path (`dev` → tag → publish)
 
