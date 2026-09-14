@@ -98,6 +98,29 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 - **Binding a skill to a personality is a deliberate, documented exception**, for exactly two reasons: **earmarking** (the skill depends on that personality's judgment register) or **permission control** (grants restricted to force a workflow split, keeping reviewer ≠ executor).
 - The three review registers above name **lenses a review must apply**, not exclusive executors. Which agent carries a lens is a dispatch decision.
 
+## The ida pair -- reviewer ≠ executor at the face
+
+[Persona: Ida](../../plugins/ida/agents/ida.md) obliges the face to check every claim before it
+reaches Nic and states that it cannot audit itself. [Persona: Ida (draft)](../../plugins/ida/agents/ida-draft.md)
+is the mechanism that makes that performable: the drafting instance does the reading and produces
+a cited report; a face instance rules on it. The draft has no channel to Nic and the face does no
+work, so reviewer ≠ executor holds by grant rather than by recollection.
+
+| Rule / nudge                                                                                   | Mechanism                    | Severity     | Detail                                                                                             |
+| ---------------------------------------------------------------------------------------------- | ---------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
+| [Persona: Ida](../../plugins/ida/agents/ida.md) -- "You cannot audit yourself"                 | `agent persona instructions` | `imperative` | `plugins/ida/agents/ida.md`, Logic check; held by prose alone until the pair exists                |
+| [Persona: Ida (draft)](../../plugins/ida/agents/ida-draft.md) -- produces, never addresses Nic | `tool grant`                 | n/a          | `plugins/ida/agents/ida-draft.md` frontmatter; the documented `permission control` exception above |
+
+**This is a defaults move, not a severity move.** Per the four levers, self-checking failed because
+shipping the conclusion is the path of least resistance for an agent that formed it -- a defaults
+problem, not a norms one. Escalating the instruction's severity would not change that incentive;
+splitting the grant does. Reach for severity only if the pair also fails.
+
+**Transport between the two instances is not settled** and is not an enforcement question: a
+co-resident named teammate, a PKB ledger task with a pointer over `SendMessage`, or a status the
+face pulls. All three preserve reviewer ≠ executor; they differ in latency, isolation, and whether
+"unchecked" is visible on the graph.
+
 ## Hook channel constraints
 
 Every plugin hook shares one runtime, `lib/hooks/dispatch.py`, injected at build time. The mechanics -- which events honour a block, the once-per-stop-chain guard, how a plugin's handlers merge -- belong to that runtime and are stated in [`ARCHITECTURE.md`](../ARCHITECTURE.md), Hooks. What binds here:
