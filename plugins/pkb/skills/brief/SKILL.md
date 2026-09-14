@@ -12,10 +12,12 @@ Assemble workflow templates and prepare tasks for cold execution. The brief tran
 0. **Task initialization**: If no task ID was provided, create one via `/q` using the provided description.
 1. **Verify premises**: Re-verify world claims (paths, schemas, runtime states) before cementing them into constraints. Halt if a premise is invalid.
 2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`../../workflows/`, resolved relative to this skill's own directory), and PKB (`type: template`) tiers. Halt if a required process component is missing.
-3. **Determine task boundaries**:
-   - Default to a single dispatchable unit for a single session, embedding workflow steps as internal checklist items.
-   - Cut into separate tasks only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
+3. **Determine task boundaries**: one node type -- tasks nest. A leaf (no children) is what gets dispatched: one worker, one go. A parent is never dispatched.
+   - Default to a single dispatchable leaf, embedding workflow steps as internal checklist items.
+   - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
    - Wire `depends_on` edges only where one unit genuinely requires another's output. Mint multi-task cuts using `pkb.decompose_task`.
+   - **Any obligation that must not run in the session that did the work becomes its own sibling leaf**, wired `depends_on` the work it checks -- review, visual assessment, independent verification, merge. A worker cannot be trusted to check its own output in the same pass, so the ordering belongs on the graph, not in a prompt. Steps the same worker performs in one session stay checklist items on the body.
+   - **Name the obligation and its evidence, never the agent**: "get this visually assessed and show me proof", not "marsha reviews it". Which lens the worker invokes to satisfy the criterion is the worker's choice.
 4. **Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates.
 5. **Write the brief**:
    Draft the body (budget 150-400 words) using this structure:

@@ -2,26 +2,32 @@
   "manifestVersion": "1.0",
   "name": "pkb",
   "clients": {
-    "__base__": {},
-    "claude": {
+    "__base__": {
       "mcpServers": {
         "services": {
           "command": "bash",
           "args": [
-            "-c",
-            "uvx --from \"fastmcp-slim[server]\" fastmcp run \"${user_config.pkb_mcp_url}\""
-          ]
+            "${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh",
+            "${user_config.pkb_mcp_url}"
+          ],
+          "env": {
+            "PKB_MCP_URL": "${user_config.pkb_mcp_url}"
+          }
         }
       }
     },
+    "claude": {},
     "agy": {
       "mcpServers": {
         "services": {
           "command": "bash",
           "args": [
-            "-c",
-            "uvx --from \"fastmcp-slim[server]\" fastmcp run \"YOUR_PKB_URL\""
-          ]
+            "${extensionPath}/scripts/run-mcp.sh",
+            "YOUR_PKB_URL"
+          ],
+          "env": {
+            "PKB_MCP_URL": "YOUR_PKB_URL"
+          }
         }
       }
     }

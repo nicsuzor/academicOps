@@ -106,11 +106,15 @@ def generate_production_marketplace(decl: dict[str, Any], version: str, dist_roo
 
 
 def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
-    """The Cowork channel's .mcp.json: every server that defers to
-    $PKB_MCP_URL, or to the claude client's `${user_config.pkb_mcp_url}`
-    install-time placeholder, collapsed into one `type: http` server whose
-    URL is the literal value of PKB_MCP_URL in the build environment — or
-    None to ship the file as the claude dist built it.
+    """The Cowork zip's .mcp.json: every endpoint placeholder replaced with the
+    literal value of PKB_MCP_URL in the build environment — or None to ship the
+    file as the package built it.
+
+    This is the *only* difference between the package and the Cowork zip. Both
+    carry one `services` server launching scripts/run-mcp.sh with the endpoint
+    in both `args` and `env`; the package leaves the placeholder for `claude
+    plugin install --config pkb_mcp_url=...` to resolve, and the zip carries a
+    literal because no Cowork install path can supply one afterwards.
 
     Cowork launches a plugin's MCP servers from a bare environment: no login
     shell, no launchctl setenv, nothing the plugin's own config did not carry
@@ -119,10 +123,21 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
     variables"), a stdio command that reads it gets the empty string, and
     `${user_config.pkb_mcp_url}` is never resolved. Neither install path —
     directory marketplace or zip upload — has a way to supply the value after
-    the fact, so the URL has to be in the artifact. A literal `type: http`
-    url is the one form Cowork connects with (tested 2026-09-11), so that is
-    what the channel ships; the stdio launcher (scripts/run-mcp.sh) is not
-    used here.
+    the fact, so the URL has to be in the artifact.
+
+    Not `type: http`. Cowork does not open a plugin http server from the Mac —
+    it registers it as a claude.ai custom connector and validates it with a
+    server-side probe ("Connecting to the server — Couldn't reach this
+    address" / "No server responded at this URL"), so a tailnet endpoint can
+    never install, on Cowork local or cloud alike. Ruling (Nic, 2026-09-14):
+    Cowork uses the stdio proxy, and the bar is a connector that installs and
+    registers in the GUI, not merely a tool call that resolves. This reverses
+    6179c1e2c and the 2026-09-11 `Cowork local | literal ✅` row. See
+    kb_pkb_mcp_url_by_surface.
+
+    `${CLAUDE_PLUGIN_ROOT}` does expand on Cowork — it is the client's own
+    plugin-root substitution, unrelated to the builder's env vars, which do
+    not.
 
     The URL is read from the build environment and never committed. An unset
     PKB_MCP_URL is NOT a build failure: the published channel is built without
@@ -131,8 +146,8 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
     exported produces a usable Cowork channel. The warning below is the whole
     signal, so don't quiet it.
 
-    Only dist/cowork/ is rewritten. dist/<name>-claude keeps the env-var form,
-    which Claude Code resolves at launch.
+    Only dist/cowork/ is rewritten. dist/<name>-claude keeps the placeholder,
+    which `claude plugin install --config` resolves.
     """
     try:
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
@@ -162,12 +177,51 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
     while baked.endswith("/"):
         baked = baked[:-1]
 
-    # One server, not one per transport: a second entry pointing at the same
-    # endpoint would load every PKB tool schema twice.
+    # One server, not one per transport: two entries at the same endpoint would
+    # load every PKB tool schema twice. The old bake collapsed them silently;
+    # substitution cannot, so a second one is a template error worth failing on
+    # rather than shipping a duplicated tool surface.
+    if len(pkb_names) > 1:
+        raise BuildError(
+            f"{mcp_path}: {len(pkb_names)} servers defer to the PKB endpoint "
+            f"({', '.join(sorted(pkb_names))}); expected exactly one. Two entries at "
+            "the same endpoint load every PKB tool schema twice."
+        )
+
     for name in pkb_names:
-        del servers[name]
-    servers["services"] = {"type": "http", "url": baked}
+        servers[name] = _substitute_endpoint(servers[name], baked)
     return json.dumps(data, indent=2) + "\n"
+
+
+# The endpoint placeholders a client is expected to substitute. `${CLAUDE_PLUGIN_ROOT}`
+# is deliberately absent: Cowork DOES expand its own plugin-root token, and
+# rewriting it would hardcode a path from the build machine.
+_ENDPOINT_PLACEHOLDERS = (
+    "${user_config.pkb_mcp_url}",
+    "${PKB_MCP_URL}",
+    "$PKB_MCP_URL",
+    "YOUR_PKB_URL",
+)
+
+
+def _substitute_endpoint(value: Any, baked: str) -> Any:
+    """Replace every endpoint placeholder with `baked`, in place, at any depth.
+
+    A targeted substitution, not a rewrite of the server block: the manifest's
+    shape (one launcher, the URL carried in both `args` and `env`) is the same
+    for every client, and only the endpoint's *source* differs between the
+    package and the Cowork zip. Substituting leaves that shape intact, so the
+    two artifacts cannot drift apart.
+    """
+    if isinstance(value, str):
+        for placeholder in _ENDPOINT_PLACEHOLDERS:
+            value = value.replace(placeholder, baked)
+        return value
+    if isinstance(value, list):
+        return [_substitute_endpoint(v, baked) for v in value]
+    if isinstance(value, dict):
+        return {k: _substitute_endpoint(v, baked) for k, v in value.items()}
+    return value
 
 
 def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) -> Path:
@@ -177,9 +231,9 @@ def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) ->
     upload zips for the manual path.
 
     Both are the claude dist with one difference: .mcp.json gets $PKB_MCP_URL
-    resolved into a literal http server at build time, because neither Cowork
-    install path can supply it afterwards (see _bake_cowork_mcp_json). The zip
-    is the directory copy, verbatim."""
+    resolved into the stdio launcher's env block at build time, because neither
+    Cowork install path can supply it afterwards (see _bake_cowork_mcp_json).
+    The zip is the directory copy, verbatim."""
     cowork_root = dist_root / "cowork"
     if cowork_root.exists():
         shutil.rmtree(cowork_root)
@@ -199,7 +253,7 @@ def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) ->
             baked = _bake_cowork_mcp_json(mcp_path, name)
             if baked is not None:
                 mcp_path.write_text(baked, encoding="utf-8")
-                print(f"  cowork: {name} — PKB_MCP_URL baked into .mcp.json as a literal http url")
+                print(f"  cowork: {name} — PKB_MCP_URL baked into .mcp.json as a literal")
         plugins.append(
             {
                 "name": name,

@@ -56,8 +56,8 @@ build-openclaw:
 # Cowork installs from dist/cowork (directory marketplace or zip upload) and
 # launches a plugin's MCP servers with a bare environment — $PKB_MCP_URL does
 # not expand there and nothing can supply it after install. build.marketplace
-# resolves the URL into dist/cowork's .mcp.json as a literal `type: http`
-# server when it is set at build time, and warns when it is not. Deliberately
+# bakes the URL into dist/cowork's .mcp.json as the stdio launcher's env when
+# it is set at build time, and warns when it is not. Deliberately
 # NOT a build failure: the published channel ships without a URL, so Cowork's
 # services MCP is unusable until there is a real way to configure it
 # post-install. Only a local build with PKB_MCP_URL exported produces a

@@ -215,7 +215,7 @@ def patch_dev_mcp(pkb_url: str | None = None) -> list[Path]:
     expanded or propagated, so a literal value has to be baked in.
 
     The build already does that for `dist/cowork/` (build/marketplace.py's
-    _bake_cowork_mcp_json resolves the URL into a literal http server). What
+    _bake_cowork_mcp_json bakes the URL into the stdio launcher's env). What
     remains is existing Cowork GUI session directories, which hold their own
     copy of a plugin's .mcp.json from whenever it was installed.
 

@@ -47,8 +47,11 @@ defaults") -- see "MCP server configuration" below for the form each client
 takes.
 
 **MCP server configuration:**
-The PKB `services` MCP server ships in `plugins/pkb`: a FastMCP stdio launcher
-(`uvx --from fastmcp-slim[server] fastmcp run <endpoint>`). Every surface needs
+The PKB `services` MCP server ships in `plugins/pkb`: a FastMCP stdio launcher,
+`scripts/run-mcp.sh`, which execs `uvx --from fastmcp-slim[server] fastmcp run
+<endpoint>`. Every client launches through that one script, taking the endpoint
+from its first argument or from `$PKB_MCP_URL`, whichever the client
+substituted; an unexpanded `${...}` placeholder in either is discarded. Every surface needs
 the literal endpoint in place before first use; which mechanism supplies it
 differs by client, because only Claude Code has an install-time substitution
 feature:
@@ -90,13 +93,19 @@ feature:
    Cowork does not expand environment variables at runtime and has no
    userConfig either, and neither install path (directory marketplace or
    manual zip upload) can supply a value afterwards. `build.marketplace`
-   therefore collapses every server that defers to `$PKB_MCP_URL` or
-   `${user_config.pkb_mcp_url}` into one `services` server of the form
-   `{"type": "http", "url": <literal>}` in `dist/cowork/<name>/.mcp.json` (and
-   so in the zip, which is that directory verbatim), with the literal read
-   from `PKB_MCP_URL` in the build environment. A literal `type: http` url is
-   the one form Cowork connects with; the stdio launcher is not used in this
-   channel. With `PKB_MCP_URL` unset the build warns and ships the channel
+   therefore substitutes every endpoint placeholder
+   (`${user_config.pkb_mcp_url}`, `${PKB_MCP_URL}`, `$PKB_MCP_URL`,
+   `YOUR_PKB_URL`) with the literal read from `PKB_MCP_URL` in the build
+   environment, in `dist/cowork/<name>/.mcp.json` and so in the zip, which is
+   that directory verbatim. It is a substitution, not a rewrite: every client
+   ships the identical server shape -- one `scripts/run-mcp.sh` launcher
+   carrying the endpoint in both `args` and `env`, so whichever substitution a
+   client performs, one of them lands -- and only the endpoint's _source_
+   differs between the package and the zip, so the two cannot drift apart.
+   Exactly one server may defer to the endpoint; a second is a build failure,
+   since two entries at one url load every PKB tool schema twice.
+   Cowork registers a plugin http server as a claude.ai connector and probes it
+   server-side, so a tailnet endpoint never installs (ruling, 2026-09-14). With `PKB_MCP_URL` unset the build warns and ships the channel
    unrewritten -- the published channel is built that way and its `services`
    MCP does not work in Cowork. `dist/<name>-claude` and `dist/<name>-agy` are
    never rewritten by this step: they keep their own placeholder for (1) or

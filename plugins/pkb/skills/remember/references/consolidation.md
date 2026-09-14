@@ -17,7 +17,7 @@ A cycle may be given a focus: a keyword, a topic, or a path. With a focus:
 
 - **Seed the working set**: Union of `pkb.search(query="<focus>")` and a literal search of the brain for the term (`grep -rli "<focus>"`) across notes, memories, tasks, and specs, plus nodes one `[[wikilink]]` hop out from any hit.
 - **Scope the stages**: Run Stages 3, 4, 5, and 8 over the working set only. Skip transcript mining unless the focus names a session.
-- **Establish current truth before consolidating**: For each claim in the working set, identify its source of record (the live configuration, repository, code, or spec the claim describes) and check the claim against it. A claim the source no longer supports is superseded: replace it in the canonical note; delete or archive nodes whose only content is superseded claims. Contradictions between live sources are preserved with both cited. A claim with no reachable source is marked `confidence: speculative`, never deleted on suspicion.
+- **Establish current truth before consolidating**: For each claim in the working set, identify its source of record (the live configuration, repository, code, or spec the claim describes) and check the claim against it. A claim the source no longer supports is superseded: replace it in the canonical note; delete or archive nodes whose only content is superseded claims. Where live sources contradict each other, resolve it and state the resolved fact; if it cannot be resolved from evidence, ask rather than filing both. A claim with no reachable source is kept with a low `confidence:` float, never deleted on suspicion.
 - **Report the working set**: The summary lists every node in the working set with its outcome (verified, superseded, merged, deleted, unverifiable).
 
 Without a focus, stages run in order as listed below.
@@ -53,8 +53,8 @@ Audit generated notes for:
 
 1. Duplicate canonical/narrow pairs.
 2. Title-encoded dates or session IDs (`note-2026-04-18`).
-3. Missing frontmatter `sources:`.
-4. Missing frontmatter `confidence:` (`established`, `provisional`, `speculative`).
+3. Provenance neither in the one writable `source` string nor carried by a `[[wikilink]]` to an evidence node.
+4. Missing frontmatter `confidence:` (a float 0-1; `pkb.create` accepts it, nothing else writes it).
 5. Status or progress tables misfiled in knowledge notes.
 6. Zero wikilinks to existing concepts.
 7. Stagnation at `status: inbox`.
@@ -62,14 +62,14 @@ Audit generated notes for:
 ## Cycle Stages
 
 1. **Baseline**: Run `pkb.status` and `pkb.get_stats`. Record document count and index freshness.
-2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle). Synthesise durable topics, record provenance (`sources: ["Session <id> (<date>)"]`), and update frontmatter `mined: <date>`. Do not edit transcript bodies.
-3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Create Maps of Content (`type: moc`) for clusters of 5+ notes. Delete episodic notes once verified at destination.
+2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle). Synthesise durable topics and record provenance as a `[[wikilink]]` to the transcript or evidence node -- `sources:` and `mined:` are not writable frontmatter; `update_task` and `batch_update` reject unknown keys. Do not edit transcript bodies.
+3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once verified at destination.
 4. **Reconcile data quality**:
    - _Duplicates_: Inspect candidates from `find_duplicates(mode="both")` semantically before merging.
-   - _Staleness_: Delegate task staleness and closure to `/aops:reconcile`.
-   - _Misclassifications_: Reclassify informational tasks to memories or invoke `/aops:q` to reposition.
+   - _Staleness_: Delegate task staleness and closure to `/pkb:reconcile`.
+   - _Misclassifications_: Reclassify informational tasks to memories or invoke `/pkb:q` to reposition.
 5. **Sweep orphans**: Review tag-orphan notes surfaced by `pkb.get_consolidation_cluster` and tasks with no parent or project (`pkb.batch_update(orphan=true, dry_run=true)` lists them).
-6. **Process refiles**: Reposition tasks flagged with `refile` using `/aops:q` and clear the flag.
+6. **Process refiles**: Reposition tasks flagged with `refile` using `/pkb:q` and clear the flag.
 7. **Maintain graph**: Run `pkb.refresh_graph`, then compare `pkb.status` against the baseline to confirm convergence.
 8. **Audit output**: Verify that new or updated notes satisfy the extraction tests and defect checklist.
 
