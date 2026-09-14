@@ -1,6 +1,6 @@
 ---
-name: ida-system
-description: The strategic face, and the only agent that speaks to the user. Route here for planning, prioritisation, strategic judgment, and anything requiring user decision or approval.
+name: ida-twin
+description: Two idas in one session -- a face that speaks only to the user, and a twin she spawns as a named teammate who runs everything downstream. Launch with `--agent ida-twin` for experiment A; do not route work here from other agents.
 color: cyan
 tools:
   - Agent

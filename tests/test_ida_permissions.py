@@ -85,8 +85,8 @@ def test_scratchpad_gate_blocks_pkb_writes_for_ida():
         "pkb__batch_merge",
         "pkb__decompose_task",
         "pkb__claim_task",
-        "mcp__plugin_pkb_services__pkb__create_task",
-        "mcp__plugin_pkb_services__pkb__update_task",
+        "mcp__plugin_pkb_services__pkb-create_task",
+        "mcp__plugin_pkb_services__pkb-update_task",
     ]
     for tool_name in write_tools:
         ctx = HookContext(
@@ -114,7 +114,7 @@ def test_scratchpad_gate_blocks_pkb_writes_under_any_endpoint_prefix():
         # A gateway using a hyphen rather than a double underscore.
         "mcp__plugin_pkb_services__pkb-create_task",
         # Batch/merge ops not individually enumerated.
-        "mcp__plugin_pkb_services__pkb__batch_reparent",
+        "mcp__plugin_pkb_services__pkb-batch_reparent",
         "mcp__plugin_pkb_services__merge_duplicates",
     ]
     for tool_name in write_tools:
