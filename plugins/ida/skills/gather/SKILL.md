@@ -1,6 +1,6 @@
 ---
 name: gather
-description: SKELETON, NOT YET WIRED. Read the graph first-hand, check what came back on the papers, and hand Nic only what actually needs him. Use when work has returned and something may need his decision, or on "what needs me", "what came back", "catch me up". Not truth maintenance over external state (that is `/reconcile`, and it alone writes `done`), not dispatch, and never a relay of a worker's own account.
+description: Read the graph first-hand, check what came back on the papers, and hand Nic only what actually needs him. Use when work has returned and something may need his decision, or on "what needs me", "what came back", "catch me up". Not truth maintenance over external state (that is `/reconcile`, and it alone writes `done`), not dispatch, and never a relay of a worker's own account.
 ---
 
 # /gather -- what actually needs Nic
@@ -84,11 +84,3 @@ End with the single smallest next action.
 - Relay a worker's self-report, summary, or confidence as if it were a finding.
 - Dispatch, re-dispatch, or fix anything.
 - Report a claim you cannot cite to a node id or named artifact.
-
-## Test notes (remove once wired)
-
-Run it against `status="review"` with no dispatch involved -- it needs no container and
-no build. Two of the current `review` tasks concern academicOps#2673, which is now
-closed and the approach superseded: a working pass should return them as `moot` with the
-closure cited, not list them as pending decisions. If it hands back six pending
-decisions, the classification step is not doing its job.
