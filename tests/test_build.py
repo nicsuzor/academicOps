@@ -1298,13 +1298,16 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     """One PKB endpoint, registered once.
 
     Registering the same PKB endpoint under two server names loads every PKB
-    tool schema twice into every agent's static context. Each client gets the
-    single launcher (scripts/run-mcp.sh, carrying the endpoint in both `args`
-    and `env` so whichever substitution a client performs lands) and its own
-    install-time placeholder: `claude` resolves `${user_config.pkb_mcp_url}` via
-    `--config` (Claude Code's own userConfig substitution); `agy` has no such
-    mechanism, so it ships the literal `YOUR_PKB_URL` text, rewritten after
-    install by `build.install.patch_agy_mcp`.
+    tool schema twice into every agent's static context. `claude` gets the
+    stdio launcher (scripts/run-mcp.sh, carrying the endpoint in both `args`
+    and `env` so whichever substitution the client performs lands) and resolves
+    `${user_config.pkb_mcp_url}` via `--config` (Claude Code's own userConfig
+    substitution). `agy` dials the endpoint directly as `serverUrl`: a
+    stdio-launched server registers no tools under agy (measured 2026-09-15,
+    agy 1.2.2, plugin-level and user-level alike), a `serverUrl` one registers
+    every tool. agy has no substitution mechanism, so it ships the literal
+    `YOUR_PKB_URL` text, rewritten after install by
+    `build.install.patch_agy_mcp`.
     """
     dist_root = tmp_path / "dist"
     build_all(
@@ -1327,13 +1330,5 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
         }
     }
 
-    # agy resolves `${extensionPath}` post-install (docker_gemini_fixups.py);
-    # `${AGY_PLUGIN_ROOT}` it does NOT, which build.clients.agy rejects.
     agy_mcp = json.loads((dist_root / "pkb-agy" / "mcp_config.json").read_text())
-    assert agy_mcp["mcpServers"] == {
-        "services": {
-            "command": "bash",
-            "args": ["${extensionPath}/scripts/run-mcp.sh", "YOUR_PKB_URL"],
-            "env": {"PKB_MCP_URL": "YOUR_PKB_URL"},
-        }
-    }
+    assert agy_mcp["mcpServers"] == {"services": {"serverUrl": "YOUR_PKB_URL"}}

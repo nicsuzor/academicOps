@@ -20,14 +20,7 @@
     "agy": {
       "mcpServers": {
         "services": {
-          "command": "bash",
-          "args": [
-            "${extensionPath}/scripts/run-mcp.sh",
-            "YOUR_PKB_URL"
-          ],
-          "env": {
-            "PKB_MCP_URL": "YOUR_PKB_URL"
-          }
+          "serverUrl": "YOUR_PKB_URL"
         }
       }
     }

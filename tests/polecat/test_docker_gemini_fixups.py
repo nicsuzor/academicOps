@@ -33,21 +33,9 @@ def _write_mcp_config(gemini_home: Path, plugin_name: str, url_placeholder: str)
     plugin_dir = gemini_home / "config" / "plugins" / plugin_name
     plugin_dir.mkdir(parents=True, exist_ok=True)
     mcp_file = plugin_dir / "mcp_config.json"
-    mcp_file.write_text(
-        json.dumps(
-            {
-                "mcpServers": {
-                    "services": {
-                        "command": "bash",
-                        "args": [
-                            "-c",
-                            f'uvx --from "fastmcp-slim[server]" fastmcp run "{url_placeholder}"',
-                        ],
-                    }
-                }
-            }
-        )
-    )
+    # The shape plugins/pkb/manifest/mcp.template.json ships for agy: a remote
+    # `serverUrl`, never a stdio launcher (which registers no tools under agy).
+    mcp_file.write_text(json.dumps({"mcpServers": {"services": {"serverUrl": url_placeholder}}}))
     return mcp_file
 
 
@@ -60,10 +48,7 @@ def test_pkb_mcp_url_env_var_resolves_the_placeholder(tmp_path, monkeypatch):
     module.fixup_mcp_config_paths()
 
     data = json.loads(mcp_file.read_text())
-    assert data["mcpServers"]["services"]["args"] == [
-        "-c",
-        'uvx --from "fastmcp-slim[server]" fastmcp run "https://pkb.example.ts.net/mcp"',
-    ]
+    assert data["mcpServers"]["services"] == {"serverUrl": "https://pkb.example.ts.net/mcp"}
 
 
 def test_trailing_slash_is_stripped(tmp_path, monkeypatch):
@@ -75,10 +60,7 @@ def test_trailing_slash_is_stripped(tmp_path, monkeypatch):
     module.fixup_mcp_config_paths()
 
     data = json.loads(mcp_file.read_text())
-    assert data["mcpServers"]["services"]["args"] == [
-        "-c",
-        'uvx --from "fastmcp-slim[server]" fastmcp run "https://pkb.example.ts.net/mcp"',
-    ]
+    assert data["mcpServers"]["services"] == {"serverUrl": "https://pkb.example.ts.net/mcp"}
 
 
 def test_unset_pkb_mcp_url_leaves_the_placeholder_in_place(tmp_path, monkeypatch):

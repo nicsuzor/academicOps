@@ -386,36 +386,21 @@ def test_patch_agy_mcp_rewrites_the_literal_placeholder_and_strips_trailing_slas
     plugins_dir = tmp_path / "plugins"
     pkb_dir = plugins_dir / "pkb"
     pkb_dir.mkdir(parents=True)
-    mcp_content = json.dumps(
-        {
-            "mcpServers": {
-                "services": {"command": "bash", "args": ["-c", 'fastmcp run "YOUR_PKB_URL"']}
-            }
-        }
-    )
+    mcp_content = json.dumps({"mcpServers": {"services": {"serverUrl": "YOUR_PKB_URL"}}})
     (pkb_dir / "mcp_config.json").write_text(mcp_content)
 
     patched = patch_agy_mcp(plugins_dir, "https://pkb.example.ts.net/mcp/")
 
     assert patched == [pkb_dir / "mcp_config.json"]
     data = json.loads((pkb_dir / "mcp_config.json").read_text())
-    assert data["mcpServers"]["services"]["args"] == [
-        "-c",
-        'fastmcp run "https://pkb.example.ts.net/mcp"',
-    ]
+    assert data["mcpServers"]["services"] == {"serverUrl": "https://pkb.example.ts.net/mcp"}
 
 
 def test_patch_agy_mcp_skips_when_unset(tmp_path):
     plugins_dir = tmp_path / "plugins"
     pkb_dir = plugins_dir / "pkb"
     pkb_dir.mkdir(parents=True)
-    mcp_content = json.dumps(
-        {
-            "mcpServers": {
-                "services": {"command": "bash", "args": ["-c", 'fastmcp run "YOUR_PKB_URL"']}
-            }
-        }
-    )
+    mcp_content = json.dumps({"mcpServers": {"services": {"serverUrl": "YOUR_PKB_URL"}}})
     (pkb_dir / "mcp_config.json").write_text(mcp_content)
 
     patched = patch_agy_mcp(plugins_dir, "")

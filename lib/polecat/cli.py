@@ -1354,16 +1354,11 @@ def _build_inner_command(
                 and "--verbose" not in inner_cmd
             ):
                 inner_cmd.append("--verbose")
-        if (
-            not effectively_interactive
-            and "-p" not in extra_args
-            and "--print" not in extra_args
-            and not prompt
-        ):
+        if not effectively_interactive and "-p" not in extra_args and "--print" not in extra_args:
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
-            # prompt is a positional, so it still arrives from extra_args below,
-            # or from stdin when there is none.
+            # prompt is a positional, so it still arrives from `--prompt` or
+            # extra_args below, or from stdin when there is none.
             #
             # `task` forces it regardless of the TTY. `-t` *is* the autonomous
             # task dispatch: the worker runs `/pull <id>` and exits. Gating that
@@ -1942,7 +1937,8 @@ def main():
     "-i",
     is_flag=True,
     default=False,
-    help="Run interactively (attaches TTY and opens interactive UI).",
+    help="Run interactively (attaches TTY and opens interactive UI). Without it "
+    "every run is headless and exits when the agent's loop completes.",
 )
 @click.option(
     "--detach",
@@ -2193,10 +2189,11 @@ def run(
             or (bool(output_format) and not interactive)
             or (bool(prompt) and not interactive)
         )
-        if interactive:
-            is_interactive = True
-        else:
-            is_interactive = not explicit_headless and sys.stdin.isatty()
+        # `-i` is the only way into the interactive UI. Without it every
+        # dispatch runs headless, whatever the host's stdin is: a `polecat run`
+        # typed at a terminal with no `-t`/`--prompt` used to open the TUI and
+        # idle at its prompt forever instead of exiting.
+        is_interactive = interactive
         if is_interactive:
             docker_args.append("-it")
         else:

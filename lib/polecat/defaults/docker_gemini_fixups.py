@@ -26,8 +26,8 @@ def fixup_mcp_config_paths() -> None:
 
     The `agy` client has no template-substitution mechanism at all (see
     `plugins/pkb/manifest/mcp.template.json`'s `agy` client), so the `pkb`
-    plugin's `services` server ships the literal text `YOUR_PKB_URL` in place
-    of its endpoint. On a host `make install-dev`, `build.install
+    plugin's `services` server ships the literal text `YOUR_PKB_URL` as its
+    `serverUrl`. On a host `make install-dev`, `build.install
     patch_agy_mcp` rewrites that placeholder right after `agy plugin install`
     runs. A polecat container's image is built long before `$PKB_MCP_URL` is
     known (`.agents/CORE.md`, "No defaults"), so this Dockerfile-invoked

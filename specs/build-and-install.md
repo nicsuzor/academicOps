@@ -47,14 +47,18 @@ defaults") -- see "MCP server configuration" below for the form each client
 takes.
 
 **MCP server configuration:**
-The PKB `services` MCP server ships in `plugins/pkb`: a FastMCP stdio launcher,
+The PKB `services` MCP server ships in `plugins/pkb`. The `claude` client (and
+so Cowork) launches it through a FastMCP stdio launcher,
 `plugins/pkb/scripts/run-mcp.sh`, which execs `uvx --from fastmcp-slim[server] fastmcp run
-<endpoint>`. Every client launches through that one script, taking the endpoint
-from its first argument or from `$PKB_MCP_URL`, whichever the client
-substituted; an unexpanded `${...}` placeholder in either is discarded. Every surface needs
-the literal endpoint in place before first use; which mechanism supplies it
-differs by client, because only Claude Code has an install-time substitution
-feature:
+<endpoint>`, taking the endpoint from its first argument or from `$PKB_MCP_URL`,
+whichever the client substituted; an unexpanded `${...}` placeholder in either
+is discarded. The `agy` client dials the endpoint directly as a remote
+`serverUrl`: under agy a stdio-launched server registers no tools at all,
+plugin-level or user-level, whichever launcher runs it (measured 2026-09-15,
+agy 1.2.2, in the aops-crew container), while a `serverUrl` server registers
+every tool. Every surface needs the literal endpoint in place before first use;
+which mechanism supplies it differs by client, because only Claude Code has an
+install-time substitution feature:
 
 1. **`claude` client -- `userConfig` + `--config`.**
    `plugins/pkb/manifest/mcp.template.json` declares a `pkb_mcp_url` userConfig
@@ -69,7 +73,7 @@ feature:
 2. **`agy` client -- literal placeholder, rewritten post-install.**
    agy has no `--config`/userConfig substitution: `agy plugin install <dir>`
    copies a plugin's built `mcp_config.json` verbatim. Its `services` server
-   therefore ships the literal text `YOUR_PKB_URL` in place of the URL.
+   therefore ships the literal text `YOUR_PKB_URL` as its `serverUrl`.
    `build.install patch-agy-mcp` rewrites that placeholder to the concrete
    value in `~/.gemini/config/plugins/<name>/mcp_config.json` right after the
    copy -- `make install-dev` runs it once, after installing every plugin for
@@ -97,11 +101,12 @@ feature:
    (`${user_config.pkb_mcp_url}`, `${PKB_MCP_URL}`, `$PKB_MCP_URL`,
    `YOUR_PKB_URL`) with the literal read from `PKB_MCP_URL` in the build
    environment, in `dist/cowork/<name>/.mcp.json` and so in the zip, which is
-   that directory verbatim. It is a substitution, not a rewrite: every client
-   ships the identical server shape -- one `plugins/pkb/scripts/run-mcp.sh` launcher
-   carrying the endpoint in both `args` and `env`, so whichever substitution a
-   client performs, one of them lands -- and only the endpoint's _source_
-   differs between the package and the zip, so the two cannot drift apart.
+   that directory verbatim. It is a substitution, not a rewrite: the Cowork
+   zip ships the claude package's server shape -- one
+   `plugins/pkb/scripts/run-mcp.sh` launcher carrying the endpoint in both
+   `args` and `env`, so whichever substitution a client performs, one of them
+   lands -- and only the endpoint's _source_ differs between the package and
+   the zip, so the two cannot drift apart.
    Exactly one server may defer to the endpoint; a second is a build failure,
    since two entries at one url load every PKB tool schema twice.
    Cowork registers a plugin http server as a claude.ai connector and probes it
