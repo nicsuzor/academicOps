@@ -48,7 +48,7 @@ takes.
 
 **MCP server configuration:**
 The PKB `services` MCP server ships in `plugins/pkb`: a FastMCP stdio launcher,
-`scripts/run-mcp.sh`, which execs `uvx --from fastmcp-slim[server] fastmcp run
+`plugins/pkb/scripts/run-mcp.sh`, which execs `uvx --from fastmcp-slim[server] fastmcp run
 <endpoint>`. Every client launches through that one script, taking the endpoint
 from its first argument or from `$PKB_MCP_URL`, whichever the client
 substituted; an unexpanded `${...}` placeholder in either is discarded. Every surface needs
@@ -98,7 +98,7 @@ feature:
    `YOUR_PKB_URL`) with the literal read from `PKB_MCP_URL` in the build
    environment, in `dist/cowork/<name>/.mcp.json` and so in the zip, which is
    that directory verbatim. It is a substitution, not a rewrite: every client
-   ships the identical server shape -- one `scripts/run-mcp.sh` launcher
+   ships the identical server shape -- one `plugins/pkb/scripts/run-mcp.sh` launcher
    carrying the endpoint in both `args` and `env`, so whichever substitution a
    client performs, one of them lands -- and only the endpoint's _source_
    differs between the package and the zip, so the two cannot drift apart.
