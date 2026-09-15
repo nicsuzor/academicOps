@@ -220,6 +220,36 @@ def format_fresh_header(
     )
 
 
+def format_plugin_report(
+    *,
+    version: str = "",
+    image_commit: str = "",
+    workspace_commit: str = "",
+) -> str:
+    """Format calm, informational report of plugin build provenance.
+
+    Reports plugin version and baked image commit, plus workspace commit
+    for comparison where available. Every launch outputs one or two plain lines
+    instead of an alarming warning banner.
+    """
+    version_clean = (version or "").strip()
+    commit_clean = (image_commit or "").strip()
+
+    if version_clean and commit_clean:
+        build_str = f"{version_clean} (commit {commit_clean})"
+    elif version_clean:
+        build_str = version_clean
+    elif commit_clean:
+        build_str = f"commit {commit_clean}"
+    else:
+        build_str = "unknown"
+
+    lines = [f"Plugin build: {build_str}"]
+    if workspace_commit and workspace_commit.strip():
+        lines.append(f"Workspace commit: {workspace_commit.strip()}")
+    return "\n".join(lines)
+
+
 def format_stale_banner(
     *,
     image_commit: str,
@@ -295,7 +325,6 @@ def evaluate_staleness(
     workspace_short = workspace_sha[:8] if workspace_sha else "unknown"
     image_short = prov.short_sha or (prov.commit_sha[:8] if prov.commit_sha else "unknown")
     image_version = prov.version or "0.9.1"
-    dist_ref = prov.dist_ref or "dev"
 
     if prov.dist_source == "remote":
         is_stale = False
@@ -313,15 +342,6 @@ def evaluate_staleness(
             status = "REMOTE_RELEASE_RUN"
         reason = None
         warning_banner = None
-        header_banner = format_remote_header(
-            session_id=session_id,
-            agent=agent,
-            workspace_dir=workspace_dir,
-            branch=branch or "feature",
-            workspace_short=workspace_short,
-            image_ref=image_ref,
-            dist_ref=dist_ref or image_version,
-        )
         plugins_version_str = f"{image_version} (remote:release)"
     else:
         # Local source build
@@ -368,23 +388,13 @@ def evaluate_staleness(
                 )
             else:
                 reason = f"image commit {image_short} behind workspace commit {workspace_short}"
-            warning_banner = format_stale_banner(
-                image_commit=image_short,
-                workspace_commit=workspace_short,
-                build_date=prov.built_at,
-            )
-            header_banner = None
+            warning_banner = None
             plugins_version_str = f"{image_version} (local:stale)"
         elif workspace_dirty and not prov.is_dirty:
             is_stale = True
             status = "DIRTY_WORKSPACE_UNBAKED"
             reason = "workspace has uncommitted changes not baked into image"
-            warning_banner = format_stale_banner(
-                image_commit=image_short,
-                workspace_commit=f"{workspace_short} (dirty)",
-                build_date=prov.built_at,
-            )
-            header_banner = None
+            warning_banner = None
             plugins_version_str = f"{image_version} (local:dirty)"
         else:
             is_stale = False
@@ -392,20 +402,23 @@ def evaluate_staleness(
             reason = None
             warning_banner = None
             exact_match = not commits_differ
-            header_banner = format_fresh_header(
-                session_id=session_id,
-                agent=agent,
-                workspace_dir=workspace_dir,
-                workspace_short=workspace_short,
-                image_ref=image_ref,
-                image_short=image_short,
-                exact_match=exact_match,
-            )
             plugins_version_str = (
                 f"{image_version} (local:match)"
                 if exact_match
                 else f"{image_version} (local:current)"
             )
+
+    ws_commit_display = (
+        f"{workspace_short} (dirty)"
+        if (workspace_dirty and not prov.is_dirty and workspace_short != "unknown")
+        else (workspace_short if workspace_short != "unknown" else "")
+    )
+    plugin_report = format_plugin_report(
+        version=prov.version or image_version,
+        image_commit=image_short if image_short != "unknown" else "",
+        workspace_commit=ws_commit_display,
+    )
+    header_banner = plugin_report
 
     return {
         "is_stale": is_stale,
@@ -416,5 +429,6 @@ def evaluate_staleness(
         "workspace_commit": workspace_sha or workspace_short,
         "header_banner": header_banner,
         "warning_banner": warning_banner,
+        "plugin_report": plugin_report,
         "plugins_version_str": plugins_version_str,
     }
