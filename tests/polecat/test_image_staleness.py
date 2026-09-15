@@ -21,6 +21,7 @@ from lib.polecat import cli
 from lib.polecat.staleness import (
     ImageProvenance,
     evaluate_staleness,
+    format_plugin_report,
 )
 from plugins.aops.hooks import handlers
 
@@ -81,7 +82,7 @@ def _tag(repo_dir: Path, tag: str, commit: str) -> None:
 
 
 def test_staleness_detection_local_fresh(tmp_path):
-    """Image commit matches workspace commit, source is local: not stale, fresh header."""
+    """Image commit matches workspace commit, source is local: not stale, plugin report."""
     repo = tmp_path / "repo"
     repo.mkdir()
     commit_sha = _init_git_repo(repo)
@@ -100,13 +101,14 @@ def test_staleness_detection_local_fresh(tmp_path):
     assert result["staleness_status"] == "FRESH_LOCAL_BUILD"
     assert result["staleness_reason"] is None
     assert result["warning_banner"] is None
-    assert result["header_banner"] is not None
-    assert "PLUGINS FRESH [local match]" in result["header_banner"]
+    assert result["plugin_report"] is not None
+    assert f"Plugin build: 0.9.1 (commit {commit_sha[:8]})" in result["plugin_report"]
+    assert f"Workspace commit: {commit_sha[:8]}" in result["plugin_report"]
     assert "local:match" in result["plugins_version_str"]
 
 
 def test_staleness_detection_local_stale(tmp_path, monkeypatch):
-    """Image commit lags workspace commit, source is local: stale, warning banner, warn-only."""
+    """Image commit lags workspace commit, source is local: stale, plugin report, warn-only."""
     _base_mocks(monkeypatch, tmp_path)
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -126,11 +128,13 @@ def test_staleness_detection_local_stale(tmp_path, monkeypatch):
     assert result["is_stale"] is True
     assert result["staleness_status"] == "STALE_LOCAL_BUILD"
     assert "image commit 62456fff behind workspace commit" in result["staleness_reason"]
-    assert result["warning_banner"] is not None
-    assert "WARNING: POLECAT IMAGE PLUGINS ARE STALE" in result["warning_banner"]
+    assert result["warning_banner"] is None
+    assert result["plugin_report"] is not None
+    assert "Plugin build: 0.8.0 (commit 62456fff)" in result["plugin_report"]
+    assert "Workspace commit:" in result["plugin_report"]
     assert "local:stale" in result["plugins_version_str"]
 
-    # Verify via CLI runner: warn-only policy (exits 0 if inner succeeds)
+    # Verify via CLI runner: warn-only policy (exits 0 if inner succeeds), no warning banner
     monkeypatch.setattr(cli, "inspect_image_provenance", lambda img: prov)
 
     real_run = subprocess.run
@@ -152,7 +156,12 @@ def test_staleness_detection_local_stale(tmp_path, monkeypatch):
     runner = CliRunner()
     res = runner.invoke(cli.main, ["run", "claude", "-d", str(repo), "-s", "session-stale-run"])
     assert res.exit_code == 0
-    assert "WARNING: POLECAT IMAGE PLUGINS ARE STALE" in res.output
+    assert "WARNING: POLECAT IMAGE PLUGINS ARE STALE" not in res.output
+    assert "WARNING" not in res.output
+    assert "!!!" not in res.output
+    assert "make docker-build" not in res.output
+    assert "Plugin build: 0.8.0 (commit 62456fff)" in res.output
+    assert "Workspace commit:" in res.output
 
 
 def test_staleness_detection_local_within_release_baseline_not_flagged(tmp_path):
@@ -181,7 +190,9 @@ def test_staleness_detection_local_within_release_baseline_not_flagged(tmp_path)
     assert result["staleness_status"] == "FRESH_LOCAL_BUILD"
     assert result["staleness_reason"] is None
     assert result["warning_banner"] is None
-    assert "current release baseline" in result["header_banner"]
+    assert result["plugin_report"] is not None
+    assert f"Plugin build: 1.0.0 (commit {release_commit[:8]})" in result["plugin_report"]
+    assert f"Workspace commit: {workspace_head[:8]}" in result["plugin_report"]
     assert "local:current" in result["plugins_version_str"]
     assert workspace_head != release_commit  # sanity: the SHAs genuinely differ
 
@@ -209,8 +220,10 @@ def test_staleness_detection_local_predates_release_baseline_flagged_stale(tmp_p
     assert result["is_stale"] is True
     assert result["staleness_status"] == "STALE_LOCAL_BUILD"
     assert "predates release v1.0.0" in result["staleness_reason"]
-    assert result["warning_banner"] is not None
-    assert "WARNING: POLECAT IMAGE PLUGINS ARE STALE" in result["warning_banner"]
+    assert result["warning_banner"] is None
+    assert result["plugin_report"] is not None
+    assert f"Plugin build: 0.9.0 (commit {pre_release_commit[:8]})" in result["plugin_report"]
+    assert "Workspace commit:" in result["plugin_report"]
     assert "local:stale" in result["plugins_version_str"]
 
 
@@ -236,13 +249,15 @@ def test_staleness_detection_local_dirty_workspace(tmp_path):
     assert result["is_stale"] is True
     assert result["staleness_status"] == "DIRTY_WORKSPACE_UNBAKED"
     assert "uncommitted changes" in result["staleness_reason"]
-    assert result["warning_banner"] is not None
-    assert "WARNING: POLECAT IMAGE PLUGINS ARE STALE" in result["warning_banner"]
+    assert result["warning_banner"] is None
+    assert result["plugin_report"] is not None
+    assert f"Plugin build: 0.9.1 (commit {commit_sha[:8]})" in result["plugin_report"]
+    assert f"Workspace commit: {commit_sha[:8]} (dirty)" in result["plugin_report"]
     assert "local:dirty" in result["plugins_version_str"]
 
 
 def test_staleness_detection_remote_lagging_local_not_flagged_stale(tmp_path):
-    """Remote-sourced image lagging local workspace: not flagged stale, info notice."""
+    """Remote-sourced image lagging local workspace: not flagged stale, info report."""
     repo = tmp_path / "repo"
     repo.mkdir()
     _init_git_repo(repo)
@@ -265,9 +280,42 @@ def test_staleness_detection_remote_lagging_local_not_flagged_stale(tmp_path):
     assert result["staleness_status"] == "REMOTE_RELEASE_RUN"
     assert result["staleness_reason"] is None
     assert result["warning_banner"] is None
-    assert result["header_banner"] is not None
-    assert "REMOTE RELEASE IMAGE" in result["header_banner"]
+    assert result["plugin_report"] is not None
+    assert "Plugin build: 0.9.1 (commit 62456fff)" in result["plugin_report"]
+    assert "Workspace commit:" in result["plugin_report"]
     assert "remote:release" in result["plugins_version_str"]
+
+
+def test_format_plugin_report_formatting():
+    """Test format_plugin_report with various combinations of version, commit, and workspace."""
+    # Both version and commit with workspace commit
+    rep = format_plugin_report(
+        version="0.10.0", image_commit="12345678", workspace_commit="abcdef12"
+    )
+    assert rep == "Plugin build: 0.10.0 (commit 12345678)\nWorkspace commit: abcdef12"
+
+    # Both version and commit with dirty workspace commit
+    rep = format_plugin_report(
+        version="0.10.0", image_commit="12345678", workspace_commit="abcdef12 (dirty)"
+    )
+    assert rep == "Plugin build: 0.10.0 (commit 12345678)\nWorkspace commit: abcdef12 (dirty)"
+
+    # Version only (no commit)
+    rep = format_plugin_report(version="0.10.0", image_commit="", workspace_commit="abcdef12")
+    assert rep == "Plugin build: 0.10.0\nWorkspace commit: abcdef12"
+
+    # Commit only (no version)
+    rep = format_plugin_report(version="", image_commit="12345678", workspace_commit="abcdef12")
+    assert rep == "Plugin build: commit 12345678\nWorkspace commit: abcdef12"
+
+    # Neither (unknown)
+    rep = format_plugin_report(version="", image_commit="", workspace_commit="")
+    assert rep == "Plugin build: unknown"
+
+    # No workspace commit (plain 1-line output)
+    rep = format_plugin_report(version="0.10.0", image_commit="12345678", workspace_commit="")
+    assert rep == "Plugin build: 0.10.0 (commit 12345678)"
+    assert "\n" not in rep
 
 
 def test_session_start_hook_surfaces_plugin_version(monkeypatch):

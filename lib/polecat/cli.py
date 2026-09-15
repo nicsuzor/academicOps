@@ -2134,7 +2134,9 @@ def run(
         )
 
         if not quiet:
-            if staleness_eval.get("warning_banner"):
+            if staleness_eval.get("plugin_report"):
+                click.echo(staleness_eval["plugin_report"], err=True)
+            elif staleness_eval.get("warning_banner"):
                 click.echo(staleness_eval["warning_banner"], err=True)
             elif staleness_eval.get("header_banner"):
                 click.echo(staleness_eval["header_banner"], err=True)
