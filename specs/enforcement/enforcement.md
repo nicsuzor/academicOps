@@ -101,15 +101,15 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 ## The ida pair -- reviewer ≠ executor at the face
 
 [Persona: Ida](../../plugins/ida/agents/ida.md) obliges the face to check every claim before it
-reaches Nic and states that it cannot audit itself. [Persona: Ida (draft)](../../plugins/ida/agents/ida-draft.md)
+reaches Nic and states that it cannot audit itself. Persona: Ida (draft) — not yet built —
 is the mechanism that makes that performable: the drafting instance does the reading and produces
 a cited report; a face instance rules on it. The draft has no channel to Nic and the face does no
 work, so reviewer ≠ executor holds by grant rather than by recollection.
 
-| Rule / nudge                                                                                   | Mechanism                    | Severity     | Detail                                                                                             |
-| ---------------------------------------------------------------------------------------------- | ---------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
-| [Persona: Ida](../../plugins/ida/agents/ida.md) -- "You cannot audit yourself"                 | `agent persona instructions` | `imperative` | `plugins/ida/agents/ida.md`, Logic check; held by prose alone until the pair exists                |
-| [Persona: Ida (draft)](../../plugins/ida/agents/ida-draft.md) -- produces, never addresses Nic | `tool grant`                 | n/a          | `plugins/ida/agents/ida-draft.md` frontmatter; the documented `permission control` exception above |
+| Rule / nudge                                                                   | Mechanism                    | Severity     | Detail                                                                                                       |
+| ------------------------------------------------------------------------------ | ---------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| [Persona: Ida](../../plugins/ida/agents/ida.md) -- "You cannot audit yourself" | `agent persona instructions` | `imperative` | `plugins/ida/agents/ida.md`, Logic check; held by prose alone until the pair exists                          |
+| Persona: Ida (draft), not yet built -- produces, never addresses Nic           | `tool grant`                 | n/a          | plugins/ida/agents/ida-draft.md frontmatter, once built; the documented `permission control` exception above |
 
 **This is a defaults move, not a severity move.** Per the four levers, self-checking failed because
 shipping the conclusion is the path of least resistance for an agent that formed it -- a defaults

@@ -44,7 +44,7 @@ def test_run_mcp_fails_loudly_without_pkb_mcp_url():
     assert result.returncode != 0
     assert result.stdout == "", "must never start a server on an unset URL"
     assert "PKB_MCP_URL" in result.stderr
-    assert "not set" in result.stderr
+    assert "no PKB endpoint" in result.stderr
 
 
 def test_run_mcp_fails_loudly_with_an_empty_pkb_mcp_url():
