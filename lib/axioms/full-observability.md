@@ -1,6 +1,6 @@
 ---
 description: Persist material actions in git commits with clear rationale for complete auditability.
-trigger: off
+trigger: always
 ---
 
 ## Full Observability

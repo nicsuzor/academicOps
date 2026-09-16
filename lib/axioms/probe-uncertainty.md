@@ -1,6 +1,6 @@
 ---
 description: Resolve uncertainty via cheapest discriminating experiment before escalating.
-trigger: off
+trigger: always
 ---
 
 ## Settle It

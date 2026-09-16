@@ -1,6 +1,6 @@
 ---
 description: Never modify, reformat, or substitute evidentiary sources; halt if unreachable.
-trigger: off
+trigger: always
 ---
 
 ## Evidence Is Immutable and Irreplaceable

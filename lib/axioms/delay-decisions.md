@@ -1,6 +1,6 @@
 ---
 description: Delay decisions that incur no cost to delay until required to maximize evidence.
-trigger: off
+trigger: always
 ---
 
 ## Delay What Can Be Delayed

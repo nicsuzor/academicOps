@@ -1,6 +1,6 @@
 ---
 description: Maintain exactly one authoritative copy of every fact, rule, or artifact.
-trigger: off
+trigger: always
 ---
 
 ## Single Source of Truth

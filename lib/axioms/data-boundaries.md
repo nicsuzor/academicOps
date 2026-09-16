@@ -1,6 +1,6 @@
 ---
 description: Treat data as private; never emit across trust boundaries without surface-specific authorization.
-trigger: off
+trigger: always
 ---
 
 ## Data Boundaries

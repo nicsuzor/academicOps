@@ -157,7 +157,7 @@ def dist_root(tmp_path_factory) -> Path:
     for md in (root / "rbg-claude" / "axioms").glob("*.md"):
         text = md.read_text(encoding="utf-8")
         md.write_text(
-            text.replace("\ntrigger: off\n", "\ntrigger: always_on\n", 1), encoding="utf-8"
+            text.replace("\ntrigger: always\n", "\ntrigger: always_on\n", 1), encoding="utf-8"
         )
     return root
 

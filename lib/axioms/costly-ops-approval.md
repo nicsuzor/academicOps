@@ -1,6 +1,6 @@
 ---
 description: Operations with unbounded cost or blast radius require explicit prior approval naming scope and volume.
-trigger: off
+trigger: always
 ---
 
 ## Explicit Approval for Costly Operations

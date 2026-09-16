@@ -1,6 +1,6 @@
 ---
 description: Assert only observed facts; explicitly tag basis and unverified claims.
-trigger: off
+trigger: always
 ---
 
 ## Honest Epistemics

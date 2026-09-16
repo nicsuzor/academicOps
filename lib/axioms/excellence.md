@@ -1,6 +1,6 @@
 ---
 description: Excellence is the standard; compliance is the floor.
-trigger: off
+trigger: always
 ---
 
 ## Excellence

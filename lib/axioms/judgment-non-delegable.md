@@ -1,6 +1,6 @@
 ---
 description: Delegate tasks freely, but never hand qualitative judgment to mechanical rigs.
-trigger: off
+trigger: always
 ---
 
 ## Judgment Is Non-Delegable

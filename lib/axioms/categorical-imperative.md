@@ -1,6 +1,6 @@
 ---
 description: Every action must be justifiable as a general rule covering the whole class, never a one-off carve-out.
-trigger: off
+trigger: always
 ---
 
 ## Categorical Imperative

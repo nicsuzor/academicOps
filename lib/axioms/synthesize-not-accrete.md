@@ -1,6 +1,6 @@
 ---
 description: Store synthesized current state rather than accreted logs and history.
-trigger: off
+trigger: always
 ---
 
 ## Synthesize, Don't Accrete

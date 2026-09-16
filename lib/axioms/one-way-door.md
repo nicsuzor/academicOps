@@ -1,6 +1,6 @@
 ---
 description: Require human signature before taking irreversible external actions.
-trigger: off
+trigger: always
 ---
 
 ## One-Way Doors Need a Human Signature

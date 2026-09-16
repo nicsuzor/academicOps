@@ -1,6 +1,6 @@
 ---
 description: Decide nothing not derivable from axioms, framework instructions, or session user directives.
-trigger: off
+trigger: always
 ---
 
 ## Closure

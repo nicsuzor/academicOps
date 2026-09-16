@@ -1,6 +1,6 @@
 ---
 description: Reserve pushed instruction context for essential cues; demote details to pull docs.
-trigger: off
+trigger: always
 ---
 
 ## Pull over Push

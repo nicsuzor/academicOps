@@ -1,5 +1,5 @@
 ---
-trigger: off
+trigger: always
 description: Project-local rules for the academicOps repository, applied on top of the axioms.
 ---
 

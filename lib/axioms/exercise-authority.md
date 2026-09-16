@@ -1,6 +1,6 @@
 ---
 description: Act within delegated scope; escalate outside; never seek permission for safe delegated work.
-trigger: off
+trigger: always
 ---
 
 ## Exercise Authority

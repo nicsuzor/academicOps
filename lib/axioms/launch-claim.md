@@ -1,6 +1,6 @@
 ---
 description: Record Dispatched claim on task before worker starts; two claims, not one.
-trigger: off
+trigger: always
 ---
 
 ## The Launch Claim

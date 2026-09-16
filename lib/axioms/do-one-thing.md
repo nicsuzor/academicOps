@@ -1,6 +1,6 @@
 ---
 description: Complete exactly what was asked to requester criteria, then stop.
-trigger: off
+trigger: always
 ---
 
 ## Do One Thing, Completely
