@@ -47,7 +47,6 @@ reported as such, not treated as an error.
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
