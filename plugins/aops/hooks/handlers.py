@@ -280,17 +280,6 @@ def honest_output(ctx: HookContext) -> Result | None:
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
-def be_quiet(ctx: HookContext) -> Result | None:
-    """Remind the face to strip its reply down to what is load-bearing."""
-    # Only fire on Ida
-    if ctx.agent_type == "ida:ida":
-        if ctx.raw.get("background_tasks"):
-            return None
-        return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
-
-    return None
-
-
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     """Extract and normalize payload dictionary for claude_code_tracer."""
     data = dict(ctx.raw)
@@ -432,6 +421,6 @@ HANDLERS: dict[str, list] = {
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
     "Stop": [stop, agy_stop],
-    "PostToolBatch": [h for h in (rule_against_hearsay, be_quiet) if h is not None],
-    "SubagentStart": [honest_output],
+    #   "PostToolBatch": [h for h in (rule_against_hearsay,) if h is not None],
+    # "SubagentStart": [honest_output],
 }
