@@ -21,7 +21,7 @@ tools:
   - CronCreate
   - CronDelete
   - CronList
-  - mcp__plugin_pkb_services__*
+  - mcp__services__*
 ---
 
 # Ida

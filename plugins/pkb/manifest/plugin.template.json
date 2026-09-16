@@ -4,7 +4,7 @@
   "clients": {
     "__base__": {
       "name": "pkb",
-      "description": "pauli for memory: the sole writer to the Personal Knowledge Base, plus the PKB MCP server.",
+      "description": "pauli for memory: the sole writer to the Personal Knowledge Base.",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -18,16 +18,7 @@
         "knowledge-graph"
       ]
     },
-    "claude": {
-      "mcpServers": "./.mcp.json",
-      "userConfig": {
-        "pkb_mcp_url": {
-          "type": "string",
-          "title": "PKB MCP URL",
-          "description": "The PKB MCP server's streamable-HTTP endpoint (e.g. https://pkb.your-tailnet.ts.net/mcp). `claude plugin install pkb@<marketplace> --config pkb_mcp_url=<url>` bakes it in at install time."
-        }
-      }
-    },
+    "claude": {},
     "agy": {}
   }
 }

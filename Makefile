@@ -96,24 +96,12 @@ build-test: build
 
 # --- Install ---
 
-# pkb's `services` MCP server declares the `pkb_mcp_url` userConfig option
-# (plugins/pkb/manifest/mcp.template.json, `claude` client) and reads it as
-# `${user_config.pkb_mcp_url}` — `claude plugin install --config` bakes a
-# literal into stored settings at install time, so no future shell needs
-# $PKB_MCP_URL exported. Every other plugin's MCP config, if any, still
-# resolves plain env vars at launch. Cowork (whose launch environment
-# propagates neither env vars nor userConfig) is handled at build time in
-# dist/cowork, and for already-installed Cowork sessions by `make
-# install-dev`'s patch-dev-mcp step, not here. agy has no `--config`
-# equivalent; its pkb server ships the literal placeholder `YOUR_PKB_URL`,
-# rewritten after install by patch-agy-mcp below.
 define claude_install
 	command claude plugin install $(1)@$(2) && echo "✓ $(1)@$(2) installed" \
 		|| { echo "x $(1)@$(2) install failed" >&2; exit 1; }
 endef
 
 install-dev: build
-	@uv run python -m build.install patch-dev-mcp
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@command claude plugin marketplace add $(DIST)
 	@for p in $(STALE_PLUGIN_NAMES); do \
@@ -127,13 +115,7 @@ install-dev: build
 		command claude plugin uninstall $$p@academicOps >/dev/null 2>&1 || true; \
 		command claude plugin uninstall aops-$$p@$(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true; \
 		command claude plugin uninstall aops-$$p@academicOps >/dev/null 2>&1 || true; \
-		if [ "$$p" = "pkb" ] && [ -n "$$PKB_MCP_URL" ]; then \
-			command claude plugin install $$p@$(LOCAL_MARKETPLACE) --config pkb_mcp_url="$$PKB_MCP_URL" \
-				&& echo "✓ $$p@$(LOCAL_MARKETPLACE) installed (pkb_mcp_url configured)" \
-				|| { echo "x $$p@$(LOCAL_MARKETPLACE) install failed" >&2; exit 1; }; \
-		else \
-			$(call claude_install,$$p,$(LOCAL_MARKETPLACE)); \
-		fi; \
+		$(call claude_install,$$p,$(LOCAL_MARKETPLACE)); \
 	done
 	@mkdir -p ~/.gemini/config/plugins
 	@for p in $(PLUGIN_NAMES); do \
@@ -144,7 +126,6 @@ install-dev: build
 			command -v agy >/dev/null 2>&1 && (agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 && echo "✓ agy $$p installed" || true); \
 		fi; \
 	done || true
-	@uv run python -m build.install patch-agy-mcp
 	@uv run python -m build.install install --dist-root $(DIST)
 	@uv run pre-commit install >/dev/null 2>&1 || true
 	@echo "Local marketplace '$(LOCAL_MARKETPLACE)' -> $(DIST). Run 'make uninstall-dev' to restore the release channel."

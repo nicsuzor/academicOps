@@ -29,10 +29,9 @@ git config --global core.askPass /usr/local/bin/gh-token-askpass
 claude plugin marketplace add nicsuzor/academicOps#dist || true
 claude plugin marketplace update academicOps || true
 
+claude plugin install pkb@academicOps
 if [ -n "${PKB_MCP_URL:-}" ]; then
-  claude plugin install pkb@academicOps --config pkb_mcp_url="${PKB_MCP_URL}"
-else
-  claude plugin install pkb@academicOps
+  claude mcp add --transport http --scope user services "${PKB_MCP_URL}"
 fi
 claude plugin install ida@academicOps
 claude plugin install orchestrate@academicOps

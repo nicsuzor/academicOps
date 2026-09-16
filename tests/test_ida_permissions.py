@@ -85,8 +85,8 @@ def test_scratchpad_gate_blocks_pkb_writes_for_ida():
         "pkb__batch_merge",
         "pkb__decompose_task",
         "pkb__claim_task",
-        "mcp__plugin_pkb_services__pkb-create_task",
-        "mcp__plugin_pkb_services__pkb-update_task",
+        "mcp__services__pkb-create_task",
+        "mcp__services__pkb-update_task",
     ]
     for tool_name in write_tools:
         ctx = HookContext(
@@ -103,19 +103,18 @@ def test_scratchpad_gate_blocks_pkb_writes_for_ida():
 
 
 def test_scratchpad_gate_blocks_pkb_writes_under_any_endpoint_prefix():
-    """The prefix between the plugin wrapper and the op name is transport-derived
+    """The prefix between the server name and the op name is transport-derived
     (Docker MCP gateway, Bifrost, or a direct connection each produce a different
     one, or none) -- the gate must not depend on which one is live."""
     write_tools = [
-        # Direct connection through the Claude Code plugin wrapper, no gateway
-        # prefix at all.
-        "mcp__plugin_pkb_services__create_task",
-        "mcp__plugin_pkb_services__update_body",
+        # Direct connection through user-level services server, no gateway prefix at all.
+        "mcp__services__create_task",
+        "mcp__services__update_body",
         # A gateway using a hyphen rather than a double underscore.
-        "mcp__plugin_pkb_services__pkb-create_task",
+        "mcp__services__pkb-create_task",
         # Batch/merge ops not individually enumerated.
-        "mcp__plugin_pkb_services__pkb-batch_reparent",
-        "mcp__plugin_pkb_services__merge_duplicates",
+        "mcp__services__pkb-batch_reparent",
+        "mcp__services__merge_duplicates",
     ]
     for tool_name in write_tools:
         ctx = HookContext(

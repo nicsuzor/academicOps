@@ -8,20 +8,21 @@
 ## From the release channel
 
 ```bash
+# 1. Register the services MCP server at user level:
+claude mcp add --transport http --scope user services <your PKB MCP endpoint>
+
+# 2. Install plugins from the marketplace:
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
+claude plugin install pkb@academicOps
 claude plugin install aops@academicOps
 ```
 
-`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as
-`aops`, with no `--config`. `pkb_mcp_url` is the one `userConfig` option any
-manifest declares -- the `pkb` plugin's `services` MCP server reads it as
-`${user_config.pkb_mcp_url}`, and `--config` bakes a literal into stored
-settings at install time, so no shell needs `$PKB_MCP_URL` exported
-afterwards. Installing `agy` from source (`make install-dev`, below) instead
-sets `$PKB_MCP_URL` in your shell before running it; agy has no `--config`
-equivalent, so `make install-dev` rewrites its own literal placeholder after
-install.
+The `services` MCP server is installed at user level across all surfaces, never shipped inside a plugin:
+- **Local Claude Code**: `claude mcp add --transport http --scope user services <PKB_MCP_URL>`. Must use `--scope user`; `--scope local` was observed to register nothing. Note: on local machines, `~/dotfiles/scripts/sync-mcp-servers.sh` is the appropriate home to synchronize user-scoped MCP registrations.
+- **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
+- **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
+
+Plugins install with no `--config`: `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as `pkb` and `aops`.
 
 Nothing else has a default. Set the environment variables each plugin needs
 before first use -- the full list is in [`README.md`](README.md#configure),

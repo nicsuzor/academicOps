@@ -88,9 +88,9 @@ sharing the pass would not.
 Before the timer is enabled, the entrypoint must run once manually and the run must be confirmed
 to have executed a real PKB write (`update_task` or `release_task`), not only reads -- the write
 path is untested headlessly. That run should also confirm which transport resolves this skill's
-`mcp__plugin_pkb_services__*` calls: a same-day probe on this host found the `plugin:pkb:services`
-transport those names imply failing to connect headlessly (`CONNECTION_CLOSED`), with only the
-separately-configured `services` HTTP server resolving the same tool calls. Whether that gap is
+`mcp__services__*` calls: a same-day probe on this host found the `plugin:pkb:services`
+transport failing to connect headlessly (`CONNECTION_CLOSED`), with only the
+user-level `services` HTTP server resolving the same tool calls. Whether that gap is
 still open when this trigger is installed is a fact to check at install time, not to assume.
 
 ## Frontmatter markers

@@ -79,8 +79,9 @@ Install what you need -- plugins are separately installable and loosely coupled:
 ## Install
 
 ```bash
+claude mcp add --transport http --scope user services <your PKB MCP endpoint>
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
+claude plugin install pkb@academicOps
 claude plugin install aops@academicOps
 ```
 

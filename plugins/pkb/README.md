@@ -1,6 +1,6 @@
 # pkb
 
-PKB custodian (`pauli`), memory skills, and client integration for the PKB MCP server.
+PKB custodian (`pauli`) and memory skills.
 
 ## Components
 
@@ -29,13 +29,10 @@ PKB custodian (`pauli`), memory skills, and client integration for the PKB MCP s
 
 ## Configuration
 
-| Setting       | Source      | Purpose                               |
-| ------------- | ----------- | ------------------------------------- |
-| `PKB_MCP_URL` | environment | HTTP endpoint for the PKB MCP server. |
-
-Access to `$ACA_DATA` is strictly through MCP tools; direct filesystem manipulation is prohibited.
+The PKB `services` MCP server is installed at user level (`services`) on each surface, not shipped inside the plugin.
+Access to `$ACA_DATA` is strictly through MCP tools (`mcp__services__*`); direct filesystem manipulation is prohibited.
 
 ## Dependencies
 
-- External PKB MCP server at `$PKB_MCP_URL`.
+- External PKB MCP server installed at user level (`services`).
 - `lib/hooks/` injected at build time.
