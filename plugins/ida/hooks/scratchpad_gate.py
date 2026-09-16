@@ -7,17 +7,16 @@ from pathlib import Path
 
 from dispatch import HookContext, Result, refuse
 
-# PKB write operations that must be blocked for Ida. The Claude Code plugin
-# wrapper (`mcp__plugin_pkb_services__`) is stable -- it comes from this repo's
-# own plugin name and MCP config key. What is NOT stable is the segment the
-# backend behind $PKB_MCP_URL adds on top of that (a gateway's per-catalog-key
-# tool-name prefix, a different gateway's own convention, or nothing at all on
-# a direct connection). Matching on the operation name's suffix, rather than
-# enumerating every prefix combination, survives any such endpoint move.
+# PKB write operations that must be blocked for Ida. The user-level MCP
+# prefix (`mcp__services__`) is stable across surfaces. What is NOT stable
+# is the segment the backend behind $PKB_MCP_URL adds on top of that (a gateway's
+# per-catalog-key tool-name prefix, a different gateway's own convention, or
+# nothing at all on a direct connection). Matching on the operation name's suffix,
+# rather than enumerating every prefix combination, survives any such endpoint move.
 # Over-matching is the safe failure here: the only cost of a false positive is
 # Ida being told to delegate a write it may not even have attempted, while a
 # false negative lets a write through the gate exists to stop.
-PKB_PLUGIN_PREFIX = "mcp__plugin_pkb_services__"
+PKB_PLUGIN_PREFIX = "mcp__services__"
 
 PKB_WRITE_OPS = frozenset(
     {

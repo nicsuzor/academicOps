@@ -60,7 +60,7 @@ While the subagent runs in the background, establish the ground-truth baseline:
 
 1. Locate session transcript files in `transcripts/YYYY-MM/` (e.g., `*<session_id>*.full.md`, `*<session_id>*.controller.md`).
 2. Search for tool execution logs matching target actions:
-   - PKB operations run through the `services` MCP server's code-mode interface (`mcp__plugin_pkb_services__executeToolCode` calls whose `code` argument invokes `pkb.create_task`, `pkb.create`, `pkb.update_body`, `pkb.append`, etc.) -- match on the `pkb.<op>(` substring inside the `executeToolCode` call, not a flat tool name.
+   - PKB operations run through the `services` MCP server's code-mode interface (`mcp__services__executeToolCode` calls whose `code` argument invokes `pkb.create_task`, `pkb.create`, `pkb.update_body`, `pkb.append`, etc.) -- match on the `pkb.<op>(` substring inside the `executeToolCode` call, not a flat tool name.
 3. Construct the Ground Truth Baseline Table:
    - **Tasks Created:** Node ID, title, parent, creator subagent.
    - **Notes/Memories Updated:** Node ID, title, modification details, subagent.

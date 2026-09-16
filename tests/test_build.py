@@ -17,7 +17,7 @@ import pytest
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template
-from build.marketplace import _bake_cowork_mcp_json, load_marketplace_toml
+from build.marketplace import load_marketplace_toml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
@@ -772,128 +772,7 @@ def test_cowork_directory_copy_matches_claude_dist_when_url_unset(built, monkeyp
     assert claude_mcp == cowork_mcp
 
 
-def _fixture_pkb_mcp_json(tmp_path: Path, servers: dict | None = None) -> Path:
-    mcp_path = tmp_path / ".mcp.json"
-    mcp_path.write_text(
-        json.dumps(
-            {
-                "mcpServers": servers
-                if servers is not None
-                else {
-                    "services": {
-                        "type": "http",
-                        "url": "${PKB_MCP_URL}",
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    return mcp_path
-
-
-def test_cowork_ships_no_url_when_build_env_has_none(tmp_path, monkeypatch):
-    """The published channel is built without PKB_MCP_URL and must ship without
-    an endpoint — unset is not a build failure, it just yields an unrewritten
-    (and, in Cowork, non-functional) MCP config."""
-    monkeypatch.delenv("PKB_MCP_URL", raising=False)
-    assert _bake_cowork_mcp_json(_fixture_pkb_mcp_json(tmp_path), "plug") is None
-
-
-def _expected_cowork_server(url: str = "https://pkb.example.ts.net/mcp") -> dict:
-    return {
-        "type": "http",
-        "url": url,
-    }
-
-
-def test_cowork_resolves_url_from_build_env_into_http_server(tmp_path, monkeypatch):
-    """A local build with PKB_MCP_URL exported produces a usable channel: no
-    Cowork install path can supply the endpoint afterwards, so it travels in
-    the artifact — baked into the http server's url. The trailing
-    slash is stripped (the endpoint 404s with one)."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp/")
-    baked = _bake_cowork_mcp_json(_fixture_pkb_mcp_json(tmp_path), "plug")
-    assert baked is not None
-    servers = json.loads(baked)["mcpServers"]
-    assert servers == {"services": _expected_cowork_server()}
-    assert "${PKB_MCP_URL}" not in baked
-    assert "user_config" not in baked
-
-
-def test_cowork_emits_an_http_server(tmp_path, monkeypatch):
-    """With OAuth in place, the HTTP server is baked with the concrete
-    URL in Cowork."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    baked = _bake_cowork_mcp_json(_fixture_pkb_mcp_json(tmp_path), "plug")
-    assert baked is not None
-    assert json.loads(baked)["mcpServers"]["services"]["type"] == "http"
-    assert json.loads(baked)["mcpServers"]["services"]["url"] == "https://pkb.example.ts.net/mcp"
-
-
-def test_cowork_detects_the_userconfig_placeholder_form(tmp_path, monkeypatch):
-    """The claude client's pkb server defers via `${user_config.pkb_mcp_url}`
-    (its userConfig substitution), not `$PKB_MCP_URL` — Cowork has neither
-    env vars nor userConfig, so this form must bake to a literal too."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    mcp_path = _fixture_pkb_mcp_json(
-        tmp_path,
-        {
-            "services": {
-                "type": "http",
-                "url": "${user_config.pkb_mcp_url}",
-            }
-        },
-    )
-    baked = json.loads(_bake_cowork_mcp_json(mcp_path, "plug") or "{}")
-    assert baked["mcpServers"] == {
-        "services": {
-            "type": "http",
-            "url": "https://pkb.example.ts.net/mcp",
-        }
-    }
-
-
-def test_cowork_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    mcp_path = _fixture_pkb_mcp_json(tmp_path)
-    data = json.loads(mcp_path.read_text(encoding="utf-8"))
-    data["mcpServers"]["other"] = {"command": "other-server", "args": ["--stdio"]}
-    mcp_path.write_text(json.dumps(data), encoding="utf-8")
-
-    baked = json.loads(_bake_cowork_mcp_json(mcp_path, "plug") or "{}")
-    assert baked["mcpServers"]["other"] == {"command": "other-server", "args": ["--stdio"]}
-    assert baked["mcpServers"]["services"] == _expected_cowork_server()
-
-
-def test_cowork_untouched_when_no_server_defers_to_the_env_var(tmp_path, monkeypatch):
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    mcp_path = _fixture_pkb_mcp_json(
-        tmp_path, {"other": {"type": "http", "url": "https://other.example/mcp"}}
-    )
-    assert _bake_cowork_mcp_json(mcp_path, "plug") is None
-
-
-def test_cowork_rejects_a_second_server_at_the_pkb_endpoint(tmp_path, monkeypatch):
-    """Exactly one server may defer to the PKB endpoint. The old bake collapsed
-    extras silently; substitution preserves each server's shape and so cannot,
-    and shipping two entries at one url would load every PKB tool schema twice.
-    A build failure is the right outcome — the template is wrong."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    mcp_path = _fixture_pkb_mcp_json(tmp_path)
-    data = json.loads(mcp_path.read_text(encoding="utf-8"))
-    data["mcpServers"]["services-extra"] = {"type": "http", "url": "${PKB_MCP_URL}"}
-    mcp_path.write_text(json.dumps(data), encoding="utf-8")
-
-    with pytest.raises(BuildError, match=r"expected exactly one"):
-        _bake_cowork_mcp_json(mcp_path, "plug")
-
-
-def test_cowork_directory_and_zip_carry_the_http_server(tmp_path, monkeypatch):
-    """End to end: with PKB_MCP_URL exported, both the dist/cowork/<name>
-    directory copy and its zip carry the http server with the concrete endpoint,
-    and the claude dist keeps the ${PKB_MCP_URL} placeholder."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+def test_cowork_directory_and_zip_match(tmp_path):
     dist = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
@@ -903,16 +782,14 @@ def test_cowork_directory_and_zip_carry_the_http_server(tmp_path, monkeypatch):
         clients=("claude",),
         version=VERSION,
     )
-    claude_mcp = (dist / "pkb-claude" / ".mcp.json").read_text()
-    assert "${PKB_MCP_URL}" in claude_mcp
-    assert "pkb.example.ts.net" not in claude_mcp
-
-    dir_mcp = json.loads((dist / "cowork" / "pkb" / ".mcp.json").read_text())
-    assert dir_mcp["mcpServers"] == {"services": _expected_cowork_server()}
-    assert not (dist / "cowork" / "pkb" / "scripts" / "run-mcp.sh").exists()
-    with zipfile.ZipFile(dist / "cowork" / f"pkb-v{VERSION}.zip") as zf:
-        zip_mcp = json.loads(zf.read("pkb/.mcp.json"))
-    assert zip_mcp == dir_mcp
+    dir_content = (dist / "cowork" / "pkb").is_dir()
+    assert dir_content
+    zip_path = dist / "cowork" / f"pkb-v{VERSION}.zip"
+    assert zip_path.is_file()
+    with zipfile.ZipFile(zip_path) as zf:
+        names = zf.namelist()
+        assert "pkb/README.md" in names
+    assert not (dist / "cowork" / "pkb" / ".mcp.json").exists()
 
 
 # --- hard-error paths ---------------------------------------------------------
@@ -1242,19 +1119,35 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
 
 
 def test_openclaw_does_not_bake_urls(tmp_path):
-    dist_root = tmp_path / "dist"
-    build_all(
-        PROJECT_ROOT,
-        dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb"],
-        clients=("claude", "openclaw"),
-        version=VERSION,
-    )
+    from build.clients.claude import adapt as adapt_claude
+    from build.clients.openclaw import adapt as adapt_openclaw
+    from build.context import BuildContext, Plugin
 
-    claude_mcp = (dist_root / "pkb-claude" / ".mcp.json").read_bytes()
-    openclaw_mcp = (dist_root / "openclaw" / "pkb" / ".mcp.json").read_bytes()
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    plugin = Plugin(
+        directory="test-plugin",
+        marketplace_name="test-plugin",
+        description="desc",
+        category="productivity",
+        source_dir=src_dir,
+    )
+    manifests = {
+        "plugin": {"name": "test-plugin"},
+        "mcp": {"mcpServers": {"srv": {"url": "${SOME_URL}"}}},
+    }
+    claude_dir = tmp_path / "claude"
+    claude_dir.mkdir()
+    adapt_claude(claude_dir, BuildContext(plugin=plugin, client="claude", version=VERSION, manifests=manifests))
+
+    openclaw_dir = tmp_path / "openclaw"
+    openclaw_dir.mkdir()
+    adapt_openclaw(openclaw_dir, BuildContext(plugin=plugin, client="openclaw", version=VERSION, manifests=manifests))
+
+    claude_mcp = (claude_dir / ".mcp.json").read_bytes()
+    openclaw_mcp = (openclaw_dir / ".mcp.json").read_bytes()
     assert claude_mcp == openclaw_mcp
+    assert json.loads(claude_mcp)["mcpServers"]["srv"]["url"] == "${SOME_URL}"
 
 
 def test_openclaw_ida_face_configuration(tmp_path):
@@ -1278,29 +1171,22 @@ def test_openclaw_ida_face_configuration(tmp_path):
     assert agent["name"] == "ida"
 
 
-def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
-    """One PKB endpoint, registered once.
-
-    Registering the same PKB endpoint under two server names loads every PKB
-    tool schema twice into every agent's static context. Both `claude` and
-    `agy` use the remote HTTP server at `${PKB_MCP_URL}`.
-    """
+def test_no_built_artifact_declares_services(tmp_path):
+    """No plugin manifest, .mcp.json, or built artifact in dist declares services (aops_services_user_level)."""
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb"],
-        clients=("claude", "agy"),
+        plugins=["pkb", "aops"],
+        clients=("claude", "agy", "openclaw"),
         version=VERSION,
     )
-    claude_mcp = json.loads((dist_root / "pkb-claude" / ".mcp.json").read_text())
-    assert claude_mcp["mcpServers"] == {
-        "services": {
-            "type": "http",
-            "url": "${PKB_MCP_URL}",
-        }
-    }
-
-    agy_mcp = json.loads((dist_root / "pkb-agy" / "mcp_config.json").read_text())
-    assert agy_mcp["mcpServers"] == {"services": {"serverUrl": "${PKB_MCP_URL}"}}
+    for p in dist_root.rglob(".mcp.json"):
+        data = json.loads(p.read_text())
+        assert "services" not in data.get("mcpServers", {})
+    for p in dist_root.rglob("mcp_config.json"):
+        data = json.loads(p.read_text())
+        assert "services" not in data.get("mcpServers", {})
+    assert not (dist_root / "pkb-claude" / ".mcp.json").exists()
+    assert not (dist_root / "pkb-agy" / "mcp_config.json").exists()

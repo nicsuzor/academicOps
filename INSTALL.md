@@ -5,23 +5,39 @@
 - [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), or Antigravity
 - Docker, only if you want polecat's containerised workers
 
+## Knowledge Base (services MCP server)
+
+The `services` MCP server connects your agent to the Personal Knowledge Base (PKB) and is installed at user level on every surface, never shipped inside a plugin:
+
+- **Local (Claude Code CLI / Desktop):**
+  ```bash
+  claude mcp add --scope user services <PKB_MCP_URL>
+  ```
+  Must use `--scope user` (`--scope local` was observed to register nothing into global project configs).
+- **Cloud / Cowork:**
+  Add the claude.ai account connector named `services` pointing to your PKB MCP URL.
+- **Antigravity (`agy`):**
+  Configure the `services` server in `~/.gemini/config/mcp_config.json`:
+  ```json
+  {
+    "mcpServers": {
+      "services": {
+        "serverUrl": "<PKB_MCP_URL>"
+      }
+    }
+  }
+  ```
+
 ## From the release channel
 
 ```bash
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
+claude plugin install pkb@academicOps
 claude plugin install aops@academicOps
 ```
 
 `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as
-`aops`, with no `--config`. `pkb_mcp_url` is the one `userConfig` option any
-manifest declares -- the `pkb` plugin's `services` MCP server reads it as
-`${user_config.pkb_mcp_url}`, and `--config` bakes a literal into stored
-settings at install time, so no shell needs `$PKB_MCP_URL` exported
-afterwards. Installing `agy` from source (`make install-dev`, below) instead
-sets `$PKB_MCP_URL` in your shell before running it; agy has no `--config`
-equivalent, so `make install-dev` rewrites its own literal placeholder after
-install.
+`aops`, with no `--config`.
 
 Nothing else has a default. Set the environment variables each plugin needs
 before first use -- the full list is in [`README.md`](README.md#configure),

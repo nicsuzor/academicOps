@@ -1,7 +1,6 @@
 #!/bin/bash
 # Required environment variables (set in the session env before running):
 #   TS_AUTHKEY=YOUR_KEY
-#   PKB_MCP_URL=YOUR_PKB
 
 set -euo pipefail
 
@@ -29,11 +28,7 @@ git config --global core.askPass /usr/local/bin/gh-token-askpass
 claude plugin marketplace add nicsuzor/academicOps#dist || true
 claude plugin marketplace update academicOps || true
 
-if [ -n "${PKB_MCP_URL:-}" ]; then
-  claude plugin install pkb@academicOps --config pkb_mcp_url="${PKB_MCP_URL}"
-else
-  claude plugin install pkb@academicOps
-fi
+claude plugin install pkb@academicOps
 claude plugin install ida@academicOps
 claude plugin install orchestrate@academicOps
 claude plugin install rbg@academicOps

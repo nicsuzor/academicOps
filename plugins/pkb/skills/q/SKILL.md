@@ -2,7 +2,7 @@
 name: q
 type: command
 description: Stage 1 Intake & Capture--place an ask or idea on the graph under the right parent, wire contributes_to/depends_on, densify with wikilinks, and record strategic valuation at intake.
-allowed-tools: [Skill, AskUserQuestion, mcp__plugin_pkb_services__*]
+allowed-tools: [Skill, AskUserQuestion, mcp__services__*]
 ---
 
 # /q -- Strategic Intake & Graph Placement

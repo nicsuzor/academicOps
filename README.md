@@ -80,12 +80,16 @@ Install what you need -- plugins are separately installable and loosely coupled:
 
 ```bash
 claude plugin marketplace add nicsuzor/academicOps@dist
-claude plugin install pkb@academicOps --config pkb_mcp_url=<your PKB MCP endpoint>
+claude plugin install pkb@academicOps
 claude plugin install aops@academicOps
 ```
 
-`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as
-`aops`, with no `--config`.
+The `services` MCP server connects your agent to the Personal Knowledge Base (PKB) and is installed at user level on each surface (never shipped inside a plugin):
+- **Local:** `claude mcp add --scope user services <PKB_MCP_URL>`
+- **Cloud / Cowork:** claude.ai account connector named `services`
+- **Antigravity (`agy`):** configured in `~/.gemini/config/mcp_config.json`
+
+`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as `aops`, with no `--config`.
 
 Requirements: Claude Code (or Antigravity), and Docker if you want polecat's containerised workers.
 

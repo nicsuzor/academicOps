@@ -20,8 +20,8 @@
 #   Confirm in the run's output that a real PKB write executed
 #   (update_task or release_task on a non-terminal task, not just a read)
 #   and that the tool call resolved -- reconcile's SKILL.md addresses PKB
-#   tools by the `mcp__plugin_pkb_services__pkb__*` plugin prefix, and
-#   aops_reconcile_headless_trigger_probe found that prefix's transport
+#   tools via the `mcp__services__*` user-level prefix, and
+#   aops_reconcile_headless_trigger_probe found the old plugin transport
 #   (plugin:pkb:services) failing to connect headlessly on this same host
 #   one probe-run earlier (CONNECTION_CLOSED) -- confirm which transport
 #   is live before trusting any unattended run. Do not enable the timer

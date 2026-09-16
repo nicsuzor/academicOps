@@ -47,55 +47,31 @@ defaults") -- see "MCP server configuration" below for the form each client
 takes.
 
 **MCP server configuration:**
-The PKB `services` MCP server ships in `plugins/pkb` as a remote HTTP server
-pointing to `${PKB_MCP_URL}`. With OAuth configured, clients connect directly
-via HTTP rather than through a FastMCP stdio proxy. Every surface needs the
-endpoint in place before first use; which mechanism supplies it differs by
-client:
+The PKB `services` MCP server is installed at user level on every surface
+and is never shipped inside a plugin (mem_4b6effd5). Cloud sessions never load
+plugin MCP servers (`CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS=1`), so user-level
+registration is required across all surfaces:
 
-1. **`claude` client -- `userConfig` + `--config` / env resolution.**
-   `plugins/pkb/manifest/plugin.template.json` declares a `pkb_mcp_url` userConfig
-   option. Claude Code expands `${PKB_MCP_URL}` from the environment at launch,
-   or resolves it from `--config pkb_mcp_url=<url>` when installed with
-   `claude plugin install pkb@<marketplace> --config pkb_mcp_url=<url>` --
-   no shell export needed afterwards on surfaces using `--config` (e.g. `make install-dev`).
-2. **`agy` client -- placeholder rewritten post-install.**
-   agy has no `--config`/userConfig substitution: `agy plugin install <dir>`
-   copies a plugin's built `mcp_config.json` verbatim. Its `services` server
-   ships with `serverUrl` set to `${PKB_MCP_URL}`. `build.install patch-agy-mcp`
-   rewrites that placeholder to the concrete value in
-   `~/.gemini/config/plugins/<name>/mcp_config.json` right after the copy --
-   `make install-dev` runs it once, after installing every plugin for agy.
-   With `$PKB_MCP_URL` unset it is a no-op, not a failure: the plugin installs
-   with the placeholder left in place, unusable until reconfigured.
-
-   A polecat container is a third `agy` install path, distinct from both
-   `make install-dev` and a bare `agy plugin install`: the aops-crew image
-   runs `agy plugin install` at `docker build` time, long before
-   `$PKB_MCP_URL` is known, so the image ships with the placeholder in place.
-   `lib/polecat/defaults/docker_gemini_fixups.py`'s `fixup-mcp-config-paths`
-   resolves `${PKB_MCP_URL}` when `$PKB_MCP_URL` is set in the container's
-   environment at start time via `entrypoint.sh`.
-3. **Cowork bakes the URL at build time.**
-   Cowork does not expand environment variables at runtime and has no
-   userConfig either, and neither install path (directory marketplace or
-   manual zip upload) can supply a value afterwards. `build.marketplace`
-   therefore substitutes every endpoint placeholder
-   (`${user_config.pkb_mcp_url}`, `${PKB_MCP_URL}`, `$PKB_MCP_URL`,
-   `YOUR_PKB_URL`) with the literal read from `PKB_MCP_URL` in the build
-   environment, in `dist/cowork/<name>/.mcp.json` and so in the zip, which is
-   that directory verbatim.
-   Exactly one server may defer to the endpoint; a second is a build failure,
-   since two entries at one url load every PKB tool schema twice. With
-   `PKB_MCP_URL` unset the build warns and ships the channel unrewritten.
-   `dist/<name>-claude` and `dist/<name>-agy` are never rewritten by this step:
-   they keep their own placeholder for (1) or (2) above to resolve.
-4. **`make install-dev`'s Cowork-session dev workaround.**
-   `build.install patch-dev-mcp` substitutes `$PKB_MCP_URL` with the concrete
-   value from the user's host environment in any existing Cowork GUI session
-   directories, which hold their own copy of a plugin's `.mcp.json` from
-   whenever it was installed. It never touches `dist/`.
-5. **`make clean-plugins` Cowork package pruning**:
+1. **`claude` client (Local CLI / Desktop) -- user-level MCP addition.**
+   ```bash
+   claude mcp add --scope user services <PKB_MCP_URL>
+   ```
+   Must use `--scope user` (`--scope local` leaves project config empty and
+   registers nothing, [[kb_pkb_mcp_url_by_surface]]).
+2. **Cloud / Cowork -- account connector.**
+   Configured as the claude.ai account connector named `services`.
+3. **`agy` client -- user-level `mcp_config.json`.**
+   Configured in `~/.gemini/config/mcp_config.json`:
+   ```json
+   {
+     "mcpServers": {
+       "services": {
+         "serverUrl": "<PKB_MCP_URL>"
+       }
+     }
+   }
+   ```
+4. **`make clean-plugins` Cowork package pruning**:
    `make clean-plugins` invokes `scripts/clean_plugins.py`, which
    cleans uninstalled Cowork session packages and removes session-level plugin data caches.
 
