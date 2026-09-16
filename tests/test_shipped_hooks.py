@@ -404,7 +404,7 @@ def test_no_shipped_config_asks_agy_to_expand_a_variable(dist_root):
     reference, same as before — which is why the allowlist stays this narrow
     rather than growing to cover any other variable.
     """
-    allowed = {"${extensionPath}", "${CLAUDE_PLUGIN_ROOT}"}
+    allowed = {"${extensionPath}", "${CLAUDE_PLUGIN_ROOT}", "${PKB_MCP_URL}"}
     offenders = []
     for name, client, build_dir in _build_dirs(dist_root):
         if client != "agy":

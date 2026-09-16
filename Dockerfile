@@ -249,19 +249,8 @@ ENV UV_PROJECT_ENVIRONMENT=/home/worker/.venv
 COPY --chown=worker:worker pyproject.toml uv.lock /tmp/aops-deps/
 RUN umask 000 && cd /tmp/aops-deps && uv sync --frozen --no-install-project --group dev
 
-# No pkb binary is installed: PKB is a REMOTE MCP server. claude reaches it
-# through the pkb plugin's scripts/run-mcp.sh, which resolves PKB_MCP_URL from
-# the environment and runs `uvx fastmcp run "$PKB_MCP_URL"`; agy dials the
-# URL directly as `serverUrl` (entrypoint.sh resolves it at container start).
-# No URL is baked into this image.
-#
-# Warm uv's cache with that command's dependencies. Cold, `uvx --from
-# fastmcp-slim[server]` resolves and downloads 67 packages on first use, which
-# runs past the window a client waits for an MCP server to hand back its tool
-# list — the server is left starting, no tools are declared, and the agent
-# reports the MCP server as unavailable rather than as slow. Resolving them at
-# build time makes the runtime start a cache hit. No URL is involved.
-RUN uvx --from 'fastmcp-slim[server]' fastmcp --version
+# No pkb binary is installed: PKB is a REMOTE MCP server. Both claude and
+# agy dial the URL directly over HTTP. No URL is baked into this image.
 
 # Pre-create every dir the --chmod'd config COPYs below land in, in one
 # layer. Without this BuildKit auto-creates the intermediate dirs and applies

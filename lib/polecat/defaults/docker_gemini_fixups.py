@@ -49,8 +49,10 @@ def fixup_mcp_config_paths() -> None:
         resolved = data.replace("${extensionPath}", plugin_dir).replace(
             "${CLAUDE_PLUGIN_ROOT}", plugin_dir
         )
-        if pkb_mcp_url and "YOUR_PKB_URL" in resolved:
-            resolved = resolved.replace("YOUR_PKB_URL", pkb_mcp_url)
+        if pkb_mcp_url:
+            for placeholder in ("${PKB_MCP_URL}", "$PKB_MCP_URL", "YOUR_PKB_URL"):
+                if placeholder in resolved:
+                    resolved = resolved.replace(placeholder, pkb_mcp_url)
         if resolved != data:
             json.loads(resolved)  # confirm the replacement didn't corrupt the JSON
             path.write_text(resolved)

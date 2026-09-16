@@ -47,52 +47,35 @@ defaults") -- see "MCP server configuration" below for the form each client
 takes.
 
 **MCP server configuration:**
-The PKB `services` MCP server ships in `plugins/pkb`. The `claude` client (and
-so Cowork) launches it through a FastMCP stdio launcher,
-`plugins/pkb/scripts/run-mcp.sh`, which execs `uvx --from fastmcp-slim[server] fastmcp run
-<endpoint>`, taking the endpoint from its first argument or from `$PKB_MCP_URL`,
-whichever the client substituted; an unexpanded `${...}` placeholder in either
-is discarded. The `agy` client dials the endpoint directly as a remote
-`serverUrl`: under agy a stdio-launched server registers no tools at all,
-plugin-level or user-level, whichever launcher runs it (measured 2026-09-15,
-agy 1.2.2, in the aops-crew container), while a `serverUrl` server registers
-every tool. Every surface needs the literal endpoint in place before first use;
-which mechanism supplies it differs by client, because only Claude Code has an
-install-time substitution feature:
+The PKB `services` MCP server ships in `plugins/pkb` as a remote HTTP server
+pointing to `${PKB_MCP_URL}`. With OAuth configured, clients connect directly
+via HTTP rather than through a FastMCP stdio proxy. Every surface needs the
+endpoint in place before first use; which mechanism supplies it differs by
+client:
 
-1. **`claude` client -- `userConfig` + `--config`.**
-   `plugins/pkb/manifest/mcp.template.json` declares a `pkb_mcp_url` userConfig
-   option and the launcher reads `"${user_config.pkb_mcp_url}"`. Claude Code
-   substitutes that at install time from whatever `--config pkb_mcp_url=<url>`
-   supplies (`claude plugin install pkb@<marketplace> --config
-   pkb_mcp_url=<url>`), storing the value the same way `/plugin configure`
-   would -- no shell export needed afterwards, on any surface that goes
-   through `claude plugin install`: `make install-dev` (passes `--config` when
-   `$PKB_MCP_URL` is set in the installing shell) and `.claude/setup.sh` (the
-   Claude Code web bootstrap, which already calls `--config pkb_mcp_url=`).
-2. **`agy` client -- literal placeholder, rewritten post-install.**
+1. **`claude` client -- `userConfig` + `--config` / env resolution.**
+   `plugins/pkb/manifest/plugin.template.json` declares a `pkb_mcp_url` userConfig
+   option. Claude Code expands `${PKB_MCP_URL}` from the environment at launch,
+   or resolves it from `--config pkb_mcp_url=<url>` when installed with
+   `claude plugin install pkb@<marketplace> --config pkb_mcp_url=<url>` --
+   no shell export needed afterwards on surfaces using `--config` (e.g. `make install-dev`).
+2. **`agy` client -- placeholder rewritten post-install.**
    agy has no `--config`/userConfig substitution: `agy plugin install <dir>`
    copies a plugin's built `mcp_config.json` verbatim. Its `services` server
-   therefore ships the literal text `YOUR_PKB_URL` as its `serverUrl`.
-   `build.install patch-agy-mcp` rewrites that placeholder to the concrete
-   value in `~/.gemini/config/plugins/<name>/mcp_config.json` right after the
-   copy -- `make install-dev` runs it once, after installing every plugin for
-   agy.
+   ships with `serverUrl` set to `${PKB_MCP_URL}`. `build.install patch-agy-mcp`
+   rewrites that placeholder to the concrete value in
+   `~/.gemini/config/plugins/<name>/mcp_config.json` right after the copy --
+   `make install-dev` runs it once, after installing every plugin for agy.
    With `$PKB_MCP_URL` unset it is a no-op, not a failure: the plugin installs
    with the placeholder left in place, unusable until reconfigured.
 
    A polecat container is a third `agy` install path, distinct from both
    `make install-dev` and a bare `agy plugin install`: the aops-crew image
    runs `agy plugin install` at `docker build` time, long before
-   `$PKB_MCP_URL` is known, so the image ships with `YOUR_PKB_URL` baked in
-   and no host `make install-dev` ever runs inside it to rewrite it.
+   `$PKB_MCP_URL` is known, so the image ships with the placeholder in place.
    `lib/polecat/defaults/docker_gemini_fixups.py`'s `fixup-mcp-config-paths`
-   command (already invoked once at image-build time, to resolve
-   `${extensionPath}`/`${CLAUDE_PLUGIN_ROOT}`) also resolves `YOUR_PKB_URL`
-   when `$PKB_MCP_URL` is set in its own environment; `entrypoint.sh` calls it
-   a second time at container start, once the container's own environment
-   (forwarded by `polecat run`, `polecat-system` step 5) actually carries the
-   URL.
+   resolves `${PKB_MCP_URL}` when `$PKB_MCP_URL` is set in the container's
+   environment at start time via `entrypoint.sh`.
 3. **Cowork bakes the URL at build time.**
    Cowork does not expand environment variables at runtime and has no
    userConfig either, and neither install path (directory marketplace or
@@ -101,20 +84,12 @@ install-time substitution feature:
    (`${user_config.pkb_mcp_url}`, `${PKB_MCP_URL}`, `$PKB_MCP_URL`,
    `YOUR_PKB_URL`) with the literal read from `PKB_MCP_URL` in the build
    environment, in `dist/cowork/<name>/.mcp.json` and so in the zip, which is
-   that directory verbatim. It is a substitution, not a rewrite: the Cowork
-   zip ships the claude package's server shape -- one
-   `plugins/pkb/scripts/run-mcp.sh` launcher carrying the endpoint in both
-   `args` and `env`, so whichever substitution a client performs, one of them
-   lands -- and only the endpoint's _source_ differs between the package and
-   the zip, so the two cannot drift apart.
+   that directory verbatim.
    Exactly one server may defer to the endpoint; a second is a build failure,
-   since two entries at one url load every PKB tool schema twice.
-   Cowork registers a plugin http server as a claude.ai connector and probes it
-   server-side, so a tailnet endpoint never installs (ruling, 2026-09-14). With `PKB_MCP_URL` unset the build warns and ships the channel
-   unrewritten -- the published channel is built that way and its `services`
-   MCP does not work in Cowork. `dist/<name>-claude` and `dist/<name>-agy` are
-   never rewritten by this step: they keep their own placeholder for (1) or
-   (2) above to resolve.
+   since two entries at one url load every PKB tool schema twice. With
+   `PKB_MCP_URL` unset the build warns and ships the channel unrewritten.
+   `dist/<name>-claude` and `dist/<name>-agy` are never rewritten by this step:
+   they keep their own placeholder for (1) or (2) above to resolve.
 4. **`make install-dev`'s Cowork-session dev workaround.**
    `build.install patch-dev-mcp` substitutes `$PKB_MCP_URL` with the concrete
    value from the user's host environment in any existing Cowork GUI session

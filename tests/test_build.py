@@ -781,12 +781,8 @@ def _fixture_pkb_mcp_json(tmp_path: Path, servers: dict | None = None) -> Path:
                 if servers is not None
                 else {
                     "services": {
-                        "command": "bash",
-                        "args": [
-                            "${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh",
-                            "${user_config.pkb_mcp_url}",
-                        ],
-                        "env": {"PKB_MCP_URL": "${user_config.pkb_mcp_url}"},
+                        "type": "http",
+                        "url": "${PKB_MCP_URL}",
                     }
                 }
             }
@@ -805,43 +801,34 @@ def test_cowork_ships_no_url_when_build_env_has_none(tmp_path, monkeypatch):
 
 
 def _expected_cowork_server(url: str = "https://pkb.example.ts.net/mcp") -> dict:
-    """The one server shape the Cowork channel ships: the stdio launcher with
-    the endpoint baked into `env`. Ruling (Nic, 2026-09-14) — a plugin
-    `type: http` server on Cowork becomes a claude.ai connector fetched from
-    Anthropic's side, which cannot reach a tailnet host, so it never installs.
-    """
     return {
-        "command": "bash",
-        "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh", url],
-        "env": {"PKB_MCP_URL": url},
+        "type": "http",
+        "url": url,
     }
 
 
-def test_cowork_resolves_url_from_build_env_into_stdio_launcher(tmp_path, monkeypatch):
+def test_cowork_resolves_url_from_build_env_into_http_server(tmp_path, monkeypatch):
     """A local build with PKB_MCP_URL exported produces a usable channel: no
     Cowork install path can supply the endpoint afterwards, so it travels in
-    the artifact — baked into the stdio launcher's env block. The trailing
+    the artifact — baked into the http server's url. The trailing
     slash is stripped (the endpoint 404s with one)."""
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp/")
     baked = _bake_cowork_mcp_json(_fixture_pkb_mcp_json(tmp_path), "plug")
     assert baked is not None
     servers = json.loads(baked)["mcpServers"]
     assert servers == {"services": _expected_cowork_server()}
-    # `${CLAUDE_PLUGIN_ROOT}` is the client's own substitution and does expand
-    # on Cowork; the builder's env vars do not, which is why the url is literal.
     assert "${PKB_MCP_URL}" not in baked
     assert "user_config" not in baked
 
 
-def test_cowork_never_emits_an_http_server(tmp_path, monkeypatch):
-    """Guard on the 2026-09-14 ruling: an http server would be registered as a
-    claude.ai connector and probed server-side, so it must not reappear in the
-    Cowork channel on the grounds that a tool call happened to resolve."""
+def test_cowork_emits_an_http_server(tmp_path, monkeypatch):
+    """With OAuth in place, the HTTP server is baked with the concrete
+    URL in Cowork."""
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
     baked = _bake_cowork_mcp_json(_fixture_pkb_mcp_json(tmp_path), "plug")
     assert baked is not None
-    for cfg in json.loads(baked)["mcpServers"].values():
-        assert cfg.get("type") != "http"
+    assert json.loads(baked)["mcpServers"]["services"]["type"] == "http"
+    assert json.loads(baked)["mcpServers"]["services"]["url"] == "https://pkb.example.ts.net/mcp"
 
 
 def test_cowork_detects_the_userconfig_placeholder_form(tmp_path, monkeypatch):
@@ -853,16 +840,16 @@ def test_cowork_detects_the_userconfig_placeholder_form(tmp_path, monkeypatch):
         tmp_path,
         {
             "services": {
-                "command": "bash",
-                "args": ["-c", 'fastmcp run "${user_config.pkb_mcp_url}"'],
+                "type": "http",
+                "url": "${user_config.pkb_mcp_url}",
             }
         },
     )
     baked = json.loads(_bake_cowork_mcp_json(mcp_path, "plug") or "{}")
     assert baked["mcpServers"] == {
         "services": {
-            "command": "bash",
-            "args": ["-c", 'fastmcp run "https://pkb.example.ts.net/mcp"'],
+            "type": "http",
+            "url": "https://pkb.example.ts.net/mcp",
         }
     }
 
@@ -895,19 +882,17 @@ def test_cowork_rejects_a_second_server_at_the_pkb_endpoint(tmp_path, monkeypatc
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
     mcp_path = _fixture_pkb_mcp_json(tmp_path)
     data = json.loads(mcp_path.read_text(encoding="utf-8"))
-    data["mcpServers"]["services-http"] = {"type": "http", "url": "${PKB_MCP_URL}"}
+    data["mcpServers"]["services-extra"] = {"type": "http", "url": "${PKB_MCP_URL}"}
     mcp_path.write_text(json.dumps(data), encoding="utf-8")
 
     with pytest.raises(BuildError, match=r"expected exactly one"):
         _bake_cowork_mcp_json(mcp_path, "plug")
 
 
-def test_cowork_directory_and_zip_carry_the_stdio_launcher(tmp_path, monkeypatch):
+def test_cowork_directory_and_zip_carry_the_http_server(tmp_path, monkeypatch):
     """End to end: with PKB_MCP_URL exported, both the dist/cowork/<name>
-    directory copy and its zip carry the stdio launcher with the endpoint in
-    `env`, and the claude dist keeps the `${user_config.pkb_mcp_url}`
-    placeholder for `claude plugin install --config pkb_mcp_url=...` to
-    resolve at install time."""
+    directory copy and its zip carry the http server with the concrete endpoint,
+    and the claude dist keeps the ${PKB_MCP_URL} placeholder."""
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
     dist = tmp_path / "dist"
     build_all(
@@ -919,13 +904,12 @@ def test_cowork_directory_and_zip_carry_the_stdio_launcher(tmp_path, monkeypatch
         version=VERSION,
     )
     claude_mcp = (dist / "pkb-claude" / ".mcp.json").read_text()
-    assert "${user_config.pkb_mcp_url}" in claude_mcp
+    assert "${PKB_MCP_URL}" in claude_mcp
     assert "pkb.example.ts.net" not in claude_mcp
 
     dir_mcp = json.loads((dist / "cowork" / "pkb" / ".mcp.json").read_text())
     assert dir_mcp["mcpServers"] == {"services": _expected_cowork_server()}
-    # The launcher the baked config names must actually be in the artifact.
-    assert (dist / "cowork" / "pkb" / "scripts" / "run-mcp.sh").is_file()
+    assert not (dist / "cowork" / "pkb" / "scripts" / "run-mcp.sh").exists()
     with zipfile.ZipFile(dist / "cowork" / f"pkb-v{VERSION}.zip") as zf:
         zip_mcp = json.loads(zf.read("pkb/.mcp.json"))
     assert zip_mcp == dir_mcp
@@ -1298,16 +1282,8 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     """One PKB endpoint, registered once.
 
     Registering the same PKB endpoint under two server names loads every PKB
-    tool schema twice into every agent's static context. `claude` gets the
-    stdio launcher (scripts/run-mcp.sh, carrying the endpoint in both `args`
-    and `env` so whichever substitution the client performs lands) and resolves
-    `${user_config.pkb_mcp_url}` via `--config` (Claude Code's own userConfig
-    substitution). `agy` dials the endpoint directly as `serverUrl`: a
-    stdio-launched server registers no tools under agy (measured 2026-09-15,
-    agy 1.2.2, plugin-level and user-level alike), a `serverUrl` one registers
-    every tool. agy has no substitution mechanism, so it ships the literal
-    `YOUR_PKB_URL` text, rewritten after install by
-    `build.install.patch_agy_mcp`.
+    tool schema twice into every agent's static context. Both `claude` and
+    `agy` use the remote HTTP server at `${PKB_MCP_URL}`.
     """
     dist_root = tmp_path / "dist"
     build_all(
@@ -1321,14 +1297,10 @@ def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
     claude_mcp = json.loads((dist_root / "pkb-claude" / ".mcp.json").read_text())
     assert claude_mcp["mcpServers"] == {
         "services": {
-            "command": "bash",
-            "args": [
-                "${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh",
-                "${user_config.pkb_mcp_url}",
-            ],
-            "env": {"PKB_MCP_URL": "${user_config.pkb_mcp_url}"},
+            "type": "http",
+            "url": "${PKB_MCP_URL}",
         }
     }
 
     agy_mcp = json.loads((dist_root / "pkb-agy" / "mcp_config.json").read_text())
-    assert agy_mcp["mcpServers"] == {"services": {"serverUrl": "YOUR_PKB_URL"}}
+    assert agy_mcp["mcpServers"] == {"services": {"serverUrl": "${PKB_MCP_URL}"}}

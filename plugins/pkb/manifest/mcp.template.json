@@ -5,24 +5,12 @@
     "__base__": {
       "mcpServers": {
         "services": {
-          "command": "bash",
-          "args": [
-            "${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh",
-            "${user_config.pkb_mcp_url}"
-          ],
-          "env": {
-            "PKB_MCP_URL": "${user_config.pkb_mcp_url}"
-          }
+          "type": "http",
+          "url": "${PKB_MCP_URL}"
         }
       }
     },
     "claude": {},
-    "agy": {
-      "mcpServers": {
-        "services": {
-          "serverUrl": "YOUR_PKB_URL"
-        }
-      }
-    }
+    "agy": {}
   }
 }

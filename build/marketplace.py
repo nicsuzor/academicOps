@@ -110,34 +110,20 @@ def _bake_cowork_mcp_json(mcp_path: Path, plugin_name: str) -> str | None:
     literal value of PKB_MCP_URL in the build environment — or None to ship the
     file as the package built it.
 
-    This is the *only* difference between the package and the Cowork zip. Both
-    carry one `services` server launching scripts/run-mcp.sh with the endpoint
-    in both `args` and `env`; the package leaves the placeholder for `claude
-    plugin install --config pkb_mcp_url=...` to resolve, and the zip carries a
-    literal because no Cowork install path can supply one afterwards.
+    This is the *only* difference between the package and the Cowork zip. The
+    package leaves the placeholder for the client to resolve, and the Cowork
+    zip carries a literal because Cowork cannot supply one afterwards.
 
     Cowork launches a plugin's MCP servers from a bare environment: no login
     shell, no launchctl setenv, nothing the plugin's own config did not carry
     in, and no `--config`/userConfig substitution either. `${PKB_MCP_URL}` in
     a url does not expand there (the client reports "Missing environment
-    variables"), a stdio command that reads it gets the empty string, and
-    `${user_config.pkb_mcp_url}` is never resolved. Neither install path —
-    directory marketplace or zip upload — has a way to supply the value after
-    the fact, so the URL has to be in the artifact.
+    variables"), and `${user_config.pkb_mcp_url}` is never resolved. Neither
+    install path — directory marketplace or zip upload — has a way to supply
+    the value after the fact, so the URL has to be in the artifact.
 
-    Not `type: http`. Cowork does not open a plugin http server from the Mac —
-    it registers it as a claude.ai custom connector and validates it with a
-    server-side probe ("Connecting to the server — Couldn't reach this
-    address" / "No server responded at this URL"), so a tailnet endpoint can
-    never install, on Cowork local or cloud alike. Ruling (Nic, 2026-09-14):
-    Cowork uses the stdio proxy, and the bar is a connector that installs and
-    registers in the GUI, not merely a tool call that resolves. This reverses
-    6179c1e2c and the 2026-09-11 `Cowork local | literal ✅` row. See
-    kb_pkb_mcp_url_by_surface.
-
-    `${CLAUDE_PLUGIN_ROOT}` does expand on Cowork — it is the client's own
-    plugin-root substitution, unrelated to the builder's env vars, which do
-    not.
+    With proper OAuth in place, the HTTP MCP server is registered directly
+    and resolves the endpoint at build time when PKB_MCP_URL is set.
 
     The URL is read from the build environment and never committed. An unset
     PKB_MCP_URL is NOT a build failure: the published channel is built without

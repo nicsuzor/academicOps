@@ -29,10 +29,9 @@ PKB custodian (`pauli`), memory skills, and client integration for the PKB MCP s
 
 ## Configuration
 
-| Setting                | Source      | Purpose                                                               |
-| ---------------------- | ----------- | --------------------------------------------------------------------- |
-| `PKB_MCP_URL`          | environment | HTTP endpoint for the PKB MCP server.                                 |
-| `AOPS_UVX_SEARCH_PATH` | environment | Optional colon-separated path to find `uvx` for `scripts/run-mcp.sh`. |
+| Setting       | Source      | Purpose                               |
+| ------------- | ----------- | ------------------------------------- |
+| `PKB_MCP_URL` | environment | HTTP endpoint for the PKB MCP server. |
 
 Access to `$ACA_DATA` is strictly through MCP tools; direct filesystem manipulation is prohibited.
 
@@ -40,4 +39,3 @@ Access to `$ACA_DATA` is strictly through MCP tools; direct filesystem manipulat
 
 - External PKB MCP server at `$PKB_MCP_URL`.
 - `lib/hooks/` injected at build time.
-- `uv` (for `uvx` MCP launching).

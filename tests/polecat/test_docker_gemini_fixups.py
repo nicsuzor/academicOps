@@ -51,6 +51,18 @@ def test_pkb_mcp_url_env_var_resolves_the_placeholder(tmp_path, monkeypatch):
     assert data["mcpServers"]["services"] == {"serverUrl": "https://pkb.example.ts.net/mcp"}
 
 
+def test_pkb_mcp_url_env_var_resolves_braced_placeholder(tmp_path, monkeypatch):
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    gemini_home = tmp_path / ".gemini"
+    mcp_file = _write_mcp_config(gemini_home, "pkb", "${PKB_MCP_URL}")
+
+    module = _load_fixups_module(gemini_home)
+    module.fixup_mcp_config_paths()
+
+    data = json.loads(mcp_file.read_text())
+    assert data["mcpServers"]["services"] == {"serverUrl": "https://pkb.example.ts.net/mcp"}
+
+
 def test_trailing_slash_is_stripped(tmp_path, monkeypatch):
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp/")
     gemini_home = tmp_path / ".gemini"

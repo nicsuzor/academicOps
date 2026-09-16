@@ -257,8 +257,17 @@ def patch_dev_mcp(pkb_url: str | None = None) -> list[Path]:
             for mcp_file in sorted(base.glob("**/rpm/*/.mcp.json")):
                 try:
                     content = mcp_file.read_text(encoding="utf-8")
-                    if "$PKB_MCP_URL" in content:
-                        mcp_file.write_text(content.replace("$PKB_MCP_URL", url), encoding="utf-8")
+                    new_content = content
+                    for placeholder in (
+                        "${PKB_MCP_URL}",
+                        "$PKB_MCP_URL",
+                        "${user_config.pkb_mcp_url}",
+                        "YOUR_PKB_URL",
+                    ):
+                        if placeholder in new_content:
+                            new_content = new_content.replace(placeholder, url)
+                    if new_content != content:
+                        mcp_file.write_text(new_content, encoding="utf-8")
                         patched.append(mcp_file)
                 except OSError:
                     pass
@@ -271,13 +280,11 @@ def patch_agy_mcp(plugins_dir: Path | None = None, pkb_url: str | None = None) -
 
     `agy plugin install <dir>` copies a plugin's built mcp_config.json
     verbatim into ~/.gemini/config/plugins/<name>/ — agy has no
-    `--config`/userConfig substitution, unlike Claude Code (see
-    mcp.template.json's `claude` client, which uses
-    `${user_config.pkb_mcp_url}` instead). The `agy` client's `services`
-    server therefore ships the literal placeholder `YOUR_PKB_URL`
-    (plugins/pkb/manifest/mcp.template.json), which this rewrites to the
-    concrete value right after the copy — so no later `agy` session needs
-    $PKB_MCP_URL re-exported by hand.
+    `--config`/userConfig substitution, unlike Claude Code. The `agy` client's
+    `services` server ships the placeholder `${PKB_MCP_URL}` (or legacy
+    `YOUR_PKB_URL`), which this rewrites to the concrete value right after
+    the copy — so no later `agy` session needs $PKB_MCP_URL re-exported by
+    hand.
 
     Mirrors patch_dev_mcp's Cowork-session rewrite: a plain text
     substitution, never touching dist/, and a no-op — not a failure — with
@@ -289,7 +296,7 @@ def patch_agy_mcp(plugins_dir: Path | None = None, pkb_url: str | None = None) -
     if not url:
         print(
             "  agy dev workaround: PKB_MCP_URL unset in environment; "
-            "skipping YOUR_PKB_URL substitution"
+            "skipping ${PKB_MCP_URL} substitution"
         )
         return []
 
@@ -306,8 +313,12 @@ def patch_agy_mcp(plugins_dir: Path | None = None, pkb_url: str | None = None) -
     for mcp_file in sorted(plugins_dir.glob("*/mcp_config.json")):
         try:
             content = mcp_file.read_text(encoding="utf-8")
-            if "YOUR_PKB_URL" in content:
-                mcp_file.write_text(content.replace("YOUR_PKB_URL", url), encoding="utf-8")
+            new_content = content
+            for placeholder in ("${PKB_MCP_URL}", "$PKB_MCP_URL", "YOUR_PKB_URL"):
+                if placeholder in new_content:
+                    new_content = new_content.replace(placeholder, url)
+            if new_content != content:
+                mcp_file.write_text(new_content, encoding="utf-8")
                 patched.append(mcp_file)
         except OSError:
             pass

@@ -422,3 +422,36 @@ def test_patch_agy_mcp_leaves_plugins_without_the_placeholder_alone(tmp_path):
 
 def test_patch_agy_mcp_missing_plugins_dir_is_a_no_op(tmp_path):
     assert patch_agy_mcp(tmp_path / "nonexistent", "https://pkb.example.ts.net/mcp") == []
+
+
+def test_patch_dev_mcp_patches_braced_placeholder(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    session_dir = (
+        tmp_path / "Library/Application Support/Claude/local-agent-mode-sessions/s1/rpm/pkb"
+    )
+    session_dir.mkdir(parents=True)
+    mcp_content = json.dumps(
+        {"mcpServers": {"services": {"type": "http", "url": "${PKB_MCP_URL}"}}}
+    )
+    (session_dir / ".mcp.json").write_text(mcp_content)
+
+    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
+    patched = patch_dev_mcp()
+
+    assert patched == [session_dir / ".mcp.json"]
+    data = json.loads((session_dir / ".mcp.json").read_text())
+    assert data["mcpServers"]["services"]["url"] == "https://pkb.example.ts.net/mcp"
+
+
+def test_patch_agy_mcp_rewrites_braced_placeholder(tmp_path):
+    plugins_dir = tmp_path / "plugins"
+    pkb_dir = plugins_dir / "pkb"
+    pkb_dir.mkdir(parents=True)
+    mcp_content = json.dumps({"mcpServers": {"services": {"serverUrl": "${PKB_MCP_URL}"}}})
+    (pkb_dir / "mcp_config.json").write_text(mcp_content)
+
+    patched = patch_agy_mcp(plugins_dir, "https://pkb.example.ts.net/mcp/")
+
+    assert patched == [pkb_dir / "mcp_config.json"]
+    data = json.loads((pkb_dir / "mcp_config.json").read_text())
+    assert data["mcpServers"]["services"] == {"serverUrl": "https://pkb.example.ts.net/mcp"}

@@ -148,7 +148,7 @@ def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
     bakes an install path into a shipped artifact and is barred outright
     (specs/ARCHITECTURE.md, binding constraints).
     """
-    allowed = {"${extensionPath}", "${CLAUDE_PLUGIN_ROOT}"}
+    allowed = {"${extensionPath}", "${CLAUDE_PLUGIN_ROOT}", "${PKB_MCP_URL}"}
     for name, server in sorted(servers.items()):
         if isinstance(server, dict) and "url" in server and "serverUrl" not in server:
             server["serverUrl"] = server.pop("url")
@@ -163,8 +163,8 @@ def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
                 f"agy substitutes nothing in mcp_config.json, so this ships to the "
                 f"server process as that literal text. Supply the value another way "
                 f"or drop the agy section — a config agy cannot act on must not ship. "
-                f"(${{extensionPath}} and ${{CLAUDE_PLUGIN_ROOT}} are the only tokens "
-                f"the aops-crew image's post-install fixup resolves; this one is not "
+                f"(${{extensionPath}}, ${{CLAUDE_PLUGIN_ROOT}}, and ${{PKB_MCP_URL}} "
+                f"are the only tokens the post-install fixup resolves; this one is not "
                 f"among them.)"
             )
         # `serverUrl` reaches an HTTP client, never a shell, so a bare `$NAME`
@@ -174,7 +174,10 @@ def _checked_mcp(servers: dict, ctx: BuildContext) -> dict:
         # alongside it that were configured correctly. A `$NAME` inside
         # `command`/`args` is different — that text is handed to a shell, which
         # expands it — so this check is scoped to `serverUrl` alone.
-        shell_var = _SHELL_VAR_RE.search(str(server.get("serverUrl", "")))
+        url_val = str(server.get("serverUrl", ""))
+        for placeholder in allowed:
+            url_val = url_val.replace(placeholder, "")
+        shell_var = _SHELL_VAR_RE.search(url_val)
         if shell_var:
             raise BuildError(
                 f"{ctx.plugin.directory}: manifest/mcp.template.json puts "
