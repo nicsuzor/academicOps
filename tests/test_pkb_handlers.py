@@ -13,7 +13,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
-PKB_HOOKS = REPO_ROOT / "plugins" / "pkb" / "hooks"
+PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
 if str(LIB_HOOKS) not in sys.path:
     sys.path.insert(0, str(LIB_HOOKS))
@@ -142,9 +142,20 @@ def test_find_pkb_bin_in_cwd(tmp_path):
 
 
 def test_find_pkb_bin_not_found(tmp_path):
-    """_find_pkb_bin returns None when pkb is not on PATH or in cwd."""
-    with patch("shutil.which", return_value=None):
+    """_find_pkb_bin returns None when pkb is not on PATH, cwd, or plugin bin."""
+    with (
+        patch("shutil.which", return_value=None),
+        patch("pathlib.Path.is_file", return_value=False),
+    ):
         assert handlers._find_pkb_bin(cwd=str(tmp_path)) is None
+
+
+def test_find_pkb_bin_in_plugin_bin():
+    """_find_pkb_bin resolves pkb from plugin bin directory when not on PATH or in cwd."""
+    with patch("shutil.which", return_value=None):
+        found = handlers._find_pkb_bin(cwd="/nonexistent")
+        assert found is not None
+        assert "plugins/ida/bin" in found
 
 
 def test_run_pkb_search_uses_measured_timeout():

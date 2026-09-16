@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OS="$(uname -s)"
+ARCH="$(uname -m)"
+
+case "$OS" in
+  Darwin)
+    TARGET="aarch64-darwin"
+    ;;
+  Linux)
+    TARGET="x86_64-linux"
+    ;;
+  CYGWIN*|MINGW*|MSYS*)
+    TARGET="x86_64-windows"
+    ;;
+  *)
+    echo "Unsupported OS: $OS" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$TARGET" = "x86_64-windows" ]; then
+  BIN="$DIR/$TARGET/pkb.exe"
+else
+  BIN="$DIR/$TARGET/pkb"
+fi
+
+if [ -f "$BIN" ]; then
+  exec "$BIN" "$@"
+else
+  echo "pkb binary not found at $BIN" >&2
+  exit 1
+fi

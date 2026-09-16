@@ -25,6 +25,7 @@ on:
   # and would double-fire against the tag-triggered run.
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 concurrency:
   # A stable tag's build-and-deploy job pauses on the `production` environment
@@ -212,29 +213,27 @@ jobs:
           # within that ref.
           cd "${SRC}/dist-repo"
 
-          # One-time migration off the old layout: earlier publishes nested
-          # every plugin dir under a `dist/` subdirectory of this branch
-          # (dist:dist/aops-claude). That subdir is superseded by the
-          # root-level layout below — remove it so a stale copy doesn't sit
-          # alongside the new root-level dirs.
-          rm -rf dist
+          # Clean dist-repo root except .git to ensure retired plugins/files are pruned
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
-          # Mirror every built plugin directory to the branch root, each kept
-          # clean with --delete. The `*/` glob skips dot-entries, so only the
-          # aops-* payload dirs are copied. Release archives (*.tar.gz / *.zip)
-          # are FILES under ${SRC}/dist/ → not matched by the dir glob; they
-          # ship as GitHub Release assets in the next step (never committed to
-          # the dist branch).
+          # Mirror every built plugin directory to the branch root. Release archives
+          # (*.tar.gz / *.zip) are FILES under ${SRC}/dist/ -> not matched by dir glob;
+          # they ship as GitHub Release assets in the next step (never committed to dist).
           plugin_dirs=""
           for d in "${SRC}"/dist/*/; do
             name="$(basename "$d")"
-            rsync -a --delete "$d" "${name}/"
+            rsync -a "$d" "${name}/"
             plugin_dirs="$plugin_dirs $name"
           done
 
-          # Single Claude marketplace at the dist-branch root (sources ./aops-*).
+          # Single Claude marketplace at the dist-branch root (sources ./<plugin>-claude).
           mkdir -p .claude-plugin
           cp "${SRC}/dist/marketplace-production.json" ".claude-plugin/marketplace.json"
+
+          # Image metadata for container builds
+          if [ -f "${SRC}/dist/.aops-image-metadata.json" ]; then
+            cp "${SRC}/dist/.aops-image-metadata.json" .aops-image-metadata.json
+          fi
 
           # Publish the PR-pipeline reusable workflows so external consumers can
           # pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`
@@ -260,6 +259,9 @@ jobs:
           git add -f $plugin_dirs
           git add -f .github/workflows
           git add -f .claude-plugin/marketplace.json
+          if [ -f .aops-image-metadata.json ]; then
+            git add -f .aops-image-metadata.json
+          fi
           if git diff --cached --quiet; then
             echo "dist already in sync — nothing to publish"
           else

@@ -224,17 +224,17 @@ def test_ida_ships_the_quiet_gate_on_claude_only():
     canonical ``Stop`` in the first place (only to the commented-out
     ``PostToolBatch`` key), so nothing on agy was ever live.
 
-    ida is an agent hosted inside the aops plugin (plugins/aops/agents/ida.md),
-    so its gate ships from ``aops-claude``, not a standalone ``ida`` plugin."""
-    events = _claude_hook_events("aops-claude")
+    ida is now its own plugin (plugins/ida),
+    so its gate ships from ``ida-claude``."""
+    events = _claude_hook_events("ida-claude")
     assert "PostToolBatch" in events
     assert "SubagentStop" not in events
-    assert "PostToolBatch" not in _agy_hook_events("aops-agy")
+    assert "PostToolBatch" not in _agy_hook_events("ida-agy")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_aops_ships_the_handback_reminders():
     """``PostToolBatch`` binds the receiver; ``Stop`` binds the worker at handback.
-    Both surfaces ship from aops, which owns dispatch and the handback doctrine."""
-    assert {"PostToolBatch", "Stop"} <= _claude_hook_events("aops-claude")
-    assert "PostInvocation" not in _agy_hook_events("aops-agy")
+    Both surfaces ship from ida, which owns dispatch and the handback doctrine."""
+    assert {"PostToolBatch", "Stop"} <= _claude_hook_events("ida-claude")
+    assert "PostInvocation" not in _agy_hook_events("ida-agy")

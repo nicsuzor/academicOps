@@ -22,11 +22,10 @@ You do **not** need to create any manifest files (like `plugin.json` or `plugin.
 You only need to create a `manifest` directory if your plugin needs to:
 
 - Declare MCP servers (`mcp.template.json`)
-- Add lifecycle hooks (`hooks.template.json`)
-- Specify custom fields like `userConfig` or `keywords` in `plugin.template.json` (which will be merged with the automatically generated defaults).
-- Include shared library files via `plugin.toml`
+- Add lifecycle hooks (`hooks.json`)
+- Specify custom fields like `userConfig` or `keywords` in `plugin.json` (which will be merged with the automatically generated defaults).
 
-If you need any of these, simply keep the `manifest` directory and adjust the specific template files you require.
+If you need any of these, simply keep the `manifest` directory and adjust the specific manifest files you require.
 
 ## Included Stubs
 
@@ -35,7 +34,7 @@ This template includes basic examples for common plugin components:
 - **`skills/example/SKILL.md`**: An example skill that the agent can read and execute.
 - **`commands/example.md`**: An example slash command (`/example`).
 - **`axioms/example.md`**: An example axiom (project rule) that the agent must always follow while this plugin is active.
-- **`hooks/handlers.py`**: Example handlers loaded by the standard `dispatch.py` hook router, paired with `manifest/hooks.template.json`.
-- **`manifest/`**: Example manifest files (`mcp.template.json`, `plugin.template.json`, `plugin.toml`) to demonstrate custom configurations.
+- **`hooks/handlers.py`**: Example handlers loaded by the standard `dispatch.py` hook router, paired with `manifest/hooks.json`.
+- **`manifest/`**: Example manifest files (`mcp.json`, `plugin.json`, `hooks.json`) to demonstrate custom configurations.
 
 Feel free to delete any of these stubs that your new plugin does not need!

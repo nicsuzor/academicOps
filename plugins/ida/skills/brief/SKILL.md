@@ -11,7 +11,7 @@ Assemble workflow templates and prepare tasks for cold execution. The brief tran
 
 0. **Task initialization**: If no task ID was provided, create one via `/q` using the provided description.
 1. **Verify premises**: Re-verify world claims (paths, schemas, runtime states) before cementing them into constraints. Halt if a premise is invalid.
-2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`../../workflows/`, resolved relative to this skill's own directory), and PKB (`type: template`) tiers. Halt if a required process component is missing.
+2. **Assemble workflow**: Select relevant templates across project (`$CWD/.agents/templates/`), universal (`../workflow-library/workflows/`, resolved relative to this skill's own directory), and PKB (`type: template`) tiers. Halt if a required process component is missing.
 3. **Determine task boundaries**: one node type -- tasks nest. A leaf (no children) is what gets dispatched: one worker, one go. A parent is never dispatched.
    - Default to a single dispatchable leaf, embedding workflow steps as internal checklist items.
    - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).

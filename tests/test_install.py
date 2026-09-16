@@ -337,4 +337,3 @@ def test_uninstall_malformed_state_file_is_hard_error(tmp_path):
 
     with pytest.raises(InstallError, match="install state"):
         uninstall_automode(settings_path, state_path)
-

@@ -184,11 +184,6 @@ refs = ["hooks/hooks.json", ".claude-plugin/marketplace.json"]
 reason = "Built output under dist/, described by its shape rather than one location."
 
 [[tool.refcheck.allow]]
-docs = "plugins/rbg/README.md"
-refs = ["hooks/dispatch.py"]
-reason = "Injected from lib/hooks at build time; present in the build tree, not in the plugin source."
-
-[[tool.refcheck.allow]]
 docs = "templates/github-agent/README.md"
 refs = [".github/agents/worker.agent.md"]
 reason = "Where the template is installed in a consuming repository."
@@ -212,7 +207,7 @@ exclude = [
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports
-extraPaths = ["plugins/rbg/hooks", "plugins/aops/hooks", "lib/py", "lib/hooks"]
+extraPaths = ["plugins/rbg/hooks", "plugins/ida/hooks", "lib/py"]
 # By default BasedPyright is very strict, so you almost certainly want to disable
 # some of the rules.
 # First, these turn off warnings about (yes) how you ignore warnings:

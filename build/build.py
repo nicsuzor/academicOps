@@ -36,7 +36,6 @@ from build.marketplace import (
     generate_production_marketplace,
     load_marketplace_toml,
 )
-from build.shared import inject_shared
 from build.tree import (
     assert_no_build_artifacts,
     copytree_filtered,
@@ -79,15 +78,13 @@ def discover_plugins(
     return plugins
 
 
-def _stage_plugin(plugin: Plugin, lib_dir: Path, stage_dir: Path, version: str) -> None:
-    """Stages 1-2: a client-agnostic copy with shared content injected and
-    built once, then reused for every client."""
+def _stage_plugin(plugin: Plugin, stage_dir: Path, version: str) -> None:
+    """Stages 1-2: a client-agnostic copy built once, then reused for every client."""
     if stage_dir.exists():
         shutil.rmtree(stage_dir)
     stage_dir.mkdir(parents=True)
 
     copytree_filtered(plugin.source_dir, stage_dir, exclude_top=_STAGE_EXCLUDE_TOP)
-    inject_shared(plugin.source_dir / "manifest" / "plugin.toml", lib_dir, stage_dir)
 
     repo_root = plugin.source_dir.parent.parent
     plugin_pyproject = plugin.source_dir / "pyproject.toml"
@@ -115,7 +112,7 @@ def _render_manifests(
     manifests: dict[str, dict[str, Any]] = {}
 
     if manifest_dir.exists():
-        for template_path in sorted(manifest_dir.glob("*.template.json")):
+        for template_path in sorted(manifest_dir.glob("*.json")):
             stem = template_stem(template_path)
             data = render_template(template_path, client)
             manifests[stem] = data
@@ -244,10 +241,6 @@ def build_all(
     plugins: list[str] | None = None,
     version: str | None = None,
 ) -> dict[str, list[Path]]:
-    lib_dir = project_root / "lib"
-    if not lib_dir.exists():
-        raise BuildError(f"lib/ not found at {lib_dir}")
-
     marketplace_path = marketplace_path or (project_root / "build" / "marketplace.toml")
     decl = load_marketplace_toml(marketplace_path)
     resolved_version = version or get_current_version(project_root)
@@ -259,7 +252,7 @@ def build_all(
     try:
         for plugin in discover_plugins(project_root, decl, plugins):
             stage_dir = stage_root / plugin.directory
-            _stage_plugin(plugin, lib_dir, stage_dir, resolved_version)
+            _stage_plugin(plugin, stage_dir, resolved_version)
             for client in clients:
                 build_dir = _build_plugin_client(
                     plugin, client, stage_dir, dist_root, resolved_version, decl["owner"]

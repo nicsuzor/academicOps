@@ -83,6 +83,23 @@ def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
     for candidate in candidates:
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate.resolve())
+
+    plugin_bin = Path(__file__).resolve().parent.parent / "bin"
+    if plugin_bin.is_dir():
+        import platform
+
+        system = platform.system().lower()
+        platform_candidates: list[Path] = []
+        if system == "darwin":
+            platform_candidates.append(plugin_bin / "aarch64-darwin" / "pkb")
+        elif system == "linux":
+            platform_candidates.append(plugin_bin / "x86_64-linux" / "pkb")
+        elif system == "windows":
+            platform_candidates.append(plugin_bin / "x86_64-windows" / "pkb.exe")
+        platform_candidates.append(plugin_bin / "pkb")
+        for candidate in platform_candidates:
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate.resolve())
     return None
 
 
@@ -195,6 +212,14 @@ def _format_session_metadata(ctx: HookContext) -> str:
     ]
     parts.append(f"pkb: {_scrub(pkb_version)}")
 
+    plugin_ver = (
+        os.environ.get("AOPS_IMAGE_PLUGINS_VERSION")
+        or ctx.raw.get("plugins")
+        or ctx.raw.get("plugins_version")
+    )
+    if plugin_ver:
+        parts.append(f"plugins: {_scrub(str(plugin_ver))}")
+
     otel_endpoint = (
         os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
         or os.environ.get("BETA_TRACING_ENDPOINT")
@@ -298,6 +323,21 @@ def session_start(ctx: HookContext) -> Result | None:
     metadata = _format_session_metadata(ctx)
     parts = ["aops hook: Session started.", metadata]
     user_parts = [metadata]
+    stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
+        "image_staleness_warning"
+    )
+    if not stale_warning and (
+        os.environ.get("AOPS_IMAGE_STALE") == "1" or ctx.raw.get("image_stale")
+    ):
+        stale_warning = (
+            "[SYSTEM WARNING: RUNNING WITH STALE BAKED PLUGINS]\n"
+            "Container plugin payload lags workspace under test.\n"
+            "Any skill, hook, or MCP behavior verified in this session reflects the BAKED payload, NOT workspace edits."
+        )
+
+    if stale_warning:
+        parts.append(stale_warning)
+        user_parts.append(stale_warning)
 
     if _isolate_credentials(ctx):
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")

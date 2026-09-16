@@ -18,6 +18,7 @@ claude plugin install aops@academicOps
 ```
 
 The `services` MCP server is installed at user level across all surfaces, never shipped inside a plugin:
+
 - **Local Claude Code**: `claude mcp add --transport http --scope user services <PKB_MCP_URL>`. Must use `--scope user`; `--scope local` was observed to register nothing. Note: on local machines, `~/dotfiles/scripts/sync-mcp-servers.sh` is the appropriate home to synchronize user-scoped MCP registrations.
 - **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
 - **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).

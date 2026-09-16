@@ -17,7 +17,7 @@ from typing import Any
 
 from build.errors import BuildError
 
-_TEMPLATE_SUFFIX = ".template.json"
+_TEMPLATE_SUFFIX = ".json"
 _BASE_KEY = "__base__"
 
 # Manifest versions this builder knows how to read. An unrecognised version is
@@ -28,11 +28,11 @@ _SUPPORTED_MANIFEST_VERSIONS = frozenset({"1.0"})
 
 def template_stem(template_path: Path) -> str:
     name = template_path.name
-    if not name.endswith(_TEMPLATE_SUFFIX):
-        raise ValueError(
-            f"not a manifest template (must end in {_TEMPLATE_SUFFIX}): {template_path}"
-        )
-    return name[: -len(_TEMPLATE_SUFFIX)]
+    if name.endswith(".template.json"):
+        return name[: -len(".template.json")]
+    if name.endswith(".json"):
+        return name[: -len(".json")]
+    raise ValueError(f"not a manifest (must end in .json): {template_path}")
 
 
 def merge_one_level(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:

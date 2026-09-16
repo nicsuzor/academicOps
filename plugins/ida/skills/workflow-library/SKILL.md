@@ -15,7 +15,7 @@ Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tie
 | ------------ | ----------------------------- | ------------------------------------- |
 | 1. Project   | `$CWD/.agents/templates/*.md` | `ls $CWD/.agents/templates/*.md`      |
 | 2. PKB       | PKB graph                     | `pkb.list_documents(type="template")` |
-| 3. Universal | `../../workflows/*.md`        | `ls ../../workflows/*.md`             |
+| 3. Universal | `workflows/*.md`              | `ls workflows/*.md`                   |
 
 ## Modes
 

@@ -47,7 +47,6 @@ reported as such, not treated as an error.
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -205,9 +204,7 @@ def uninstall_automode(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Merge/remove aops-owned autoMode entries"
-    )
+    parser = argparse.ArgumentParser(description="Merge/remove aops-owned autoMode entries")
     parser.add_argument("action", choices=["install", "uninstall"])
     parser.add_argument(
         "--dist-root",

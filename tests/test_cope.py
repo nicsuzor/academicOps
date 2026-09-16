@@ -569,9 +569,7 @@ def test_every_option_the_manifest_declares_is_one_the_code_reads():
     exists: an option that is declared must name a variable the code reads, and
     it must carry no default and no unmarked credential.
     """
-    manifest = json.loads(
-        (_REPO_ROOT / "plugins" / "rbg" / "manifest" / "plugin.template.json").read_text()
-    )
+    manifest = json.loads((_REPO_ROOT / "plugins" / "rbg" / "manifest" / "plugin.json").read_text())
     declared = manifest["clients"]["claude"].get("userConfig", {})
     assert {key.upper() for key in declared} <= set(_COPE_ENV), (
         "an option whose key does not uppercase to a variable evaluator.py reads "

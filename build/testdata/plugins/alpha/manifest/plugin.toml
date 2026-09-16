@@ -1,7 +1,0 @@
-[[shared]]
-from = "shared-dir"
-to = "shared-dir"
-
-[[shared]]
-from = "shared-hook/hook.py"
-to = "hooks/hook.py"

@@ -58,6 +58,6 @@ Point the agent environment at `COPE_EVALUATOR_URL=http://127.0.0.1:8099/v1/labe
 
 ## Dependencies
 
-- `lib/hooks/`: Shared hook dispatcher runtime (`dispatch.py`).
-- `lib/axioms/`: Injected Layer 1 baseline rules.
+- `hooks/dispatch.py`: Hook dispatcher runtime.
+- `axioms/`: Layer 1 baseline rules.
 - External or local Reflexes/CoPE or OpenAI-compatible classifier endpoint.

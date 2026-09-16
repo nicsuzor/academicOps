@@ -39,7 +39,7 @@ from build.marketplace import load_marketplace_toml
 from build.tree import EXCLUDE_NAMES, has_shebang
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_LIB_HOOKS = _REPO_ROOT / "lib" / "hooks"
+_LIB_HOOKS = _REPO_ROOT / "plugins" / "ida" / "hooks"
 _MARKETPLACE = _REPO_ROOT / "build" / "marketplace.toml"
 _POLICY_FILE = _REPO_ROOT / "tests" / "policy.toml"
 _policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FILE.exists() else {}
@@ -1007,7 +1007,9 @@ def _declared_hook_plugins() -> set[str]:
     """
     declared = set()
     for name in _marketplace_names():
-        manifest = _REPO_ROOT / "plugins" / name / "manifest" / "hooks.template.json"
+        manifest = _REPO_ROOT / "plugins" / name / "manifest" / "hooks.json"
+        if not manifest.is_file():
+            manifest = _REPO_ROOT / "plugins" / name / "manifest" / "hooks.template.json"
         if not manifest.is_file():
             continue
         config = json.loads(manifest.read_text(encoding="utf-8"))

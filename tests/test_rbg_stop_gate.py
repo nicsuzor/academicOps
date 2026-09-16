@@ -26,7 +26,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
-RBG_MANIFEST = REPO_ROOT / "plugins" / "rbg" / "manifest" / "hooks.template.json"
+RBG_MANIFEST = REPO_ROOT / "plugins" / "rbg" / "manifest" / "hooks.json"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
@@ -407,7 +407,7 @@ def test_the_manifest_name_matches_the_marketplace_name():
     expected_name = entry["name"]
 
     manifest_dir = REPO_ROOT / "plugins" / "rbg" / "manifest"
-    for template in sorted(manifest_dir.glob("*.template.json")):
+    for template in sorted(manifest_dir.glob("*.json")):
         data = json.loads(template.read_text(encoding="utf-8"))
         assert data.get("name") == expected_name, (
             f"{template.name} declares {data.get('name')!r}, marketplace.toml says {expected_name!r}"

@@ -35,38 +35,17 @@ def built(tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="module")
 def built_orchestrate(tmp_path_factory) -> Path:
-    """The real aops plugin, not a fixture — its agents carry the
+    """The real ida plugin, not a fixture — its agents carry the
     per-client frontmatter semantics these tests assert."""
-    dist_root = tmp_path_factory.mktemp("build-dist-aops")
+    dist_root = tmp_path_factory.mktemp("build-dist-ida")
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         version=VERSION,
     )
     return dist_root
-
-
-def test_polecat_modules_ship_with_orchestrate(built_orchestrate):
-    """Plugin code resolves these modules under `${CLAUDE_PLUGIN_ROOT}/polecat/`.
-    What puts them inside a plugin root at all is
-    `plugins/aops/manifest/plugin.toml`, which injects them from `lib/polecat/`.
-
-    Drop those `[[shared]]` stanzas and nothing fails at build time; the import
-    fails at runtime, with file-not-found. This is the check that turns that into
-    a build-time failure instead.
-    """
-    modules = {"__init__", "env_contract", "notify", "staleness"}
-    for client in ("claude", "agy"):
-        polecat = built_orchestrate / f"aops-{client}" / "polecat"
-        for module in modules:
-            assert (polecat / f"{module}.py").is_file(), (
-                f"aops-{client} ships no polecat/{module}.py"
-            )
-        # Image-build inputs, not plugin content — they must NOT be shipped.
-        assert not (polecat / "defaults").exists()
-        assert not (polecat / "entrypoint.sh").exists()
 
 
 # --- stage 1/2: shared injection + include resolution -----------------------
@@ -423,11 +402,11 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     accepted_tools, _ = load_tool_config()
 
-    claude_agent = built_orchestrate / "aops-claude" / "agents" / "marsha.md"
+    claude_agent = built_orchestrate / "ida-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert "tools" not in claude_fm
 
-    agy_agent = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
+    agy_agent = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
 
@@ -437,7 +416,7 @@ def test_agy_agent_drops_claude_model_name(built_orchestrate):
     strip a source `model:` key rather than ship it verbatim."""
     import yaml
 
-    agy_agent = built_orchestrate / "aops-agy" / "agents" / "james.md"
+    agy_agent = built_orchestrate / "ida-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
 
@@ -448,10 +427,10 @@ def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
     file, not restated, so this only fails if the build actually changes it."""
     import yaml
 
-    source_marsha = PROJECT_ROOT / "plugins" / "aops" / "agents" / "marsha.md"
+    source_marsha = PROJECT_ROOT / "plugins" / "ida" / "agents" / "marsha.md"
     source_fm = yaml.safe_load(source_marsha.read_text().split("---")[1])
 
-    agy_marsha = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
+    agy_marsha = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
     agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
     assert agy_marsha_fm["color"] == source_fm["color"]
 
@@ -1013,57 +992,13 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     assert "includeSections" not in res_agy
 
 
-def test_pauli_agy_frontmatter(tmp_path):
-    import yaml
-
-    dist_root = tmp_path / "dist"
-    build_all(
-        PROJECT_ROOT,
-        dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb"],
-        version=VERSION,
-    )
-
-    pauli_md = dist_root / "pkb-agy" / "agents" / "pauli.md"
-    assert pauli_md.is_file()
-    fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
-    agent = yaml.safe_load(fm)
-
-    assert agent["name"] == "pauli"
-    assert "mcpServers" not in agent
-    # pauli carries an explicit, curated `tools:` allowlist (restrict pauli,
-    # 19c354af3) — she does not inherit the full agy vocabulary the way an
-    # agent with no `tools:` key does (see test_agent_no_tools_key_semantics).
-    # SendMessage, Bash, TaskCreate/Get/List/Update/Stop all collapse onto
-    # run_command/send_message/manage_task; Skill and ListAgents/ToolSearch
-    # have no agy counterpart and drop out; the `mcp__*` wildcard normalises
-    # onto its server name. `mcp__phoenix__*` and `mcp__email__*` were
-    # dropped from source (aops_codemode_grant_sweep): Bifrost's Code Mode
-    # rollout collapsed the standalone email/home/phoenix MCP connections
-    # into the same `services` connection pkb already used, so those
-    # wildcards no longer resolved to anything.
-    assert agent["tools"] == [
-        "send_message",
-        "run_command",
-        "manage_task",
-        "view_file",
-        "write_to_file",
-        "replace_file_content",
-        "mcp_services_*",
-    ]
-    assert "hidden" not in agent
-    assert "includeSections" not in agent
-    assert "call_mcp_tool" not in agent["tools"]
-
-
 def test_openclaw_dist_built_and_packaged(tmp_path):
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         clients=("claude", "agy", "openclaw"),
         version=VERSION,
     )
@@ -1076,13 +1011,13 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
     assert manifest_path.is_file()
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert data["name"] == "academicOps-openclaw"
-    assert {p["name"] for p in data["plugins"]} == {"aops"}
+    assert {p["name"] for p in data["plugins"]} == {"ida"}
     for p in data["plugins"]:
         assert p["source"] == f"./{p['name']}"
         assert p["version"] == VERSION
 
     # Verify per-plugin directories and zip packages
-    for name in ("aops",):
+    for name in ("ida",):
         plugin_dir = openclaw_root / name
         assert plugin_dir.is_dir()
         assert (plugin_dir / ".claude-plugin" / "plugin.json").is_file()
@@ -1094,8 +1029,8 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
         assert f"{name}/.claude-plugin/plugin.json" in names
 
     # Verify openclaw dist directory
-    assert (dist_root / "aops-openclaw" / ".claude-plugin" / "plugin.json").is_file()
-    assert (dist_root / "aops-openclaw.tar.gz").is_file()
+    assert (dist_root / "ida-openclaw" / ".claude-plugin" / "plugin.json").is_file()
+    assert (dist_root / "ida-openclaw.tar.gz").is_file()
 
 
 def test_openclaw_does_not_bake_urls(tmp_path):
@@ -1135,21 +1070,21 @@ def test_openclaw_ida_face_configuration(tmp_path):
     assert agent["name"] == "ida"
 
 
-def test_pkb_declares_no_plugin_mcp_servers(tmp_path):
-    """pkb has no plugin-level MCP servers: `services` is configured at user level."""
+def test_ida_declares_no_plugin_mcp_servers(tmp_path):
+    """ida has no plugin-level MCP servers."""
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["pkb"],
+        plugins=["ida"],
         clients=("claude", "agy", "openclaw"),
         version=VERSION,
     )
-    assert not (dist_root / "pkb-claude" / ".mcp.json").exists()
-    assert not (dist_root / "pkb-agy" / "mcp_config.json").exists()
-    assert not (dist_root / "openclaw" / "pkb" / ".mcp.json").exists()
+    assert not (dist_root / "ida-claude" / ".mcp.json").exists()
+    assert not (dist_root / "ida-agy" / "mcp_config.json").exists()
+    assert not (dist_root / "openclaw" / "ida" / ".mcp.json").exists()
     plugin_json = json.loads(
-        (dist_root / "pkb-claude" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+        (dist_root / "ida-claude" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
     )
     assert "mcpServers" not in plugin_json

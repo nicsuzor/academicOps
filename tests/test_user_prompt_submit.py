@@ -12,16 +12,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
-AOPS_HOOKS = REPO_ROOT / "plugins" / "aops" / "hooks"
+IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
 if str(LIB_HOOKS) not in sys.path:
     sys.path.insert(0, str(LIB_HOOKS))
-if str(AOPS_HOOKS) not in sys.path:
-    sys.path.insert(0, str(AOPS_HOOKS))
+if str(IDA_HOOKS) not in sys.path:
+    sys.path.insert(0, str(IDA_HOOKS))
 
 import importlib.util
 
-handlers_spec = importlib.util.spec_from_file_location("aops_handlers", AOPS_HOOKS / "handlers.py")
+handlers_spec = importlib.util.spec_from_file_location("ida_handlers", IDA_HOOKS / "handlers.py")
 assert handlers_spec is not None and handlers_spec.loader is not None
 handlers = importlib.util.module_from_spec(handlers_spec)
 # Deliberately NOT registered as sys.modules["handlers"]: that name collides
@@ -39,4 +39,4 @@ def test_user_prompt_submit_registered_in_handlers():
     registered = handlers.HANDLERS["UserPromptSubmit"]
     assert handlers.user_prompt_submit in registered
     assert handlers.agy_user_prompt_submit in registered
-    assert not hasattr(handlers, "search_the_pkb"), "search_the_pkb moved to the pkb plugin"
+    assert hasattr(handlers, "search_the_pkb"), "search_the_pkb lives in the ida plugin"

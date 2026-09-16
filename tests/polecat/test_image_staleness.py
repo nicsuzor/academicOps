@@ -11,8 +11,8 @@ import sys
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT / "lib" / "hooks") not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT / "lib" / "hooks"))
+if str(_REPO_ROOT / "plugins" / "ida" / "hooks") not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT / "plugins" / "ida" / "hooks"))
 
 from click.testing import CliRunner
 from dispatch import HookContext
@@ -23,7 +23,7 @@ from lib.polecat.staleness import (
     evaluate_staleness,
     format_plugin_report,
 )
-from plugins.aops.hooks import handlers
+from plugins.ida.hooks import handlers
 
 
 def _base_mocks(monkeypatch, tmp_path):

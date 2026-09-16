@@ -20,7 +20,6 @@ Every `[[plugins]]` entry requires `directory`, `name`, `description`, `category
 """
 
 import json
-import os
 import shutil
 import tomllib
 import zipfile
