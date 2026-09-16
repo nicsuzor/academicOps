@@ -1138,11 +1138,17 @@ def test_openclaw_does_not_bake_urls(tmp_path):
     }
     claude_dir = tmp_path / "claude"
     claude_dir.mkdir()
-    adapt_claude(claude_dir, BuildContext(plugin=plugin, client="claude", version=VERSION, manifests=manifests))
+    adapt_claude(
+        claude_dir,
+        BuildContext(plugin=plugin, client="claude", version=VERSION, manifests=manifests),
+    )
 
     openclaw_dir = tmp_path / "openclaw"
     openclaw_dir.mkdir()
-    adapt_openclaw(openclaw_dir, BuildContext(plugin=plugin, client="openclaw", version=VERSION, manifests=manifests))
+    adapt_openclaw(
+        openclaw_dir,
+        BuildContext(plugin=plugin, client="openclaw", version=VERSION, manifests=manifests),
+    )
 
     claude_mcp = (claude_dir / ".mcp.json").read_bytes()
     openclaw_mcp = (openclaw_dir / ".mcp.json").read_bytes()

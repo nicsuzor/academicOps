@@ -85,6 +85,7 @@ claude plugin install aops@academicOps
 ```
 
 The `services` MCP server connects your agent to the Personal Knowledge Base (PKB) and is installed at user level on each surface (never shipped inside a plugin):
+
 - **Local:** `claude mcp add --scope user services <PKB_MCP_URL>`
 - **Cloud / Cowork:** claude.ai account connector named `services`
 - **Antigravity (`agy`):** configured in `~/.gemini/config/mcp_config.json`
