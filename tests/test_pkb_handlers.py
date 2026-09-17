@@ -150,14 +150,6 @@ def test_find_pkb_bin_not_found(tmp_path):
         assert handlers._find_pkb_bin(cwd=str(tmp_path)) is None
 
 
-def test_find_pkb_bin_in_plugin_bin():
-    """_find_pkb_bin resolves pkb from plugin bin directory when not on PATH or in cwd."""
-    with patch("shutil.which", return_value=None):
-        found = handlers._find_pkb_bin(cwd="/nonexistent")
-        assert found is not None
-        assert "plugins/ida/bin" in found
-
-
 def test_run_pkb_search_uses_measured_timeout():
     """subprocess timeout matches the measured backend-latency ceiling, not the old 15s guess."""
     with (

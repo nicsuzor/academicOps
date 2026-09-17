@@ -114,14 +114,7 @@ ignore = [
 # error, so the list cannot outlive what it excuses.
 [tool.refcheck]
 include = [
-  "specs/*.md",
-  "specs/agents/**/*.md",
-  "specs/enforcement/**/*.md",
-  "specs/meta/**/*.md",
-  "specs/polecat/**/*.md",
-  "specs/workflows/**/*.md",
   "plugins/**/*.md",
-  "lib/**/*.md",
   ".agents/*.md",
   ".agents/skills/**/*.md",
   ".agents/rules/**/*.md",
@@ -164,24 +157,6 @@ refs = [
   "dbt/schema.yml",
 ]
 reason = "The research-project layout this skill prescribes — paths in the researcher's own repository."
-
-[[tool.refcheck.allow]]
-docs = "specs/ARCHITECTURE.md"
-refs = [
-  "manifest/plugin.toml",
-  "manifest/plugin.json",
-  "manifest/hooks.json",
-  "manifest/mcp.json",
-  "hooks/hooks.json",
-  ".claude-plugin/plugin.json",
-  ".claude-plugin/marketplace.json",
-]
-reason = "Plugin-relative sources and their built outputs — a shape every plugin has, not one location."
-
-[[tool.refcheck.allow]]
-docs = "specs/build-and-install.md"
-refs = ["hooks/hooks.json", ".claude-plugin/marketplace.json"]
-reason = "Built output under dist/, described by its shape rather than one location."
 
 [[tool.refcheck.allow]]
 docs = "templates/github-agent/README.md"

@@ -84,22 +84,6 @@ def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate.resolve())
 
-    plugin_bin = Path(__file__).resolve().parent.parent / "bin"
-    if plugin_bin.is_dir():
-        import platform
-
-        system = platform.system().lower()
-        platform_candidates: list[Path] = []
-        if system == "darwin":
-            platform_candidates.append(plugin_bin / "aarch64-darwin" / "pkb")
-        elif system == "linux":
-            platform_candidates.append(plugin_bin / "x86_64-linux" / "pkb")
-        elif system == "windows":
-            platform_candidates.append(plugin_bin / "x86_64-windows" / "pkb.exe")
-        platform_candidates.append(plugin_bin / "pkb")
-        for candidate in platform_candidates:
-            if candidate.is_file() and os.access(candidate, os.X_OK):
-                return str(candidate.resolve())
     return None
 
 

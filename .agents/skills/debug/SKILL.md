@@ -262,7 +262,7 @@ Quote verbatim excerpts from `capture-pane`, session logs, and Phoenix output in
 your report.
 
 1. **Pre-flight** — confirm `_log_fire` and `_load_handlers` in
-   `lib/hooks/dispatch.py` are not returning early.
+   `plugins/ida/hooks/dispatch.py` are not returning early.
 2. **§0 image freshness** — `make docker-build`, then `make verify-docker`.
 3. **§1 structural** — `make docker-smoke-test` confirms the plugins are
    installed in the image.

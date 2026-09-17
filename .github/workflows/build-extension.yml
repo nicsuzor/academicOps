@@ -26,6 +26,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version or tag to build and publish (e.g. v0.10-rc1)"
+        required: false
+        type: string
 
 concurrency:
   # A stable tag's build-and-deploy job pauses on the `production` environment
@@ -83,8 +88,15 @@ jobs:
           # static placeholder before shellcheck, which then misreads these glob
           # tests as SC2193 "can never be equal". The runtime comparison is correct.
           # shellcheck disable=SC2193
-          if [[ "${{ github.ref }}" == refs/tags/v*-* ]]; then
-            # Pre-release tag (v1.2.3-rc.1, -dev.N, -beta.N, -alpha.N). Checked
+          if [[ -n "${{ inputs.tag || '' }}" ]]; then
+            REF="${{ inputs.tag }}"
+            if [[ "$REF" == *-* ]]; then
+              RTYPE="testing"
+            else
+              RTYPE="stable"
+            fi
+          elif [[ "${{ github.ref }}" == refs/tags/v*-* ]]; then
+            # Pre-release tag (v1.2.3-rc.1, v0.10-rc1, -dev.N, -beta.N, -alpha.N). Checked
             # FIRST because the v*-* glob is a subset of the plain v* glob below;
             # in semver a '-' only ever introduces a pre-release identifier.
             REF="${{ github.ref_name }}"
@@ -107,7 +119,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.ctx.outputs.ref }}
           fetch-depth: 0
 
       - name: Checkout dist branch for publish target
@@ -135,19 +146,12 @@ jobs:
         id: version
         run: |
           REF="${{ steps.ctx.outputs.ref }}"
-          if [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            # Tag-driven build — the tag IS the version, for BOTH stable (vX.Y.Z) and
-            # prerelease (vX.Y.Z-rc.N / -dev.N) tags. Use it verbatim. Do NOT run
-            # `version.py --get` here: it derives from `git describe --dirty`, and by
-            # this point the build has dirtied the working tree, so it would emit
-            # `X.Y.Z-dev.0+gSHA.dirty` even on a clean stable tag (G1 — see
-            # specs/workflows/releasing.md §4). release-please owns the
-            # stable tag = manifest; the next step asserts that coherence. For a
-            # prerelease, build.py --set-version normalises via sanitize_version() (the
-            # semver-sort invariant the Claude/agy installers need).
+          if [[ "$REF" =~ ^v?[0-9]+ ]]; then
+            # Tag or explicit version — strip leading 'v' if present.
+            # Covers vX.Y.Z, v0.10-rc1, vX.Y.Z-rc.N, 0.10-rc1, etc.
             VERSION="${REF#v}"
           else
-            # Non-tag build (manual workflow_dispatch on a SHA): no tag to read, so
+            # Non-tag build (manual workflow_dispatch on a SHA without tag):
             # fall back to the computed dev version.
             VERSION="$(uv run python -m build.version --get)"
           fi
