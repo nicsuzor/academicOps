@@ -1,27 +1,14 @@
 ---
 name: python-viz
-description: Python plotting and statistical-modelling libraries (matplotlib, seaborn,
-  statsmodels) for the analyst presentation and statistical-methodology layers. Use
-  when producing publication-quality figures or fitting statistical models in Python.
-  Library-specific HOW for the tech-agnostic principles in the aops-tools analyst
-  skill.
+description: Python plotting and statistical modelling (matplotlib, seaborn, statsmodels) for analyst presentation and statistical layers. Use for generating figures from pre-computed metrics or fitting statistical models.
 ---
 
-# Python Visualisation & Statistical Modelling (academicOps)
+# Python Visualisation & Statistical Modelling
 
-These libraries are one **swappable** implementation. The `analyst` skill owns the
-statistical-methodology and presentation principles, which are library-neutral.
+Implements the presentation and statistical methodology layers for the `analyst` skill.
 
-## When to use
+## Usage Boundaries
 
-- You need to render a figure from PRE-COMPUTED data (presentation layer).
-- You need to fit or diagnose a statistical model in Python (statistical-methodology
-  layer) — pair this with the analyst skill's `statistical-analysis` reference for the
-  methodology that drives the choice of test/model.
-
-## Where the API detail comes from
-
-Fetch current library documentation at the point of use. matplotlib, seaborn, and
-statsmodels all move, and a copy pinned in this repo would be one more thing to keep
-true. Which test, which model, and how to report it is the analyst skill's question,
-not a library one.
+- **Presentation layer**: Render figures strictly from pre-computed data. Transformations and aggregations belong in the data layer.
+- **Statistical methodology**: Fit and diagnose models in Python using tests selected per the analyst skill's methodology principles.
+- **Documentation**: Fetch current API documentation for matplotlib, seaborn, and statsmodels at point of use.

@@ -8,19 +8,19 @@
   },
   "plugins": [
     {
-      "name": "aops",
-      "description": "Research workflow automation: strategy (ida), memory (pauli), execution (james), QA (marsha), and red-team (adversary).",
-      "version": "0.9.3",
+      "name": "ida",
+      "description": "The strategic face, and the only agent that speaks to the user.",
+      "version": "0.10-rc1",
       "author": {
         "name": "Nicolas Suzor"
       },
-      "source": "./aops",
+      "source": "./ida",
       "category": "productivity"
     },
     {
       "name": "rbg",
       "description": "Automatic in-session rule enforcement.",
-      "version": "0.9.3",
+      "version": "0.10-rc1",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -28,19 +28,9 @@
       "category": "productivity"
     },
     {
-      "name": "ts",
-      "description": "Tailscale bring-up for remote sessions.",
-      "version": "0.9.3",
-      "author": {
-        "name": "Nicolas Suzor"
-      },
-      "source": "./ts",
-      "category": "productivity"
-    },
-    {
       "name": "tools",
       "description": "Domain research skills.",
-      "version": "0.9.3",
+      "version": "0.10-rc1",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -50,7 +40,7 @@
     {
       "name": "aops-debug",
       "description": "Debug plugin that dumps raw hook payloads.",
-      "version": "0.9.3",
+      "version": "0.10-rc1",
       "author": {
         "name": "Nicolas Suzor"
       },

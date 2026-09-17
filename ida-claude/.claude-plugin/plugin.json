@@ -1,0 +1,16 @@
+{
+  "name": "ida",
+  "description": "The strategic face, and the only agent that speaks to the user.",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "aops",
+    "ida",
+    "strategy",
+    "premise-check"
+  ],
+  "version": "0.10-rc1"
+}

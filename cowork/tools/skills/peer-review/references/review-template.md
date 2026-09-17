@@ -6,9 +6,7 @@ tags: [template, peer-review]
 
 # Generic Review Template
 
-Instantiate this with the criteria, weights, and band descriptors fetched from the current round's handbook (Stage 0). Do **not** hardcode prior-year structure — copy the criteria list verbatim from this round.
-
-This template is deliberately lean: one criterion block, comments plus the evidence located. A reservation trimmed in the voice pass is not appended here — it lives in the one living draft's git history.
+Populate with criteria, weights, and character limits fetched from the active round handbook. Maintain a single living draft versioned in git history.
 
 ```markdown
 # {SCHEME} {ROUND} Assessment
@@ -25,20 +23,18 @@ This template is deliberately lean: one criterion block, comments plus the evide
 
 ---
 
-## Criterion 1 — {Name} ({Weight}%)
+## Criterion 1 -- {Name} ({Weight}%)
 
 **Comments** (≥{N} chars).
 
 ### Evidence located in application
 
-- {sub-element 1}: {what the application says, with line/section ref}
-- …
+- {sub-element 1}: {claim summary, line/section ref}
+- {sub-element 2}: {claim summary, line/section ref}
 
 ---
 
-## Criterion 2 — {Name} ({Weight}%)
+## Criterion 2 -- {Name} ({Weight}%)
 
-…
-
----
+...
 ```

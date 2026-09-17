@@ -1,1 +1,1 @@
-rbg: the rule evaluator isn't answering — tool calls are proceeding unchecked (once per session).
+rbg: rule evaluator unreachable -- tool calls proceeding unchecked (once per session).

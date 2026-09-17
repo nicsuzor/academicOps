@@ -3,75 +3,34 @@ title: Exploratory Analysis
 type: note
 category: instruction
 permalink: analyst-chunk-exploratory-analysis
-description: Pattern for collaborative, iterative data exploration that yields to user guidance at each step
+description: Pattern for iterative data exploration yielding to user guidance at each step.
 ---
 
 # Exploratory Analysis
 
-When exploring data to understand patterns, follow collaborative discovery process.
+Exploratory analysis investigates patterns and relationships in clean data. For data quality issues (missing values, unexpected nulls, join defects), switch to the data investigation workflow and produce reusable scripts in `analyses/`.
 
-**NOTE:** If you find yourself running multiple queries to investigate a DATA ISSUE (missing values, unexpected nulls, join problems), switch to the Data Investigation Workflow and create a reusable script.
+## Iterative exploration workflow
 
-Exploratory analysis is for understanding PATTERNS and RELATIONSHIPS in clean data. Data investigation is for diagnosing DATA QUALITY problems.
+1. **Load data via canonical path and show summary statistics**:
+   ```python
+   from pathlib import Path
+   import duckdb
 
-## Exploration Pattern
+   PROJECT_ROOT = Path(__file__).resolve().parent
+   DB_PATH = (PROJECT_ROOT / "dbt" / "data" / "local_cache.duckdb").resolve()
+   conn = duckdb.connect(str(DB_PATH), read_only=True)
+   df = conn.execute("SELECT * FROM fct_cases").df()
+   print(df.describe())
+   ```
+2. **Stop and report**: Share findings with the user. Ask: _"What would you like to explore?"_
+3. **Generate a single visualization or model**: Render output and interpret findings.
+4. **Stop and discuss**: Confirm next question with user before proceeding.
 
-**Step 1: Load data and show basic statistics**
+## Discipline checklist
 
-```python
-from pathlib import Path
-import duckdb
-
-# Resolve absolute canonical path from project root
-PROJECT_ROOT = Path(__file__).resolve().parent
-DB_PATH = (PROJECT_ROOT / "dbt" / "data" / "local_cache.duckdb").resolve()
-
-if not DB_PATH.is_file():
-    raise FileNotFoundError(f"Canonical database not found at {DB_PATH}")
-
-conn = duckdb.connect(str(DB_PATH), read_only=True)
-df = conn.execute("SELECT * FROM fct_cases").df()
-
-print(f"Rows: {len(df)}")
-print(f"Columns: {list(df.columns)}")
-print("\nSummary statistics:")
-print(df.describe())
-```
-
-**STOP. Share findings with user. Ask: "What would you like to explore?"**
-
-**Step 2: Create single visualization based on user direction**
-
-```python
-import plotly.express as px
-
-fig = px.scatter(
-    df,
-    x="submission_date",
-    y="processing_days",
-    color="status",
-    title="Processing Time Over Time",
-)
-fig.show()
-```
-
-**STOP. Discuss findings. Ask: "What pattern should we investigate next?"**
-
-**Step 3: Follow user guidance for next exploration**
-
-Continue one step at a time, yielding to user after each finding.
-
-## Exploratory Analysis Anti-Patterns
-
-❌ **Don't** create comprehensive analysis notebook without user input
-❌ **Don't** generate 10 charts at once
-❌ **Don't** make assumptions about what's interesting
-❌ **Don't** query upstream data sources directly
-❌ **Don't** use bare cwd-relative database paths (`duckdb.connect("data/...")`) — always resolve absolute canonical paths
-❌ **Don't** misdiagnose "table does not exist" as data loss before verifying connection path, file size, and checking for duplicate caches
-
-✅ **Do** take one analytical step at a time
-✅ **Do** explain each finding and ask for direction
-✅ **Do** use dbt models for all data access
-✅ **Do** verify canonical-source parity before analyzing derived marts
-✅ **Do** document interesting findings in code comments
+- Take one analytical step at a time; never generate multi-chart dumps unprompted.
+- Access data exclusively via modelled marts or staging models; never query raw upstream sources.
+- Always resolve absolute canonical database paths; never use cwd-relative strings.
+- Verify canonical-source parity before drawing substantive conclusions.
+- Record notable findings in code comments or experiment READMEs.

@@ -1,1 +1,1 @@
-rbg: flagged this tool call against {rules} — advisory only, nothing was blocked.
+rbg: tool call flagged against {rules} -- advisory only, not blocked.
