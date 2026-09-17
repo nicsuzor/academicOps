@@ -12,11 +12,8 @@ from unittest.mock import patch
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
-if str(LIB_HOOKS) not in sys.path:
-    sys.path.insert(0, str(LIB_HOOKS))
 if str(PKB_HOOKS) not in sys.path:
     sys.path.insert(0, str(PKB_HOOKS))
 
@@ -41,14 +38,7 @@ from dispatch import HookContext, load_message_pair  # type: ignore[import-not-f
 def staged_hooks(tmp_path: Path) -> Path:
     """A plugin hooks/ directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
-    shutil.copytree(LIB_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
-    for item in PKB_HOOKS.iterdir():
-        if item.name == "__pycache__":
-            continue
-        if item.is_dir():
-            shutil.copytree(item, hooks / item.name, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, hooks / item.name)
+    shutil.copytree(PKB_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     return hooks
 
 

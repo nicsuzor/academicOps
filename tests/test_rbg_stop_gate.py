@@ -24,7 +24,6 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
 RBG_MANIFEST = REPO_ROOT / "plugins" / "rbg" / "manifest" / "hooks.json"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
@@ -51,26 +50,9 @@ def test_the_shipped_reason_is_substantive():
 
 @pytest.fixture
 def staged(tmp_path) -> Path:
-    """A plugin `hooks/` directory assembled exactly as the build assembles one.
-
-    Build stage 1 injects `lib/hooks/` into the plugin tree, so at runtime
-    `dispatch.py` and `handlers.py` sit in the same directory and import each
-    other as flat modules. Reproducing that here is what makes these tests
-    exercise the shipped arrangement rather than a repository-only one.
-
-    Per-test, not shared: several cases below swap `handlers.py` or a message
-    file to prove a property, and a fixture they can reach across tests would
-    make those swaps somebody else's flake.
-    """
+    """A plugin `hooks/` directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
-    shutil.copytree(LIB_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
-    for item in RBG_HOOKS.iterdir():
-        if item.name == "__pycache__":
-            continue
-        if item.is_dir():
-            shutil.copytree(item, hooks / item.name, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, hooks / item.name)
+    shutil.copytree(RBG_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     return hooks
 
 

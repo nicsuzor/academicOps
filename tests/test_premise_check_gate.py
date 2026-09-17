@@ -32,11 +32,8 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _PLUGIN_ROOT = _REPO_ROOT / "plugins" / "ida"
 _HOOKS_DIR = _PLUGIN_ROOT / "hooks"
-_LIB_HOOKS_DIR = _REPO_ROOT / "lib" / "hooks"
-
-for p in (_LIB_HOOKS_DIR, _HOOKS_DIR):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
 
 import dispatch
 import premise_check_gate as pcg
