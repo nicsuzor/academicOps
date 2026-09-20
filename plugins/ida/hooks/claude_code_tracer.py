@@ -26,6 +26,7 @@ import fcntl
 import json
 import logging
 import os
+import re
 import socket
 import sys
 import time
@@ -202,17 +203,7 @@ def resolve_project_name(
                     break
     if not raw_name:
         # Directory resolution
-        cwd = ""
-        if data and isinstance(data, dict):
-            cwd = str(data.get("cwd") or "")
-        if not cwd:
-            cwd = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
-        if not cwd:
-            try:
-                cwd = os.getcwd()
-            except Exception:
-                cwd = ""
-
+        cwd = resolve_cwd(data)
         if cwd:
             name = Path(cwd).resolve().name
             if name and name not in ("/", "\\", "."):
@@ -225,8 +216,156 @@ def resolve_project_name(
     return canonical or raw_name
 
 
+def resolve_cwd(data: dict | None = None, state: dict | None = None) -> str:
+    """Resolve the working directory path for this session.
+
+    Priority:
+    1. data['cwd'] (hook payload)
+    2. state['cwd'] (cached session state)
+    3. CLAUDE_PROJECT_DIR env var
+    4. os.getcwd()
+    """
+    cwd = ""
+    if data and isinstance(data, dict):
+        cwd = str(data.get("cwd") or "").strip()
+    if not cwd and state and isinstance(state, dict):
+        cwd = str(state.get("cwd") or "").strip()
+    if not cwd:
+        cwd = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
+    if not cwd:
+        try:
+            cwd = os.getcwd()
+        except Exception:
+            cwd = ""
+    if cwd:
+        try:
+            return str(Path(cwd).resolve())
+        except Exception:
+            return cwd
+    return ""
+
+
+_TASK_ID_RE = re.compile(
+    r"^(?:[a-z][a-z0-9-]*[_-])?[0-9a-f]{8}$"
+    r"|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    r"|^wf-[a-z0-9-]+$"
+    r"|^[a-z]+-[0-9a-f]{8}$"
+    r"|^(?:engine-)?task-\d+$"
+    r"|^[a-z][a-z0-9_.-]*[_-][0-9a-f]{6,}$",
+    re.IGNORECASE,
+)
+_KNOWN_NON_TASK_IDS = {"ns", "default", "academicops", "aops"}
+
+
+def is_valid_task_id(task_id: str) -> bool:
+    """Return True if task_id resembles an actual task/epic ID rather than a namespace/placeholder."""
+    if not task_id:
+        return False
+    tid = task_id.strip()
+    if tid.lower() in _KNOWN_NON_TASK_IDS:
+        return False
+    if _TASK_ID_RE.match(tid):
+        return True
+    if re.match(r"^(?:task|epic|aops|wf)[_-][a-zA-Z0-9_-]+$", tid, re.IGNORECASE):
+        return True
+    return False
+
+
+def resolve_agent_name(
+    data: dict | None = None,
+    state: dict | None = None,
+    cwd: str | None = None,
+) -> str:
+    """Resolve the agent name for this session.
+
+    Priority:
+    1. Hook payload agent / agent_name / agent_type / subagent_type
+    2. Cached session state agent_name
+    3. CLAUDE_AGENT_NAME, AOPS_AGENT_NAME, AGENT_NAME env vars
+    4. .claude/settings.json or settings.local.json in cwd (or parent dirs up to .git boundary)
+    5. Directory name heuristics (e.g. ida -> ida, dispatch -> sara)
+    6. Fallback to plugin agent id ('ida')
+    """
+    if data and isinstance(data, dict):
+        for k in ("agent", "agent_name", "subagent_type"):
+            val = str(data.get(k) or "").strip()
+            if val:
+                return val
+        if data.get("agent_type"):
+            val = str(data["agent_type"]).strip()
+            if ":" in val:
+                val = val.split(":", 1)[1]
+            if val:
+                return val
+
+    if state and isinstance(state, dict):
+        cached = str(state.get("agent_name") or "").strip()
+        if cached:
+            return cached
+
+    for env_var in ("CLAUDE_AGENT_NAME", "AOPS_AGENT_NAME", "AGENT_NAME"):
+        env_val = os.environ.get(env_var, "").strip()
+        if env_val:
+            return env_val
+
+    resolved_cwd = cwd or resolve_cwd(data, state)
+    if resolved_cwd:
+        curr = Path(resolved_cwd)
+        # Check current dir .claude settings
+        for settings_name in ("settings.json", "settings.local.json"):
+            s_file = curr / ".claude" / settings_name
+            if s_file.is_file():
+                try:
+                    s_data = json.loads(s_file.read_text(encoding="utf-8"))
+                    agent_val = str(
+                        s_data.get("agent")
+                        or s_data.get("agent_name")
+                        or s_data.get("agent_type")
+                        or ""
+                    ).strip()
+                    if agent_val:
+                        if ":" in agent_val:
+                            agent_val = agent_val.split(":", 1)[1]
+                        return agent_val
+                except Exception:
+                    pass
+
+        # If current dir had a .claude folder, do not climb up to parent .claude folders
+        has_local_claude = (curr / ".claude").is_dir()
+        if not has_local_claude:
+            for p in curr.parents:
+                for settings_name in ("settings.json", "settings.local.json"):
+                    s_file = p / ".claude" / settings_name
+                    if s_file.is_file():
+                        try:
+                            s_data = json.loads(s_file.read_text(encoding="utf-8"))
+                            agent_val = str(
+                                s_data.get("agent")
+                                or s_data.get("agent_name")
+                                or s_data.get("agent_type")
+                                or ""
+                            ).strip()
+                            if agent_val:
+                                if ":" in agent_val:
+                                    agent_val = agent_val.split(":", 1)[1]
+                                return agent_val
+                        except Exception:
+                            pass
+                if (p / ".git").exists():
+                    break
+
+        if curr.name in ("dispatch", "sara") or "dispatch" in curr.parts or "sara" in curr.parts:
+            return "sara"
+        elif curr.name == "ida" or "ida" in curr.parts:
+            return "ida"
+        elif curr.name == "james" or "james" in curr.parts:
+            return "james"
+
+    return "ida"
+
+
 def discover_config(data: dict | None = None) -> dict | None:
-    """Returns config dict with keys: api_key, task_id, endpoint, protocol (optional), project_name.
+    """Returns config dict with keys: api_key, task_id, endpoint, protocol (optional), project_name, cwd, agent_name.
     Returns None if not configured (silent no-op)."""
     api_key = (
         os.environ.get("GENAI_ENGINE_API_KEY")
@@ -250,19 +389,26 @@ def discover_config(data: dict | None = None) -> dict | None:
     project_name = resolve_project_name(data)
 
     task_id = (
-        os.environ.get("AOPS_TASK_ID", "").strip()
+        (data.get("task_id") if data and isinstance(data, dict) else None)
+        or os.environ.get("AOPS_TASK_ID", "").strip()
         or os.environ.get("GENAI_ENGINE_TASK_ID", "").strip()
+        or ""
     )
     if task_id:
         canon_task = resolve_canonical_project(task_id)
-        if task_id == project_name or canon_task == project_name:
+        if task_id == project_name or canon_task == project_name or not is_valid_task_id(task_id):
             task_id = ""
+
+    cwd = resolve_cwd(data)
+    agent_name = resolve_agent_name(data, cwd=cwd)
 
     cfg = {
         "api_key": api_key,
         "task_id": task_id,
         "endpoint": endpoint,
         "project_name": project_name,
+        "cwd": cwd,
+        "agent_name": agent_name,
     }
     if protocol:
         cfg["protocol"] = protocol
@@ -1240,6 +1386,8 @@ def _build_and_export_spans(
     span_records: list[dict],
     agent_id: str | None = None,
     parent_session_id: str | None = None,
+    agent_name: str | None = None,
+    cwd: str | None = None,
 ) -> None:
     """Create spans from records and export via OTLP gRPC (with fallbacks)."""
     (
@@ -1258,6 +1406,14 @@ def _build_and_export_spans(
     service_name = config.get("service_name") or config.get("project_name") or "academicOps"
     project_name = config.get("project_name") or "academicOps"
     task_id = config.get("task_id", "")
+    if task_id and not is_valid_task_id(task_id):
+        task_id = ""
+
+    if agent_name is None:
+        agent_name = config.get("agent_name") or resolve_agent_name(cwd=cwd)
+    if cwd is None:
+        cwd = config.get("cwd") or resolve_cwd()
+
     try:
         host_name = socket.gethostname()
     except Exception:
@@ -1281,6 +1437,11 @@ def _build_and_export_spans(
         resource_attrs["host.name"] = host_name
     if username:
         resource_attrs["user.id"] = username
+    if agent_name:
+        resource_attrs["agent.name"] = agent_name
+    if cwd:
+        resource_attrs["cwd"] = cwd
+        resource_attrs["project.dir"] = cwd
 
     resource = Resource.create(resource_attrs)
 
@@ -1361,7 +1522,10 @@ def _build_and_export_spans(
             except Exception:
                 pass
 
+            span.set_attribute("service.name", service_name)
             span.set_attribute("session.id", session_id)
+            if agent_name:
+                span.set_attribute("agent.name", agent_name)
             if agent_id:
                 span.set_attribute("agent.id", agent_id)
                 span.set_attribute("subagent.id", agent_id)
@@ -1369,6 +1533,9 @@ def _build_and_export_spans(
                 span.set_attribute("parent.session_id", parent_session_id)
             if username:
                 span.set_attribute("user.id", username)
+            if cwd:
+                span.set_attribute("cwd", cwd)
+                span.set_attribute("project.dir", cwd)
             span.set_attribute("project.name", project_name)
             span.set_attribute("openinference.project.name", project_name)
             if task_id:
@@ -1445,6 +1612,8 @@ def _emit_pending_llm_spans(
         span_records=new_spans,
         agent_id=agent_id,
         parent_session_id=parent_session_id,
+        agent_name=state.get("agent_name"),
+        cwd=state.get("cwd"),
     )
 
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
@@ -1482,11 +1651,12 @@ def _complete_turn(
     # parent are connected instead via the shared "session.id" attribute.
     username = state.get("username", "unknown")
     phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
+    cwd = state.get("cwd") or resolve_cwd(None, state)
     agent_name = (
         state.get("agent_name")
         or os.environ.get("CLAUDE_AGENT_NAME")
         or os.environ.get("AOPS_AGENT_NAME")
-        or ""
+        or resolve_agent_name(None, state, cwd)
     )
     root_attrs: dict[str, Any] = {
         "openinference.span.kind": "CHAIN",
@@ -1501,6 +1671,9 @@ def _complete_turn(
         root_attrs["parent.session_id"] = parent_session_id
     if agent_name:
         root_attrs["agent.name"] = agent_name
+    if cwd:
+        root_attrs["cwd"] = cwd
+        root_attrs["project.dir"] = cwd
     if prompt_preview:
         root_attrs["input.value"] = prompt_preview
         root_attrs["input.mime_type"] = "text/plain"
@@ -1527,6 +1700,8 @@ def _complete_turn(
         ],
         agent_id=agent_id,
         parent_session_id=parent_session_id,
+        agent_name=agent_name,
+        cwd=cwd,
     )
 
 
@@ -1677,6 +1852,13 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         state["human_msg_count"] = 0
         state["turn_number"] = 0
 
+    resolved_cwd = resolve_cwd(data, state)
+    if resolved_cwd:
+        state["cwd"] = resolved_cwd
+    resolved_agent = resolve_agent_name(data, state, state.get("cwd"))
+    if resolved_agent:
+        state["agent_name"] = resolved_agent
+
     # Complete the previous turn's trace if one is in progress.
     # Use the cached transcript path from state so that any mid-session
     # project-dir changes (e.g. gh pr create writing to a worktree dir) do
@@ -1777,6 +1959,13 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         )
         state["human_msg_count"] = 0
         state["turn_number"] = 0
+
+    resolved_cwd = resolve_cwd(data, state)
+    if resolved_cwd and not state.get("cwd"):
+        state["cwd"] = resolved_cwd
+    resolved_agent = resolve_agent_name(data, state, state.get("cwd"))
+    if resolved_agent and not state.get("agent_name"):
+        state["agent_name"] = resolved_agent
 
     # Detect context continuation: Claude Code compresses context and continues
     # without firing UserPromptSubmit for the resumption message. The symptom is
@@ -2003,6 +2192,8 @@ def handle_post_tool(data: dict, config: dict) -> None:
         span_records=[span_record],
         agent_id=agent_id,
         parent_session_id=parent_session_id,
+        agent_name=state.get("agent_name"),
+        cwd=state.get("cwd"),
     )
 
     # Acquire an exclusive per-session lock before emitting LLM spans.
@@ -2088,6 +2279,8 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         span_records=[span_record],
         agent_id=agent_id,
         parent_session_id=parent_session_id,
+        agent_name=state.get("agent_name"),
+        cwd=state.get("cwd"),
     )
 
     with _session_lock(session_id):
