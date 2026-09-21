@@ -26,7 +26,7 @@ help:
 	@echo "make test           - run the pytest suite"
 	@echo "make lint           - ruff check + documented-reference check + basedpyright"
 	@echo "make format         - ruff format + dprint fmt"
-	@echo "make clean          - remove dist/, clean global configs and cowork packages"
+	@echo "make clean          - remove dist/"
 	@echo "make clean-plugins  - prune stale plugin caches and cowork packages"
 	@echo "make docker         - build the crew worker image"
 	@echo "make docker-shell   - interactive shell in the crew image"
@@ -53,15 +53,15 @@ build-agy:
 build-openclaw:
 	@uv run python -m build.build --clients openclaw
 
-# The Cowork install path is a manual zip upload (desktop app -> Customize ->
-# Add plugins -> Upload a file), and a plugin installed that way launches its
-# MCP servers with a bare environment — $PKB_MCP_URL does not reach them and
-# there is no --config to supply it afterwards. build.marketplace resolves the
-# URL into the zips' .mcp.json when it is set at build time, and warns when it
-# is not. Deliberately NOT a build failure: the published zips ship without a
-# URL, so Cowork's services MCP is unusable until there is a real way to
-# configure it post-install. Only a local build with PKB_MCP_URL exported
-# produces a working zip.
+# Cowork installs from dist/cowork (directory marketplace or zip upload) and
+# launches a plugin's MCP servers with a bare environment — $PKB_MCP_URL does
+# not expand there and nothing can supply it after install. build.marketplace
+# bakes the URL into dist/cowork's .mcp.json as the stdio launcher's env when
+# it is set at build time, and warns when it is not. Deliberately
+# NOT a build failure: the published channel ships without a URL, so Cowork's
+# services MCP is unusable until there is a real way to configure it
+# post-install. Only a local build with PKB_MCP_URL exported produces a
+# working Cowork channel.
 build-cowork:
 	@uv run python -m build.build --clients claude
 
@@ -96,20 +96,12 @@ build-test: build
 
 # --- Install ---
 
-# Plugin MCP configs reference $PKB_MCP_URL / ${PKB_MCP_URL} directly and
-# resolve it from the environment at MCP-server-launch time — no plugin
-# declares a `userConfig` field for it, so there is nothing to forward via
-# `claude plugin install --config`. Assumes PKB_MCP_URL is exported in the
-# shell; the one exception (Claude Cowork, whose launch environment doesn't
-# propagate env vars) is handled by `make install-dev`'s patch-dev-mcp step,
-# not here.
 define claude_install
 	command claude plugin install $(1)@$(2) && echo "✓ $(1)@$(2) installed" \
 		|| { echo "x $(1)@$(2) install failed" >&2; exit 1; }
 endef
 
 install-dev: build
-	@uv run python -m build.install patch-dev-mcp --dist-root $(DIST)
 	@command claude plugin marketplace remove $(LOCAL_MARKETPLACE) >/dev/null 2>&1 || true
 	@command claude plugin marketplace add $(DIST)
 	@for p in $(STALE_PLUGIN_NAMES); do \
@@ -162,7 +154,7 @@ install:
 clean-plugins:
 	@uv run python scripts/clean_plugins.py
 
-clean: clean-plugins
+clean:
 	@rm -rf $(DIST)
 	@echo "✓ cleaned"
 

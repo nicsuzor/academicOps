@@ -1,32 +1,17 @@
 ---
 name: dbt
-description: dbt (data build tool) implementation of the analyst transformation layer.
-  Use when a project has a dbt/ directory or you need to build, test, or document
-  SQL transformations as version-controlled, reproducible dbt models. This is the
-  dbt-specific HOW for the tech-agnostic principles in the aops-tools analyst skill.
+description: dbt transformation layer for version-controlled, tested SQL models in staging, intermediate, and mart layers. Use when projects contain a dbt/ directory or require auditable metric and schema transformations.
 ---
 
-# dbt — Transformation Layer (academicOps)
+# dbt -- Transformation Layer
 
-dbt is one **swappable** implementation of the transformation layer. The `analyst`
-skill owns the principles, which hold whichever engine you use.
+dbt provides the version-controlled transformation layer for the `analyst` skill. Presentation tools must never implement business logic.
 
-## When to use
+## Usage Boundaries
 
-- The project contains a `dbt/` directory (`dbt/models/`, `dbt_project.yml`).
-- You need to add a metric, join, aggregation, or any business logic — it belongs in a
-  dbt model with tests, never in the presentation layer.
-- You need to test or document a transformation so reviewers can re-run and audit it.
+- **Location**: Use when the repository contains a `dbt/` project directory (`models/`, `dbt_project.yml`).
+- **Logic isolation**: Place all joins, metrics, aggregations, and `CASE` statements in tested dbt models (staging, intermediate, mart). Never embed transformation logic in dashboards or presentation scripts.
+- **Canonical source parity**: When models derive from authoritative records (YAML, benchmark configs), author tests asserting exact parity against source records.
+- **Canonical database paths**: Address local database files (e.g. DuckDB) via project-root absolute paths, avoiding cwd-relative drift.
 
-## The boundary that matters
-
-Every metric, join, aggregation, and `CASE` business rule lives in a tested dbt model
-in the staging / intermediate / mart layering — never inline in the presentation
-layer. A transformation without a test is not one anyone can audit.
-
-## Ground truth parity and canonical addressing
-
-- **Canonical source parity**: When models derive from or score against authoritative ground truth (e.g. YAML records, research configs, benchmark sets), author tests (schema or singular) asserting that the derived mart matches the canonical source records verbatim. `dbt source freshness` validates timestamp recency, not content equality.
-- **Canonical database paths**: Local warehouse caches (e.g. DuckDB databases) must reside at a single documented canonical path. Address them via absolute canonical paths from the project root; never use bare cwd-relative paths.
-
-Fetch current dbt documentation at the point of use.
+Fetch current dbt CLI documentation dynamically at point of use.

@@ -14,9 +14,9 @@ created: 2026-02-04
 or command exists in this repository, and the pipeline this schema measures is
 itself a design, not a running system — see
 [session-insights-prompt.md](session-insights-prompt.md), which is the extraction
-contract, and [sleep-cycle.md](sleep-cycle.md), whose first phase is the
-consuming design. Those two specs point here for the metrics definition; this
-file exists to be that definition and nothing more.
+contract, and [sleep-cycle.md](../agents/sleep-cycle.md), whose first phase is
+the consuming design. Those two specs point here for the metrics definition;
+this file exists to be that definition and nothing more.
 
 Because the extraction design is a Claude subagent emitting JSON directly, with
 no Python glue, there is no settled set of collection points. Whatever

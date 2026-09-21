@@ -14,48 +14,48 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 - **Stated Purpose:** Defines the theoretical foundation, mechanism categories, and escalation model governing how the framework restrains, steers, and verifies agent behavior without programmatic micro-management.
 - **Primary Audience:** Framework architects, system developers, and compliance auditors designing, modifying, or reviewing enforcement mechanisms and policies.
-- **Current Truth / SSoT:** For the empirical register of active rules, mechanisms, severity levels, and pinpoints, see [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md). Nothing here restates the live table.
+- **Current Truth / SSoT:** The empirical register of active rules, mechanisms, severity levels, and pinpoints is owed but not yet shipped on this branch. Nothing here restates a live table that does not exist.
 
-## Governing principle — agents all the way down
+## Governing principle -- agents all the way down
 
-The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**. Hooks, server contracts, and config are **delivery channels** — they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
+The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**. Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
 
-The only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards, model pins. Prevention by construction — never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
+The only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards, model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
 
 ## The four levers
 
 Enforcement is risk-reduction; compliance is not guaranteed, and a hard block is often not the best available move.
 
-1. **Norms** — the agent's internalised alignment with intent: prompt directives, agent and skill instructions, rules.
-2. **Cost** — the token, time, and friction cost of complying against the incentive to bypass.
-3. **Defaults** — whether the compliant path is mechanically the path of least resistance rather than something the agent must remember to invoke.
-4. **Likelihood** — the probability a violation is detected, times its consequence. Severity moves this lever and no other.
+1. **Norms** -- the agent's internalised alignment with intent: prompt directives, agent and skill instructions, rules.
+2. **Cost** -- the token, time, and friction cost of complying against the incentive to bypass.
+3. **Defaults** -- whether the compliant path is mechanically the path of least resistance rather than something the agent must remember to invoke.
+4. **Likelihood** -- the probability a violation is detected, times its consequence. Severity moves this lever and no other.
 
-Before escalating severity, establish that the failure is not a cost or defaults problem. Repeated stale-state assertions are not a norms failure — agents know the rule — so the fix is cheaper search and injected results, not a heavier gate.
+Before escalating severity, establish that the failure is not a cost or defaults problem. Repeated stale-state assertions are not a norms failure -- agents know the rule -- so the fix is cheaper search and injected results, not a heavier gate.
 
 ## The table schema (4 columns)
 
-The empirical register [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) is structured in 4 columns:
+The empirical register, where it exists, is structured in 4 columns:
 
-1. **Rule / nudge** — The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../lib/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/aops/agents/ida.md)`) paired with the operative obligation or steering intent.
-2. **Mechanism** — The carrier category from the 10-term controlled vocabulary.
-3. **Severity** — The escalation index within the mechanism.
-4. **Detail** — The pinpoint verification reference (`path:line` + operative snippet, handler function, or CI workflow) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
+1. **Rule / nudge** -- The short-form linked reference to the rule (e.g. `[Axiom: Data Boundaries](../../lib/axioms/data-boundaries.md)` or `[Persona: Ida](../../plugins/ida/agents/ida.md)`) paired with the operative obligation or steering intent.
+2. **Mechanism** -- The carrier category from the 10-term controlled vocabulary.
+3. **Severity** -- The escalation index within the mechanism.
+4. **Detail** -- The pinpoint verification reference (`path:line` + operative snippet, handler function, or CI workflow) and operational state flags (`[DISABLED]`, `[MAP DRIFT]`).
 
 ## The mechanism categories (10 terms)
 
 The framework organizes all enforcement into a strict 10-term controlled vocabulary:
 
-1. **`agent persona instructions`** — guiding text in an agent's persona file (`plugins/*/agents/*.md`).
-2. **`skill instructions`** — operational text in a skill's `SKILL.md`.
-3. **`hook`** — registered handler on a lifecycle event (`PreToolUse`, `PostToolBatch`, `Stop`, `SessionStart`, etc.).
-4. **`tool grant`** — frontmatter or config explicitly granting, scoping, or denying tools/models.
-5. **`structural check`** — code-level guarantee holding regardless of agent cooperation (mount permissions, fail-closed configs, native loaders).
-6. **`workflow gate`** — cross-cutting checkpoint governing when work may proceed (branch protection, task contracts).
-7. **`CI job`** — named GitHub Actions workflow posting a status check.
-8. **`observability`** — hook or pipeline that records or traces without gating.
-9. **`doctrine`** — declared principle or policy carried in prose without direct code enforcement.
-10. **`not enforced`** — declared rule or constraint with no active code, hook, tool-grant, or prompt mechanism enforcing it.
+1. **`agent persona instructions`** -- guiding text in an agent's persona file (`plugins/*/agents/*.md`).
+2. **`skill instructions`** -- operational text in a skill's `SKILL.md`.
+3. **`hook`** -- registered handler on a lifecycle event (`PreToolUse`, `PostToolBatch`, `Stop`, `SessionStart`, etc.).
+4. **`tool grant`** -- frontmatter or config explicitly granting, scoping, or denying tools/models.
+5. **`structural check`** -- code-level guarantee holding regardless of agent cooperation (mount permissions, fail-closed configs, native loaders).
+6. **`workflow gate`** -- cross-cutting checkpoint governing when work may proceed (branch protection, task contracts).
+7. **`CI job`** -- named GitHub Actions workflow posting a status check.
+8. **`observability`** -- hook or pipeline that records or traces without gating.
+9. **`doctrine`** -- declared principle or policy carried in prose without direct code enforcement.
+10. **`not enforced`** -- declared rule or constraint with no active code, hook, tool-grant, or prompt mechanism enforcing it.
 
 ## The severity index (escalation within mechanisms)
 
@@ -74,6 +74,8 @@ Within each mechanism category, enforcement strength escalates along an explicit
 ## The escalation ladder (the enforcement pyramid)
 
 The canonical doctrine of enforcement is the **enforcement pyramid**: escalate the strength of prose instructions first, and only **reluctantly** move to non-instruction enforcement, within which tooling affordances are preferred to code prohibitions.
+
+Nic, 2026-08-26: _"the canonical explanation is the enforcement pyramid, which says we try escalating strength of prose instructions first and only RELUCTANTLY move to non-instruction enforcement, of which tooling is usually preferred to code prohibitions."_ This does not lower the bar for escalating out of instructions at all: a rung tried and not held is evidence to escalate one step, and a further, stronger instruction attempt remains a legitimate next move.
 
 The escalation sequence runs in strict order. A cheaper rung must be demonstrably exhausted with evidence before advancing to the next:
 
@@ -96,12 +98,35 @@ An **agent personality** defines conduct, judgment register, and disposition: wh
 - **Binding a skill to a personality is a deliberate, documented exception**, for exactly two reasons: **earmarking** (the skill depends on that personality's judgment register) or **permission control** (grants restricted to force a workflow split, keeping reviewer ≠ executor).
 - The three review registers above name **lenses a review must apply**, not exclusive executors. Which agent carries a lens is a dispatch decision.
 
+## The ida pair -- reviewer ≠ executor at the face
+
+[Persona: Ida](../../plugins/ida/agents/ida.md) obliges the face to check every claim before it
+reaches Nic and states that it cannot audit itself. Persona: Ida (draft) — not yet built —
+is the mechanism that makes that performable: the drafting instance does the reading and produces
+a cited report; a face instance rules on it. The draft has no channel to Nic and the face does no
+work, so reviewer ≠ executor holds by grant rather than by recollection.
+
+| Rule / nudge                                                                   | Mechanism                    | Severity     | Detail                                                                                                       |
+| ------------------------------------------------------------------------------ | ---------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| [Persona: Ida](../../plugins/ida/agents/ida.md) -- "You cannot audit yourself" | `agent persona instructions` | `imperative` | `plugins/ida/agents/ida.md`, Logic check; held by prose alone until the pair exists                          |
+| Persona: Ida (draft), not yet built -- produces, never addresses Nic           | `tool grant`                 | n/a          | plugins/ida/agents/ida-draft.md frontmatter, once built; the documented `permission control` exception above |
+
+**This is a defaults move, not a severity move.** Per the four levers, self-checking failed because
+shipping the conclusion is the path of least resistance for an agent that formed it -- a defaults
+problem, not a norms one. Escalating the instruction's severity would not change that incentive;
+splitting the grant does. Reach for severity only if the pair also fails.
+
+**Transport between the two instances is not settled** and is not an enforcement question: a
+co-resident named teammate, a PKB ledger task with a pointer over `SendMessage`, or a status the
+face pulls. All three preserve reviewer ≠ executor; they differ in latency, isolation, and whether
+"unchecked" is visible on the graph.
+
 ## Hook channel constraints
 
-Every plugin hook shares one runtime, `lib/hooks/dispatch.py`, injected at build time. The mechanics — which events honour a block, the once-per-stop-chain guard, how a plugin's handlers merge — belong to that runtime and are stated in [`ARCHITECTURE.md`](../ARCHITECTURE.md), Hooks. What binds here:
+Every plugin hook shares one runtime, `lib/hooks/dispatch.py`, injected at build time. The mechanics -- which events honour a block, the once-per-stop-chain guard, how a plugin's handlers merge -- belong to that runtime and are stated in [`ARCHITECTURE.md`](../ARCHITECTURE.md), Hooks. What binds here:
 
 - **No hook produces a verdict.** A hook may oblige a check; it never reads the transcript, and it never grades what the agent did with the turn it was given.
-- **A block withholds a stop, never a tool call.** It is legal only where the question is a fact about the session — did the check happen — rather than a model's reading of a rule. Honoured only on Claude Code on `BLOCKABLE_EVENTS` (`Stop`, `SubagentStop`); no handler is permitted to emit a blocking disposition on `agy`.
+- **A block withholds a stop, never a tool call.** It is legal only where the question is a fact about the session -- did the check happen -- rather than a model's reading of a rule. Honoured only on Claude Code on `BLOCKABLE_EVENTS` (`Stop`, `SubagentStop`); no handler is permitted to emit a blocking disposition on `agy`.
 - **Injection budget scales inversely with firing frequency.** Per-tool-call and per-turn events get a line or two; stop events, guarded to once per chain, can afford a full instruction.
 - **Every agent-visible string comes from a markdown file beside the handler** (`hooks/messages/`), editable without touching code.
 - **Degradation is distinguished from legitimate absence** by the handlers themselves: no evaluator configured, `$ACA_DATA` unset, and no project rules directory are all valid states and clean no-ops. A fault is never a gate.
@@ -115,20 +140,19 @@ Every plugin hook shares one runtime, `lib/hooks/dispatch.py`, injected at build
 4. **Show, don't tell.** Where compliance is claimed, require information that demonstrates it.
 5. **Never guess.** With no evidence either way, current placement holds.
 
-## Evidence loop — how the framework learns
+## Evidence loop -- how the framework learns
 
 Two flows, deliberately separated as witness and judge, so the volume and direction of framework change is governed by cross-incident pattern rather than by the salience of the most recent failure.
 
-1. **Diagnose and route** ([`learn`](../../plugins/aops/skills/learn/SKILL.md)) — an agent that hits friction traces it to the structural cause and routes the lesson to the one destination its scope claims. It proposes no fix to anything governing future sessions; writing a standing rule needs the user to have asked.
-2. **Improve the framework** (the [`triage`](../../.agents/skills/triage/SKILL.md) skill's sweep mode) — a detached pass over the accumulated issue queue on a cadence the user sets, proposing a mechanism only where recurrence or explicit direction justifies it.
+1. **Diagnose and route** ([`learn`](../../plugins/aops/skills/learn/SKILL.md)) -- an agent that hits friction traces it to the structural cause and routes the lesson to the one destination its scope claims. It proposes no fix to anything governing future sessions; writing a standing rule needs the user to have asked.
+2. **Improve the framework** (the [`triage`](../../.agents/skills/triage/SKILL.md) skill's sweep mode) -- a detached pass over the accumulated issue queue on a cadence the user sets, proposing a mechanism only where recurrence or explicit direction justifies it.
 
 A single incident that is a **bug** is fixed immediately from one report. A single incident that is an **escalation proposal** is logged and waits for the pattern.
 
 ## Sibling documents
 
-- [`ENFORCEMENT-MAP.md`](../ENFORCEMENT-MAP.md) — the current-state authoritative register.
-- [task-contract.md](task-contract.md) — the work-unit contract.
-- [workflow.md](workflow.md) — the workflow shape and the review-depth call.
-- [sign-off.md](sign-off.md) — workflow-level review, instantiated as the PR pipeline.
-- [evidence-contract.md](evidence-contract.md) — the universal claim-evidence shape.
-- [auto-mode-classifier.md](auto-mode-classifier.md) — the harness's own per-action classifier.
+- [task-contract.md](task-contract.md) -- the work-unit contract.
+- [workflow.md](workflow.md) -- the workflow shape and the review-depth call.
+- [sign-off.md](sign-off.md) -- workflow-level review, instantiated as the PR pipeline.
+- [evidence-contract.md](evidence-contract.md) -- the universal claim-evidence shape.
+- [auto-mode-classifier.md](auto-mode-classifier.md) -- the harness's own per-action classifier.

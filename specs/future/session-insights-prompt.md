@@ -13,8 +13,9 @@ command exists in this repository, and the `transcript_parser.py` that earlier
 drafts credited with pre-computing `user_prompt_count` and `timeline_events`
 does not exist either. The design is a Claude subagent launched with this
 template plus a session transcript, emitting the JSON directly — no Python glue.
-The consuming design is [sleep-cycle.md](sleep-cycle.md), whose first phase
-backfills one insight object per session; the pipeline metrics contract is
+The consuming design is [sleep-cycle.md](../agents/sleep-cycle.md), whose first
+phase backfills one insight object per session; the pipeline metrics contract
+is
 [session-insights-metrics-schema.md](session-insights-metrics-schema.md).
 
 Two references in this contract do not resolve, and both must be settled before

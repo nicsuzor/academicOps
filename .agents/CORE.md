@@ -1,6 +1,6 @@
 # Working on academicOps
 
-You are working on the framework's own source. These rules bind.
+This repository contains the `academicOps` (`aops`) framework—an agentic workflow harness designed to support high-integrity academic and technical research.
 
 ## Where things are
 

@@ -31,8 +31,12 @@
 # docker:
 #   image: your-registry/your-account/polecat:your-tag
 
-# Default git branch or ref for isolated container workspaces (used when --base is omitted).
-# branch: main
+# There is no top-level default branch/ref key. `polecat run` never defaults
+# an omitted `--base` to a configured value (spec-base-ref-resolution.md rule
+# 1) — it always uses the canonical checkout's own current branch. Configure
+# a per-project active line instead, under `projects.<slug>.default_branch`
+# below, and have the dispatcher resolve it explicitly via `polecat
+# default-branch -p <project>`.
 
 # Git identity for commits made inside the container (REQUIRED).
 # No host environment fallback.
@@ -64,7 +68,14 @@
 # projects:
 #   your-project:
 #     repo: your-repo                 # optional, defaults to slug
-#     default_branch: main            # documentary
+#     default_branch: main            # this project's active line; read by
+#                                      # `polecat default-branch -p your-project`
+#                                      # and by dispatch skills that pass it on
+#                                      # as an explicit `--base`. NOT consulted
+#                                      # by `polecat run` itself when `--base`
+#                                      # is omitted (spec-base-ref-resolution.md
+#                                      # rule 1) — a dispatcher must resolve it
+#                                      # and pass it explicitly.
 #     sessions_access: false          # optional, mount $AOPS_SESSIONS/logs read-only
 #     aliases:                        # optional project aliases
 #       - your-project-alias

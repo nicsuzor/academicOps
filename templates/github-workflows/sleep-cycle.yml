@@ -118,8 +118,8 @@ jobs:
           prompt: |
             You are the Sleep Cycle consolidation agent running in maintenance mode.
             Read the remember skill and consolidation reference for full instructions:
-              ${{ github.workspace }}/_aops/plugins/aops/skills/remember/SKILL.md
-              ${{ github.workspace }}/_aops/plugins/aops/skills/remember/references/consolidation.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/SKILL.md
+              ${{ github.workspace }}/_aops/plugins/pkb/skills/remember/references/consolidation.md
 
             Work through the consolidation stages in order (Stages 1 through 8) as
             defined in consolidation.md.
@@ -127,11 +127,8 @@ jobs:
             Use your judgment about what needs attention. Skip stages where there's
             nothing to do — but always run Stage 1 (baseline) and Stage 8 (self-check).
 
-            ## Values Alignment
-
-            Read the **Values** section in `remember/SKILL.md` (Maintenance Mode) —
-            it explains both the principles and the cognitive science rationale.
-            You are trusted to do complex knowledge work. Understand WHY, not just WHAT.
+            Read the **Invariants** section in `remember/SKILL.md` and the
+            **Focus** section in consolidation.md; a focus below scopes the cycle.
 
             ## Environment
             - Brain repo (data): ${{ github.workspace }}
@@ -172,8 +169,8 @@ jobs:
               - **Sub-agent halt count (FIRST LINE if non-zero)** with phase + missing tool for each
               - Phase completion status
               - Knowledge notes created/updated (Phase 4)
-              - Self-check findings (Phase 10)
-              - Graph health delta (Phase 0 vs Phase 11)
+              - Audit findings (Stage 8)
+              - Graph health delta (Stage 1 baseline vs Stage 7)
               - PR URL if consolidation PR was created
 
             ## Repo Topology (CRITICAL)

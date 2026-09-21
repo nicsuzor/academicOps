@@ -1,5 +1,5 @@
 ---
-trigger: off
+trigger: always
 description: Project-local rules for the academicOps repository, applied on top of the axioms.
 ---
 
@@ -38,6 +38,7 @@ Do not hardcode architectural policies, messaging invariants, or enforcement lev
 - Policies (e.g., required text snippets, specific hook mappings, or message exemptions) must be defined in `tests/policy.toml`.
 - Tests must assert against the configuration in `policy.toml`, never against hardcoded Python literals.
 - This separates the _mechanism_ of the test from the _policy_ of the platform, allowing non-engineers to review and modify policies without rewriting code.
+- This never licenses asserting that `policy.toml` — or any agent, skill, settings, or instruction file — still declares the same names or values it declares today. `policy.toml` supplies an input an assertion is _derived from_ (an exemption list to check real messages against, a threshold to check a real count against); the assertion itself checks something the code does with that input, never the config's own content restated as its own check.
 
 ## No Shitty NLP and Agentic-First Design
 
@@ -63,5 +64,5 @@ Task titles and filenames must be brief, descriptive, and unambiguous:
 Agents must never create standalone "decision" tasks or file questions as backlog tickets.
 
 - **Represent forks as mutually exclusive option nodes:** Architectural choices and trade-offs are modelled on the graph as competing option nodes with mutual blocking edges. Choosing an option resolves the conflict and cancels the competing node, unblocking downstream dependencies.
-- **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: spike`).
+- **Model unknowns as empirical probes:** Missing information is gathered via focused probe tasks (`classification: probe`).
 - **Ask in-turn questions directly:** Interactive clarifications in an active session use `AskUserQuestion` directly rather than polluting the graph with un-actionable decision tasks.

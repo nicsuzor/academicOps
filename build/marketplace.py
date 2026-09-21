@@ -20,7 +20,6 @@ Every `[[plugins]]` entry requires `directory`, `name`, `description`, `category
 """
 
 import json
-import os
 import shutil
 import tomllib
 import zipfile
@@ -105,102 +104,11 @@ def generate_production_marketplace(decl: dict[str, Any], version: str, dist_roo
     return out
 
 
-def _bake_cowork_mcp_json(mcp_path: Path, plugin_dir: Path) -> str | None:
-    """The zip variant's .mcp.json, with $PKB_MCP_URL resolved at build time —
-    or None to zip the file unchanged.
-
-    Cowork plugins are installed by uploading the zip through the desktop app
-    (Customize -> Add plugins -> Upload a file). The MCP server it launches
-    from that install gets a bare environment: no login shell, no launchctl
-    setenv, nothing the plugin's own config did not carry in. The claude dist's
-    server config defers to `$PKB_MCP_URL` at launch, which in Cowork expands
-    to the empty string — `fastmcp run ""` exits immediately and the client
-    reports "Connection closed" (observed 2026-08-29). There is no --config
-    equivalent on the upload path to supply it after the fact, so the URL has
-    to be in the artifact.
-
-    So the zip swaps that server for the stdio launcher the plugin already
-    ships (scripts/run-mcp.sh) with the URL resolved into its env block. The
-    launcher is used rather than an inline `uvx` line because the same bare
-    environment routinely lacks uvx on PATH, and probing for it is exactly
-    what run-mcp.sh does.
-
-    The URL is read from the build environment and never committed. An unset
-    PKB_MCP_URL is NOT a build failure: the published zips are built without
-    one, and are expected to ship without one — which means Cowork's services
-    MCP does not work from a published zip, and will not until there is a way
-    to configure it after install. Only a local build with PKB_MCP_URL
-    exported produces a usable Cowork zip. The warning below is the whole
-    signal, so don't quiet it.
-
-    Only the zip is rewritten. dist/<name>-claude and the dist/cowork/<name>
-    directory copy keep the env-var form, which is correct for Claude Code and
-    for a directory-marketplace install (`claude plugin install --config`).
-    """
-    baked = os.environ.get("PKB_MCP_URL", "").strip()
-    if not baked:
-        if "PKB_MCP_URL" in mcp_path.read_text(encoding="utf-8"):
-            print(
-                f"  cowork zip: {plugin_dir.name} — PKB_MCP_URL unset at build time; "
-                "the zip ships with no PKB endpoint and its services MCP will fail "
-                "at first use"
-            )
-        return None
-
-    while baked.endswith("/"):
-        baked = baked[:-1]
-
-    launcher = plugin_dir / "scripts" / "run-mcp.sh"
-
-    try:
-        data = json.loads(mcp_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
-        raise BuildError(f"{mcp_path}: malformed .mcp.json: {e}") from e
-
-    servers = data.get("mcpServers", {})
-    # Only servers that defer to the env var at launch — anything with a
-    # concrete endpoint of its own is left alone.
-    pkb_names = [name for name, cfg in servers.items() if "PKB_MCP_URL" in json.dumps(cfg)]
-    rewritten = False
-
-    if pkb_names and launcher.exists():
-        # Cowork cannot speak streamable HTTP to an MCP server, so whichever
-        # transport the Claude dist shipped, the zip gets the stdio proxy —
-        # one server, not one per transport. scripts/run-mcp.sh holds the
-        # contract: it proxies stdio to $PKB_MCP_URL for exactly these clients.
-        for name in pkb_names:
-            del servers[name]
-        servers["services"] = {
-            "command": "bash",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"],
-            "env": {"PKB_MCP_URL": baked},
-        }
-        rewritten = True
-    else:
-        for name in pkb_names:
-            cfg = servers[name]
-            if cfg.get("type") == "http" or "url" in cfg:
-                cfg["url"] = cfg.get("url", "").replace("$PKB_MCP_URL", baked)
-            elif "serverUrl" in cfg:
-                cfg["serverUrl"] = cfg.get("serverUrl", "").replace("$PKB_MCP_URL", baked)
-            else:
-                servers[name] = json.loads(json.dumps(cfg).replace("$PKB_MCP_URL", baked))
-            rewritten = True
-
-    if not rewritten:
-        return None
-    return json.dumps(data, indent=2) + "\n"
-
-
 def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) -> Path:
     """dist/cowork/ — a local directory marketplace assembled from the built
     claude dists (Cowork's RemotePluginManager wipes github-source marketplaces
     on every restart, so a directory source is required), plus per-plugin
-    upload zips for the manual path.
-
-    The directory copy reuses the claude dists verbatim. The zips do not: their
-    .mcp.json gets $PKB_MCP_URL resolved at build time, because the upload path
-    has no way to supply it afterwards (see _bake_cowork_mcp_json)."""
+    upload zips for the manual path. The zip is the directory copy, verbatim."""
     cowork_root = dist_root / "cowork"
     if cowork_root.exists():
         shutil.rmtree(cowork_root)
@@ -229,17 +137,8 @@ def generate_cowork_dist(decl: dict[str, Any], version: str, dist_root: Path) ->
         zip_path = cowork_root / f"{name}-v{version}.zip"
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for path in sorted(dst.rglob("*")):
-                if not path.is_file():
-                    continue
-                arcname = str(path.relative_to(cowork_root))
-                baked = None
-                if path.name == ".mcp.json" and path.parent == dst:
-                    baked = _bake_cowork_mcp_json(path, dst)
-                if baked is not None:
-                    zf.writestr(arcname, baked)
-                    print(f"  cowork zip: {name} — PKB_MCP_URL baked into .mcp.json")
-                else:
-                    zf.write(path, arcname)
+                if path.is_file():
+                    zf.write(path, str(path.relative_to(cowork_root)))
 
     data = {
         "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",

@@ -71,7 +71,7 @@ time rather than inspected inside a container.
   "plugins": {
     "aops": "0.9.1+gf31ebcf7",
     "pkb": "0.9.1+gf31ebcf7",
-    "orchestrate": "0.9.1+gf31ebcf7"
+    "ida": "0.9.1+gf31ebcf7"
   }
 }
 ```
@@ -112,14 +112,14 @@ by dispatch mode:
 SHA comparison is prefix-tolerant in both directions, so a short SHA on either
 side still matches.
 
-| Image source | Workspace state                                          | State                     | Output                      |
-| ------------ | -------------------------------------------------------- | ------------------------- | --------------------------- |
-| `local`      | commit matches, clean                                    | `FRESH_LOCAL_BUILD`       | Header, proceed             |
-| `local`      | commit differs, image is at or past the release baseline | `FRESH_LOCAL_BUILD`       | Header, proceed             |
-| `local`      | commit differs, image predates the release baseline      | `STALE_LOCAL_BUILD`       | **Warning banner**, proceed |
-| `local`      | commit matches, tree dirty                               | `DIRTY_WORKSPACE_UNBAKED` | **Warning banner**, proceed |
-| `remote`     | commit matches                                           | `FRESH_REMOTE_BUILD`      | Header, proceed             |
-| `remote`     | commit differs                                           | `REMOTE_RELEASE_RUN`      | Header, proceed             |
+| Image source | Workspace state                                          | State                     | Output                       |
+| ------------ | -------------------------------------------------------- | ------------------------- | ---------------------------- |
+| `local`      | commit matches, clean                                    | `FRESH_LOCAL_BUILD`       | Plugin build report, proceed |
+| `local`      | commit differs, image is at or past the release baseline | `FRESH_LOCAL_BUILD`       | Plugin build report, proceed |
+| `local`      | commit differs, image predates the release baseline      | `STALE_LOCAL_BUILD`       | Plugin build report, proceed |
+| `local`      | commit matches, tree dirty                               | `DIRTY_WORKSPACE_UNBAKED` | Plugin build report, proceed |
+| `remote`     | commit matches                                           | `FRESH_REMOTE_BUILD`      | Plugin build report, proceed |
+| `remote`     | commit differs                                           | `REMOTE_RELEASE_RUN`      | Plugin build report, proceed |
 
 `DIRTY_WORKSPACE_UNBAKED` fires only where the workspace is dirty and the image
 was _not_ built dirty: an image stamped `aops.build_dirty=1` already contains
@@ -170,45 +170,42 @@ comparison described here.
 
 ### Host CLI
 
-`run` writes the banner to **stderr**, not stdout, and suppresses it under
-`--quiet` -- polecat's stream-separation guarantee
-([polecat-system.md](polecat-system.md), Guarantee 7) applies to these banners
+`run` writes the plugin build report to **stderr**, not stdout, and suppresses
+it under `--quiet` -- polecat's stream-separation guarantee
+([polecat-system.md](polecat-system.md), Guarantee 7) applies to this report
 like any other polecat prose.
 
-Fresh local:
+Every launch reports the plugin build version and git commit in one or two plain
+lines, with the workspace commit alongside for comparison where available. The
+mismatch case is ordinary and expected; it reads as a calm fact rather than an
+alarm:
+
+Fresh local (commits match):
 
 ```text
-================================================================================
-POLECAT DISPATCH: session-9317829f [agy]
-Workspace: /home/nic/.aops/worktrees/session-9317829f (commit: f31ebcf7)
-Image:     ghcr.io/nicsuzor/aops-crew:latest (local build @ f31ebcf7)
-Status:    PLUGINS FRESH [local match]
-================================================================================
+Plugin build: 0.9.1 (commit f31ebcf7)
+Workspace commit: f31ebcf7
 ```
 
-Stale local:
+Stale local (image commit lags workspace or predates release baseline):
 
 ```text
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-WARNING: POLECAT IMAGE PLUGINS ARE STALE
-The plugins baked into this container image DO NOT MATCH the workspace under test!
-- Baked Image Commit:    62456fff (built: 2026-08-20)
-- Workspace Test Commit: f31ebcf7
-- Impact:                Container agent will execute OLD plugins/skills/hooks.
-- Remedy:                Run `make docker-build` to rebuild with current source.
-Proceeding with execution (warn-only policy enabled)...
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Plugin build: 0.9.1 (commit 62456fff)
+Workspace commit: f31ebcf7
+```
+
+Dirty workspace:
+
+```text
+Plugin build: 0.9.1 (commit 62456fff)
+Workspace commit: f31ebcf7 (dirty)
 ```
 
 Remote release:
 
 ```text
-================================================================================
-POLECAT DISPATCH: session-9317829f [claude]
-Workspace: /home/nic/.aops/worktrees/session-9317829f (branch: feat/new-api @ b47025df)
-Image:     ghcr.io/nicsuzor/aops-crew:v0.9.1 (remote release @ v0.9.1)
-Status:    REMOTE RELEASE IMAGE [testing against released plugin baseline]
-================================================================================
+Plugin build: 0.9.1 (commit 62456fff)
+Workspace commit: f31ebcf7
 ```
 
 ### In-container `SessionStart` hook

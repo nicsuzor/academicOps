@@ -150,7 +150,7 @@ staged with an `antigravity-oauth-token`, renders
 (`username (Google AI Ultra)`) appears, writes its logs to files rather than
 stdout, and requires an explicit `-i`/`--prompt-interactive` or `-p`/`--print`
 where `claude` accepts a positional prompt. Both take `--agent <name>`
-(`@orchestrate:james` for `claude`, `james` for `agy`).
+(`@aops:james` for `claude`, `james` for `agy`).
 
 ## Drive it
 
@@ -262,7 +262,7 @@ Quote verbatim excerpts from `capture-pane`, session logs, and Phoenix output in
 your report.
 
 1. **Pre-flight** — confirm `_log_fire` and `_load_handlers` in
-   `lib/hooks/dispatch.py` are not returning early.
+   `plugins/ida/hooks/dispatch.py` are not returning early.
 2. **§0 image freshness** — `make docker-build`, then `make verify-docker`.
 3. **§1 structural** — `make docker-smoke-test` confirms the plugins are
    installed in the image.

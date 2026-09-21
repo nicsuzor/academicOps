@@ -1,7 +1,0 @@
-[[shared]]
-from = "hooks"
-to = "hooks"
-
-[[shared]]
-from = "axioms"
-to = "axioms"

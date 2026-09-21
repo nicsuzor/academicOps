@@ -74,6 +74,7 @@ def ensure_test_environment(monkeypatch, tmp_path):
         "AOPS_SESSION_ID",
         "AOPS_SESSION_STATE_DIR",
         "AOPS_SRC_DIR",
+        "AOPS_TASK_ID",
     }
     for key in list(os.environ.keys()):
         if key.startswith("AOPS_GATE_FILE_") or key in scrub_keys:

@@ -10,21 +10,15 @@ name = "Nicolas Suzor"
 email = "nic@suzor.net"
 #
 [[plugins]]
-directory = "aops"
-name = "aops"
-description = "Research workflow automation: strategy (ida), memory (pauli), execution (james), QA (marsha), and red-team (adversary)."
+directory = "ida"
+name = "ida"
+description = "The strategic face, and the only agent that speaks to the user."
 category = "productivity"
 
 [[plugins]]
 directory = "rbg"
 name = "rbg"
 description = "Automatic in-session rule enforcement."
-category = "productivity"
-
-[[plugins]]
-directory = "ts"
-name = "ts"
-description = "Tailscale bring-up for remote sessions."
 category = "productivity"
 
 [[plugins]]

@@ -40,6 +40,15 @@ Do not select this when:
    authoring the standard after seeing the output is indistinguishable from
    grading to fit.
 
+   Then choose at least one live input whose correct answer you already know
+   independently, and record the prediction before the run — **where the
+   executor cannot see it.** A yardstick says what X is for; a pre-committed
+   prediction says what this run must produce to count, and it is the only part
+   of the critique that cannot be argued into agreement afterwards. Written
+   somewhere the executor reads, it stops being a test and becomes coaching.
+   Where nothing in reach has a knowable answer, say so: the run can still
+   inform, but it cannot falsify.
+
 2. **Run X on its own surface, in its own container, and do none of the work.**
    Headless, isolated, no shared state with the dispatcher, no coaching turn, no
    edit to the subject's tree. The surface named in the ask is part of what is
@@ -63,6 +72,9 @@ Do not select this when:
    against the spec's stated obligations, one at a time, citing the obligation
    each violates. Neither a pass nor a defect is recorded from an absence: where
    nothing observed discriminates the alternatives, record it undetermined.
+   Read the output against itself as well as against the spec: a frame it sets
+   in its own opening and then breaks later is a defect the spec will never
+   name, and it is visible without leaving the page.
 
 5. **Summarise to a decision.** What the run establishes, what it does not, and
    the smallest set of choices that would change the next run — put to the user
@@ -72,6 +84,12 @@ Do not select this when:
 Findings that outlive this run — a defect in X's instructions, a gap where no
 rule existed — leave as evidence records per the `dogfood` skill. A finding that
 exists only in this step's summary has not been filed.
+
+Sort those findings into defects in X and defects in the substrate X ran on —
+the tools it called, the data it read, the surface it ran on — and route them
+separately. A substrate fault reaches you wearing X's failure, so filing it
+against X hardens the wrong instructions and leaves the fault to produce the
+same symptom next run.
 
 ## Exit
 

@@ -12,7 +12,7 @@ no_user_counterpart = { "rbg: ruleset" = "agy-only injection; agy has no user ch
 # Messages that ship user-blind and SHOULD NOT (defect list)
 known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the person; needs the pair, not [0]" }
 
-[aops]
+[pkb]
 # Is search_the_pkb enabled and returning a Result?
 search_the_pkb_enabled = true
 

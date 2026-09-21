@@ -31,6 +31,7 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 | `make lint`          | `ruff check .`.                                                                                                  |
 | `make format`        | `ruff format .` + `dprint fmt`.                                                                                  |
 | `make clean`         | Removes `dist/`.                                                                                                 |
+| `make clean-plugins` | Prunes stale plugin caches and Cowork packages via `scripts/clean_plugins.py`.                                   |
 | `make docker`        | Alias for `make docker-build`.                                                                                   |
 | `make docker-build`  | `make build`, then `docker build --build-arg AOPS_DIST_SOURCE=local` from this checkout's own `dist/`.           |
 | `make docker-shell`  | `docker-build`, then an interactive shell in the image.                                                          |
@@ -40,36 +41,42 @@ under `plugins/`, mirroring the table in `ARCHITECTURE.md`.
 are separate marketplace names specifically so one install can never silently
 shadow the other: `claude plugin marketplace add` is a no-op when a name already
 exists, so both `install-dev` and `install` remove their own marketplace name
-before re-adding it. `aops`'s `services` MCP server resolves `$PKB_MCP_URL`
-from the environment at launch (`ARCHITECTURE.md`, "No defaults" -- the URL is
-never committed, and there is no fallback).
+before re-adding it. The `services` MCP server is installed at user level across all surfaces, never shipped inside a plugin (see "User-level `services` MCP server" below).
 
-**Cowork and MCP server configuration:**
-Cowork installs a plugin either via directory marketplace or manual zip upload
-(desktop app → Customize → Add plugins → Upload a file). Plugins run with a
-bare environment where `$PKB_MCP_URL` is unexpanded. To support this:
+**User-level `services` MCP server:**
+The PKB `services` MCP server is not shipped inside any plugin. Cloud sessions never load plugin MCP servers (`CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS=1`). The `services` MCP server is installed at user level on every surface:
 
-1. **Two versions of the PKB services MCP server** ship in `plugins/aops`:
-   - `services`: the FastMCP stdio launcher (`uvx --from fastmcp-slim[server] fastmcp run "$PKB_MCP_URL"`),
-     swapped in Cowork upload zips for `run-mcp.sh` with `env: {PKB_MCP_URL: ...}` when baked.
-   - `services-http`: a direct HTTP route (`{"type": "http", "url": "$PKB_MCP_URL"}` for Claude/Cowork,
-     and `{"serverUrl": "$PKB_MCP_URL"}` for `agy`).
-2. **`make install-dev` dev workaround**:
-   Cowork does not expand environment variables at runtime. During `make install-dev`,
-   `build.install patch-dev-mcp` substitutes `$PKB_MCP_URL` with the concrete value from
-   the user's host environment, across `dist/`'s own `.mcp.json` files (which `claude
-   plugin install` then copies into its plugin cache verbatim, carrying the substitution
-   with it) and any existing Cowork GUI session directories. Everywhere else -- normal
-   Claude Code and `agy` use, in or out of Cowork -- `$PKB_MCP_URL` is assumed to already
-   be exported in the launching shell and resolves at MCP-server-launch time; nothing
-   forwards or re-declares it.
-3. **`make clean` Cowork package pruning**:
-   `make clean` (and `make clean-plugins`) invokes `scripts/clean_plugins.py`, which
+1. **Local Claude Code**:
+   `claude mcp add --transport http --scope user services <PKB_MCP_URL>` (must use `--scope user`; `--scope local` was observed to register nothing).
+2. **Claude Code Cloud & Cowork**:
+   Configured via the claude.ai account connector named `services`.
+3. **Antigravity (agy)**:
+   Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
+
+Inside agent definitions and skills, PKB tools are referenced as `mcp__services__*` (e.g. `mcp__services__portal_codemode_execute`).
+
+4. **`make clean-plugins` Cowork package pruning**:
+   `make clean-plugins` invokes `scripts/clean_plugins.py`, which
    cleans uninstalled Cowork session packages and removes session-level plugin data caches.
 
 Both Claude Code and `agy` install by **copying** the built plugin content into
 their own plugin caches -- an edit to `plugins/` is invisible to an installed
-session until `make install-dev` rebuilds and reinstalls.
+session until `make install-dev` rebuilds and reinstalls. Concretely, `claude
+plugin install <plugin>@<marketplace>` copies the plugin directory the
+marketplace's `.claude-plugin/marketplace.json` `source` field points at into
+`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`
+(`installed_plugins.json` records the mapping); a subagent spawned from that
+session loads its `agents/*.md` from that cache path, not from the working
+tree. The version segment is the git-derived string from `build/version.py`
+(`get_current_version`), so an uncommitted or unbuilt change never collides
+with an already-installed version -- but nothing re-copies an existing version
+directory in place, so the cache only ever reflects whatever the last
+`make install-dev`/`make install` run built.
+There is no automatic refresh on `git pull`, `git merge`, or `git checkout`.
+`make install-dev` is run by hand to rebuild `dist/` and refresh the local
+plugin cache whenever plugin definitions, instructions, or dependencies change.
+In a `polecat` container, plugin content is baked into the image at build time
+(`Dockerfile`, `AOPS_DIST_SOURCE`), and rebuilding the image is the refresh path.
 
 ## 2. Release path (`dev` → tag → publish)
 

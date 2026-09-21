@@ -47,13 +47,13 @@ reported as such, not treated as an error.
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
 
 DEFAULT_SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 DEFAULT_STATE_PATH = Path.home() / ".claude" / ".aops-automode-state.json"
+DEFAULT_GEMINI_PLUGINS_DIR = Path.home() / ".gemini" / "config" / "plugins"
 
 # The splice point at which Claude Code inserts its own built-in rules for a
 # section. An array written without it discards those built-ins entirely.
@@ -203,98 +203,9 @@ def uninstall_automode(
     return f"removed {len(owned)} aops axiom rule(s) from {settings_path} (autoMode.soft_deny)"
 
 
-def patch_dev_mcp(
-    dist_root: Path,
-    pkb_url: str | None = None,
-) -> list[Path]:
-    """Dev workaround for Claude Cowork.
-
-    Everywhere else, `$PKB_MCP_URL` / `${PKB_MCP_URL}` in a shipped .mcp.json
-    resolves from the environment at MCP-server-launch time — no substitution
-    needed as long as PKB_MCP_URL is exported in the shell that starts the
-    client (Claude Code CLI, agy). Claude Cowork is the one exception: it
-    launches MCP servers in an execution environment where env vars are not
-    expanded or propagated, so a literal value has to be baked in.
-
-    This patches two places with that literal value: `dist/cowork/` (so a
-    directory-marketplace Cowork install — see build/marketplace.py's
-    _bake_cowork_mcp_json for the manual zip-upload install — gets a working
-    URL) and any existing Cowork GUI session directories, which hold their own
-    copy of the plugin's .mcp.json.
-
-    SCOPE IS LOAD-BEARING (fixed 2026-09-08). This used to glob
-    `dist_root/**/.mcp.json`, which reached far past Cowork and rewrote
-    dist/<name>-claude and dist/openclaw/<name> as well. Those are consumed by
-    Claude Code and agy, which DO expand the variable at launch, so the effect
-    was to freeze whatever URL happened to be exported in the shell that last
-    ran `make install-dev` into an artifact with no placeholder left to
-    resolve. It stayed wrong until someone rebuilt from a correctly-configured
-    shell, and it failed silently — the client just reported a connection
-    error. That is exactly what happened when services-new was decommissioned:
-    every non-Cowork dist still carried the dead host's URL.
-
-    build/marketplace.py's _bake_cowork_mcp_json is the matching authority for
-    the zip path, and its docstring states the same rule: "Only the zip is
-    rewritten. dist/<name>-claude and the dist/cowork/<name> directory copy
-    keep the env-var form."
-    """
-    raw_url = pkb_url if pkb_url is not None else os.environ.get("PKB_MCP_URL", "")
-    url = raw_url.strip()
-    if not url:
-        print(
-            "  cowork dev workaround: PKB_MCP_URL unset in environment; "
-            "skipping $PKB_MCP_URL substitution"
-        )
-        return []
-
-    while url.endswith("/"):
-        url = url[:-1]
-
-    patched: list[Path] = []
-
-    # 1. dist/cowork ONLY — never the sibling dists. See the scope note above.
-    cowork_root = dist_root / "cowork"
-    if cowork_root.exists():
-        for mcp_file in sorted(cowork_root.glob("**/.mcp.json")):
-            try:
-                content = mcp_file.read_text(encoding="utf-8")
-                if "$PKB_MCP_URL" in content:
-                    mcp_file.write_text(content.replace("$PKB_MCP_URL", url), encoding="utf-8")
-                    patched.append(mcp_file)
-            except OSError as e:
-                raise InstallError(f"cannot update {mcp_file}: {e}") from e
-
-    # 2. Cowork GUI sessions (rpm plugin directories)
-    candidate_bases = [
-        Path.home() / "Library/Application Support/Claude/local-agent-mode-sessions",
-        Path.home() / ".config/Claude/local-agent-mode-sessions",
-    ]
-    wsl_users = Path("/mnt/c/Users")
-    if wsl_users.exists():
-        for user_dir in wsl_users.iterdir():
-            claude_dir = user_dir / "AppData/Roaming/Claude/local-agent-mode-sessions"
-            if claude_dir.exists():
-                candidate_bases.append(claude_dir)
-
-    for base in candidate_bases:
-        if base.exists():
-            for mcp_file in sorted(base.glob("**/rpm/*/.mcp.json")):
-                try:
-                    content = mcp_file.read_text(encoding="utf-8")
-                    if "$PKB_MCP_URL" in content:
-                        mcp_file.write_text(content.replace("$PKB_MCP_URL", url), encoding="utf-8")
-                        patched.append(mcp_file)
-                except OSError:
-                    pass
-
-    return patched
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Merge/remove aops-owned autoMode entries and patch dev MCP"
-    )
-    parser.add_argument("action", choices=["install", "uninstall", "patch-dev-mcp"])
+    parser = argparse.ArgumentParser(description="Merge/remove aops-owned autoMode entries")
+    parser.add_argument("action", choices=["install", "uninstall"])
     parser.add_argument(
         "--dist-root",
         type=Path,
@@ -303,19 +214,18 @@ def main() -> int:
     )
     parser.add_argument("--settings-path", type=Path, default=DEFAULT_SETTINGS_PATH)
     parser.add_argument("--state-path", type=Path, default=DEFAULT_STATE_PATH)
+    parser.add_argument(
+        "--gemini-plugins-dir",
+        type=Path,
+        default=DEFAULT_GEMINI_PLUGINS_DIR,
+        help="Where agy's installed plugins live (default: ~/.gemini/config/plugins)",
+    )
     args = parser.parse_args()
 
     try:
         if args.action == "install":
             dist_root = args.dist_root or (Path(__file__).resolve().parent.parent / "dist")
-            # patch-dev-mcp is a separate, earlier step in `make install-dev`
-            # (it must run before `claude plugin install` copies dist/ into
-            # the plugin cache) — not repeated here.
             message = install_automode(dist_root, args.settings_path, args.state_path)
-        elif args.action == "patch-dev-mcp":
-            dist_root = args.dist_root or (Path(__file__).resolve().parent.parent / "dist")
-            patched = patch_dev_mcp(dist_root)
-            message = f"dev workaround: replaced $PKB_MCP_URL in {len(patched)} .mcp.json file(s)"
         else:
             message = uninstall_automode(args.settings_path, args.state_path)
     except InstallError as e:

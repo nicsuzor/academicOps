@@ -767,8 +767,13 @@ def resolve_isolated_workspace(
     path to mount, so a container never writes to a shared checkout.
 
     The clone is created from the commit specified in `base` if provided,
-    otherwise falling back to `branch`, then the `branch` key in `config`
-    (polecat.yaml), and defaulting to HEAD if none is set.
+    otherwise from the canonical checkout's own current branch (or `HEAD` if
+    detached). `config` is never consulted for this — see
+    specs/polecat/spec-base-ref-resolution.md rule 1: silently retargeting an
+    omitted `--base` to a configured branch would clobber a dispatch cut from
+    a feature branch. A caller that wants a project's configured active line
+    used by default must resolve it itself (`polecat default-branch -p
+    <project>`) and pass it as an explicit `--base`.
 
     The clone is standalone rather than a linked worktree: a linked worktree's
     `.git` is a pointer to an admin directory on the host that the container
@@ -1043,27 +1048,13 @@ def _minimal_agent_settings(host_settings, mcp_url=None):
     auth-mechanism selector is carried over, because the staged credential is
     otherwise ignored.
 
-    `mcp_url` re-adds exactly one server, from the environment, declared as
-    `httpUrl` so agy connects directly rather than spawning a proxy that has to
-    win a startup race.
-
-    Measured 2026-08-09, agy 1.1.11, headless `agy -p` in the container: it is
-    the *plugin-level* `mcp_config.json` that registers agy's MCP execution
-    primitive (`call_mcp_tool`). Emptying it removed `call_mcp_tool`,
-    `list_resources` and `read_resource` from the declared tool set even though
-    this user-level block was present and correct. Keep both — do not "simplify"
-    by dropping the plugin declaration.
-
-    Not measured for other agy versions or for the interactive TUI. The TUI
-    declares no MCP tools at all (it defers them as "lazy" and registers no
-    primitive), which is a client limitation, not a consequence of this file.
+    No MCP servers are added to user scope settings; MCP servers are declared
+    by plugins via their plugin-level configuration.
     """
     minimal = {}
     auth_type = ((host_settings.get("security") or {}).get("auth") or {}).get("selectedType")
     if auth_type:
         minimal["security"] = {"auth": {"selectedType": auth_type}}
-    if mcp_url:
-        minimal["mcpServers"] = {"services": {"httpUrl": mcp_url}}
     return minimal
 
 
@@ -1083,12 +1074,13 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
 
     settings = {}
     if mcp_url:
-        # `pkb_mcp_url` is declared by the aops plugin's userConfig, so the value
-        # must be staged under that plugin's key. Under any other key the option
-        # is silently ignored and the container's PKB MCP server starts with no
+        # `pkb_mcp_url` is declared by the pkb plugin's userConfig
+        # (plugins/pkb/manifest/plugin.template.json), so the value must be
+        # staged under that plugin's key. Under any other key the option is
+        # silently ignored and the container's PKB MCP server starts with no
         # URL. The key is `<plugin name>@<marketplace name>`, and both halves
         # come from build/marketplace.toml — see build/marketplace.py.
-        settings["pluginConfigs"] = {"aops@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
+        settings["pluginConfigs"] = {"pkb@academicOps": {"options": {"pkb_mcp_url": mcp_url}}}
     worker_model = os.environ.get("POLECAT_WORKER_MODEL")
     if worker_model:
         settings["model"] = worker_model
@@ -1123,10 +1115,8 @@ def setup_staging(staging_dir, mcp_url, agent_home, agent_cmd=None):
             host_settings = json.loads(settings_src.read_text())
         except (OSError, ValueError):
             host_settings = {}
-    # Written whenever there is anything to say — a host with no settings file
-    # of its own still needs the MCP server declared, or the container reaches
-    # nothing.
-    staged = _minimal_agent_settings(host_settings, mcp_url)
+    # Written whenever there is anything to say (e.g. auth mechanism).
+    staged = _minimal_agent_settings(host_settings)
     if staged:
         (gemini_dst / "settings.json").write_text(json.dumps(staged, indent=2))
 
@@ -1173,22 +1163,6 @@ def _reject_bad_agent_cmd(agent_cmd, extra_args, agent=None, prompt=None):
             f"agent name (extra_args={extra_args!r}). AGENT_CMD is a plain "
             "positional: claude, agy, shell, bash, or sleep."
         )
-
-    if agent_cmd == "ida" or agent == "ida":
-        fail(
-            "ida is the interactive face plugin and is not installed in polecat containers. "
-            "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg) via "
-            "claude or agy."
-        )
-
-    for idx, arg in enumerate(extra_args):
-        if arg == "--agent=ida" or (
-            arg == "--agent" and idx + 1 < len(extra_args) and extra_args[idx + 1] == "ida"
-        ):
-            fail(
-                "ida is the interactive face plugin and is not installed in polecat containers. "
-                "Polecat containers run autonomous worker agents (e.g. james, pauli, rbg)."
-            )
 
     # Neither agent CLI has a --non-interactive flag; both exit on an unknown one.
     if agent_cmd in ("claude", "agy") and "--non-interactive" in extra_args:
@@ -1380,16 +1354,11 @@ def _build_inner_command(
                 and "--verbose" not in inner_cmd
             ):
                 inner_cmd.append("--verbose")
-        if (
-            not effectively_interactive
-            and "-p" not in extra_args
-            and "--print" not in extra_args
-            and not prompt
-        ):
+        if not effectively_interactive and "-p" not in extra_args and "--print" not in extra_args:
             # Headless one-shot mode is `--print`, and it is the only one claude
             # has: without it claude opens its interactive UI against a pipe. The
-            # prompt is a positional, so it still arrives from extra_args below,
-            # or from stdin when there is none.
+            # prompt is a positional, so it still arrives from `--prompt` or
+            # extra_args below, or from stdin when there is none.
             #
             # `task` forces it regardless of the TTY. `-t` *is* the autonomous
             # task dispatch: the worker runs `/pull <id>` and exits. Gating that
@@ -1447,7 +1416,7 @@ def _build_inner_command(
         # and naming both silently dropped the args.
         inner_cmd.extend(extra_args)
         if agent_cmd == "agy":
-            if effectively_interactive:
+            if interactive:
                 inner_cmd.extend(["--prompt-interactive", prompt])
             else:
                 # agy's `--prompt` is an alias for `--print`, so this is headless too
@@ -1457,7 +1426,7 @@ def _build_inner_command(
         else:
             inner_cmd.append(prompt)
     elif seeded_from_task:
-        seeded_prompt = f"/aops:pull {task}"
+        seeded_prompt = f"/pkb:pull {task}"
         if agent_cmd == "agy":
             if not effectively_interactive:
                 # `-t` is the canonical production dispatch, so the operator's
@@ -1479,7 +1448,7 @@ def _build_inner_command(
                 "--conversation",
             }
             if not agy_prompt_flags.intersection(extra_args):
-                if effectively_interactive:
+                if interactive:
                     inner_cmd.extend(["--prompt-interactive", extra_args[0], *extra_args[1:]])
                 else:
                     # Autonomous dispatch runs headless so the agent completes its loop
@@ -1922,7 +1891,10 @@ def main():
 )
 @click.option(
     "--base",
-    help="Base commit or branch to create private branch from (default: branch in polecat.yaml).",
+    help="Base commit or branch to create private branch from (default: canonical "
+    "checkout's current branch — never a configured or hardcoded value; see "
+    "'polecat default-branch' to resolve a project's configured active line "
+    "and pass it here explicitly).",
 )
 @click.option(
     "--branch",
@@ -1965,7 +1937,8 @@ def main():
     "-i",
     is_flag=True,
     default=False,
-    help="Run interactively (attaches TTY and opens interactive UI).",
+    help="Run interactively (attaches TTY and opens interactive UI). Without it "
+    "every run is headless and exits when the agent's loop completes.",
 )
 @click.option(
     "--detach",
@@ -2161,7 +2134,9 @@ def run(
         )
 
         if not quiet:
-            if staleness_eval.get("warning_banner"):
+            if staleness_eval.get("plugin_report"):
+                click.echo(staleness_eval["plugin_report"], err=True)
+            elif staleness_eval.get("warning_banner"):
                 click.echo(staleness_eval["warning_banner"], err=True)
             elif staleness_eval.get("header_banner"):
                 click.echo(staleness_eval["header_banner"], err=True)
@@ -2216,10 +2191,11 @@ def run(
             or (bool(output_format) and not interactive)
             or (bool(prompt) and not interactive)
         )
-        if interactive:
-            is_interactive = True
-        else:
-            is_interactive = not explicit_headless and sys.stdin.isatty()
+        # `-i` is the only way into the interactive UI. Without it every
+        # dispatch runs headless, whatever the host's stdin is: a `polecat run`
+        # typed at a terminal with no `-t`/`--prompt` used to open the TUI and
+        # idle at its prompt forever instead of exiting.
+        is_interactive = interactive
         if is_interactive:
             docker_args.append("-it")
         else:
@@ -2448,6 +2424,68 @@ def run(
             "subtask or re-dispatching.\n"
             f"Workspace preserved for inspection: {workspace_dir}"
         )
+
+
+@main.command("default-branch")  # pyright: ignore[reportFunctionMemberAccess]
+@click.option("--project", "-p", required=True, help="Project name, resolved via local.yaml paths.")
+def default_branch(project):
+    """Print a project's configured active-line branch, or nothing if unset.
+
+    Reads `projects.<slug>.default_branch` from polecat.yaml. This is a
+    dispatcher-side lookup only: `resolve_isolated_workspace()` itself never
+    consults this key and never will (spec-base-ref-resolution.md rule 1 —
+    the launcher must not silently retarget a dispatch cut from a feature
+    branch). A caller that wants dispatches against a project to track that
+    project's active line rather than whatever the shared canonical checkout
+    happens to be sitting on reads this value and passes it as an explicit
+    `--base` to `polecat run`. Exits 0 with empty output when the project has
+    no `default_branch` configured; callers fall back to their own default
+    (typically the invoking session's current branch) rather than treating
+    an unset value as an error.
+    """
+    config = load_config()
+    canonical_project = resolve_canonical_project(project, config)
+    projects = config.get("projects", {}) if config else {}
+    project_cfg = projects.get(canonical_project) if isinstance(projects, Mapping) else None
+    value = project_cfg.get("default_branch") if isinstance(project_cfg, Mapping) else None
+    if value:
+        click.echo(str(value))
+
+
+@main.command("add-dirs")  # pyright: ignore[reportFunctionMemberAccess]
+def add_dirs():
+    """Print, one per line, every host directory a directly-invoked agent CLI
+    (e.g. `agy`, outside any polecat container) may legitimately read or edit
+    on this machine: each registered project's host checkout, plus
+    `$AOPS_SESSIONS` itself. A caller wraps each line in its own `--add-dir`.
+
+    Project slugs are the canonical registry: `projects` in polecat.yaml
+    ($AOPS_SESSIONS/polecat.yaml, see `load_config`). Each slug's host path is
+    this machine's own mapping: `paths` in `<polecat_home>/local.yaml` — the
+    same lookup `_resolve_workspace` uses for `--project`. A registered project
+    with no entry there is silently skipped: not every project is checked out
+    on every machine. There is no list here to hard-code or let drift; add or
+    remove a project by editing polecat.yaml or local.yaml, never this command.
+    """
+    config = load_config()
+    polecat_home = resolve_polecat_home(config)
+    overlay_paths = load_local_overlay(polecat_home).get("paths", {})
+    projects = config.get("projects", {}) if config else {}
+
+    dirs: set[Path] = set()
+    if isinstance(projects, Mapping) and isinstance(overlay_paths, Mapping):
+        for slug in projects:
+            raw_path = overlay_paths.get(slug)
+            if not raw_path:
+                continue
+            path = expand(raw_path).resolve()
+            if path.is_dir():
+                dirs.add(path)
+
+    dirs.add(resolve_sessions_root())
+
+    for path in sorted(dirs):
+        click.echo(str(path))
 
 
 if __name__ == "__main__":

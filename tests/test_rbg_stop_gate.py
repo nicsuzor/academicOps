@@ -24,9 +24,8 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
-RBG_MANIFEST = REPO_ROOT / "plugins" / "rbg" / "manifest" / "hooks.template.json"
+RBG_MANIFEST = REPO_ROOT / "plugins" / "rbg" / "manifest" / "hooks.json"
 POLICY_FILE = REPO_ROOT / "tests" / "policy.toml"
 
 _policy = tomllib.loads(POLICY_FILE.read_text(encoding="utf-8"))
@@ -51,26 +50,9 @@ def test_the_shipped_reason_is_substantive():
 
 @pytest.fixture
 def staged(tmp_path) -> Path:
-    """A plugin `hooks/` directory assembled exactly as the build assembles one.
-
-    Build stage 1 injects `lib/hooks/` into the plugin tree, so at runtime
-    `dispatch.py` and `handlers.py` sit in the same directory and import each
-    other as flat modules. Reproducing that here is what makes these tests
-    exercise the shipped arrangement rather than a repository-only one.
-
-    Per-test, not shared: several cases below swap `handlers.py` or a message
-    file to prove a property, and a fixture they can reach across tests would
-    make those swaps somebody else's flake.
-    """
+    """A plugin `hooks/` directory assembled with dispatch.py and handlers.py."""
     hooks = tmp_path / "hooks"
-    shutil.copytree(LIB_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
-    for item in RBG_HOOKS.iterdir():
-        if item.name == "__pycache__":
-            continue
-        if item.is_dir():
-            shutil.copytree(item, hooks / item.name, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, hooks / item.name)
+    shutil.copytree(RBG_HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__"))
     return hooks
 
 
@@ -398,11 +380,22 @@ def test_the_manifest_name_matches_the_marketplace_name():
     name, and `_render_manifests` lets a template's own `name` win over it — so
     a stale template name ships in `plugin.json` while the directory, the
     marketplace entry, and every `plugin:agent` invocation string use the real
-    one."""
+    one. The expected name is read from `marketplace.toml` itself, not
+    restated here, so this only fails when the two configs actually diverge."""
+    marketplace = tomllib.loads(
+        (REPO_ROOT / "build" / "marketplace.toml").read_text(encoding="utf-8")
+    )
+    entry = next(p for p in marketplace["plugins"] if p["directory"] == "rbg")
+    expected_name = entry["name"]
+
     manifest_dir = REPO_ROOT / "plugins" / "rbg" / "manifest"
-    for template in sorted(manifest_dir.glob("*.template.json")):
+    for template in sorted(manifest_dir.glob("*.json")):
         data = json.loads(template.read_text(encoding="utf-8"))
-        assert data.get("name") == "rbg", f"{template.name} declares {data.get('name')!r}"
+        assert data.get("name") == expected_name, (
+            f"{template.name} declares {data.get('name')!r}, marketplace.toml says {expected_name!r}"
+        )
         base = data.get("clients", {}).get("__base__", {})
         if "name" in base:
-            assert base["name"] == "rbg", f"{template.name} __base__ declares {base['name']!r}"
+            assert base["name"] == expected_name, (
+                f"{template.name} __base__ declares {base['name']!r}, marketplace.toml says {expected_name!r}"
+            )

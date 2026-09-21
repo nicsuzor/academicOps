@@ -96,13 +96,11 @@ generates the prompt ledger alone.
 repository is site-specific, so an unset variable exits 1 rather than writing
 session content somewhere the operator did not choose.
 
-`plugins/ts/hooks/session-end-sync.sh` invokes the runner on `SessionEnd`,
-against a staging directory with `--no-sync`, naming the single session that
-just ended or passing `--all` when it cannot identify one. It locates the
-pipeline through `AOPS_SRC_DIR` and nowhere else, because the pipeline has
-third-party dependencies and needs a checkout with an environment for them; an
-unset or wrong `AOPS_SRC_DIR` means no renderer and a skipped sync, never a
-guessed path.
+There is no `SessionEnd` hook invoking the runner automatically today —
+`plugins/ts` wires only `SessionStart` (Tailscale bring-up). The runner runs
+manually, in batch via `--all`/`--recent`, or as the sleep cycle's first phase
+(`templates/github-workflows/sleep-cycle.yml`,
+[sleep-cycle.md](agents/sleep-cycle.md)).
 
 ## On-disk trace convention
 
@@ -327,12 +325,10 @@ something a human typed, and the prompt ledger reads that key.
 
 ## Testing
 
-Real, anonymized Claude and agy sessions are committed under
-`tests/transcripts/fixtures/`, including a subagent sidechain log and its
-metadata sidecar so tests can stage a genuine multi-agent layout on disk.
-Contract and snapshot tests in `tests/transcripts/` run against them, asserting
-adapter event mapping, call-tree lineage, token badges, and `[!ERROR_BLOCK]`
-rendering, and holding the `.md`, `.full.md`, `.html`, and `.json` tiers to
-stable snapshots. Snapshots are the point: a change in the unpinned
-`claude-code-log` library surfaces as a diffable CI failure instead of a silent
-production regression.
+There is no committed fixture/snapshot suite for this pipeline on this branch
+today — `lib/py/transcripts/` ships without a matching test package.
+`tests/polecat/test_transcript_persistence.py` covers the polecat-side
+persistence contract only. A contract and snapshot suite against real,
+anonymized Claude and agy session fixtures (adapter event mapping, call-tree
+lineage, token badges, `[!ERROR_BLOCK]` rendering, and stable `.md`/`.full.md`/
+`.html`/`.json` snapshots) is owed, not shipped.

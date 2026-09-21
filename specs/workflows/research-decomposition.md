@@ -28,11 +28,11 @@ What the `/q` → `/decompose` → `/brief` pipeline and the conceptual review w
 domain is academic research: domain primitives, sequencing rules, review lenses, and two
 maturity-gated modes. It replaces no stage of that pipeline and restates none of them.
 
-- `plugins/aops/skills/q/SKILL.md` — placement and valuation
-- `plugins/aops/skills/decompose/SKILL.md` — assumption sorting, fork ranking, probe design
-- `plugins/aops/skills/brief/SKILL.md` — process composition and sizing; cuts to the primitives
+- `plugins/pkb/skills/q/SKILL.md` -- placement and valuation
+- `plugins/pkb/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
+- `plugins/pkb/skills/brief/SKILL.md` -- process composition and sizing; cuts to the primitives
   below and records review obligations as acceptance criteria on the task body
-- `specs/workflows/conceptual-review-workflow.md` — the review layer; runs the lenses below in
+- `specs/workflows/conceptual-review-workflow.md` -- the review layer; runs the lenses below in
   place of its general registry, with its critique protocol, convergence rules, and formality
   gradient unchanged
 
@@ -57,7 +57,7 @@ Semantic labels on existing task types. No new task types, no schema changes.
 
 | Primitive           | Purpose                                    | Maps to       |
 | ------------------- | ------------------------------------------ | ------------- |
-| **spike**           | Resolve an unknown before planning further | `learn`       |
+| **probe**           | Resolve an unknown before planning further | `learn`       |
 | **lit-review**      | Systematic examination of existing work    | `learn`       |
 | **methodology**     | Design and justify analytical approach     | `task`        |
 | **ethics**          | IRB, consent, data governance              | `task` + gate |
@@ -71,7 +71,7 @@ Semantic labels on existing task types. No new task types, no schema changes.
 
 ```mermaid
 graph LR
-    spike --> litreview[lit-review]
+    probe --> litreview[lit-review]
     litreview --> methodology
     methodology --> pilot
     methodology --> ethics
@@ -79,12 +79,12 @@ graph LR
     pilot -.soft.-> datacollection
     datacollection --> analysis
     analysis --> writing
-    spike -.soft.-> methodology
+    probe -.soft.-> methodology
     litreview -.soft.-> analysis
     collaboration --> methodology
 ```
 
-- **spike → lit-review → methodology** is the discovery sequence: establish tractability, survey
+- **probe → lit-review → methodology** is the discovery sequence: establish tractability, survey
   existing work, then design the approach informed by what exists.
 - **ethics is a HARD gate before data-collection.** Non-negotiable, and often gated on external
   approval with unpredictable timelines. Treating ethics as a parallel task is a failure.
@@ -99,16 +99,16 @@ graph LR
 Deviate where the project shape demands it:
 
 - **Secondary data**: no data-collection; analysis depends on methodology plus a data-access
-  spike that validates the dataset contains the expected variables under appropriate terms.
+  probe that validates the dataset contains the expected variables under appropriate terms.
 - **Theoretical**: no data-collection or analysis; substitute a conceptual-development primitive
-  (mapped to `task`), giving spike → lit-review → methodology → conceptual-development → writing.
-- **Replication**: methodology is mostly fixed by the original study; the spike targets
-  reproduction feasibility — data access, computational requirements, original authors'
+  (mapped to `task`), giving probe → lit-review → methodology → conceptual-development → writing.
+- **Replication**: methodology is mostly fixed by the original study; the probe targets
+  reproduction feasibility -- data access, computational requirements, original authors'
   cooperation.
 
 ## Decomposition rules
 
-1. **Start with unknowns.** Every unknown becomes a spike or pilot. Information-gathering precedes
+1. **Start with unknowns.** Every unknown becomes a probe or pilot. Information-gathering precedes
    commitment.
 2. **Assumptions are first-class.** Every load-bearing assumption carries a confidence level, a
    validation path, and a contingency.
@@ -119,7 +119,7 @@ Deviate where the project shape demands it:
    marked as a gate.
 5. **Artifact-aware.** Each task specifies its output type: document, dataset, code, presentation,
    decision.
-6. **Every task that unblocks judgment-required work carries an explicit follow-up mechanism** —
+6. **Every task that unblocks judgment-required work carries an explicit follow-up mechanism** --
    a supervisor task that checks readiness, or a `soft_depends_on` from the downstream task to the
    session pipeline so it surfaces. Test: "when this completes, who notices?" If the answer is
    nobody, add a convergence check.
@@ -139,41 +139,41 @@ Deviate where the project shape demands it:
 
 Every forest-mode decomposition produces four items:
 
-- **Assumptions table** — load-bearing assumptions with confidence (high/medium/low), validation
+- **Assumptions table** -- load-bearing assumptions with confidence (high/medium/low), validation
   path (cheapest way to test), and contingency (what changes in the plan if wrong).
-- **Task graph** — dependency-aware, using the primitives, with hard and soft dependencies, gate
+- **Task graph** -- dependency-aware, using the primitives, with hard and soft dependencies, gate
   markers on ethics and collaboration tasks, and `mvc: true` tags on minimum-viable-contribution
   tasks.
-- **Dependency visualisation** — Mermaid diagram, solid lines for hard dependencies, dashed for
+- **Dependency visualisation** -- Mermaid diagram, solid lines for hard dependencies, dashed for
   soft.
-- **Minimum viable contribution (MVC)** — a narrative paragraph naming the minimum publishable
+- **Minimum viable contribution (MVC)** -- a narrative paragraph naming the minimum publishable
   claim and the tasks required to substantiate it. The MVC is the floor, not the ceiling: it
   answers "if everything beyond this fails, what can still be published?"
 
 ## Seedling mode
 
 **Select** when the input is a question without a defined methodology, an observation without a
-research design, or a vague connection between ideas — or when the researcher asks for it
+research design, or a vague connection between ideas -- or when the researcher asks for it
 explicitly to re-examine foundations.
 
 **Produces exactly five items:**
 
-1. **Interest statement** (1–2 sentences) — the intellectual bet: the non-obvious claim that, if
+1. **Interest statement** (1–2 sentences) -- the intellectual bet: the non-obvious claim that, if
    true, would constitute a contribution.
-2. **Assumption inventory** (bulleted) — what must be true for the idea to work; each with a
+2. **Assumption inventory** (bulleted) -- what must be true for the idea to work; each with a
    confidence tag (high/medium/low) and a one-line validation path.
-3. **Literature pointers** (2–5 items) — adjacent work, enough to avoid reinventing and to locate
+3. **Literature pointers** (2–5 items) -- adjacent work, enough to avoid reinventing and to locate
    the idea in an intellectual neighbourhood. Not a literature review.
-4. **Spikes** (1–3 items) — concrete questions with a cheap way to answer each, resolvable in
+4. **Probes** (1–3 items) -- concrete questions with a cheap way to answer each, resolvable in
    hours, not weeks.
-5. **Go/no-go prompt** — "develop this into a project plan (forest mode), park it, or abandon it?"
+5. **Go/no-go prompt** -- "develop this into a project plan (forest mode), park it, or abandon it?"
 
 **Seedling mode is the stopping rule for Stage 1 intake.** It produces no task graph, no time
 estimates, no dependency chains, no MVC, and no Mermaid diagrams, and it leaves the idea at
 `inbox` without acceptance criteria until the researcher chooses to develop it.
 
 **Transition to forest.** The assumption inventory seeds the assumptions table, each assumption
-gaining a fuller validation path and contingency. The spikes become the first task nodes. The
+gaining a fuller validation path and contingency. The probes become the first task nodes. The
 literature pointers scope the lit-review primitive. The interest statement anchors the MVC.
 
 ## Forest mode
@@ -181,12 +181,12 @@ literature pointers scope the lit-review primitive. The interest statement ancho
 **Select** when the researcher has a defined question with at least a preliminary methodology, a
 seedling they chose to develop, or an existing plan needing restructuring.
 
-1. **Decomposer produces the plan** — primitives, sequencing rules, and decomposition rules above,
+1. **Decomposer produces the plan** -- primitives, sequencing rules, and decomposition rules above,
    emitting all four output items.
-2. **Reviewer reviews** — the conceptual review workflow with the research lenses above, applying
+2. **Reviewer reviews** -- the conceptual review workflow with the research lenses above, applying
    the prioritised critique protocol. Lead concern is typically methodological coherence or
    assumption hygiene.
-3. **Converge** — the convergence rules from the conceptual review workflow. Each round resolves
+3. **Converge** -- the convergence rules from the conceptual review workflow. Each round resolves
    at least one concern; new concerns without resolution escalate to the researcher; soft cap at 7
    rounds.
 
@@ -194,7 +194,7 @@ seedling they chose to develop, or an existing plan needing restructuring.
 
 - New MCP tools or task schema changes.
 - Automated execution of decomposed tasks.
-- Non-research domains — those are applications of the general review workflow, not this spec.
+- Non-research domains -- those are applications of the general review workflow, not this spec.
 
 ## Open questions
 
@@ -210,7 +210,7 @@ seedling they chose to develop, or an existing plan needing restructuring.
 
 ## Related
 
-- [[specs/workflows/conceptual-review-workflow.md]] — the review layer this spec instantiates
-- [[plugins/aops/agents/pauli.md]] — strategic planning; specialised here for research
-- [[specs/polecat/polecat-system.md]] — execution layer; consumes decomposed task graphs
-- PKB task-graph MCP tools (`mcp__services__pkb__*`) — structured task-graph output
+- [[specs/workflows/conceptual-review-workflow.md]] -- the review layer this spec instantiates
+- [[plugins/pkb/agents/pauli.md]] -- strategic planning; specialised here for research
+- [[specs/polecat/polecat-system.md]] -- execution layer; consumes decomposed task graphs
+- PKB task-graph MCP tools (`mcp__services__*`) -- structured task-graph output

@@ -57,7 +57,7 @@ complete — and is legal only because the refused decisions are surfaced throug
 clauses 3, 4 and 5 rather than laundered as scope.
 
 **It does not create a size carve-out.** The pre-dispatch sizing gate (the
-[`brief`](../../plugins/aops/skills/brief/SKILL.md) skill) runs live, default and
+[`brief`](../../plugins/pkb/skills/brief/SKILL.md) skill) runs live, default and
 mandatory on every released unit. What it cuts on is an unresolved fork or a
 responsibility boundary — never size — so its default outcome is one whole unit,
 which is exactly what leaves the worker room to plan. Thin-brief and `partial`

@@ -17,7 +17,7 @@ import pytest
 from build.build import build_all, discover_plugins
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template
-from build.marketplace import _bake_cowork_mcp_json, load_marketplace_toml
+from build.marketplace import load_marketplace_toml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TESTDATA = PROJECT_ROOT / "build" / "testdata"
@@ -35,38 +35,17 @@ def built(tmp_path_factory) -> Path:
 
 @pytest.fixture(scope="module")
 def built_orchestrate(tmp_path_factory) -> Path:
-    """The real aops plugin, not a fixture — its agents carry the
+    """The real ida plugin, not a fixture — its agents carry the
     per-client frontmatter semantics these tests assert."""
-    dist_root = tmp_path_factory.mktemp("build-dist-aops")
+    dist_root = tmp_path_factory.mktemp("build-dist-ida")
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         version=VERSION,
     )
     return dist_root
-
-
-def test_polecat_modules_ship_with_orchestrate(built_orchestrate):
-    """Plugin code resolves these modules under `${CLAUDE_PLUGIN_ROOT}/polecat/`.
-    What puts them inside a plugin root at all is
-    `plugins/aops/manifest/plugin.toml`, which injects them from `lib/polecat/`.
-
-    Drop those `[[shared]]` stanzas and nothing fails at build time; the import
-    fails at runtime, with file-not-found. This is the check that turns that into
-    a build-time failure instead.
-    """
-    modules = {"__init__", "env_contract", "notify", "staleness"}
-    for client in ("claude", "agy"):
-        polecat = built_orchestrate / f"aops-{client}" / "polecat"
-        for module in modules:
-            assert (polecat / f"{module}.py").is_file(), (
-                f"aops-{client} ships no polecat/{module}.py"
-            )
-        # Image-build inputs, not plugin content — they must NOT be shipped.
-        assert not (polecat / "defaults").exists()
-        assert not (polecat / "entrypoint.sh").exists()
 
 
 # --- stage 1/2: shared injection + include resolution -----------------------
@@ -260,6 +239,27 @@ def test_agy_allows_the_two_placeholders_its_post_install_fixup_resolves(tmp_pat
     }
 
 
+def test_agy_rejects_a_shell_variable_in_an_mcp_server_url(tmp_path):
+    """A bare `$NAME` in serverUrl never expands: agy dials the URL over HTTP
+    without a shell, the load of the whole mcp_config.json fails, and the
+    plugin's correctly configured stdio servers lose their tools with it."""
+    from build.clients.agy import _checked_mcp
+
+    with pytest.raises(BuildError, match="serverUrl"):
+        _checked_mcp({"services-http": {"serverUrl": "$PKB_MCP_URL"}}, _agy_ctx(tmp_path))
+    with pytest.raises(BuildError, match="serverUrl"):
+        _checked_mcp({"services-http": {"url": "$PKB_MCP_URL/mcp"}}, _agy_ctx(tmp_path))
+
+    literal = {"services-http": {"serverUrl": "https://example.invalid/mcp"}}
+    assert _checked_mcp(literal, _agy_ctx(tmp_path)) == {"mcpServers": literal}
+
+    # The same text inside a stdio command is expanded by the shell that runs it.
+    shell = {
+        "services": {"command": "bash", "args": ["-c", 'fastmcp run "$PKB_MCP_URL"']},
+    }
+    assert _checked_mcp(shell, _agy_ctx(tmp_path)) == {"mcpServers": shell}
+
+
 def test_agy_rejects_an_mcp_server_that_is_neither_stdio_nor_remote(tmp_path):
     """agy's own rule: a server must have either `command` or `serverUrl`, and
     cannot have both."""
@@ -342,7 +342,7 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         version=VERSION,
     )
 
@@ -350,9 +350,11 @@ def test_agy_agent_frontmatter_tool_translation(tmp_path_factory):
 
     # Check agy dist saves agents/ida.md directly as agents/ida.md (agy's own
     # read format — see build/clients/agy.py's _adapt_agents docstring).
-    agy_ida_md = dist_root / "aops-agy" / "agents" / "ida.md"
+    # ida.md moved from the aops plugin to the ida plugin (move ida and pauli,
+    # f4f02058c); the built path moved with it.
+    agy_ida_md = dist_root / "ida-agy" / "agents" / "ida.md"
     assert agy_ida_md.is_file()
-    assert not (dist_root / "aops-agy" / "agents" / "ida" / "agent.md").exists()
+    assert not (dist_root / "ida-agy" / "agents" / "ida" / "agent.md").exists()
 
     raw = agy_ida_md.read_text()
     fm, _, body = raw.partition("---\n")[2].partition("---\n")
@@ -400,29 +402,37 @@ def test_agent_no_tools_key_semantics(built_orchestrate):
 
     accepted_tools, _ = load_tool_config()
 
-    claude_agent = built_orchestrate / "aops-claude" / "agents" / "marsha.md"
+    claude_agent = built_orchestrate / "ida-claude" / "agents" / "marsha.md"
     claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
     assert "tools" not in claude_fm
 
-    agy_agent = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
+    agy_agent = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert agy_fm["tools"] == accepted_tools
 
 
 def test_agy_agent_drops_claude_model_name(built_orchestrate):
+    """agy has no notion of a Claude model name, so the client adapter must
+    strip a source `model:` key rather than ship it verbatim."""
     import yaml
 
-    agy_agent = built_orchestrate / "aops-agy" / "agents" / "james.md"
+    agy_agent = built_orchestrate / "ida-agy" / "agents" / "james.md"
     agy_fm = yaml.safe_load(agy_agent.read_text().split("---")[1])
     assert "model" not in agy_fm
 
-    claude_agent = built_orchestrate / "aops-claude" / "agents" / "james.md"
-    claude_fm = yaml.safe_load(claude_agent.read_text().split("---")[1])
-    assert claude_fm.get("model") == "opus" or "model" not in claude_fm
 
-    agy_marsha = built_orchestrate / "aops-agy" / "agents" / "marsha.md"
+def test_agy_agent_carries_source_color_through_unmodified(built_orchestrate):
+    """Client-agnostic frontmatter fields like `color` are not touched by the
+    per-client adapters. The expected value is read from the source agent
+    file, not restated, so this only fails if the build actually changes it."""
+    import yaml
+
+    source_marsha = PROJECT_ROOT / "plugins" / "ida" / "agents" / "marsha.md"
+    source_fm = yaml.safe_load(source_marsha.read_text().split("---")[1])
+
+    agy_marsha = built_orchestrate / "ida-agy" / "agents" / "marsha.md"
     agy_marsha_fm = yaml.safe_load(agy_marsha.read_text().split("---")[1])
-    assert agy_marsha_fm["color"] == "pink"
+    assert agy_marsha_fm["color"] == source_fm["color"]
 
 
 def test_agent_empty_tools_list_raises_build_error(tmp_path):
@@ -733,107 +743,12 @@ def test_cowork_dist(built):
     assert "fixture-alpha/.claude-plugin/plugin.json" in names
 
 
-def test_cowork_directory_copy_is_never_rewritten(built):
-    """The dist/cowork/<name> directory copy is byte-identical to the claude
-    dist. A directory-marketplace install can supply the endpoint with
-    `claude plugin install --config`, so it has no reason to carry one, and
-    this is the copy `make build` leaves on disk."""
+def test_cowork_directory_copy_matches_claude_dist_when_url_unset(built, monkeypatch):
+    """Built without PKB_MCP_URL (the `built` fixture), dist/cowork/<name> is
+    byte-identical to the claude dist: nothing to bake, so nothing rewritten."""
     claude_mcp = (built / "fixture-alpha-claude" / ".mcp.json").read_bytes()
     cowork_mcp = (built / "cowork" / "fixture-alpha" / ".mcp.json").read_bytes()
     assert claude_mcp == cowork_mcp
-
-
-def _fixture_pkb_plugin(tmp_path: Path) -> Path:
-    plugin = tmp_path / "plug"
-    (plugin / "scripts").mkdir(parents=True)
-    (plugin / "scripts" / "run-mcp.sh").write_text("#!/bin/bash\n", encoding="utf-8")
-    (plugin / ".mcp.json").write_text(
-        json.dumps(
-            {
-                "mcpServers": {
-                    "services": {
-                        "command": "bash",
-                        "args": ["-c", 'fastmcp run "$PKB_MCP_URL"'],
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    return plugin
-
-
-def test_cowork_zip_ships_no_url_when_build_env_has_none(tmp_path, monkeypatch):
-    """The published zips are built without PKB_MCP_URL and must ship without
-    an endpoint — unset is not a build failure, it just yields an unrewritten
-    (and, in Cowork, non-functional) MCP config."""
-    monkeypatch.delenv("PKB_MCP_URL", raising=False)
-    plugin = _fixture_pkb_plugin(tmp_path)
-    assert _bake_cowork_mcp_json(plugin / ".mcp.json", plugin) is None
-
-
-def test_cowork_zip_resolves_url_from_build_env(tmp_path, monkeypatch):
-    """A local build with PKB_MCP_URL exported produces a usable zip: the
-    upload install path has no --config, so the endpoint has to travel in the
-    artifact, via the stdio launcher's env block."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    baked = _bake_cowork_mcp_json(plugin / ".mcp.json", plugin)
-    assert baked is not None
-    server = json.loads(baked)["mcpServers"]["services"]
-    assert server["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
-    assert server["args"] == ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
-
-
-def test_cowork_zip_leaves_unrelated_servers_alone(tmp_path, monkeypatch):
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
-    data["mcpServers"]["other"] = {"command": "other-server", "args": ["--stdio"]}
-    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
-
-    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
-    assert baked["mcpServers"]["other"] == {"command": "other-server", "args": ["--stdio"]}
-    assert "env" in baked["mcpServers"]["services"]
-
-
-def test_cowork_zip_collapses_pkb_servers_to_one_stdio_proxy(tmp_path, monkeypatch):
-    """Cowork cannot speak streamable HTTP to an MCP server (see
-    scripts/run-mcp.sh), so whatever transport the Claude dist ships, the zip
-    gets exactly one stdio proxy with the URL resolved into its env."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    data = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))
-    data["mcpServers"]["services-http"] = {"type": "http", "url": "$PKB_MCP_URL"}
-    (plugin / ".mcp.json").write_text(json.dumps(data), encoding="utf-8")
-
-    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
-    servers = baked["mcpServers"]
-
-    assert servers["services"]["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
-    assert servers["services"]["args"] == ["${CLAUDE_PLUGIN_ROOT}/scripts/run-mcp.sh"]
-    # The http transport must not survive into the zip: Cowork cannot use it,
-    # and leaving it would reload every PKB tool schema a second time.
-    assert "services-http" not in servers
-    assert [name for name, cfg in servers.items() if cfg.get("type") == "http"] == []
-
-
-def test_cowork_zip_converts_a_lone_http_server_to_stdio(tmp_path, monkeypatch):
-    """The template ships only `services-http`; the zip must still end up with
-    the stdio proxy rather than an http server Cowork cannot connect to."""
-    monkeypatch.setenv("PKB_MCP_URL", "https://pkb.example.ts.net/mcp")
-    plugin = _fixture_pkb_plugin(tmp_path)
-    (plugin / ".mcp.json").write_text(
-        json.dumps({"mcpServers": {"services-http": {"type": "http", "url": "$PKB_MCP_URL"}}}),
-        encoding="utf-8",
-    )
-
-    baked = json.loads(_bake_cowork_mcp_json(plugin / ".mcp.json", plugin) or "{}")
-    servers = baked["mcpServers"]
-
-    assert list(servers) == ["services"]
-    assert servers["services"]["command"] == "bash"
-    assert servers["services"]["env"] == {"PKB_MCP_URL": "https://pkb.example.ts.net/mcp"}
 
 
 # --- hard-error paths ---------------------------------------------------------
@@ -1077,41 +992,13 @@ def test_mcpservers_dropped_for_agy_kept_for_claude(tmp_path):
     assert "includeSections" not in res_agy
 
 
-def test_pauli_agy_frontmatter(tmp_path):
-    import yaml
-
-    from build.tools import load_tool_config
-
-    dist_root = tmp_path / "dist"
-    build_all(
-        PROJECT_ROOT,
-        dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
-        version=VERSION,
-    )
-
-    pauli_md = dist_root / "aops-agy" / "agents" / "pauli.md"
-    assert pauli_md.is_file()
-    fm, _, _ = pauli_md.read_text().partition("---\n")[2].partition("---\n")
-    agent = yaml.safe_load(fm)
-
-    assert agent["name"] == "pauli"
-    assert "mcpServers" not in agent
-    accepted_tools, _ = load_tool_config()
-    assert agent["tools"] == accepted_tools
-    assert "hidden" not in agent
-    assert "includeSections" not in agent
-    assert "call_mcp_tool" not in agent["tools"]
-
-
 def test_openclaw_dist_built_and_packaged(tmp_path):
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         clients=("claude", "agy", "openclaw"),
         version=VERSION,
     )
@@ -1124,13 +1011,13 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
     assert manifest_path.is_file()
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert data["name"] == "academicOps-openclaw"
-    assert {p["name"] for p in data["plugins"]} == {"aops"}
+    assert {p["name"] for p in data["plugins"]} == {"ida"}
     for p in data["plugins"]:
         assert p["source"] == f"./{p['name']}"
         assert p["version"] == VERSION
 
     # Verify per-plugin directories and zip packages
-    for name in ("aops",):
+    for name in ("ida",):
         plugin_dir = openclaw_root / name
         assert plugin_dir.is_dir()
         assert (plugin_dir / ".claude-plugin" / "plugin.json").is_file()
@@ -1142,23 +1029,23 @@ def test_openclaw_dist_built_and_packaged(tmp_path):
         assert f"{name}/.claude-plugin/plugin.json" in names
 
     # Verify openclaw dist directory
-    assert (dist_root / "aops-openclaw" / ".claude-plugin" / "plugin.json").is_file()
-    assert (dist_root / "aops-openclaw.tar.gz").is_file()
+    assert (dist_root / "ida-openclaw" / ".claude-plugin" / "plugin.json").is_file()
+    assert (dist_root / "ida-openclaw.tar.gz").is_file()
 
 
 def test_openclaw_does_not_bake_urls(tmp_path):
     dist_root = tmp_path / "dist"
     build_all(
-        PROJECT_ROOT,
+        TESTDATA,
         dist_root,
-        marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        marketplace_path=MARKETPLACE,
+        plugins=["alpha"],
         clients=("claude", "openclaw"),
         version=VERSION,
     )
 
-    claude_mcp = (dist_root / "aops-claude" / ".mcp.json").read_bytes()
-    openclaw_mcp = (dist_root / "openclaw" / "aops" / ".mcp.json").read_bytes()
+    claude_mcp = (dist_root / "fixture-alpha-claude" / ".mcp.json").read_bytes()
+    openclaw_mcp = (dist_root / "openclaw" / "fixture-alpha" / ".mcp.json").read_bytes()
     assert claude_mcp == openclaw_mcp
 
 
@@ -1170,12 +1057,12 @@ def test_openclaw_ida_face_configuration(tmp_path):
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
+        plugins=["ida"],
         clients=("openclaw",),
         version=VERSION,
     )
 
-    ida_md = dist_root / "aops-openclaw" / "agents" / "ida.md"
+    ida_md = dist_root / "ida-openclaw" / "agents" / "ida.md"
     assert ida_md.is_file()
     fm, _, _ = ida_md.read_text().partition("---\n")[2].partition("---\n")
     agent = yaml.safe_load(fm)
@@ -1183,36 +1070,21 @@ def test_openclaw_ida_face_configuration(tmp_path):
     assert agent["name"] == "ida"
 
 
-def test_aops_ships_exactly_one_pkb_server_per_client(tmp_path):
-    """One PKB endpoint, registered once.
-
-    Registering the same $PKB_MCP_URL under two server names loads every PKB
-    tool schema twice into every agent's static context. Each client gets the
-    single transport it can actually speak.
-    """
+def test_ida_declares_no_plugin_mcp_servers(tmp_path):
+    """ida has no plugin-level MCP servers."""
     dist_root = tmp_path / "dist"
     build_all(
         PROJECT_ROOT,
         dist_root,
         marketplace_path=REAL_MARKETPLACE,
-        plugins=["aops"],
-        clients=("claude", "agy"),
+        plugins=["ida"],
+        clients=("claude", "agy", "openclaw"),
         version=VERSION,
     )
-    claude_mcp = json.loads((dist_root / "aops-claude" / ".mcp.json").read_text())
-    assert claude_mcp["mcpServers"] == {
-        "services": {
-            "command": "bash",
-            "args": [
-                "-c",
-                'uvx --from "fastmcp-slim[server]" fastmcp run "$PKB_MCP_URL"',
-            ],
-        }
-    }
-
-    agy_mcp = json.loads((dist_root / "aops-agy" / "mcp_config.json").read_text())
-    assert agy_mcp["mcpServers"] == {
-        "services-http": {
-            "serverUrl": "$PKB_MCP_URL",
-        }
-    }
+    assert not (dist_root / "ida-claude" / ".mcp.json").exists()
+    assert not (dist_root / "ida-agy" / "mcp_config.json").exists()
+    assert not (dist_root / "openclaw" / "ida" / ".mcp.json").exists()
+    plugin_json = json.loads(
+        (dist_root / "ida-claude" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )
+    assert "mcpServers" not in plugin_json

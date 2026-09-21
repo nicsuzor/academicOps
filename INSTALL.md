@@ -8,18 +8,27 @@
 ## From the release channel
 
 ```bash
+# 1. Register the services MCP server at user level:
+claude mcp add --transport http --scope user services <your PKB MCP endpoint>
+
+# 2. Install plugins from the marketplace:
 claude plugin marketplace add nicsuzor/academicOps@dist
+claude plugin install pkb@academicOps
 claude plugin install aops@academicOps
-export PKB_MCP_URL=<your PKB MCP endpoint>
 ```
 
-`orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way.
-`PKB_MCP_URL` is an environment variable, read by whichever plugin needs it —
-no manifest declares a `userConfig` key for it or for anything else.
+The `services` MCP server is installed at user level across all surfaces, never shipped inside a plugin:
 
-Nothing has a default. Set the environment variables each plugin needs before
-first use — the full list is in [`README.md`](README.md#configure), and each
-plugin's own `plugins/<dir>/README.md` documents its complete surface.
+- **Local Claude Code**: `claude mcp add --transport http --scope user services <PKB_MCP_URL>`. Must use `--scope user`; `--scope local` was observed to register nothing. Note: on local machines, `~/dotfiles/scripts/sync-mcp-servers.sh` is the appropriate home to synchronize user-scoped MCP registrations.
+- **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
+- **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
+
+Plugins install with no `--config`: `orchestrate`, `rbg`, `tools`, `ts`, and `aops-debug` install the same way as `pkb` and `aops`.
+
+Nothing else has a default. Set the environment variables each plugin needs
+before first use -- the full list is in [`README.md`](README.md#configure),
+and each plugin's own `plugins/<dir>/README.md` documents its complete
+surface.
 
 ## From source
 
@@ -31,8 +40,7 @@ make install-dev
 
 `make install-dev` builds `dist/`, registers it as a local marketplace named
 `aops`, installs every plugin from it into Claude Code (and Antigravity when
-`agy` is on `PATH`), merges the axioms into `~/.claude/settings.json`, and
-activates pre-commit.
+`agy` is on `PATH`), and activates pre-commit.
 
 `make uninstall-dev` reverses it and restores the release channel.
 
