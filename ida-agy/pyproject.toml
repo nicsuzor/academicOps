@@ -1,6 +1,6 @@
 [project]
 name = "ida"
-version = "0.10-rc1"
+version = "0.10.0"
 description = "The strategic face, and the only agent that speaks to the user."
 requires-python = ">=3.11"
 dependencies = [

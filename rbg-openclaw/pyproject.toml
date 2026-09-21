@@ -1,6 +1,6 @@
 [project]
 name = "rbg"
-version = "0.10-rc1"
+version = "0.10.0"
 description = "Automatic in-session rule enforcement."
 requires-python = ">=3.11"
 dependencies = [

@@ -10,7 +10,7 @@
     {
       "name": "ida",
       "description": "The strategic face, and the only agent that speaks to the user.",
-      "version": "0.10-rc1",
+      "version": "0.10.0",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -20,7 +20,7 @@
     {
       "name": "rbg",
       "description": "Automatic in-session rule enforcement.",
-      "version": "0.10-rc1",
+      "version": "0.10.0",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -30,7 +30,7 @@
     {
       "name": "tools",
       "description": "Domain research skills.",
-      "version": "0.10-rc1",
+      "version": "0.10.0",
       "author": {
         "name": "Nicolas Suzor"
       },
@@ -40,7 +40,7 @@
     {
       "name": "aops-debug",
       "description": "Debug plugin that dumps raw hook payloads.",
-      "version": "0.10-rc1",
+      "version": "0.10.0",
       "author": {
         "name": "Nicolas Suzor"
       },

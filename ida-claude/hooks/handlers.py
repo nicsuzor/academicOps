@@ -351,6 +351,12 @@ def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     data = dict(ctx.raw)
     if ctx.session_id:
         data.setdefault("session_id", ctx.session_id)
+    if ctx.cwd:
+        data.setdefault("cwd", ctx.cwd)
+    if ctx.agent_type:
+        data.setdefault("agent_type", ctx.agent_type)
+    if ctx.agent_id:
+        data.setdefault("agent_id", ctx.agent_id)
     if ctx.tool:
         data.setdefault("tool_name", ctx.tool)
     if "toolName" in data and "tool_name" not in data:
@@ -367,9 +373,9 @@ def user_prompt_submit(ctx: HookContext) -> Result | None:
     if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
-        config = claude_code_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             claude_code_tracer.handle_user_prompt_submit(data, config)
     except Exception as exc:
         log.warning("claude_code_tracer user_prompt_submit failed: %s", exc)
@@ -380,9 +386,9 @@ def pre_tool(ctx: HookContext) -> Result | None:
     if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
-        config = claude_code_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             claude_code_tracer.handle_pre_tool(data, config)
     except Exception as exc:
         log.warning("claude_code_tracer pre_tool failed: %s", exc)
@@ -393,9 +399,9 @@ def post_tool(ctx: HookContext) -> Result | None:
     if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
-        config = claude_code_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             claude_code_tracer.handle_post_tool(data, config)
     except Exception as exc:
         log.warning("claude_code_tracer post_tool failed: %s", exc)
@@ -406,9 +412,9 @@ def post_tool_failure(ctx: HookContext) -> Result | None:
     if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
-        config = claude_code_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             claude_code_tracer.handle_post_tool_failure(data, config)
     except Exception as exc:
         log.warning("claude_code_tracer post_tool_failure failed: %s", exc)
@@ -419,9 +425,9 @@ def stop(ctx: HookContext) -> Result | None:
     if claude_code_tracer is None or ctx.client != "claude":
         return None
     try:
-        config = claude_code_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             claude_code_tracer.handle_stop(data, config)
     except Exception as exc:
         log.warning("claude_code_tracer stop failed: %s", exc)

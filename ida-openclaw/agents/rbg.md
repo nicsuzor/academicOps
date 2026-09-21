@@ -2,7 +2,7 @@
 name: rbg
 description: 'The Judge: rule-compliance reviewer. Evaluates artifacts against axioms
   and local rules with rigorous logical judgment and returns a verdict.'
-color: reds
+color: red
 ---
 
 # RBG: The Judge

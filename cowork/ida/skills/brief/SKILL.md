@@ -29,11 +29,11 @@ Assemble workflow templates and prepare tasks for cold execution. The brief tran
 
    ## Deliverable -- target artifact and destination path
 
+   ## Acceptance criteria -- 3-7 observable, checkable end-states
+
    ## Scope -- boundaries and explicit exclusions
 
    ## Constraints -- fixed decisions and external requirements
-
-   ## Acceptance criteria -- 3-7 observable, checkable end-states
 
    ## Assumptions / Decisions -- recorded calls and open trade-offs
 

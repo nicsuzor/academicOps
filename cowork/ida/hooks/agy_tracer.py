@@ -425,6 +425,8 @@ def handle_post_tool(data: dict, config: dict) -> None:
             span_records=[span_record],
             agent_id=agent_id,
             parent_session_id=parent_session_id,
+            agent_name=config.get("agent_name"),
+            cwd=config.get("cwd"),
         )
 
         pt = state.get("pending_tools", {})
@@ -527,6 +529,8 @@ def handle_stop(data: dict, config: dict) -> None:
             span_records=records,
             agent_id=agent_id,
             parent_session_id=parent_session_id,
+            agent_name=agent_name or config.get("agent_name"),
+            cwd=config.get("cwd"),
         )
 
         _delete_state(session_id)
