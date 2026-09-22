@@ -7,7 +7,7 @@
 # location comes from $POLECAT_HOME with a %h/.aops fallback.
 
 [Unit]
-Description=Run the aops /pkb:reconcile pass headlessly, then capture pickup
+Description=Run the aops wf-reconcile pass headlessly, then capture pickup
 
 [Service]
 Type=oneshot

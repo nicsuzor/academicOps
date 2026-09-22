@@ -11,11 +11,11 @@ Manage composable workflow templates (`type: template`) across three resolution 
 
 Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tiers completely; never merge text across tiers.
 
-| Tier         | Location                      | Enumeration Command                   |
-| ------------ | ----------------------------- | ------------------------------------- |
-| 1. Project   | `$CWD/.agents/templates/*.md` | `ls $CWD/.agents/templates/*.md`      |
-| 2. PKB       | PKB graph                     | `pkb.list_documents(type="template")` |
-| 3. Universal | `workflows/*.md`              | `ls workflows/*.md`                   |
+| Tier         | Location                             | Enumeration Command                   |
+| ------------ | ------------------------------------ | ------------------------------------- |
+| 1. Project   | `$CWD/.agents/templates/*.md`        | `ls $CWD/.agents/templates/*.md`      |
+| 2. PKB       | PKB graph                            | `pkb.list_documents(type="template")` |
+| 3. Universal | `workflows/*.md` (beside this skill) | `ls <skill-dir>/workflows/*.md`       |
 
 ## Modes
 

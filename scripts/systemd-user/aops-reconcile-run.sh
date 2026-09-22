@@ -1,7 +1,7 @@
 #!/bin/sh
 # Headless entrypoint invoked by aops-reconcile.service. Does no
 # reconciliation logic of its own -- it only launches the agent, which
-# does the work via the /pkb:reconcile skill. See aops-reconcile.timer
+# does the work via the wf-reconcile template. See aops-reconcile.timer
 # for install and the required first-live-run write check.
 #
 # Sourcing $HOME/.env.local (not sourced by systemd's EnvironmentFile=
@@ -14,7 +14,7 @@ set -eu
 
 # Step 1: reconcile -- truth maintenance over the task graph (merged PRs,
 # abandoned claims, stale assumptions). Must not invent scope.
-claude -p "/pkb:reconcile" --output-format json < /dev/null
+claude -p "/pull wf-reconcile" --output-format json < /dev/null
 
 # Step 2: capture pickup -- routes mobile/webhook captures into the graph.
 # Runs on this same trigger as its own step, deliberately not folded into

@@ -179,6 +179,7 @@ exclude = [
   "plugins/*/commands/", # Exclude command specs
   "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
   "plugins/aops/workflows/", # Exclude process-template markdown
+  "plugins/aops-debug/**",
 ]
 ignore = ["**/site-packages"]
 # Python path for internal imports

@@ -66,8 +66,8 @@ Audit generated notes for:
 3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once verified at destination.
 4. **Reconcile data quality**:
    - _Duplicates_: Inspect candidates from `find_duplicates(mode="both")` semantically before merging.
-   - _Staleness_: Delegate task staleness and closure to `/pkb:reconcile`.
-   - _Misclassifications_: Reclassify informational tasks to memories or invoke `/pkb:q` to reposition.
+   - _Staleness_: Delegate task staleness and closure to `/pull wf-reconcile`.
+   - _Misclassifications_: Reclassify informational tasks to memories or invoke `/q` to reposition.
 5. **Sweep orphans**: Review tag-orphan notes surfaced by `pkb.get_consolidation_cluster` and tasks with no parent or project (`pkb.batch_update(orphan=true, dry_run=true)` lists them).
 6. **Process refiles**: Reposition tasks flagged with `refile` using `/pkb:q` and clear the flag.
 7. **Maintain graph**: Run `pkb.refresh_graph`, then compare `pkb.status` against the baseline to confirm convergence.

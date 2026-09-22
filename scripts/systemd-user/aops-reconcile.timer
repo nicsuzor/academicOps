@@ -1,6 +1,6 @@
-# Trigger for the aops /pkb:reconcile pass -- the schedule that fires without
+# Trigger for the aops wf-reconcile pass -- the schedule that fires without
 # Nic remembering to run it. Fires aops-reconcile.service, which runs
-# aops-reconcile-run.sh (Step 1: /pkb:reconcile; Step 2: capture pickup, wired
+# aops-reconcile-run.sh (Step 1: wf-reconcile; Step 2: capture pickup, wired
 # once aops_capture_intake_route lands -- see that script's comments for why
 # pickup is a separate step on this same trigger rather than folded into the
 # reconcile pass itself).
@@ -42,7 +42,7 @@
 #   systemctl --user daemon-reload
 
 [Unit]
-Description=Periodic trigger for the aops /pkb:reconcile pass and capture pickup
+Description=Periodic trigger for the aops wf-reconcile pass and capture pickup
 
 [Timer]
 OnCalendar=*-*-* 06,12,18:00:00

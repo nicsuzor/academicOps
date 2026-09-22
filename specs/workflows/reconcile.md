@@ -13,27 +13,28 @@ related:
 
 # GH ↔ PKB Reconcile
 
-The reconcile procedure itself lives in `plugins/pkb/skills/reconcile/SKILL.md` and is not
+The reconcile procedure itself lives in universal workflow template `wf-reconcile`
+(`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) and is not
 restated here. This spec carries the design constraints that bind it, the frontmatter and
 event-log surfaces it reads and writes, and the target shape of the GitHub-issue leg it does not
 yet cover.
 
 ## Coverage
 
-The skill's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
+The procedure's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
 one is covered.
 
-| Gap                                                                                    | State                                          |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built -- forward-issue leg, below          |
-| Closed-not-merged PR that was legitimately superseded                                  | Built -- the skill's pull-request routing step |
-| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built -- forward-issue leg, below          |
-| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3             |
+| Gap                                                                                    | State                                  |
+| -------------------------------------------------------------------------------------- | -------------------------------------- |
+| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built -- forward-issue leg, below  |
+| Closed-not-merged PR that was legitimately superseded                                  | Built -- the pull-request routing step |
+| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built -- forward-issue leg, below  |
+| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3     |
 
 ## Design constraints
 
-1. **One canonical owner.** The procedure lives in one skill. Other skills invoke it; they do not
-   re-implement it.
+1. **One canonical owner.** The procedure lives in universal workflow template `wf-reconcile`. Other
+   workflows and skills invoke it; they do not re-implement it.
 2. **No shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces
    (frontmatter fields, the GH API's `closingIssuesReferences`, frontmatter URLs). Anywhere prose
    is involved, an agent reads it.
@@ -74,9 +75,9 @@ different trigger, which reconcile does not run.
 ## Trigger
 
 On-demand's invocation is `scripts/systemd-user/aops-reconcile.timer` (install and verification
-steps in its header comment): a user-scope systemd timer firing `claude -p "/pkb:reconcile"` on a
+steps in its header comment): a user-scope systemd timer firing `claude -p "/pull wf-reconcile"` on a
 schedule, needing nothing from Nic to fire. The timer's service runs a thin shell entrypoint with
-no reconciliation logic of its own -- it only launches the agent that runs this skill, consistent
+no reconciliation logic of its own -- it only launches the agent that runs this workflow, consistent
 with the constraint above that agents do this work, not scripts.
 
 Capture pickup ([[aops_capture_intake_route]]) shares this trigger as a separate step in the same
