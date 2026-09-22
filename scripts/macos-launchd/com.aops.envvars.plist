@@ -5,8 +5,11 @@
   so GUI-launched processes (Claude.app -> Claude Code / Cowork tabs) inherit
   them. Interactive terminal shells do NOT need this -- they read ~/.env.local.
 
-  This exports the bot PAT, AOPS directory vars, and the GENAI_ENGINE_* tracing
-  vars globally (see launchd-env.sh for the exact whitelist). It does NOT set
+  This exports the bot PAT, AOPS directory vars, the GENAI_ENGINE_* tracing
+  vars and the Cloudflare Access service tokens (GENAI_ENGINE_API_KEY for
+  https://otel.suzor.com, PKB_MCP_TOKEN for the MCP portal) globally (see
+  launchd-env.sh for the exact whitelist). Secrets come from the sops SSoT
+  that launchd-env.sh decrypts; ~/.env and ~/.env.local never hold them. It does NOT set
   any global SSH lockdown or git-config hijack -- that would re-break VS Code
   and other GUI apps (note-4d4a97c2). Session-scoped credential isolation for
   Claude/bot sessions is applied per-session by the aops plugin's SessionStart
@@ -25,9 +28,16 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
   Verify (token is masked):
       launchctl getenv AOPS_SESSIONS
       launchctl getenv GH_TOKEN | awk '{ if (length($0)) print "set, len="length($0); else print "UNSET" }'
-      launchctl getenv GENAI_ENGINE_TRACE_ENDPOINT   # expect http://<AOPS_SERVICES_HOST>:4316
+      launchctl getenv GENAI_ENGINE_TRACE_ENDPOINT   # expect https://otel.suzor.com/v1/traces (from ~/.env)
       launchctl getenv GENAI_ENGINE_TRACE_PROTOCOL
       launchctl getenv GENAI_ENGINE_TASK_ID
+      launchctl getenv GENAI_ENGINE_API_KEY | awk '{ if (length($0)) print "set, len="length($0); else print "UNSET" }'  # CF Access token for otel.suzor.com
+      launchctl getenv PKB_MCP_TOKEN        | awk '{ if (length($0)) print "set, len="length($0); else print "UNSET" }'  # CF Access token for the MCP portal
+  If either token is UNSET while a terminal `echo ${GENAI_ENGINE_API_KEY:+set}`
+  says set, sops did not run under launchd: check
+  `log show --last 10m --predicate 'process == "logger"' | grep com.aops.envvars`
+  and that sops is on /opt/homebrew/bin or /usr/local/bin and
+  ~/.config/sops/age/keys.txt holds this Mac's age key.
   Restart Claude.app fully (quit, not just close-window) after install/update --
   launchctl setenv only reaches processes launched after it runs.
 
@@ -37,7 +47,8 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
   Uninstall:
       launchctl unload ~/Library/LaunchAgents/com.aops.envvars.plist
       launchctl unsetenv AOPS_SESSIONS POLECAT_HOME ACA_DATA \
-                         GH_TOKEN GITHUB_TOKEN AOPS_BOT_GH_TOKEN
+                         GH_TOKEN GITHUB_TOKEN AOPS_BOT_GH_TOKEN \
+                         GENAI_ENGINE_API_KEY PKB_MCP_TOKEN
       rm ~/Library/LaunchAgents/com.aops.envvars.plist
 
   Paths used:
@@ -50,10 +61,17 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
                                AOPS_SESSIONS, POLECAT_HOME, ACA_DATA, and the
                                bot PAT (AOPS_BOT_GH_TOKEN). No machine-specific
                                paths live in this committed plist.
+    $HOME/dotfiles/secrets/aops-secrets.env
+                            -- sops/age-encrypted secret SSoT (AOPS_BOT_GH_TOKEN,
+                               GENAI_ENGINE_API_KEY, PKB_MCP_TOKEN, ...).
+                               Decrypted in memory by launchd-env.sh, mirroring
+                               dotfiles/.zsh/01-env.zsh and scripts/cron-lib.sh.
+                               Plaintext never lands on disk or in this plist.
     ${POLECAT_HOME:-$HOME/.aops}/launchd-env.sh
                             -- bot PAT + directory + tracing pass-through:
-                               does all the launchctl setenv from the
-                               environment that ~/.env and ~/.env.local
+                               decrypts the sops SSoT, then does all the
+                               launchctl setenv from the environment that
+                               ~/.env, ~/.env.local and the SSoT
                                established (see launchd-env.sh). It forwards
                                GENAI_ENGINE_TRACE_ENDPOINT/PROTOCOL/TASK_ID
                                only if they are already set by ~/.env -- if

@@ -12,8 +12,9 @@
 # SCOPE: This file forwards the bot PAT (AOPS_BOT_GH_TOKEN and its
 # GH_TOKEN/GITHUB_TOKEN aliases), AOPS directory vars, and the GENAI_ENGINE_*
 # tracing vars into the GLOBAL per-user launchd context -- but only for
-# whatever the plist already sourced (~/.env, ~/.env.local) into this
-# process's environment before it runs; it never invents a value. It
+# whatever the plist already sourced (~/.env, ~/.env.local) plus the sops
+# secret SSoT decrypted below into this process's environment before the
+# setenv lines run; it never invents a value. It
 # deliberately does NOT set any global SSH lockdown (SSH_AUTH_SOCK /
 # GIT_SSH_COMMAND) or global git-config hijack (GIT_CONFIG_*): doing so
 # globally re-breaks VS Code and every other GUI app that relies on the
@@ -26,6 +27,39 @@
 # from AOPS_SERVICES_HOST (e.g. "http://$AOPS_SERVICES_HOST:4316"). Never
 # hardcode a services host here or in the plist -- that would create a second
 # literal alongside ~/.env's.
+#
+# CLOUDFLARE ACCESS: the public collector (https://otel.suzor.com) sits behind
+# CF Access. The service token is GENAI_ENGINE_API_KEY in the form
+# "CF-Access-Client-Id=...,CF-Access-Client-Secret=..." (the tracer parses it
+# into request headers). It is a secret and therefore lives ONLY in the
+# sops-encrypted secrets SSoT, never in ~/.env or ~/.env.local -- so it must
+# be decrypted here or the gated export below is silently skipped and every
+# GUI-launched session's spans are rejected at the CF edge.
+
+# --- Secrets (sops/age SSoT) ---
+# Mirrors dotfiles/.zsh/01-env.zsh (interactive) and scripts/cron-lib.sh (cron):
+# same file, same age key path. launchd starts with a minimal PATH that lacks
+# the Homebrew/local bin dirs where sops lives, so bootstrap PATH first.
+for _d in /usr/local/bin /opt/homebrew/bin "$HOME/.local/bin"; do
+    [ -d "$_d" ] || continue
+    case ":$PATH:" in *":$_d:"*) ;; *) PATH="$_d:$PATH" ;; esac
+done
+export PATH
+_secrets_file="$HOME/dotfiles/secrets/aops-secrets.env"
+export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
+if command -v sops >/dev/null 2>&1 && [ -f "$_secrets_file" ]; then
+    # On success $_sops_plain is the dotenv; on failure it is sops's error
+    # (never plaintext). eval == `source /dev/stdin <<< "$plain"` in POSIX sh.
+    if _sops_plain="$(sops -d "$_secrets_file" 2>&1)"; then
+        set -a
+        eval "$_sops_plain"
+        set +a
+    else
+        logger -t com.aops.envvars "sops failed to decrypt $_secrets_file -- secrets NOT forwarded: $_sops_plain" 2>/dev/null \
+            || echo "com.aops.envvars: sops failed to decrypt $_secrets_file -- secrets NOT forwarded: $_sops_plain" >&2
+    fi
+fi
+unset _sops_plain _secrets_file _d
 
 # --- AOPS directories ---
 [ -n "$AOPS_SESSIONS" ] && launchctl setenv AOPS_SESSIONS "$AOPS_SESSIONS"
@@ -34,10 +68,13 @@
 
 # --- AOPS URLs ---
 [ -n "$PKB_MCP_URL" ] && launchctl setenv PKB_MCP_URL "$PKB_MCP_URL"
+# CF Access service token for the MCP portal (sops SSoT), same k=v,k=v form.
+[ -n "$PKB_MCP_TOKEN" ] && launchctl setenv PKB_MCP_TOKEN "$PKB_MCP_TOKEN"
 
 # --- Bot PAT pass-through ---
-# AOPS_BOT_GH_TOKEN is expected in ~/.env.local (sourced by the plist before
-# this file). Each export is gated on a non-empty token; skip silently if absent.
+# AOPS_BOT_GH_TOKEN comes from the sops SSoT decrypted above (or ~/.env.local,
+# sourced by the plist before this file). Each export is gated on a non-empty
+# token; skip silently if absent.
 [ -n "$AOPS_BOT_GH_TOKEN" ] && launchctl setenv AOPS_BOT_GH_TOKEN "$AOPS_BOT_GH_TOKEN"
 [ -n "$AOPS_BOT_GH_TOKEN" ] && launchctl setenv GH_TOKEN "$AOPS_BOT_GH_TOKEN"
 [ -n "$AOPS_BOT_GH_TOKEN" ] && launchctl setenv GITHUB_TOKEN "$AOPS_BOT_GH_TOKEN"
@@ -45,6 +82,7 @@
 # --- TRACING via OTEL ---
 [ -n "$GENAI_ENGINE_TRACE_ENDPOINT" ] && launchctl setenv GENAI_ENGINE_TRACE_ENDPOINT "$GENAI_ENGINE_TRACE_ENDPOINT"
 [ -n "$GENAI_ENGINE_TRACE_PROTOCOL" ] && launchctl setenv GENAI_ENGINE_TRACE_PROTOCOL "$GENAI_ENGINE_TRACE_PROTOCOL"
+# GENAI_ENGINE_API_KEY = CF Access service token for otel.suzor.com (sops SSoT).
 [ -n "$GENAI_ENGINE_API_KEY" ] && launchctl setenv GENAI_ENGINE_API_KEY "$GENAI_ENGINE_API_KEY"
 [ -n "$GENAI_ENGINE_TASK_ID" ] && launchctl setenv GENAI_ENGINE_TASK_ID "$GENAI_ENGINE_TASK_ID"
 
