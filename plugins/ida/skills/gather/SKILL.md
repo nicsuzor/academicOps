@@ -21,9 +21,7 @@ verdict is a failure, not a report.
 ### 1. Read first-hand
 
 Pull the candidate set yourself via the `services` MCP code-mode interface
-(`listToolFiles` -> `readToolFile("servers/pkb.pyi")` -> `executeToolCode`). Do not ask
-pauli to summarise it: a summary of a report is second-hand twice over, and the whole
-point of this pass is that you read the papers.
+(`listToolFiles` -> `readToolFile("servers/pkb.pyi")` -> `executeToolCode`).
 
 Candidates, narrowest first:
 
@@ -43,10 +41,6 @@ the account of the work holds together.
   whether the cited evidence actually answers them, not whether the fields are filled in.
 - **Is the question still live?** A task parked on a decision that events have already
   settled is not a decision for Nic -- it is a status update.
-
-Trust asymmetry: pauli's output you may rely on implicitly, because it is an artifact you
-can re-read. Everything from sara, workers, or `agy` gets the check above. If you
-commissioned something yourself this session, it is in the checked class too.
 
 ### 3. Classify
 

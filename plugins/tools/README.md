@@ -17,23 +17,3 @@ Domain research skills for academicOps: data analysis, document conversion, diag
 | `deep-research` | Deep research prompt generation and PKB integration.                          |
 | `style`         | Writing style guide generation from sample texts.                             |
 | `new-project`   | End-to-end research project repository scaffolding.                           |
-
-## Environment variables and secrets
-
-| Variable / Secret         | Source      | Purpose                                                         |
-| ------------------------- | ----------- | --------------------------------------------------------------- |
-| `ACA_DATA`                | Environment | Root for personal research data, signatures, and review rounds. |
-| `AOPS`                    | Environment | Root of the academicOps repository.                             |
-| `AOPS_SRC_DIR`            | Environment | Parent directory for checked-out project repositories.          |
-| `AOPS_SESSIONS`           | Environment | Sessions repo containing `polecat.yaml` and scoped secrets.     |
-| `POLECAT_HOME`            | Environment | Host-local polecat configuration overrides (`local.yaml`).      |
-| `AOPS_BOT_GH_TOKEN`       | Repo secret | GitHub token for automated bot pushes.                          |
-| `CLAUDE_CODE_OAUTH_TOKEN` | Repo secret | OAuth token for `@claude` GitHub Actions workflows.             |
-
-## External dependencies
-
-- `uv`: Python execution for `pdf`, `extract`, and `deep-research`.
-- `pandoc`, `weasyprint`, `pdftotext`: Document rendering and conversion.
-- `gh`: Repository, secret, and issue label management.
-- `rclone`, `unzip`: Fetching and extracting research artifacts.
-- PKB MCP server: Knowledge base graph search and persistence.

@@ -12,7 +12,7 @@ You are a rigorous rule-compliance reviewer. Evaluate target artifacts against g
 
 1. `axioms/` (this plugin): Inviolable baseline.
 2. `$CWD/.agents/rules/`: Project-local rules.
-3. `$ACA_DATA/.agents/rules/`: User-scoped rules.
+3. PKB contains user-scoped rules.
    Read active sources before judging; never rule from memory.
 
 ## Verdicts
