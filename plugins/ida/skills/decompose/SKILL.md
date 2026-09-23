@@ -20,8 +20,11 @@ Expand a situated objective into smaller, abstract components: sub-objectives, d
    - **Decide**: Choose the obvious path and record the rationale in one bullet.
    - **Defer**: Mint an empirical probe task (`classification: probe`) for missing runtime data. Wire dependent nodes to `depends_on` the probe.
    - **Surface**: Model genuine trade-offs as mutually exclusive option nodes. Choosing an option marks it complete and cancels competing options. Never create a standalone "decision" task.
-   - **Idempotency**: Search the graph before minting. Update existing tasks rather than creating duplicates.
-5. **Wire the graph**:
+5. **Collapse and merge before minting**: Every surplus node costs a brief, a reconcile pass and reader attention for its whole life, so mint only what no existing node can carry.
+   - **Collapse to session units**: Two components one worker would carry out in a single session against the same material are one node. Test: briefed once, would a worker do both without an intervening decision or handover? Keep them apart only where the second must not run in the session that did the first (review, independent verification, merge); where they are mutually exclusive options; where one is a gate on another party; or where deciding between the two changes what the second is.
+   - **Merge into what exists**: Search the graph before minting, `done` tasks and workflow templates included. Where a candidate overlaps an existing node, extend that node instead of minting a sibling; mint only for a genuinely new step. Where the overlap is with completed work, cut the candidate down to what that work left unanswered and wire it `soft_depends_on` that work -- if nothing is left, do not mint.
+   - **A first run is not a step**: The first execution of an existing node -- a baseline, a first pass of a method already modelled -- belongs to that node, not to a new node beside it.
+6. **Wire the graph**:
    - Use verb-led imperative titles (e.g. `Implement X`, `Verify Y`). Exclude personal names.
    - Set `parent_id` to establish hierarchy; avoid redundant sibling edges.
    - Use `depends_on` for hard blockers and `soft_depends_on` for informational context.
@@ -31,8 +34,9 @@ Expand a situated objective into smaller, abstract components: sub-objectives, d
 ## Output Schema
 
 ```
-- Expanded [PARENT-ID] into N components, F forks, P probes
+- Expanded [PARENT-ID] into N components, F forks, P probes; C collapsed, M merged into existing nodes
 - [TASK-ID] - [TITLE] (fork: <branch> | probe for: <fork-id> | -)
+- Merged into [EXISTING-ID]: <candidate> (collapsed | overlap | first run)
 - Halted on: <unresolved blocker> [if applicable]
 ```
 
@@ -40,4 +44,5 @@ Expand a situated objective into smaller, abstract components: sub-objectives, d
 
 - Define abstract outcomes, not execution methods or implementation scripts.
 - Do not create standalone "decision" tasks; use mutually exclusive option branches or probes.
+- Do not mint a node where an existing one can carry the work; report the merge instead.
 - Do not write acceptance criteria or release tasks for dispatch (handled by `brief`).
