@@ -28,9 +28,9 @@ What the `/q` → `/decompose` → `/brief` pipeline and the conceptual review w
 domain is academic research: domain primitives, sequencing rules, review lenses, and two
 maturity-gated modes. It replaces no stage of that pipeline and restates none of them.
 
-- `plugins/pkb/skills/q/SKILL.md` -- placement and valuation
-- `plugins/pkb/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
-- `plugins/pkb/skills/brief/SKILL.md` -- process composition and sizing; cuts to the primitives
+- `plugins/ida/skills/q/SKILL.md` -- placement and valuation
+- `plugins/ida/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
+- `plugins/ida/skills/brief/SKILL.md` -- process composition and sizing; cuts to the primitives
   below and records review obligations as acceptance criteria on the task body
 - `specs/workflows/conceptual-review-workflow.md` -- the review layer; runs the lenses below in
   place of its general registry, with its critique protocol, convergence rules, and formality
@@ -107,6 +107,30 @@ Deviate where the project shape demands it:
   cooperation.
 
 ## Decomposition rules
+
+### Collapse and merge before minting
+
+The rules below shape the graph; this one decides whether a node joins it at all. Every surplus
+node costs a brief, a reconcile pass and reader attention for its whole life, so mint only what no
+existing node can carry.
+
+- **Collapse to session units.** Two components one worker would carry out in a single session
+  against the same material are one node. Test: briefed once, would a worker do both without an
+  intervening decision or handover? Four exceptions keep them apart -- the second must not run in
+  the session that did the first (review, independent verification, merge); they are mutually
+  exclusive options; one is a gate on another party (ethics approval, a collaborator's judgement);
+  or deciding between the two changes what the second is.
+- **Merge into what exists.** Search before minting, `done` tasks and workflow templates included.
+  Where a candidate overlaps an existing node, extend that node; mint only for a genuinely new
+  step. Where the overlap is with completed work, cut the candidate down to what that work left
+  unanswered and wire it `soft_depends_on` that work; if nothing is left, do not mint.
+- **A first run is not a step.** The first execution of a node -- a baseline, a first pass of an
+  instrument already modelled -- belongs to that node, not to a new node beside it.
+
+Rule 8 is the fifth exception. Where work needs rigour, its methodology, implementation,
+validation and documentation stay separate nodes although one session could run them, because the
+separation is what forces the care. Collapse applies to components that differ in wording, not in
+the judgement they demand.
 
 1. **Start with unknowns.** Every unknown becomes a probe or pilot. Information-gathering precedes
    commitment.
@@ -211,6 +235,6 @@ seedling they chose to develop, or an existing plan needing restructuring.
 ## Related
 
 - [[specs/workflows/conceptual-review-workflow.md]] -- the review layer this spec instantiates
-- [[plugins/pkb/agents/pauli.md]] -- strategic planning; specialised here for research
+- [[plugins/ida/agents/pauli.md]] -- strategic planning; specialised here for research
 - [[specs/polecat/polecat-system.md]] -- execution layer; consumes decomposed task graphs
 - PKB task-graph MCP tools (`mcp__services__*`) -- structured task-graph output
