@@ -15,18 +15,19 @@ Invoke the headless `agy` CLI to execute tasks using Gemini models. If currently
 ## Invocation
 
 ```bash
-agy --agent james --mode accept-edits --output-format json --prompt '<instructions>'
+agy --agent james --mode accept-edits --output-format json --print-timeout 30m --print '<instructions>'
 ```
 
 - `--mode accept-edits` auto-approves native file-edit tool calls
   (`write_to_file`, `replace_file_content`) inside the granted directories.
   Reads there are auto-approved regardless of mode; without `accept-edits`,
   writes fall back to an interactive confirmation headless mode cannot answer.
+- `--print` must always be the last argument, and must be a single string.
 
 ## Options
 
 - `--model <name>`: Specify model tier (defaults to `gemini-3.8-flash`; use `gemini-3.1-pro-high` for critical tasks).
-- `--print-timeout <duration>`: Increase timeout for long-running jobs (default is `5m`, e.g. `--print-timeout 25m`).
+- `--print-timeout <duration>`: Increase timeout for long-running jobs (agy default is `5m`).
 
 ## Execution and Status Rules
 
