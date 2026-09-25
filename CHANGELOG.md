@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.1](https://github.com/nicsuzor/academicOps/compare/v0.10.0...v0.10.1) (2026-09-25)
+
+### Features
+
+- **decompose:** collapse related tasks and merge overlaps before minting ([#2701](https://github.com/nicsuzor/academicOps/issues/2701)) ([31980b2](https://github.com/nicsuzor/academicOps/commit/31980b22ecc95554f334267cbe7b1306e9703770))
+
 ## [0.10.0](https://github.com/nicsuzor/academicOps/compare/v0.9.3...v0.10.0) (2026-09-21)
 
 ### Features
