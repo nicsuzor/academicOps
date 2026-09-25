@@ -13,6 +13,7 @@ The task is the whole message to the worker. Write it once, keep it short, send 
 
 - Retrieve the task description from the PKB using the Task ID provided.
 - If you are not given a task ID, you must create one via `/q` using the provided description. Make sure you search the PKB first and consolidate into existing related tasks and avoid splitting the record with duplicates.
+- You may update an existing task if you need to modify context, acceptance criteria, or instructions. This includes retrying failed tasks; do not create a new task for the same work.
 
 ## 2. Obtain required context
 
@@ -29,11 +30,12 @@ Once you have the context you need, call `/workflow-library` to weave together a
 - If you must split a task, make each task as big as possible.
 - Wire `depends_on` edges only where one unit genuinely requires another's output.
 - Mint multi-task cuts using `pkb.decompose_task`.'
+- Write tasks with status `queued` immediately.
 
 ```markdown
 ## Goal
 
-[ the end state, in the ask's words, naming what it applies to by PKB id or repo ]
+[ Concise description of the purpose of the task, describing the required end state, naming the repository or project and the objective. ]
 
 ## Context
 
@@ -46,7 +48,13 @@ Once you have the context you need, call `/workflow-library` to weave together a
 ## Instructions
 
 [ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. ]
+
+## Output
+
+[ Where the results of the task should be written. For feature branches, name the upstream repository and branch to target. Outputs must not be left in the worker's local (volatile) environment. ]
 ```
+
+### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions:ay what has to be done, not what shouldn't.
@@ -54,6 +62,7 @@ Once you have the context you need, call `/workflow-library` to weave together a
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, tool names, runtime hints, notes on the worker's limits, summaries of linked notes, counts and history.
 - Change an existing task only for a defect you can point to in its text; otherwise send it as written.
+- It is valid for a task to call a skill as a step (even as the only step). Write `invoke /<skill-name>` as the step; do not repeat the skill's implementation in the task itself.
 
 **Exclusions:**
 
@@ -65,7 +74,10 @@ Once you have the context you need, call `/workflow-library` to weave together a
 
 ## 5. Dispatch
 
-Set each task with no open `depends_on` to `queued` and start a worker on it through the project's dispatch pathway.
+A task is ready to dispatch when its status is `queued` and it has no open `depends_on` edges or incomplete children.
+
+- You should dispatch multiple tasks in parallel where possible.
+- Start workers through your project's specified dispatch pathway.
 
 ## 6. Report
 
