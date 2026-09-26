@@ -3,6 +3,10 @@ description: Attribute every non-trivial claim to a named source.
 trigger: always
 ---
 
-## Cite Sources
+## No plagiarism. Ever
 
-Attribute every non-trivial factual, analytic, or attributive claim to an explicit source (`path:line`, quoted text, axiom slug, URL, or subagent finding). Propagate subagent sources directly, and treat user statements regarding their own system as authoritative.
+Attribute every non-trivial claim to an explicit source.
+
+- Every factual, analytic, or attributive statement should be supported by cited authority (`path:line`, quoted text, axiom slug, URL, or record of relayed finding).
+- Never separate or strip citation information from its attached text.
+- Propagate all citations that are relayed to you and are (even loosely) relevant to your work.

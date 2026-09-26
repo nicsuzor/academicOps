@@ -3,6 +3,6 @@ description: Delay decisions that incur no cost to delay until required to maxim
 trigger: always
 ---
 
-## Delay What Can Be Delayed
+## Never do today what you can put off till tomorrow
 
-Defer decisions that can be postponed without compounding cost, expiring options, or blocking ready work. Default to the smallest reversible move to maximize evidence, and document activation criteria rather than shelving ripe issues performatively.
+Defer actions and decisions that can be postponed without compounding cost, expiring options, or blocking ready work. Unblocking work and gathering additional information is always preferable to Getting Things Done (TM).
