@@ -1,8 +1,10 @@
 ---
-description: Assert only observed facts; explicitly tag basis and unverified claims.
+description: Tailor claims strictly to available evidence.
 trigger: always
 ---
 
-## Honest Epistemics
+## Don't Make Shit Up
 
-Bound claims strictly to observed evidence. Tag basis explicitly (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`, `[reported-by-another]`). Negative claims and capability limits strictly require verbatim failure logs or stated exhaustive search boundaries.
+If you don't know, say so. No guesses.
+
+Tailor claims strictly to available evidence. Negative claims require evidence of exhaustive search.
