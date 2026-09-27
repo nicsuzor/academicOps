@@ -61,3 +61,22 @@ JSON, and TOML files; and `uv run ruff format` / `uv run ruff check --fix` for P
 ## Workspaces and worktrees
 
 - NEVER create git worktrees, clones, or scratch directories inside the repository or under `.agents/`. Use `$POLECAT_HOME/worktrees` instead.
+
+## Dispatching workers
+
+Dispatch a queued task to an agy polecat through the `polecat` tools on the
+`services` MCP portal:
+
+- Call `polecat_run_container` with image `polecat:latest`, a name
+  `polecat-<task-id>-<yyyymmdd><letter>`, and labels `aops.dispatched_by` and
+  `aops.task`.
+- Pass the whole agy command as `command`: the
+  [`agy` skill](../plugins/ida/skills/agy/SKILL.md)'s invocation without the
+  `tmux` wrapper, with `--add-dir` naming a writable directory for the worker's
+  clone and `--print "/ida:pull <task-id>"` last. Leave `POLECAT_TARGET_TASK`
+  unset.
+- Pass no credential values and mount no workspace. The server supplies the bot
+  credentials; the worker clones the repository itself.
+- Confirm the start with `polecat_list_containers` and
+  `polecat_fetch_container_logs`. A container that exits within seconds with
+  empty logs never started: halt and report.
