@@ -87,17 +87,19 @@ release PR it opens creates the stable `vX.Y.Z` tag. Pushing any `v*` tag fires
 1. **Resolve build context.** A tag shaped `vX.Y.Z-<suffix>` (`-rc.N`, `-dev.N`,
    `-beta.N`, …) is a prerelease/"testing" build; a plain `vX.Y.Z` tag is stable.
 2. **Checkout.** The tagged commit, plus the `dist` branch (the publish target)
-   at a separate path.
+   and `nicsuzor/aops` (the mirror target) at separate paths.
 3. **Compute version.** The tag, verbatim, with the leading `v` stripped. For a
    stable tag, the workflow asserts the tag, `pyproject.toml`'s `version`, and
    `.release-please-manifest.json` all agree, and aborts the release if they
    don't.
 4. **Build.** `uv run python -m build.build --set-version <version>`.
-5. **Publish to `dist`.** Every built plugin directory under `dist/` is mirrored
+5. **Publish to `dist` and `nicsuzor/aops`.** Every built plugin directory under `dist/` is mirrored
    to the root of the `dist` branch (an orphan branch; plugin dirs and
    `.claude-plugin/marketplace.json` live at its root), along with
    `pr-pipeline.yml` and the workflow files it references, so external
    consumers can pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`.
+   The identical distribution tree is mirrored onto `nicsuzor/aops` (`main` and `dist` branches)
+   for consumers installing directly from `nicsuzor/aops`.
    This step runs for both stable and prerelease tags -- prerelease builds ship
    to `dist` too, as a semver prerelease version, so a client chooses whether to
    install one rather than being force-upgraded.

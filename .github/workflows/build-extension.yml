@@ -131,6 +131,16 @@ jobs:
           path: dist-repo
           token: ${{ secrets.AOPS_DIST_PAT }}
 
+      - name: Checkout nicsuzor/aops mirror target
+        # Mirrors the dist payload onto nicsuzor/aops for consumers installing
+        # directly from nicsuzor/aops.
+        uses: actions/checkout@v4
+        with:
+          repository: nicsuzor/aops
+          ref: main
+          path: aops-repo
+          token: ${{ secrets.AOPS_DIST_PAT }}
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -273,6 +283,33 @@ jobs:
             # Fast-forward (dist-repo is checked out at dist HEAD) — no force push,
             # so a non-fast-forward branch rule on dist can stay enforced.
             git push origin dist
+          fi
+
+      - name: Publish distribution to nicsuzor/aops (mirror)
+        # Mirror the exact dist-branch tree (.claude-plugin/marketplace.json,
+        # plugin dirs, workflows, metadata) onto nicsuzor/aops' default branch (main)
+        # and dist branch so consumers installing from nicsuzor/aops receive the identical
+        # distribution.
+        run: |
+          set -euo pipefail
+          SRC="${GITHUB_WORKSPACE}"
+          cd "${SRC}/aops-repo"
+
+          # Clean aops-repo root except .git to ensure retired plugins/files are pruned
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          # Mirror the exact dist-branch content from dist-repo
+          rsync -a --exclude='.git' "${SRC}/dist-repo/" ./
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nicsuzor/aops already in sync — nothing to publish"
+          else
+            git commit -m "chore: publish v${{ steps.version.outputs.version }} distribution [skip ci]"
+            git push origin HEAD:main
+            git push origin HEAD:dist
           fi
 
       # ── Docker: publish the polecat worker/crew image (stable only, A3) ──────
