@@ -29,7 +29,7 @@ A grounded research artifact providing:
 - Answers to primary research questions with pinpoint citations.
 - Comparison matrix or breakdown of candidate approaches with pros/cons.
 - Clear statement of constraints (e.g. backward compatibility, resource bounds).
-- Recommended approach and justification for the subsequent specification phase.
+- Recommended approach and its justification.
 
 ## When to include
 

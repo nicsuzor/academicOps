@@ -2,7 +2,7 @@
 alias:
   - wf-research-and-implement
   - wf-research-implement
-description: "Composed pipeline for research-and-implementation tasks: research, spec, review, human approval of the full spec, and implementation."
+description: "Composite for research-then-build asks: research, spec, independent review of both, human approval of the full spec, then implementation in a dependent task."
 id: wf-research-and-implement
 tags:
   - wf-template
@@ -16,44 +16,27 @@ type: template
 
 ## What this step does
 
-Composes an end-to-end pipeline for tasks requiring research, specification, peer review, human approval, and implementation. Enforces strict stage ordering and requires human approval of the full specification before implementation can begin.
+Sequences an ask that needs investigation and an agreed design before anything is built. The composer fills each stage with whatever component meets its contract.
 
 ## Stages
 
-Execution proceeds strictly in the following sequence:
+1. **Research** -- grounded findings on the problem space and the candidate approaches, with primary citations and a recommended direction.
+2. **Spec** -- a complete specification built on those findings: design, interfaces, scope and non-goals, and falsifiable acceptance criteria mapped to tests.
+3. **Review** -- an independent verdict on the research and on the spec, from an evaluator who did not author them, covering both the factual claims and the fitness of the design. Resolve defects before advancing.
+4. **Approval** -- the full spec, not a summary, handed to the human who commissioned the work for an explicit decision. The task ends here in `review`.
+5. **Implementation** -- in a separate task that `depends_on` the approval task, so it cannot start until the spec is approved. Test-first implementation of the approved spec, an independent check against its acceptance criteria, and a sign-off summary for the human.
 
-1. **Research (`[[wf-research]]`)**
-   Investigate the problem domain, survey codebase context and external options, evaluate trade-offs, and produce grounded research findings with primary citations.
-2. **Write Spec (`[[wf-spec]]`)**
-   Draft a comprehensive technical specification based on research findings, defining architecture, interface contracts, scope boundaries, test plans, and acceptance criteria.
-3. **Review Research and Spec (`[[wf-qa]]`, `[[wf-fact-check]]`)**
-   Conduct independent review of both the research and the specification:
-   - Check factual, empirical, and citation-bearing claims against sources via `[[wf-fact-check]]`.
-   - Evaluate spec completeness, architectural soundness, and testability against requirements via `[[wf-qa]]`.
-   - Resolve any defects or gaps before advancing.
-4. **Approval Gate (`[[wf-human-approval]]`)**
-   Present the full specification (not a summary) to Nic for review and explicit approval. Implementation cannot start until Nic approves. If revisions are requested, address them in Stage 2 before resubmitting.
-5. **Implementation (`[[wf-tdd]]`, `[[wf-qa]]`, `[[wf-signoff]]`)**
-   Once approved, implement the specification:
-   - Execute code changes under test-driven development (`[[wf-tdd]]`), maintaining green test suites.
-   - Perform independent QA evaluation (`[[wf-qa]]`) against the spec's acceptance criteria.
-   - Produce the delivery digest and receipts via `[[wf-signoff]]`.
+## Composition
 
-## Constraints
-
-- Strictly sequential: do not draft specs without research; do not begin implementation before explicit approval.
-- The approval gate must present the full specification, never a summary.
-- Implementation is blocked until human approval is confirmed on record.
+Cut the chain at stage 4: stages 1–4 form one task and stage 5 another. Requested revisions return to stage 2.
 
 ## Output contract
 
-- Grounded research findings with citations (`[[wf-research]]`).
-- Full approved technical specification (`[[wf-spec]]`).
-- Independent review verdicts (`[[wf-qa]]`, `[[wf-fact-check]]`).
-- Recorded human approval decision (`[[wf-human-approval]]`).
-- Tested implementation and QA report (`[[wf-tdd]]`, `[[wf-qa]]`).
-- Final signoff brief (`[[wf-signoff]]`).
+- Research findings with citations.
+- The full specification.
+- Review verdicts on both.
+- The spec filed for approval, with the approval task released as `review`.
 
 ## When to include
 
-Any initiative requiring investigation and specification prior to building (e.g. "research, design, and implement..."), ensuring design alignment before committing engineering effort.
+Any ask to research, design, and then build something ("research, design, and implement…") where the design should be agreed before engineering effort is committed.

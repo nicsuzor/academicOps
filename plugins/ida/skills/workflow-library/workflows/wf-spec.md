@@ -12,7 +12,7 @@ type: template
 
 ## What this step does
 
-Authors a complete, unambiguous technical specification based on research findings. Establishes system architecture, data models, public interfaces, observable acceptance criteria, and integration test plans before any implementation code is written.
+Authors a complete, unambiguous technical specification grounded in the evidence available to it. Establishes system architecture, data models, public interfaces, observable acceptance criteria, and integration test plans before any implementation code is written.
 
 ## Procedure
 
@@ -25,7 +25,7 @@ Authors a complete, unambiguous technical specification based on research findin
 
 ## Output contract
 
-A complete specification artifact (full spec, not a summary) ready for independent review and human approval, containing:
+A complete specification artifact (full spec, not a summary) that someone other than its author can judge, containing:
 
 - Problem statement and architectural design.
 - Concrete interface definitions and signatures.
