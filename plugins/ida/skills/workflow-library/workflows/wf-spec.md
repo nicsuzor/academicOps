@@ -19,9 +19,8 @@ Authors a complete, unambiguous technical specification grounded in the evidence
 1. **Problem statement and target** -- define the problem, user/caller context, and required capabilities.
 2. **Architecture and data flow** -- describe components, responsibilities, internal mechanics, and external integration points.
 3. **Interface contracts** -- define data types, function signatures, schemas, or protocols with precision.
-4. **Scope and non-goals** -- declare clear boundaries on what the feature covers and explicitly what is excluded.
-5. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.
-6. **Test and verification strategy** -- specify test cases (unit, integration, regression) validating each criterion.
+4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.
+5. **Test and verification strategy** -- specify test cases (unit, integration, regression) validating each criterion.
 
 ## Output contract
 
@@ -29,7 +28,6 @@ A complete specification artifact (full spec, not a summary) that someone other 
 
 - Problem statement and architectural design.
 - Concrete interface definitions and signatures.
-- Explicit scope boundaries and non-goals.
 - Itemized acceptance criteria with test mapping.
 
 ## When to include

@@ -16,7 +16,7 @@ Investigate the problem space, relevant codebase areas, dependencies, and extern
 
 ## Procedure
 
-1. **Define research scope** -- frame primary research questions, unknowns, and explicit out-of-scope boundaries.
+1. **Define research scope** -- frame primary research questions and unknowns.
 2. **Investigate codebase and context** -- examine existing architecture, dependencies, data structures, and operational constraints.
 3. **Survey external options** -- investigate established libraries, external APIs, protocols, or algorithmic precedents.
 4. **Evaluate alternatives** -- compare candidate designs against trade-offs (complexity, performance, maintenance, coupling, migration cost).
