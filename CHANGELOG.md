@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/nicsuzor/academicOps/compare/v0.10.1...v0.10.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* restore ARCHITECTURE.md, update axioms path to plugins/rbg/axioms, fix pyright ([fc9da64](https://github.com/nicsuzor/academicOps/commit/fc9da64e64d8b953917ec2fbded2eb9a4702b561))
+
 ## [0.10.1](https://github.com/nicsuzor/academicOps/compare/v0.10.0...v0.10.1) (2026-09-27)
 
 ### Features
