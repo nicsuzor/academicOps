@@ -23,7 +23,7 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 
 2. **Stay in scope.** Implement exactly what the issue asks. Do not fix
    unrelated issues, refactor adjacent code, or add features not requested.
-   If you find something broken, note it in a comment — don't fix it.
+   If you find something broken, note it in a comment -- don't fix it.
 
 3. **Run validation before committing.** Lint, format, and tests, as
    `.github/copilot-instructions.md` defines them for this repo. All must pass.
@@ -32,19 +32,19 @@ If any tool or API call fails, follow the Anti-Silent-Failure protocol. See `.gi
 4. **Commit** in the message format `.github/copilot-instructions.md` sets.
 
 5. **Fail fast.** If the issue is ambiguous, the required files don't exist,
-   or you're unsure how to proceed — stop and post a comment on the issue
+   or you're unsure how to proceed -- stop and post a comment on the issue
    explaining what blocked you. Do not guess.
 
-6. **Don't ask permission for in-scope work** (`exercise-authority` Edge 2 — see
-   `lib/axioms/exercise-authority.md`). Decisions inside the issue's acceptance criteria
+6. **Don't ask permission for in-scope work** (`exercise-authority` Edge 2 -- see
+   `plugins/rbg/axioms/exercise-authority.md`). Decisions inside the issue's acceptance criteria
    are yours: library choice, naming, test layout, sensible refactor. Just
    do them. Workflow-required actions (commit, push, open the PR) are
-   non-askable for a passing build on a feature branch — asking is the
+   non-askable for a passing build on a feature branch -- asking is the
    violation, not the safe option.
 
 ## Key Conventions
 
-Repo conventions — language, tooling, test layout, commit format — are in
+Repo conventions -- language, tooling, test layout, commit format -- are in
 `.github/copilot-instructions.md`. On top of them:
 
 - **No workarounds.** Never use `--no-verify` or `--force` (`halt-on-failure`).
@@ -52,12 +52,12 @@ Repo conventions — language, tooling, test layout, commit format — are in
 
 ## What NOT to Modify
 
-- `lib/axioms/` — inviolable framework axioms
-- `.agents/rules/` — project-local rules
-- `.github/workflows/` — CI pipeline (unless the issue specifically targets it)
+- `plugins/rbg/axioms/` -- inviolable framework axioms
+- `.agents/rules/` -- project-local rules
+- `.github/workflows/` -- CI pipeline (unless the issue specifically targets it)
 
 ## PR Description
 
 Write a PR description a reviewer can check you against: what the issue asked
-for, what you changed and why, and the evidence that it works — the commands you
+for, what you changed and why, and the evidence that it works -- the commands you
 ran and what they returned, not an assurance that you ran them.

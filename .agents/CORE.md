@@ -13,7 +13,7 @@ Design intent for anything else: [`specs/README.md`](../specs/README.md).
 
 ## Binding constraints
 
-The axioms in [`lib/axioms/`](../lib/axioms/) apply here as they do everywhere.
+The axioms in [`plugins/rbg/axioms/`](../plugins/rbg/axioms/) apply here as they do everywhere.
 On top of them:
 
 - **No duplication.** Anything two plugins need lives in `lib/` and is injected

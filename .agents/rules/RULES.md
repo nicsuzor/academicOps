@@ -5,7 +5,7 @@ description: Project-local rules for the academicOps repository, applied on top 
 
 # Project Rules
 
-These apply to this repository in addition to the axioms in `lib/axioms/`, never
+These apply to this repository in addition to the axioms in `plugins/rbg/axioms/`, never
 in place of them. A rule belongs here only if it states a project-level
 commitment a reviewer can name from the diff, and cannot be derived from an
 axiom alone.
