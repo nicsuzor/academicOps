@@ -38,7 +38,10 @@ Resolve the template slug across tiers in precedence order. Output the winning c
    - **Project**: Local repository specific.
    - **PKB**: Portable personal workflow.
    - **Universal**: Core baseline standard across projects.
-3. Write template using the template schema (<100 lines).
+3. Write template using the template schema (<100 lines), to these rules:
+   - **State the contract, not the neighbour.** Say what the step needs as input and what it hands back. Never name another template, in the body or the frontmatter: the composing agent decides at composition time what fills each slot. A composite lists its stages as contract expectations in order ("an independent review verdict on the spec"), not as slugs.
+   - **Write for a headless worker.** The executor runs unattended and asynchronously, with no one to talk to mid-task. A step never pauses, waits, or blocks for a human. Where human judgement is needed, the step ends there: the worker files the artifact for review (in the form the project or user preferences name) and releases the task as `review`. Work that follows the decision belongs in a separate task that `depends_on` this one; say so, so the composer cuts the chain at that point.
+   - **Promise only what the executor delivers.** The output contract lists artifacts and state the executing agent itself produces. Another party's act — a human's approval, a reviewer's verdict — is never an output-contract term.
 
 ### edit
 
