@@ -2,16 +2,14 @@
 
 ## [0.10.3](https://github.com/nicsuzor/academicOps/compare/v0.10.2...v0.10.3) (2026-09-28)
 
-
 ### Features
 
-* **workflow-library:** add wf-research-and-implement composite workflow and components ([5456ee6](https://github.com/nicsuzor/academicOps/commit/5456ee6dca265c90ceed527998bfc113a0939cdf))
-
+- **workflow-library:** add wf-research-and-implement composite workflow and components ([5456ee6](https://github.com/nicsuzor/academicOps/commit/5456ee6dca265c90ceed527998bfc113a0939cdf))
 
 ### Bug Fixes
 
-* **workflow-library:** drop git-history rule and scope/non-goals steps per review ([e3e9bf7](https://github.com/nicsuzor/academicOps/commit/e3e9bf79d9b4bb56f17de7fc6a8871da64a7bc63))
-* **workflow-library:** templates state contracts, not neighbours, and end in review at human gates ([39e964a](https://github.com/nicsuzor/academicOps/commit/39e964aeb7d04e42611b4d0218c7fd95ac5c5e31))
+- **workflow-library:** drop git-history rule and scope/non-goals steps per review ([e3e9bf7](https://github.com/nicsuzor/academicOps/commit/e3e9bf79d9b4bb56f17de7fc6a8871da64a7bc63))
+- **workflow-library:** templates state contracts, not neighbours, and end in review at human gates ([39e964a](https://github.com/nicsuzor/academicOps/commit/39e964aeb7d04e42611b4d0218c7fd95ac5c5e31))
 
 ## [0.10.2](https://github.com/nicsuzor/academicOps/compare/v0.10.1...v0.10.2) (2026-09-28)
 
