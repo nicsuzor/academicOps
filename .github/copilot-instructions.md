@@ -30,18 +30,18 @@ uv run basedpyright
 ```
 academicOps/
 ├── .agents/           # Rules for agents working ON this repo (READ-ONLY reference)
-│   ├── rules/        # RULES.md (project-specific rules; axioms live in lib/axioms/)
+│   ├── rules/        # RULES.md (project-specific rules; axioms live in plugins/rbg/axioms/)
 │   └── skills/       # Meta skills for this repo's own dev workflow
 ├── .github/
 │   ├── agents/       # Agent prompts (enforcer, mechanic, qa, pre-admission-responder)
 │   └── workflows/    # GitHub Actions
 ├── lib/               # Shared source, injected into plugins at build time
-│   ├── axioms/       # The axioms (single source of truth)
+│   ├── polecat/       # Container launcher and runtime
 │   ├── hooks/         # Shared hook runtime
 │   └── py/            # Shared Python helpers
 ├── build/              # Build system (build.py, install.py, client adapters)
-├── plugins/            # Plugin sources: aops, pkb, ida, cope, ts, tools
-│   └── aops/polecat/  # Polecat container executor
+├── plugins/            # Plugin sources: aops, pkb, ida, rbg, ts, tools
+│   └── rbg/axioms/    # The axioms (single source of truth)
 ├── tests/              # Test suite, mirroring the source structure
 └── specs/              # Design specifications
 ```
@@ -67,7 +67,7 @@ Use descriptive messages. Include task ID if working on a tracked task:
 Closes: <task-id>
 ```
 
-### Key Principles (from `lib/axioms/`)
+### Key Principles (from `plugins/rbg/axioms/`)
 
 - **`do-one-thing`**: Complete the assigned task, nothing more. No scope creep.
 - **`halt-on-failure`**: No workarounds. If something fails, stop and report. Never use `--no-verify`, `--force`, or skip flags.
