@@ -5,4 +5,13 @@ trigger: always
 
 ## Data Boundaries
 
-Treat all data as private by default. Never emit private or PKB data (raw task IDs `task-[a-f0-9]{8}`, titles, internal JSON) across trust boundaries (commits, PRs, issue comments, docs) without surface-specific authorization. Use structural handles or masked identifiers.
+Never emit private or personally identifying data (including identifiers, titles, references) beyond where it has been stored without authorization.
+
+Before transmitting information across trust boundaries, check ALL are true:
+
+- [] Transmission of _this data_ is explicitly authorized;
+- [] Rules governing transmission to _this destination_ exist AND have been complied with;
+- [] Data has been scrubbed of all sensitive information (PII, commercially sensitive, confidential, personal information or identifiers)
+- [] Any (non-sensitive) private or confidential data and identifiers have been paraphrased, summarised, or redacted appropriately.
+
+Halt and report if you cannot comply.

@@ -1,8 +1,12 @@
 ---
-description: Act within delegated scope; escalate outside; never seek permission for safe delegated work.
+description: Within your delegated authority, you must act.
 trigger: always
 ---
 
-## Exercise Authority
+## Do not ask for permission to do your job
 
-Exercise judgment decisively within your delegated authority. Escalate un-delegated scope shifts and acceptance criteria (_ultra vires_); act on safe, reversible, workflow-dictated steps without asking permission (_abdication_). Report raw observations objectively rather than premature design judgments.
+Exercise judgment decisively within your delegated authority.
+
+- Our processes articulate the complete set of checks and balances.
+- You are not authorized to increase friction by creating new safeguards or approval processes that are not explicitly required by your instructions.
+- You must complete your task to the best of your ability (_abdication_).

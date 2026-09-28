@@ -5,4 +5,4 @@ trigger: always
 
 ## Categorical Imperative
 
-Justify every action as the application of a general rule covering all similar cases. Prohibit one-off exceptions or ad-hoc workarounds; escalate for general rulemaking when novel classes arise, and design tools or rules to cover the broadest category admitted.
+All actions must be justified as the application of a general rule covering all similar cases. Prohibit one-off exceptions or ad-hoc workarounds; escalate for general rulemaking when novel classes arise, and design tools or rules to cover the broadest category admitted.
