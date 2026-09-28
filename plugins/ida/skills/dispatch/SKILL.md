@@ -7,21 +7,24 @@ description: Take an objective, assemble a compliant workflow from templates, re
 
 The task is the whole message to the worker. Write it once, keep it short, send it as written.
 
-## 1. Get or create the task
+Nothing is written to the graph until steps 1-2 have passed: a task created early survives every check that later fails.
+
+## 1. Hydrate
+
+Call `/hydrate` on the objective, or on the task if you were given an id.
 
 **Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates. If a task is already completely specified, you may dispatch it directly without re-writing it.
 
-- Retrieve the task description from the PKB using the Task ID provided.
-- If you are not given a task ID, you must create one via `/q` using the provided description. Make sure you search the PKB first and consolidate into existing related tasks and avoid splitting the record with duplicates.
+- Given a task id: read it. If it already fills the template in step 3, go to step 4.
+- If `/hydrate` flags an unfinished task with the same objective, carry on with that task instead of a new one.
+- If it flags a task this objective needs done first, note it for a `depends_on` edge.
 - You may update an existing task if you need to modify context, acceptance criteria, or instructions. This includes retrying failed tasks; do not create a new task for the same work.
 
-## 2. Obtain required context
+## 2. Compose workflows
 
-Call `/hydrate` to retrieve any required context for the task.
+Call `/workflow-library` to weave together every workflow relevant to the task in context. A skill counts as a template: when one is composed, the Instructions tell the worker to invoke it by name, as one step or as all of them. Never copy its contents into the task; the skill is maintained where it lives.
 
-## 3. Compose all relevant workflows
-
-Once you have the context you need, call `/workflow-library` to weave together all workflows that are relevant to the task in context.
+**Halt when composition comes up short.** Create and change nothing; report to your caller what failed precisely.
 
 ## 4. Write each task
 
@@ -52,6 +55,10 @@ Once you have the context you need, call `/workflow-library` to weave together a
 ## Output
 
 [ Where the results of the task should be written. For feature branches, name the upstream repository and branch to target. Outputs must not be left in the worker's local (volatile) environment. ]
+
+## Report
+
+[ Any special reporting requirements; default should be to update the task record with evidence of completion next to each acceptance criterion. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
 ```
 
 ### Requirements for writing tasks

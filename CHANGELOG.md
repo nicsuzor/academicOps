@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.2](https://github.com/nicsuzor/academicOps/compare/v0.10.1...v0.10.2) (2026-09-28)
+
+### Bug Fixes
+
+- restore ARCHITECTURE.md, update axioms path to plugins/rbg/axioms, fix pyright ([fc9da64](https://github.com/nicsuzor/academicOps/commit/fc9da64e64d8b953917ec2fbded2eb9a4702b561))
+
+## [0.10.1](https://github.com/nicsuzor/academicOps/compare/v0.10.0...v0.10.1) (2026-09-27)
+
+### Features
+
+- **decompose:** collapse related tasks and merge overlaps before minting ([#2701](https://github.com/nicsuzor/academicOps/issues/2701)) ([31980b2](https://github.com/nicsuzor/academicOps/commit/31980b22ecc95554f334267cbe7b1306e9703770))
+- **workflow-library:** add wf-task-base, the base skeleton every pulled task composes onto ([b7166e8](https://github.com/nicsuzor/academicOps/commit/b7166e86ad14ceabbf087b9035d5a55836931974))
+
 ## [0.10.0](https://github.com/nicsuzor/academicOps/compare/v0.9.3...v0.10.0) (2026-09-21)
 
 ### Features
