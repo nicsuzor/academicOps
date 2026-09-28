@@ -17,40 +17,35 @@ Nic's two capture front ends (VSCode task, iOS Shortcut) already commit raw note
 with no processing at capture time -- built, and not this spec's concern (`quick-babf1cd6`). What
 has no owner is pickup: turning a landed capture into a graph node. Today that only happens by
 hand, at `/daily` step 1.5, when a `/daily` run happens to occur. This spec designs the standing
-route that picks pickup up automatically, and states why it needs no new PKB write capability to
-do it.
+route that picks pickup up automatically, and the one PKB write capability it needs that does not
+exist yet: converting a capture into a task in place.
 
 ## Coverage
 
-| Piece                                                               | State                                              |
-| ------------------------------------------------------------------- | -------------------------------------------------- |
-| Capture front ends land raw notes as PKB documents (`type: note`)   | Built -- `quick-babf1cd6`                          |
-| Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5 | Built -- remains the fallback this route defers to |
-| Standing, automated pickup sharing the `/reconcile` trigger         | **Not built -- this spec's target shape**          |
+| Piece                                                                        | State                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`) | Built -- `quick-babf1cd6`                              |
+| Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5          | Built -- remains the fallback this route defers to     |
+| Standing, automated pickup sharing the `/reconcile` trigger                  | **Not built -- this spec's target shape**              |
+| PKB write that moves, renames and retypes a document while keeping its ID    | **Not built -- blocks the Task disposition (see Gap)** |
 
-## The completion-marker problem, and why it dissolves
+## The unprocessed marker
 
-`processed: true` cannot be written through the PKB MCP surface: `update_task` rejects unknown
-frontmatter keys, and the write tools available to an agent expose only status, priority, project,
-assignee, and tags. Extending the write surface to accept an arbitrary `processed` boolean is a
-service-side change outside a skill's reach, and it would duplicate state the graph can already
-express for free.
+**A capture is unprocessed if and only if its file is still in `notes/mobile-captures/`.** There
+is no `processed` flag: front ends do not write one, and triage neither reads nor writes one. A
+routed capture always leaves the directory, by one of two moves:
 
-**Decision: deletion is the completion signal, not a frontmatter flag.** A capture note's
-existence in the PKB _is_ "pending." Once it is routed -- folded into a task, folded into a note,
-or judged not worth keeping -- it is deleted outright, the same "no tombstone, git holds the
-history" doctrine `/reconcile` already applies to harvested tasks (`kb_graph_hygiene_rules`,
-Rule Set 2). This needs zero new PKB write capability: `pkb__delete` already exists and already
-does this job for the analogous case. It also drops the query problem reconcile's PR sweep has to
-solve with a windowed event log -- there is no window to track. Every run simply processes whatever
-capture notes currently exist; nothing is skipped because a previous run missed it, because a
-previous run either routed it (and it no longer exists) or left it (and it is still there,
-unambiguously pending).
+- **Task or Expand:** the capture's own file becomes the task -- moved out of the directory into
+  the task location (see Routing procedure).
+- **Note or Discard:** the capture is deleted after its content is placed (Note) or judged not
+  worth keeping (Discard) -- the same "no tombstone, git holds the history" doctrine `/reconcile`
+  applies to harvested tasks (`kb_graph_hygiene_rules`, Rule Set 2).
 
-This supersedes `quick-babf1cd6`'s description of `processed: true` as the completion marker for
-anything this route reaches. `/daily` step 1.5 is unaffected in mechanism -- it still triages
-whatever capture notes it finds -- it simply finds fewer of them, because this route already
-cleared the confident cases.
+Every run processes whatever is in the directory. Nothing is skipped because a previous run missed
+it: a previous run either routed it (it is no longer there) or left it (it is still there,
+unambiguously pending). There is no window to track. `/daily` step 1.5 triages by the same rule --
+whatever is in the directory -- and finds fewer captures because this route has already cleared the
+confident ones.
 
 ## Routing procedure (target shape)
 
@@ -79,7 +74,12 @@ defers to it rather than duplicating it.
 
 **Per-capture disposition**, once classification is confident enough to proceed without asking:
 
-- **Task.** `/q`'s normal path: search-and-adopt or create, parent, densify, value at intake.
+- **Task.** The capture becomes the task in place: the same file and the same ID, moved out of
+  `notes/mobile-captures/` into the task location, renamed to a task filename, and given task
+  frontmatter (`type: task`, status, parent). `/q` then parents, densifies and values it at intake
+  as it would a task it created. No new file is created and no note is left behind. If
+  search-and-adopt finds an existing task that already carries the ask, the capture is folded into
+  that task (`pkb__update_body`) and deleted under the gate below, as with Note.
 - **Note.** Not an actionable ask -- resolve a destination via the Destination Rule
   (`kb_graph_hygiene_rules`, Rule Set 2 §2.1): an existing canonical topic note (synthesize in via
   `pkb__update_body`) or a new one (`pkb__create(type="knowledge", ...)`), never left as an
@@ -91,12 +91,29 @@ defers to it rather than duplicating it.
   verify -- delete outright. This is the one disposition that skips the gate below, because there
   is nothing written elsewhere for it to protect.
 
-**Before deleting a routed (non-discarded) capture**, run the same Pre-Deletion Verification Gate
+**Before deleting a capture folded into another node** (Note, or Task folded into an existing
+task), run the same Pre-Deletion Verification Gate
 `/reconcile` already applies (`kb_graph_hygiene_rules`, Rule Set 2 §2.2): confirm the destination
 resolves, its `modified` timestamp is fresh, the content reads back, and any external references
 are reparented. Only then `pkb__delete` the source capture note. A gate failure halts on that
 capture and leaves it in place -- same abort semantics as the hygiene route, never a retry against
 a different destination in the same pass.
+
+## Gap: no PKB write converts a document in place
+
+The Task disposition needs one PKB write that, on an existing document ID, does all of: move the
+file to another directory, rename it, and replace its frontmatter type -- keeping the ID and
+reindexing. No tool on the PKB MCP surface does this. Of its 35 tools, only `pkb_create` takes a
+placement parameter (`dir`: "Override subdirectory placement"), and only at creation. No update
+tool (`pkb_update_task`, `pkb_batch_update`, `pkb_apply_consolidation_batch`, `pkb_update_body`,
+`pkb_edit_body`) takes a path, directory or filename. `pkb_batch_merge` keeps a canonical ID but
+archives the source file, so it cannot turn a capture into a task either. Whether
+`pkb_update_task` accepts a `type` key has not been tested, and it would leave the file in
+`notes/mobile-captures/` -- still reading as unprocessed -- if it did.
+
+Triage does not work around this with raw git or filesystem edits of the brain repo, and does not
+fall back to creating a new task and deleting the capture. Until the PKB tool exists, a capture
+classified as Task or Expand stays in `notes/mobile-captures/`; Note and Discard proceed.
 
 ## Trigger
 
@@ -111,7 +128,7 @@ task builds `/q`'s Automated pickup context, since there is nothing to invoke be
 ## Out of scope
 
 - The capture front ends themselves and their frontmatter shape (`quick-babf1cd6`).
-- Legacy capture notes already sitting `processed`/undeleted, and the 17 files carrying
+- Legacy capture notes still carrying a `processed` key, and the 17 files carrying
   `tags: [Array]` -- pre-existing data-quality debt tracked on `brain_7c711ec4`, not a backfill
   this route performs.
 - Surfacing anything to Nic beyond what `/daily` step 1.5 already renders -- `aops_surface_updates_to_nic`'s
@@ -119,10 +136,12 @@ task builds `/q`'s Automated pickup context, since there is nothing to invoke be
 
 ## Landing milestones
 
-- **M1 -- `/q` gains the Automated pickup context.** Documented in `plugins/pkb/skills/q/SKILL.md`
+- **M0 -- PKB in-place conversion.** The PKB service gains the write described under Gap.
+- **M1 -- `/q` gains the Automated pickup context.** Documented in `plugins/ida/skills/q/SKILL.md`
   as an invocation-contexts table on the pattern above; falls through instead of asking.
 - **M2 -- Wired to the trigger.** `scripts/systemd-user/aops-reconcile-run.sh` Step 2's placeholder
   becomes a real `claude -p` invocation of the new context.
-- **M3 -- First live run confirms a real delete.** Same discipline `aops_reconcile_trigger` set for
+- **M3 -- First live run confirms real writes.** Same discipline `aops_reconcile_trigger` set for
   reconcile's first write: before the timer is trusted unattended, one manual run must be confirmed
-  to have exercised `pkb__delete` on a real capture note, not only reads.
+  to have converted a real capture into a task in place (same ID, file now outside
+  `notes/mobile-captures/`) and to have exercised `pkb__delete` on a real capture, not only reads.
