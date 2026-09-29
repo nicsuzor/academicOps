@@ -5,7 +5,9 @@ first — it holds the identifier-shape table and the `session.id`-vs-`trace_id`
 filtering rule every recipe below depends on.
 
 The backend is an allowlisted SQLite database; use JSON extraction (`->>` or
-`JSON_EXTRACT`).
+`JSON_EXTRACT`). Dispatch queries through the `services` MCP proxy via
+`portal_codemode_execute` (`mcp__services__portal_codemode_execute` in Claude
+Code) by calling `codemode.phoenix_execute`.
 
 **A0 — resolve a `trace_id` to its `session.id`.** Then pivot every subsequent
 query onto `session.id`.
@@ -156,6 +158,19 @@ means the agent did its job and had no channel to report it. Cross-check the
 agent type's declared `Tools:` allowlist before attributing silence to a bug in
 its behaviour rather than its tool grant.
 
-Phoenix's `execute` tool runs an async Python block that can `await
-call_tool("executeSql", {"sql": ...})` several times and return one object — use
-it to collapse a multi-query pass into a single round-trip.
+Dispatch queries through `codemode.phoenix_execute` using an async Python block:
+
+```javascript
+await codemode.phoenix_execute({
+  code: `
+res = await call_tool("executeSql", {
+  "sql": "SELECT ... FROM spans WHERE ..."
+})
+return res
+`
+})
+```
+
+Inside `phoenix_execute`, the block can `await call_tool("executeSql", {"sql": ...})`
+several times and return one combined object — use it to collapse a multi-query
+pass into a single round-trip.

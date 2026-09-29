@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a `polecat run` container under tmux for live interaction, and pull authoritative telemetry from the Phoenix MCP span store. Use when asked to debug a polecat, run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, skills, or the Dockerfile actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
+description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a `polecat run` container under tmux for live interaction, and pull authoritative telemetry from the Phoenix span store via the `services` MCP proxy. Use when asked to debug a polecat, run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, skills, or the Dockerfile actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
 ---
 
 # Driving a framework run
@@ -100,8 +100,9 @@ fails in two directions:
 output and it will grep that output out of any file lying around — including the
 logs, task outputs and transcripts your own probing left behind — and report it
 as though it had made the call. Score the tool-call record instead: Phoenix
-`executeSql`, `tool_calls` in agy's `transcript_full.jsonl`, or `tool_use` in
-claude's session jsonl. That is what `matrix-probe.sh`'s MCP cell does.
+`executeSql` (via `phoenix_execute`), `tool_calls` in agy's
+`transcript_full.jsonl`, or `tool_use` in claude's session jsonl. That is what
+`matrix-probe.sh`'s MCP cell does.
 
 ## Launch a container under tmux
 
@@ -179,13 +180,20 @@ sleep 2   # let the client flush its transcript buffer through the bind-mount
 tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 ```
 
-## Authoritative telemetry (Phoenix MCP)
+## Authoritative telemetry (Phoenix via services MCP)
 
 Phoenix is the durable telemetry store: untruncated payload attributes, exact
 millisecond latencies, and full OpenTelemetry span trees, where local markdown
-transcripts truncate tool inputs and outputs at ~300 characters. Use the
-`phoenix` MCP server's `executeSql`, `getSpans`, `listProjectTraces`, and
-`execute`.
+transcripts truncate tool inputs and outputs at ~300 characters. Phoenix is not
+a separate MCP server; it is reached through the `services` MCP proxy via its
+code-mode interface (`portal_codemode_execute`, or `mcp__services__portal_codemode_execute`).
+
+Call `codemode.phoenix_execute` with an async Python block that invokes Phoenix tools
+via `await call_tool(tool_name, params)`:
+
+- `await call_tool("executeSql", {"sql": "..."})` to query allowlisted SQLite span-store tables.
+- `await call_tool("getSpans", {...})` and `await call_tool("listProjectTraces", {...})` for span/trace enumeration.
+- Discovery: `portal_codemode_search` (filtering for `phoenix`), `phoenix_list_tools`, or `describeSqlSchema`.
 
 Read [`../../../lib/telemetry/phoenix-span-store.md`](../../../lib/telemetry/phoenix-span-store.md)
 before writing any query — it holds the identifier-shape table
@@ -274,7 +282,7 @@ your report.
 6. **§4 exercise the changed path** — invoke the specific changed skill, hook,
    or tool call and capture the execution output.
 7. **§5 audit** — `SELECT count(*) FROM spans WHERE JSON_EXTRACT(attributes, '$.session.id') = '<SESSION_UUID>'`
-   in Phoenix; assert `TOOL` spans exist with `status_code != 'ERROR'`. Then the
+   in Phoenix via `services` `phoenix_execute`; assert `TOOL` spans exist with `status_code != 'ERROR'`. Then the
    host filesystem audit above.
 8. **§6 teardown** — `/exit`, `sleep 2`, kill the session.
 
