@@ -6,9 +6,9 @@ Status: **proposal** for `aops_90ee4118` (split from `aops_89015fc6` on 2026-09-
 
 On 2026-09-26 Ida Prime relayed a peer's halt report on `aops_22659d3d` to Nic unchecked. The blocker was a refused `ls` on a directory. Nothing showed that the directory was the one the workflow-library skill specifies. The halt rested on that unstated premise, and in prose the premise read as background.
 
-Nic, verbatim (2026-09-26): *"how the fuck can i convince you to properly check incoming reports? what can i possibly do?"*
+Nic, verbatim (2026-09-26): _"how the fuck can i convince you to properly check incoming reports? what can i possibly do?"_
 
-Nic, verbatim (2026-09-30): *"we need priority 1 to be the input output contract + possible hook on all communications from ida from below."*
+Nic, verbatim (2026-09-30): _"we need priority 1 to be the input output contract + possible hook on all communications from ida from below."_
 
 Three things were missing:
 
@@ -62,7 +62,7 @@ C1. `ls <dir>` exited "Operation not permitted". [attempted-and-failed: `ls <dir
 C2. THEREFORE (C1): the project template tier cannot be listed in this session.
 ```
 
-Rule 4 forces C2 to name what it uses, exposing that C1 alone does not entail that the template tier cannot be listed. The inferential jump is immediately visible on the page. The receiver catches the missing warrant: *"the workflow-library skill reads project templates from `<dir>`, and from nowhere else."* The receiver returns the report with: *"C2: cite the SKILL.md line that names `<dir>` as the only project-template location."*
+Rule 4 forces C2 to name what it uses, exposing that C1 alone does not entail that the template tier cannot be listed. The inferential jump is immediately visible on the page. The receiver catches the missing warrant: _"the workflow-library skill reads project templates from `<dir>`, and from nowhere else."_ The receiver returns the report with: _"C2: cite the SKILL.md line that names `<dir>` as the only project-template location."_
 
 If the author had attempted to state the premise explicitly, the ledger would have read:
 
@@ -83,6 +83,7 @@ The report still fails to establish a capability block: it rests on an `[assumed
 The viability of Argdown-Lite was validated in `aops-nl-output-contracts-and-logic-syntax` across two real historical PKB verification reports without adding unevidenced facts:
 
 #### Real Report 1: `aops_pr_review_2636_20260912` (PR #2636 review)
+
 ```text
 VERDICT: READY-TO-MERGE (from C11)
 
@@ -104,6 +105,7 @@ C11. THEREFORE (C10): VERDICT is READY-TO-MERGE.
 ```
 
 #### Real Report 2: `aops_pr_review_2638_20260912` (PR #2638 review)
+
 ```text
 VERDICT: FIXED-THEN-READY (from C10)
 
@@ -131,7 +133,7 @@ This operationalizes the "Audit Criteria" in `plugins/ida/skills/premise-check/S
 0. **Normalise:** If the report arrives in narrative prose rather than ledger form, rewrite only its spine into ledger lines:
    - Preserve the sender's own basis tags.
    - If an unstated warrant must be supplied to make the argument cohere, label it `SUPPLIED`. A spine requiring a supplied warrant cannot be accepted (step 7).
-   - If the prose does not permit reconstructing what the outcome rests on, RETURN immediately with: *"State the outcome and the ledger lines it rests on."*
+   - If the prose does not permit reconstructing what the outcome rests on, RETURN immediately with: _"State the outcome and the ledger lines it rests on."_
 1. **Find the spine:** Trace backward from the outcome line and extract only the claims it transitively uses. Disregard non-load-bearing narrative detail.
 2. **Check each inferential step (`hearsay.md` Q3, Q6):** For each `THEREFORE`, evaluate whether the conclusion follows strictly from the stated premises and warrants:
    - If an additional bridging fact is required, write it down as a sentence; that sentence is the missing warrant.
@@ -163,16 +165,16 @@ A `RETURN` verdict never reaches Nic, hedged or otherwise (`plugins/ida/skills/p
 
 The write obligation must be delivered **before** the author writes its report. In Claude Code, a subagent returning via `SubagentHandback` emits its return content prior to `SubagentStop`, making stop-event reminders too late to shape the text.
 
-| Surface | Binding | Mechanism & Severity |
-| :--- | :--- | :--- |
-| `specs/enforcement/evidence-contract.md` | Authoritative definition of Claim Ledger rules (§1). | `instructions` (imperative) |
-| `plugins/ida/skills/dump/SKILL.md:52` | Receipts written as a claim ledger; `Summary (from C_outcome)`. | `instructions` (imperative) |
-| `plugins/ida/skills/pull/SKILL.md:25` | Require full 7-tag basis vocabulary and ledger format for release evidence. | `instructions` (imperative) |
-| Worker definitions (`james.md`, `sara.md`, `marsha.md`, `pauli.md`) | "Hand back as a claim ledger (`evidence-contract.md` § Claim ledger)." | `instructions` (imperative) |
-| `SubagentStart` (`honest_output`, `honesty.md`) | Injected before first prompt: "Write the spine of your report as a numbered claim ledger; every THEREFORE names the lines it uses." | `JIT injection` (advisory) |
-| Peer Briefs (Prime to twins) | Cross-session briefs mandate claim ledger handback format in task brief footer. | `instructions` (imperative) |
+| Surface                                                             | Binding                                                                                                                             | Mechanism & Severity        |
+| :------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------- | :-------------------------- |
+| `specs/enforcement/evidence-contract.md`                            | Authoritative definition of Claim Ledger rules (§1).                                                                                | `instructions` (imperative) |
+| `plugins/ida/skills/dump/SKILL.md:52`                               | Receipts written as a claim ledger; `Summary (from C_outcome)`.                                                                     | `instructions` (imperative) |
+| `plugins/ida/skills/pull/SKILL.md:25`                               | Require full 7-tag basis vocabulary and ledger format for release evidence.                                                         | `instructions` (imperative) |
+| Worker definitions (`james.md`, `sara.md`, `marsha.md`, `pauli.md`) | "Hand back as a claim ledger (`evidence-contract.md` § Claim ledger)."                                                              | `instructions` (imperative) |
+| `SubagentStart` (`honest_output`, `honesty.md`)                     | Injected before first prompt: "Write the spine of your report as a numbered claim ledger; every THEREFORE names the lines it uses." | `JIT injection` (advisory)  |
+| Peer Briefs (Prime to twins)                                        | Cross-session briefs mandate claim ledger handback format in task brief footer.                                                     | `instructions` (imperative) |
 
-`honesty.md` previously reached non-Ida sessions via the `search_the_pkb` fallback on `UserPromptSubmit` (`plugins/ida/hooks/handlers.py:158`). This inadvertently reminded receiving agents how to *write* a report on turns where they were *reading* incoming handbacks. Hook A2 replaces this fallback on report-arrival turns.
+`honesty.md` previously reached non-Ida sessions via the `search_the_pkb` fallback on `UserPromptSubmit` (`plugins/ida/hooks/handlers.py:158`). This inadvertently reminded receiving agents how to _write_ a report on turns where they were _reading_ incoming handbacks. Hook A2 replaces this fallback on report-arrival turns.
 
 The write obligation remains advisory. A poorly formatted report is not rejected at write time; it is intercepted at the receiver, where epistemic judgment belongs.
 
@@ -182,12 +184,12 @@ The write obligation remains advisory. A poorly formatted report is not rejected
 
 Reports arrive across four distinct runtime channels:
 
-| # | Channel | Runtime Event in Receiver | Basis |
-| :--- | :--- | :--- | :--- |
-| **R1** | Foreground subagent returning text | `PostToolUse` on `Agent` with `tool_response.status == "completed"` and report in `tool_response.content`. | [observed: hooks docs, `PostToolUse` "Agent" `tool_response` table] |
-| **R2** | Hand-back, background completion, or twin-to-twin message arriving while receiver is idle | Turn starts and `UserPromptSubmit` fires. Prompt opens with harness envelope (`<agent-message from=…>`). Transcript entry carries `origin: {kind: "peer", from, senderTaskId, body}` and `promptSource: "system"`. | [observed: transcript `02a8997d`, entries 111, 191] |
-| **R3** | Background completion or peer message arriving **mid-turn** | The `<task-notification>` is queued as a `queued_command` attachment; `UserPromptSubmit` fires mid-turn. | [observed: transcript `02a8997d`, entries 132–134, 170–171] |
-| **R4** | Report read from persistent graph (`/gather`, `/reconcile`, `/pull` reading task body) | No hook event. Governed by skill instruction text. | [inferred] |
+| #      | Channel                                                                                   | Runtime Event in Receiver                                                                                                                                                                                          | Basis                                                               |
+| :----- | :---------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------ |
+| **R1** | Foreground subagent returning text                                                        | `PostToolUse` on `Agent` with `tool_response.status == "completed"` and report in `tool_response.content`.                                                                                                         | [observed: hooks docs, `PostToolUse` "Agent" `tool_response` table] |
+| **R2** | Hand-back, background completion, or twin-to-twin message arriving while receiver is idle | Turn starts and `UserPromptSubmit` fires. Prompt opens with harness envelope (`<agent-message from=…>`). Transcript entry carries `origin: {kind: "peer", from, senderTaskId, body}` and `promptSource: "system"`. | [observed: transcript `02a8997d`, entries 111, 191]                 |
+| **R3** | Background completion or peer message arriving **mid-turn**                               | The `<task-notification>` is queued as a `queued_command` attachment; `UserPromptSubmit` fires mid-turn.                                                                                                           | [observed: transcript `02a8997d`, entries 132–134, 170–171]         |
+| **R4** | Report read from persistent graph (`/gather`, `/reconcile`, `/pull` reading task body)    | No hook event. Governed by skill instruction text.                                                                                                                                                                 | [inferred]                                                          |
 
 **De-duplication:** Background subagents that hand back can produce both a peer message and a subsequent task-notification. Injections and telemetry counters de-duplicate on sender ID (`origin.from`, `senderTaskId`, `<task-id>`).
 
@@ -196,16 +198,16 @@ Reports arrive across four distinct runtime channels:
 - **A1: R1 reminder on `PostToolUse(Agent)`.**
   - Scope: Worker supervisor sessions (James, twins coordinating subagents). Per `mem_eb7b438c`, Ida Prime's `Agent` tool is denied, so A1 does not fire in Prime.
   - Trigger: `tool_response.status == "completed"`.
-  - Action: Inject advisory text: *"A subagent report just arrived. Run premise-check on its spine before acting on it or relaying it."*
+  - Action: Inject advisory text: _"A subagent report just arrived. Run premise-check on its spine before acting on it or relaying it."_
   - Implementation: Re-register `rule_against_hearsay` (`plugins/ida/hooks/handlers.py:339-346`, currently commented out at line 496) on `PostToolUse` instead of `PostToolBatch`.
 - **A2: R2/R3 reminder on `UserPromptSubmit`.**
   - Scope: Ida Prime and peer twins. This is Ida Prime's primary arrival channel for reports from below.
   - Trigger: Harness envelope at head of `prompt`, or transcript entry with `origin.kind == "peer"` or `<task-notification>`.
-  - Action: Inject: *"A report just arrived from <sender>. Run premise-check on its spine before acting on it or relaying it to Nic."*
+  - Action: Inject: _"A report just arrived from <sender>. Run premise-check on its spine before acting on it or relaying it to Nic."_
   - Exclusions: `origin.kind == "human"` (Nic's statements are directives, not reports to premise-check; `plugins/ida/agents/ida.md:92`).
 - **A3: Stop gate / reminder on `Stop` / `SubagentStop`.**
   - Trigger: Session stop event when local session state records an unverified arrival lacking a recorded verdict.
-  - Action: Per Nic's 2026-09-30 ruling, `honesty.md` is re-enabled on `Stop` **blocking once** for all agents (`aops_89015fc6`). The hook returns `Kind.BLOCK` on the first stop attempt, instructing the agent: *"Reports from <sender> have no recorded premise-check verdict. Record a verdict (ACCEPT, DOWNGRADE, RETURN, or NO-CLAIM) using scripts/verdict.py before finishing."* On the second stop attempt, `stop_hook_active` allows the session to exit.
+  - Action: Per Nic's 2026-09-30 ruling, `honesty.md` is re-enabled on `Stop` **blocking once** for all agents (`aops_89015fc6`). The hook returns `Kind.BLOCK` on the first stop attempt, instructing the agent: _"Reports from <sender> have no recorded premise-check verdict. Record a verdict (ACCEPT, DOWNGRADE, RETURN, or NO-CLAIM) using scripts/verdict.py before finishing."_ On the second stop attempt, `stop_hook_active` allows the session to exit.
 - **A4: Contact gate on channel replies (`quiet.md`).**
   - Trigger: `PreToolUse` on channel reply tools (`telegram_reply`, `discord_reply`) and `AskUserQuestion` in Ida Prime.
   - Action: Per Nic's 2026-09-30 ruling, `quiet.md` is enabled on `PreToolUse` for telegram/discord replies **blocking once** (`aops_89015fc6`), preventing unverified worker claims from being transmitted to Nic.
@@ -213,6 +215,7 @@ Reports arrive across four distinct runtime channels:
 ### Cross-Session Twin Communication (`mem_eb7b438c`)
 
 Ida twins operate as independent Claude Code sessions communicating over the cross-session bus:
+
 - **Sender:** A twin completes its task via `/dump`, writes the claim ledger to the PKB task body, and calls `SendMessage` to Ida Prime with the **full ledger** in the message body.
 - **Receiver (Ida Prime):** A2 fires on message arrival. Prime verifies the ledger logic, records the verdict via `scripts/verdict.py`, and appends the verdict to the PKB task.
 - **Closing the Loop:** On `RETURN`, Prime sends the specific line-numbered questions back to the twin via `SendMessage`. The twin answers in ledger format.
@@ -253,14 +256,14 @@ The existing `plugins/ida/hooks/premise_check_verdict.py` emits a generic `TOOL`
 
 ## 6. Probes owed before wiring
 
-| Probe | Question | Method |
-| :--- | :--- | :--- |
-| **P1** | Does a twin `SendMessage` arriving while idle fire `UserPromptSubmit`? Does the payload `prompt` carry the harness envelope? Is `origin` populated? | Run two local sessions; send cross-session message; capture payload with `dump_payload`. |
-| **P2** | Does a cross-session peer message arriving **mid-turn** queue as a `queued_command` and fire `UserPromptSubmit`? | Send message to session during long tool execution; capture payload and transcript. |
-| **P3** | agy: Does a cross-session message reach an agy session, and does `PreInvocation` fire? | Replicate P1 with agy receiver. |
-| **P4** | Delivery and compliance of A1/A2 JIT reminders. | Model-echo control test and measure verdict coverage in Phoenix. |
-| **P5** | What `origin.kind` does an incoming channel (Telegram) message from Nic carry? | Send test message via Telegram; inspect transcript entry for `origin.kind == "human"`. |
-| **P6** | Operational viability of claim ledger syntax. | Rewrite five historical handbacks into Argdown-Lite; conduct blind premise checks; evaluate friction and defect discovery. |
+| Probe  | Question                                                                                                                                            | Method                                                                                                                     |
+| :----- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| **P1** | Does a twin `SendMessage` arriving while idle fire `UserPromptSubmit`? Does the payload `prompt` carry the harness envelope? Is `origin` populated? | Run two local sessions; send cross-session message; capture payload with `dump_payload`.                                   |
+| **P2** | Does a cross-session peer message arriving **mid-turn** queue as a `queued_command` and fire `UserPromptSubmit`?                                    | Send message to session during long tool execution; capture payload and transcript.                                        |
+| **P3** | agy: Does a cross-session message reach an agy session, and does `PreInvocation` fire?                                                              | Replicate P1 with agy receiver.                                                                                            |
+| **P4** | Delivery and compliance of A1/A2 JIT reminders.                                                                                                     | Model-echo control test and measure verdict coverage in Phoenix.                                                           |
+| **P5** | What `origin.kind` does an incoming channel (Telegram) message from Nic carry?                                                                      | Send test message via Telegram; inspect transcript entry for `origin.kind == "human"`.                                     |
+| **P6** | Operational viability of claim ledger syntax.                                                                                                       | Rewrite five historical handbacks into Argdown-Lite; conduct blind premise checks; evaluate friction and defect discovery. |
 
 ---
 
@@ -270,15 +273,15 @@ The existing `plugins/ida/hooks/premise_check_verdict.py` emits a generic `TOOL`
 
 Rows structured strictly according to the 4-column schema of [enforcement.md](enforcement.md) lines 38–45:
 
-| Rule / nudge | Mechanism | Severity | Detail |
-| :--- | :--- | :--- | :--- |
-| [Axiom: Honest Epistemics](../../plugins/rbg/axioms/honest-epistemics.md) -- Write report spine as an Argdown-Lite claim ledger with atomic premises, explicit warrants, and basis tags | instructions | imperative | [evidence-contract.md](evidence-contract.md) lines 90–120; [dump/SKILL.md](../../plugins/ida/skills/dump/SKILL.md) line 52; [pull/SKILL.md](../../plugins/ida/skills/pull/SKILL.md) line 25; worker agent definitions (`james.md`, `sara.md`, `marsha.md`, `pauli.md`). Justifying incidents: `aops_22659d3d` (unstated bridging premises in prose halt report), `admin_b0558883` / `task_c186cf41` (prose claim of status change never written to graph), Nic verbatim 2026-09-30 ("priority 1 to be the input output contract"). |
-| [Axiom: Honest Epistemics](../../plugins/rbg/axioms/honest-epistemics.md) -- Advise subagents and twins before drafting to emit report spine in ledger syntax | JIT injection | advisory | `SubagentStart` hook `honest_output` ([handlers.py](../../plugins/ida/hooks/handlers.py) line 497); brief template ending for twin briefs. Justifying incidents: `aops_22659d3d` (prose hiding unstated premises); unverified subagent handback summaries. |
-| [Persona: Ida](../../plugins/ida/agents/ida.md) line 57 -- Scrutinize logic of incoming peer and subagent reports before acting or relaying | JIT injection | advisory | A1 on `PostToolUse(Agent)` with `completed` status (James/worker supervisors); A2 on `UserPromptSubmit` on peer `SendMessage` / handback arrival envelope (Ida Prime & twins). Justifying incident: `aops_22659d3d` (Ida Prime relayed peer halt report on refused `ls` without logic checking); Nic verbatim 2026-09-26 ("how the fuck can i convince you to properly check incoming reports?"). |
-| [Axiom: Honest Epistemics](../../plugins/rbg/axioms/honest-epistemics.md) / [Evidence Contract](evidence-contract.md) lines 163–165 -- Refuse exit turn once if incoming reports lack recorded premise-check verdict or NO-CLAIM | structural | block | A3 on `Stop` / `SubagentStop` in receiving session ([handlers.py](../../plugins/ida/hooks/handlers.py) line 495); returns `block()` once under `stop_hook_active` guard. Justifying incidents: `aops_22659d3d` (Ida stopped and relayed without verdict); Nic's 2026-09-30 verbatim ruling re-enabling `honesty.md` blocking once on `Stop` (`aops_89015fc6`). |
-| [Persona: Ida](../../plugins/ida/agents/ida.md) line 57 / [[goal_ws_conversation_discipline]] -- Prevent unverified peer claims from reaching user via Telegram/Discord | structural | block | `quiet.md` hook on `PreToolUse` for channel reply tools (`telegram_reply`, `discord_reply`) and `AskUserQuestion`. Justifying incident: `aops_22659d3d` (unchecked halt relayed to Nic); Nic's 2026-09-30 verbatim instruction ("quiet.md enabled for ida prime on 'stop' and on 'pretooluse' for telegram/discord replies (blocking once)"). |
-| [Axiom: Evidence Immutable](../../plugins/rbg/axioms/evidence-immutable.md) / [Workflow Contract](workflow.md) -- Graph status transitions and task handovers require a recorded premise-check verdict | process | required gate | `/gather` step 2 ("Check each one on the papers"); `/reconcile` obligations 4–5. Justifying incidents: `admin_b0558883` (unverified status claim on task), `aops_pr_review_2636_20260912` (verifying baseline CI vs PR defects). |
-| [Axiom: Full Observability](../../plugins/rbg/axioms/full-observability.md) -- Measure arrival vs verdict span coverage in Phoenix telemetry | post-hoc | observability | `premise_check.arrival` (A1/A2) vs `premise_check.verdict` (`verdict.py`) spans emitted via `claude_code_tracer`. Justifying incident: `aops_22659d3d` (lack of telemetry to detect unverified relay occurrences). |
+| Rule / nudge                                                                                                                                                                                                                     | Mechanism     | Severity      | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------ | :------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Axiom: Honest Epistemics](../../plugins/rbg/axioms/honest-epistemics.md) -- Write report spine as an Argdown-Lite claim ledger with atomic premises, explicit warrants, and basis tags                                          | instructions  | imperative    | [evidence-contract.md](evidence-contract.md) lines 90–120; [dump/SKILL.md](../../plugins/ida/skills/dump/SKILL.md) line 52; [pull/SKILL.md](../../plugins/ida/skills/pull/SKILL.md) line 25; worker agent definitions (`james.md`, `sara.md`, `marsha.md`, `pauli.md`). Justifying incidents: `aops_22659d3d` (unstated bridging premises in prose halt report), `admin_b0558883` / `task_c186cf41` (prose claim of status change never written to graph), Nic verbatim 2026-09-30 ("priority 1 to be the input output contract"). |
+| [Axiom: Honest Epistemics](../../plugins/rbg/axioms/honest-epistemics.md) -- Advise subagents and twins before drafting to emit report spine in ledger syntax                                                                    | JIT injection | advisory      | `SubagentStart` hook `honest_output` ([handlers.py](../../plugins/ida/hooks/handlers.py) line 497); brief template ending for twin briefs. Justifying incidents: `aops_22659d3d` (prose hiding unstated premises); unverified subagent handback summaries.                                                                                                                                                                                                                                                                         |
+| [Persona: Ida](../../plugins/ida/agents/ida.md) line 57 -- Scrutinize logic of incoming peer and subagent reports before acting or relaying                                                                                      | JIT injection | advisory      | A1 on `PostToolUse(Agent)` with `completed` status (James/worker supervisors); A2 on `UserPromptSubmit` on peer `SendMessage` / handback arrival envelope (Ida Prime & twins). Justifying incident: `aops_22659d3d` (Ida Prime relayed peer halt report on refused `ls` without logic checking); Nic verbatim 2026-09-26 ("how the fuck can i convince you to properly check incoming reports?").                                                                                                                                  |
+| [Axiom: Honest Epistemics](../../plugins/rbg/axioms/honest-epistemics.md) / [Evidence Contract](evidence-contract.md) lines 163–165 -- Refuse exit turn once if incoming reports lack recorded premise-check verdict or NO-CLAIM | structural    | block         | A3 on `Stop` / `SubagentStop` in receiving session ([handlers.py](../../plugins/ida/hooks/handlers.py) line 495); returns `block()` once under `stop_hook_active` guard. Justifying incidents: `aops_22659d3d` (Ida stopped and relayed without verdict); Nic's 2026-09-30 verbatim ruling re-enabling `honesty.md` blocking once on `Stop` (`aops_89015fc6`).                                                                                                                                                                     |
+| [Persona: Ida](../../plugins/ida/agents/ida.md) line 57 / [[goal_ws_conversation_discipline]] -- Prevent unverified peer claims from reaching user via Telegram/Discord                                                          | structural    | block         | `quiet.md` hook on `PreToolUse` for channel reply tools (`telegram_reply`, `discord_reply`) and `AskUserQuestion`. Justifying incident: `aops_22659d3d` (unchecked halt relayed to Nic); Nic's 2026-09-30 verbatim instruction ("quiet.md enabled for ida prime on 'stop' and on 'pretooluse' for telegram/discord replies (blocking once)").                                                                                                                                                                                      |
+| [Axiom: Evidence Immutable](../../plugins/rbg/axioms/evidence-immutable.md) / [Workflow Contract](workflow.md) -- Graph status transitions and task handovers require a recorded premise-check verdict                           | process       | required gate | `/gather` step 2 ("Check each one on the papers"); `/reconcile` obligations 4–5. Justifying incidents: `admin_b0558883` (unverified status claim on task), `aops_pr_review_2636_20260912` (verifying baseline CI vs PR defects).                                                                                                                                                                                                                                                                                                   |
+| [Axiom: Full Observability](../../plugins/rbg/axioms/full-observability.md) -- Measure arrival vs verdict span coverage in Phoenix telemetry                                                                                     | post-hoc      | observability | `premise_check.arrival` (A1/A2) vs `premise_check.verdict` (`verdict.py`) spans emitted via `claude_code_tracer`. Justifying incident: `aops_22659d3d` (lack of telemetry to detect unverified relay occurrences).                                                                                                                                                                                                                                                                                                                 |
 
 ### 7.2 Article 19(3) Necessity Evaluation of New Enforcement Code (`mem_96366172`)
 
@@ -318,42 +321,47 @@ Under Nic's standing ruling (`mem_96366172`), all new enforcement code (hooks, g
 ## 9. Open questions for Nic and recorded decision departures
 
 ### 1. Departure from `mem_v9_arch_decisions` ("Hooks stay built and off"): Re-enabling Hearsay, Honesty, and Quiet Hooks
+
 - **Recorded Decision:** `mem_v9_arch_decisions` ("Ruling 2026-08-28: hooks stay built and off... This is a deliberate standing state, not a defect").
-- **Why this is open:** Nic's verbatim directive on 2026-09-30 specifically commanded: *"yes, dispatch the implementatoin. I want the hearsay.md turned on again for ida instructions injected on UserPromptSubmit (which captures both subagent messages and cross-session messages), and also reenable the honesty.md hook on the 'stop' event (blocking once) for all agents, and quiet.md enabled for ida prime on 'stop' and on 'pretooluse' for telegram/discord replies (blocking once) as well (new hook invocation)"*.
+- **Why this is open:** Nic's verbatim directive on 2026-09-30 specifically commanded: _"yes, dispatch the implementatoin. I want the hearsay.md turned on again for ida instructions injected on UserPromptSubmit (which captures both subagent messages and cross-session messages), and also reenable the honesty.md hook on the 'stop' event (blocking once) for all agents, and quiet.md enabled for ida prime on 'stop' and on 'pretooluse' for telegram/discord replies (blocking once) as well (new hook invocation)"_.
 - **Options:**
-  - *Option A:* Maintain the blanket "hooks off" policy from `mem_v9_arch_decisions` and rely exclusively on instruction prompts in agent profiles.
-  - *Option B:* Re-enable the hooks strictly as advisory JIT injections (non-blocking).
-  - *Option C (Recommended):* Formally record Nic's 2026-09-30 instruction as an explicit exception / update to `mem_v9_arch_decisions`, enabling this specific triplet (hearsay on UserPromptSubmit, honesty on Stop blocking once, quiet on Stop and PreToolUse channel replies blocking once) under `aops_89015fc6`, while leaving all other dormant hooks built and off.
+  - _Option A:_ Maintain the blanket "hooks off" policy from `mem_v9_arch_decisions` and rely exclusively on instruction prompts in agent profiles.
+  - _Option B:_ Re-enable the hooks strictly as advisory JIT injections (non-blocking).
+  - _Option C (Recommended):_ Formally record Nic's 2026-09-30 instruction as an explicit exception / update to `mem_v9_arch_decisions`, enabling this specific triplet (hearsay on UserPromptSubmit, honesty on Stop blocking once, quiet on Stop and PreToolUse channel replies blocking once) under `aops_89015fc6`, while leaving all other dormant hooks built and off.
 
 ### 2. Departure from `enforcement.md:18` ("No programmatic, deterministic, or mechanical verdict on quality or process"): Blocking Once on Stop and PreToolUse
-- **Recorded Decision:** `specs/enforcement/enforcement.md:18-20` (*"The framework enforces no programmatic, deterministic, or mechanical verdict on quality or process... The only mechanical enforcement is structural prevention... never content-sniffing, never a deterministic pass/fail on the substance of an agent's work"*).
+
+- **Recorded Decision:** `specs/enforcement/enforcement.md:18-20` (_"The framework enforces no programmatic, deterministic, or mechanical verdict on quality or process... The only mechanical enforcement is structural prevention... never content-sniffing, never a deterministic pass/fail on the substance of an agent's work"_).
 - **Why this is open:** Nic's directive specifies "blocking once" on `Stop` (`honesty.md`) and on `PreToolUse` (`quiet.md`). A hook blocking an agent from exiting or sending a reply enforces a procedural gate.
 - **Options:**
-  - *Option A:* Reject blocking and keep all hooks advisory (`additionalContext`), strictly adhering to `enforcement.md:18`.
-  - *Option B (Recommended):* Classify "blocking once" as an authorized structural delivery guard / procedural friction mechanism under `evidence-contract.md:163-165` (presence-only check of recorded verdict before exit). Because the hook inspects only whether a verdict entry exists in local session state and never evaluates report text, it remains strictly non-content-sniffing and preserves the principle that verdicts belong solely to agents.
-  - *Option C:* Hard block until a passing verdict (`ACCEPT`) is recorded. (Rejected: violates `enforcement.md:18` and creates unrecoverable deadlocks).
+  - _Option A:_ Reject blocking and keep all hooks advisory (`additionalContext`), strictly adhering to `enforcement.md:18`.
+  - _Option B (Recommended):_ Classify "blocking once" as an authorized structural delivery guard / procedural friction mechanism under `evidence-contract.md:163-165` (presence-only check of recorded verdict before exit). Because the hook inspects only whether a verdict entry exists in local session state and never evaluates report text, it remains strictly non-content-sniffing and preserves the principle that verdicts belong solely to agents.
+  - _Option C:_ Hard block until a passing verdict (`ACCEPT`) is recorded. (Rejected: violates `enforcement.md:18` and creates unrecoverable deadlocks).
 
 ### 3. Execution Topology Mismatch: Ida Prime has no `Agent` Tool (`mem_eb7b438c`)
-- **Recorded Decision:** `mem_eb7b438c` (*"Ida prime, the face... never executes. Her Agent tool is deliberately denied (Nic removed it 2026-09-22)... her only execution route is a brief to a peer Ida over the cross-session bus"*; also `plugins/ida/agents/ida.md:29`).
+
+- **Recorded Decision:** `mem_eb7b438c` (_"Ida prime, the face... never executes. Her Agent tool is deliberately denied (Nic removed it 2026-09-22)... her only execution route is a brief to a peer Ida over the cross-session bus"_; also `plugins/ida/agents/ida.md:29`).
 - **Why this is open:** The original proposal attached hook A1 to `PostToolUse(Agent)`. However, Ida Prime—the face who speaks to Nic and where unverified relays to Nic actually occur—cannot call `Agent`. Twin reports arrive at Prime via `SendMessage` over the cross-session bus (Channel R2).
 - **Options:**
-  - *Option A:* Retain A1 only for worker supervisors (e.g. James or twins executing subagent batches), and rely on A2 (`UserPromptSubmit` on peer message envelope / `origin.kind == "peer"`) as the sole arrival hook for Ida Prime.
-  - *Option B:* Restore the `Agent` tool to Ida Prime.
-  - *Option C (Recommended):* Option A. Preserve Ida Prime's detachment boundary per `mem_eb7b438c`. A1 protects supervisor subagent workflows, while A2 serves as Prime's primary defense on peer message receipt.
+  - _Option A:_ Retain A1 only for worker supervisors (e.g. James or twins executing subagent batches), and rely on A2 (`UserPromptSubmit` on peer message envelope / `origin.kind == "peer"`) as the sole arrival hook for Ida Prime.
+  - _Option B:_ Restore the `Agent` tool to Ida Prime.
+  - _Option C (Recommended):_ Option A. Preserve Ida Prime's detachment boundary per `mem_eb7b438c`. A1 protects supervisor subagent workflows, while A2 serves as Prime's primary defense on peer message receipt.
 
 ### 4. Runtime Mechanics of `PreToolUse` Blocking on Channel Replies (`quiet.md`)
+
 - **Recorded Decision:** `plugins/ida/hooks/dispatch.py:128` (`BLOCKABLE_EVENTS = STOP_EVENTS`); Claude Code Hooks specification.
-- **Why this is open:** Nic directed that `quiet.md` run on `PreToolUse` for telegram and discord replies "(blocking once)". In `dispatch.py`, only `Stop` and `SubagentStop` are in `BLOCKABLE_EVENTS`. In Claude Code, `PreToolUse` can return `decision: "deny"`, but in `dispatch.py` this is mapped to `Kind.REFUSE`, which is reserved strictly for structural impossibility (`dispatch.py:48-51`). Furthermore, standard `PreToolUse` `additionalContext` is delivered to the session along with the tool result (i.e. *after* the telegram message has already been sent).
+- **Why this is open:** Nic directed that `quiet.md` run on `PreToolUse` for telegram and discord replies "(blocking once)". In `dispatch.py`, only `Stop` and `SubagentStop` are in `BLOCKABLE_EVENTS`. In Claude Code, `PreToolUse` can return `decision: "deny"`, but in `dispatch.py` this is mapped to `Kind.REFUSE`, which is reserved strictly for structural impossibility (`dispatch.py:48-51`). Furthermore, standard `PreToolUse` `additionalContext` is delivered to the session along with the tool result (i.e. _after_ the telegram message has already been sent).
 - **Options:**
-  - *Option A:* Enhance `dispatch.py` in `aops_89015fc6` to support an interceptor disposition (`decision: "deny"`) on `PreToolUse` for communication tools that aborts the transmission once and returns an instructional warning.
-  - *Option B (Recommended):* Enforce `quiet.md` as a blocking-once gate on `Stop` (preventing session finish without review) and rely on prominent JIT injection on `UserPromptSubmit` (A2) to restrain channel replies, while implementing Option A in `aops_89015fc6` as an engine extension.
-  - *Option C:* Rely exclusively on instruction rules in `plugins/ida/agents/ida.md:57, 97`.
+  - _Option A:_ Enhance `dispatch.py` in `aops_89015fc6` to support an interceptor disposition (`decision: "deny"`) on `PreToolUse` for communication tools that aborts the transmission once and returns an instructional warning.
+  - _Option B (Recommended):_ Enforce `quiet.md` as a blocking-once gate on `Stop` (preventing session finish without review) and rely on prominent JIT injection on `UserPromptSubmit` (A2) to restrain channel replies, while implementing Option A in `aops_89015fc6` as an engine extension.
+  - _Option C:_ Rely exclusively on instruction rules in `plugins/ida/agents/ida.md:57, 97`.
 
 ### 5. Rollout Sequence and Probe Dependencies
+
 - **Why this is open:** Several runtime characteristics of cross-session message queueing and envelope delivery are unestablished empirical questions (Probes P1–P6).
 - **Options:**
-  - *Option A:* Wire all hooks and format requirements simultaneously.
-  - *Option B (Recommended):* Staged delivery:
+  - _Option A:_ Wire all hooks and format requirements simultaneously.
+  - _Option B (Recommended):_ Staged delivery:
     1. Deploy Argdown-Lite format instructions in `evidence-contract.md` and worker profiles; run P6 dogfooding.
     2. Deploy Phoenix telemetry spans (`premise_check.arrival`, `premise_check.verdict`) via `scripts/verdict.py` to establish baseline unverified-relay rate.
     3. Execute Probes P1 and P2 to confirm envelope payloads on `UserPromptSubmit`.

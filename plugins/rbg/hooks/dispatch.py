@@ -242,9 +242,14 @@ def _merge(results: list[Result | None]) -> Result | None:
     for r in present:
         if r.kind is Kind.REFUSE:
             return r
-    for r in present:
-        if r.kind is Kind.BLOCK:
-            return r
+    blocks = [r for r in present if r.kind is Kind.BLOCK]
+    if blocks:
+        if len(blocks) == 1:
+            return blocks[0]
+        merged_inject = "\n\n".join(b.inject_text for b in blocks if b.inject_text)
+        user_texts = [b.user_text for b in blocks if b.user_text]
+        merged_user = "\n\n".join(user_texts) if user_texts else None
+        return Result(merged_inject, merged_user, Kind.BLOCK)
     return present[0] if present else None
 
 
