@@ -24,8 +24,9 @@ When inspecting tasks marked `done` by workers, delegate three checks to subagen
 
 When a task marked `done` fails the facial sufficiency or scope check:
 
-1. **Escalate to Nic for ratification or reversal**: Route the task to Nic for ratification or reversal with the reason recorded, rather than returning it to `inbox`. Set `status: review` (or keep `done` pending review with recorded reason) and document the exact failure reason in the task body.
-2. **Convert PR to draft with comment**: If a PR was filed, convert it to a draft PR (`gh pr ready --undo` or API equivalent) and post a comment explaining why the check failed, preventing accidental merge before Nic's decision.
+1. **Remedy before escalation where possible**: A failure remedied before reaching Nic (e.g. missing evidence supplied by an independent verification check that passes) is not a failure — confirm `status: done` citing the remedied evidence.
+2. **Escalate unremedied failures to Nic**: For failures that cannot be remedied in-session, route the task to Nic for ratification or reversal rather than returning it to `inbox`. Set `status: review` and document the exact failure reason and unverified criteria in the task body.
+3. **Convert PR to draft with comment**: If a PR was filed, convert it to a draft PR (`gh pr ready --undo` or API equivalent) and post an explanatory comment stating which check failed and what Nic needs to decide, preventing accidental merge before ratification.
 
 ## Graph Maintenance & World-Facts
 

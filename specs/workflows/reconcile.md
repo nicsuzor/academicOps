@@ -55,17 +55,18 @@ one is covered.
 
 The context changes the input subset, not the procedure.
 
-| Context    | Owner                                                                        | Input subset                                                               |
-| ---------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: claims taken before it, pull requests closed during it |
-| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                  |
-| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across every non-terminal task and its pull requests            |
+| Context    | Owner                                                                        | Input subset                                                                                     |
+| ---------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: tasks marked `done` within it, and pull requests closed during it            |
+| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                                        |
+| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across tasks marked `done` in the sweep window, pull requests, and non-terminal tasks |
 
-Each subset is pull requests only. Once the forward-issue leg lands, each extends to the open
+Each subset covers tasks marked `done` and pull requests. Once the forward-issue leg lands, each extends to the open
 issues in the same window.
 
-The face does not touch the knowledge base, so its engagement sweep is a delegation: it
-commissions an agent that runs the skill and returns one synthesized result.
+The face does not touch the knowledge base, so its engagement sweep is a delegation: a peer Ida
+runs the reconcile workflow, delegating discrete inspection checks to subagents to preserve context,
+and returns one synthesized result.
 
 **The reverse direction is not a fourth context.** What a task's completion resolves on the issue
 tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on a

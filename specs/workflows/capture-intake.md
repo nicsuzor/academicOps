@@ -51,7 +51,7 @@ confident ones.
 
 **Grain:** one capture note is one unit of judgment, matching `/reconcile`'s per-task grain.
 
-**Owner:** `pkb:q` -- the existing Stage 1 Intake & Capture skill already does exactly this job for
+**Owner:** `ida:q` -- the existing Stage 1 Intake & Capture skill already does exactly this job for
 a natural-language ask (classify, parent, search-and-adopt, densify, value at intake). This route
 invokes it; it does not reimplement classification, parenting, or valuation logic. One canonical
 owner, per the same constraint `/reconcile`'s spec states for closure-loop logic.
@@ -117,7 +117,7 @@ classified as Task or Expand stays in `notes/mobile-captures/`; Note and Discard
 
 ## Trigger
 
-Invoked as an automated pickup context: routing a capture is judgment work belonging to `pkb:q`. That lands with whichever task builds `/q`'s Automated pickup context, since there is nothing to invoke before it exists.
+Invoked as an automated pickup context: routing a capture is judgment work belonging to `ida:q`. That lands with whichever task builds `/q`'s Automated pickup context, since there is nothing to invoke before it exists.
 
 ## Out of scope
 
