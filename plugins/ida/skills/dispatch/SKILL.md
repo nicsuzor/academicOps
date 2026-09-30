@@ -7,7 +7,7 @@ description: Take an objective, assemble a compliant workflow from templates, re
 
 The task is the whole message to the worker. Write it once, keep it short, send it as written.
 
-Nothing is written to the graph until steps 1-2 have passed: a task created early survives every check that later fails.
+Nothing is written to the graph until steps 1-3 have passed: a task created early survives every check that later fails.
 
 ## 1. Hydrate
 
@@ -15,7 +15,7 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 **Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates. If a task is already completely specified, you may dispatch it directly without re-writing it.
 
-- Given a task id: read it. If it already fills the template in step 3, go to step 4.
+- Given a task id: read it. If it already fills the template in step 4, go to step 5.
 - If `/hydrate` flags an unfinished task with the same objective, carry on with that task instead of a new one.
 - If it flags a task this objective needs done first, note it for a `depends_on` edge.
 - You may update an existing task if you need to modify context, acceptance criteria, or instructions. This includes retrying failed tasks; do not create a new task for the same work.
@@ -26,13 +26,21 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 
 **Halt when composition comes up short.** Create and change nothing; report to your caller what failed precisely.
 
+## 3. Read project finish template
+
+Resolve the project finish template `wf-finish` via `/workflow-library` to determine how the project's tasks finish:
+
+1. **Resolution**: Check for a project-local template at `$CWD/.agents/templates/wf-finish.md`. If none exists for the project, resolve the universal fallback template `wf-finish` (`plugins/ida/skills/workflow-library/workflows/wf-finish.md`).
+2. **Delivery route**: Identify the base branch and pull-request requirements for the task's `## Output` section.
+3. **QA requirement**: Check if the template calls for independent QA before merge. If required, select the designated QA review template (`wf-qa` for code/functional verification, `wf-signoff` for human-facing digest, or `wf-fact-check` for empirical claims). Not all repositories or tasks require QA; obey the project template's conditions.
+
 ## 4. Write each task
 
 - Default to creating a single task with steps as sub-tasks; every extra cut costs a hand-off and loses context.
 - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - If you must split a task, make each task as big as possible.
 - Wire `depends_on` edges only where one unit genuinely requires another's output.
-- Mint multi-task cuts using `pkb.decompose_task`.'
+- Mint multi-task cuts using `pkb.decompose_task`.
 - Write tasks with status `queued` immediately.
 
 ```markdown
@@ -54,17 +62,27 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 
 ## Output
 
-[ Where the results of the task should be written. For feature branches, name the upstream repository and branch to target. Outputs must not be left in the worker's local (volatile) environment. ]
+[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the project finish template. Outputs must not be left in the worker's local (volatile) environment. ]
 
 ## Report
 
 [ Any special reporting requirements; default should be to update the task record with evidence of completion next to each acceptance criterion. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
 ```
 
+### Mint QA follow-up when required
+
+Where the project finish template calls for QA review:
+1. Mint an independent follow-up task with status `queued`.
+2. Title: `QA: <primary task title>`.
+3. Set parent to the primary task's parent.
+4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
+5. Record the QA task ID in the primary task's `follow_up_tasks`.
+6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria.
+
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
-- Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions:ay what has to be done, not what shouldn't.
+- Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, tool names, runtime hints, notes on the worker's limits, summaries of linked notes, counts and history.
@@ -85,6 +103,7 @@ A task is ready to dispatch when its status is `queued` and it has no open `depe
 
 - You should dispatch multiple tasks in parallel where possible.
 - Start workers through your project's specified dispatch pathway.
+- Any minted QA follow-up task remains queued until its hard dependency completes.
 
 ## 6. Report
 
