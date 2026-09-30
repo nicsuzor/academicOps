@@ -110,9 +110,9 @@ reading durable evidence, never by asking a running worker how it is going.
 ## Status Lifecycle
 
 ```
-queued → in_progress → merge_ready → done (deliverable accepted)
-                │              │
-                │              └→ review (needs human judgment; finish/merge failed)
+queued → in_progress → done (deliverable accepted)
+                │
+                ├→ review (needs human judgment; finish/merge failed)
                 ├→ partial (terminal: chunk handed back, remainder carried by
                 │           continue tasks — see
                 │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)

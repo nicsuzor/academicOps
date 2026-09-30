@@ -23,7 +23,6 @@ valid_statuses = [
   "ready",
   "queued",
   "in_progress",
-  "merge_ready",
   "review",
   "done",
   "blocked",
