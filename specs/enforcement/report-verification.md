@@ -327,7 +327,8 @@ Under Nic's standing ruling (`mem_96366172`), all new enforcement code (hooks, g
 - **Options:**
   - _Option A:_ Maintain the blanket "hooks off" policy from `mem_v9_arch_decisions` and rely exclusively on instruction prompts in agent profiles.
   - _Option B:_ Re-enable the hooks strictly as advisory JIT injections (non-blocking).
-  - _Option C (Recommended):_ Formally record Nic's 2026-09-30 instruction as an explicit exception / update to `mem_v9_arch_decisions`, enabling this specific triplet (hearsay on UserPromptSubmit, honesty on Stop blocking once, quiet on Stop and PreToolUse channel replies blocking once) under `aops_89015fc6`, while leaving all other dormant hooks built and off.
+  - _Option C (Adopted):_ Formally record Nic's 2026-09-30 instruction as an explicit exception / update to `mem_v9_arch_decisions`, enabling this specific triplet (hearsay on UserPromptSubmit, honesty on Stop blocking once, quiet on Stop and PreToolUse channel replies blocking once) under `aops_89015fc6`, while leaving all other dormant hooks built and off.
+- **Resolution (Nic 2026-09-30):** Option C adopted; [[mem_v9_arch_decisions]] records the re-enable.
 
 ### 2. Departure from `enforcement.md:18` ("No programmatic, deterministic, or mechanical verdict on quality or process"): Blocking Once on Stop and PreToolUse
 
@@ -335,8 +336,9 @@ Under Nic's standing ruling (`mem_96366172`), all new enforcement code (hooks, g
 - **Why this is open:** Nic's directive specifies "blocking once" on `Stop` (`honesty.md`) and on `PreToolUse` (`quiet.md`). A hook blocking an agent from exiting or sending a reply enforces a procedural gate.
 - **Options:**
   - _Option A:_ Reject blocking and keep all hooks advisory (`additionalContext`), strictly adhering to `enforcement.md:18`.
-  - _Option B (Recommended):_ Classify "blocking once" as an authorized structural delivery guard / procedural friction mechanism under `evidence-contract.md:163-165` (presence-only check of recorded verdict before exit). Because the hook inspects only whether a verdict entry exists in local session state and never evaluates report text, it remains strictly non-content-sniffing and preserves the principle that verdicts belong solely to agents.
+  - _Option B (Adopted):_ Classify "blocking once" as an authorized structural delivery guard / procedural friction mechanism under `evidence-contract.md:163-165` (presence-only check of recorded verdict before exit). Because the hook inspects only whether a verdict entry exists in local session state and never evaluates report text, it remains strictly non-content-sniffing and preserves the principle that verdicts belong solely to agents.
   - _Option C:_ Hard block until a passing verdict (`ACCEPT`) is recorded. (Rejected: violates `enforcement.md:18` and creates unrecoverable deadlocks).
+- **Resolution (Nic 2026-09-30):** Block once on Stop and PreToolUse approved. `specs/enforcement/enforcement.md:18` amended in the same PR to authorize block-once procedural friction gates.
 
 ### 3. Execution Topology Mismatch: Ida Prime has no `Agent` Tool (`mem_eb7b438c`)
 
@@ -345,25 +347,23 @@ Under Nic's standing ruling (`mem_96366172`), all new enforcement code (hooks, g
 - **Options:**
   - _Option A:_ Retain A1 only for worker supervisors (e.g. James or twins executing subagent batches), and rely on A2 (`UserPromptSubmit` on peer message envelope / `origin.kind == "peer"`) as the sole arrival hook for Ida Prime.
   - _Option B:_ Restore the `Agent` tool to Ida Prime.
-  - _Option C (Recommended):_ Option A. Preserve Ida Prime's detachment boundary per `mem_eb7b438c`. A1 protects supervisor subagent workflows, while A2 serves as Prime's primary defense on peer message receipt.
+  - _Option C:_ Option A. Preserve Ida Prime's detachment boundary per `mem_eb7b438c`. A1 protects supervisor subagent workflows, while A2 serves as Prime's primary defense on peer message receipt.
+- **Resolution (Nic 2026-09-30):** Settled. Nic clarified that the premise is false: Ida Prime has the Agent tool.
 
 ### 4. Runtime Mechanics of `PreToolUse` Blocking on Channel Replies (`quiet.md`)
 
 - **Recorded Decision:** `plugins/ida/hooks/dispatch.py:128` (`BLOCKABLE_EVENTS = STOP_EVENTS`); Claude Code Hooks specification.
 - **Why this is open:** Nic directed that `quiet.md` run on `PreToolUse` for telegram and discord replies "(blocking once)". In `dispatch.py`, only `Stop` and `SubagentStop` are in `BLOCKABLE_EVENTS`. In Claude Code, `PreToolUse` can return `decision: "deny"`, but in `dispatch.py` this is mapped to `Kind.REFUSE`, which is reserved strictly for structural impossibility (`dispatch.py:48-51`). Furthermore, standard `PreToolUse` `additionalContext` is delivered to the session along with the tool result (i.e. _after_ the telegram message has already been sent).
 - **Options:**
-  - _Option A:_ Enhance `dispatch.py` in `aops_89015fc6` to support an interceptor disposition (`decision: "deny"`) on `PreToolUse` for communication tools that aborts the transmission once and returns an instructional warning.
-  - _Option B (Recommended):_ Enforce `quiet.md` as a blocking-once gate on `Stop` (preventing session finish without review) and rely on prominent JIT injection on `UserPromptSubmit` (A2) to restrain channel replies, while implementing Option A in `aops_89015fc6` as an engine extension.
+  - _Option A (Adopted):_ Enhance `dispatch.py` in `aops_89015fc6` to support an interceptor disposition (`permissionDecision: "deny"`) on `PreToolUse` for communication tools that aborts the transmission once and returns an instructional warning.
+  - _Option B:_ Enforce `quiet.md` as a blocking-once gate on `Stop` (preventing session finish without review) and rely on prominent JIT injection on `UserPromptSubmit` (A2) to restrain channel replies, while implementing Option A in `aops_89015fc6` as an engine extension.
   - _Option C:_ Rely exclusively on instruction rules in `plugins/ida/agents/ida.md:57, 97`.
+- **Resolution (Nic 2026-09-30):** Option A adopted: the `PreToolUse` gate for telegram/discord replies is implemented as a deny-once mechanism per turn.
 
 ### 5. Rollout Sequence and Probe Dependencies
 
 - **Why this is open:** Several runtime characteristics of cross-session message queueing and envelope delivery are unestablished empirical questions (Probes P1–P6).
 - **Options:**
-  - _Option A:_ Wire all hooks and format requirements simultaneously.
-  - _Option B (Recommended):_ Staged delivery:
-    1. Deploy Argdown-Lite format instructions in `evidence-contract.md` and worker profiles; run P6 dogfooding.
-    2. Deploy Phoenix telemetry spans (`premise_check.arrival`, `premise_check.verdict`) via `scripts/verdict.py` to establish baseline unverified-relay rate.
-    3. Execute Probes P1 and P2 to confirm envelope payloads on `UserPromptSubmit`.
-    4. Wire arrival reminders A1 and A2.
-    5. Wire A3 and A4 block-once gates in `aops_89015fc6` and measure compliance delta in Phoenix.
+  - _Option A (Adopted):_ Wire all hooks and format requirements directly.
+  - _Option B:_ Staged delivery behind probes.
+- **Resolution (Nic 2026-09-30):** Wire the hooks now directly in `aops_89015fc6`, not staged behind probes.

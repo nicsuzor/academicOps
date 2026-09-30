@@ -65,7 +65,13 @@ _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 
 def _is_ida(ctx: HookContext) -> bool:
     agent = ctx.agent_type or ""
-    return bool(agent and (agent == "ida" or agent.endswith(":ida")))
+    if not agent:
+        return False
+    return (
+        agent in ("ida", "ida:ida", "ida-prime", "ida_prime")
+        or agent.endswith(":ida")
+        or agent.startswith("ida:")
+    )
 
 
 _CHANNEL_REPLY_TOOLS = {
@@ -73,6 +79,7 @@ _CHANNEL_REPLY_TOOLS = {
     "discord_reply",
     "AskUserQuestion",
     "ask_user_question",
+    "ask_question",
 }
 
 
@@ -83,7 +90,14 @@ def _is_channel_reply_tool(tool_name: str) -> bool:
     if name in _CHANNEL_REPLY_TOOLS:
         return True
     lower = name.lower()
-    if lower in ("telegram_reply", "discord_reply", "askuserquestion", "ask_user_question"):
+    if lower in (
+        "telegram_reply",
+        "discord_reply",
+        "askuserquestion",
+        "ask_user_question",
+        "ask_question",
+        "askquestion",
+    ):
         return True
     if ("telegram" in lower or "discord" in lower) and ("reply" in lower or "send" in lower):
         return True

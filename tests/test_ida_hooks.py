@@ -293,7 +293,7 @@ def test_ida_prime_stop_combines_honesty_and_quiet(staged_hooks: Path):
 
 
 def test_quiet_pretooluse_channel_reply_denies_once_for_ida(staged_hooks: Path):
-    for tool in ("telegram_reply", "discord_reply", "AskUserQuestion"):
+    for tool in ("telegram_reply", "discord_reply", "AskUserQuestion", "ask_question"):
         handlers.clear_channel_gate_state("s-chan-1")
         payload = {
             "hook_event_name": "PreToolUse",
@@ -427,3 +427,36 @@ def test_user_prompt_submit_clears_channel_reply_gate_state(staged_hooks: Path):
         cwd=str(staged_hooks),
     )
     assert json.loads(proc3.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+def test_is_ida_variants():
+    from dispatch import HookContext
+
+    for valid_agent in ("ida", "ida:ida", "plugin:ida", "ida-prime", "ida_prime", "ida:custom"):
+        ctx = HookContext(client="claude", event="Stop", agent_type=valid_agent)
+        assert handlers._is_ida(ctx) is True, f"failed for {valid_agent}"
+
+    for invalid_agent in ("aops:james", "james", "pauli", "marsha", "rbg", ""):
+        ctx = HookContext(client="claude", event="Stop", agent_type=invalid_agent)
+        assert handlers._is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
+
+
+def test_normalize_resolves_agent_from_aliases_and_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    from dispatch import normalize
+
+    hooks_dir = tmp_path / "hooks"
+    hooks_dir.mkdir()
+
+    # 1. From agent_name
+    ctx1 = normalize("claude", "Stop", {"agent_name": "ida"}, hooks_dir)
+    assert ctx1.agent_type == "ida"
+
+    # 2. From agent
+    ctx2 = normalize("claude", "Stop", {"agent": "ida-prime"}, hooks_dir)
+    assert ctx2.agent_type == "ida-prime"
+
+    # 3. From environment variable
+    monkeypatch.setenv("CLAUDE_AGENT_NAME", "ida")
+    ctx3 = normalize("claude", "Stop", {}, hooks_dir)
+    assert ctx3.agent_type == "ida"
+
