@@ -18,6 +18,7 @@ Defines the universal baseline contract for how tasks finish when a repository l
 ## Resolution
 
 `/dispatch` resolves finish templates using standard tier precedence:
+
 1. **Project-local**: `$CWD/.agents/templates/wf-finish.md`
 2. **PKB**: Document carrying `id: wf-finish` and `type: template`
 3. **Universal Fallback**: This template (`plugins/ida/skills/workflow-library/workflows/wf-finish.md`)
@@ -34,6 +35,7 @@ Defines the universal baseline contract for how tasks finish when a repository l
 ## Worker Completion Checklist
 
 The implementation worker must satisfy these obligations before marking `status: done`:
+
 1. Verify automated tests and linter pass locally.
 2. Push feature branch to remote and open a Pull Request targeting the project's base branch.
 3. Update the task record: check off met acceptance criteria and record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
@@ -42,6 +44,7 @@ The implementation worker must satisfy these obligations before marking `status:
 ## Follow-up QA Task Specification
 
 When QA review is required, `/dispatch` mints a follow-up task with:
+
 - **Title**: `QA: <primary task title>`
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]` (hard blocking dependency)

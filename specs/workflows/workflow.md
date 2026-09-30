@@ -15,7 +15,7 @@ Work moves through three stages. Each runs, then stops; no stage fires the next.
 | ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Capture | `/q`         | Situate an ask on the graph — under the right parent, wired to what it serves, valued at intake.                                                          |
 | 2. Expand  | `/decompose` | Expand the objective into an abstract graph of sub-objectives, decision branches, prerequisites, and alternate paths. Stops before implementation detail. |
-| 3. Reify   | `/dispatch`  | Assemble workflows, read project finish template, write dispatchable task briefs, and dispatch with QA follow-up where called for.                         |
+| 3. Reify   | `/dispatch`  | Assemble workflows, read project finish template, write dispatchable task briefs, and dispatch with QA follow-up where called for.                        |
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 

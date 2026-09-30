@@ -72,6 +72,7 @@ Resolve the project finish template `wf-finish` via `/workflow-library` to deter
 ### Mint QA follow-up when required
 
 Where the project finish template calls for QA review:
+
 1. Mint an independent follow-up task with status `queued`.
 2. Title: `QA: <primary task title>`.
 3. Set parent to the primary task's parent.

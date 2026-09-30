@@ -27,6 +27,7 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All changes deliver via PR
 ## Worker Completion Checklist
 
 Before marking `status: done`, the worker must:
+
 1. Ensure test suite and linter pass (`uv run pytest`, `uv run ruff check`).
 2. Push feature branch (`task/<id>-<slug>`) to remote and open PR targeting `dev`.
 3. Check off each acceptance criterion on the PKB task with pinpoint evidence (`file:line`, command output, PR link).
@@ -35,6 +36,7 @@ Before marking `status: done`, the worker must:
 ## Follow-up QA Task Specification
 
 Where QA is required:
+
 - **Title**: `QA: <primary task title>`
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]`
