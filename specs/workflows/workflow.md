@@ -15,7 +15,7 @@ Work moves through three stages. Each runs, then stops; no stage fires the next.
 | ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Capture | `/q`         | Situate an ask on the graph — under the right parent, wired to what it serves, valued at intake.                                                          |
 | 2. Expand  | `/decompose` | Expand the objective into an abstract graph of sub-objectives, decision branches, prerequisites, and alternate paths. Stops before implementation detail. |
-| 3. Reify   | `/dispatch`  | Assemble workflows, read project finish template, write dispatchable task briefs, and dispatch with QA follow-up where called for.                        |
+| 3. Reify   | `/dispatch`  | Assemble workflows from templates, write dispatchable task briefs, and dispatch them.                                                                     |
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 
@@ -37,8 +37,6 @@ Components come from three sources:
 | Project-local           | `$CWD/.agents/templates/*.md` — an absent directory is empty, not an error |
 | Universal               | `plugins/ida/skills/workflow-library/workflows/*.md`                       |
 | Personal knowledge base | documents carrying `type: template`                                        |
-
-Task completion policies and independent QA follow-up requirements are defined by the project's finish template (`wf-finish.md`), documented in [`specs/workflows/finish-template.md`](finish-template.md).
 
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
 

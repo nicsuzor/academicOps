@@ -28,11 +28,10 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 
 ## 3. Read project finish template
 
-Resolve the project finish template `wf-finish` via `/workflow-library` to determine how the project's tasks finish:
+Resolve `wf-finish` via `/workflow-library` to determine how the project's tasks finish:
 
-1. **Resolution**: Check for a project-local template at `$CWD/.agents/templates/wf-finish.md`. If none exists for the project, resolve the universal fallback template `wf-finish` (`plugins/ida/skills/workflow-library/workflows/wf-finish.md`).
-2. **Delivery route**: Identify the base branch and pull-request requirements for the task's `## Output` section.
-3. **QA requirement**: Check if the template calls for independent QA before merge. If required, select the designated QA review template (`wf-qa` for code/functional verification, `wf-signoff` for human-facing digest, or `wf-fact-check` for empirical claims). Not all repositories or tasks require QA; obey the project template's conditions.
+1. **Delivery route**: Identify the base branch and pull-request requirements for the task's `## Output` section (e.g. active version branch `v0.y.z`).
+2. **QA requirement**: Check if the template calls for independent QA before merge. If required, select the designated QA review template (`wf-qa` for code/functional verification, `wf-signoff` for human-facing digest, or `wf-fact-check` for empirical claims). Obey the project template's conditions.
 
 ## 4. Write each task
 
@@ -78,7 +77,7 @@ Where the project finish template calls for QA review:
 3. Set parent to the primary task's parent.
 4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.
-6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria.
+6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and mark ready or merge to the version branch when verified per the finish template.
 
 ### Requirements for writing tasks
 
