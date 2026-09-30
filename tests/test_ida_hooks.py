@@ -441,7 +441,9 @@ def test_is_ida_variants():
         assert handlers._is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
 
 
-def test_normalize_resolves_agent_from_aliases_and_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def test_normalize_resolves_agent_from_aliases_and_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
     from dispatch import normalize
 
     hooks_dir = tmp_path / "hooks"
@@ -459,4 +461,3 @@ def test_normalize_resolves_agent_from_aliases_and_env(monkeypatch: pytest.Monke
     monkeypatch.setenv("CLAUDE_AGENT_NAME", "ida")
     ctx3 = normalize("claude", "Stop", {}, hooks_dir)
     assert ctx3.agent_type == "ida"
-
