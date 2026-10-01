@@ -1,23 +1,18 @@
 ---
 name: reconcile
-description: Truth maintenance over the task graph -- peer-Ida verification of claimed evidence on done tasks, pull request matching, scope checks, and world-fact cancellations. Run by a peer Ida session, not a worker. Exclude for worker-level task completion (workers mark done after /pull).
+description: Truth maintenance over the task graph -- verification of claimed evidence on done tasks, pull request matching, scope checks, and world-fact cancellations. Exclude for worker-level task completion (workers mark done after /pull).
 ---
 
 # Reconcile
 
-Truth maintenance over the task graph. A peer Ida runs this workflow, delegating discrete inspection steps to subagents to preserve context. Reconcile does not claim to be the sole writer of `done`; workers with PKB access mark their tasks `done` after `/pull`. Reconcile evaluates claimed evidence, verifies scope, matches pull requests, and routes failed checks.
-
-## Execution Context
-
-- **Runner**: Peer Ida session only. Workers do not run `/reconcile`.
-- **Subagent delegation**: Delegate heavy checks to subagents to avoid exhausting Ida's context window.
+Truth maintenance over the task graph. Reconcile evaluates claimed evidence, verifies scope, matches pull requests, and routes failed checks, delegating discrete inspection steps to subagents to preserve context. It does not claim to be the sole writer of `done`; workers with PKB access mark their tasks `done` after `/pull`.
 
 ## Delegated Checks
 
 When inspecting tasks marked `done` by workers, delegate three checks to subagents:
 
 1. **Pull request matching**: Match open and closed pull requests to tasks by structured identifiers (`pr_url`, task ID in PR body/branch, exact title). Unconditionally recognize merged PRs; inspect unmerged or closed PRs.
-2. **Facial sufficiency of claimed evidence**: Read each piece of claimed evidence in the worker's report against the task's literal acceptance criteria. Apply the Ida standard: is the evidence facially sufficient to prove the criteria were met? Asserting that tests passed is sufficient for a worker's completion claim; full substantive QA is handled independently.
+2. **Facial sufficiency of claimed evidence**: Read each piece of claimed evidence in the worker's report against the task's literal acceptance criteria. Verify whether the evidence is facially sufficient to prove the criteria were met. Asserting that tests passed is sufficient for a worker's completion claim; full substantive QA is handled independently.
 3. **Scope check**: Verify that the delivered work and touched files respected the task's specified boundaries and did not expand beyond authorized scope.
 
 ## Failed-Check Outcome
