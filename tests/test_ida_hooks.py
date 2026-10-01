@@ -435,10 +435,39 @@ def test_is_ida_variants():
     for valid_agent in ("ida", "ida:ida", "plugin:ida", "ida-prime", "ida_prime", "ida:custom"):
         ctx = HookContext(client="claude", event="Stop", agent_type=valid_agent)
         assert handlers._is_ida(ctx) is True, f"failed for {valid_agent}"
+        assert handlers.is_ida(ctx) is True, f"failed for {valid_agent}"
+        assert handlers.is_agent(ctx, "ida") is True, f"failed for {valid_agent}"
 
     for invalid_agent in ("aops:james", "james", "pauli", "marsha", "rbg", ""):
         ctx = HookContext(client="claude", event="Stop", agent_type=invalid_agent)
         assert handlers._is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
+        assert handlers.is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
+
+
+def test_is_agent_variants():
+    from dispatch import HookContext
+
+    for valid_james in (
+        "james",
+        "aops:james",
+        "james:james",
+        "james-prime",
+        "james_prime",
+        "plugin:james",
+    ):
+        ctx = HookContext(client="claude", event="Stop", agent_type=valid_james)
+        assert handlers.is_agent(ctx, "james") is True, f"failed for {valid_james}"
+        assert handlers.is_agent(ctx, "ida", "james") is True, (
+            f"failed for multi target {valid_james}"
+        )
+        assert handlers.is_ida(ctx, "james") is True, (
+            f"failed for is_ida extra target {valid_james}"
+        )
+
+    # Also string directly and None handling
+    assert handlers.is_agent("aops:james", "james") is True
+    assert handlers.is_agent("ida", "ida") is True
+    assert handlers.is_agent(None, "ida") is False
 
 
 def test_normalize_resolves_agent_from_aliases_and_env(

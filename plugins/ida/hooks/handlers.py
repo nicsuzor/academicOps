@@ -63,15 +63,41 @@ _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 
 
-def _is_ida(ctx: HookContext) -> bool:
-    agent = ctx.agent_type or ""
+def is_agent(ctx: HookContext | str | None, *targets: str) -> bool:
+    """Check if the context or agent string matches any target agent names.
+
+    Matches bare names (e.g. 'ida', 'james'), namespaced forms (e.g. 'ida:ida',
+    'aops:james', 'plugin:ida', 'ida:custom'), prime variants (e.g. 'ida-prime',
+    'ida_prime'), and colon-delimited components.
+    """
+    if ctx is None:
+        return False
+    agent = ctx.agent_type if hasattr(ctx, "agent_type") else str(ctx)
+    agent = (agent or "").strip().lower()
     if not agent:
         return False
-    return (
-        agent in ("ida", "ida:ida", "ida-prime", "ida_prime")
-        or agent.endswith(":ida")
-        or agent.startswith("ida:")
-    )
+    for target in targets:
+        target = target.strip().lower()
+        if not target:
+            continue
+        if (
+            agent == target
+            or agent.startswith(f"{target}:")
+            or agent.endswith(f":{target}")
+            or agent in (f"{target}-prime", f"{target}_prime")
+            or f":{target}:" in agent
+        ):
+            return True
+    return False
+
+
+def is_ida(ctx: HookContext | str | None, *extra_targets: str) -> bool:
+    """Check if the agent is Ida or matches any additional target names."""
+    return is_agent(ctx, "ida", *extra_targets)
+
+
+_is_ida = is_ida
+_is_agent = is_agent
 
 
 _CHANNEL_REPLY_TOOLS = {
@@ -209,9 +235,6 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     `<academicOps PKB search results>` tags; if that fails, returns the
     existing messages.
     """
-    if _is_ida(ctx):
-        return None
-
     raw_prompt = ctx.raw.get("prompt")
     if raw_prompt is None and hasattr(ctx, "prompt"):
         raw_prompt = ctx.prompt
@@ -224,6 +247,9 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
+
+    if is_agent(ctx, "ida", "james"):
+        return None
 
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
