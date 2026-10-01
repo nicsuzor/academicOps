@@ -24,15 +24,18 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 Call `/workflow-library` to weave together every workflow relevant to the task in context. A skill counts as a template: when one is composed, the Instructions tell the worker to invoke it by name, as one step or as all of them. Never copy its contents into the task; the skill is maintained where it lives.
 
+- Combine template steps into a logical order (e.g., failing tests first, implementation, then QA).
+- Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
+
 **Halt when composition comes up short.** Create and change nothing; report to your caller what failed precisely.
 
-## 4. Write each task
+## 3. Write each task
 
-- Default to creating a single task with steps as sub-tasks; every extra cut costs a hand-off and loses context.
+- Default to creating a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
 - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - If you must split a task, make each task as big as possible.
 - Wire `depends_on` edges only where one unit genuinely requires another's output.
-- Mint multi-task cuts using `pkb.decompose_task`.'
+- Mint multi-task cuts using `pkb.decompose_task`.
 - Write tasks with status `queued` immediately.
 
 ```markdown
@@ -64,7 +67,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
-- Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions:ay what has to be done, not what shouldn't.
+- Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, tool names, runtime hints, notes on the worker's limits, summaries of linked notes, counts and history.
@@ -79,14 +82,14 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 - Do not create standalone decision tasks or file questions as tasks.
 - Do not dispatch workers or begin execution.
 
-## 5. Dispatch
+## 4. Dispatch
 
 A task is ready to dispatch when its status is `queued` and it has no open `depends_on` edges or incomplete children.
 
 - You should dispatch multiple tasks in parallel where possible.
 - Start workers through your project's specified dispatch pathway.
 
-## 6. Report
+## 5. Report
 
 - Dispatch is 'fire-and-forget': you do not get a report back from the worker. Do not poll or wait for a worker to return.
 - Output only a summary of tasks dispatched: one line per task, including title, id, and any identification of the worker assigned.
