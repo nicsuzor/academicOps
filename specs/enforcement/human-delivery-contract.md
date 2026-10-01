@@ -40,11 +40,13 @@ However, an architectural blind spot exists between **task graph completion** an
 
 - **Failure Point:** In universal template `wf-human-approval`, step 2 releases the task as `status: review` and stops, specifying delivery only _"in the form the project or user preferences name"_. Because no user preference names a default delivery channel, review tasks sit in `review` silently on the graph without notifying Nic.
 
-### 1.5 Prior Structural Attempts
+### 1.5 Prior Structural Attempts & The Parked Mechanical Trigger
 
-- `[[aops_surface_updates_to_nic]]` and `[[aops_31d8bb63]]` previously attempted to define update push channels, but were cancelled due to lack of a concrete contract binding human origin to terminal release.
-- `[[task_32d3fe44]]` attempted to make the daily note a surface for dropped work, but lacked a forcing mechanism on task release.
-- `[[aops_reconcile_trigger]]`: Nic parked a mechanical background daemon trigger on 2026-09-15 (_"we forget building a mechanical trigger for now"_), necessitating an event-driven and interactive design rather than an unconstrained polling daemon.
+- `[[aops_surface_updates_to_nic]]` and `[[aops_31d8bb63]]`: Previously attempted to define update push channels, but were cancelled due to lack of a concrete contract binding human origin to terminal release.
+- `[[task_32d3fe44]]`: Attempted to make the daily note a surface for dropped work, but lacked a forcing mechanism on task release.
+- `[[aops_reconcile_trigger]]`: The worker that wrote the systemd timer could not install from its container, and Nic parked the mechanical trigger on 2026-09-15:
+  > _"we forget building a mechanical trigger for now, and we either change who's allowed to write to the graph or change graph states"_
+  > The present design builds squarely on the **"change graph states"** alternative: rather than attempting to construct an unprompted background reconcile daemon or mechanical event wake, it introduces a distinct graph state (`ida_held`) and binds human delivery to graph state transitions and human-directed trigger commands.
 
 ---
 
@@ -62,19 +64,24 @@ sequenceDiagram
     participant Reconcile as Peer Reconcile
 
     Nic->>Ida: Ask: "get me a table of today's agent costs"
-    Note over Ida: Capture Ask with Origin Binding
+    Note over Ida: Capture Ask with Inbound Origin Binding
     Ida->>PKB: 1. Create Working Task (parent: epic, origin: telegram)
-    Ida->>PKB: 2. Create Follow-up Task (parent: agent_brains_ida, status: ida_held, trigger: on_release)
+    Ida->>PKB: 2. Create Follow-up Task (parent: agent_brains_ida, status: ida_held, trigger: /mine)
     Ida->>Worker: Dispatch Working Task
-    Worker->>Worker: Execute, compute table, save artifact
+    Worker->>Worker: Execute, compute table, write artifact
     Worker->>PKB: release_task(status: done, completion_evidence: ...)
     Note over Worker,PKB: Task is "Worker Complete" but NOT "Human Delivered"
-    PKB->>Ida: Event: Working Task released -> Wakes Follow-up Task
-    Ida->>Nic: Deliver Table & Summary to Telegram channel
-    Ida->>PKB: release_task(follow_up, delivery_evidence: "Sent Telegram msg 870")
+    
+    Note over Nic,Ida: Human Agency: Nic runs /mine at his chosen pace
+    Nic->>Ida: Run command: /mine
+    Ida->>PKB: wf-ida-task-tree (queries agent_brains_ida + ida-tracked tags)
+    PKB-->>Ida: Return tasks (working task done, follow-up ida_held)
+    Ida->>Nic: Deliver Table & Summary to originating channel (Telegram / daily note)
+    Ida->>PKB: release_task(follow_up, status: done, delivery_evidence: "Sent Telegram msg 870")
+    
     Reconcile->>PKB: Audit Working Task & Follow-up
     Note over Reconcile: Checks artifact matches ask AND delivery_evidence exists
-    Reconcile->>PKB: Certify Human Delivery: status: done
+    Reconcile->>PKB: Certify Human Delivery
 ```
 
 ### 2.1 The Inbound Origin Binding
@@ -116,57 +123,66 @@ This architecture strictly honors that ruling:
 - Follow-ups are standard first-class PKB task nodes.
 - They live in the graph under `agent_brains_ida`, queryable by standard `pkb_list_tasks` tools.
 
-### 2.3 The Human Delivery Gate
+### 2.3 The Human Delivery Gate (Done-Claims and Review-State Items)
 
-For any task carrying an `origin` block, the completion contract is not satisfied merely by writing to the PKB or creating a PR:
+The human delivery gate covers **both** completed tasks with human origin and any task released to `status: review` for Nic:
 
-1. **The Terminal Delivery Condition:** A task with `origin` cannot reach `status: done` or `status: review` from the principal's perspective until an outbound delivery action occurs:
+1. **Terminal Done Delivery:** A task with `origin` cannot reach `status: done` from the principal's perspective until an outbound delivery action occurs:
    - For `channel: telegram`: An outbound message sent to the originating chat containing the artifact summary, permanent links, and next actions.
    - For `channel: claude_turn` / `agy_session`: Direct presentation of the completed artifact to the human turn.
-   - For asynchronous `status: review` (e.g. `wf-human-approval`): An outbound notification to Telegram **and** an entry added to today's daily note under `## Needs Nic's Sign-Off`.
-2. **Delivery Evidence:** The releasing agent or coordinator must record `delivery_evidence`:
+2. **Review-State Delivery (e.g. `wf-human-approval`):** Any task released to `status: review` for Nic represents an explicit human decision gate. It must never sit silently on the graph.
+   - **Change to `wf-human-approval` Step 2:** In `plugins/ida/skills/workflow-library/workflows/wf-human-approval.md`, Step 2 ("File it for review") previously instructed workers to place the artifact "in the form the project or user preferences name", which led to silent in-graph releases because no channel preference is registered.
+   - Step 2 is updated to mandate: **delivery goes through Ida Prime**. The worker must route delivery through Ida Prime (by filing an Ida-held follow-up under `agent_brains_ida` or tagging the task `ida-tracked` with `assignee: ida`), ensuring Ida Prime actively posts the review card to Nic's originating channel (Telegram), lists the item in today's daily note under `## Needs Nic's Sign-Off`, and surfaces it during `/mine`.
+3. **Delivery Evidence:** The releasing agent or coordinator must record `delivery_evidence`:
    ```yaml
    delivery_evidence:
-     channel: telegram
-     message_id: "870" # or outbound Phoenix span ID
+     channel: telegram | daily_note | interactive_stdout
+     message_id: "870" # outbound message ID or Phoenix span ID
      delivered_at: "2026-10-01T13:40:00Z"
-     summary: "Delivered cost table to Telegram chat."
+     summary: "Delivered cost table and review summary to Telegram chat."
    ```
 
 ### 2.4 Status for Ida-Held Tasks: `ida_held`
 
-As noted by Ida Prime (2026-10-02): _"the spec must give Ida-held follow-ups a status. Neither queued (dispatchable) nor blocked (external dependency) fits."_
+In accordance with Nic's 2026-09-15 alternative to _"change graph states"_, this spec settles on one formal status name: **`ida_held`**.
+
+As noted by Ida Prime (2026-10-02):
+
+> _"the spec must give Ida-held follow-ups a status. Neither queued (dispatchable) nor blocked (external dependency) fits."_
 
 - `ready` / `inbox` / `queued`: Fails because generic workers or dispatch passes would grab Ida's coordination follow-ups.
-- `blocked`: Fails because it represents external blockers (waiting on upstream PR, credentials, third-party infrastructure).
-- **Solution:** Introduce task status `ida_held` (or `held`):
-  - Meaning: A task assigned exclusively to `ida` awaiting a concrete surfacing trigger.
-  - Excluded from generic worker dispatch queues.
-  - Included in Ida's focus passes and daily handover reviews.
+- `blocked`: Fails because it represents external technical blockers (waiting on upstream PR, credentials, third-party infrastructure). Currently, Ida follow-ups are forced into `blocked` (e.g., specimen `[[task_074e497d]]` where `blocker: "waiting for aops_c7c82144 to open its spec PR; Ida-held, not for worker dispatch"`).
+- **Semantics of `ida_held`:**
+  - A task assigned exclusively to `ida` awaiting a concrete surfacing trigger.
+  - Excluded from generic worker dispatch queues (`is_ready_status` does not consider `ida_held` dispatchable).
+  - Included in Ida's focus passes, daily handover reviews, and `/mine` sweeps.
 
-### 2.5 The Surfacing Trigger Invariant
+### 2.5 The Surfacing Trigger: Adoption of `/mine`
 
-> **The Trigger Rule:** Every task with `status: ida_held` MUST name the trigger that will surface it. A follow-up without an explicit, verifiable trigger is rejected at intake and MUST NOT be filed.
+Nic explicitly rejected both unprompted background reconcile daemons and new ad-hoc commands on 2026-10-02:
 
-Permitted Trigger Types:
+> _"no, gimme a quick one line command i can run that will trigger a pass through your own assigned tasks in .claude/commands/"_
 
-1. **`on_release` (Event Trigger):** Woken when the referenced `depends_on` task transitions to `done`, `review`, or `partial`.
-2. **`schedule` (Time Trigger):** Woken at a specific datetime or daily briefing pass (e.g., `daily_digest`).
-3. **`command` (Interactive CLI Trigger):** Woken by Nic running a dedicated command.
+Nic running `/mine` is his explicit architectural choice. The design relies entirely on this human-initiated trigger:
 
-#### Interactive CLI Trigger: `/ida:followups`
+1. **Location:** `/mine` lives in the ida repo (`idas/prime/.claude/commands/mine.md`), **not** in `academicOps`. AcademicOps defines the graph contract and workflow library; Ida Prime provides the client command surface.
+2. **Dual Syntax & Behavior:**
+   - `/mine <ask>`: Stage 1 capture of an Ida-tracked task filed under `agent_brains_ida` with `assignee: ida`, `status: ida_held`, and explicit dependency links to the domain task.
+   - Bare `/mine`: Runs the reconciliation and surfacing pass via `wf-ida-task-tree`.
+3. **No Background Daemon or Event Wake:** There is no reliance on background systemd timers, cron polling, or automatic event wakes (honoring the 2026-09-15 park on `[[aops_reconcile_trigger]]`). Surfacing happens when Nic chooses to run `/mine`.
+4. **The Trigger Rule:** Every task with `status: ida_held` MUST name the trigger that will surface it (e.g., `trigger: "/mine"`). A follow-up without an explicit, verifiable trigger is rejected at intake and MUST NOT be filed.
 
-To satisfy Nic's request (Spans `103576`–`103600`):
+### 2.6 Project-Tracked Asks: Surfacing via `ida-tracked`
 
-> _"gimme a quick one line command i can run that will trigger a pass through your own assigned tasks in .claude/commands... create it in your cwd and i'll move it"_
+Not all human asks belong under `agent_brains_ida`. Many asks are domain tasks that properly belong under a project or epic tree (e.g., in `academicOps`, `mem`, `overwhelm-dashboard`).
 
-The command script `.claude/commands/followups.md` (and CLI helper) executes:
+To prevent project work from either being mis-parented under `agent_brains_ida` or falling through the cracks:
 
-```bash
-pkb list-tasks --assignee ida --parent agent_brains_ida --status ida_held
-```
-
-and surfaces all pending Ida-held follow-ups, their linked working tasks, and current execution states.
+1. **The `ida-tracked` Tag:** Tasks tracked inside domain project trees that require Ida Prime's follow-up or delivery are tagged with `ida-tracked` (in frontmatter `tags: [..., ida-tracked]`).
+2. **Surfacing in `/mine`:** The bare `/mine` pass (`wf-ida-task-tree`) queries:
+   - All tasks under `agent_brains_ida` with `assignee: ida` and `status: ida_held`.
+   - All tasks across the entire graph outside `agent_brains_ida` carrying the `ida-tracked` tag.
+3. **Outcome:** Project-tracked tasks remain in their proper domain hierarchies, yet surface immediately during Nic's `/mine` pass when they reach completion or review states requiring human delivery.
 
 ---
 
@@ -186,7 +202,7 @@ origin:
 # Outbound delivery target
 delivery_channel: "telegram" | "interactive_stdout" | "daily_note"
 
-# Delivery evidence (mandatory to release done or review when origin is set)
+# Delivery evidence (mandatory to release done or review when origin is set or review is for Nic)
 delivery_evidence:
   channel: string
   message_id: string
@@ -194,9 +210,11 @@ delivery_evidence:
   summary: string
 
 # Surfacing trigger (mandatory when status is ida_held)
-trigger:
-  type: "on_release" | "schedule" | "command"
-  specification: string # e.g. "depends_on:aops_twin_cost_measure_per_brief" or "2026-10-02T08:00:00Z"
+trigger: "/mine" # or specific scheduled review point
+
+# Project-tracked asks needing Ida surfacing
+tags:
+  - "ida-tracked"
 ```
 
 ### 3.2 The Reconcile Audit Gate (`[[aops_399289f6]]`, `[[mem_1cae6053]]`)
@@ -207,11 +225,13 @@ When peer reconcile audits tasks:
    - Does `status == 'done'`?
    - If yes: verify that `delivery_evidence` is present and resolves to a verifiable outbound event (e.g. Telegram message span or interactive turn).
    - If `delivery_evidence` is missing: **Demote task status to `review` or `inbox`** with rejection reason: _"Artifact exists but human delivery was not evidenced."_
-2. For any task where `status == 'ida_held'`:
+2. For any task in `status: review` for Nic (including `wf-human-approval` releases):
+   - Verify that an Ida-held follow-up or `ida-tracked` tag is present and delivery has been surfaced to Nic.
+3. For any task where `status == 'ida_held'`:
    - Does `trigger` exist and resolve?
    - If `trigger` is missing: **Demote task to `inbox`**.
 
-### 3.3 Rule Wording for `/q` and Instructions Ledger
+### 3.3 Rule Wording for `/q`, `/mine`, and Instructions Ledger
 
 The following rule is incorporated into `plugins/ida/skills/q/SKILL.md` and `plugins/ida/agents/ida.md`:
 
@@ -221,9 +241,10 @@ The following rule is incorporated into `plugins/ida/skills/q/SKILL.md` and `plu
 1. **Origin Binding:** When capturing any ask originating from Nic (via Telegram, interactive CLI, or voice), record the `origin` block in frontmatter with channel, session_id, message_id, host, and prompt.
 2. **Dual-Task Capture:** If the ask will not be executed to verified delivery in the immediate turn and is not part of an actively monitored project pipeline, create two distinct tasks:
    - **The Working Task:** Placed under the relevant project/epic tree, assigned to an execution agent.
-   - **The Follow-Up Task:** Placed under `agent_brains_ida` with `assignee: ida`, `status: ida_held`, `depends_on: [<working_task_id>]`, and a concrete `trigger`. The follow-up MUST NOT be the parent of the working task.
-3. **No Unanchored Follow-ups:** Every `ida_held` task MUST name a valid `trigger` (`on_release`, `schedule`, or `command`). Never file a follow-up without a trigger.
-4. **Delivery Gate:** Never claim `done` or `review` on a task with human origin until the artifact or review call is actively delivered back to Nic via his originating channel.
+   - **The Follow-Up Task:** Placed under `agent_brains_ida` with `assignee: ida`, `status: ida_held`, `depends_on: [<working_task_id>]`, and `trigger: "/mine"`. The follow-up MUST NOT be the parent of the working task.
+3. **Project-Tracked Asks:** If the ask is tracked directly under a domain project tree, tag it with `ida-tracked` so it surfaces during `/mine`.
+4. **No Unanchored Follow-ups:** Every `ida_held` task MUST name a valid `trigger` (such as `"/mine"`). Never file a follow-up without a trigger.
+5. **Delivery Gate:** Never claim `done` or `review` on a task with human origin until the artifact or review call is actively delivered back to Nic via his originating channel.
 ```
 
 ---
@@ -232,13 +253,13 @@ The following rule is incorporated into `plugins/ida/skills/q/SKILL.md` and `plu
 
 ### 4.1 Falsifiable Acceptance Criteria
 
-- [ ] **AC-1 (Origin Schema):** Tasks created via `/q` from human channels store `origin` and `delivery_channel` frontmatter.
+- [ ] **AC-1 (Origin Schema):** Tasks created via `/q` or `/mine <ask>` from human channels store `origin` and `delivery_channel` frontmatter.
 - [ ] **AC-2 (Follow-up Placement):** Ida-held follow-ups are placed under `agent_brains_ida`, never as parents of working tasks.
-- [ ] **AC-3 (Trigger Mandate):** Creation of a task with `status: ida_held` lacking `trigger` is rejected by PKB validation.
+- [ ] **AC-3 (Settled Status `ida_held`):** Status `ida_held` is established for Ida-held follow-ups; creation requires a valid `trigger`.
 - [ ] **AC-4 (Delivery Gate Enforcement):** `pkb_release_task` with `status: done` on an `origin`-bearing task requires `delivery_evidence`.
 - [ ] **AC-5 (Reconcile Catch):** Peer reconcile demotes any `done` task with `origin` that lacks valid `delivery_evidence`.
-- [ ] **AC-6 (Review-State Delivery):** Tasks released to `review` via `wf-human-approval` deliver an approval card to Telegram and the daily note `## Needs Nic's Sign-Off`.
-- [ ] **AC-7 (Interactive Trigger):** `.claude/commands/followups.md` reliably lists all `ida_held` tasks.
+- [ ] **AC-6 (Review-State Delivery via Ida Prime):** `wf-human-approval` step 2 routes delivery through Ida Prime so review tasks are actively surfaced to Nic on Telegram and the daily note `## Needs Nic's Sign-Off`.
+- [ ] **AC-7 (Project-Tracked Surfacing in `/mine`):** Bare `/mine` (running `wf-ida-task-tree`) lists both `agent_brains_ida` tasks and domain tasks bearing `ida-tracked` tags.
 
 ### 4.2 Test & Verification Plan
 
@@ -248,7 +269,7 @@ The following rule is incorporated into `plugins/ida/skills/q/SKILL.md` and `plu
    - Assertion: Reconcile rejects completion because `delivery_evidence` is missing.
 2. **Dual-Task Graph Test:**
    - Execute `/q` on an asynchronous human ask.
-   - Assertion: Graph contains working task under project epic, follow-up task under `agent_brains_ida`, neither is parent of the other, follow-up carries `trigger: on_release`.
-3. **CLI Command Test:**
-   - Run `.claude/commands/followups.md` with tasks in `ida_held` state.
-   - Assertion: Output formats pending follow-ups cleanly with linked working task status.
+   - Assertion: Graph contains working task under project epic, follow-up task under `agent_brains_ida`, neither is parent of the other, follow-up carries `status: ida_held` and `trigger: "/mine"`.
+3. **Project-Tracked Surfacing Test:**
+   - Query `wf-ida-task-tree` with a task outside `agent_brains_ida` having tag `ida-tracked`.
+   - Assertion: Task is surfaced in the `/mine` tree output alongside `agent_brains_ida` tasks.
