@@ -26,6 +26,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 
 - Combine template steps into a logical order (e.g., failing tests first, implementation, then QA).
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
+- Resolve the finish template (e.g., `wf-finish`) to determine delivery route (target branch, PR requirements) and whether an independent QA follow-up is required.
 
 **Halt when composition comes up short.** Create and change nothing; report to your caller what failed precisely.
 
@@ -57,12 +58,23 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 
 ## Output
 
-[ Where the results of the task should be written. For feature branches, name the upstream repository and branch to target. Outputs must not be left in the worker's local (volatile) environment. ]
+[ Where the results of the task should be written. For feature branches, name the upstream repository and base branch to target per the project finish template. Outputs must not be left in the worker's local (volatile) environment. ]
 
 ## Report
 
 [ Any special reporting requirements; default should be to update the task record with evidence of completion next to each acceptance criterion. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
 ```
+
+### Mint QA follow-up when required
+
+Where the project finish template calls for QA review:
+
+1. Mint an independent follow-up task with status `queued`.
+2. Title: `QA: <primary task title>`.
+3. Set parent to the primary task's parent.
+4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
+5. Record the QA task ID in the primary task's `follow_up_tasks`.
+6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and merge to the target branch when verified per the finish template.
 
 ### Requirements for writing tasks
 
@@ -88,6 +100,7 @@ A task is ready to dispatch when its status is `queued` and it has no open `depe
 
 - You should dispatch multiple tasks in parallel where possible.
 - Start workers through your project's specified dispatch pathway.
+- Any minted QA follow-up task remains queued until its hard dependency completes.
 
 ## 5. Report
 
