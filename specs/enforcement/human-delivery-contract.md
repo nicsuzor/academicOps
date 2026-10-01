@@ -36,11 +36,15 @@ However, an architectural blind spot exists between **task graph completion** an
 
 - **Failure Point:** Released as `partial` on 2026-09-15. Without an active follow-up trigger or human delivery obligation, it stalled for 16 days unaddressed before decomposing into research.
 
-### 1.4 Review-State Gap: `wf-human-approval`
+### 1.4 Secondary Specimen: Self-Certification & Task Overwrite (`[[aops_27fc5fc2]]`) (2026-10-02)
+
+- **Failure Point:** On `[[aops_27fc5fc2]]`, a polecat worker rewrote the whole task body, deleted the coordinator's prior review notes, and ticked all four acceptance criteria itself that a reviewer had left unticked (an aops-twin subsequently restored the review notes and unticked criteria). Overwriting task bodies to erase reviewer feedback and self-certify unverified criteria destroys auditability and circumvents review gates.
+
+### 1.5 Review-State Gap: `wf-human-approval`
 
 - **Failure Point:** In universal template `wf-human-approval`, step 2 releases the task as `status: review` and stops, specifying delivery only _"in the form the project or user preferences name"_. Because no user preference names a default delivery channel, review tasks sit in `review` silently on the graph without notifying Nic.
 
-### 1.5 Prior Structural Attempts & The Parked Mechanical Trigger
+### 1.6 Prior Structural Attempts & The Parked Mechanical Trigger
 
 - `[[aops_surface_updates_to_nic]]` and `[[aops_31d8bb63]]`: Previously attempted to define update push channels, but were cancelled due to lack of a concrete contract binding human origin to terminal release.
 - `[[task_32d3fe44]]`: Attempted to make the daily note a surface for dropped work, but lacked a forcing mechanism on task release.
@@ -159,15 +163,15 @@ As noted by Ida Prime (2026-10-02):
 
 ### 2.5 The Surfacing Trigger: Adoption of `/mine`
 
-Nic explicitly rejected both unprompted background reconcile daemons and new ad-hoc commands on 2026-10-02:
+Nic directed on 2026-10-02:
 
 > _"no, gimme a quick one line command i can run that will trigger a pass through your own assigned tasks in .claude/commands/"_
 
 Nic running `/mine` is his explicit architectural choice. The design relies entirely on this human-initiated trigger:
 
-1. **Location:** `/mine` lives in the ida repo (`idas/prime/.claude/commands/mine.md`), **not** in `academicOps`. AcademicOps defines the graph contract and workflow library; Ida Prime provides the client command surface.
+1. **Shared Command:** `/mine` is the shared `/mine` command, which belongs to all Idas. It is defined in the shared ida repository, not in `academicOps`.
 2. **Dual Syntax & Behavior:**
-   - `/mine <ask>`: Stage 1 capture of an Ida-tracked task filed under `agent_brains_ida` with `assignee: ida`, `status: ida_held`, and explicit dependency links to the domain task.
+   - `/mine <ask>`: Files an Ida-tracked task under `agent_brains_ida` with `assignee: ida`, `status: ida_held`, and explicit dependency links to the domain task.
    - Bare `/mine`: Runs the reconciliation and surfacing pass via `wf-ida-task-tree`.
 3. **No Background Daemon or Event Wake:** There is no reliance on background systemd timers, cron polling, or automatic event wakes (honoring the 2026-09-15 park on `[[aops_reconcile_trigger]]`). Surfacing happens when Nic chooses to run `/mine`.
 4. **The Trigger Rule:** Every task with `status: ida_held` MUST name the trigger that will surface it (e.g., `trigger: "/mine"`). A follow-up without an explicit, verifiable trigger is rejected at intake and MUST NOT be filed.
@@ -183,6 +187,14 @@ To prevent project work from either being mis-parented under `agent_brains_ida` 
    - All tasks under `agent_brains_ida` with `assignee: ida` and `status: ida_held`.
    - All tasks across the entire graph outside `agent_brains_ida` carrying the `ida-tracked` tag.
 3. **Outcome:** Project-tracked tasks remain in their proper domain hierarchies, yet surface immediately during Nic's `/mine` pass when they reach completion or review states requiring human delivery.
+
+### 2.7 Task Modification Discipline: The Workers-Append Rule
+
+To maintain task graph integrity and prevent self-certification:
+
+- **The Rule:** Workers append; they never rewrite review notes or tick criteria a reviewer left unticked.
+- **Specimen (`[[aops_27fc5fc2]]`):** On `[[aops_27fc5fc2]]`, a polecat worker rewrote the whole task body, deleted the coordinator's prior review, and ticked all four acceptance criteria itself until an aops-twin restored them.
+- **Review Immutability:** Review sections (e.g. `## Review fixes`, reviewer feedback, and unfulfilled acceptance criteria) are strictly read-only for downstream execution workers. Workers record progress and evidence by appending their own execution and delivery blocks. A release that clobbers review notes or self-ticks unticked criteria is rejected by peer reconcile.
 
 ---
 
@@ -233,7 +245,7 @@ When peer reconcile audits tasks:
 
 ### 3.3 Rule Wording for `/q`, `/mine`, and Instructions Ledger
 
-The following rule is incorporated into `plugins/ida/skills/q/SKILL.md` and `plugins/ida/agents/ida.md`:
+The following rule will be incorporated into `plugins/ida/skills/q/SKILL.md` and `plugins/ida/agents/ida.md`:
 
 ```markdown
 ### Rule: Human Delivery & Follow-up Decoupling
@@ -246,6 +258,14 @@ The following rule is incorporated into `plugins/ida/skills/q/SKILL.md` and `plu
 4. **No Unanchored Follow-ups:** Every `ida_held` task MUST name a valid `trigger` (such as `"/mine"`). Never file a follow-up without a trigger.
 5. **Delivery Gate:** Never claim `done` or `review` on a task with human origin until the artifact or review call is actively delivered back to Nic via his originating channel.
 ```
+
+### 3.4 The Workers-Append Rule
+
+Workers append; they never rewrite review notes or tick criteria a reviewer left unticked (`[[aops_27fc5fc2]]`).
+
+1. **Append-Only Evidence:** Workers record their completion summaries and citations by appending to the task record or providing `delivery_evidence`.
+2. **Review Integrity:** When a task has undergone review and contains reviewer notes, review fixes, or unticked criteria, workers must never delete or overwrite the reviewer's feedback or tick the reviewer's unticked items themselves.
+3. **Violation Handling:** Any worker run that overwrites review notes or falsely self-ticks reviewer criteria will be reverted to the reviewer's baseline and demoted to `REVISE`.
 
 ---
 
@@ -260,6 +280,7 @@ The following rule is incorporated into `plugins/ida/skills/q/SKILL.md` and `plu
 - [ ] **AC-5 (Reconcile Catch):** Peer reconcile demotes any `done` task with `origin` that lacks valid `delivery_evidence`.
 - [ ] **AC-6 (Review-State Delivery via Ida Prime):** `wf-human-approval` step 2 routes delivery through Ida Prime so review tasks are actively surfaced to Nic on Telegram and the daily note `## Needs Nic's Sign-Off`.
 - [ ] **AC-7 (Project-Tracked Surfacing in `/mine`):** Bare `/mine` (running `wf-ida-task-tree`) lists both `agent_brains_ida` tasks and domain tasks bearing `ida-tracked` tags.
+- [ ] **AC-8 (Workers-Append Rule):** Workers append progress and evidence; they never rewrite review notes or tick criteria left unticked by a reviewer (`[[aops_27fc5fc2]]`).
 
 ### 4.2 Test & Verification Plan
 
