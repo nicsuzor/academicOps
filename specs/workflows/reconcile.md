@@ -65,8 +65,7 @@ Each subset covers tasks marked `done` and pull requests. Once the forward-issue
 issues in the same window.
 
 The face does not touch the knowledge base, so its engagement sweep is a delegation: it
-commissions an agent that runs the reconcile workflow, delegating discrete inspection checks to subagents to preserve context,
-and returns one synthesized result.
+commissions an agent that runs the reconcile workflow and returns one synthesized result.
 
 **The reverse direction is not a fourth context.** What a task's completion resolves on the issue
 tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on a

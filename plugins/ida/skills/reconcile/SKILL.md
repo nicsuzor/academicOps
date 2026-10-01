@@ -5,11 +5,11 @@ description: Truth maintenance over the task graph -- verification of claimed ev
 
 # Reconcile
 
-Truth maintenance over the task graph. Reconcile evaluates claimed evidence, verifies scope, matches pull requests, and routes failed checks, delegating discrete inspection steps to subagents to preserve context. It does not claim to be the sole writer of `done`; workers with PKB access mark their tasks `done` after `/pull`.
+Truth maintenance over the task graph. Reconcile evaluates claimed evidence, verifies scope, matches pull requests, and routes failed checks. It does not claim to be the sole writer of `done`; workers with PKB access mark their tasks `done` after `/pull`.
 
-## Delegated Checks
+## Modular Inspection Checks
 
-When inspecting tasks marked `done` by workers, delegate three checks to subagents:
+When inspecting tasks marked `done`, evaluate three modular checks (which may be performed directly or delegated to subagents to preserve context):
 
 1. **Pull request matching**: Match open and closed pull requests to tasks by structured identifiers (`pr_url`, task ID in PR body/branch, exact title). Unconditionally recognize merged PRs; inspect unmerged or closed PRs.
 2. **Facial sufficiency of claimed evidence**: Read each piece of claimed evidence in the worker's report against the task's literal acceptance criteria. Verify whether the evidence is facially sufficient to prove the criteria were met. Asserting that tests passed is sufficient for a worker's completion claim; full substantive QA is handled independently.
@@ -19,7 +19,7 @@ When inspecting tasks marked `done` by workers, delegate three checks to subagen
 
 When a task marked `done` fails the facial sufficiency or scope check:
 
-1. **Remedy before escalation where possible**: A failure remedied before reaching Nic (e.g. missing evidence supplied by an independent verification check that passes) is not a failure — confirm `status: done` citing the remedied evidence.
+1. **Remedy before escalation where possible**: A failure remedied before reaching Nic (e.g. missing evidence supplied by an independent verification check that passes) is not a failure -- confirm `status: done` citing the remedied evidence.
 2. **Escalate unremedied failures to Nic**: For failures that cannot be remedied in-session, route the task to Nic for ratification or reversal rather than returning it to `inbox`. Set `status: review` and document the exact failure reason and unverified criteria in the task body.
 3. **Convert PR to draft with comment**: If a PR was filed, convert it to a draft PR (`gh pr ready --undo` or API equivalent) and post an explanatory comment stating which check failed and what Nic needs to decide, preventing accidental merge before ratification.
 
