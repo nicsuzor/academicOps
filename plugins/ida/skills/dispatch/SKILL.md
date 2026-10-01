@@ -7,7 +7,7 @@ description: Take an objective, assemble a compliant workflow from templates, re
 
 The task is the whole message to the worker. Write it once, keep it short, send it as written.
 
-Nothing is written to the graph until steps 1-3 have passed: a task created early survives every check that later fails.
+Nothing is written to the graph until steps 1-2 have passed: a task created early survives every check that later fails.
 
 ## 1. Hydrate
 
@@ -15,7 +15,7 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 **Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates. If a task is already completely specified, you may dispatch it directly without re-writing it.
 
-- Given a task id: read it. If it already fills the template in step 4, go to step 5.
+- Given a task id: read it. If it already fills the template in step 3, go to step 4.
 - If `/hydrate` flags an unfinished task with the same objective, carry on with that task instead of a new one.
 - If it flags a task this objective needs done first, note it for a `depends_on` edge.
 - You may update an existing task if you need to modify context, acceptance criteria, or instructions. This includes retrying failed tasks; do not create a new task for the same work.
@@ -24,18 +24,15 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 Call `/workflow-library` to weave together every workflow relevant to the task in context. A skill counts as a template: when one is composed, the Instructions tell the worker to invoke it by name, as one step or as all of them. Never copy its contents into the task; the skill is maintained where it lives.
 
+- Combine template steps into a logical order (e.g., failing tests first, implementation, then QA).
+- Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
+- Resolve the finish template (e.g., `wf-finish`) to determine delivery route (target branch, PR requirements) and whether an independent QA follow-up is required.
+
 **Halt when composition comes up short.** Create and change nothing; report to your caller what failed precisely.
 
-## 3. Read project finish template
+## 3. Write each task
 
-Resolve `wf-finish` via `/workflow-library` to determine how the project's tasks finish:
-
-1. **Delivery route**: Identify the base branch and pull-request requirements for the task's `## Output` section (e.g. active version branch `v0.y.z`).
-2. **QA requirement**: Check if the template calls for independent QA before merge. If required, select the designated QA review template (`wf-qa` for code/functional verification, `wf-signoff` for human-facing digest, or `wf-fact-check` for empirical claims). Obey the project template's conditions.
-
-## 4. Write each task
-
-- Default to creating a single task with steps as sub-tasks; every extra cut costs a hand-off and loses context.
+- Default to creating a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
 - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - If you must split a task, make each task as big as possible.
 - Wire `depends_on` edges only where one unit genuinely requires another's output.
@@ -77,7 +74,7 @@ Where the project finish template calls for QA review:
 3. Set parent to the primary task's parent.
 4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.
-6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and mark ready or merge to the version branch when verified per the finish template.
+6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and merge to the target branch when verified per the finish template.
 
 ### Requirements for writing tasks
 
@@ -97,7 +94,7 @@ Where the project finish template calls for QA review:
 - Do not create standalone decision tasks or file questions as tasks.
 - Do not dispatch workers or begin execution.
 
-## 5. Dispatch
+## 4. Dispatch
 
 A task is ready to dispatch when its status is `queued` and it has no open `depends_on` edges or incomplete children.
 
@@ -105,7 +102,7 @@ A task is ready to dispatch when its status is `queued` and it has no open `depe
 - Start workers through your project's specified dispatch pathway.
 - Any minted QA follow-up task remains queued until its hard dependency completes.
 
-## 6. Report
+## 5. Report
 
 - Dispatch is 'fire-and-forget': you do not get a report back from the worker. Do not poll or wait for a worker to return.
 - Output only a summary of tasks dispatched: one line per task, including title, id, and any identification of the worker assigned.

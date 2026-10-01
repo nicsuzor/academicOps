@@ -41,4 +41,4 @@ When QA review is required, `/dispatch` mints a follow-up task with:
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]` (hard blocking dependency)
 - **Workflow**: Composes independent verification workflow
-- **Goal**: Independently verify PR deliverable and claims against literal acceptance criteria in a clean context. When verified, mark ready or merge to the base branch per project policy.
+- **Goal**: Independently verify PR deliverable and claims against literal acceptance criteria in a clean context. When verified, merge to the base branch per project policy.
