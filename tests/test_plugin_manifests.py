@@ -213,28 +213,22 @@ def test_rbg_ships_the_stop_gate_on_claude_only():
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_ida_ships_the_quiet_gate_on_claude_only():
     """ida's quiet gate directs the face to strip its own reply before it
-    speaks to the person. Registered on claude ``PostToolBatch`` only:
+    speaks to the person. Registered on claude ``PreToolUse`` (channel replies)
+    and ``Stop`` (session termination).
     claude ``SubagentStop`` fires on the *stopping subagent's* own context, so
     wiring it there would nag a worker about a reply it never sends to the
-    person — the fix for the defect the superseded gate-wiring-v07 branch
-    shipped. ida ships no agy hooks.json at all: its only prior agy wiring was
-    ``PostInvocation``, which dispatch.py no longer maps to anything
-    (aops_73e25af2 — it fired once per internal invocation/tool-call
-    round-trip, not once per turn), and ``be_quiet`` was never wired to
-    canonical ``Stop`` in the first place (only to the commented-out
-    ``PostToolBatch`` key), so nothing on agy was ever live.
+    person.
 
     ida is now its own plugin (plugins/ida),
     so its gate ships from ``ida-claude``."""
     events = _claude_hook_events("ida-claude")
-    assert "PostToolBatch" in events
+    assert {"PreToolUse", "Stop"} <= events
     assert "SubagentStop" not in events
-    assert "PostToolBatch" not in _agy_hook_events("ida-agy")
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
 def test_aops_ships_the_handback_reminders():
-    """``PostToolBatch`` binds the receiver; ``Stop`` binds the worker at handback.
+    """``UserPromptSubmit`` binds the receiver (hearsay); ``Stop`` binds the worker at handback (honesty).
     Both surfaces ship from ida, which owns dispatch and the handback doctrine."""
-    assert {"PostToolBatch", "Stop"} <= _claude_hook_events("ida-claude")
+    assert {"UserPromptSubmit", "Stop"} <= _claude_hook_events("ida-claude")
     assert "PostInvocation" not in _agy_hook_events("ida-agy")

@@ -242,9 +242,14 @@ def _merge(results: list[Result | None]) -> Result | None:
     for r in present:
         if r.kind is Kind.REFUSE:
             return r
-    for r in present:
-        if r.kind is Kind.BLOCK:
-            return r
+    blocks = [r for r in present if r.kind is Kind.BLOCK]
+    if blocks:
+        if len(blocks) == 1:
+            return blocks[0]
+        merged_inject = "\n\n".join(b.inject_text for b in blocks if b.inject_text)
+        user_texts = [b.user_text for b in blocks if b.user_text]
+        merged_user = "\n\n".join(user_texts) if user_texts else None
+        return Result(merged_inject, merged_user, Kind.BLOCK)
     return present[0] if present else None
 
 
@@ -318,6 +323,17 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
     valid_keys = {f.name for f in fields(HookContext)}
     kwargs = {k: v for k, v in raw.items() if k in valid_keys and v is not None}
 
+    agent_type = (
+        raw.get("agent_type")
+        or raw.get("agent_name")
+        or raw.get("agent")
+        or raw.get("subagent_type")
+        or os.environ.get("CLAUDE_AGENT_NAME")
+        or os.environ.get("AGY_AGENT_NAME")
+        or os.environ.get("AOPS_AGENT_NAME")
+        or kwargs.get("agent_type", "")
+    )
+
     kwargs.update(
         client=client,
         event=event,
@@ -325,7 +341,9 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
         command=command,
         session_id=raw.get("session_id")
         or raw.get("conversationId")
+        or raw.get("conversation_id")
         or kwargs.get("session_id", ""),
+        agent_type=agent_type,
         tool_calls=tool_calls,
         raw=raw,
         hooks_dir=hooks_dir,
