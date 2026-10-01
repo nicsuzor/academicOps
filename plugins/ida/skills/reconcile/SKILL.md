@@ -18,6 +18,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 2. **Reconcile pull requests**: Match closed pull requests to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title).
    - **Merged PRs**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch). Do not re-judge acceptance criteria.
    - **Closed without merge**: Surface for routing; never auto-complete or auto-requeue.
+   - **Unreadable repositories**: Record any repository returning a 404 or "Could not resolve to a Repository" as "unreadable with this token", citing the refusal text verbatim. Do not report or record such a repository as missing or nonexistent; GitHub returns identical errors for inaccessible private repositories as for nonexistent repositories.
 3. **Aged tasks and stale claims**: Route aged items (>90d) and suspect claims to `status: review` with observed evidence for Sara; never write `done` on non-PR evidence; never reset claims to `ready`.
 4. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
 5. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
@@ -38,3 +39,4 @@ Emit one synthesized result:
 5. Cancellations as a distinct category (task ID, trigger fired, verbatim evidence written to body).
 6. Name IDs for every touched task (no bare counts).
 7. State the covered sweep window and what the next sweep should pick up.
+8. Repositories swept, recording any repository returning a 404 or "Could not resolve to a Repository" as "unreadable with this token" with the refusal text verbatim (never as missing or nonexistent).
