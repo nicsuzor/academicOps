@@ -24,8 +24,9 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 Call `/workflow-library` to weave together every workflow relevant to the task in context. A skill counts as a template: when one is composed, the Instructions tell the worker to invoke it by name, as one step or as all of them. Never copy its contents into the task; the skill is maintained where it lives.
 
-- Combine template steps into a logical order (e.g., failing tests first, implementation, then QA).
+- Combine template steps into a logical order (e.g., failing tests first, then implementation).
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
+- **Review separation**: A worker's in-run fact-check or QA is never accepted as the task's review. Never compose QA or fact-check into the implementation worker's instructions. When a workflow calls for fact-check or QA, create an independent follow-up review task to execute after the implementation worker releases.
 
 **Halt when composition comes up short.** Create and change nothing; report to your caller what failed precisely.
 
@@ -35,6 +36,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - If you must split a task, make each task as big as possible.
 - Wire `depends_on` edges only where one unit genuinely requires another's output.
+- **Review tasks**: Fact-check and QA review tasks must run as a separate execution after the primary worker finishes and releases. The review run evaluates the deliverable in a clean context and records one verdict per claim (`PASS`/`FAIL`) and one `MET`/`UNMET` per acceptance criterion on the graph as review nodes created after release.
 - Mint multi-task cuts using `pkb.decompose_task`.
 - Write tasks with status `queued` immediately.
 
@@ -80,6 +82,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 - Omit summaries of linked notes; reference documents by pointer.
 - Omit provenance, changelogs, session narratives, and perishable counts or SHAs.
 - Do not create standalone decision tasks or file questions as tasks.
+- Do not task a worker with conducting its own fact-check or QA review; review runs only after worker release.
 - Do not dispatch workers or begin execution.
 
 ## 4. Dispatch

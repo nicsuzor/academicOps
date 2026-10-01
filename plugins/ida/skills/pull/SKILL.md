@@ -28,6 +28,8 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 ### 6. Validate Against Criteria
 
 - Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations.
+- **Review separation**: A worker's in-run fact-check or QA is not accepted as the task's review. No `/ida:pull` step allows a worker to report its own fact-check or QA as passed. A worker delivers verifiable receipts and releases the task; fact-check and QA count only when a separate review run performs them after the worker finishes and releases.
+- **Review run obligations**: The post-release review run evaluates claims and deliverables against criteria in a clean context, recording one verdict per claim (`PASS`/`FAIL`) and one `MET`/`UNMET` per acceptance criterion on the graph as review nodes created after release.
 - If incomplete due to external blockers, release as `review` (with required `reason`) or `partial`. Wire directed `blocks` edges instead of setting `status: blocked`.
 
 ### 7. Handover

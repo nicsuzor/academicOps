@@ -14,8 +14,9 @@ type: template
 
 Checks factual and evidentiary claims in a draft against their sources -- citations resolve, quoted
 numbers match the source, described behaviour matches what was actually observed rather than
-assumed, links are live and point where claimed. This is narrower and more mechanical than
-[[wf-qa]]'s general judgment: it verifies claims are TRUE, not that the work is GOOD.
+assumed, links are live and point where claimed. Executes in a separate review run after the worker
+finishes and releases. This is narrower and more mechanical than [[wf-qa]]'s general judgment: it
+verifies claims are TRUE, not that the work is GOOD.
 
 ## Output contract
 
@@ -24,6 +25,8 @@ The fact-check handback must state, per claim checked:
 - The claim, the source checked, and the resolving link/command/output.
 - PASS (claim verified against source) or FAIL (claim doesn't hold) -- no third state; a claim that couldn't be checked is a FAIL with the reason recorded ("source unavailable", "couldn't reproduce").
 - A summary count: N claims checked, N passed, N failed -- so [[wf-qa]] doesn't have to re-derive coverage.
+
+The review run records one verdict per claim on the graph as a review node created after worker release.
 
 ## Record surface (mandatory)
 
