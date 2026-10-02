@@ -99,6 +99,7 @@ def _extract_llm_spans_for_turn_agy(
         last_input_mime = "text/plain"
         last_input_role = "user"
         last_input_content = ""
+        accumulated_messages = []
 
         for line in lines:
             if not line.strip():
@@ -108,6 +109,7 @@ def _extract_llm_spans_for_turn_agy(
 
                 if _is_human_message_agy(entry):
                     human_count += 1
+
                     if human_count == human_count_at_start + 1:
                         in_turn = True
                         human_text = entry.get("content", "")
@@ -115,8 +117,13 @@ def _extract_llm_spans_for_turn_agy(
                         last_input_mime = "application/json"
                         last_input_role = "user"
                         last_input_content = _truncate(human_text)
+                        accumulated_messages.append({"role": "user", "content": human_text})
                     elif in_turn:
                         break  # Next turn started
+                    elif human_count <= human_count_at_start:
+                        # accumulate history
+                        accumulated_messages.append({"role": "user", "content": entry.get("content", "")})
+
                     continue
 
                 if not in_turn:
@@ -124,21 +131,35 @@ def _extract_llm_spans_for_turn_agy(
 
                 entry_type = entry.get("type", "")
                 entry_source = entry.get("source", "")
+
                 if entry_type == "GENERIC" or entry_source == "TOOL":
                     tool_content = entry.get("content", "")
                     if tool_content:
-                        last_input_value = json.dumps(
-                            {"role": "tool", "content": tool_content[:500]}
-                        )
-                        last_input_mime = "application/json"
-                        last_input_role = "tool"
-                        last_input_content = _truncate(tool_content)
+                        if in_turn:
+                            last_input_value = json.dumps(
+                                {"role": "tool", "content": tool_content[:500]}
+                            )
+                            last_input_mime = "application/json"
+                            last_input_role = "tool"
+                            last_input_content = _truncate(tool_content)
+                        if in_turn or human_count <= human_count_at_start:
+                            accumulated_messages.append({"role": "tool", "content": tool_content})
                     continue
 
-                if entry_type in ("EPHEMERAL_MESSAGE", "CHECKPOINT") or entry_source == "SYSTEM":
+
+
+                if entry_type in ("EPHEMERAL_MESSAGE", "CHECKPOINT"):
                     continue
+                if entry_source == "SYSTEM":
+                    if in_turn or human_count <= human_count_at_start:
+                        sys_text = entry.get("content", "")
+                        accumulated_messages.append({"role": "system", "content": sys_text})
+                    continue
+
 
                 if entry.get("source") == "MODEL" and entry.get("type") == "PLANNER_RESPONSE":
+                    if not in_turn and human_count <= human_count_at_start:
+                        accumulated_messages.append({"role": "assistant", "content": entry.get("content", "")})
                     content = entry.get("content", "")
                     tool_calls = entry.get("tool_calls", [])
                     ts = entry.get("created_at", "")
@@ -151,15 +172,18 @@ def _extract_llm_spans_for_turn_agy(
                         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                         start_ns = int(dt.timestamp() * 1_000_000_000)
 
+
                     attrs: dict[str, Any] = {
                         "openinference.span.kind": "LLM",
                         "llm.model_name": "gemini-pro-agent",
-                        "llm.input_messages.0.message.role": last_input_role,
-                        "llm.input_messages.0.message.content": last_input_content,
                         "input.value": last_input_value,
                         "input.mime_type": last_input_mime,
                         "llm.output_messages.0.message.role": "assistant",
                     }
+                    for i, m in enumerate(accumulated_messages):
+                        attrs[f"llm.input_messages.{i}.message.role"] = m["role"]
+                        attrs[f"llm.input_messages.{i}.message.content"] = _truncate(m["content"])
+
                     if content:
                         attrs["llm.output_messages.0.message.content"] = _truncate(content)
                     if thinking:
