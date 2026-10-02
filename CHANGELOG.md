@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.10.4](https://github.com/nicsuzor/academicOps/compare/v0.10.3...v0.10.4) (2026-10-02)
+
+
+### Features
+
+* **hooks:** export full text telemetry spans ([#2697](https://github.com/nicsuzor/academicOps/issues/2697)) ([4cb0a3c](https://github.com/nicsuzor/academicOps/commit/4cb0a3c35607467c484cd7c8f9eff8529f69148c))
+* **hooks:** export full text telemetry spans and redact secrets ([b364905](https://github.com/nicsuzor/academicOps/commit/b364905819c1b35e2fe320d9965a6ff5a326c3d7))
+* **hooks:** turn on automatic PKB hydration on UserPromptSubmit (aops_7433bc81) ([75944e8](https://github.com/nicsuzor/academicOps/commit/75944e83c048713d19cce5b6fea8446942af7056))
+* **hooks:** turn on automatic PKB hydration on UserPromptSubmit for Ida (aops_7433bc81) ([d3469f2](https://github.com/nicsuzor/academicOps/commit/d3469f2fa17ea43c9baef4a3d817b34361311f09))
+* **ida:** add message hard cap to user interaction rules (aops_1a79f494) ([79ac678](https://github.com/nicsuzor/academicOps/commit/79ac67852774ca9978ff159f835632f742a804ac))
+* **ida:** add message hard cap to user interaction rules (aops_1a79f494) ([0788989](https://github.com/nicsuzor/academicOps/commit/07889896cc0ea96a2643e2703b5fd9fa5e9d6548))
+* **ida:** extract Gemini token counts from Antigravity payloads into Phoenix traces ([89637dc](https://github.com/nicsuzor/academicOps/commit/89637dc573ad0d02269872edb3f7ad4ffc3c26be))
+* **ida:** extract Gemini token counts from Antigravity payloads into Phoenix traces ([9dd6317](https://github.com/nicsuzor/academicOps/commit/9dd63179d1f074d21bdbdd9059cb336b3a5af03c))
+* **ida:** re-enable hearsay, honesty and quiet hooks (aops_89015fc6) ([dea7044](https://github.com/nicsuzor/academicOps/commit/dea70441ba2bf4b8ad0fde12f0dc528321a3d6ab))
+* **ida:** re-enable hearsay, honesty and quiet hooks (aops_89015fc6) ([446c894](https://github.com/nicsuzor/academicOps/commit/446c8943572dbf57f6ba3d7d51f788952c971062))
+
+
+### Bug Fixes
+
+* **debug:** repoint skill at Phoenix via services MCP proxy ([7252a0f](https://github.com/nicsuzor/academicOps/commit/7252a0fab7280d39db7748f13c48aa9fd4ad02db))
+* **debug:** repoint skill at Phoenix via services MCP proxy ([adb7669](https://github.com/nicsuzor/academicOps/commit/adb7669ccc07949e10642c766c0ec58a56ef596b))
+* **enforcement:** address review fixes for human delivery contract ([f2cf577](https://github.com/nicsuzor/academicOps/commit/f2cf5771303a5b5c65c7b55aa599b8a6da111de3))
+* **enforcement:** address round 3 review fixes for human delivery contract ([97bd481](https://github.com/nicsuzor/academicOps/commit/97bd481aa72712cd3befb74c3431dc8803f88db2))
+* **enforcement:** address round 4 review fixes for human delivery contract ([3b53573](https://github.com/nicsuzor/academicOps/commit/3b53573831b97b9a8de229f63186c2dc14d283a9))
+* **enforcement:** address round 5 review fixes for workers-append rule wording ([3c61384](https://github.com/nicsuzor/academicOps/commit/3c6138476602e2866638e6f9feb4d6c7ae56ec7a))
+* **enforcement:** address round 6 review fixes for workers-append rule ([b01e169](https://github.com/nicsuzor/academicOps/commit/b01e16983b5c70ba6d6fe4970bbfe7f902ccd5de))
+* **hooks:** accumulate all input messages in agy tracer ([c67a22f](https://github.com/nicsuzor/academicOps/commit/c67a22f9d2373005ed0253f5c69bb5392d424f94))
+* **ida:** expand channel reply tools to ask_question, robustify agent_type resolution, record §9 resolutions ([3775979](https://github.com/nicsuzor/academicOps/commit/3775979b9a0102f6d32c6502717251eb3048d59f))
+* **ida:** typecheck errors in agy_tracer.py ([6de9982](https://github.com/nicsuzor/academicOps/commit/6de998217271894a36f11882d29c4661e6c89736))
+* **ida:** use gender-neutral language in user interaction rules (aops_01aec230) ([5cd8099](https://github.com/nicsuzor/academicOps/commit/5cd80997f62543450c619162390e7fe262182ff4))
+* **reconcile:** add remediation clause, clarify review escalation, and update worker pull/reconcile specs ([398e3c3](https://github.com/nicsuzor/academicOps/commit/398e3c39a463a6af4d5965c09555f789a1108395))
+* **reconcile:** remove hardcoded agent names to keep reconcile modular per review ([9de33b1](https://github.com/nicsuzor/academicOps/commit/9de33b13f921ee31f12b9dbed93a2115c96736af))
+* **reconcile:** report unreadable repositories as unreadable in ida:reconcile (aops_3cb6b3fc) ([48899ca](https://github.com/nicsuzor/academicOps/commit/48899ca3b6d611f0356093601965fb30e0fdd6ea))
+* **reconcile:** report unreadable repositories as unreadable in ida:reconcile (aops_3cb6b3fc) ([428d132](https://github.com/nicsuzor/academicOps/commit/428d13233e331e5631fe8986bc45dc787995311d))
+
+
+### Code Refactoring
+
+* **dispatch:** bring workflow assembly ordering and scope rules into dispatch ([4d19b63](https://github.com/nicsuzor/academicOps/commit/4d19b632f360cb1f43a61f5cb61ad941b1a3ab48))
+* **dispatch:** bring workflow assembly ordering and scope rules into dispatch ([6ea6145](https://github.com/nicsuzor/academicOps/commit/6ea61455f270b250d5a912bfb88d085fe91100de))
+* **dispatch:** generalize workflow composition and target version branch ([dc22df1](https://github.com/nicsuzor/academicOps/commit/dc22df1efbc049a89294c465a0404d6bb0ab7a33))
+* **reconcile:** make inspection checks modular and execution runner-agnostic ([1409856](https://github.com/nicsuzor/academicOps/commit/1409856fd669ecd82e3c3bee5fbfb0d9587cb27f))
+* **reconcile:** modular evidence check, remove merge_ready and reconcile systemd trigger ([7a16d97](https://github.com/nicsuzor/academicOps/commit/7a16d97a812560a5b0efa35be1c9b9786bdff5f4))
+* **reconcile:** peer-Ida evidence check, remove merge_ready and reconcile systemd trigger ([77d84af](https://github.com/nicsuzor/academicOps/commit/77d84af274e1e728498c75187d2ef69f307da4a6))
+
+
+### Documentation
+
+* remove blocked status value from changelog ([2d419f3](https://github.com/nicsuzor/academicOps/commit/2d419f33772fb3dfde7be3793119bc39377a20f6))
+
+
+### Miscellaneous
+
+* remove all references to blocked status ([a460467](https://github.com/nicsuzor/academicOps/commit/a460467a9572526a0350fa0e25e26c2c5fd30e50))
+* remove references to blocked status ([ce4ca6d](https://github.com/nicsuzor/academicOps/commit/ce4ca6dd79e4dfff6a6df936948395109d5ada02))
+
 ## [0.10.3](https://github.com/nicsuzor/academicOps/compare/v0.10.2...v0.10.3) (2026-09-28)
 
 ### Features
