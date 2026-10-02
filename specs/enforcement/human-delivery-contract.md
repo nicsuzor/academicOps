@@ -193,9 +193,8 @@ To prevent project work from either being mis-parented under `agent_brains_ida` 
 
 To maintain task graph integrity and prevent self-certification:
 
-- **The Rule:** Workers fill evidence and tick their own round's criteria; they never rewrite or delete review notes or earlier rounds.
+- **The Rule:** Reviewer notes and earlier rounds stay intact; the worker ticks the current round's criteria with evidence beside each; there are no separate evidence blocks.
 - **Specimen (`[[aops_27fc5fc2]]`):** On `[[aops_27fc5fc2]]`, a polecat worker rewrote the whole task body, deleted the coordinator's prior review, and ticked all four acceptance criteria itself until an aops-twin restored them.
-- **Review Immutability:** Review sections (e.g. `## Review fixes`, reviewer feedback, and unfulfilled acceptance criteria) are strictly read-only for downstream execution workers. Workers record progress and evidence by appending their own execution and delivery blocks. A release that clobbers review notes or self-ticks unticked criteria is rejected by peer reconcile.
 
 ---
 
@@ -262,11 +261,7 @@ The following rule will be incorporated into `plugins/ida/skills/q/SKILL.md` and
 
 ### 3.4 The Workers-Append Rule
 
-Workers fill evidence and tick their own round's criteria; they never rewrite or delete review notes or earlier rounds (`[[aops_27fc5fc2]]`).
-
-1. **Append-Only Evidence:** Workers record their completion summaries and citations by appending to the task record or providing `delivery_evidence`.
-2. **Review Integrity:** When a task has undergone review and contains reviewer notes, review fixes, or unticked criteria, workers must never delete or overwrite the reviewer's feedback or tick the reviewer's unticked items themselves.
-3. **Violation Handling:** Any worker run that overwrites review notes or falsely self-ticks reviewer criteria will be reverted to the reviewer's baseline and demoted to `REVISE`.
+See [§2.7 Task Modification Discipline: The Workers-Append Rule](#27-task-modification-discipline-the-workers-append-rule) for the authoritative rule definition and specimen (`[[aops_27fc5fc2]]`).
 
 ---
 
@@ -281,7 +276,7 @@ Workers fill evidence and tick their own round's criteria; they never rewrite or
 - [ ] **AC-5 (Reconcile Catch):** Peer reconcile demotes any `done` task with `origin` that lacks valid `delivery_evidence`.
 - [ ] **AC-6 (Review-State Delivery via Ida Prime):** `wf-human-approval` step 2 routes delivery through Ida Prime so review tasks are actively surfaced to Nic on Telegram and the daily note `## Needs Nic's Sign-Off`.
 - [ ] **AC-7 (Project-Tracked Surfacing in `/mine`):** Bare `/mine` (running `wf-ida-task-tree`) lists both `agent_brains_ida` tasks and domain tasks bearing `ida-tracked` tags.
-- [ ] **AC-8 (Workers-Append Rule):** Workers fill evidence and tick their own round's criteria; they never rewrite or delete review notes or earlier rounds (`[[aops_27fc5fc2]]`).
+- [ ] **AC-8 (Workers-Append Rule):** See [§2.7 Task Modification Discipline: The Workers-Append Rule](#27-task-modification-discipline-the-workers-append-rule).
 
 ### 4.2 Test & Verification Plan
 
