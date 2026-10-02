@@ -110,9 +110,9 @@ reading durable evidence, never by asking a running worker how it is going.
 ## Status Lifecycle
 
 ```
-queued → in_progress → merge_ready → done (deliverable accepted)
-                │              │
-                │              └→ review (needs human judgment; finish/merge failed)
+queued → in_progress → done (deliverable accepted)
+                │
+                ├→ review (needs human judgment; finish/merge failed)
                 ├→ partial (terminal: chunk handed back, remainder carried by
                 │           continue tasks — see
                 │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
@@ -131,7 +131,7 @@ that set without extensions (`partial` is part of it).
 
 - [[specs/polecat/polecat-system.md]] — Isolated task workspaces and the delivery
   guarantees the supervisor dispatches onto
-- `plugins/pkb/skills/pull/SKILL.md` — The operative skill: claiming a unit,
+- `plugins/ida/skills/pull/SKILL.md` — The operative skill: claiming a unit,
   working it, and carrying it to a terminal state.
 - `plugins/aops/skills/polecat/SKILL.md` — The launcher that puts a worker in front of a unit.
   It launches containers; it makes no eligibility or ordering decision about which

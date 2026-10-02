@@ -26,7 +26,7 @@ exist yet: converting a capture into a task in place.
 | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`) | Built -- `quick-babf1cd6`                              |
 | Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5          | Built -- remains the fallback this route defers to     |
-| Standing, automated pickup sharing the `/reconcile` trigger                  | **Not built -- this spec's target shape**              |
+| Standing, automated pickup context                                           | **Not built -- this spec's target shape**              |
 | PKB write that moves, renames and retypes a document while keeping its ID    | **Not built -- blocks the Task disposition (see Gap)** |
 
 ## The unprocessed marker
@@ -51,14 +51,14 @@ confident ones.
 
 **Grain:** one capture note is one unit of judgment, matching `/reconcile`'s per-task grain.
 
-**Owner:** `pkb:q` -- the existing Stage 1 Intake & Capture skill already does exactly this job for
+**Owner:** `ida:q` -- the existing Stage 1 Intake & Capture skill already does exactly this job for
 a natural-language ask (classify, parent, search-and-adopt, densify, value at intake). This route
 invokes it; it does not reimplement classification, parenting, or valuation logic. One canonical
 owner, per the same constraint `/reconcile`'s spec states for closure-loop logic.
 
 **The interactive/headless gap.** `/q` assumes a user is present to disambiguate: unclear
 classification or an ambiguous parent is worked out with `AskUserQuestion`. A capture note picked
-up on the `/reconcile` timer has nobody watching -- that call would hang. `/q` needs a second
+up headlessly has nobody watching -- that call would hang. `/q` needs a second
 invocation context for this, alongside its implicit interactive one, on the same pattern
 `/reconcile` already uses for its three contexts (input subset changes, procedure does not):
 
@@ -117,13 +117,7 @@ classified as Task or Expand stays in `notes/mobile-captures/`; Note and Discard
 
 ## Trigger
 
-Shares `/reconcile`'s trigger as a separate step, already recorded in
-[`specs/workflows/reconcile.md`](reconcile.md#trigger) and stubbed as Step 2 of
-`scripts/systemd-user/aops-reconcile-run.sh`: reconcile maintains truth about existing claims and
-must not invent scope, while routing a capture is judgment work. Sharing the trigger shares the
-cost of the read; sharing the pass would not. This spec does not re-litigate that decision
-(`aops_reconcile_trigger`) or wire the entrypoint's placeholder line -- that lands with whichever
-task builds `/q`'s Automated pickup context, since there is nothing to invoke before it exists.
+Invoked as an automated pickup context: routing a capture is judgment work belonging to `ida:q`. That lands with whichever task builds `/q`'s Automated pickup context, since there is nothing to invoke before it exists.
 
 ## Out of scope
 
@@ -139,9 +133,7 @@ task builds `/q`'s Automated pickup context, since there is nothing to invoke be
 - **M0 -- PKB in-place conversion.** The PKB service gains the write described under Gap.
 - **M1 -- `/q` gains the Automated pickup context.** Documented in `plugins/ida/skills/q/SKILL.md`
   as an invocation-contexts table on the pattern above; falls through instead of asking.
-- **M2 -- Wired to the trigger.** `scripts/systemd-user/aops-reconcile-run.sh` Step 2's placeholder
-  becomes a real `claude -p` invocation of the new context.
-- **M3 -- First live run confirms real writes.** Same discipline `aops_reconcile_trigger` set for
-  reconcile's first write: before the timer is trusted unattended, one manual run must be confirmed
+- **M2 -- Wired to automated pickup.** A real invocation of the automated pickup context.
+- **M3 -- First live run confirms real writes.** Before automated pickup is trusted unattended, one manual run must be confirmed
   to have converted a real capture into a task in place (same ID, file now outside
   `notes/mobile-captures/`) and to have exercised `pkb__delete` on a real capture, not only reads.

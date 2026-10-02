@@ -13,7 +13,7 @@ related:
 
 # GH ↔ PKB Reconcile
 
-The reconcile procedure itself lives in `plugins/pkb/skills/reconcile/SKILL.md` and is not
+The reconcile procedure itself lives in `plugins/ida/skills/reconcile/SKILL.md` and is not
 restated here. This spec carries the design constraints that bind it, the frontmatter and
 event-log surfaces it reads and writes, and the target shape of the GitHub-issue leg it does not
 yet cover.
@@ -55,43 +55,21 @@ one is covered.
 
 The context changes the input subset, not the procedure.
 
-| Context    | Owner                                                                        | Input subset                                                               |
-| ---------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: claims taken before it, pull requests closed during it |
-| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                  |
-| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across every non-terminal task and its pull requests            |
+| Context    | Owner                                                                        | Input subset                                                                                     |
+| ---------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: tasks marked `done` within it, and pull requests closed during it            |
+| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                                        |
+| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across tasks marked `done` in the sweep window, pull requests, and non-terminal tasks |
 
-Each subset is pull requests only. Once the forward-issue leg lands, each extends to the open
+Each subset covers tasks marked `done` and pull requests. Once the forward-issue leg lands, each extends to the open
 issues in the same window.
 
 The face does not touch the knowledge base, so its engagement sweep is a delegation: it
-commissions an agent that runs the skill and returns one synthesized result.
+commissions an agent that runs the reconcile workflow and returns one synthesized result.
 
 **The reverse direction is not a fourth context.** What a task's completion resolves on the issue
 tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on a
 different trigger, which reconcile does not run.
-
-## Trigger
-
-On-demand's invocation is `scripts/systemd-user/aops-reconcile.timer` (install and verification
-steps in its header comment): a user-scope systemd timer firing `claude -p "/pkb:reconcile"` on a
-schedule, needing nothing from Nic to fire. The timer's service runs a thin shell entrypoint with
-no reconciliation logic of its own -- it only launches the agent that runs this skill, consistent
-with the constraint above that agents do this work, not scripts.
-
-Capture pickup ([[aops_capture_intake_route]]) shares this trigger as a separate step in the same
-entrypoint script, invoked on its own, not folded into the reconcile prompt: reconcile maintains
-truth about existing claims and must not invent scope, while routing a capture to task, note, or
-discard is judgment work belonging to `pkb:q`. Sharing the trigger shares the cost of the read;
-sharing the pass would not.
-
-Before the timer is enabled, the entrypoint must run once manually and the run must be confirmed
-to have executed a real PKB write (`update_task` or `release_task`), not only reads -- the write
-path is untested headlessly. That run should also confirm which transport resolves this skill's
-`mcp__services__*` calls: a same-day probe on this host found the `plugin:pkb:services`
-transport failing to connect headlessly (`CONNECTION_CLOSED`), with only the
-user-level `services` HTTP server resolving the same tool calls. Whether that gap is
-still open when this trigger is installed is a fact to check at install time, not to assume.
 
 ## Frontmatter markers
 

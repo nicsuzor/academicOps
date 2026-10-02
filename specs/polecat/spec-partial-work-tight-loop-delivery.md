@@ -115,18 +115,18 @@ evidence plus output URL are written to the task.
 ## The `partial` terminal state
 
 `partial` is a canonical terminal status in the closed status taxonomy, and the
-surface-agnostic marker for clause 5. It is distinct from `merge_ready` and from
+surface-agnostic marker for clause 5. It is distinct from `done` and from
 abandonment:
 
-- **vs `merge_ready`** — a partial deliverable never enters the human-approval
-  one-way-door queue. Where the deliverable is a PR, that is enforced structurally:
+- **vs `done`** — a partial deliverable never enters the completed work stream
+  as fully delivered. Where the deliverable is a PR, that is enforced structurally:
   the PR is opened with `gh pr create --draft`, and a GitHub draft PR cannot be
   merged and never produces an `APPROVED`-on-SHA auto-merge. That draft PR is the
   GitHub-surface **projection** of `partial`, not part of the state's definition —
   an in-session subagent or agent team reaches `partial` with no PR at all, its
   output URL and disclosure living on the task. ("Draft" names only the PR
   mechanism; it is never a PKB status.) Non-PR partials honour the same invariant
-  by never being marked approval-ready on the task.
+  by never being marked done on the task.
 - **vs abandonment** — clause 4 and the backstop below guarantee a live follow-up
   exists. A `partial` with no live child is itself a gate failure.
 

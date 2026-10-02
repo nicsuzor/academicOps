@@ -122,7 +122,7 @@ Emit exactly these keys, in this shape:
       "timestamp": "ISO 8601",
       "type": "task_release",
       "task_id": "",
-      "status": "done | merge_ready | review | partial | cancelled",
+      "status": "done | review | partial | cancelled",
       "summary": ""
     }
   ],
