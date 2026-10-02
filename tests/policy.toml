@@ -37,7 +37,8 @@ valid_statuses = [
 enabled = false
 
 [ida]
-strip_the_reply_enabled = false
+strip_the_reply_enabled = true
+search_the_pkb_enabled = true
 
 [orchestrate]
 rule_against_hearsay_enabled = false

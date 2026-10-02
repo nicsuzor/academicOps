@@ -3,6 +3,7 @@ from __future__ import annotations
 """ida hook handlers."""
 
 
+import json
 import logging
 import os
 import re
@@ -10,12 +11,13 @@ import shlex
 import shutil
 import socket
 import subprocess
+import tempfile
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from dispatch import HookContext, Result, load_message_pair, warn
+from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -61,15 +63,109 @@ _MAX_INJECT_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...truncated, output exceeded injection budget...]"
 
 
-def honest_output(ctx: HookContext) -> Result | None:
-    """Remind agents to present substantiating evidence with their claims."""
-    if ctx.agent_type and ctx.agent_type.endswith((":ida", ":james")):
-        return None
+def is_agent(ctx: HookContext | str | None, *targets: str) -> bool:
+    """Check if the context or agent string matches any target agent names.
 
+    Matches bare names (e.g. 'ida', 'james'), namespaced forms (e.g. 'ida:ida',
+    'aops:james', 'plugin:ida', 'ida:custom'), prime variants (e.g. 'ida-prime',
+    'ida_prime'), and colon-delimited components.
+    """
+    if ctx is None:
+        return False
+    agent = ctx.agent_type if hasattr(ctx, "agent_type") else str(ctx)
+    agent = (agent or "").strip().lower()
+    if not agent:
+        return False
+    for target in targets:
+        target = target.strip().lower()
+        if not target:
+            continue
+        if (
+            agent == target
+            or agent.startswith(f"{target}:")
+            or agent.endswith(f":{target}")
+            or agent in (f"{target}-prime", f"{target}_prime")
+            or f":{target}:" in agent
+        ):
+            return True
+    return False
+
+
+def is_ida(ctx: HookContext | str | None, *extra_targets: str) -> bool:
+    """Check if the agent is Ida or matches any additional target names."""
+    return is_agent(ctx, "ida", *extra_targets)
+
+
+_is_ida = is_ida
+_is_agent = is_agent
+
+
+_CHANNEL_REPLY_TOOLS = {
+    "telegram_reply",
+    "discord_reply",
+    "AskUserQuestion",
+    "ask_user_question",
+    "ask_question",
+}
+
+
+def _is_channel_reply_tool(tool_name: str) -> bool:
+    if not tool_name:
+        return False
+    name = tool_name.split("__")[-1]
+    if name in _CHANNEL_REPLY_TOOLS:
+        return True
+    lower = name.lower()
+    if lower in (
+        "telegram_reply",
+        "discord_reply",
+        "askuserquestion",
+        "ask_user_question",
+        "ask_question",
+        "askquestion",
+    ):
+        return True
+    if ("telegram" in lower or "discord" in lower) and ("reply" in lower or "send" in lower):
+        return True
+    return False
+
+
+def _channel_gate_state_dir() -> Path:
+    override = os.environ.get("AOPS_CHANNEL_GATE_DIR")
+    path = Path(override) if override else Path(tempfile.gettempdir()) / "aops_channel_gate"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _channel_gate_state_path(session_id: str) -> Path:
+    safe_session = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", session_id or "default")
+    return _channel_gate_state_dir() / f"{safe_session}.json"
+
+
+def clear_channel_gate_state(session_id: str | None = None) -> None:
+    if session_id:
+        target = _channel_gate_state_path(session_id)
+        if target.exists():
+            try:
+                target.unlink()
+            except OSError:
+                pass
+    else:
+        state_dir = _channel_gate_state_dir()
+        if state_dir.exists():
+            for p in state_dir.glob("*.json"):
+                try:
+                    p.unlink()
+                except OSError:
+                    pass
+
+
+def honest_output(ctx: HookContext) -> Result | None:
+    """Remind all agents to present substantiating evidence on stop, blocking once."""
     if ctx.raw.get("background_tasks"):
         return None
 
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+    return block(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
@@ -139,9 +235,6 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     `<academicOps PKB search results>` tags; if that fails, returns the
     existing messages.
     """
-    if ctx.agent_type and ctx.agent_type.endswith(":ida"):
-        return None
-
     raw_prompt = ctx.raw.get("prompt")
     if raw_prompt is None and hasattr(ctx, "prompt"):
         raw_prompt = ctx.prompt
@@ -155,18 +248,48 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
 
-    return honest_output(ctx)
+    if is_agent(ctx, "ida", "james"):
+        return None
+
+    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
 def be_quiet(ctx: HookContext) -> Result | None:
-    """Remind the face to strip its reply down to what is load-bearing."""
-    # Only fire on Ida
-    if ctx.agent_type == "ida:ida":
-        if ctx.raw.get("background_tasks"):
-            return None
+    """Remind Ida Prime to strip its reply down to what is load-bearing on stop."""
+    if not _is_ida(ctx):
+        return None
+    if ctx.raw.get("background_tasks"):
+        return None
+    return block(*load_message_pair(ctx.hooks_dir, "quiet"))
+
+
+def quiet_channel_reply(ctx: HookContext) -> Result | None:
+    """Deny channel replies once for Ida Prime to enforce ADHD executive protection."""
+    if not _is_ida(ctx):
+        return None
+    if not _is_channel_reply_tool(ctx.tool):
+        return None
+
+    state_path = _channel_gate_state_path(ctx.session_id)
+    if state_path.exists():
+        try:
+            data = json.loads(state_path.read_text(encoding="utf-8"))
+            if data.get("blocked_once"):
+                return None
+        except Exception:
+            pass
+
+    try:
+        state_path.write_text(
+            json.dumps({"blocked_once": True, "tool": ctx.tool}), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+    if ctx.client == "agy":
         return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
 
-    return None
+    return refuse(*load_message_pair(ctx.hooks_dir, "quiet"))
 
 
 def _scrub(value: object) -> str:
@@ -337,13 +460,11 @@ def session_start(ctx: HookContext) -> Result | None:
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind the dispatcher that a subagent's report is not evidence."""
-    # Only fire on supervisor profiles
-    if ctx.agent_type in ("ida:ida", "aops:james"):
-        if any(call.get("tool_name") == "Agent" for call in ctx.tool_calls):
-            return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
-
-    return None
+    """Remind Ida on UserPromptSubmit that incoming reports are hearsay and require premise verification."""
+    clear_channel_gate_state(ctx.session_id)
+    if not _is_ida(ctx):
+        return None
+    return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
@@ -488,11 +609,14 @@ def agy_stop(ctx: HookContext) -> Result | None:
 
 HANDLERS: dict[str, list] = {
     "SessionStart": [session_start],
-    "UserPromptSubmit": [user_prompt_submit, agy_user_prompt_submit, search_the_pkb],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool) if h is not None],
+    "UserPromptSubmit": [
+        user_prompt_submit,
+        agy_user_prompt_submit,
+        search_the_pkb,
+        rule_against_hearsay,
+    ],
+    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, quiet_channel_reply) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop],
-    #   "PostToolBatch": [rule_against_hearsay,be_quiet],
-    # "SubagentStart": [honest_output],
+    "Stop": [stop, agy_stop, honest_output, be_quiet],
 }

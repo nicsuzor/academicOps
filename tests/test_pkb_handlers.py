@@ -222,6 +222,61 @@ def test_user_prompt_submit_fallback_when_pkb_search_fails():
         assert res.inject_text == expected_inject
 
 
+def test_user_prompt_submit_ida_injects_pkb_search():
+    """Verify that search_the_pkb injects PKB search results for Ida (agent_type 'ida:ida' and 'ida')."""
+    for agent in ("ida:ida", "ida"):
+        ctx = HookContext(
+            client="claude",
+            event="UserPromptSubmit",
+            raw={"prompt": "what are the axioms of academicOps?"},
+            hooks_dir=PKB_HOOKS,
+            cwd="/workspace",
+            agent_type=agent,
+        )
+        mock_search_results = "specs/AXIOMS.md: Found 1 match."
+        with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results):
+            res = handlers.search_the_pkb(ctx)
+            assert res is not None
+            expected_text = (
+                "<academicOps PKB search results>\n"
+                f"{mock_search_results}\n"
+                "</academicOps PKB search results>"
+            )
+            assert res.inject_text == expected_text
+            assert res.user_text is None
+
+
+def test_user_prompt_submit_ida_no_results_returns_none():
+    """When PKB search yields no results for Ida or James, returns None (no fallback honesty spam)."""
+    for agent in ("ida:ida", "ida", "aops:james", "james"):
+        ctx = HookContext(
+            client="claude",
+            event="UserPromptSubmit",
+            raw={"prompt": "check status"},
+            hooks_dir=PKB_HOOKS,
+            cwd="/workspace",
+            agent_type=agent,
+        )
+        with patch.object(handlers, "_run_pkb_search", return_value=None):
+            res = handlers.search_the_pkb(ctx)
+            assert res is None
+
+
+def test_user_prompt_submit_ida_empty_prompt_returns_none():
+    """When prompt is empty for Ida or James, returns None (no fallback honesty spam)."""
+    for agent in ("ida:ida", "ida", "aops:james", "james"):
+        ctx = HookContext(
+            client="claude",
+            event="UserPromptSubmit",
+            raw={"prompt": ""},
+            hooks_dir=PKB_HOOKS,
+            cwd="/workspace",
+            agent_type=agent,
+        )
+        res = handlers.search_the_pkb(ctx)
+        assert res is None
+
+
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
     """End-to-end dispatch for Claude Code UserPromptSubmit with search success."""
     proc = subprocess.run(

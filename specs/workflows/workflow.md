@@ -15,9 +15,9 @@ Work moves through three stages. Each runs, then stops; no stage fires the next.
 | ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Capture | `/q`         | Situate an ask on the graph — under the right parent, wired to what it serves, valued at intake.                                                          |
 | 2. Expand  | `/decompose` | Expand the objective into an abstract graph of sub-objectives, decision branches, prerequisites, and alternate paths. Stops before implementation detail. |
-| 3. Reify   | `/brief`     | Work out the process, cut into dispatchable units, and write the brief and acceptance criteria.                                                           |
+| 3. Reify   | `/dispatch`  | Assemble workflows from templates, write dispatchable task briefs, and dispatch them.                                                                     |
 
-The stages are operative instructions and live in `plugins/aops/skills/`. This spec does not restate them.
+The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 
 ## Workflow components
 
@@ -35,7 +35,7 @@ Components come from three sources:
 | Source                  | Where                                                                      |
 | ----------------------- | -------------------------------------------------------------------------- |
 | Project-local           | `$CWD/.agents/templates/*.md` — an absent directory is empty, not an error |
-| Plugin                  | `plugins/aops/workflows/*.md`                                              |
+| Universal               | `plugins/ida/skills/workflow-library/workflows/*.md`                       |
 | Personal knowledge base | documents carrying `type: template`                                        |
 
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
