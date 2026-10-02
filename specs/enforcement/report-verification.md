@@ -21,7 +21,7 @@ This spec supplies all three. It also supplies an OpenTelemetry trace, so that w
 ## Constraints and doctrine governing this design
 
 - **Hooks deliver and never decide** ([enforcement.md](enforcement.md) line 18). Every arrival-time element a hook carries is an advisory reminder (JIT injection). The verdict is always an agent's judgment. No arrival hook blocks, and none keys on the content of a report.
-- **What a hook may key on.** A hook may key on fields the client sets (`tool_response.status`, the transcript's `origin` object, the harness-authored envelope at the head of a prompt). It never keys on words the reporting agent wrote ("BLOCKED", "cannot"). That would be content-sniffing ([enforcement.md](enforcement.md) line 20).
+- **What a hook may key on.** A hook may key on fields the client sets (`tool_response.status`, the transcript's `origin` object, the harness-authored envelope at the head of a prompt). It never keys on words the reporting agent wrote ("HALTED", "cannot"). That would be content-sniffing ([enforcement.md](enforcement.md) line 20).
 - **Reports stay prose.** The format is a hint to the reader, never "a regex over field names" ([evidence-contract.md](evidence-contract.md) lines 122–130). The claim ledger below consists of numbered English sentences. Nothing parses it mechanically.
 - **Ida's verification is a logic check** (`plugins/ida/agents/ida.md:57`). She never opens a primary source, never authenticates internal ledgers, and never runs code to verify a claim. When a pointer needs spot-checking, she dispatches the spot-check.
 - **Basis vocabulary is unchanged.** The design uses the seven tags at `evidence-contract.md:95-103` as they stand (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`, `[reported-by-another]`).
@@ -41,7 +41,7 @@ The ledger forms the body of the evidence contract's `CLAIM`/`EVIDENCE` fields (
 
 ### Governing Rules
 
-1. **The outcome line names its spine:** The report's status line (VERDICT / STATUS / HALTED / Summary) explicitly names the terminal claim it rests on: `VERDICT: BLOCKED (from C4)`. The spine is the outcome line plus every line it transitively uses. Only the spine must be in ledger form; narrative context may stay in prose below the ledger.
+1. **The outcome line names its spine:** The report's status line (VERDICT / STATUS / HALTED / Summary) explicitly names the terminal claim it rests on: `VERDICT: HALTED (from C4)`. The spine is the outcome line plus every line it transitively uses. Only the spine must be in ledger form; narrative context may stay in prose below the ledger.
 2. **One numbered line per claim (`C1`, `C2`, …):** Each line expresses a single, decontextualized atomic proposition that reads clearly in isolation.
 3. **Every leaf line ends with a basis tag and pinpoint pointer:** For example, `[observed: plugins/ida/skills/pull/SKILL.md:25]`.
 4. **Derived lines trace their lineage:** A derived line specifies the exact premises and warrants it uses: `C4. THEREFORE (C1, C2, C3 via W1 - D1): …`. A derived line carries no independent basis tag; its strength is strictly bounded by the weakest basis among its transitive leaves (the status-survival / anti-laundering rule).

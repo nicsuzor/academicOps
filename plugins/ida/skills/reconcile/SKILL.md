@@ -11,9 +11,9 @@ Truth maintenance over the task graph. Reconcile evaluates claimed evidence, ver
 
 1. **Load active tasks**: Read non-terminal tasks across active statuses within the sweep window.
 2. For tasks marked `done`, evaluate:
-    - **Pull request matching**: Match open and closed pull requests to tasks by structured identifiers (`pr_url`, task ID in PR body/branch, exact title). Unconditionally recognize merged PRs; inspect unmerged or closed PRs.
-    - **Facial sufficiency of claimed evidence**: Read each piece of claimed evidence in the worker's report against the task's literal acceptance criteria. Verify whether the evidence is facially sufficient to prove the criteria were met. Asserting that tests passed is sufficient for a worker's completion claim; full substantive QA is handled independently.
-    - **Scope check**: Verify that the delivered work and touched files respected the task's specified boundaries and did not expand beyond authorized scope.
+   - **Pull request matching**: Match open and closed pull requests to tasks by structured identifiers (`pr_url`, task ID in PR body/branch, exact title). Unconditionally recognize merged PRs; inspect unmerged or closed PRs.
+   - **Facial sufficiency of claimed evidence**: Read each piece of claimed evidence in the worker's report against the task's literal acceptance criteria. Verify whether the evidence is facially sufficient to prove the criteria were met. Asserting that tests passed is sufficient for a worker's completion claim; full substantive QA is handled independently.
+   - **Scope check**: Verify that the delivered work and touched files respected the task's specified boundaries and did not expand beyond authorized scope.
 3. **Reconcile pull requests**: Match closed pull requests to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title).
    - **Merged PRs**: Confirm `status: done` on observed merged PRs.
    - **Closed without merge**: Surface for routing if unsure about how to update the corresponding task.
@@ -32,9 +32,9 @@ When a task marked `done` fails the facial sufficiency or scope check:
    - _Referent destroyed_: Target artifact was deleted, verified across checkouts and refs.
    - _Superseded by merge_: Merged PR mooted or settled the task's question.
    - _Premise falsified_: Named assumption or precondition no longer holds.
-3. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations. Do not send failed `done` tasks to inbox.
-4. **Two-step mutation contract**: Write annotation and evidence to markdown body first, then mutate frontmatter via `pkb.update_task`, then read back to confirm status.
-5. **Daily note boundary**: Reconcile does not append to or own daily-note sections.
+2. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations. Do not send failed `done` tasks to inbox.
+3. **Two-step mutation contract**: Write annotation and evidence to markdown body first, then mutate frontmatter via `pkb.update_task`, then read back to confirm status.
+4. **Daily note boundary**: Reconcile does not append to or own daily-note sections.
 
 ## Output Contract
 
@@ -45,4 +45,3 @@ Emit one synthesized result:
 3. Cancellations (task ID, trigger fired, verbatim evidence written to body).
 4. Tasks demoted to `inbox` (dependents, stale items).
 5. Sweep window covered.
-
