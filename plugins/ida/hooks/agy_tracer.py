@@ -14,6 +14,14 @@ from typing import Any
 
 log = logging.getLogger("orchestrate.agy_tracer")
 
+try:
+    from token_extractor import resolve_gemini_tokens
+except ImportError:
+    try:
+        from .token_extractor import resolve_gemini_tokens
+    except Exception:
+        resolve_gemini_tokens = None
+
 from claude_code_tracer import (
     _build_and_export_spans,
     _build_tool_span_record,
@@ -74,7 +82,11 @@ def _extract_tool_output_from_transcript_agy(
 
 
 def _extract_llm_spans_for_turn_agy(
-    transcript_path: str, human_count_at_start: int, trace_id_hex: str, root_span_id_hex: str
+    transcript_path: str,
+    human_count_at_start: int,
+    trace_id_hex: str,
+    root_span_id_hex: str,
+    session_id: str | None = None,
 ) -> list[dict]:
     spans = []
     try:
@@ -130,6 +142,8 @@ def _extract_llm_spans_for_turn_agy(
                     content = entry.get("content", "")
                     tool_calls = entry.get("tool_calls", [])
                     ts = entry.get("created_at", "")
+                    thinking = entry.get("thinking", "")
+                    step_index = entry.get("step_index")
                     start_ns = time.time_ns()
                     if ts:
                         from datetime import datetime
@@ -148,6 +162,8 @@ def _extract_llm_spans_for_turn_agy(
                     }
                     if content:
                         attrs["llm.output_messages.0.message.content"] = _truncate(content)
+                    if thinking:
+                        attrs["llm.reasoning"] = _truncate(thinking)
 
                     if tool_calls:
                         attrs["output.mime_type"] = "application/json"
@@ -162,6 +178,29 @@ def _extract_llm_spans_for_turn_agy(
                     else:
                         attrs["output.mime_type"] = "text/plain"
                         attrs["output.value"] = _truncate(content)
+
+                    if resolve_gemini_tokens is not None:
+                        tok = resolve_gemini_tokens(
+                            session_id=session_id,
+                            transcript_path=transcript_path,
+                            step_index=step_index,
+                            input_text=last_input_content,
+                            output_text=content,
+                            thinking_text=thinking,
+                        )
+                        attrs["llm.token_count.prompt"] = tok["prompt"]
+                        attrs["llm.token_count.completion"] = tok["completion"]
+                        attrs["llm.token_count.total"] = tok["total"]
+                        if tok.get("cache_read"):
+                            attrs["llm.token_count.prompt_details.cache_read"] = tok["cache_read"]
+                            attrs["llm.token_count.prompt_details.cache_write"] = 0
+                        attrs["llm.token_count.type"] = tok["type"]
+                        attrs["llm.token_count.provenance"] = tok["type"]
+                        attrs["llm.token_count.estimate_method"] = tok["estimate_method"]
+                        attrs["llm.token_count.estimation_method"] = tok["estimate_method"]
+                        attrs["token_count.type"] = tok["type"]
+                        attrs["token_count.provenance"] = tok["type"]
+                        attrs["token_count.estimate_method"] = tok["estimate_method"]
 
                     spans.append(
                         {
@@ -467,6 +506,7 @@ def handle_stop(data: dict, config: dict) -> None:
             human_count_at_start=ct.get("human_count_at_start", 0),
             trace_id_hex=trace_id,
             root_span_id_hex=root_span_id,
+            session_id=session_id,
         )
 
         # Find the user prompt preview to set as CHAIN name
@@ -501,6 +541,45 @@ def handle_stop(data: dict, config: dict) -> None:
         if agent_name:
             chain_attrs["agent.name"] = agent_name
 
+        total_prompt = 0
+        total_completion = 0
+        total_cache = 0
+        all_reported = True
+        has_tokens = False
+
+        records = [None]  # placeholder for chain_span after totals are computed
+        for span in llm_spans:
+            records.append(span)
+            s_attrs = span.get("attributes", {})
+            if "llm.token_count.prompt" in s_attrs:
+                has_tokens = True
+                total_prompt += s_attrs["llm.token_count.prompt"]
+                total_completion += s_attrs["llm.token_count.completion"]
+                total_cache += s_attrs.get("llm.token_count.prompt_details.cache_read", 0)
+                if s_attrs.get("llm.token_count.type") != "reported":
+                    all_reported = False
+
+        if has_tokens:
+            chain_attrs["llm.token_count.prompt"] = total_prompt
+            chain_attrs["llm.token_count.completion"] = total_completion
+            chain_attrs["llm.token_count.total"] = total_prompt + total_completion
+            if total_cache > 0:
+                chain_attrs["llm.token_count.prompt_details.cache_read"] = total_cache
+                chain_attrs["llm.token_count.prompt_details.cache_write"] = 0
+            est_type = "reported" if all_reported else "estimated"
+            est_method = (
+                "reported: antigravity conversation db steps payload"
+                if all_reported
+                else "estimated: character length ratio"
+            )
+            chain_attrs["llm.token_count.type"] = est_type
+            chain_attrs["llm.token_count.provenance"] = est_type
+            chain_attrs["llm.token_count.estimate_method"] = est_method
+            chain_attrs["llm.token_count.estimation_method"] = est_method
+            chain_attrs["token_count.type"] = est_type
+            chain_attrs["token_count.provenance"] = est_type
+            chain_attrs["token_count.estimate_method"] = est_method
+
         # Emit CHAIN span
         chain_span = {
             "name": prompt_preview,
@@ -513,14 +592,7 @@ def handle_stop(data: dict, config: dict) -> None:
             "force_span_id": True,
             "attributes": chain_attrs,
         }
-
-        records = [chain_span]
-        for span in llm_spans:
-            # agy doesn't have usage attributes, remove them if we want to be clean
-            for k in list(span["attributes"].keys()):
-                if k.startswith("llm.token_count"):
-                    del span["attributes"][k]
-            records.append(span)
+        records[0] = chain_span
 
         _build_and_export_spans(
             config=config,
