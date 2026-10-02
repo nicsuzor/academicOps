@@ -66,16 +66,21 @@ independently confirming the thing claimed is actually true.
 
 ## The canonical structured-handback format
 
-This section is the single source of truth for the six-field handback shape.
-Every other surface that uses it links here rather than restating the fields.
+This section is the single source of truth for the claim ledger format.
+Every other surface that uses it links here rather than restating the rules.
 
-```
-VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
-CLAIM: <one sentence — the conclusion>
-GATE: <the acceptance criterion tested, and the observed result against it>
-EVIDENCE: <pointers — command+output, file:line, resolving URL, quoted source — NOT pasted dumps>
-CONFIDENCE: <high|med|low> + <what single check would falsify this>
-CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT RUN">
+The report format is a strict Argdown claim ledger. The parser accepts this form as written.
+
+```argdown
+===
+title: Handover Receipts
+===
+[Outcome]: VERDICT: <STATUS>
+
+[C1]: <Atomic empirical claim 1> [basis: pointer]
+[C2]: <Atomic empirical claim 2> [basis: pointer]
+[C3]: THEREFORE (C1, C2): <Derived claim> {uses: [C1, C2]}
+  +> [Outcome]
 ```
 
 - `PARTIAL` = a legal partial completion — the existing PKB terminal status
@@ -84,14 +89,9 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? — or "NOT 
   task, and refused judgment calls are surfaced as decisions. The discriminator
   between partial and broken-ship lives in
   [`spec-partial-work-tight-loop-delivery.md`](../polecat/spec-partial-work-tight-loop-delivery.md#the-discriminator-partial-vs-broken-ship).
-- `CONFOUND CHECK` is mandatory whenever the verdict blames anything outside the
-  agent's own change. `NOT RUN` means the claim is not relayed as established
-  until the control runs: any agent relaying a "not our bug" claim without a
-  control is relaying an unverified claim.
-- **CLAIM/EVIDENCE is a set of claim+evidence-pointer pairs, not a bare
-  assertion.** Where a handback asserts more than one substantive fact, itemize
-  each on its own line with its own evidence pointer — one `EVIDENCE` line does
-  not silently cover several unrelated claims.
+- **One line per criterion:** Prime checks what was done and where it was saved. Make the report one line per criterion where possible.
+- **Traceability:** Derived claims must cite their premises using `{uses: [...]}` for the parser.
+- **Warrants and Defeaters only when contested:** Do not use `W` and `D` nodes unless explicitly arguing a contested claim. For standard work, use direct deduction.
 - **Every itemized load-bearing claim carries its BASIS tag:**
   - `[observed]` — the agent saw the primary evidence itself this session, and cites a pinpoint pointer (`file:line`, command + output, node ID, URL).
   - `[attempted-and-failed]` — an attempted action/command/tool execution with its verbatim error output attached. (Mandatory for capability claims.)
