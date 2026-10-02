@@ -122,7 +122,9 @@ def _extract_llm_spans_for_turn_agy(
                         break  # Next turn started
                     elif human_count <= human_count_at_start:
                         # accumulate history
-                        accumulated_messages.append({"role": "user", "content": entry.get("content", "")})
+                        accumulated_messages.append(
+                            {"role": "user", "content": entry.get("content", "")}
+                        )
 
                     continue
 
@@ -146,8 +148,6 @@ def _extract_llm_spans_for_turn_agy(
                             accumulated_messages.append({"role": "tool", "content": tool_content})
                     continue
 
-
-
                 if entry_type in ("EPHEMERAL_MESSAGE", "CHECKPOINT"):
                     continue
                 if entry_source == "SYSTEM":
@@ -156,10 +156,11 @@ def _extract_llm_spans_for_turn_agy(
                         accumulated_messages.append({"role": "system", "content": sys_text})
                     continue
 
-
                 if entry.get("source") == "MODEL" and entry.get("type") == "PLANNER_RESPONSE":
                     if not in_turn and human_count <= human_count_at_start:
-                        accumulated_messages.append({"role": "assistant", "content": entry.get("content", "")})
+                        accumulated_messages.append(
+                            {"role": "assistant", "content": entry.get("content", "")}
+                        )
                     content = entry.get("content", "")
                     tool_calls = entry.get("tool_calls", [])
                     ts = entry.get("created_at", "")
@@ -171,7 +172,6 @@ def _extract_llm_spans_for_turn_agy(
 
                         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                         start_ns = int(dt.timestamp() * 1_000_000_000)
-
 
                     attrs: dict[str, Any] = {
                         "openinference.span.kind": "LLM",
