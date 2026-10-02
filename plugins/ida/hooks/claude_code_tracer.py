@@ -1343,7 +1343,7 @@ _MAX_ATTR_BYTES = int(os.environ.get("OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT", "
 
 def _truncate(value: Any) -> str:
     s = json.dumps(value) if not isinstance(value, str) else value
-    
+
     # Redact common secrets before truncation
     secrets = [
         os.environ.get("GH_TOKEN"),
@@ -1355,10 +1355,10 @@ def _truncate(value: Any) -> str:
     for k, v in os.environ.items():
         if (k.endswith("_API_KEY") or k.startswith("CF_ACCESS_")) and v:
             secrets.append(v)
-            
+
     # Redact secrets
     for secret in secrets:
-        if secret and len(secret) > 4: # Don't redact empty or very short strings by accident
+        if secret and len(secret) > 4:  # Don't redact empty or very short strings by accident
             s = s.replace(secret, "<REDACTED_SECRET>")
 
     encoded = s.encode("utf-8")
@@ -1510,25 +1510,27 @@ def _build_and_export_spans(
             provider = TracerProvider(**kwargs)
 
             import logging
+
             from opentelemetry.sdk.trace.export import SpanExportResult
-            
+
             class ErrorReportingExporter:
                 def __init__(self, target):
                     self._target = target
-                    
+
                 def export(self, spans):
                     # OTel exporters log exceptions and HTTP errors to their module logger.
                     # We capture those logs during export to report them verbatim.
                     target_logger_name = self._target.__module__
                     target_logger = logging.getLogger(target_logger_name)
-                    
+
                     class CaptureHandler(logging.Handler):
                         def __init__(self):
                             super().__init__()
                             self.messages = []
+
                         def emit(self, record):
                             self.messages.append(record.getMessage())
-                            
+
                     handler = CaptureHandler()
                     target_logger.addHandler(handler)
                     try:
@@ -1540,10 +1542,10 @@ def _build_and_export_spans(
                         return res
                     finally:
                         target_logger.removeHandler(handler)
-                        
+
                 def shutdown(self):
                     self._target.shutdown()
-                    
+
                 def force_flush(self, timeout_millis: int = 30000):
                     if hasattr(self._target, "force_flush"):
                         return self._target.force_flush(timeout_millis)
