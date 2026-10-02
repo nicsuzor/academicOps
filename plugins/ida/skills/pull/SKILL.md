@@ -29,7 +29,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 - Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations.
 - When acceptance criteria are met, mark the task `done` via `/dump` (workers with PKB access mark `done` after `/pull`; asserting that tests ran is sufficient for a completion claim).
-- If incomplete due to external blockers, release as `review` (with required `reason`) or `partial`. Wire directed `blocks` edges instead of setting `status: blocked`.
+- If incomplete due to external blockers, release as `review` (with required `reason`) or `partial`. Wire directed `blocks` edges.
 
 ### 5. Handover
 
