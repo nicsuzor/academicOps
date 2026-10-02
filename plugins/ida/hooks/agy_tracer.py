@@ -151,7 +151,7 @@ def _extract_llm_spans_for_turn_agy(
                         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                         start_ns = int(dt.timestamp() * 1_000_000_000)
 
-                    attrs = {
+                    attrs: dict[str, Any] = {
                         "openinference.span.kind": "LLM",
                         "llm.model_name": "gemini-pro-agent",
                         "llm.input_messages.0.message.role": last_input_role,
@@ -547,9 +547,9 @@ def handle_stop(data: dict, config: dict) -> None:
         all_reported = True
         has_tokens = False
 
-        records = [None]  # placeholder for chain_span after totals are computed
+        other_records: list[dict[str, Any]] = []
         for span in llm_spans:
-            records.append(span)
+            other_records.append(span)
             s_attrs = span.get("attributes", {})
             if "llm.token_count.prompt" in s_attrs:
                 has_tokens = True
@@ -592,7 +592,7 @@ def handle_stop(data: dict, config: dict) -> None:
             "force_span_id": True,
             "attributes": chain_attrs,
         }
-        records[0] = chain_span
+        records: list[dict[str, Any]] = [chain_span] + other_records
 
         _build_and_export_spans(
             config=config,
