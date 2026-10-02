@@ -50,7 +50,8 @@ However, an architectural blind spot exists between **task graph completion** an
 - `[[task_32d3fe44]]`: Attempted to make the daily note a surface for dropped work, but lacked a forcing mechanism on task release.
 - `[[aops_reconcile_trigger]]`: The worker that wrote the systemd timer could not install from its container, and Nic parked the mechanical trigger on 2026-09-15:
   > _"we forget building a mechanical trigger for now, and we either change who's allowed to write to the graph or change graph states"_
-  > The present design builds squarely on the **"change graph states"** alternative: rather than attempting to construct an unprompted background reconcile daemon or mechanical event wake, it introduces a distinct graph state (`ida_held`) and binds human delivery to graph state transitions and human-directed trigger commands.
+
+  The present design builds squarely on the **"change graph states"** alternative: rather than attempting to construct an unprompted background reconcile daemon or mechanical event wake, it introduces a distinct graph state (`ida_held`) and binds human delivery to graph state transitions and human-directed trigger commands.
 
 ---
 
@@ -167,7 +168,7 @@ Nic directed on 2026-10-02:
 
 > _"no, gimme a quick one line command i can run that will trigger a pass through your own assigned tasks in .claude/commands/"_
 
-Nic running `/mine` is his explicit architectural choice. The design relies entirely on this human-initiated trigger:
+Nic asked for `/mine` as the trigger. The design relies entirely on this human-initiated trigger:
 
 1. **Shared Command:** `/mine` is the shared `/mine` command, which belongs to all Idas. It is defined in the shared ida repository, not in `academicOps`.
 2. **Dual Syntax & Behavior:**
