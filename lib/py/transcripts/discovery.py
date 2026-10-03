@@ -65,7 +65,7 @@ def agy_brain_roots(home: Path | str | None = None) -> list[Path]:
 
     Both are agy's own layout under home; it reads no variable that relocates
     them, which is why this takes no `env`. The second is where the brain lands
-    when agy runs under polecat: `lib/polecat/cli.py` gives the agy branch
+    when agy runs under polecat: the polecat container launcher gives the agy branch
     `AGY_SESSION_PATH` (`~/.gemini/tmp/workspace`) as the container path it
     mounts the session directory at, so `agy-brain` appears beneath it as well as
     at the brain mount proper.
@@ -160,7 +160,7 @@ def find_container_transcripts(
     """Every transcript reachable from the client state roots, newest first.
 
     Inside a container these roots hold what this container's run wrote — but
-    not only that. `lib/polecat/cli.py` derives the session directory it mounts
+    not only that. The polecat container launcher derives the session directory it mounts
     as `<sessions>/logs/<YYYYMMDD>/<session-id>/<project>`, so a second run
     given the same `-s` on the same day mounts the same directory and sees the
     earlier run's transcripts too. Read the result as "the conversations under
