@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.10.6](https://github.com/nicsuzor/academicOps/compare/v0.10.5...v0.10.6) (2026-10-03)
+
+
+### Features
+
+* **ida:** apply honesty and quiet checks on PreToolUse for channel replies ([952d171](https://github.com/nicsuzor/academicOps/commit/952d171429a05024b2f0c49c46f50f4386bca6db))
+* **ida:** apply honesty and quiet checks on PreToolUse for channel replies ([9827419](https://github.com/nicsuzor/academicOps/commit/9827419402d39678de061a2f76bceb43e198a10e))
+
+
+### Documentation
+
+* **polecat:** update spec references to reflect CLI removal ([b265956](https://github.com/nicsuzor/academicOps/commit/b2659564dec7a351fc0b37f42af6efec4a33237d))
+* remove references to deleted polecat modules in docstrings ([4b0e263](https://github.com/nicsuzor/academicOps/commit/4b0e263d2afcd865a595da98bfa403e97091b3c5))
+
+
+### Miscellaneous
+
+* remove Dockerfile, polecat scripts, and Docker build instructions ([c45f171](https://github.com/nicsuzor/academicOps/commit/c45f171056a047c60d4f2a99da110b04ce87ba6a))
+* remove Dockerfile, polecat scripts, and Docker build instructions ([6ac1380](https://github.com/nicsuzor/academicOps/commit/6ac1380b857ff7e90f3d13bd536b259c801ee93a))
+
 ## [0.10.5](https://github.com/nicsuzor/academicOps/compare/v0.10.4...v0.10.5) (2026-10-03)
 
 ### Bug Fixes
