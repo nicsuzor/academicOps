@@ -293,7 +293,17 @@ def test_ida_prime_stop_combines_honesty_and_quiet(staged_hooks: Path):
 
 
 def test_quiet_pretooluse_channel_reply_denies_once_for_ida(staged_hooks: Path):
-    for tool in ("telegram_reply", "discord_reply", "AskUserQuestion", "ask_question"):
+    channel_tools = (
+        "telegram_reply",
+        "telegram_send_message",
+        "mcp__plugin_telegram_telegram__reply",
+        "mcp__telegram__reply",
+        "mcp__telegram__send_message",
+        "discord_reply",
+        "AskUserQuestion",
+        "ask_question",
+    )
+    for tool in channel_tools:
         handlers.clear_channel_gate_state("s-chan-1")
         payload = {
             "hook_event_name": "PreToolUse",
@@ -302,7 +312,7 @@ def test_quiet_pretooluse_channel_reply_denies_once_for_ida(staged_hooks: Path):
             "tool_name": tool,
         }
 
-        # Attempt 1: Denied once with quiet.md
+        # Attempt 1: Denied once with honesty and quiet
         proc1 = subprocess.run(
             [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
             input=json.dumps(payload),
@@ -315,8 +325,10 @@ def test_quiet_pretooluse_channel_reply_denies_once_for_ida(staged_hooks: Path):
         data1 = json.loads(proc1.stdout)
         specific1 = data1["hookSpecificOutput"]
         assert specific1["permissionDecision"] == "deny"
+        expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
         expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
-        assert specific1["permissionDecisionReason"] == expected_quiet
+        assert expected_honesty in specific1["permissionDecisionReason"]
+        assert expected_quiet in specific1["permissionDecisionReason"]
 
         # Attempt 2: Permitted
         proc2 = subprocess.run(
@@ -329,6 +341,34 @@ def test_quiet_pretooluse_channel_reply_denies_once_for_ida(staged_hooks: Path):
         )
         assert proc2.returncode == 0
         assert proc2.stdout.strip() == ""
+
+
+def test_pretooluse_channel_reply_degrades_to_advisory_on_agy(staged_hooks: Path):
+    handlers.clear_channel_gate_state("s-chan-agy")
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "agent_type": "ida:ida",
+        "session_id": "s-chan-agy",
+        "tool_name": "telegram_reply",
+    }
+    proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreToolUse"],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    assert "decision" not in data or data["decision"] != "deny"
+    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
+    expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
+    assert any(
+        expected_honesty in step.get("ephemeralMessage", "")
+        and expected_quiet in step.get("ephemeralMessage", "")
+        for step in data.get("injectSteps", [])
+    )
 
 
 def test_quiet_pretooluse_ignores_non_channel_tools(staged_hooks: Path):
@@ -490,3 +530,15 @@ def test_normalize_resolves_agent_from_aliases_and_env(
     monkeypatch.setenv("CLAUDE_AGENT_NAME", "ida")
     ctx3 = normalize("claude", "Stop", {}, hooks_dir)
     assert ctx3.agent_type == "ida"
+
+
+def test_merge_combines_multiple_refusals():
+    from dispatch import Kind, Result, _merge
+
+    r1 = Result("first reason", "user 1", Kind.REFUSE)
+    r2 = Result("second reason", "user 2", Kind.REFUSE)
+    merged = _merge([r1, r2])
+    assert merged is not None
+    assert merged.kind is Kind.REFUSE
+    assert "first reason\n\nsecond reason" == merged.inject_text
+    assert "user 1\n\nuser 2" == merged.user_text

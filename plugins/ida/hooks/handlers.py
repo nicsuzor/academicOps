@@ -112,11 +112,21 @@ _CHANNEL_REPLY_TOOLS = {
 def _is_channel_reply_tool(tool_name: str) -> bool:
     if not tool_name:
         return False
+    if tool_name in _CHANNEL_REPLY_TOOLS:
+        return True
     name = tool_name.split("__")[-1]
     if name in _CHANNEL_REPLY_TOOLS:
         return True
-    lower = name.lower()
-    if lower in (
+    tool_lower = tool_name.lower()
+    name_lower = name.lower()
+    if tool_lower in (
+        "telegram_reply",
+        "discord_reply",
+        "askuserquestion",
+        "ask_user_question",
+        "ask_question",
+        "askquestion",
+    ) or name_lower in (
         "telegram_reply",
         "discord_reply",
         "askuserquestion",
@@ -125,7 +135,9 @@ def _is_channel_reply_tool(tool_name: str) -> bool:
         "askquestion",
     ):
         return True
-    if ("telegram" in lower or "discord" in lower) and ("reply" in lower or "send" in lower):
+    if ("telegram" in tool_lower or "discord" in tool_lower) and (
+        "reply" in tool_lower or "send" in tool_lower
+    ):
         return True
     return False
 
@@ -264,7 +276,7 @@ def be_quiet(ctx: HookContext) -> Result | None:
 
 
 def quiet_channel_reply(ctx: HookContext) -> Result | None:
-    """Deny channel replies once for Ida Prime to enforce ADHD executive protection."""
+    """Deny channel replies once for Ida Prime to enforce honesty and ADHD executive protection."""
     if not _is_ida(ctx):
         return None
     if not _is_channel_reply_tool(ctx.tool):
@@ -286,10 +298,22 @@ def quiet_channel_reply(ctx: HookContext) -> Result | None:
     except Exception:
         pass
 
-    if ctx.client == "agy":
-        return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
+    honesty_inject, honesty_user = load_message_pair(ctx.hooks_dir, "honesty")
+    quiet_inject, quiet_user = load_message_pair(ctx.hooks_dir, "quiet")
 
-    return refuse(*load_message_pair(ctx.hooks_dir, "quiet"))
+    inject_parts = [p for p in (honesty_inject, quiet_inject) if p]
+    combined_inject = "\n\n".join(inject_parts)
+
+    user_parts = [u for u in (honesty_user, quiet_user) if u]
+    combined_user = "\n\n".join(user_parts) if user_parts else None
+
+    if ctx.client == "agy":
+        return warn(combined_inject, combined_user)
+
+    return refuse(combined_inject, combined_user)
+
+
+channel_reply_gate = quiet_channel_reply
 
 
 def _scrub(value: object) -> str:

@@ -239,9 +239,14 @@ def _merge(results: list[Result | None]) -> Result | None:
     not precedence between plugins — the client decides that.
     """
     present = [r for r in results if r is not None]
-    for r in present:
-        if r.kind is Kind.REFUSE:
-            return r
+    refuses = [r for r in present if r.kind is Kind.REFUSE]
+    if refuses:
+        if len(refuses) == 1:
+            return refuses[0]
+        merged_inject = "\n\n".join(r.inject_text for r in refuses if r.inject_text)
+        user_texts = [r.user_text for r in refuses if r.user_text]
+        merged_user = "\n\n".join(user_texts) if user_texts else None
+        return Result(merged_inject, merged_user, Kind.REFUSE)
     blocks = [r for r in present if r.kind is Kind.BLOCK]
     if blocks:
         if len(blocks) == 1:

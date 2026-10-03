@@ -15,7 +15,7 @@ The architectural specification detailing design rationale, theoretical mechanis
 
 ## Governing principle -- agents all the way down
 
-The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**, with an authorized exception for block-once procedural friction gates (`honesty.md` on `Stop`, `quiet.md` on `Stop` and `PreToolUse` channel replies) that pause execution once per chain without evaluating substance. Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
+The framework enforces **no programmatic, deterministic, or mechanical verdict on quality or process**, with an authorized exception for block-once procedural friction gates (`honesty.md` on `Stop` and `PreToolUse` channel replies, `quiet.md` on `Stop` and `PreToolUse` channel replies) that pause execution once per chain without evaluating substance. Hooks, server contracts, and config are **delivery channels** -- they remind, route, and make things visible; they never decide whether work is good or whether a rule was followed. Every verdict is an agent's judgment, and the bar every reviewing agent applies is world-leading, not technically-acceptable.
 
 The only **mechanical** enforcement is **structural prevention**: credential and workspace isolation, delivery guards, model pins. Prevention by construction -- never reactive detection, never content-sniffing, never a deterministic pass/fail on the substance of an agent's work.
 
