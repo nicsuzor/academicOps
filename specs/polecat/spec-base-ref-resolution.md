@@ -10,10 +10,9 @@ tags: [spec, polecat, git, freshness]
 
 # Polecat Base-Ref Resolution & Remote Freshness
 
-How `resolve_isolated_workspace()` (`lib/polecat/cli.py`) picks the commit a
-worker's isolated clone diverges from. This is step 3 of
-[polecat-system.md](polecat-system.md) § What `run` does. Implemented; regression
-tests are `tests/polecat/test_workspace_isolation.py`.
+How isolated workspace cloning resolves the commit a worker diverges from.
+Originally implemented in `lib/polecat/cli.py` in academicOps; the container launcher
+is now maintained in `nicsuzor/dotfiles` (`scripts/polecat`).
 
 ## The two failure modes this design closes
 
