@@ -2,6 +2,11 @@
 
 .PHONY: help build build-test install-dev uninstall-dev install clean clean-plugins test lint format
 
+ROOT := $(shell pwd)
+DIST := $(ROOT)/dist
+LOCAL_MARKETPLACE := aops
+DIST_REPO := nicsuzor/academicOps@dist
+
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
 PLUGIN_NAMES = $(shell uv run python -c "import tomllib, pathlib; d = tomllib.loads(pathlib.Path('build/marketplace.toml').read_text()); print(' '.join(p['name'] for p in d['plugins']))" 2>/dev/null)
