@@ -11,13 +11,13 @@ Manage composable workflow templates (`type: template`) across three resolution 
 
 Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tiers completely; never merge text across tiers.
 
-| Tier         | Location                                                                                          | Enumeration                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 1. Project   | `$CWD/.agents/templates/*.md`                                                                     | `Glob $CWD/.agents/templates/*.md` (or `ls`)                                     |
-| 2. PKB       | PKB graph                                                                                         | `pkb.list_documents(type="template")`                                            |
-| 3. Universal | Installed plugin: `~/.claude/plugins/cache/aops/ida/<version>/skills/workflow-library/workflows/` | `Glob ~/.claude/plugins/cache/aops/ida/*/skills/workflow-library/workflows/*.md` |
+| Tier         | Location                         | Enumeration                                  |
+| ------------ | -------------------------------- | -------------------------------------------- |
+| 1. Project   | `$CWD/.agents/templates/*.md`    | `Glob $CWD/.agents/templates/*.md` (or `ls`) |
+| 2. PKB       | PKB graph                        | `pkb.list_documents(type="template")`        |
+| 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/` | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md`    |
 
-Enumerate and read filesystem templates using file tools (`Glob`, `Read`) rather than `Bash` so resolution succeeds under non-interactive and `dontAsk` permission modes. Fall back to `academicOps/ida` if `aops/ida` is absent.
+Enumerate and read filesystem templates using file tools (`Glob`, `Read`) rather than `Bash` so resolution succeeds under non-interactive and `dontAsk` permission modes.
 
 ## Modes
 
