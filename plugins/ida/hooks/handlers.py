@@ -638,7 +638,7 @@ HANDLERS: dict[str, list] = {
         search_the_pkb,
         rule_against_hearsay,
     ],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, quiet_channel_reply) if h is not None],
+    "PreToolUse": [h for h in (pre_tool, agy_pre_tool) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
     "Stop": [stop, agy_stop],
