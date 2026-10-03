@@ -97,7 +97,6 @@ def _extract_llm_spans_for_turn_agy(
         # Track input for the next LLM call in the turn
         last_input_value = ""
         last_input_mime = "text/plain"
-        last_input_role = "user"
         last_input_content = ""
         accumulated_messages = []
 
@@ -115,7 +114,6 @@ def _extract_llm_spans_for_turn_agy(
                         human_text = entry.get("content", "")
                         last_input_value = json.dumps({"role": "user", "content": human_text[:500]})
                         last_input_mime = "application/json"
-                        last_input_role = "user"
                         last_input_content = _truncate(human_text)
                         accumulated_messages.append({"role": "user", "content": human_text})
                     elif in_turn:
@@ -142,7 +140,6 @@ def _extract_llm_spans_for_turn_agy(
                                 {"role": "tool", "content": tool_content[:500]}
                             )
                             last_input_mime = "application/json"
-                            last_input_role = "tool"
                             last_input_content = _truncate(tool_content)
                         if in_turn or human_count <= human_count_at_start:
                             accumulated_messages.append({"role": "tool", "content": tool_content})

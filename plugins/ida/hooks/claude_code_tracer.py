@@ -1411,6 +1411,8 @@ def _build_and_export_spans(
     cwd: str | None = None,
 ) -> None:
     """Create spans from records and export via OTLP gRPC (with fallbacks)."""
+    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
     (
         trace,
         Resource,
@@ -1423,6 +1425,44 @@ def _build_and_export_spans(
         NonRecordingSpan,
         StatusCode,
     ) = _otel_imports()
+
+    class ErrorReportingExporter(SpanExporter):
+        def __init__(self, target: Any) -> None:
+            self._target = target
+
+        def export(self, spans: Any) -> SpanExportResult:
+            # OTel exporters log exceptions and HTTP errors to their module logger.
+            # We capture those logs during export to report them verbatim.
+            target_logger_name = self._target.__module__
+            target_logger = logging.getLogger(target_logger_name)
+
+            class CaptureHandler(logging.Handler):
+                def __init__(self) -> None:
+                    super().__init__()
+                    self.messages: list[str] = []
+
+                def emit(self, record: logging.LogRecord) -> None:
+                    self.messages.append(record.getMessage())
+
+            handler = CaptureHandler()
+            target_logger.addHandler(handler)
+            try:
+                res = self._target.export(spans)
+                if res != SpanExportResult.SUCCESS and handler.messages:
+                    error_text = "\n".join(handler.messages)
+                    print(f"ERROR: OTel span export failed: {error_text}")
+                    log.error("OTel span export failed: %s", error_text)
+                return res
+            finally:
+                target_logger.removeHandler(handler)
+
+        def shutdown(self) -> None:
+            self._target.shutdown()
+
+        def force_flush(self, timeout_millis: int = 30000) -> bool:
+            if hasattr(self._target, "force_flush"):
+                return bool(self._target.force_flush(timeout_millis))
+            return True
 
     service_name = config.get("service_name") or config.get("project_name") or "academicOps"
     project_name = config.get("project_name") or "academicOps"
@@ -1508,48 +1548,6 @@ def _build_and_export_spans(
                 kwargs["id_generator"] = id_generator
 
             provider = TracerProvider(**kwargs)
-
-            import logging
-
-            from opentelemetry.sdk.trace.export import SpanExportResult
-
-            class ErrorReportingExporter:
-                def __init__(self, target):
-                    self._target = target
-
-                def export(self, spans):
-                    # OTel exporters log exceptions and HTTP errors to their module logger.
-                    # We capture those logs during export to report them verbatim.
-                    target_logger_name = self._target.__module__
-                    target_logger = logging.getLogger(target_logger_name)
-
-                    class CaptureHandler(logging.Handler):
-                        def __init__(self):
-                            super().__init__()
-                            self.messages = []
-
-                        def emit(self, record):
-                            self.messages.append(record.getMessage())
-
-                    handler = CaptureHandler()
-                    target_logger.addHandler(handler)
-                    try:
-                        res = self._target.export(spans)
-                        if res != SpanExportResult.SUCCESS and handler.messages:
-                            error_text = "\\n".join(handler.messages)
-                            print(f"ERROR: OTel span export failed: {error_text}")
-                            log.error("OTel span export failed: %s", error_text)
-                        return res
-                    finally:
-                        target_logger.removeHandler(handler)
-
-                def shutdown(self):
-                    self._target.shutdown()
-
-                def force_flush(self, timeout_millis: int = 30000):
-                    if hasattr(self._target, "force_flush"):
-                        return self._target.force_flush(timeout_millis)
-                    return True
 
             provider.add_span_processor(SimpleSpanProcessor(ErrorReportingExporter(exporter)))
             tracer = provider.get_tracer("claude-code-tracer")
