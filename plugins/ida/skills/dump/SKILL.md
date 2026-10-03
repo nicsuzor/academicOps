@@ -43,12 +43,26 @@ If the release tool is unavailable, record the failure trace and list claimed ta
 
 Compile the overall session outcome:
 
-```markdown
+````markdown
 ## Handover: <agent> <session-id>
 
 1. **Task**: Restatement of original objective and scope.
 2. **Summary**: Concise synthesis of findings and modifications.
 3. **Output**: <branch + commit SHA> | <PR or artifact link>
-4. **Receipts**: Itemized load-bearing claims with basis tags and citations.
+4. **Receipts** (Claim Ledger): Itemized load-bearing claims structured as an Argdown claim ledger. Report one line per acceptance criterion where possible. Separate statements with blank lines, enclose basis tags and pointers in parentheses `(basis: <tag>, pointer: <ref>)`, and escape underscores `\_` in filenames or symbols.
+   ```argdown
+   ===
+   title: Handover Receipts
+   ===
+
+   [Outcome]: VERDICT: PASS
+
+   [C1]: Criterion 1 verified (basis: observed, pointer: git show HEAD --stat)
+
+   [C2]: Criterion 2 verified (basis: observed, pointer: uv run pytest)
+
+   [C3]: THEREFORE (C1, C2): Acceptance criteria met. {uses: [C1, C2]}
+     +> [Outcome]
+   ```
 5. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-```
+````
