@@ -67,7 +67,7 @@ def is_agent(ctx: HookContext | str | None, *targets: str) -> bool:
     """Check if the context or agent string matches any target agent names.
 
     Matches bare names (e.g. 'ida', 'james'), namespaced forms (e.g. 'ida:ida',
-    'aops:james', 'plugin:ida', 'ida:custom'), prime variants (e.g. 'ida-prime',
+    'aops:james', 'plugin:ida'), prime variants (e.g. 'ida-prime',
     'ida_prime'), and colon-delimited components.
     """
     if ctx is None:
@@ -82,7 +82,6 @@ def is_agent(ctx: HookContext | str | None, *targets: str) -> bool:
             continue
         if (
             agent == target
-            or agent.startswith(f"{target}:")
             or agent.endswith(f":{target}")
             or agent in (f"{target}-prime", f"{target}_prime")
             or f":{target}:" in agent
@@ -618,5 +617,5 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool, quiet_channel_reply) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop, honest_output, be_quiet],
+    "Stop": [stop, agy_stop, be_quiet],
 }
