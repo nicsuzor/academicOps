@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.5](https://github.com/nicsuzor/academicOps/compare/v0.10.4...v0.10.5) (2026-10-03)
+
+### Bug Fixes
+
+- **workflow-library:** resolve universal templates to installed plugin copy ([dcaf8d5](https://github.com/nicsuzor/academicOps/commit/dcaf8d5e71033d72d5f3950b1dd32c631445ce5f))
+- **workflow-library:** use ${CLAUDE_SKILL_DIR} for universal template resolution ([54c82e4](https://github.com/nicsuzor/academicOps/commit/54c82e47ef4273bb3c68af2623ce26b4de44c95d))
+
 ## [0.10.4](https://github.com/nicsuzor/academicOps/compare/v0.10.3...v0.10.4) (2026-10-02)
 
 ### Features
