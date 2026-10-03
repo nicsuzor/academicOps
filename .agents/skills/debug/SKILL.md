@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a `polecat run` container under tmux for live interaction, and pull authoritative telemetry from the Phoenix span store via the `services` MCP proxy. Use when asked to debug a polecat, run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, skills, or the Dockerfile actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
+description: Drive and audit a real framework run — choose an execution surface, dispatch a worker, spin up a polecat container under tmux for live interaction, and pull authoritative telemetry from the Phoenix span store via the `services` MCP proxy. Use when asked to debug a polecat, run a polecat container interactively, attach to a polecat session, check container or session logs, establish what a session actually did, or verify that a change to plugins, hooks, `lib/`, or skills actually fires inside a real container rather than merely being installed in the image. Covers both clients, `claude` and `agy`. Not the standard for scoring the run itself — that is `dogfood`.
 ---
 
 # Driving a framework run
@@ -70,14 +70,9 @@ honestly and correct the record where it did not, or reassign the work where the
 record cannot be corrected into a true one. Where the run produced a significant
 failure or an unexpected success, `learn` turns it into a lesson.
 
-## Scripted probes
+## Probes
 
-[`scripts/probe.sh`](scripts/probe.sh) drives one question;
-[`scripts/matrix-probe.sh`](scripts/matrix-probe.sh) drives a capability matrix
-— MCP reachability, skill resolution, subagent dispatch, permissions — and
-prints PASS/FAIL per cell. Both take the client as their first argument. Run
-them once per client; a pass on one is no evidence for the other. Whether the
-plugins are installed at all is `make docker-smoke-test`.
+Run probes once per client; a pass on one is no evidence for the other.
 
 **Re-run an agy failure without `--agent` before you believe it.** If a probe
 fails under `--agent <name>` and passes without it, the agent definition is
@@ -102,7 +97,7 @@ logs, task outputs and transcripts your own probing left behind — and report i
 as though it had made the call. Score the tool-call record instead: Phoenix
 `executeSql` (via `phoenix_execute`), `tool_calls` in agy's
 `transcript_full.jsonl`, or `tool_use` in claude's session jsonl. That is what
-`matrix-probe.sh`'s MCP cell does.
+authoritative MCP verification checks.
 
 ## Launch a container under tmux
 
@@ -117,29 +112,21 @@ LAUNCH_SCRIPT="/tmp/launch-${TMUX_NAME}.sh"
 
 cat > "$LAUNCH_SCRIPT" <<EOF
 #!/usr/bin/env bash
-export POLECAT_HOME="${POLECAT_HOME:-$HOME/.polecat}"
-export POLECAT_IMAGE="${POLECAT_IMAGE:-ghcr.io/nicsuzor/aops-crew:latest}"
-export AOPS_SESSIONS="${AOPS_SESSIONS:-$HOME/src/sessions}"
-export GEMINI_CONFIG_DIR="${GEMINI_CONFIG_DIR:-$HOME/.gemini}"
-export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-AcademicOps Bot}"
-export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-bot@academicops.org}"
-export AOPS_BOT_GH_TOKEN="${AOPS_BOT_GH_TOKEN:-dummy_token_for_test}"
+export POLECAT_IMAGE="${POLECAT_IMAGE:-polecat:latest}"
 
-exec uv run --project "$CHECKOUT" python "$CHECKOUT/lib/polecat/cli.py" \
-  run -d "$CHECKOUT" -s "$TMUX_NAME" claude -- -p "call pkb get_status() and return results"
+# Run via dotfiles host launcher (scripts/polecat):
+exec polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- claude -p "call pkb get_status() and return results"
 EOF
 chmod +x "$LAUNCH_SCRIPT"
 
 tmux new-session -d -s "$TMUX_NAME" -x 220 -y 50 "$LAUNCH_SCRIPT"
 ```
 
-- **Always place `--` before the agent's own flags and prompt**, because
-  `lib/polecat/cli.py` defines `@click.option("-p", "--project")` on `run` and
-  Click otherwise swallows the agent's `-p`:
+- **Always place `--` before the agent's own flags and prompt**:
 
   ```bash
-  uv run python lib/polecat/cli.py run -p <project> -s <session> claude -- -p "call pkb get_status() and return results"
-  uv run python lib/polecat/cli.py run -p <project> -s <session> agy -- -p "call pkb get_status() and return results"
+  polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- claude -p "call pkb get_status() and return results"
+  polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- agy -p "call pkb get_status() and return results"
   ```
 
 - **Always pass `-x 220 -y 50`** to `tmux new-session`, so TUI headers, input
@@ -171,8 +158,7 @@ tmux send-keys -t "$TMUX_NAME" Down Down Enter
 `capture-pane` reflects what an attached user sees. It is an ephemeral buffer
 that dies with the tmux session, so capture anything you intend to cite.
 
-Teardown — container cleanup is automatic, because `lib/polecat/cli.py` invokes
-`docker run --rm`:
+Teardown — container cleanup is automatic with `--rm`:
 
 ```bash
 tmux send-keys -t "$TMUX_NAME" -l "/exit"; tmux send-keys -t "$TMUX_NAME" Enter
@@ -263,17 +249,15 @@ score its claims against; its own report is not evidence that anything ran.
 
 ## Validate a dev change
 
-Run this after modifying `plugins/*/hooks`, `lib/`, skills,
-`lib/polecat/cli.py`, `entrypoint.sh`, or the Dockerfile. Walk the layers in
+Run this after modifying `plugins/*/hooks`, `lib/`, or skills. Walk the layers in
 order and stop at the first failure. Run the whole walk twice, once per client.
 Quote verbatim excerpts from `capture-pane`, session logs, and Phoenix output in
 your report.
 
 1. **Pre-flight** — confirm `_log_fire` and `_load_handlers` in
    `plugins/ida/hooks/dispatch.py` are not returning early.
-2. **§0 image freshness** — `make docker-build`, then `make verify-docker`.
-3. **§1 structural** — `make docker-smoke-test` confirms the plugins are
-   installed in the image.
+2. **§0 image freshness** — verify container image freshness against dotfiles source (`containers/nicwin/nicdev/Dockerfile`).
+3. **§1 structural** — confirm plugins are installed in the container image.
 4. **§2 boot signals** — `claude`: banner and `❯` box render inside
    `/workspace`. `agy`: the 2–3 s auth race clears and the plan name renders.
 5. **§3 first prompt** — send a prompt (e.g. `"call pkb get_status() and return
