@@ -641,5 +641,5 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool, quiet_channel_reply) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop, be_quiet],
+    "Stop": [stop, agy_stop],
 }
