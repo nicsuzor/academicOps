@@ -75,11 +75,14 @@ The report format is a strict Argdown claim ledger. The parser accepts this form
 ===
 title: Handover Receipts
 ===
-[Outcome]: VERDICT: <STATUS>
 
-[C1]: <Atomic empirical claim 1> [basis: pointer]
-[C2]: <Atomic empirical claim 2> [basis: pointer]
-[C3]: THEREFORE (C1, C2): <Derived claim> {uses: [C1, C2]}
+[Outcome]: VERDICT: PASS
+
+[C1]: Atomic empirical claim 1 (basis: observed, pointer: git show HEAD --stat)
+
+[C2]: Atomic empirical claim 2 (basis: observed, pointer: tests/test\_hooks.py:42)
+
+[C3]: THEREFORE (C1, C2): Derived claim. {uses: [C1, C2]}
   +> [Outcome]
 ```
 
@@ -92,6 +95,7 @@ title: Handover Receipts
 - **One line per criterion:** Prime checks what was done and where it was saved. Make the report one line per criterion where possible.
 - **Traceability:** Derived claims must cite their premises using `{uses: [...]}` for the parser.
 - **Warrants and Defeaters only when contested:** Do not use `W` and `D` nodes unless explicitly arguing a contested claim. For standard work, use direct deduction.
+- **Argdown parser compliance:** Separate statements with blank lines. Enclose basis tags and pointers in parentheses `(basis: <tag>, pointer: <ref>)` or escaped brackets `\[basis: ...\]` so they are not parsed as statement titles. Escape underscores `\_` in filenames and code symbols.
 - **Every itemized load-bearing claim carries its BASIS tag:**
   - `[observed]` — the agent saw the primary evidence itself this session, and cites a pinpoint pointer (`file:line`, command + output, node ID, URL).
   - `[attempted-and-failed]` — an attempted action/command/tool execution with its verbatim error output attached. (Mandatory for capability claims.)
