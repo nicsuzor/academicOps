@@ -10,18 +10,7 @@ from pathlib import Path
 
 import pytest
 
-# Point AOPS_POLECAT_CONFIG at the canonical example *before* any test module
-# is imported. lib/polecat_config.py hard-fails when no config is found. Tests
-# that need a different config monkeypatch it per-test via the autouse
-# `ensure_test_environment` fixture below.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_POLECAT_EXAMPLE = _REPO_ROOT / "lib" / "polecat" / "defaults" / "polecat.yaml.example"
-if _POLECAT_EXAMPLE.exists():
-    os.environ["AOPS_POLECAT_CONFIG"] = str(_POLECAT_EXAMPLE)
-
-# Staging base for DooD environments (so that tmp files are accessible to host Docker)
-_STAGING_BASE = _REPO_ROOT / ".aops" / "tmp" / "staging"
-os.environ.setdefault("POLECAT_STAGING_BASE", str(_STAGING_BASE))
 
 
 @pytest.fixture(autouse=True)
@@ -45,13 +34,6 @@ def ensure_test_environment(monkeypatch, tmp_path):
     sessions_dir = tmp_path / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
-
-    # Seed a polecat.yaml inside the per-test sessions dir; clear the
-    # module-level AOPS_POLECAT_CONFIG override so $AOPS_SESSIONS/polecat.yaml
-    # is what tests resolve.
-    if _POLECAT_EXAMPLE.exists():
-        (sessions_dir / "polecat.yaml").write_text(_POLECAT_EXAMPLE.read_text())
-    monkeypatch.delenv("AOPS_POLECAT_CONFIG", raising=False)
 
     # Redirect UV cache to prevent PermissionError in /opt/suzor/cache/uv
     # This is required for hooks to run successfully under macOS Seatbelt
@@ -79,7 +61,3 @@ def ensure_test_environment(monkeypatch, tmp_path):
     for key in list(os.environ.keys()):
         if key.startswith("AOPS_GATE_FILE_") or key in scrub_keys:
             monkeypatch.delenv(key, raising=False)
-
-    # No test may post to the developer's real Discord channel. Tests that care
-    # about the notification patch this themselves.
-    monkeypatch.setattr("lib.polecat.notify._post_discord", lambda line: None)

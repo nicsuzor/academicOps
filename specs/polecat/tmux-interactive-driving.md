@@ -19,12 +19,10 @@ file is [`debug`](../../.agents/skills/debug/SKILL.md).
 ## Why tmux works at all
 
 A tmux pane — even one spawned detached (`tmux new-session -d`) — presents a real
-TTY to the process running inside it. `run()` (`lib/polecat/cli.py`) decides
+TTY to the process running inside it. The `polecat` launcher script decides
 whether to pass Docker's `-it` by checking `sys.stdin.isatty()`, unless a headless
 flag (`-p`, `--print`) appears in the trailing args. So a launch inside tmux gets
-full interactive Docker behaviour. Note the collision: `-p` in polecat's own
-argument position is `--project`; `-p` in the trailing args is the agent's
-headless prompt flag.
+full interactive Docker behaviour.
 
 ## The pattern
 
@@ -34,8 +32,7 @@ export TMUX_NAME="polecat-debug-$RANDOM"
 
 cat > /tmp/"$TMUX_NAME".sh <<EOF
 #!/bin/bash
-exec uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py \
-  run -d $CHECKOUT -s $TMUX_NAME agy -- \
+exec polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- agy \
   'what directory are you in? answer in one sentence, then stop.'
 EOF
 chmod +x /tmp/"$TMUX_NAME".sh
@@ -175,15 +172,9 @@ them is what makes a supervisor take a worker at its word.
   Read `agy-cli.log` in the session directory instead — on the host, without
   `docker exec`, and without racing container teardown.
 - **Alias resolution can kill the whole tmux server, not just the pane.**
-  `tmux new-session -d -s NAME 'polecat run ...'` spawns `/bin/sh -c` as the
-  pane's only process. `polecat` is a `.venv/bin/polecat` console script put on
-  `PATH` by shell-rc activation that a bare `sh -c` never sources; unresolvable,
-  the pane's command fails instantly, the pane closes, and — being the only
-  session — the tmux server exits. `tmux capture-pane` then reports `no server
-  running on /tmp/tmux-...-default`, which reads like an environment problem
-  rather than command-not-found. Use the explicit
-  `uv run --project <checkout> python <checkout>/lib/polecat/cli.py run ...` path.
-  The `pc` alias has the identical failure mode for the identical reason.
+  `tmux new-session -d -s NAME 'polecat ...'` spawns `/bin/sh -c` as the
+  pane's only process. Use the explicit host launcher script path (`scripts/polecat` from dotfiles)
+  or a launch script wrapper.
 - **Hand tmux a script, not a long inline command.** Everything a real launch
   needs — several environment assignments, a `uv run` invocation, a quoted prompt
   — must survive one round of shell quoting inside the `tmux new-session`
@@ -269,13 +260,9 @@ wall instead of a ready prompt: `setup_staging()` stages agy's
 nothing to authenticate with. `claude` dev-loop sessions are unaffected.
 
 ```bash
-make docker-build                    # assembles dist/ then builds the image from
-                                     # AOPS_DIST_SOURCE=local, tagging
-                                     # ghcr.io/nicsuzor/aops-crew:latest
-GIT_AUTHOR_NAME="Your Name" GIT_AUTHOR_EMAIL="you@example.com" \
-AOPS_BOT_GH_TOKEN=dev-probe-placeholder \
-POLECAT_IMAGE=ghcr.io/nicsuzor/aops-crew:latest \
-  uv run --project $CHECKOUT python $CHECKOUT/lib/polecat/cli.py run claude -p aops -s dev-probe
+# Launch via dotfiles host launcher (scripts/polecat):
+POLECAT_IMAGE=polecat:latest \
+  polecat -d "$CHECKOUT" -s dev-probe -i -- claude -p "call pkb get_status()"
 ```
 
 Drive it with the same tmux pattern above — as a script handed to tmux, since

@@ -25,7 +25,6 @@ make test     # uv run pytest tests/
 make lint     # ruff check
 make format   # ruff format + dprint fmt
 make build    # must assemble every plugin for both clients without error
-make docker   # build the crew worker image
 ```
 
 Run `make format` before committing. Pre-commit runs `dprint fmt` over markdown,

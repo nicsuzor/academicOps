@@ -1,15 +1,6 @@
 # academicOps — build & install. Design: specs/ARCHITECTURE.md.
 
-.PHONY: help build build-test install-dev uninstall-dev install clean clean-plugins test lint format \
-        docker docker-build docker-shell docker-push docker-test-otel docker-smoke-test \
-        verify-docker
-
-ROOT := $(shell pwd)
-DIST := $(ROOT)/dist
-LOCAL_MARKETPLACE := aops
-DIST_REPO := nicsuzor/academicOps@dist
-# The image this repository publishes. Override to build/push elsewhere.
-IMAGE ?= ghcr.io/nicsuzor/aops-crew
+.PHONY: help build build-test install-dev uninstall-dev install clean clean-plugins test lint format
 
 # Plugin marketplace names declared in build/marketplace.toml — the single
 # source of truth for what ships (specs/ARCHITECTURE.md's plugin table).
@@ -28,16 +19,7 @@ help:
 	@echo "make format         - ruff format + dprint fmt"
 	@echo "make clean          - remove dist/"
 	@echo "make clean-plugins  - prune stale plugin caches and cowork packages"
-	@echo "make docker         - build the crew worker image"
-	@echo "make docker-shell   - interactive shell in the crew image"
-	@echo "make docker-push    - push the crew image to ghcr.io"
-	@echo "make docker-test-otel - build the image, then prove native OTel export"
-	@echo "                        actually reaches a throwaway collector"
-	@echo "make docker-smoke-test - build the image, then run its structural"
-	@echo "                        smoke test (plugin list, agy plugins, ACA_DATA)"
-	@echo "make verify-docker  - clean (--no-cache) image build; required before"
-	@echo "                        certifying a change, so no cached layer can"
-	@echo "                        produce a false-green result"
+
 
 # --- Build ---
 
@@ -173,63 +155,3 @@ lint:
 format:
 	@uv run ruff format .
 	@uv run dprint fmt
-
-# --- Docker ---
-
-docker: docker-build
-
-# The agent CLIs install "latest" from their vendor install scripts at build
-# time, so their Docker layers only refresh when their ARG value changes.
-# Nothing varied these before, so the layers froze at first-build state and the
-# image silently kept an old agy/claude indefinitely — observed 2026-08-08 as an
-# image pinned to agy 1.1.10 while 1.1.11 was current, which cost the container
-# its MCP tools. Pass a value that differs from the last build to refresh:
-#   make docker-build AGY_VERSION=1.1.11
-docker-build: build
-	@docker build --build-arg AOPS_DIST_SOURCE=local \
-		--build-arg AOPS_BUILD_COMMIT="$$(git rev-parse HEAD 2>/dev/null)" \
-		--build-arg AOPS_BUILD_DIRTY="$$(if [ -n "$$(git status --porcelain 2>/dev/null)" ]; then echo 1; else echo 0; fi)" \
-		--build-arg AOPS_VERSION="$$(uv run python -m build.version --get 2>/dev/null || echo 0.1.0)" \
-		$(if $(AGY_VERSION),--build-arg AGY_VERSION=$(AGY_VERSION)) \
-		$(if $(CLAUDE_CODE_VERSION),--build-arg CLAUDE_CODE_VERSION=$(CLAUDE_CODE_VERSION)) \
-		-t $(IMAGE) -t $(notdir $(IMAGE)):latest .
-	@echo "✓ built $(IMAGE)"
-
-# The environment contract is defined once, in lib/polecat/env_contract.py,
-# and shared with polecat's own `docker run` (specs/ARCHITECTURE.md "Observability").
-# `-e NAME` forwards the host's value and sets nothing: a variable unset on the
-# host stays unset in the container.
-docker-shell: docker-build
-	@env_args="$$(uv run python -m lib.polecat.env_contract --docker-args)" \
-		|| { echo "x could not read the container env contract" >&2; exit 1; }; \
-	docker run -it --rm $$env_args -v $(ROOT):/app -w /app $(IMAGE)
-
-# The build to certify a dev change against. `docker-build` reuses the layer
-# cache, so a layer whose inputs Docker judges unchanged is carried forward —
-# and an image that looks rebuilt while still holding the previous plugin set
-# reads as a pass that proves nothing. `--no-cache` rebuilds every layer from
-# source, which is the only form of this build whose green result is evidence.
-# Slow by construction; use `docker-build` for the edit loop and this before
-# certifying.
-verify-docker: build
-	@docker build --no-cache --build-arg AOPS_DIST_SOURCE=local -t $(IMAGE) -t $(notdir $(IMAGE)):latest .
-	@echo "✓ clean build: $(IMAGE) — every layer rebuilt from source"
-
-docker-push:
-	@docker push $(IMAGE)
-
-# Not part of `make docker` or `make test` — opt-in, on the image-build path.
-# Proves Claude Code's native OpenTelemetry export actually reaches a
-# collector once the image is built, rather than only asserting the env
-# contract's flags were constructed correctly (tests/test_telemetry_otel_e2e.py).
-docker-test-otel: docker-build
-	@uv run pytest -m otel_e2e tests/test_telemetry_otel_e2e.py -v
-
-# Not part of `make docker` or `make test` — opt-in, on the image-build path.
-# Boots the real image and re-runs the structural checks a human previously
-# ran by hand (plugin list under claude, agy's plugins/, ACA_DATA, the agy
-# session mount target); see tests/polecat/test_container_smoke.py and
-# specs/polecat/tmux-interactive-driving.md, "Plugin structural check". Not
-# proof any plugin's hooks or MCP servers are actually live — structural only.
-docker-smoke-test: docker-build
-	@POLECAT_E2E=1 POLECAT_IMAGE=$(notdir $(IMAGE)):latest uv run pytest tests/polecat/test_container_smoke.py -v

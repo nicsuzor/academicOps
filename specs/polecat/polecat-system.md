@@ -25,16 +25,8 @@ This file is the umbrella. The individual designs are
 
 ## Giving Effect
 
-- [[lib/polecat/cli.py]] -- the entire CLI: one Click command, `run`
-- [[lib/polecat/entrypoint.sh]] -- container entrypoint: sets git identity,
-  installs a token-based credential helper, merges staged per-session config over
-  the image defaults, then execs the agent CLI
-- [[lib/polecat/staleness.py]] -- image provenance and staleness evaluation
-- [[lib/polecat/env_contract.py]] -- the forwarded/container-set environment contract
-- [[lib/polecat/defaults/]] -- baked container defaults (`claude-config.json`,
-  `agy-settings.json`, `agy-onboarding.json`, `ccstatusline-settings.json`,
-  `agystatusline-settings.json`, `docker_gemini_fixups.py`)
-- [[Dockerfile]] -- the image `run` executes inside
+Container execution and worker images are maintained in `nicsuzor/dotfiles` (`containers/nicwin/nicdev/` and `scripts/polecat`), backed by the Docker MCP server behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
+
 - [[plugins/pkb/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
   over -- what a seeded `/pull <task-id>` prompt actually does once inside the
   container

@@ -51,15 +51,15 @@ Tests, specs, and development tooling live outside `plugins/`.
 `build/marketplace.toml` maps directory to marketplace name and is the single
 source of truth for the built plugin set.
 
-| Directory            | Owns                                                                                                                                                                                                                                                 |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins/aops`       | james (`plugins/aops/agents/james.md`), marsha (`plugins/aops/agents/marsha.md`), sara (`plugins/aops/agents/sara.md`); review, workflow-composition, hydrate, and learn skills; the polecat CLI (`lib/polecat` injected here); observability hooks. |
-| `plugins/ida`        | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; ida-twin (`plugins/ida/agents/ida-twin.md`) -- the same face plus a downstream twin in one session, launched directly and never routed to.      |
-| `plugins/pkb`        | pauli (`plugins/pkb/agents/pauli.md`) -- sole writer to the PKB; capture, memory, decomposition, and workflow-template skills; the `services` PKB MCP server.                                                                                        |
-| `plugins/rbg`        | rbg (`plugins/rbg/agents/rbg.md`) -- rule enforcement: an advisory turn-by-turn evaluator plus a stop-side rule-check gate.                                                                                                                          |
-| `plugins/tools`      | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding).                                                                                                                                          |
-| `plugins/ts`         | Tailscale bring-up for remote/cloud sessions.                                                                                                                                                                                                        |
-| `plugins/aops-debug` | Debug plugin that dumps raw hook payloads.                                                                                                                                                                                                           |
+| Directory            | Owns                                                                                                                                                                                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins/aops`       | james (`plugins/aops/agents/james.md`), marsha (`plugins/aops/agents/marsha.md`), sara (`plugins/aops/agents/sara.md`); review, workflow-composition, hydrate, and learn skills; observability hooks.                                           |
+| `plugins/ida`        | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; ida-twin (`plugins/ida/agents/ida-twin.md`) -- the same face plus a downstream twin in one session, launched directly and never routed to. |
+| `plugins/pkb`        | pauli (`plugins/pkb/agents/pauli.md`) -- sole writer to the PKB; capture, memory, decomposition, and workflow-template skills; the `services` PKB MCP server.                                                                                   |
+| `plugins/rbg`        | rbg (`plugins/rbg/agents/rbg.md`) -- rule enforcement: an advisory turn-by-turn evaluator plus a stop-side rule-check gate.                                                                                                                     |
+| `plugins/tools`      | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding).                                                                                                                                     |
+| `plugins/ts`         | Tailscale bring-up for remote/cloud sessions.                                                                                                                                                                                                   |
+| `plugins/aops-debug` | Debug plugin that dumps raw hook payloads.                                                                                                                                                                                                      |
 
 Each plugin's own `README.md` is the fuller description; this table is not a
 second copy of it.
@@ -126,7 +126,4 @@ itself, not restated here.
 
 ## Containers
 
-Polecat (`lib/polecat/`, injected into `plugins/aops`) launches isolated
-Docker containers that boot into the `james` persona and run one unit of
-work to completion, writing results back to the PKB task record. See
-[polecat-system.md](polecat/polecat-system.md) for the full contract.
+Polecat worker container images and launching are maintained in `nicsuzor/dotfiles` (`containers/nicwin/nicdev/` and `scripts/polecat`), backed by the Docker MCP server behind the `services` portal.

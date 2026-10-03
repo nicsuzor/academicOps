@@ -10,10 +10,9 @@ tags: [spec, polecat, provenance, staleness]
 
 # Polecat Container Image Staleness Detection & Surfacing
 
-Implemented in `lib/polecat/staleness.py`, wired into `lib/polecat/cli.py`,
-`plugins/aops/hooks/handlers.py`, `Dockerfile`, `Makefile`, and
-`build/build.py`. Tests: `tests/polecat/test_image_staleness.py`,
-`tests/polecat/test_run_record.py`.
+Originally implemented in `lib/polecat/staleness.py` in academicOps;
+container image definitions and builds are now maintained in `nicsuzor/dotfiles`
+(`containers/nicwin/nicdev/`).
 
 ## The failure mode
 

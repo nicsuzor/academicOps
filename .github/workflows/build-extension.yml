@@ -4,7 +4,7 @@ on:
   # Tag-driven. The tag SHAPE selects the channel (classified in "Resolve build
   # context" below):
   #   vX.Y.Z                     → stable: build, publish to the `dist` branch,
-  #                                cut a normal GitHub Release, push Docker.
+  #                                cut a normal GitHub Release.
   #   vX.Y.Z-rc.N / -dev.N / ... → prerelease ("testing"): build and publish to
   #                                the `dist` branch TOO — we DO ship dev builds
   #                                to dist. The published plugin version is a
@@ -16,7 +16,6 @@ on:
   #                                `_STABLE_TAG_RE`), so a client CHOOSES whether to
   #                                install a dev build — but see the marketplace
   #                                single-version caveat on the publish step below.
-  #                                Docker is NOT pushed (`:latest` tracks stable).
   # A tag push runs THIS file from the tagged commit, which is the source trunk
   # (dev, the default branch). release-please creates the stable vX.Y.Z tag with
   # AOPS_DIST_PAT; prerelease tags are pushed by hand (see `make prerelease`).
@@ -213,7 +212,7 @@ jobs:
         # NOTE: the dist-branch root marketplace.json carries a single version per
         # plugin and is refreshed on every publish, so the most recent build (dev
         # or stable) is what a fresh `marketplace add …@dist` + `plugin install`
-        # resolves. Docker (below) stays stable-only — `:latest` must track stable.
+        # resolves.
         run: |
           set -euo pipefail
           SRC="${GITHUB_WORKSPACE}"
@@ -311,38 +310,6 @@ jobs:
             git push origin HEAD:main
             git push origin HEAD:dist
           fi
-
-      # ── Docker: publish the polecat worker/crew image (stable only, A3) ──────
-      # Built AFTER the dist publish so the image's `git clone --branch dist` (see
-      # Dockerfile) pulls the version just shipped. Prereleases never publish the
-      # image — `:latest` must track the stable channel, exactly like the dist branch.
-      - name: Set up Docker Buildx
-        if: steps.ctx.outputs.release_type != 'testing'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        if: steps.ctx.outputs.release_type != 'testing'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.AOPS_DIST_PAT }}
-
-      - name: Build and push aops-crew image
-        if: steps.ctx.outputs.release_type != 'testing'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ghcr.io/nicsuzor/aops-crew:v${{ steps.version.outputs.version }}
-            ghcr.io/nicsuzor/aops-crew:latest
-          build-args: |
-            AOPS_REPO_URL=https://github.com/nicsuzor/academicOps.git
-            AOPS_DIST_REF=dist
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Upload archives to GitHub Release v${{ steps.version.outputs.version }}
         if: github.event_name == 'release' || github.event_name == 'push'

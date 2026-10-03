@@ -46,9 +46,7 @@ make install-dev
 
 ## Polecat
 
-Polecat is the containerised worker runner, shipped inside the `ida` plugin. It
-needs Docker, a `polecat.yaml` project registry, and the environment listed under
-[Polecat containers](README.md#polecat-containers-aops).
+Polecat container images and launcher build and run from `nicsuzor/dotfiles` (`containers/nicwin/nicdev/`), backed by the Docker MCP server on `nicwin` behind the `services` portal.
 
 ## Design
 
