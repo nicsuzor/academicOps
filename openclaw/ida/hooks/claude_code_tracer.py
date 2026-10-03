@@ -1335,11 +1335,32 @@ TOOL_SCHEMAS: dict[str, dict] = {
 # Tools that map to RETRIEVER span kind (web retrieval operations)
 RETRIEVER_TOOLS = {"WebSearch", "WebFetch"}
 
-_MAX_ATTR_BYTES = 8192
+# Standard OpenTelemetry environment variable for string attribute length.
+# We default to 524288 (512KB) to allow full-text spans to be exported to Phoenix,
+# unless explicitly overridden.
+_MAX_ATTR_BYTES = int(os.environ.get("OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT", "524288"))
 
 
 def _truncate(value: Any) -> str:
     s = json.dumps(value) if not isinstance(value, str) else value
+
+    # Redact common secrets before truncation
+    secrets = [
+        os.environ.get("GH_TOKEN"),
+        os.environ.get("GITHUB_TOKEN"),
+        os.environ.get("AOPS_BOT_GH_TOKEN"),
+        os.environ.get("PKB_MCP_TOKEN"),
+    ]
+    # Add any env vars ending in API_KEY or starting with CF_ACCESS_
+    for k, v in os.environ.items():
+        if (k.endswith("_API_KEY") or k.startswith("CF_ACCESS_")) and v:
+            secrets.append(v)
+
+    # Redact secrets
+    for secret in secrets:
+        if secret and len(secret) > 4:  # Don't redact empty or very short strings by accident
+            s = s.replace(secret, "<REDACTED_SECRET>")
+
     encoded = s.encode("utf-8")
     if len(encoded) > _MAX_ATTR_BYTES:
         s = encoded[:_MAX_ATTR_BYTES].decode("utf-8", errors="ignore") + "...[truncated]"
@@ -1390,6 +1411,8 @@ def _build_and_export_spans(
     cwd: str | None = None,
 ) -> None:
     """Create spans from records and export via OTLP gRPC (with fallbacks)."""
+    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
     (
         trace,
         Resource,
@@ -1402,6 +1425,44 @@ def _build_and_export_spans(
         NonRecordingSpan,
         StatusCode,
     ) = _otel_imports()
+
+    class ErrorReportingExporter(SpanExporter):
+        def __init__(self, target: Any) -> None:
+            self._target = target
+
+        def export(self, spans: Any) -> SpanExportResult:
+            # OTel exporters log exceptions and HTTP errors to their module logger.
+            # We capture those logs during export to report them verbatim.
+            target_logger_name = self._target.__module__
+            target_logger = logging.getLogger(target_logger_name)
+
+            class CaptureHandler(logging.Handler):
+                def __init__(self) -> None:
+                    super().__init__()
+                    self.messages: list[str] = []
+
+                def emit(self, record: logging.LogRecord) -> None:
+                    self.messages.append(record.getMessage())
+
+            handler = CaptureHandler()
+            target_logger.addHandler(handler)
+            try:
+                res = self._target.export(spans)
+                if res != SpanExportResult.SUCCESS and handler.messages:
+                    error_text = "\n".join(handler.messages)
+                    print(f"ERROR: OTel span export failed: {error_text}")
+                    log.error("OTel span export failed: %s", error_text)
+                return res
+            finally:
+                target_logger.removeHandler(handler)
+
+        def shutdown(self) -> None:
+            self._target.shutdown()
+
+        def force_flush(self, timeout_millis: int = 30000) -> bool:
+            if hasattr(self._target, "force_flush"):
+                return bool(self._target.force_flush(timeout_millis))
+            return True
 
     service_name = config.get("service_name") or config.get("project_name") or "academicOps"
     project_name = config.get("project_name") or "academicOps"
@@ -1488,7 +1549,7 @@ def _build_and_export_spans(
 
             provider = TracerProvider(**kwargs)
 
-            provider.add_span_processor(SimpleSpanProcessor(exporter))
+            provider.add_span_processor(SimpleSpanProcessor(ErrorReportingExporter(exporter)))
             tracer = provider.get_tracer("claude-code-tracer")
 
             ctx = None

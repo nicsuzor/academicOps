@@ -9,62 +9,9 @@ Export OpenTelemetry spans from Phoenix for post-hoc session auditing. Phoenix r
 
 ## Quick Start
 
-```bash
-export PHOENIX_BASE_URL=<url>
-export PHOENIX_PROJECT_NAME=<project>
-
-# List retained sessions
-python3 scripts/phoenix_trace.py --list-sessions
-
-# Export full trace or controller index
-python3 scripts/phoenix_trace.py <session-id> --mode full --out ./traces
-python3 scripts/phoenix_trace.py <session-id> --mode controller --out ./traces
-python3 scripts/phoenix_trace.py <session-id> --mode full --resolve-orphan-parents --out ./traces
-```
-
-## Command Options
-
-| Flag                       | Description                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------- |
-| `--mode`                   | Export format: `full`, `controller`, `markdown`, `all`, or `both` (default `both`) |
-| `--out`                    | Output directory (default `$AOPS_SESSIONS/traces/`, else working directory)        |
-| `--project`                | Phoenix project name (fallback `$PHOENIX_PROJECT_NAME`)                            |
-| `--base-url`               | Phoenix base URL (fallback `$PHOENIX_BASE_URL` or `$PHOENIX_COLLECTOR_ENDPOINT`)   |
-| `--transcript`             | Explicit path to `<base>.controller.md`                                            |
-| `--tolerance-ms`           | Transcript join window in milliseconds (default `500`)                             |
-| `--page-limit`             | Spans requested per API page (default `1000`)                                      |
-| `--from-file`              | Load spans from local JSON payload instead of server                               |
-| `--no-contamination-check` | Skip trace contamination check                                                     |
-| `--resolve-orphan-parents` | Fetch missing parent spans for orphan nodes                                        |
-| `--list-sessions`          | List retained sessions with timestamps and span counts                             |
+Phoenix is reached through the services MCP proxy (portal_codemode_search / portal_codemode_execute), like the PKB.
 
 ## Token Cost by Session / Task
-
-`scripts/phoenix_token_cost.py` prints one screen of token usage and estimated USD per session (or per session x task), ranked by cost. It reads the Phoenix REST API only (`GET /v1/projects/{id}/spans?span_kind=LLM&start_time=&end_time=`, paged on `next_cursor`), so it runs anywhere Phoenix is reachable over HTTP; the Phoenix MCP is not required.
-
-```bash
-# Today, Brisbane time, per session
-python3 scripts/phoenix_token_cost.py --since "2026-09-12 00:00" --tz +10:00
-
-# Split each session across the PKB tasks it touched; machine-readable
-python3 scripts/phoenix_token_cost.py --since 2026-09-11T14:00:00Z --by task --json
-
-# Markdown table for pasting onto a task node; keep the raw spans for an offline rerun
-python3 scripts/phoenix_token_cost.py --since "2026-09-12 00:00" --tz +10:00 --markdown --save-spans spans.json
-python3 scripts/phoenix_token_cost.py --since "2026-09-12 00:00" --tz +10:00 --from-file spans.json
-```
-
-| Flag                           | Description                                                                           |
-| ------------------------------ | ------------------------------------------------------------------------------------- |
-| `--since`                      | Window start: ISO-8601, or `YYYY-MM-DD [HH:MM]` read in `--tz` (required)             |
-| `--until`                      | Window end (default: now)                                                             |
-| `--tz`                         | Offset for naive `--since`/`--until`, e.g. `+10:00` (default `+00:00`)                |
-| `--by`                         | Row grain: `session` (default) or `task`                                              |
-| `--session`                    | Restrict to one session id (prefix accepted)                                          |
-| `--labels`                     | JSON file mapping session-id prefix to an agent/role label                            |
-| `--prices`                     | JSON file of `model -> {in, out, cache_read, cache_write}` USD/M, overriding `PRICES` |
-| `--json` / `--markdown`        | Output shape (default: fixed-width screen)                                            |
-| `--save-spans` / `--from-file` | Persist the fetched spans, or rerun from a saved file offline                         |
 
 Method, in brief (the script docstring has the full account):
 
@@ -89,7 +36,7 @@ Output produces `<session-id>.trace.json` (`full` forest with `roots` and `orpha
 ## Review Checklist
 
 1. **Errors**: Check `meta.session_error_count` and inspect spans with `status_code == "ERROR"`.
-2. **Orphans**: Review `orphans` array for unattached spans; use `--resolve-orphan-parents` if needed.
+2. **Orphans**: Review `orphans` array for unattached spans.
 3. **Contamination**: Check `meta.trace_contamination` to verify no cross-session span mixing.
 4. **Token spend**: Compare `prompt` vs `cache_read` in `meta.session_token_totals`.
 5. **Subagents**: Rank `subagents[]` by `collapsed_span_count` to identify expensive execution branches.
@@ -99,4 +46,4 @@ Output produces `<session-id>.trace.json` (`full` forest with `roots` and `orpha
 
 - Filter on `session.id`, never `trace_id` (a trace can span multiple sessions).
 - Root `CHAIN` spans have null parent IDs. Subagent spans carry `agent.id` and the root `session.id`.
-- Match short session slugs (e.g. `413914d7`) via `--list-sessions` to find the full UUID.
+- Match short session slugs (e.g. `413914d7`) to find the full UUID.

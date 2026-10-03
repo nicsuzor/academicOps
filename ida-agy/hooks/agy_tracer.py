@@ -14,6 +14,14 @@ from typing import Any
 
 log = logging.getLogger("orchestrate.agy_tracer")
 
+try:
+    from token_extractor import resolve_gemini_tokens
+except ImportError:
+    try:
+        from .token_extractor import resolve_gemini_tokens
+    except Exception:
+        resolve_gemini_tokens = None
+
 from claude_code_tracer import (
     _build_and_export_spans,
     _build_tool_span_record,
@@ -74,7 +82,11 @@ def _extract_tool_output_from_transcript_agy(
 
 
 def _extract_llm_spans_for_turn_agy(
-    transcript_path: str, human_count_at_start: int, trace_id_hex: str, root_span_id_hex: str
+    transcript_path: str,
+    human_count_at_start: int,
+    trace_id_hex: str,
+    root_span_id_hex: str,
+    session_id: str | None = None,
 ) -> list[dict]:
     spans = []
     try:
@@ -85,8 +97,8 @@ def _extract_llm_spans_for_turn_agy(
         # Track input for the next LLM call in the turn
         last_input_value = ""
         last_input_mime = "text/plain"
-        last_input_role = "user"
         last_input_content = ""
+        accumulated_messages = []
 
         for line in lines:
             if not line.strip():
@@ -96,15 +108,22 @@ def _extract_llm_spans_for_turn_agy(
 
                 if _is_human_message_agy(entry):
                     human_count += 1
+
                     if human_count == human_count_at_start + 1:
                         in_turn = True
                         human_text = entry.get("content", "")
                         last_input_value = json.dumps({"role": "user", "content": human_text[:500]})
                         last_input_mime = "application/json"
-                        last_input_role = "user"
                         last_input_content = _truncate(human_text)
+                        accumulated_messages.append({"role": "user", "content": human_text})
                     elif in_turn:
                         break  # Next turn started
+                    elif human_count <= human_count_at_start:
+                        # accumulate history
+                        accumulated_messages.append(
+                            {"role": "user", "content": entry.get("content", "")}
+                        )
+
                     continue
 
                 if not in_turn:
@@ -112,24 +131,38 @@ def _extract_llm_spans_for_turn_agy(
 
                 entry_type = entry.get("type", "")
                 entry_source = entry.get("source", "")
+
                 if entry_type == "GENERIC" or entry_source == "TOOL":
                     tool_content = entry.get("content", "")
                     if tool_content:
-                        last_input_value = json.dumps(
-                            {"role": "tool", "content": tool_content[:500]}
-                        )
-                        last_input_mime = "application/json"
-                        last_input_role = "tool"
-                        last_input_content = _truncate(tool_content)
+                        if in_turn:
+                            last_input_value = json.dumps(
+                                {"role": "tool", "content": tool_content[:500]}
+                            )
+                            last_input_mime = "application/json"
+                            last_input_content = _truncate(tool_content)
+                        if in_turn or human_count <= human_count_at_start:
+                            accumulated_messages.append({"role": "tool", "content": tool_content})
                     continue
 
-                if entry_type in ("EPHEMERAL_MESSAGE", "CHECKPOINT") or entry_source == "SYSTEM":
+                if entry_type in ("EPHEMERAL_MESSAGE", "CHECKPOINT"):
+                    continue
+                if entry_source == "SYSTEM":
+                    if in_turn or human_count <= human_count_at_start:
+                        sys_text = entry.get("content", "")
+                        accumulated_messages.append({"role": "system", "content": sys_text})
                     continue
 
                 if entry.get("source") == "MODEL" and entry.get("type") == "PLANNER_RESPONSE":
+                    if not in_turn and human_count <= human_count_at_start:
+                        accumulated_messages.append(
+                            {"role": "assistant", "content": entry.get("content", "")}
+                        )
                     content = entry.get("content", "")
                     tool_calls = entry.get("tool_calls", [])
                     ts = entry.get("created_at", "")
+                    thinking = entry.get("thinking", "")
+                    step_index = entry.get("step_index")
                     start_ns = time.time_ns()
                     if ts:
                         from datetime import datetime
@@ -137,17 +170,21 @@ def _extract_llm_spans_for_turn_agy(
                         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                         start_ns = int(dt.timestamp() * 1_000_000_000)
 
-                    attrs = {
+                    attrs: dict[str, Any] = {
                         "openinference.span.kind": "LLM",
                         "llm.model_name": "gemini-pro-agent",
-                        "llm.input_messages.0.message.role": last_input_role,
-                        "llm.input_messages.0.message.content": last_input_content,
                         "input.value": last_input_value,
                         "input.mime_type": last_input_mime,
                         "llm.output_messages.0.message.role": "assistant",
                     }
+                    for i, m in enumerate(accumulated_messages):
+                        attrs[f"llm.input_messages.{i}.message.role"] = m["role"]
+                        attrs[f"llm.input_messages.{i}.message.content"] = _truncate(m["content"])
+
                     if content:
                         attrs["llm.output_messages.0.message.content"] = _truncate(content)
+                    if thinking:
+                        attrs["llm.reasoning"] = _truncate(thinking)
 
                     if tool_calls:
                         attrs["output.mime_type"] = "application/json"
@@ -162,6 +199,29 @@ def _extract_llm_spans_for_turn_agy(
                     else:
                         attrs["output.mime_type"] = "text/plain"
                         attrs["output.value"] = _truncate(content)
+
+                    if resolve_gemini_tokens is not None:
+                        tok = resolve_gemini_tokens(
+                            session_id=session_id,
+                            transcript_path=transcript_path,
+                            step_index=step_index,
+                            input_text=last_input_content,
+                            output_text=content,
+                            thinking_text=thinking,
+                        )
+                        attrs["llm.token_count.prompt"] = tok["prompt"]
+                        attrs["llm.token_count.completion"] = tok["completion"]
+                        attrs["llm.token_count.total"] = tok["total"]
+                        if tok.get("cache_read"):
+                            attrs["llm.token_count.prompt_details.cache_read"] = tok["cache_read"]
+                            attrs["llm.token_count.prompt_details.cache_write"] = 0
+                        attrs["llm.token_count.type"] = tok["type"]
+                        attrs["llm.token_count.provenance"] = tok["type"]
+                        attrs["llm.token_count.estimate_method"] = tok["estimate_method"]
+                        attrs["llm.token_count.estimation_method"] = tok["estimate_method"]
+                        attrs["token_count.type"] = tok["type"]
+                        attrs["token_count.provenance"] = tok["type"]
+                        attrs["token_count.estimate_method"] = tok["estimate_method"]
 
                     spans.append(
                         {
@@ -467,6 +527,7 @@ def handle_stop(data: dict, config: dict) -> None:
             human_count_at_start=ct.get("human_count_at_start", 0),
             trace_id_hex=trace_id,
             root_span_id_hex=root_span_id,
+            session_id=session_id,
         )
 
         # Find the user prompt preview to set as CHAIN name
@@ -501,6 +562,45 @@ def handle_stop(data: dict, config: dict) -> None:
         if agent_name:
             chain_attrs["agent.name"] = agent_name
 
+        total_prompt = 0
+        total_completion = 0
+        total_cache = 0
+        all_reported = True
+        has_tokens = False
+
+        other_records: list[dict[str, Any]] = []
+        for span in llm_spans:
+            other_records.append(span)
+            s_attrs = span.get("attributes", {})
+            if "llm.token_count.prompt" in s_attrs:
+                has_tokens = True
+                total_prompt += s_attrs["llm.token_count.prompt"]
+                total_completion += s_attrs["llm.token_count.completion"]
+                total_cache += s_attrs.get("llm.token_count.prompt_details.cache_read", 0)
+                if s_attrs.get("llm.token_count.type") != "reported":
+                    all_reported = False
+
+        if has_tokens:
+            chain_attrs["llm.token_count.prompt"] = total_prompt
+            chain_attrs["llm.token_count.completion"] = total_completion
+            chain_attrs["llm.token_count.total"] = total_prompt + total_completion
+            if total_cache > 0:
+                chain_attrs["llm.token_count.prompt_details.cache_read"] = total_cache
+                chain_attrs["llm.token_count.prompt_details.cache_write"] = 0
+            est_type = "reported" if all_reported else "estimated"
+            est_method = (
+                "reported: antigravity conversation db steps payload"
+                if all_reported
+                else "estimated: character length ratio"
+            )
+            chain_attrs["llm.token_count.type"] = est_type
+            chain_attrs["llm.token_count.provenance"] = est_type
+            chain_attrs["llm.token_count.estimate_method"] = est_method
+            chain_attrs["llm.token_count.estimation_method"] = est_method
+            chain_attrs["token_count.type"] = est_type
+            chain_attrs["token_count.provenance"] = est_type
+            chain_attrs["token_count.estimate_method"] = est_method
+
         # Emit CHAIN span
         chain_span = {
             "name": prompt_preview,
@@ -513,14 +613,7 @@ def handle_stop(data: dict, config: dict) -> None:
             "force_span_id": True,
             "attributes": chain_attrs,
         }
-
-        records = [chain_span]
-        for span in llm_spans:
-            # agy doesn't have usage attributes, remove them if we want to be clean
-            for k in list(span["attributes"].keys()):
-                if k.startswith("llm.token_count"):
-                    del span["attributes"][k]
-            records.append(span)
+        records: list[dict[str, Any]] = [chain_span] + other_records
 
         _build_and_export_spans(
             config=config,

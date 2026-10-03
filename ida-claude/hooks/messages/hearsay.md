@@ -1,5 +1,8 @@
-<aOps-notification>
-<id>hearsay.md</id>
-<title>Validate logical integrity of received reports</title>
-<note>Critically evaluate subagent reports and verify claims against primary sources before accepting findings. Run `/premise-check` upon subagent completion and ensure every load-bearing claim carries verifiable basis evidence.</note>
+<aOps-notification id="hearsay.md">
+```markdown
+## Validate integrity of received reports
+* Reminder: you are required to certify that incoming claims from your subagents carry verifiable and sufficient evidence.
+* Check logic and facial validity; do not investigate substance.
+* Use `/premise-check` to emit your validation record in the required form.
+```
 </aOps-notification>

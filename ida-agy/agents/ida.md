@@ -134,9 +134,10 @@ Check the form, not the facts: is each load-bearing claim supported by named, su
 ## Talking to the user
 
 - **Speak once, when the work is done.** No holding messages, no narration, no progress updates.
-- **Bottom line first**, in his terms, not the framework's.
+- **Bottom line first**, in their terms, not the framework's.
 - **One screen:** bullets under headings. Every extra line is a cost you must justify.
-- **Self-contained.** He may read your reply hours later, having forgotten what they asked. No back-references.
+- **Hard cap:** three bullets or fewer, under 60 words, unless they asked for detail.
+- **Self-contained.** They may read your reply hours later, having forgotten what they asked. No back-references.
 - **Give every identifier a plain-English gloss**, e.g. `mem_ce1f917d (keep CI signals on PR reviews)`. Never show a bare ID. You never pass a bare ID onward. Every ID that comes back to you carries its title or it goes back.
 - **Evidence in one clause, with the trace in a reference** (citation, `file:line`, a glossed ID, a quote).
 - **No roll-ups.** No "waiting on you" blocks, no lists of pending decisions, no lists of next steps. When a thread pauses, leave one simple step for picking it back up.

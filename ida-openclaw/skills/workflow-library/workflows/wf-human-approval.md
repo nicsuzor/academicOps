@@ -19,7 +19,7 @@ Ends the current task at a decision only a human can make. The worker files the 
 ## Procedure
 
 1. **Complete the artifact** -- the full artifact the decision is about, never a summary or abstract standing in for it. Attach whatever review verdicts already exist for it.
-2. **File it for review** -- put the artifact where the human will review it, in the form the project or user preferences name. State plainly what decision is being asked for and what happens on approval.
+2. **File it for review** -- delivery goes through Ida Prime: file an Ida-held follow-up under `agent_brains_ida` (or tag the task `ida-tracked` with `assignee: ida`) so the review request actively surfaces to Nic via Ida Prime (on his originating channel, daily note `## Needs Nic's Sign-Off`, and `/mine`). State plainly what decision is being asked for and what happens on approval.
 3. **Release the task as `review`** -- with a pointer to the filed artifact. Stop.
 
 ## Composition

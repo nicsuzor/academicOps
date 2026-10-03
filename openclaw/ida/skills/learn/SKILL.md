@@ -10,7 +10,7 @@ Perform root-cause analysis on systemic failure classes using session execution 
 ## Protocol
 
 1. **Retrieve session execution record**:
-   - Query session logs via OpenTelemetry spans using the `aops:session-trace` skill.
+   - Query session logs via OpenTelemetry spans using the `ida:session-trace` skill.
    - If the trace is absent, unexported, or incomplete, halt immediately and state that the trace is unavailable.
    - Do not fall back to inspecting, grepping, or reading repository source code.
 2. **Diagnose systemic cause from trace evidence**:

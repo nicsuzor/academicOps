@@ -1,6 +1,6 @@
 ---
 name: gather
-description: Read the graph first-hand, check what came back on the papers, and hand Nic only what actually needs him. Use when work has returned and something may need his decision, or on "what needs me", "what came back", "catch me up". Not truth maintenance over external state (that is `/reconcile`, and it alone writes `done`), not dispatch, and never a relay of a worker's own account.
+description: Read the graph first-hand, check what came back on the papers, and hand Nic only what actually needs him. Use when work has returned and something may need his decision, or on "what needs me", "what came back", "catch me up". Not truth maintenance over external state (that is `/reconcile`), not dispatch, and never a relay of a worker's own account.
 ---
 
 # /gather -- what actually needs Nic
@@ -27,7 +27,6 @@ Candidates, narrowest first:
 
 - `pkb.list_tasks(status="review")` -- parked on a decision only Nic can make.
 - `pkb.list_tasks(status="partial")` -- a named remainder someone has to place.
-- `pkb.list_tasks(status="merge_ready")` -- waiting on repo rules; usually nothing for Nic.
 - `pkb.get_task(id)` on each, for the body and the evidence fields.
 
 ### 2. Check each one on the papers
@@ -72,8 +71,7 @@ End with the single smallest next action.
 
 ## Must not
 
-- Set task status. Sara chooses `partial` / `merge_ready` / `review` / `queued`;
-  `/reconcile` alone writes `done`, on an observed merge.
+- Set task status. Sara chooses `partial` / `review` / `queued`; workers mark tasks `done` after `/pull`; `/reconcile` verifies claimed evidence.
 - Prescribe the remedy for work you judged insufficient.
 - Relay a worker's self-report, summary, or confidence as if it were a finding.
 - Dispatch, re-dispatch, or fix anything.

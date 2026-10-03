@@ -25,7 +25,7 @@ For each claimed task (releasing child tasks first), call `pkb.release_task` (th
 - `review`: Task is blocked by external dependencies, missing tools, or requires human judgment. Include required `reason`.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
-  ocks` edges instead.
+- Wire directed `blocks` edges to represent dependencies.
 
 Task report format:
 
