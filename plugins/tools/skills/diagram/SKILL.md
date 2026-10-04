@@ -77,6 +77,20 @@ excalidraw-view FILE [set-text <id> "<text>" | fit <id> "<text>" | move-elem <id
 - Update `text` and `originalText` together. Keep elements sorted by ascending fractional `index`.
 - Validate with `excalidraw-view FILE check` and `excalidraw-view FILE overlap`.
 
+### Editing an existing diagram
+
+When the diagram already exists and the ask changes the plan or state it shows, edit the existing elements in place so the delta is visible on the canvas:
+
+- **Moved** thing: `move-elem` the existing element.
+- **Renamed** thing: `set-text` or `fit` the existing element.
+- **Changed status**: set `strokeColor`/`backgroundColor` on the existing element to the palette role for its new state.
+- **Removed** thing: `delete-elem` it, and its bound text and arrows.
+- **Genuinely new** thing: `add-node` only for this.
+
+Keep the `id` of every surviving element. `pkb excalidraw diff` and `sync` match canvas elements to PKB nodes by `id`; a replaced element reads as a deletion plus an unrelated addition.
+
+**Anti-pattern -- the parallel system.** Do not draw a fresh set of elements beside the old ones to depict the new state. It leaves two contradictory versions on one canvas, hides what changed, and severs every `id` binding. Before adding any element, check whether an existing element already represents that thing; if one does, edit it.
+
 ### PKB export and sync
 
 ```bash
