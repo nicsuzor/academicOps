@@ -448,19 +448,24 @@ def main(argv: list[str]) -> int:
     if event is None:
         return 0
 
-    # Do not fire if we have already prevented a stop event this turn
-    if is_continuation(event, raw):
-        return 0
+    # Do not fire if we have already prevented a stop event this turn, except
+    # for handlers that opt in with ``fires_on_continuation`` and bound their
+    # own re-blocking.
+    continuation = is_continuation(event, raw)
 
     hooks_dir = Path(__file__).resolve().parent
     if str(hooks_dir) not in sys.path:
         sys.path.insert(0, str(hooks_dir))
 
+    handlers = _load_handlers(event, hooks_dir)
+    if continuation:
+        handlers = [h for h in handlers if getattr(h, "fires_on_continuation", False)]
+        if not handlers:
+            return 0
+
     ctx = normalize(client, event, raw, hooks_dir)
     _log_fire(ctx)
     _instrument_otel_events(ctx)
-
-    handlers = _load_handlers(event, hooks_dir)
 
     kept_handlers = []
     for h in handlers:

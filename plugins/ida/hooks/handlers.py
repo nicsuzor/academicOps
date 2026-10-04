@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from bg_wait_gate import bg_wait_gate
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 
 Handler = Callable[[HookContext], Result | None]
@@ -641,5 +642,5 @@ HANDLERS: dict[str, list] = {
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool) if h is not None],
     "PostToolUse": [post_tool, agy_post_tool],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop],
+    "Stop": [bg_wait_gate, stop, agy_stop],
 }
