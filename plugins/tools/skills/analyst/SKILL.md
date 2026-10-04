@@ -73,6 +73,8 @@ Never query unmodelled raw sources directly; promote staging models to marts for
 ## Statistical methodology
 
 - **Pre-specify tests**: Align statistical tests to research questions before running models to prevent p-hacking.
+- **Fix the unit of analysis**: When units are measured repeatedly or across crossed factors (runs, models, raters, criteria), do not treat each observation as independent. Fit on individual observations with random intercepts for each crossed factor and for the full combination, and report the link residual. See `references/unit-of-analysis.md` for the default specification and warning signs.
+- **Anti-pattern — "let me just aggregate first"**: Collapsing repeated measurements to a mean, mode, or proportion before fitting is a modelling decision, not data preparation. Before aggregating, state what variance is being discarded; flag any decomposition showing a warning sign in `references/unit-of-analysis.md`.
 - **Verify assumptions**: Run `scripts/assumption_checks.py` (`comprehensive_assumption_check()` or components `check_normality`, `check_homogeneity_of_variance`, `check_linearity`, `detect_outliers`) before reporting results.
 - **Report completely**: Provide effect sizes and confidence intervals in substantive units; never report p-values in isolation.
 - **Label exploratory passes**: Clearly distinguish confirmatory tests from exploratory subgroup analyses.
