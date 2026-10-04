@@ -173,8 +173,8 @@ them is what makes a supervisor take a worker at its word.
   `docker exec`, and without racing container teardown.
 - **Alias resolution can kill the whole tmux server, not just the pane.**
   `tmux new-session -d -s NAME 'polecat ...'` spawns `/bin/sh -c` as the
-  pane's only process. Use the explicit host launcher script path (`scripts/polecat` from dotfiles)
-  or a launch script wrapper.
+  pane's only process. Use the explicit path to the installer-supplied host
+  launcher script, or a launch script wrapper.
 - **Hand tmux a script, not a long inline command.** Everything a real launch
   needs — several environment assignments, a `uv run` invocation, a quoted prompt
   — must survive one round of shell quoting inside the `tmux new-session`
@@ -260,7 +260,7 @@ wall instead of a ready prompt: `setup_staging()` stages agy's
 nothing to authenticate with. `claude` dev-loop sessions are unaffected.
 
 ```bash
-# Launch via dotfiles host launcher (scripts/polecat):
+# Launch via the installer-supplied host launcher:
 POLECAT_IMAGE=polecat:latest \
   polecat -d "$CHECKOUT" -s dev-probe -i -- claude -p "call pkb get_status()"
 ```
@@ -274,8 +274,8 @@ neither commit identity nor token, so bypass the `ENTRYPOINT` rather than
 supplying placeholder credentials it has no use for:
 
 ```bash
-docker run --rm --entrypoint sh ghcr.io/nicsuzor/aops-crew:latest -c 'claude plugin list'
-docker run --rm --entrypoint sh ghcr.io/nicsuzor/aops-crew:latest -c 'ls /home/worker/.gemini/antigravity-cli/plugins/'
+docker run --rm --entrypoint sh "$POLECAT_IMAGE" -c 'claude plugin list'
+docker run --rm --entrypoint sh "$POLECAT_IMAGE" -c 'ls /home/worker/.gemini/antigravity-cli/plugins/'
 ```
 
 Expect every plugin declared in `build/marketplace.toml` from both, each `claude

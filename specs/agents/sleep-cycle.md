@@ -3,7 +3,6 @@ title: "Sleep Cycle: Periodic Consolidation Agent"
 type: spec
 status: draft
 created: 2026-03-09
-task: aops-6e05d69a
 tags:
   - memory
   - consolidation
@@ -14,9 +13,9 @@ tags:
 
 ## What runs today
 
-`templates/github-workflows/sleep-cycle.yml` ships and installs into the brain
+`templates/github-workflows/sleep-cycle.yml` ships and installs into the PKB
 repo (`$ACA_DATA`) as a `workflow_dispatch` job -- operator-triggered, not
-scheduled. It checks out the brain repo, academicOps, and the sessions repo,
+scheduled. It checks out the PKB repo, academicOps, and the sessions repo,
 then launches a Claude agent under a 30-minute job timeout with a 25-minute
 agent budget and a per-phase batch limit (default 100).
 
@@ -117,7 +116,7 @@ changed and why it matters, so the qualitative decision stays with the human.
 Consolidation output is knowledge of uncertain quality, and everything
 downstream reads it. So the cycle splits its writes:
 
-- **Mechanical work** -- deduplication, index refresh, graph maintenance, brain
+- **Mechanical work** -- deduplication, index refresh, graph maintenance, PKB
   sync -- commits directly. It is deterministic and independently verifiable.
 - **Knowledge work** -- new notes, synthesis, MOCs -- goes to a branch
   `sleep/consolidation-YYYY-MM-DD-HHMM` and opens a PR, reviewed before merge.
@@ -147,7 +146,7 @@ autonomy.
 - An active task with a vague title and empty body is flagged, not deleted.
 - A new skill file appears in the mechanical indices after a cycle.
 - A change to a governance document arrives as a PR, never a direct commit.
-- Every successful cycle ends with a commit to the brain repo.
+- Every successful cycle ends with a commit to the PKB repo.
 - The agent exits cleanly inside its budget and writes a summary to
   `$GITHUB_STEP_SUMMARY`, halt count first.
 

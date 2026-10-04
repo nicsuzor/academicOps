@@ -3,13 +3,10 @@ created: 2026-02-28
 depends_on:
 - conceptual-review-workflow
 - pauli
-id: workflows-8f0b0787
 modified: 2026-05-17T00:40:26.340717030+00:00
 related:
 - conceptual-review-workflow
 - pauli
-- non-interactive-agent-workflow-spec
-- polecat-swarms
 status: draft
 tags:
 - spec

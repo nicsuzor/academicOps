@@ -16,7 +16,6 @@ tags:
   - workflow
   - sign-off
   - review
-source: "aops-1e4cbf7e"
 ---
 
 ## What this step does

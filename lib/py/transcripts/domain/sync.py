@@ -122,8 +122,8 @@ def _pull_then_push(sessions_dir: Path, git_dir: Path, branch: str) -> bool:
     the push a non-fast-forward, git rejects it, and every subsequent cycle
     drops its transcripts on the floor.
 
-    A single pull-then-push is not enough on its own: two hosts share this
-    repo on the same 5-minute cron cadence, so the remote can advance again in
+    A single pull-then-push is not enough on its own: several hosts can share
+    this repo on the same cron cadence, so the remote can advance again in
     the gap between our pull and our push, rejecting the push exactly as if we
     had never pulled. Each retry re-pulls before pushing again, so it always
     integrates the latest remote state first.

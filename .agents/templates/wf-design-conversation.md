@@ -29,11 +29,7 @@ conflicts: [wf-batch-fanout]
 Iterates one artifact with the person who owns the judgment on it — a
 wired-architecture map, a research methodology, a shopping list — through
 repeated present → feedback → rework passes until it is right. The medium
-changes; the loop does not. Distilled from `academicops-wired-map.excalidraw`
-design-conversation passes ([[aops_b167d73a]], [[aops_fca30941]]) and
-generalised on the user's instruction not to overfit to diagram work: "generalised
-out to everything, including potentially research methodologies and shopping
-lists."
+changes; the loop does not.
 
 ## When to route here
 
@@ -141,19 +137,17 @@ test below.
   beside the original and never under a versioned filename. It is the
   baseline the geometry checks below are read against, and it is discarded at
   the end of the pass; git remains the only versioning.
-- Pause the brain auto-sync daemon before the write, not after. `$ACA_DATA`
-  runs a daemon that commits writes as they land, as `auto: sync
-  <timestamp>`. Edit first and your `git commit` returns `nothing to commit,
-  working tree clean` — the daemon already took your change under a message
-  that says nothing about it, and there is no recovery short of amending
-  someone else's commit. This is why the map's history carries no design
-  rationale at all.
+- If a sync process auto-commits writes under the file's repository (for
+  example under `$ACA_DATA`), pause it before the write, not after. Edit first
+  and your `git commit` returns `nothing to commit, working tree clean` — the
+  sync process already took your change under a message that says nothing
+  about it, and there is no recovery short of amending someone else's commit.
 - After every edit, validate: well-formed JSON; `type` fields intact; no
   duplicate ids; every `containerId`, `boundElements` entry and arrow binding
   resolves; no bounding-box overlap with neighbours (boundary/zone rectangles
   excepted); the `elements` array in strict ascending `index` order (a file
   can pass every referential check and still be unopenable if array order and
-  fractional indices disagree — this corrupted the map once already); bound
+  fractional indices disagree); bound
   text fits its container or the label renders outside the box. Verify with:
 
   ```
@@ -163,17 +157,13 @@ test below.
 
   `pkb-excalidraw <file> arrows-check` (arrows cutting through boxes) and
   `pkb-excalidraw <file> overlap` catch geometry regressions. Read both as a delta against the pre-edit copy, never
-  as an absolute number — the map has never been at zero crossings and no
-  pass is expected to get it there; what matters is that your edit did not
+  as an absolute number — zero crossings is not the target; what matters is that your edit did not
   make it worse.
 - What a clean `check` does **not** tell you: it fails only on **content**
   divergence between `text` and `originalText`, not on line-wrap divergence,
-  and the map carries 35 wrap-only mismatches that pass (see [[obs_5df02f93]]
-  for what the content case costs).
+  so wrap-only mismatches pass.
 - Git history is the only versioning: never keep a backup copy or a versioned
-  filename. This has been violated at least once in practice
-  (`academicops-wired-map.excalidraw.bak-20260730-reconcile`, committed
-  2026-07-30) — treat that as the failure mode to avoid, not a precedent.
+  filename.
 
 **Before calling a pass done**
 

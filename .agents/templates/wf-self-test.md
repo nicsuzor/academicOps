@@ -1,12 +1,9 @@
 ---
-alias:
-- kb_831042d0-wf-self-test
-- kb_831042d0
 created: 2026-07-28T02:39:39.475916318+00:00
-id: kb_831042d0
+id: wf-self-test
 last_modified: 2026-07-28T03:01:21.927917772+00:00
 modified: 2026-07-28T03:01:21.927916009+00:00
-permalink: kb_831042d0
+permalink: wf-self-test
 tags:
 - wf-template
 - workflow

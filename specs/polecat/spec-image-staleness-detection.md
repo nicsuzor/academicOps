@@ -11,7 +11,8 @@ tags: [spec, polecat, provenance, staleness]
 # Polecat Container Image Staleness Detection & Surfacing
 
 Originally implemented in `lib/polecat/staleness.py` in academicOps;
-container image definitions and builds are now maintained in `nicsuzor/dotfiles`.
+container image definitions and builds are now maintained outside this repository and
+supplied by the installer.
 
 ## The failure mode
 
@@ -143,7 +144,7 @@ the image is missing a release checkpoint the workspace has already reached:
    cut on a branch that never merged into the workspace's own history, so an
    abandoned release line is never picked up as the baseline). This is
    re-derived on every call: tag and branch topology in this repo is a dated
-   observation, never a standing property (`kb_3a091c50`), so nothing here
+   observation, never a standing property, so nothing here
    trusts a cached ref name.
 3. If no release tag is reachable from the workspace (a shallow test
    fixture, or a repo with no tags yet), there is no baseline to measure
@@ -158,11 +159,10 @@ the image is missing a release checkpoint the workspace has already reached:
    `[local, current release baseline]` rather than `local:match`, since the
    SHAs genuinely differ.
 
-`aops_97952fe5` (whether a detected mismatch should hard-fail or auto-rebuild
-rather than warn) and `aops_81849370` (why a successful `make docker-build`
-can be immediately followed by a stale-warning launch) are separate, open
-concerns about this same detector; neither is resolved by the release-baseline
-comparison described here.
+Whether a detected mismatch should hard-fail or auto-rebuild rather than warn,
+and why a successful `make docker-build` can be immediately followed by a
+stale-warning launch, are separate, open concerns about this same detector;
+neither is resolved by the release-baseline comparison described here.
 
 ## Surfacing
 

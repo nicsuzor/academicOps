@@ -35,7 +35,7 @@ def ensure_test_environment(monkeypatch, tmp_path):
     sessions_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("AOPS_SESSIONS", str(sessions_dir))
 
-    # Redirect UV cache to prevent PermissionError in /opt/suzor/cache/uv
+    # Redirect UV cache to prevent PermissionError in a host-level uv cache
     # This is required for hooks to run successfully under macOS Seatbelt
     uv_cache = tmp_path / "uv_cache"
     uv_cache.mkdir(parents=True, exist_ok=True)

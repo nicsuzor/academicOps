@@ -1,5 +1,4 @@
 ---
-id: workflows-workflow
 title: Workflow — the three-stage pipeline
 type: spec
 category: workflow

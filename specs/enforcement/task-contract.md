@@ -59,8 +59,7 @@ this contract does not restate.
   one again, so claiming for them buys graph noise instead of recoverability. A
   launch-time claim with no worker claim behind it is precisely the
   never-landed-dispatch signal Sara's tick reviews, requeuing it to `ready`
-  where warranted — `/reconcile` no longer probes or resets claims
-  ([[aops_epic_task_lifecycle]]).
+  where warranted — `/reconcile` no longer probes or resets claims.
 - **Task naming invariant** — task titles must be brief, descriptive, verb-led statements of a concrete thing to achieve (e.g. `Implement X`, `Verify Y`). A task title or filename never carries a person's name or persona prefix; assignment belongs exclusively in `assigned_to` / `assignee` frontmatter fields. See [`specs/meta/naming-and-decisions.md`](../meta/naming-and-decisions.md).
 - **Decisions as graph relationships** — decisions and questions must never be created as standalone "decision" tasks. Open architectural choices are represented as mutually exclusive or mutually blocking option nodes where choosing one branch resolves the conflict, and missing information is modelled as a probe task (`classification: probe`). In-turn questions are put directly via `AskUserQuestion`.
 - **Task body brevity invariant** — task bodies are strictly concise (50–150 words for atomic tasks), structured only around Goal, Deliverable, Scope, Acceptance criteria, and Pointers. Extraneous narrative sections (`Background`, `References`, `Implementation Plan`) and prose task links are prohibited.
@@ -76,7 +75,7 @@ this contract does not restate.
   semantics, which this bullet does not restate). Only silent, undisclosed
   abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the
-  `mem` MCP server predicate — the contract is only as strong as that floor.
+  PKB MCP server predicate — the contract is only as strong as that floor.
   This is Layer 2's instantiation of the universal task-boundary contract —
   the field-by-field shape, the substance-over-form review requirement, and
   the grandfather cutover policy live once, canonically, in

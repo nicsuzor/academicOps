@@ -8,8 +8,6 @@ depends_on: [pauli]
 created: 2026-02-28
 tags: [spec, review, multi-agent, workflow]
 related:
-  - non-interactive-agent-workflow-spec
-  - polecat-swarms
   - pauli
   - research-decomposition
 ---
@@ -128,4 +126,4 @@ governs _how to review_; GitHub governs _when and where_.
 - [[specs/workflows/research-decomposition.md]] -- downstream domain application
 - [[plugins/pkb/skills/brief/SKILL.md]] -- records this workflow's review obligations as
   acceptance criteria on the task body
-- [[polecat-swarms]] -- execution layer; consumes reviewed artifacts
+- [[specs/polecat/polecat-system.md]] -- execution layer; consumes reviewed artifacts

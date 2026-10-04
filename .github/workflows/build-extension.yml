@@ -51,7 +51,7 @@ jobs:
   # branch, the GitHub Release and GHCR with zero evidence the tagged commit
   # even imported. The tag is the only human action in the release path, and a
   # "run the tests first" precondition that lives only in someone's head is not
-  # a gate — this is (aops_v091_ci_never_ran).
+  # a gate — this is.
   #
   # Reuses pytest.yml via workflow_call, so the publish path runs the SAME steps
   # as a PR and a push to an integration branch — one definition, three entry
@@ -196,7 +196,7 @@ jobs:
           # a bogus NEXT-dev version (G1) — e.g. v0.3.70 was published as
           # 0.3.71-dev.0+gSHA.dirty, a PRERELEASE string for what is a stable release,
           # so semver-aware installers mis-rank it. The guard used to cover only the
-          # testing path; stable needs it too (mem_c006704b).
+          # testing path; stable needs it too.
           VERSION_FLAG="--set-version ${{ steps.version.outputs.version }}"
           # $VERSION_FLAG must word-split into separate args
           # ("--set-version X.Y.Z"), so SC2086 quoting would break it.
@@ -251,7 +251,7 @@ jobs:
           # Publish the PR-pipeline reusable workflows so external consumers can
           # pin `uses: nicsuzor/academicOps/.github/workflows/pr-pipeline.yml@dist`
           # — a ref that auto-advances on every release with no manual step,
-          # replacing the pipeline-v1 static tag that silently drifted (aops_1a4b8e23).
+          # replacing the pipeline-v1 static tag that silently drifted.
           # The dependency set is DERIVED from pr-pipeline.yml's own relative
           # `uses: ./.github/workflows/*.yml` lines, not hand-maintained here, so a
           # new sub-job can't silently fall out of sync with what ships to dist —

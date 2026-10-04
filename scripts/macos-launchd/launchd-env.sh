@@ -17,7 +17,7 @@
 # deliberately does NOT set any global SSH lockdown (SSH_AUTH_SOCK /
 # GIT_SSH_COMMAND) or global git-config hijack (GIT_CONFIG_*): doing so
 # globally re-breaks VS Code and every other GUI app that relies on the
-# user's personal SSH identity (documented failure note-4d4a97c2).
+# user's personal SSH identity.
 # Session-scoped credential isolation for Claude/bot sessions is instead
 # applied per-session by the aops plugin's SessionStart hook via
 # CLAUDE_ENV_FILE.
