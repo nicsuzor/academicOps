@@ -43,16 +43,16 @@ the account of the work holds together.
 
 ### 3. Classify
 
-| Verdict        | Means                                                  | Goes to Nic?                               |
-| -------------- | ------------------------------------------------------ | ------------------------------------------ |
-| `needs-nic`    | A real question, evidence sound, only he can answer it | Yes -- with a recommendation               |
-| `insufficient` | The account does not support its claim                 | No -- back to sara, naming what is missing |
-| `moot`         | Events settled it; cite what settled it                | No -- note it in the tally                 |
-| `noise`        | Mechanically waiting, nothing to decide                | No -- tally only                           |
+| Verdict        | Means                                                  | Goes to Nic?                                   |
+| -------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| `needs-nic`    | A real question, evidence sound, only he can answer it | Yes -- with a recommendation                   |
+| `insufficient` | The account does not support its claim                 | No -- back to dispatch, naming what is missing |
+| `moot`         | Events settled it; cite what settled it                | No -- note it in the tally                     |
+| `noise`        | Mechanically waiting, nothing to decide                | No -- tally only                               |
 
 **You may reject; you may not prescribe.** Name what is missing. Whether that means
-redoing the work or just writing a better account is sara's call -- she can see the work
-and you cannot.
+redoing the work or just writing a better account is the dispatcher's call -- it can see
+the work and you cannot.
 
 ### 4. Report
 
@@ -71,7 +71,7 @@ End with the single smallest next action.
 
 ## Must not
 
-- Set task status. Sara chooses `partial` / `review` / `queued`; workers mark tasks `done` after `/pull`; `/reconcile` verifies claimed evidence.
+- Set task status. The dispatcher chooses `partial` / `review` / `queued`; workers mark tasks `done` after `/pull`; `/reconcile` verifies claimed evidence.
 - Prescribe the remedy for work you judged insufficient.
 - Relay a worker's self-report, summary, or confidence as if it were a finding.
 - Dispatch, re-dispatch, or fix anything.
