@@ -21,8 +21,8 @@ Finalize session work and provide a structured handover before exit.
 For each claimed task (releasing child tasks first), call `pkb.release_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.release_task(...)`) with the appropriate terminal status:
 
 - `done`: All acceptance criteria are fully met with verified evidence.
-- `partial`: A functional increment is delivered; remaining work is explicitly documented under Next.
-- `review`: Task is blocked by external dependencies, missing tools, or requires human judgment. Include required `reason`.
+- `partial`: Agent work remains -- a scope seam, an external dependency, or a missing tool. A follow-up task carries the remainder; record it under Next.
+- `review`: The next step is a decision only Nic can make. Name that decision in the required `reason`.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
 - Wire directed `blocks` edges to represent dependencies.
