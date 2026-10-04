@@ -1,20 +1,15 @@
 ---
-id: workflows-capture-intake
 title: Capture Intake — Mobile/Webhook Pickup into the PKB
 type: spec
 category: workflow
 status: draft
 tags: [spec, workflow, capture, intake, pkb, q]
-related:
-  - workflows-reconcile
-  - quick-capture
-  - graph-hygiene
 ---
 
 # Capture Intake
 
-The user's two capture front ends (VSCode task, iOS Shortcut) already commit raw notes into the PKB
-with no processing at capture time -- built, and not this spec's concern (`quick-babf1cd6`). What
+Capture front ends commit raw notes into the PKB with no processing at capture time -- they are
+supplied by the installer, and not this spec's concern. What
 has no owner is pickup: turning a landed capture into a graph node. Today that only happens by
 hand, at `/daily` step 1.5, when a `/daily` run happens to occur. This spec designs the standing
 route that picks pickup up automatically, and the one PKB write capability it needs that does not
@@ -24,7 +19,7 @@ exist yet: converting a capture into a task in place.
 
 | Piece                                                                        | State                                                  |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`) | Built -- `quick-babf1cd6`                              |
+| Capture front ends land raw notes in `notes/mobile-captures/` (`type: note`) | Installer-supplied                                     |
 | Manual triage (Task / Note / Expand / Discard) at `/daily` step 1.5          | Built -- remains the fallback this route defers to     |
 | Standing, automated pickup context                                           | **Not built -- this spec's target shape**              |
 | PKB write that moves, renames and retypes a document while keeping its ID    | **Not built -- blocks the Task disposition (see Gap)** |
@@ -39,7 +34,7 @@ routed capture always leaves the directory, by one of two moves:
   the task location (see Routing procedure).
 - **Note or Discard:** the capture is deleted after its content is placed (Note) or judged not
   worth keeping (Discard) -- the same "no tombstone, git holds the history" doctrine `/reconcile`
-  applies to harvested tasks (`kb_graph_hygiene_rules`, Rule Set 2).
+  applies to harvested tasks.
 
 Every run processes whatever is in the directory. Nothing is skipped because a previous run missed
 it: a previous run either routed it (it is no longer there) or left it (it is still there,
@@ -80,8 +75,8 @@ defers to it rather than duplicating it.
   as it would a task it created. No new file is created and no note is left behind. If
   search-and-adopt finds an existing task that already carries the ask, the capture is folded into
   that task (`pkb__update_body`) and deleted under the gate below, as with Note.
-- **Note.** Not an actionable ask -- resolve a destination via the Destination Rule
-  (`kb_graph_hygiene_rules`, Rule Set 2 §2.1): an existing canonical topic note (synthesize in via
+- **Note.** Not an actionable ask -- resolve a destination via the PKB's graph-hygiene
+  Destination Rule: an existing canonical topic note (synthesize in via
   `pkb__update_body`) or a new one (`pkb__create(type="knowledge", ...)`), never left as an
   unparented capture.
 - **Expand.** Not a fourth destination type -- maps to the Task path with
@@ -93,7 +88,7 @@ defers to it rather than duplicating it.
 
 **Before deleting a capture folded into another node** (Note, or Task folded into an existing
 task), run the same Pre-Deletion Verification Gate
-`/reconcile` already applies (`kb_graph_hygiene_rules`, Rule Set 2 §2.2): confirm the destination
+`/reconcile` already applies: confirm the destination
 resolves, its `modified` timestamp is fresh, the content reads back, and any external references
 are reparented. Only then `pkb__delete` the source capture note. A gate failure halts on that
 capture and leaves it in place -- same abort semantics as the hygiene route, never a retry against
@@ -111,7 +106,7 @@ archives the source file, so it cannot turn a capture into a task either. Whethe
 `pkb_update_task` accepts a `type` key has not been tested, and it would leave the file in
 `notes/mobile-captures/` -- still reading as unprocessed -- if it did.
 
-Triage does not work around this with raw git or filesystem edits of the brain repo, and does not
+Triage does not work around this with raw git or filesystem edits of the PKB repo, and does not
 fall back to creating a new task and deleting the capture. Until the PKB tool exists, a capture
 classified as Task or Expand stays in `notes/mobile-captures/`; Note and Discard proceed.
 
@@ -121,10 +116,9 @@ Invoked as an automated pickup context: routing a capture is judgment work belon
 
 ## Out of scope
 
-- The capture front ends themselves and their frontmatter shape (`quick-babf1cd6`).
-- Legacy capture notes still carrying a `processed` key, and the 17 files carrying
-  `tags: [Array]` -- pre-existing data-quality debt tracked on `brain_7c711ec4`, not a backfill
-  this route performs.
+- The capture front ends themselves and their frontmatter shape.
+- Legacy capture notes still carrying a `processed` key, and files carrying `tags: [Array]` --
+  pre-existing data-quality debt, not a backfill this route performs.
 - Surfacing anything to the user beyond what `/daily` step 1.5 already renders -- the update-surfacing task's
   concern if a gap remains once this lands, not assumed here.
 

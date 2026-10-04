@@ -20,7 +20,7 @@ Truth maintenance over the task graph, run by a peer Ida instance -- never by th
 
 ## Set the Status on Each Task
 
-Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass, under the two-step mutation contract below. Status meanings are the PKB taxonomy's (the mem repository's TAXONOMY reference, "Status Values and Transitions"); this table applies them:
+Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass, under the two-step mutation contract below. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
 
 | Task is in    | Evidence on the record                                                                    | Set it to                                                                                     |
 | ------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |

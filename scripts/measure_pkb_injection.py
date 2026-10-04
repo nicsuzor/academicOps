@@ -15,7 +15,7 @@ Answers three questions with numbers, not impression, before anyone touches
    no source for it anywhere reachable) — see NOTES below. This is the
    closest faithful proxy available for what a real fire pays.
 3. **Retrieval relevance** on a fixed, versioned prompt set spanning the two
-   topic families named in task_206a0832: (A) instruction auditing / plugin
+   topic families: (A) instruction auditing / plugin
    structure, and (B) agent design / evidence standards. Scoring rule is a
    stated, mechanical keyword-domain match against each prompt's declared
    keyword set — never a model judging its own homework.

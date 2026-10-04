@@ -17,8 +17,8 @@ carries).
 **Why OTLP JSON and not a network exporter.** The framework's only existing
 OTel machinery (polecat container telemetry environment contract,
 specs/ARCHITECTURE.md "Observability & OTEL Tracing") is Claude Code's own
-native session export — token counts, tool invocations — forwarded to a
-Tailnet OTLP collector. It carries no knowledge of a rule evaluation, and
+native session export — token counts, tool invocations — forwarded to an
+OTLP collector. It carries no knowledge of a rule evaluation, and
 nothing in this repository built a span of its own before this module.
 ``opentelemetry-exporter-otlp-proto-http`` is the wire format that collector
 already speaks, but it is protobuf, not JSON, and it exists to reach a

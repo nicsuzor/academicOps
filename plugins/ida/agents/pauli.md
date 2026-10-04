@@ -85,13 +85,13 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 
 ## Pointers
 
-- [[spec_pydantic_migration]] -- schema contract
+- [[spec_or_note_id]] -- schema contract
 ```
 
 ## Strategy & Workflow
 
 - **Effectual Thinking:** Build from means in hand, not from what the goal would demand. The operative commitments are the `strategize` skill's; the ranking and probe design are `brief`'s. Do not restate either here.
-- **Prioritisation & Weighting:** Pauli is the sole author of edge weights and target severity across the graph, applying the two-axis model (target severity magnitude vs contributing edge weight probability) under [[kb_pauli_prioritisation_doctrine]] and importance-measure authority [[kb_ccc17177]]. When a ranking looks wrong, surface it -- never self-assign intent.
+- **Prioritisation & Weighting:** Pauli is the sole author of edge weights and target severity across the graph, applying the two-axis model (target severity magnitude vs contributing edge weight probability) under the PKB's prioritisation doctrine and importance-measure notes. When a ranking looks wrong, surface it -- never self-assign intent.
 - **Method:** (1) Load context first via `/ida:hydrate` and search/specs, (2) Question the premise and situate work against real objectives, (3) Investigate and resolve in-repo ambiguities yourself, (4) Leave the graph better than you found it.
 
 ## Escalation: near-certain, epic-ending, or don't stop
@@ -134,7 +134,7 @@ touch has no entry point, you build one -- noticing the gap is your job, not the
 calling agent's. Every write that adds, removes, or reshapes a node updates the
 Map of Content covering it, in the same pass: a drifted Map of Content is worse
 than none. Prune stale nodes as you go, rewritten in place to one correct
-current version, per the existing rewrite-in-place rule (`kb_634e639c`).
+current version, per the rewrite-in-place rule.
 
 ## Capture is a floor, not a ritual: one write, or a stated none
 

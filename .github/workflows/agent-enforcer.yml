@@ -84,8 +84,8 @@ jobs:
       # design keyed off any status carrying ?target_sha=<HEAD_SHA> in its
       # target_url — but the pending status, the crash-fallback failure status,
       # and the skip status all carry it, so a single failed/crashed run
-      # poisoned the SHA and RBG never reviewed it again (regression
-      # aops-330a87e3; follows aops-31798611 and aops-2be8f5c7).
+      # poisoned the SHA and RBG never reviewed it again (a recurring
+      # regression).
       - name: SHA-skip check
         id: sha-skip
         run: |
@@ -106,7 +106,7 @@ jobs:
           #     failure at 14:34, then a 22:33 re-run re-greened the SHA from
           #     the stale 14:33 history entry without any fresh review.
           #     Reading the latest state preserves the maintainer's authority
-          #     to revoke a status via a later post (aops-221211fa).
+          #     to revoke a status via a later post.
           GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
             --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | if . == null then 0 elif (.state == \"success\" and ((.description // \"\") | startswith(\"Skipped:\") | not)) then 1 else 0 end" 2>/dev/null || echo "0")
 
@@ -155,7 +155,7 @@ jobs:
       # checks out the GitHub default branch) so that prompt files introduced
       # to the default branch are always present, regardless of which branch
       # inputs.ref points at (the PR head branch may diverge from the default
-      # branch and predate a file added in a recent merge — see aops-59a6cba6).
+      # branch and predate a file added in a recent merge).
       # External consumers calling @enforcer-v1: pin to inputs.ref (release tag)
       # so their prompt files are consistent with the workflow version they pinned.
       - name: Fetch enforcer prompt
@@ -174,7 +174,7 @@ jobs:
           # --no-cone: treat the arguments as file path patterns, not cone-mode
           # directories. Cone mode (the default) interprets each path as a
           # directory ("'rbg/agents/rbg.md' is not a directory") and never
-          # materialises the files, so the subsequent cat fails. (aops-2be8f5c7)
+          # materialises the files, so the subsequent cat fails.
           cd .aops && git sparse-checkout set --no-cone \
             /plugins/rbg/agents/rbg.md \
             /.github/agents/shared-error-handling.md \
@@ -187,7 +187,7 @@ jobs:
             exit 1
           fi
           PROMPT=$(cat .aops/plugins/rbg/agents/rbg.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/enforcer.agent.md)
-          # Append an explicit user-turn directive (aops-2a3b4c71). Without it
+          # Append an explicit user-turn directive. Without it
           # the prompt is just concatenated agent-def markdown and the model
           # intermittently treats it as a pasted artifact ("what would you like
           # me to do?") instead of starting the review — enforcer-status then
@@ -232,7 +232,7 @@ jobs:
       # enforcer-status flake to a hard-required red on otherwise-mergeable PRs.
       # We retry only when (a) the first attempt's step exited non-success AND
       # (b) no Enforcer PR review exists yet for this SHA — re-running after a
-      # posted verdict would create a duplicate review. (aops-221211fa)
+      # posted verdict would create a duplicate review.
       #
       # `if: always()` is REQUIRED on both retry steps. `continue-on-error: true`
       # masks a step `failure` so the job continues, but it does NOT mask a step
@@ -262,7 +262,7 @@ jobs:
             echo "retry=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Reap the cancelled first attempt BEFORE the retry launches (aops-1adfd28d).
+      # Reap the cancelled first attempt BEFORE the retry launches.
       # `rate_limit_event` surfaces as a step `cancelled`, but the underlying
       # claude process can survive on the runner as a "zombie", race the retry,
       # and double-post reviews (observed run 27250704371: three reviews, two
@@ -333,7 +333,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
-      # Idempotent single-verdict reconcile (aops-1adfd28d). Defence-in-depth
+      # Idempotent single-verdict reconcile. Defence-in-depth
       # behind the reap above: if a zombie ever slips the reap and posts, ensure
       # AT MOST ONE enforcer verdict review stands per SHA by dismissing all but
       # the newest. Runs BEFORE "Post terminal status" so the terminal status is
@@ -354,7 +354,7 @@ jobs:
 
       # Compute the terminal enforcer-status decision (state/description) and
       # whether this job should hard-fail. Extracted to a script so the
-      # committed-short-circuit fix (aops-89d55ef5; pr-pipeline.md §3.4 pt 6)
+      # committed-short-circuit fix (pr-pipeline.md §3.4 pt 6)
       # is unit-tested (tests/test_enforcer_terminal_status.py) instead of
       # living only as inline bash — the earlier version of this bug was
       # "fixed" by closing the task without a code change, and the false-red

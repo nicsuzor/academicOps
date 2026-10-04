@@ -51,7 +51,7 @@ Historical forensic evidence from the PKB establishes that titles shaped like `<
 
 ## 4. Graph-Relationship Decision Representation
 
-Decisions and open questions are structural properties of the graph, not static todo-list items. In accordance with the information-theoretic graph taxonomy (`taxonomy-145ee0cd`):
+Decisions and open questions are structural properties of the graph, not static todo-list items. In accordance with the information-theoretic graph taxonomy:
 
 ```mermaid
 flowchart TD
@@ -138,7 +138,7 @@ Task bodies are executable instructions for cold executors, not project diaries,
 
 ## Pointers
 
-- [[spec_pydantic_migration]] -- schema contract
+- [[spec_or_note_id]] -- schema contract
 ```
 
 ## 6. Graph Edge Economy & Hierarchy Invariant

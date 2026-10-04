@@ -33,7 +33,7 @@ This spec supplies all three. It also supplies an OpenTelemetry trace, so that w
 
 ## 1. The report format: the claim ledger (Argdown-Lite)
 
-As established in `ida_research_nl_output_contracts` and synthesized in `aops-nl-output-contracts-and-logic-syntax`, cognitive deliberative boundaries require natural-language output contracts rather than rigid JSON schemas or unconstrained narrative prose. Constraining LLM reasoning to strict JSON schemas triggers premature serialization and logit masking, while unstructured prose allows unstated premises to pass unnoticed.
+As established in prior research on natural-language output contracts and logic syntax, cognitive deliberative boundaries require natural-language output contracts rather than rigid JSON schemas or unconstrained narrative prose. Constraining LLM reasoning to strict JSON schemas triggers premature serialization and logit masking, while unstructured prose allows unstated premises to pass unnoticed.
 
 The recommended format is **Argdown-Lite**: a semi-structured claim ledger synthesizing Argdown's numbered premises and derivation lines, Toulmin's explicit structural warrants, Catala's defeasible exception clauses (`UNLESS`), and FActScore/Claimify's atomic proposition discipline.
 
@@ -47,14 +47,14 @@ The ledger forms the body of the evidence contract's `CLAIM`/`EVIDENCE` fields (
 4. **Derived lines trace their lineage:** A derived line specifies the exact premises and warrants it uses: `C4. THEREFORE (C1, C2, C3 via W1 - D1): …`. A derived line carries no independent basis tag; its strength is strictly bounded by the weakest basis among its transitive leaves (the status-survival / anti-laundering rule).
 5. **Explicit written warrants:** If a deduction requires a bridging invariant or domain rule, that warrant must be explicitly written out as a numbered line: `[Wn] WARRANT: <structural mechanism or domain invariant>`. An unstated warrant exposes a hidden premise.
 6. **Defeaters handled via UNLESS:** Competing hypotheses or exception conditions must be stated with `[Dn] UNLESS: <condition>` and tagged with an empirical basis (typically `[not-observed]`).
-7. **Explicit scope:** Claims must quantify their domain explicitly ("every", "no", "at least one") and name boundaries ("in `plugins/ida/`", "at commit `5382d880`", "in session `02a8…`").
+7. **Explicit scope:** Claims must quantify their domain explicitly ("every", "no", "at least one") and name boundaries ("in `plugins/ida/`", "at commit `5382d880`", "in session `<id>`").
 8. **Negative and capability lines require empirical bounding:** A negative or capability assertion must cite `[attempted-and-failed: cmd → verbatim error]` or `[exhaustively-searched: tool/query/scope → 0 matches]`. Otherwise, it is classified as `[not-observed]` and cannot ground a conclusion.
 
 **Short form:** A report whose outcome rests on a single observed fact requires no deduction: `STATUS: DONE (from C1)` followed by a single tagged line. The ledger expands only with the inferential depth of the argument.
 
 ### The Specimen, Rewritten
 
-In incident `aops_22659d3d`, the peer reported a refused directory listing as a complete capability blocker. In ledger form, what the peer realistically observed is:
+In the 2026-09-26 incident, the peer reported a refused directory listing as a complete capability blocker. In ledger form, what the peer realistically observed is:
 
 ```text
 VERDICT: BLOCKED (from C2)
@@ -80,9 +80,9 @@ The report still fails to establish a capability block: it rests on an `[assumed
 
 ### Proven Viability on Real PKB Reports
 
-The viability of Argdown-Lite was validated in `aops-nl-output-contracts-and-logic-syntax` across two real historical PKB verification reports without adding unevidenced facts:
+The viability of Argdown-Lite was validated in that research across two real historical PKB verification reports without adding unevidenced facts:
 
-#### Real Report 1: `aops_pr_review_2636_20260912` (PR #2636 review)
+#### Real Report 1: PR #2636 review
 
 ```text
 VERDICT: READY-TO-MERGE (from C11)
@@ -104,7 +104,7 @@ C10. THEREFORE (C1, C2, C3, C4, C5, C6, C9): PR #2636 satisfies Acceptance Crite
 C11. THEREFORE (C10): VERDICT is READY-TO-MERGE.
 ```
 
-#### Real Report 2: `aops_pr_review_2638_20260912` (PR #2638 review)
+#### Real Report 2: PR #2638 review
 
 ```text
 VERDICT: FIXED-THEN-READY (from C10)
@@ -187,8 +187,8 @@ Reports arrive across four distinct runtime channels:
 | #      | Channel                                                                                   | Runtime Event in Receiver                                                                                                                                                                                          | Basis                                                               |
 | :----- | :---------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------ |
 | **R1** | Foreground subagent returning text                                                        | `PostToolUse` on `Agent` with `tool_response.status == "completed"` and report in `tool_response.content`.                                                                                                         | [observed: hooks docs, `PostToolUse` "Agent" `tool_response` table] |
-| **R2** | Hand-back, background completion, or twin-to-twin message arriving while receiver is idle | Turn starts and `UserPromptSubmit` fires. Prompt opens with harness envelope (`<agent-message from=…>`). Transcript entry carries `origin: {kind: "peer", from, senderTaskId, body}` and `promptSource: "system"`. | [observed: transcript `02a8997d`, entries 111, 191]                 |
-| **R3** | Background completion or peer message arriving **mid-turn**                               | The `<task-notification>` is queued as a `queued_command` attachment; `UserPromptSubmit` fires mid-turn.                                                                                                           | [observed: transcript `02a8997d`, entries 132–134, 170–171]         |
+| **R2** | Hand-back, background completion, or twin-to-twin message arriving while receiver is idle | Turn starts and `UserPromptSubmit` fires. Prompt opens with harness envelope (`<agent-message from=…>`). Transcript entry carries `origin: {kind: "peer", from, senderTaskId, body}` and `promptSource: "system"`. | [observed: an Ida Prime session transcript]                         |
+| **R3** | Background completion or peer message arriving **mid-turn**                               | The `<task-notification>` is queued as a `queued_command` attachment; `UserPromptSubmit` fires mid-turn.                                                                                                           | [observed: an Ida Prime session transcript]                         |
 | **R4** | Report read from persistent graph (`/gather`, `/reconcile`, `/pull` reading task body)    | No hook event. Governed by skill instruction text.                                                                                                                                                                 | [inferred]                                                          |
 
 **De-duplication:** Background subagents that hand back can produce both a peer message and a subsequent task-notification. Injections and telemetry counters de-duplicate on sender ID (`origin.from`, `senderTaskId`, `<task-id>`).
@@ -196,7 +196,7 @@ Reports arrive across four distinct runtime channels:
 ### Hook Attachments
 
 - **A1: R1 reminder on `PostToolUse(Agent)`.**
-  - Scope: Worker supervisor sessions (James, twins coordinating subagents). Per `mem_eb7b438c`, Ida Prime's `Agent` tool is denied, so A1 does not fire in Prime.
+  - Scope: Worker supervisor sessions (James, twins coordinating subagents). Per the recorded execution-topology decision, Ida Prime's `Agent` tool is denied, so A1 does not fire in Prime.
   - Trigger: `tool_response.status == "completed"`.
   - Action: Inject advisory text: _"A subagent report just arrived. Run premise-check on its spine before acting on it or relaying it."_
   - Implementation: Re-register `rule_against_hearsay` (`plugins/ida/hooks/handlers.py:339-346`, currently commented out at line 496) on `PostToolUse` instead of `PostToolBatch`.
@@ -212,7 +212,7 @@ Reports arrive across four distinct runtime channels:
   - Trigger: `PreToolUse` on channel reply tools (`telegram_reply`, `discord_reply`, `mcp__telegram__reply`, etc.) and `AskUserQuestion` in Ida Prime.
   - Action: Per the user's 2026-09-30 and 2026-10-03 rulings, `honesty.md` and `quiet.md` are enabled on `PreToolUse` for telegram/discord replies **blocking once**, ensuring honesty and quiet checks hold back channel replies before transmission.
 
-### Cross-Session Twin Communication (`mem_eb7b438c`)
+### Cross-Session Twin Communication
 
 Ida twins operate as independent Claude Code sessions communicating over the cross-session bus:
 
@@ -283,17 +283,17 @@ Rows structured strictly according to the 4-column schema of [enforcement.md](en
 | [Axiom: Evidence Immutable](../../plugins/rbg/axioms/evidence-immutable.md) / [Workflow Contract](workflow.md) -- Graph status transitions and task handovers require a recorded premise-check verdict                           | process       | required gate | `/gather` step 2 ("Check each one on the papers"); `/reconcile` obligations 4–5. Justifying incidents: an unverified status claim on a task; a PR review that had to separate baseline CI failures from PR defects.                                                                                                                                                                                                                                                                  |
 | [Axiom: Full Observability](../../plugins/rbg/axioms/full-observability.md) -- Measure arrival vs verdict span coverage in Phoenix telemetry                                                                                     | post-hoc      | observability | `premise_check.arrival` (A1/A2) vs `premise_check.verdict` (`verdict.py`) spans emitted via `claude_code_tracer`. Justifying incident: lack of telemetry to detect unverified relay occurrences.                                                                                                                                                                                                                                                                                     |
 
-### 7.2 Article 19(3) Necessity Evaluation of New Enforcement Code (`mem_96366172`)
+### 7.2 Article 19(3) Necessity Evaluation of New Enforcement Code
 
 Under the user's standing ruling, all new enforcement code (hooks, gates, telemetry emitters, blockers) must satisfy the three-part Article 19(3) ICCPR necessity test before being proposed or wired:
 
 1. **Arrival JIT Injections (Hooks A1 and A2):**
    - **Legality:** Authorised by `plugins/ida/agents/ida.md:57` (mandate that verification is a logic check on incoming reports) and the user's 2026-09-30 directive ("possible hook on all communications from ida from below").
-   - **Legitimate Aim:** Prevention of unverified hearsay relay where incoming agent reports contain unstated premises or false capability claims. Evidenced by incident `aops_22659d3d`.
+   - **Legitimate Aim:** Prevention of unverified hearsay relay where incoming agent reports contain unstated premises or false capability claims. Evidenced by the 2026-09-26 incident.
    - **Necessity:** Standalone instruction text in `ida.md` repeatedly failed to prevent premature relay because instructions in system context are drowned by long conversational turns. A lightweight, advisory JIT reminder at the exact turn of report arrival is the least intrusive intervention that reliably focuses attention.
 2. **Stop-Event Block-Once Gate (Hook A3 / honesty.md on Stop):**
    - **Legality:** Explicitly authorized by the user's verbatim ruling on 2026-09-30 ("reenable the honesty.md hook on the 'stop' event (blocking once) for all agents") and grounded in `evidence-contract.md:163-165` (presence-only procedural checks).
-   - **Legitimate Aim:** Eliminating premature session exits where an agent finishes its turn without recording a verdict on incoming subagent or peer findings. Evidenced by `aops_22659d3d`.
+   - **Legitimate Aim:** Eliminating premature session exits where an agent finishes its turn without recording a verdict on incoming subagent or peer findings. Evidenced by the 2026-09-26 incident.
    - **Necessity:** Advisory warnings on Stop were routinely ignored or absorbed without action. A single non-fatal continuation block (`Kind.BLOCK`) forces the agent to pause and record a verdict without causing permanent deadlock (guarded by `stop_hook_active`). It performs no content inspection, checking only whether an unverified arrival exists in local session state.
 3. **Channel Reply Gate (Hook A4 / quiet.md on PreToolUse):**
    - **Legality:** Explicitly commanded by the user's 2026-09-30 directive ("quiet.md enabled for ida prime on 'stop' and on 'pretooluse' for telegram/discord replies (blocking once)").
@@ -312,7 +312,7 @@ Under the user's standing ruling, all new enforcement code (hooks, gates, teleme
   - Currently returns `refuse()` on `Agent`/`Task` dispatches (lines 196–215). `dispatch.py:48-51` reserves REFUSE strictly for structural impossibility, noting it "is never a rule verdict".
   - The gate is currently commented out in `handlers.py:489-498`, so deleting it causes no regression in live behavior. The obligation is cleanly assumed by A1–A3 and `quiet.md`.
 - `plugins/ida/hooks/premise_check_verdict.py`: **Replace with §5 OpenTelemetry span schema.**
-  - It imports `disarm()` from the gate (line 20); both will be retired together in `aops_89015fc6`.
+  - It imports `disarm()` from the gate (line 20); both will be retired together in the hooks implementation task.
 - `plugins/ida/skills/premise-check/scripts/verdict.py`: **Retain and refactor.**
   - Update path resolution: lines 12–13 reference nonexistent `plugins/orchestrate/hooks/` and `dist/orchestrate-*/hooks/`, and line 26 references nonexistent `lib/hooks`. Repoint imports directly to `plugins/ida/hooks/`.
 
@@ -320,12 +320,12 @@ Under the user's standing ruling, all new enforcement code (hooks, gates, teleme
 
 ## 9. Open questions for the user and recorded decision departures
 
-### 1. Departure from `mem_v9_arch_decisions` ("Hooks stay built and off"): Re-enabling Hearsay, Honesty, and Quiet Hooks
+### 1. Departure from the recorded architecture decision ("Hooks stay built and off"): Re-enabling Hearsay, Honesty, and Quiet Hooks
 
-- **Recorded Decision:** `mem_v9_arch_decisions` ("Ruling 2026-08-28: hooks stay built and off... This is a deliberate standing state, not a defect").
+- **Recorded Decision:** The recorded architecture decisions ("Ruling 2026-08-28: hooks stay built and off... This is a deliberate standing state, not a defect").
 - **Why this is open:** The user's verbatim directive on 2026-09-30 specifically commanded: _"yes, dispatch the implementatoin. I want the hearsay.md turned on again for ida instructions injected on UserPromptSubmit (which captures both subagent messages and cross-session messages), and also reenable the honesty.md hook on the 'stop' event (blocking once) for all agents, and quiet.md enabled for ida prime on 'stop' and on 'pretooluse' for telegram/discord replies (blocking once) as well (new hook invocation)"_.
 - **Options:**
-  - _Option A:_ Maintain the blanket "hooks off" policy from `mem_v9_arch_decisions` and rely exclusively on instruction prompts in agent profiles.
+  - _Option A:_ Maintain the blanket "hooks off" policy from the recorded architecture decision and rely exclusively on instruction prompts in agent profiles.
   - _Option B:_ Re-enable the hooks strictly as advisory JIT injections (non-blocking).
   - _Option C (Adopted):_ Formally record the user's 2026-09-30 instruction as an explicit exception / update to the hooks-off ruling, enabling this specific triplet (hearsay on UserPromptSubmit, honesty on Stop blocking once, quiet on Stop and PreToolUse channel replies blocking once), while leaving all other dormant hooks built and off.
 - **Resolution (the user, 2026-09-30):** Option C adopted; the hooks-off ruling records the re-enable.
@@ -340,14 +340,14 @@ Under the user's standing ruling, all new enforcement code (hooks, gates, teleme
   - _Option C:_ Hard block until a passing verdict (`ACCEPT`) is recorded. (Rejected: violates `enforcement.md:18` and creates unrecoverable deadlocks).
 - **Resolution (the user, 2026-09-30):** Block once on Stop and PreToolUse approved. `specs/enforcement/enforcement.md:18` amended in the same PR to authorize block-once procedural friction gates.
 
-### 3. Execution Topology Mismatch: Ida Prime has no `Agent` Tool (`mem_eb7b438c`)
+### 3. Execution Topology Mismatch: Ida Prime has no `Agent` Tool
 
 - **Recorded Decision:** _"Ida prime, the face... never executes. Her Agent tool is deliberately denied ([the user] removed it 2026-09-22)... her only execution route is a brief to a peer Ida over the cross-session bus"_ (also `plugins/ida/agents/ida.md:29`).
 - **Why this is open:** The original proposal attached hook A1 to `PostToolUse(Agent)`. However, Ida Prime—the face who speaks to the user and where unverified relays to the user actually occur—cannot call `Agent`. Twin reports arrive at Prime via `SendMessage` over the cross-session bus (Channel R2).
 - **Options:**
   - _Option A:_ Retain A1 only for worker supervisors (e.g. James or twins executing subagent batches), and rely on A2 (`UserPromptSubmit` on peer message envelope / `origin.kind == "peer"`) as the sole arrival hook for Ida Prime.
   - _Option B:_ Restore the `Agent` tool to Ida Prime.
-  - _Option C:_ Option A. Preserve Ida Prime's detachment boundary per `mem_eb7b438c`. A1 protects supervisor subagent workflows, while A2 serves as Prime's primary defense on peer message receipt.
+  - _Option C:_ Option A. Preserve Ida Prime's detachment boundary per the recorded execution-topology decision. A1 protects supervisor subagent workflows, while A2 serves as Prime's primary defense on peer message receipt.
 - **Resolution (the user, 2026-09-30):** Settled. The user clarified that the premise is false: Ida Prime has the Agent tool.
 
 ### 4. Runtime Mechanics of `PreToolUse` Blocking on Channel Replies (`quiet.md`)
@@ -355,8 +355,8 @@ Under the user's standing ruling, all new enforcement code (hooks, gates, teleme
 - **Recorded Decision:** `plugins/ida/hooks/dispatch.py:128` (`BLOCKABLE_EVENTS = STOP_EVENTS`); Claude Code Hooks specification.
 - **Why this is open:** The user directed that `quiet.md` run on `PreToolUse` for telegram and discord replies "(blocking once)". In `dispatch.py`, only `Stop` and `SubagentStop` are in `BLOCKABLE_EVENTS`. In Claude Code, `PreToolUse` can return `decision: "deny"`, but in `dispatch.py` this is mapped to `Kind.REFUSE`, which is reserved strictly for structural impossibility (`dispatch.py:48-51`). Furthermore, standard `PreToolUse` `additionalContext` is delivered to the session along with the tool result (i.e. _after_ the telegram message has already been sent).
 - **Options:**
-  - _Option A (Adopted):_ Enhance `dispatch.py` in `aops_89015fc6` to support an interceptor disposition (`permissionDecision: "deny"`) on `PreToolUse` for communication tools that aborts the transmission once and returns an instructional warning.
-  - _Option B:_ Enforce `quiet.md` as a blocking-once gate on `Stop` (preventing session finish without review) and rely on prominent JIT injection on `UserPromptSubmit` (A2) to restrain channel replies, while implementing Option A in `aops_89015fc6` as an engine extension.
+  - _Option A (Adopted):_ Enhance `dispatch.py` in the hooks implementation task to support an interceptor disposition (`permissionDecision: "deny"`) on `PreToolUse` for communication tools that aborts the transmission once and returns an instructional warning.
+  - _Option B:_ Enforce `quiet.md` as a blocking-once gate on `Stop` (preventing session finish without review) and rely on prominent JIT injection on `UserPromptSubmit` (A2) to restrain channel replies, while implementing Option A in the hooks implementation task as an engine extension.
   - _Option C:_ Rely exclusively on instruction rules in `plugins/ida/agents/ida.md:57, 97`.
 - **Resolution (the user, 2026-09-30, 2026-10-03):** Option A adopted: the `PreToolUse` gate for telegram/discord replies is implemented as a deny-once mechanism per turn, combining both honesty and quiet checks.
 

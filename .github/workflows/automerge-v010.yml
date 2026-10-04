@@ -1,14 +1,14 @@
 # Auto-merge PRs into v0.10 once every mechanical check that actually ran is
-# green. Mirrors brain#63's "Auto-merge on green lint" shape: a non-success
+# green. Follows an "auto-merge on green lint" shape: a non-success
 # result (including skipped/missing) is never treated as a pass, never merge
 # a commit other than the one that was checked, and let branch cleanup fail
 # without failing the merge.
 #
 # academicOps splits CI across separate workflow files (pr-pipeline.yml calls
-# lint.yml/pytest.yml/typecheck.yml as reusable workflows), unlike brain's
-# single lint.yml — so there is no one job graph to `needs:` into. This
-# workflow reads the Checks API for the PR head SHA directly instead, and
-# applies the same rule brain's `needs.<job>.result == 'success'` gate does:
+# lint.yml/pytest.yml/typecheck.yml as reusable workflows), unlike a
+# single-lint.yml repository — so there is no one job graph to `needs:` into.
+# This workflow reads the Checks API for the PR head SHA directly instead, and
+# applies the same rule a `needs.<job>.result == 'success'` gate does:
 # anything other than a genuine `success` blocks the merge.
 #
 # No review gate. Owner, 2026-09-12: "we can review with the claude bot
@@ -16,9 +16,9 @@
 # review, we can gate on mechanical checks only." A Claude-bot or Copilot
 # approval, if present, is neither read nor required — this workflow does
 # not query PR reviews at all. Independent review is dispatch discipline
-# recorded on the PKB graph, not a GitHub gate (aops_automerge_mechanical_checks_only).
+# recorded on the PKB graph, not a GitHub gate.
 #
-# Mechanical marker required (aops_d8085e5b): a PR opened non-draft and
+# Mechanical marker required: a PR opened non-draft and
 # merged straight through skips the draft-until-reviewed dispatch discipline
 # above entirely if nothing on the GitHub side enforces it — one missed
 # brief and unreviewed code lands. So this workflow additionally requires
@@ -44,7 +44,7 @@
 #
 # Type Check is excluded from both required lists here, same as it is from
 # dev's required-checks ruleset (.github/rulesets/pr-review-and-merge.yml) —
-# known pre-existing debt tracked as aops-1c3de214. Re-add once that closes.
+# known pre-existing debt. Re-add once that is cleared.
 #
 # `force` (workflow_dispatch only): a one-shot bootstrap waiver that skips
 # the check-green gate for a single manual run. It exists because a PR can
@@ -134,7 +134,7 @@ jobs:
             exit 0
           fi
 
-          # Mechanical marker gate (aops_d8085e5b) — pull_request trigger only;
+          # Mechanical marker gate — pull_request trigger only;
           # workflow_dispatch is the unchanged manual waiver path. Refuse a
           # non-draft PR that never carries a `ready_for_review` timeline
           # event: it was opened non-draft directly, bypassing the

@@ -201,10 +201,10 @@ def _agy_hook_events(plugin_dir_name: str) -> set[str]:
 def test_rbg_ships_the_stop_gate_on_claude_only():
     """rbg's Stop-side ``rule_check`` handler is entirely commented out
     (plugins/rbg/hooks/handlers.py — "TEMPORARY... do not delete the
-    entries", pending aops_d27c7aea), so there is nothing on agy for it to
+    entries"), so there is nothing on agy for it to
     advise. agy's ``PostInvocation`` — the only wire event that used to
     alias onto canonical ``Stop`` — no longer maps to anything at all
-    (aops_73e25af2: it fired once per internal invocation/tool-call
+    (it fired once per internal invocation/tool-call
     round-trip, not once per turn), so rbg no longer registers it."""
     assert {"Stop", "SubagentStop"} <= _claude_hook_events("rbg-claude")
     assert "PostInvocation" not in _agy_hook_events("rbg-agy")

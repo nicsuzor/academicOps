@@ -1,14 +1,11 @@
 ---
-id: temp_16ba109c
+id: wf-blind-dupe
 title: "Template: Blind Comparison & Transcript Audit Procedure for Contextless Subagents"
 type: template
 created: 2026-08-13T03:25:31.124150573+00:00
 modified: 2026-08-13T03:25:31.124150573+00:00
 last_modified: 2026-08-13T03:25:31.124165561+00:00
-alias:
-  - "temp_16ba109c-template-blind-comparison-transcript-audit-procedure-for-contextless-subagents"
-  - "temp_16ba109c"
-permalink: temp_16ba109c
+permalink: wf-blind-dupe
 tags:
   - template
   - subagent
@@ -45,7 +42,7 @@ flowchart TD
 
 ### Step 1: Formulate Evaluation Query & Target Scope
 
-- Identify the target session ID/slug (e.g., `ab530e51`).
+- Identify the target session ID/slug (`<session_id>`).
 - Define the specific metric/question to evaluate (e.g., _"What PKB notes and tasks were added or updated in session `<session_id>`?"_).
 
 ### Step 2: Dispatch Contextless Subagent
@@ -88,10 +85,3 @@ Record evaluation findings into the PKB or project task graph using `remember` o
 | **Recall**      | 100% created & updated nodes found | Found created nodes, missed updates    | Missed all nodes                |
 | **Attribution** | Exact subagent ID & task rationale | Correct node, missing subagent lineage | Incorrect attribution           |
 | **Navigation**  | Used transcript logs directly      | Relied on git log or broad search      | Stuck / failed search           |
-
----
-
-## 🔗 Related Knowledge & Standards
-
-- [[mem-427f193b]] — Junior delegation surfaces & subagent routing
-- [[aops_c6ea7823]] — Lighter-weight peer review workflow

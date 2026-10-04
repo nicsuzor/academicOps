@@ -114,7 +114,7 @@ cat > "$LAUNCH_SCRIPT" <<EOF
 #!/usr/bin/env bash
 export POLECAT_IMAGE="${POLECAT_IMAGE:-polecat:latest}"
 
-# Run via dotfiles host launcher (scripts/polecat):
+# Run via the installer-supplied `polecat` host launcher on PATH:
 exec polecat -d "$CHECKOUT" -s "$TMUX_NAME" -i -- claude -p "call pkb get_status() and return results"
 EOF
 chmod +x "$LAUNCH_SCRIPT"
