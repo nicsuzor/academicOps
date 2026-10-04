@@ -126,4 +126,4 @@ itself, not restated here.
 
 ## Containers
 
-Polecat worker container images and launching are maintained in `nicsuzor/dotfiles` (`containers/nicwin/nicdev/` and `scripts/polecat`), backed by the Docker MCP server behind the `services` portal.
+Polecat worker container images and launching are maintained in `nicsuzor/dotfiles` (container definitions and `scripts/polecat`), backed by the Docker MCP server behind the `services` portal.

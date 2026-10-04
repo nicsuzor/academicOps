@@ -256,7 +256,7 @@ your report.
 
 1. **Pre-flight** — confirm `_log_fire` and `_load_handlers` in
    `plugins/ida/hooks/dispatch.py` are not returning early.
-2. **§0 image freshness** — verify container image freshness against dotfiles source (`containers/nicwin/nicdev/Dockerfile`).
+2. **§0 image freshness** — verify container image freshness against the `Dockerfile` it was built from.
 3. **§1 structural** — confirm plugins are installed in the container image.
 4. **§2 boot signals** — `claude`: banner and `❯` box render inside
    `/workspace`. `agy`: the 2–3 s auth race clears and the plan name renders.

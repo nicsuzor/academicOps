@@ -11,7 +11,7 @@ tags: [taxonomy, naming, graph-relationships, decisions, task-contract]
 
 Authoritative specification for task names, filenames, and the structural representation of decisions on the strategic task graph.
 
-- **Stated Purpose:** Establishes unambiguous, enforceable standards for naming tasks and files, resolves the root causes of the historical `nic: decision: xyz` anti-pattern, and defines how decisions and questions emerge from graph relationships rather than static decision tasks.
+- **Stated Purpose:** Establishes unambiguous, enforceable standards for naming tasks and files, resolves the root causes of the historical `<name>: decision: xyz` anti-pattern, and defines how decisions and questions emerge from graph relationships rather than static decision tasks.
 - **Primary Audience:** Framework architects, planning agents (`pauli`, `ida`), dispatch engines, and human developers authoring or reviewing tasks, notes, and specs.
 - **Current Truth / SSoT:** For task execution boundaries, see [`../enforcement/task-contract.md`](../enforcement/task-contract.md); for document classification, see [`doc-taxonomy.md`](doc-taxonomy.md).
 
@@ -21,7 +21,7 @@ Tasks are actionable units of work. Their titles must communicate clear operatio
 
 1. **Verb-Led Imperative:** Every task title begins with an active imperative verb describing the concrete outcome to achieve (e.g., `Implement X`, `Refactor Y`, `Verify Z`, `Extract A from B`).
 2. **Brief and Descriptive:** Titles must be concise (typically 4–10 words) yet sufficiently descriptive that an executor or supervisor understands the objective without reading the body.
-3. **No Person's Name in Titles or Filenames:** A task title, note title, or filename must **never** contain a person's name or moniker (e.g., `nic: decision: ...`, `nic-task-...`, `for-nic.md`). Assignment and human involvement belong exclusively in frontmatter metadata fields (`assigned_to:`, `assignee:`).
+3. **No Person's Name in Titles or Filenames:** A task title, note title, or filename must **never** contain a person's name or moniker (e.g., `<name>: decision: ...`, `<name>-task-...`, `for-<name>.md`). Assignment and human involvement belong exclusively in frontmatter metadata fields (`assigned_to:`, `assignee:`).
 4. **No Artificial Type Prefixes:** Do not encode categories into titles (e.g., avoid `DECISION: ...`, `PROBE: ...`, `TASK: ...`). Node taxonomy and classification are expressed through frontmatter (`type:`, `classification:`) and graph topology.
 
 ## 2. Filename Standard
@@ -33,13 +33,13 @@ Filenames identify files within repositories and knowledge bases:
 3. **No Person's Name:** Filenames never include individual names or personal prefixes.
 4. **Appropriate Directory Placement:** Files reside in directories defined by [`doc-taxonomy.md`](doc-taxonomy.md) (`specs/`, `plugins/`, `lib/`, `.agents/`).
 
-## 3. Root-Cause Analysis & Resolution of "nic: decision: xyz"
+## 3. Root-Cause Analysis & Resolution of "<name>: decision: xyz"
 
 ### Forensic Root Cause
 
-Historical forensic evidence from the PKB (`goal_ws_question_surfacing`, `aops_69a90166`) establishes that titles shaped like `nic: decision: xyz` emerged from three compounding systemic factors:
+Historical forensic evidence from the PKB (`goal_ws_question_surfacing`, `aops_69a90166`) establishes that titles shaped like `<name>: decision: xyz` emerged from three compounding systemic factors:
 
-1. **Legacy Prompt Doctrine:** An early rule in `.agents/CORE.md` (recorded 2026-08-13) explicitly instructed agents: _"every question to Nic must be filed as a decision node assigned to Nic... the chat sentence is the notification, the node is the record"_. Agents took this instruction literally and began prefixing task titles with `nic: decision: ...` or `DECISION (Nic): ...`.
+1. **Legacy Prompt Doctrine:** An early rule in `.agents/CORE.md` (recorded 2026-08-13) explicitly instructed agents: that every question to the user must be filed as a decision node assigned to the user, with the chat sentence as the notification and the node as the record. Agents took this instruction literally and began prefixing task titles with the user's name followed by `decision: ...`, or with `DECISION (<name>): ...`.
 2. **Capability Grant & Suppression Gap:** When interactive asking tools (`AskUserQuestion`) were temporarily omitted from agent tool grants or suppressed by agent heuristics against interrupting, agents fell back to dumping questions onto the graph as static tasks.
 3. **Absence of a Drain Mechanism:** Decision tasks accumulated indefinitely on the graph (~25 stale open nodes), stalling workflows and creating noise without ever driving execution.
 

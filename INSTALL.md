@@ -46,7 +46,7 @@ make install-dev
 
 ## Polecat
 
-Polecat container images and launcher build and run from `nicsuzor/dotfiles` (`containers/nicwin/nicdev/`), backed by the Docker MCP server on `nicwin` behind the `services` portal.
+Polecat container images and launcher build and run from `nicsuzor/dotfiles`, backed by a Docker MCP server behind the `services` portal.
 
 ## Design
 

@@ -47,8 +47,8 @@ Where these apply and no rubric exists at verify time, halt with:
 Where the feature surfaces the user's OWN data or view ("show me my sessions",
 "my tasks", "where I was"), a generic instance of the thing appearing is not
 proof. The rubric names the principal's concrete identifying signal — the exact
-fields, account, host, or launch context that mark the artifact as HIS instance —
-so verification can reproduce his literal view and confirm his own data is
+fields, account, host, or launch context that mark the artifact as THEIR instance —
+so verification can reproduce their literal view and confirm their own data is
 present. This is load-bearing on any "show MY X" feature: a generic-instance pass
 is a FAIL.
 

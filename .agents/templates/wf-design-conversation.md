@@ -31,7 +31,7 @@ wired-architecture map, a research methodology, a shopping list — through
 repeated present → feedback → rework passes until it is right. The medium
 changes; the loop does not. Distilled from `academicops-wired-map.excalidraw`
 design-conversation passes ([[aops_b167d73a]], [[aops_fca30941]]) and
-generalised on Nic's instruction not to overfit to diagram work: "generalised
+generalised on the user's instruction not to overfit to diagram work: "generalised
 out to everything, including potentially research methodologies and shopping
 lists."
 
@@ -141,7 +141,7 @@ test below.
   beside the original and never under a versioned filename. It is the
   baseline the geometry checks below are read against, and it is discarded at
   the end of the pass; git remains the only versioning.
-- Pause the brain auto-sync daemon before the write, not after. `~/brain`
+- Pause the brain auto-sync daemon before the write, not after. `$ACA_DATA`
   runs a daemon that commits writes as they land, as `auto: sync
   <timestamp>`. Edit first and your `git commit` returns `nothing to commit,
   working tree clean` — the daemon already took your change under a message

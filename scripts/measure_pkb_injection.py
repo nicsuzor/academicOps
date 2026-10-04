@@ -49,7 +49,7 @@ LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 PKB_HOOKS = REPO_ROOT / "plugins" / "pkb" / "hooks"
 
 # --------------------------------------------------------------------------
-# Fixed, versioned prompt set. Both families are turns Nic plausibly types;
+# Fixed, versioned prompt set. Both families are turns the user plausibly types;
 # wording fixed here so a re-run is measuring drift in the backend, not
 # drift in the prompt set.
 # --------------------------------------------------------------------------
@@ -66,7 +66,7 @@ PROMPT_FAMILIES: dict[str, list[str]] = {
         "what evidence standard should james use before accepting a subagent's report",
         "design the verification rubric for judging a subagent's claim",
         "how should agents cite basis tags for load-bearing claims",
-        "what does premise-check look for in a report before it reaches nic",
+        "what does premise-check look for in a report before it reaches the user",
         "review whether marsha's QA pass actually verifies runtime behaviour",
     ],
 }

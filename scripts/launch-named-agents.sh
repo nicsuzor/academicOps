@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 # launch-named-agents.sh
-# Creates a 4-pane tmux session with persistent named agent sessions (launched from WSL):
-# - Top-Left:  ida (nicdev container session in /workspace/junior/ida, -n ida)
-# - Top-Right: sara (WSL local runner in ~/junior/dispatch, -n sara)
-# - Bottom-Left: pauli (nicdev container session in /data, -n pauli)
+# Creates a 4-pane tmux session with persistent named agent sessions:
+# - Top-Left:  ida (container session in $AOPS_IDA_DIR, -n ida)
+# - Top-Right: sara (local runner in $AOPS_SARA_DIR, -n sara)
+# - Bottom-Left: pauli (container session in $ACA_DATA, -n pauli)
 # - Bottom-Right: blank (reserved for OpenClaw)
+#
+# Required environment:
+#   AOPS_AGENT_CONTAINER  docker container that hosts ida and pauli
+#   AOPS_IDA_DIR          ida's working directory inside that container
+#   AOPS_SARA_DIR         sara's working directory on this host
+#   ACA_DATA              PKB data directory inside that container
 
 set -euo pipefail
+
+: "${AOPS_AGENT_CONTAINER:?AOPS_AGENT_CONTAINER must be set}"
+: "${AOPS_IDA_DIR:?AOPS_IDA_DIR must be set}"
+: "${AOPS_SARA_DIR:?AOPS_SARA_DIR must be set}"
+: "${ACA_DATA:?ACA_DATA must be set}"
 
 SESSION_NAME="${1:-agents}"
 
@@ -26,14 +37,14 @@ tmux split-window -v -t "$SESSION_NAME:0.1"
 tmux select-layout -t "$SESSION_NAME:0" tiled
 
 # 6. Launch commands in respective panes
-# Pane 0.0: ida (nicdev container, /workspace/junior/ida)
-tmux send-keys -t "$SESSION_NAME:0.0" "docker exec -it -w /workspace/junior/ida nicdev sh ida.sh" C-m
+# Pane 0.0: ida (container, $AOPS_IDA_DIR)
+tmux send-keys -t "$SESSION_NAME:0.0" "docker exec -it -w '$AOPS_IDA_DIR' '$AOPS_AGENT_CONTAINER' sh ida.sh" C-m
 
-# Pane 0.1: sara (local WSL host runner)
-tmux send-keys -t "$SESSION_NAME:0.1" "cd ~/junior/dispatch && sh cl.sh" C-m
+# Pane 0.1: sara (local host runner)
+tmux send-keys -t "$SESSION_NAME:0.1" "cd '$AOPS_SARA_DIR' && sh cl.sh" C-m
 
-# Pane 0.2: pauli (nicdev container, /data)
-tmux send-keys -t "$SESSION_NAME:0.2" "docker exec -it -w /data nicdev claude -n pauli --agent pauli" C-m
+# Pane 0.2: pauli (container, $ACA_DATA)
+tmux send-keys -t "$SESSION_NAME:0.2" "docker exec -it -w '$ACA_DATA' '$AOPS_AGENT_CONTAINER' claude -n pauli --agent pauli" C-m
 
 # Pane 0.3: blank placeholder for openclaw
 tmux send-keys -t "$SESSION_NAME:0.3" "echo 'OpenClaw pane (reserved for future integration)'" C-m
