@@ -37,7 +37,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 - If you must split a task, make each task as big as possible.
 - Wire `depends_on` edges only where one unit genuinely requires another's output.
 - Mint multi-task cuts using `pkb.decompose_task`.
-- Write tasks with status `queued` immediately.
+- Write tasks with status `queued` immediately when the user asked for the work: their direct request is the promotion to `queued`. Write work nobody asked for at `ready`, and leave it for the user to promote.
 
 ```markdown
 ## Goal
@@ -97,6 +97,8 @@ Where the project finish template calls for QA review:
 ## 4. Dispatch
 
 A task is ready to dispatch when its status is `queued` and it has no open `depends_on` edges or incomplete children.
+
+Dispatch only work the user asked for: a `queued` status on work nobody requested does not make it dispatchable.
 
 - You should dispatch multiple tasks in parallel where possible.
 - Start workers through your project's specified dispatch pathway.
