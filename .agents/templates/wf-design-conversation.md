@@ -141,7 +141,7 @@ test below.
   beside the original and never under a versioned filename. It is the
   baseline the geometry checks below are read against, and it is discarded at
   the end of the pass; git remains the only versioning.
-- Pause the brain auto-sync daemon before the write, not after. `~/brain`
+- Pause the brain auto-sync daemon before the write, not after. `$ACA_DATA`
   runs a daemon that commits writes as they land, as `auto: sync
   <timestamp>`. Edit first and your `git commit` returns `nothing to commit,
   working tree clean` — the daemon already took your change under a message

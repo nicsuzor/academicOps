@@ -25,7 +25,7 @@ This file is the umbrella. The individual designs are
 
 ## Giving Effect
 
-Container execution and worker images are maintained in `nicsuzor/dotfiles` (`containers/nicwin/nicdev/` and `scripts/polecat`), backed by the Docker MCP server behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
+Container execution and worker images are maintained in `nicsuzor/dotfiles` (container definitions and `scripts/polecat`), backed by the Docker MCP server behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
 
 - [[plugins/pkb/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
   over -- what a seeded `/pull <task-id>` prompt actually does once inside the

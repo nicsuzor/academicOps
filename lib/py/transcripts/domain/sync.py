@@ -10,7 +10,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Both the Mac and the WSL host run this same function against the same
+# Several hosts run this same function against the same
 # sessions repo on the same 5-minute cron cadence. A single pull-then-push is
 # not enough: host A can pull cleanly, then host B pushes into the gap before
 # A's push lands, and A's push is rejected non-fast-forward exactly as if it

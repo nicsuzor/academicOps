@@ -18,7 +18,7 @@ However, an architectural blind spot exists between **task graph completion** an
 
 ### 1.1 Primary Specimen: `[[aops_twin_cost_measure_per_brief]]` (2026-10-01)
 
-- **Originating Ask:** The user asked via Telegram (Span `94027`, msg `845`, 2026-10-01 11:32:39 UTC / 21:32:39 AEST, session `fe878f4d-11a9-48ab-b812-789ac1aca3b8` on `nicdev`):
+- **Originating Ask:** The user asked via Telegram (Span `94027`, msg `845`, 2026-10-01 11:32:39 UTC / 21:32:39 AEST, session `fe878f4d-11a9-48ab-b812-789ac1aca3b8`):
   > _"get me a good review of the agent work that we did today. i want to see a table that shows time and tokens per agent per task / prompt, including where the work was done, what subagents were invoked, how much each cost, etc."_
 - **Execution & Storage:** Dispatched to worker session `b00be22c-2c4f-480f-9ade-0c8ea4c9d849`. The worker extracted Phoenix traces, generated the table, appended it to `20261001-daily` under `## Token spend and agent execution (Phoenix traces)`, recorded the completion summary on `aops_twin_cost_measure_per_brief`, and released the task `done`.
 - **Failure Point:**
@@ -98,7 +98,7 @@ origin:
   channel: telegram | claude_turn | agy_session | voice
   session_id: "fe878f4d-11a9-48ab-b812-789ac1aca3b8"
   message_id: "845" # telegram msg ID or span ID
-  host: "nicdev"
+  host: "<host>"
   human_prompt: "get me a good review of the agent work that we did today..."
 delivery_channel: telegram | interactive_stdout | daily_note
 ```
