@@ -157,23 +157,19 @@ test below.
   text fits its container or the label renders outside the box. Verify with:
 
   ```
-  excalidraw-view.py <file> check
+  pkb-excalidraw <file> check
   → OK: N elements, ids unique, index-sorted, all bindings resolve
   ```
 
-  `excal-edit.py arrows` (crossing count) and `excal-edit.py overlap` catch
-  geometry regressions. Read both as a delta against the pre-edit copy, never
+  `pkb-excalidraw <file> arrows-check` (arrows cutting through boxes) and
+  `pkb-excalidraw <file> overlap` catch geometry regressions. Read both as a delta against the pre-edit copy, never
   as an absolute number — the map has never been at zero crossings and no
   pass is expected to get it there; what matters is that your edit did not
   make it worse.
-- What a clean `check` does **not** tell you, all three known and live: it
-  fails only on **content** divergence between `text` and `originalText`, not
-  on line-wrap divergence, and the map carries 35 wrap-only mismatches that
-  pass (see [[obs_5df02f93]] for what the content case costs); it never
-  inspects `startBinding`/`endBinding`, so a half-bound arrow passes silently
-  ([[task_737c102e]]); `map` mode drops arrow labels entirely, so a `map`
-  reading is not the whole document ([[task_3bff27d4]]) — and on this map the
-  arrow labels carry open design forks.
+- What a clean `check` does **not** tell you: it fails only on **content**
+  divergence between `text` and `originalText`, not on line-wrap divergence,
+  and the map carries 35 wrap-only mismatches that pass (see [[obs_5df02f93]]
+  for what the content case costs).
 - Git history is the only versioning: never keep a backup copy or a versioned
   filename. This has been violated at least once in practice
   (`academicops-wired-map.excalidraw.bak-20260730-reconcile`, committed
