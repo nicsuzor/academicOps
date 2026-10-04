@@ -1,0 +1,55 @@
+===
+title: Mill, On Liberty (1859), ch. II, closing recapitulation
+source: Project Gutenberg eBook #34901, lines 2312-2335
+===
+
+# Main conclusion
+
+[Free Opinion]: Freedom of opinion, and of its expression, is necessary to the mental well-being of mankind.
+  {source: "We have now recognised the necessity to the mental well-being of mankind (on which all their other well-being depends) of freedom of opinion, and freedom of the expression of opinion, on four distinct grounds", locator: "para. 1"}
+
+# Arguments
+
+<Fallibility>: Silencing an opinion assumes an infallibility no one has.
+
+(1) Any opinion compelled to silence may, for aught we can certainly know, be true.
+    {source: "if any opinion is compelled to silence, that opinion may, for aught we can certainly know, be true", locator: "para. 2"}
+(2) To deny that the silenced opinion may be true is to assume our own infallibility.
+    {source: "To deny this is to assume our own infallibility.", locator: "para. 2"}
+(3) We are not infallible.
+    {implicit: true, reason: "needed for (1)-(2) to yield (4); Mill leaves it unstated here"}
+----
+(4) Silencing an opinion risks suppressing truth on an assumption we are not entitled to make.
+  +> [Free Opinion]
+
+<Partial Truth>: Even an erroneous opinion supplies the part of the truth the prevailing view lacks.
+
+(1) A silenced opinion, though an error, may, and very commonly does, contain a portion of truth.
+    {source: "though the silenced opinion be an error, it may, and very commonly does, contain a portion of truth", locator: "para. 3"}
+(2) The prevailing opinion on any subject is rarely or never the whole truth.
+    {source: "the general or prevailing opinion on any subject is rarely or never the whole truth", locator: "para. 3"}
+(3) Only by the collision of adverse opinions does the remainder of the truth have any chance of being supplied.
+    {source: "it is only by the collision of adverse opinions, that the remainder of the truth has any chance of being supplied", locator: "para. 3"}
+----
+(4) Silencing erroneous opinions removes the means of completing the truth.
+  +> [Free Opinion]
+
+<Dead Dogma>: Uncontested truth is held as prejudice.
+
+(1) Unless a received opinion is suffered to be, and actually is, vigorously contested, most who receive it will hold it as a prejudice, with little comprehension of its rational grounds.
+    {source: "unless it is suffered to be, and actually is, vigorously and earnestly contested, it will, by most of those who receive it, be held in the manner of a prejudice, with little comprehension or feeling of its rational grounds", locator: "para. 4"}
+(2) Holding the truth as prejudice, without comprehension of its grounds, damages mental well-being.
+    {implicit: true, reason: "links (1) to the thesis's 'mental well-being'"}
+----
+(3) Even a wholly true received opinion needs open contest.
+  +> [Free Opinion]
+
+<Lost Meaning>: Uncontested doctrine loses its meaning and its effect on conduct.
+
+(1) Without contest, the meaning of the doctrine itself is in danger of being lost or enfeebled, and deprived of its vital effect on character and conduct.
+    {source: "the meaning of the doctrine itself will be in danger of being lost, or enfeebled, and deprived of its vital effect on the character and conduct", locator: "para. 4"}
+(2) A doctrine reduced to a mere formal profession prevents the growth of real conviction from reason or personal experience.
+    {source: "the dogma becoming a mere formal profession, inefficacious for good, but cumbering the ground, and preventing the growth of any real and heartfelt conviction, from reason or personal experience", locator: "para. 4"}
+----
+(3) Suppressing contest destroys the living force of even true doctrine.
+  +> [Free Opinion]
