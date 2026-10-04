@@ -96,4 +96,4 @@ Door-type is two-way per individual run (a FAIL sends the underlying capability 
 
 ---
 
-Origin: generalised from the v0.4 acceptance proof protocol — see [[docu_36500cdb]] for the worked example (dispatch-topology table + blind re-run evidence per proof) and tracker [[aops-a9e6b48c]] Log entry "NIC CHALLENGE 2026-07-22" for the standard's canonical statement.
+Origin: generalised from the v0.4 acceptance proof protocol — see [[docu_36500cdb]] for the worked example (dispatch-topology table + blind re-run evidence per proof) and tracker [[aops-a9e6b48c]] Log entry dated 2026-07-22 for the standard's canonical statement.

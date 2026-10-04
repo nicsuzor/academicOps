@@ -37,7 +37,7 @@ concurrency:
   # "in progress" from concurrency's point of view. cancel-in-progress: true
   # here silently cancelled that pending approval the instant the NEXT tag
   # landed (release-please's fast path can cut one every few minutes), so a
-  # burst of releases each superseded the last before Nic ever saw a prompt —
+  # burst of releases each superseded the last before the owner ever saw a prompt —
   # looked indistinguishable from "shipped with no approval" even though the
   # cancelled runs never actually published. Queue instead: never drop a
   # pending or completed deploy; each tag gets its own turn at the gate.

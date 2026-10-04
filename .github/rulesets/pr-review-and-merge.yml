@@ -38,7 +38,7 @@ enforcement: active
 
 # Who can bypass these rules: NO ONE.
 # The live ruleset has bypass_actors: null — the hardened "never merge without
-# Nic" state the trust-gate invariant relies on (james PR #1682 review; 2026-05-29
+# the owner" state the trust-gate invariant relies on (james PR #1682 review; 2026-05-29
 # supervision session). The admin (actor_id 5, always-bypass) entry below was
 # initial-commit boilerplate that drifted from the live state; left in place it
 # would have re-granted repository admins a standing bypass on the next
@@ -113,7 +113,7 @@ rules:
         # - context: "Type Check / Type Check"
         - context: "Pytest / Pytest"
         # enforcer-status, qa-status, review-attestation removed from required
-        # checks 2026-08-29 (Nic): agent reviewers must not block merge by not
+        # checks 2026-08-29 (owner): agent reviewers must not block merge by not
         # having run; fast tests + admit-status remain the gate.
         # comment-triage-status: fail-closed gate over unresolved third-party
         # review comments/reviews (Copilot, Gemini, ...) — restores the v1

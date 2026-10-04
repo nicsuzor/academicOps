@@ -22,7 +22,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 - **Evidence keeps its own node:** Where a claim rests on something checked -- a test, a measurement, a trace -- the finding goes into current state as a plain attributed sentence, and the check that produced it becomes its own node reached by `[[wikilink]]`. Narration in a body is never how evidence is preserved.
 - **Tasks are atomic:** A task and its subtasks are a cohesive unit of related work that can be done by one person or agent in a single session.
 - **Task titles are verb-led imperatives:** Every task title begins with an active imperative verb describing the concrete outcome to achieve (e.g. `Implement X`, `Verify Y`, `Refactor Z`).
-- **No person's name in titles or filenames:** A task title, note title, or filename must **never** contain a person's name or persona prefix (e.g. no `nic: decision: ...`, `nic-task-...`, `for-nic.md`). Assignment belongs exclusively in the `assigned_to` or `assignee` frontmatter field.
+- **No person's name in titles or filenames:** A task title, note title, or filename must **never** contain a person's name or persona prefix (e.g. no `<name>: decision: ...`, `<name>-task-...`, `for-<name>.md`). Assignment belongs exclusively in the `assigned_to` or `assignee` frontmatter field.
 - **Decisions and questions emerge from graph relationships:** Never create standalone "decision" tasks or file questions as tasks. Represent competing alternatives as mutually exclusive option nodes with mutual blocking edges where choosing one branch resolves the conflict, and model unknowns as empirical probe tasks (`classification: spike`). In-turn questions use `AskUserQuestion` directly.
 - **Parent/child is already an edge:** Setting `parent_id` automatically links the node into its parent hierarchy. Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, genuine interaction (such as a sequential dependency `depends_on`, `supersedes`, or cross-branch data flow).
 - **Child tasks** represent a distinct workflow step that is related to but structurally separate from the parent task.
@@ -95,7 +95,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 
 ## Escalation: near-certain, epic-ending, or don't stop
 
-Escalating to Nic is not free -- a raised concern costs him attention whether or not it
+Escalating to the user is not free -- a raised concern costs them attention whether or not it
 turns out to matter. Escalate only when a problem is close to certain to occur AND, if
 it shipped, would compromise the entire epic it sits in. Nothing short of that clears
 the bar.
@@ -109,7 +109,7 @@ the bar.
   anything.** A gap that ready work can proceed around is not a blocker -- record it as
   a candidate for later, not as a gate.
 - **A non-deal-breaker concern earns at most one line in the closing report.** Never a
-  blocking node, never a question back to him. If it is worth more than a line, it was
+  blocking node, never a question back to the user. If it is worth more than a line, it was
   a deal-breaker, and the bar above already covers it.
 
 ## Maintenance is YOUR responsibility: fix IMMEDIATELY

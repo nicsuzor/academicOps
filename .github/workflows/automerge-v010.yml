@@ -11,7 +11,7 @@
 # applies the same rule brain's `needs.<job>.result == 'success'` gate does:
 # anything other than a genuine `success` blocks the merge.
 #
-# No review gate. Nic, 2026-09-12: "we can review with the claude bot
+# No review gate. Owner, 2026-09-12: "we can review with the claude bot
 # identity or the github copilot bot if we need to, and if we don't need
 # review, we can gate on mechanical checks only." A Claude-bot or Copilot
 # approval, if present, is neither read nor required — this workflow does
