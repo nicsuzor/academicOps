@@ -37,7 +37,7 @@ Filenames identify files within repositories and knowledge bases:
 
 ### Forensic Root Cause
 
-Historical forensic evidence from the PKB (`goal_ws_question_surfacing`, `aops_69a90166`) establishes that titles shaped like `<name>: decision: xyz` emerged from three compounding systemic factors:
+Historical forensic evidence from the PKB establishes that titles shaped like `<name>: decision: xyz` emerged from three compounding systemic factors:
 
 1. **Legacy Prompt Doctrine:** An early rule in `.agents/CORE.md` (recorded 2026-08-13) explicitly instructed agents: that every question to the user must be filed as a decision node assigned to the user, with the chat sentence as the notification and the node as the record. Agents took this instruction literally and began prefixing task titles with the user's name followed by `decision: ...`, or with `DECISION (<name>): ...`.
 2. **Capability Grant & Suppression Gap:** When interactive asking tools (`AskUserQuestion`) were temporarily omitted from agent tool grants or suppressed by agent heuristics against interrupting, agents fell back to dumping questions onto the graph as static tasks.

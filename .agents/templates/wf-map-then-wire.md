@@ -110,7 +110,7 @@ The map holds the design, and nothing else.
   states are mutually exclusive: **solid** = current & live; **dashed** = built
   but currently dark / untested / broken; **dotted** = proposed and not yet
   built. Bracket tags (`[ACTIVE] [DARK] [PROPOSED]` …) are **abolished** —
-  the user, 2026-08-23, "no dumb tags please" ([[aops_8f38ffdc]]). Do not reintroduce
+  the user, 2026-08-23, "no dumb tags please". Do not reintroduce
   them, and do not read "dotted" as retired: retired material comes off the map.
 - **A stroke style is a falsifiable claim about build state, and it is the only
   such claim the map makes.** Never draw one you have not checked at a named

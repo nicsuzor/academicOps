@@ -48,7 +48,7 @@ However, an architectural blind spot exists between **task graph completion** an
 
 - `[[aops_surface_updates_to_nic]]` and `[[aops_31d8bb63]]`: Previously attempted to define update push channels, but were cancelled due to lack of a concrete contract binding human origin to terminal release.
 - `[[task_32d3fe44]]`: Attempted to make the daily note a surface for dropped work, but lacked a forcing mechanism on task release.
-- `[[aops_reconcile_trigger]]`: The worker that wrote the systemd timer could not install from its container, and the user parked the mechanical trigger on 2026-09-15:
+- The reconcile trigger task: The worker that wrote the systemd timer could not install from its container, and the user parked the mechanical trigger on 2026-09-15:
   > _"we forget building a mechanical trigger for now, and we either change who's allowed to write to the graph or change graph states"_
 
   The present design builds squarely on the **"change graph states"** alternative: rather than attempting to construct an unprompted background reconcile daemon or mechanical event wake, it introduces a distinct graph state (`ida_held`) and binds human delivery to graph state transitions and human-directed trigger commands.
@@ -137,7 +137,7 @@ The human delivery gate covers **both** completed tasks with human origin and an
    - For `channel: claude_turn` / `agy_session`: Direct presentation of the completed artifact to the human turn.
 2. **Review-State Delivery (e.g. `wf-human-approval`):** Any task released to `status: review` for the user represents an explicit human decision gate. It must never sit silently on the graph.
    - **Change to `wf-human-approval` Step 2:** In `plugins/ida/skills/workflow-library/workflows/wf-human-approval.md`, Step 2 ("File it for review") previously instructed workers to place the artifact "in the form the project or user preferences name", which led to silent in-graph releases because no channel preference is registered.
-   - Step 2 is updated to mandate: **delivery goes through Ida Prime**. The worker must route delivery through Ida Prime (by filing an Ida-held follow-up under `agent_brains_ida` or tagging the task `ida-tracked` with `assignee: ida`), ensuring Ida Prime actively posts the review card to the user's originating channel (Telegram), lists the item in today's daily note under `## Needs Sign-Off`, and surfaces it during `/mine`.
+   - Step 2 is updated to mandate: **delivery goes through Ida Prime**. The worker must route delivery through Ida Prime (by filing an Ida-held follow-up or tagging the task `ida-tracked` with `assignee: ida`), ensuring Ida Prime actively posts the review card to the user's originating channel (Telegram), lists the item in today's daily note under `## Needs Sign-Off`, and surfaces it during `/mine`.
 3. **Delivery Evidence:** The releasing agent or coordinator must record `delivery_evidence`:
    ```yaml
    delivery_evidence:
@@ -174,7 +174,7 @@ The user asked for `/mine` as the trigger. The design relies entirely on this hu
 2. **Dual Syntax & Behavior:**
    - `/mine <ask>`: Files an Ida-tracked task under `agent_brains_ida` with `assignee: ida`, `status: ida_held`, and explicit dependency links to the domain task.
    - Bare `/mine`: Runs the reconciliation and surfacing pass via `wf-ida-task-tree`.
-3. **No Background Daemon or Event Wake:** There is no reliance on background systemd timers, cron polling, or automatic event wakes (honoring the 2026-09-15 park on `[[aops_reconcile_trigger]]`). Surfacing happens when the user chooses to run `/mine`.
+3. **No Background Daemon or Event Wake:** There is no reliance on background systemd timers, cron polling, or automatic event wakes (honoring the 2026-09-15 park on the mechanical reconcile trigger). Surfacing happens when the user chooses to run `/mine`.
 4. **The Trigger Rule:** Every task with `status: ida_held` MUST name the trigger that will surface it (e.g., `trigger: "/mine"`). A follow-up without an explicit, verifiable trigger is rejected at intake and MUST NOT be filed.
 
 ### 2.6 Project-Tracked Asks: Surfacing via `ida-tracked`

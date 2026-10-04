@@ -125,7 +125,7 @@ Invoked as an automated pickup context: routing a capture is judgment work belon
 - Legacy capture notes still carrying a `processed` key, and the 17 files carrying
   `tags: [Array]` -- pre-existing data-quality debt tracked on `brain_7c711ec4`, not a backfill
   this route performs.
-- Surfacing anything to the user beyond what `/daily` step 1.5 already renders -- `aops_surface_updates_to_nic`'s
+- Surfacing anything to the user beyond what `/daily` step 1.5 already renders -- the update-surfacing task's
   concern if a gap remains once this lands, not assumed here.
 
 ## Landing milestones

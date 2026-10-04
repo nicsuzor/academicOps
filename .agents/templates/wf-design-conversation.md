@@ -168,8 +168,7 @@ test below.
   make it worse.
 - What a clean `check` does **not** tell you: it fails only on **content**
   divergence between `text` and `originalText`, not on line-wrap divergence,
-  and the map carries 35 wrap-only mismatches that pass (see [[obs_5df02f93]]
-  for what the content case costs).
+  and the map carries 35 wrap-only mismatches that pass.
 - Git history is the only versioning: never keep a backup copy or a versioned
   filename. This has been violated at least once in practice
   (`academicops-wired-map.excalidraw.bak-20260730-reconcile`, committed
