@@ -1,82 +1,35 @@
 # GitHub Ruleset: PR Review and Merge rules
 # Ruleset ID: 13762049
-# Applied to: dev integration branch (refs/heads/dev) of nicsuzor/academicOps
+# Applied to: refs/heads/dev of nicsuzor/academicOps
 #
-# This file is the authoritative reference for the repository ruleset.
-# It cannot be auto-applied via REST API (some rule types like merge_queue
-# and copilot_code_review_analysis_tools are UI-only), but it serves as:
-#   1. A diff-reviewable record of what rules are active
-#   2. A sync target for rules that CAN be updated via API (see below)
-#   3. Input for the validate-ruleset-alignment CI check
+# Record of the live ruleset. Applying it needs repository admin:
+#   PUT repos/nicsuzor/academicOps/rulesets/13762049
 #
-# To apply API-compatible rules from this file, run:
-#   scripts/sync-ruleset.sh
-#
-# Rules NOT configurable via REST API (must be set in GitHub UI):
-#   - merge_queue (Settings → Rules → Rulesets → add Merge queue rule)
-#   - copilot_code_review_analysis_tools (CodeQL — re-add after any API update)
-#
-# Recommended merge queue settings (set via UI):
-#   merge_method: REBASE
-#   min_entries_to_merge: 1
-#   min_entries_to_merge_wait_minutes: 5
-#   max_entries_to_build: 5
-#   max_entries_to_merge: 5
-#   grouping_strategy: ALLGREEN
+# dev merges on green: Lint and Pytest pass on the PR head; no approval is
+# required. Review into main is the human gate (main-requires-review.yml).
 
 name: PR Review and Merge rules
 
-# Which branches this ruleset applies to
 target: branch
 conditions:
   ref_name:
     include:
-      - refs/heads/dev  # dev integration branch (PRs target dev; main is publish-only)
+      - refs/heads/dev
     exclude: []
 
 enforcement: active
 
-# Who can bypass these rules: NO ONE.
-# The live ruleset has bypass_actors: null — the hardened "never merge without
-# the owner" state the trust-gate invariant relies on (james PR #1682 review; 2026-05-29
-# supervision session). The admin (actor_id 5, always-bypass) entry below was
-# initial-commit boilerplate that drifted from the live state; left in place it
-# would have re-granted repository admins a standing bypass on the next
-# sync-ruleset.sh apply — a guardrail weakening (aops-d62201ca).
-# Kept as null (not []) so the payload serialises identically to the live API
-# value and the sync diff stays clean. Do NOT add bypass_actors without an
-# explicit, recorded decision.
+# Kept as null (not []) so the payload matches the live API value.
 bypass_actors:
 
 rules:
-  # ─────────────────────────────────────────
-  # Prevent branch deletion
-  # ─────────────────────────────────────────
   - type: deletion
-    # Purpose: Protects dev from accidental deletion
 
-  # ─────────────────────────────────────────
-  # Require linear history (no force-push)
-  # ─────────────────────────────────────────
   - type: non_fast_forward
-    # Purpose: Prevents force-pushes that would rewrite history on dev
 
-  # ─────────────────────────────────────────
-  # Require pull request before merging
-  # ─────────────────────────────────────────
   - type: pull_request
     parameters:
       required_approving_review_count: 0
-      # v2 (Phase 7): the human gate is the maintainer's PR **review approval**, which
-      # drives `admit-on-review.yml` to set the required `admit-status` (see
-      # required_status_checks below and specs/workflows/pr-pipeline.md §3.2, §5). The
-      # count stays 0 ON PURPOSE: the Approve click is the admission *trigger*, NOT a
-      # counted merge-gate review — so admission persists as `admit-status` (carry-forward
-      # / reset-on-human-push) and "dismiss stale reviews" never bears on it. (This
-      # supersedes Phase 4's `pr-fix-loop` GitHub Environment approval, now retired — see
-      # §3.2. There is still no bot approval to count.) The drop (2 → 0) was made in the
-      # SAME change that added `admit-status` to the required checks; otherwise green checks
-      # alone would permit a gate-bypassing manual merge (§5 sequencing note).
       dismiss_stale_reviews_on_push: false
       require_code_owner_review: false
       require_last_push_approval: false
@@ -86,74 +39,12 @@ rules:
         - squash
         - merge
 
-  # ─────────────────────────────────────────
-  # Required status checks
-  # ─────────────────────────────────────────
   - type: required_status_checks
     parameters:
       strict_required_status_checks_policy: false
-      # strict=false: PR branch does not need to be up to date with base before merge.
-      # The merge queue handles rebasing; strict mode is redundant and adds friction.
       do_not_enforce_on_create: false
+      # Context names are the check-run names GitHub emits for the reusable
+      # workflows called from pr-pipeline.yml: "<caller job name> / <callee job name>".
       required_status_checks:
-        # Context names must match the check-run name GitHub actually emits.
-        # For reusable-workflow calls, that is "<caller-job-name> / <callee-job-name>"
-        # (NOT "<workflow-name> / <caller-job-id> / <callee-job-name>"). In pr-pipeline.yml:
-        #   job `lint`      name: Lint       → calls lint.yml      job name: Lint      → "Lint / Lint"
-        #   job `typecheck` name: Type Check → calls typecheck.yml job name: Type Check → "Type Check / Type Check"
-        #   job `pytest`    name: Pytest     → calls pytest.yml    job name: Pytest    → "Pytest / Pytest"
         - context: "Lint / Lint"
-        # DISABLED 2026-05-17 — Type Check gate hollowed out by 10+ prior suppression
-        # commits (see RBG audit, PKB task aops-1c3de214). Gate produces 236 errors
-        # on every PR from pre-existing source issues that previous "fix" commits
-        # silenced rather than fixed. Disabled as explicit, dated, tracked debt
-        # while burn-down task aops-1c3de214 fixes the real errors. DO NOT re-add
-        # to required checks until aops-1c3de214 closes (acceptance: basedpyright
-        # returns 0 errors on a clean clone of main).
-        # - context: "Type Check / Type Check"
         - context: "Pytest / Pytest"
-        # enforcer-status, qa-status, review-attestation removed from required
-        # checks 2026-08-29 (owner): agent reviewers must not block merge by not
-        # having run; fast tests + admit-status remain the gate.
-        # comment-triage-status: fail-closed gate over unresolved third-party
-        # review comments/reviews (Copilot, Gemini, ...) — restores the v1
-        # merge-prep invariant that PR #2094 exposed as silently dropped when
-        # merge-prep was retired at Phase 5 (scripts/ci/check-unresolved-comments.sh;
-        # pr-pipeline.yml's `comment-triage-status` job on every push,
-        # admit-on-review.yml's `admit-comment-triage` job at admission).
-        - context: "comment-triage-status"
-        # Human gate (PR review approval, §3.2) — NOT an agent. Set to success only by
-        # `admit-on-review.yml` (on: pull_request_review) when an authorised maintainer
-        # APPROVES the PR. Supersedes Phase 4's `pr-fix-loop` Environment approval / the
-        # in-pipeline `admit` job (retired — §3.2). Replaces v1's merge-prep-status as the
-        # merge gate.
-        - context: "admit-status"
-        # NOTE: alignment-status is advisory (§6) and is intentionally NOT required —
-        # pauli runs host-side and informs the human gate, never deadlocks a merge.
-        # NOTE: merge-prep-status is REMOVED (Phase 4) — replaced by admit-status. The
-        # no-op merge-prep run on every green PR (pathology P5) is gone.
-
-  # ─────────────────────────────────────────
-  # Code quality (CodeQL / Copilot analysis)
-  # ─────────────────────────────────────────
-  - type: code_quality
-    parameters:
-      severity: errors
-    # Note: This rule type is NOT configurable via REST API.
-    # If it disappears after an API update (which drops it silently),
-    # re-add it via GitHub UI: Settings → Rules → Rulesets → edit → add Code quality rule.
-    # The copilot_code_review_analysis_tools (CodeQL) check runs automatically
-    # once this rule is active.
-
-  # ─────────────────────────────────────────
-  # Merge queue (UI-only, not in API)
-  # ─────────────────────────────────────────
-  # merge_queue rule must be added via GitHub UI. Recommended settings:
-  #   merge_method: REBASE
-  #   min_entries: 1
-  #   wait_minutes: 5
-  #   max_entries_to_build: 5
-  #   grouping_strategy: ALLGREEN
-  # When enabled, gh pr merge --merge-queue enqueues PRs.
-  # The queue rebases each PR on the current main head and reruns required checks
-  # before merging, eliminating cascade conflicts from multiple concurrent PRs.

@@ -1,0 +1,46 @@
+# GitHub Ruleset: main requires Nic's review
+# Ruleset ID: none yet (not created live)
+# Applied to: refs/heads/main of nicsuzor/academicOps
+#
+# Record of the ruleset to create. Creating it needs repository admin:
+#   POST repos/nicsuzor/academicOps/rulesets
+#
+# Every merge into main needs an approving review from a code owner
+# (CODEOWNERS: @nicsuzor) on the last push, plus green Lint and Pytest.
+# dev reaches main as one batch release PR.
+
+name: main requires Nic's review
+
+target: branch
+conditions:
+  ref_name:
+    include:
+      - refs/heads/main
+    exclude: []
+
+enforcement: active
+
+bypass_actors:
+
+rules:
+  - type: deletion
+
+  - type: non_fast_forward
+
+  - type: pull_request
+    parameters:
+      required_approving_review_count: 1
+      dismiss_stale_reviews_on_push: true
+      require_code_owner_review: true
+      require_last_push_approval: true
+      required_review_thread_resolution: false
+      allowed_merge_methods:
+        - merge
+
+  - type: required_status_checks
+    parameters:
+      strict_required_status_checks_policy: false
+      do_not_enforce_on_create: false
+      required_status_checks:
+        - context: "Lint / Lint"
+        - context: "Pytest / Pytest"
