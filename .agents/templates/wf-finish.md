@@ -23,7 +23,7 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 - **Releases to main**: A PR from `dev` into `main` merges only with Nic's review.
 - **Commit trailer**: Commits must carry `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
 - **QA review**:
-  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts. `/dispatch` mints a follow-up verifying task.
+  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts. `/reify` mints a follow-up verifying task.
   - **None**: For pure documentation, notes, or prompt triage changes with no functional impact.
 
 ## Worker Completion Checklist

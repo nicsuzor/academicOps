@@ -21,7 +21,7 @@ Defines the universal baseline contract for how tasks finish when a repository l
 - **Delivery mechanism**: Open a draft pull request targeting the base branch. Never push directly to protected default branches.
 - **Commit trailer**: Commits must include `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
 - **QA review**:
-  - **Functional changes** (code, schema, or runtime changes): Require independent QA. `/dispatch` mints a follow-up verifying task dependent on the implementation task.
+  - **Functional changes** (code, schema, or runtime changes): Require independent QA. `/reify` mints a follow-up verifying task dependent on the implementation task.
   - **Documentation, notes, or trivial chore changes**: No QA follow-up required unless explicitly requested in the task objective.
 
 ## Worker Completion Checklist
@@ -35,7 +35,7 @@ The implementation worker must satisfy these obligations before marking `status:
 
 ## Follow-up QA Task Specification
 
-When QA review is required, `/dispatch` mints a follow-up task with:
+When QA review is required, `/reify` mints a follow-up task with:
 
 - **Title**: `QA: <primary task title>`
 - **Parent**: Same parent as primary task

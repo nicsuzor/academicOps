@@ -1,5 +1,5 @@
 ---
-title: Workflow — the three-stage pipeline
+title: Workflow — the four-stage pipeline
 type: spec
 category: workflow
 status: ready
@@ -8,13 +8,14 @@ tags: [spec, workflow, composition, pipeline]
 
 # Workflow
 
-Work moves through three stages. Each runs, then stops; no stage fires the next.
+Work moves through four stages. Each runs, then stops; no stage fires the next.
 
-| Stage      | Skill        | What it does                                                                                                                                              |
-| ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Capture | `/q`         | Situate an ask on the graph — under the right parent, wired to what it serves, valued at intake.                                                          |
-| 2. Expand  | `/decompose` | Expand the objective into an abstract graph of sub-objectives, decision branches, prerequisites, and alternate paths. Stops before implementation detail. |
-| 3. Reify   | `/dispatch`  | Assemble workflows from templates, write dispatchable task briefs, and dispatch them.                                                                     |
+| Stage       | Skill        | What it does                                                                                                                                              |
+| ----------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Capture  | `/q`         | Situate an ask on the graph — under the right parent, wired to what it serves, valued at intake.                                                          |
+| 2. Expand   | `/decompose` | Expand the objective into an abstract graph of sub-objectives, decision branches, prerequisites, and alternate paths. Stops before implementation detail. |
+| 3. Reify    | `/reify`     | Assemble workflows from templates and write dispatchable tasks to the graph.                                                                              |
+| 4. Dispatch | `/dispatch`  | Start polecat workers on queued, ready tasks. Writes no tasks.                                                                                            |
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 

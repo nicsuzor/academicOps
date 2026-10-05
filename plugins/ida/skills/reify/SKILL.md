@@ -1,11 +1,11 @@
 ---
-name: dispatch
-description: Take an objective, assemble a compliant workflow from templates, reify the resulting worker instructions as complete dispatchable tasks, and dispatch them.
+name: reify
+description: Turn an objective, or a task id, into complete dispatchable tasks on the graph -- hydrate, compose the workflow from templates, write each task at `queued`, and mint any QA follow-up. Use when work needs tasks written or an existing task rewritten before a worker can pull it. Exclude for starting workers on tasks already written (use /dispatch).
 ---
 
-# /dispatch: compose a task from an objective and dispatch it
+# /reify: compose dispatchable tasks from an objective
 
-The task is the whole message to the worker. Write it once, keep it short, send it as written.
+The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`.
 
 Nothing is written to the graph until steps 1-2 have passed: a task created early survives every check that later fails.
 
@@ -13,7 +13,7 @@ Nothing is written to the graph until steps 1-2 have passed: a task created earl
 
 Call `/hydrate` on the objective, or on the task if you were given an id.
 
-**Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates. If a task is already completely specified, you may dispatch it directly without re-writing it.
+**Idempotency**: Search before creating new tasks. Update existing tasks with new criteria rather than minting duplicates. A task that is already completely specified needs no rewrite; report it as ready.
 
 - Given a task id: read it. If it already fills the template in step 3, go to step 4.
 - If `/hydrate` flags an unfinished task with the same objective, carry on with that task instead of a new one.
@@ -88,7 +88,7 @@ Where the project finish template calls for QA review:
 - Keep each task under 150 words. Include only what the worker cannot find for itself.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, tool names, runtime hints, notes on the worker's limits, summaries of linked notes, counts and history.
-- Change an existing task only for a defect you can point to in its text; otherwise send it as written.
+- Change an existing task only for a defect you can point to in its text; otherwise leave it as written.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 
 **Exclusions:**
@@ -97,17 +97,9 @@ Where the project finish template calls for QA review:
 - Omit summaries of linked notes; reference documents by pointer.
 - Omit provenance, changelogs, session narratives, and perishable counts or SHAs.
 - Do not create standalone decision tasks or file questions as tasks.
-- Do not dispatch workers or begin execution.
 
-## 4. Dispatch
+## 4. Report
 
-A task is ready to dispatch when its status is `queued` and it has no open `depends_on` edges or incomplete children.
+Stop once the tasks are on the graph; `/dispatch` starts their workers.
 
-- You should dispatch multiple tasks in parallel where possible.
-- Start workers through your project's specified dispatch pathway.
-- Any minted QA follow-up task remains queued until its hard dependency completes.
-
-## 5. Report
-
-- Dispatch is 'fire-and-forget': you do not get a report back from the worker. Do not poll or wait for a worker to return.
-- Output only a summary of tasks dispatched: one line per task, including title, id, and any identification of the worker assigned.
+Output one line per task written or confirmed ready: title, id, status, and its open `depends_on` edges.
