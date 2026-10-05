@@ -134,7 +134,7 @@ jobs:
           # failure can permanently fail it, even after a later legitimate
           # state is posted. The latest state always wins so a maintainer
           # (or a later workflow re-run) can revoke an erroneous post by
-          # writing a new state (aops-221211fa).
+          # writing a new state.
           # The LATEST state (Skipped echo or genuine) is canonical — that way
           # subsequent runs idempotently re-echo, and a maintainer can revoke
           # any prior terminal post by writing a new state. We do NOT exclude
@@ -147,7 +147,7 @@ jobs:
           # review" message. Only `failure` (§3.6 exhaustion) is terminal-skip and
           # it ALWAYS posts an escalation review; a harness crash writes a
           # non-terminal `error` (retryable — see "Post terminal status"), so it is
-          # NOT matched here and the mechanic re-runs on the next pass (aops-c5c57bfd).
+          # NOT matched here and the mechanic re-runs on the next pass.
           LATEST=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
             --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last // {}" 2>/dev/null || echo "{}")
           LATEST_STATE=$(echo "$LATEST" | jq -r '.state // ""')
@@ -339,7 +339,7 @@ jobs:
           fi
 
           # (5) Request the maintainer so the escalation is visible, not buried
-          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-reviewer nicsuzor \
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-reviewer "${{ github.repository_owner }}" \
             || echo "WARNING: could not add reviewer (continuing)"
 
           echo "::error::Mechanic halted: Stage-2 loop ceiling reached ($MECH_COUNT >= $MAX_MECHANIC_RUNS)."
@@ -444,8 +444,8 @@ jobs:
       #
       # mechanic-status is informational (§4.2): success on a clean pass
       # (agent completed without crash, regardless of whether it committed),
-      # RETRYABLE `error` on a harness crash/timeout (NOT a sticky `failure` —
-      # aops-c5c57bfd), and `failure` ONLY on §3.6 ceiling exhaustion (handled
+      # RETRYABLE `error` on a harness crash/timeout (NOT a sticky `failure`),
+      # and `failure` ONLY on §3.6 ceiling exhaustion (handled
       # above, and only that path posts an escalation review). A crash is not a
       # verdict: writing a sticky `failure` here made later passes re-post
       # "SHA already escalated — see prior review" for a review that never
@@ -484,7 +484,7 @@ jobs:
               # Harness crash/timeout — NOT exhaustion (that path exits above via
               # steps.ceiling and never reaches here). Post a NON-terminal `error`
               # so the SHA stays retryable: no escalation review was posted, so it
-              # must not masquerade as a terminal verdict (aops-c5c57bfd, Defect 2).
+              # must not masquerade as a terminal verdict (Defect 2).
               # The deterministic "Unsupported event type: push" abort that caused
               # PR 2128 is removed at the source (Defect 1 — the sweep no longer
               # dispatches under `push`), so what reaches here now is a genuinely

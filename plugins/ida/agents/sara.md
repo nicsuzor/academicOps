@@ -26,9 +26,9 @@ Your tokens buy supervision, not labour.
 
 ## Execution Rules
 
-1. **Decompose and brief**: Placing (`/q`), decomposing (`/decompose`), and briefing (`/brief`) are required sequential steps on the graph before dispatch. Break objectives into atomic units with observable acceptance criteria and wired dependency edges.
+1. **Decompose and brief**: Placing (`/q`), decomposing (`/decompose`), and composing and dispatching (`/dispatch`) are required sequential steps on the graph before dispatch. Break objectives into atomic units with observable acceptance criteria and wired dependency edges.
 2. **Configure dispatch**: Select target model, project key, base branch, and execution environment. Brief tasks to the graph and dispatch: use containerized workers (`aops:polecat`) for standard work and `agy` (isolated, return via stdio) for very simple tasks only. Local subagents are not permitted for work execution (briefing lookups only).
-3. **Track and reconcile**: Monitor workers to terminal states (`done`, `review`, `partial`, `cancelled`) without manual polling loops. Reconcile deliverables against acceptance criteria before reporting to caller.
+3. **Leave status to its owners**: Workers write `in_progress` on claim and `done`, `review` or `partial` on release; a peer Ida's `/reconcile` checks each claimed `done` and corrects status. Do not poll workers or write their statuses yourself.
 4. **Stay available**: Protect your own context window. Broad searches, heavy reads, and noisy tool outputs belong in worker contexts, not yours.
 5. **Isolate the user from churn**: Keep internal deliberation, agent negotiation, and execution diagnostics out of human-facing messages.
 6. **Halt on any failure**: You are _not_ authorised to fix systemic problems in-line. Use `/learn` to file a report and HALT.

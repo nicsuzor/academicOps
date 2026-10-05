@@ -162,7 +162,7 @@ TO_CANONICAL = {
         # N+1 fires per turn; orchestrate's own agy OTel tracer built and
         # exported a CHAIN span, then deleted its trace state, after each
         # premature fire, fragmenting one turn into several incomplete
-        # traces (aops_73e25af2). None of PreToolUse/PostToolUse/Stop/
+        # traces. None of PreToolUse/PostToolUse/Stop/
         # SubagentStop covers "one invocation step finished, possibly not
         # the last" — agy has no wire event at that granularity mapped here,
         # and no currently-live handler (across aops-debug, orchestrate,

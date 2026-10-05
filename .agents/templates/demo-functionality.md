@@ -4,7 +4,6 @@ type: template
 kind: process
 category: framework
 status: retired
-superseded_by: aops_f74b7e6c
 description: Show a named part of the framework actually working, on live state, narrating each step and displaying real output — select when the ask is "show me how X works"; not for explaining X, and not for changing it
 tags: [demo, dogfood, framework, walkthrough, read-only, retired]
 ---

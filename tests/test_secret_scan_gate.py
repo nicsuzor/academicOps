@@ -1,4 +1,4 @@
-"""Guards academicOps's own commit-time secret gate (Layer 2, aops_8c697102).
+"""Guards academicOps's own commit-time secret gate (Layer 2).
 
 `lib/py/transcripts/domain/secret_redaction.py` (Layer 1) scrubs known
 credential shapes at write time, inside this repo's transcript pipeline. This
@@ -35,7 +35,7 @@ _SYNTHETIC_SECRET = "GH_TOKEN=ghp_wF9pQd3Xk7mNc2VbYt8LsAeR5oGjH1uZ0iEx\n"
 _CLEAN_CONTENT = (
     "# Session\n\n"
     "The parser aggregates tokens by tool and skill. Task IDs like "
-    "aops-00c0fa10 are fine.\n\n"
+    "aops-1a2b3c4d are fine.\n\n"
     "```python\n"
     "def redact_secrets(text: str) -> str: ...\n"
     "```\n"
@@ -102,7 +102,7 @@ class TestSecretGateBlocksCommits:
 class TestSecretGateMutationValid:
     """Proves the guard fails when the HOOK is removed, not the pattern.
 
-    Mirrors the Layer 1 mutation evidence recorded on aops_8c697102: the same
+    Mirrors the Layer 1 mutation evidence: the same
     staged secret `test_staged_secret_is_blocked` proves is blocked, here
     proves is NOT blocked once the gitleaks hook entry is absent from the
     config — the exact failure mode (a control silently dropped by a

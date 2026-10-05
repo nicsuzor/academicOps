@@ -79,7 +79,7 @@ jobs:
       # §4.6 / §10 SHA-based loop-skip: re-post the verdict if this exact SHA was
       # already GENUINELY verified. Keyed on "have we judged THIS diff?", never on
       # commit author (the v1 anti-pattern that caused P2 / PR #1037). Mirrors the
-      # shipped enforcer's loop-skip (regression-hardened: aops-330a87e3).
+      # shipped enforcer's loop-skip (regression-hardened).
       #
       # A diff counts as already-verified ONLY when a genuine completed review exists
       # for this exact SHA:
@@ -102,7 +102,7 @@ jobs:
           #     greens a SHA — a later maintainer revert (or genuine failure) does
           #     not erase the historical entry, so a re-run resurrects the stale
           #     success. Reading the latest state preserves the maintainer's
-          #     authority to revoke via a later post (aops-221211fa).
+          #     authority to revoke via a later post.
           GENUINE_SUCCESS=$(gh api "repos/$REPO/commits/$HEAD_SHA/statuses?per_page=100" \
             --jq "[.[] | select(.context == \"${AGENT_NAME}-status\")] | sort_by(.created_at) | last | if . == null then 0 elif (.state == \"success\" and ((.description // \"\") | startswith(\"Skipped:\") | not)) then 1 else 0 end" 2>/dev/null || echo "0")
 
@@ -151,7 +151,7 @@ jobs:
       # checks out the GitHub default branch) so that prompt files introduced
       # to the default branch are always present, regardless of which branch
       # inputs.ref points at (the PR head branch may diverge from the default
-      # branch and predate a file added in a recent merge — see aops-59a6cba6).
+      # branch and predate a file added in a recent merge).
       # External consumers calling @qa-v1: pin to inputs.ref (release tag)
       # so their prompt files are consistent with the workflow version they pinned.
       - name: Fetch QA prompt
@@ -168,7 +168,7 @@ jobs:
               .aops
           fi
           # --no-cone: treat the arguments as file path patterns, not cone-mode
-          # directories (cone mode never materialises the files; see aops-2be8f5c7).
+          # directories (cone mode never materialises the files).
           cd .aops && git sparse-checkout set --no-cone \
             /plugins/ida/agents/marsha.md \
             /.github/agents/shared-error-handling.md \
@@ -179,7 +179,7 @@ jobs:
             exit 1
           fi
           PROMPT=$(cat .aops/plugins/ida/agents/marsha.md .aops/.github/agents/shared-error-handling.md .aops/.github/agents/qa.agent.md)
-          # Append an explicit user-turn directive (aops-2a3b4c71). Without it
+          # Append an explicit user-turn directive. Without it
           # the prompt is just concatenated agent-def markdown and the model
           # intermittently treats it as a pasted artifact ("what would you like
           # me to do?") instead of starting the review — qa-status then never
@@ -314,7 +314,7 @@ jobs:
       # Extracted to a script (like the enforcer's) so the review-lookup — which
       # MUST be scoped to marsha's "QA Verification" marker, or an enforcer
       # approval on the same SHA leaks through as a false qa-status=success
-      # (aops_e958bd56) — is unit-tested (tests/test_qa_terminal_status.py)
+      # — is unit-tested (tests/test_qa_terminal_status.py)
       # instead of living only as inline bash. Guard against a PR branch that
       # forked before qa-terminal-status.sh existed and was never rebased: `ref`
       # is the PR's OWN checkout, so the script genuinely may not be there. Fail

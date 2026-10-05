@@ -1,6 +1,6 @@
 ---
 name: premise-check
-description: Evaluate the logical integrity of reports and record a reasoned verdict. Mandatory before a claim reaches Nic.
+description: Evaluate the logical integrity of reports and record a reasoned verdict. Mandatory before a claim reaches the user.
 ---
 
 # Premise Check
@@ -15,7 +15,7 @@ Run at intake, not only before reporting. Anything unevaluated that enters your 
 
 - **Results returned by a subagent or `agy`.** Their conclusions are reported, not observed. Check what they actually ran before you adopt what they concluded.
 - **Anything read from the graph** -- retrieved memories, notes, task records, and search results injected into your context. A stored claim is only as good as the evidence recorded with it, and it may have been true when written and false now.
-- **Your own conclusions**, before they reach Nic.
+- **Your own conclusions**, before they reach the user.
 
 Nothing propagates unevaluated. If a claim cannot pass, say so where you use it rather than passing it on unmarked.
 
@@ -36,4 +36,4 @@ Synthesise the evaluation into a single reasoned judgment naming any defects, an
 uv run python3 scripts/verdict.py --report <report_id> --verdict "<your reasoned verdict>"
 ```
 
-Bounce reports lacking independent citations or adequate evidence back to their author. A failing report does not reach Nic hedged or caveated -- it does not reach him until it passes.
+Bounce reports lacking independent citations or adequate evidence back to their author. A failing report does not reach the user hedged or caveated -- it does not reach them until it passes.

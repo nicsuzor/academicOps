@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       focus:
-        description: 'Optional focus area (e.g., "knowledge/cyberlaw", "recent synthesis")'
+        description: 'Optional focus area (e.g., "knowledge/<topic>", "recent synthesis")'
         required: false
         type: string
       sample_size:
@@ -156,7 +156,6 @@ jobs:
               `tool gap`, `tool not available`, or `cannot proceed: missing
               tool`. If any halt occurs, surface it at the TOP of the resulting
               GitHub issue (not buried in body), with the missing tool named.
-              Closes silent-failure mode tracked in task-1460d6cf.
 
             ## Critical Rules
 

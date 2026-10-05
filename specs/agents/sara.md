@@ -121,7 +121,7 @@ queued → in_progress → done (deliverable accepted)
 `done` means the deliverable was accepted — evidence + output URL recorded on the
 PKB task; a merged PR is the code-surface instance of this.
 
-The canonical status set is mem's `VALID_STATUSES`, mirrored in this repository
+The canonical status set is the PKB taxonomy's, mirrored in this repository
 at [[tests/policy.toml]] under `[aops.taxonomy]` and enforced against every
 shipped skill by [[tests/test_skill_status_vocabulary.py]]. The supervisor uses
 that set without extensions (`partial` is part of it).

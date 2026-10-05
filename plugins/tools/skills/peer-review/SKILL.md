@@ -28,7 +28,7 @@ Serial execution by a single agent is the default. Lead sessions with multi-revi
 1. Capture metadata: scheme, round, application ID, candidate, title, role ([[reviewer-roles]]), deadline.
 2. Check conflicts of interest (CoI) once across participants and references; flag to academic for confirmation.
 3. Fetch scheme criteria, score bands, and character limits from the current handbook.
-4. Extract text to `${ACA_DATA:-~/brain}/reviews/{scheme}/{appid}/` via `pdftotext -layout`. Inspect tables and budgets directly from the PDF.
+4. Extract text to `${ACA_DATA}/reviews/{scheme}/{appid}/` via `pdftotext -layout`. Inspect tables and budgets directly from the PDF.
 
 ### Stage 1: PREP (Probe-Driven Draft)
 
@@ -61,7 +61,7 @@ Execute an independent cold check per [[review-verification]]:
 
 For pre-submission drafts by colleagues:
 
-1. Store materials under `${ACA_DATA:-~/brain}/reviews/{author}/`.
+1. Store materials under `${ACA_DATA}/reviews/{author}/`.
 2. Map author questions to line numbers in reading notes ([[reading-notes-format]]).
 3. Budget feedback length to available time (lead with working elements, then one structural priority).
 4. Quote the colleague's text directly rather than paraphrasing into labels.
