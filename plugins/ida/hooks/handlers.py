@@ -219,6 +219,9 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     try:
         env = dict(os.environ)
         env["NO_COLOR"] = "1"
+        # The model and ONNX Runtime ship in the image. Without this, a missing
+        # file sends pkb into a multi-GB download that the timeout kills.
+        env["AOPS_OFFLINE"] = "true"
         proc = subprocess.run(
             [pkb_bin, "search", query],
             capture_output=True,
