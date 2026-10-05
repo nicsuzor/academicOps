@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
+from premise_check_gate import premise_check_arm, premise_check_handler
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -219,6 +220,9 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     try:
         env = dict(os.environ)
         env["NO_COLOR"] = "1"
+        # The model and ONNX Runtime ship in the image. Without this, a missing
+        # file sends pkb into a multi-GB download that the timeout kills.
+        env["AOPS_OFFLINE"] = "true"
         proc = subprocess.run(
             [pkb_bin, "search", query],
             capture_output=True,
@@ -634,9 +638,11 @@ HANDLERS: dict[str, list] = {
         agy_user_prompt_submit,
         search_the_pkb,
         rule_against_hearsay,
+        premise_check_arm,
     ],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool) if h is not None],
-    "PostToolUse": [post_tool, agy_post_tool],
+    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
+    "PostToolUse": [post_tool, agy_post_tool, premise_check_arm],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop],
+    "PostToolBatch": [premise_check_arm],
+    "Stop": [stop, agy_stop, premise_check_handler],
 }
