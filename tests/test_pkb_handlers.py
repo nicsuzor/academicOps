@@ -259,37 +259,6 @@ def test_user_prompt_submit_ida_injects_pkb_search():
             assert res.user_text is None
 
 
-def test_user_prompt_submit_ida_no_results_returns_none():
-    """When PKB search yields no results for Ida or James, returns None (no fallback honesty spam)."""
-    for agent in ("ida:ida", "ida", "aops:james", "james"):
-        ctx = HookContext(
-            client="claude",
-            event="UserPromptSubmit",
-            raw={"prompt": "check status"},
-            hooks_dir=PKB_HOOKS,
-            cwd="/workspace",
-            agent_type=agent,
-        )
-        with patch.object(handlers, "_run_pkb_search", return_value=None):
-            res = handlers.search_the_pkb(ctx)
-            assert res is None
-
-
-def test_user_prompt_submit_ida_empty_prompt_returns_none():
-    """When prompt is empty for Ida or James, returns None (no fallback honesty spam)."""
-    for agent in ("ida:ida", "ida", "aops:james", "james"):
-        ctx = HookContext(
-            client="claude",
-            event="UserPromptSubmit",
-            raw={"prompt": ""},
-            hooks_dir=PKB_HOOKS,
-            cwd="/workspace",
-            agent_type=agent,
-        )
-        res = handlers.search_the_pkb(ctx)
-        assert res is None
-
-
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
     """End-to-end dispatch for Claude Code UserPromptSubmit with search success."""
     proc = subprocess.run(

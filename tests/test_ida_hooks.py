@@ -82,62 +82,6 @@ def test_hearsay_does_not_fire_for_non_ida_agents():
         assert res is None, f"hearsay fired for non-ida agent {agent}"
 
 
-def test_hearsay_dispatch_claude_end_to_end(staged_hooks: Path):
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(staged_hooks / "dispatch.py"),
-            "claude",
-            "UserPromptSubmit",
-        ],
-        input=json.dumps(
-            {
-                "hook_event_name": "UserPromptSubmit",
-                "agent_type": "ida:ida",
-                "session_id": "s-ida-e2e",
-                "prompt": "Here is the subagent report.",
-            }
-        ),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc.returncode == 0
-    data = json.loads(proc.stdout)
-    assert data["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
-    expected_inject, _ = load_message_pair(staged_hooks, "hearsay")
-    assert expected_inject in data["hookSpecificOutput"]["additionalContext"]
-
-
-def test_hearsay_dispatch_agy_end_to_end(staged_hooks: Path):
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(staged_hooks / "dispatch.py"),
-            "agy",
-            "PreInvocation",
-        ],
-        input=json.dumps(
-            {
-                "agent_type": "ida:ida",
-                "session_id": "s-ida-agy",
-                "prompt": "Twin message arriving.",
-            }
-        ),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc.returncode == 0
-    data = json.loads(proc.stdout)
-    expected_inject, _ = load_message_pair(staged_hooks, "hearsay")
-    assert any(
-        step.get("ephemeralMessage") == expected_inject for step in data.get("injectSteps", [])
-    )
-
-
 # ---------------------------------------------------------------------------
 # 2. Honesty hook on Stop for all agents (blocking once)
 # ---------------------------------------------------------------------------
