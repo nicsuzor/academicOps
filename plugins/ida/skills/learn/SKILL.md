@@ -23,7 +23,7 @@ Perform root-cause analysis on systemic failure classes using session execution 
    - _Framework_: Universal axioms, agent roles, or core tooling.
 4. **File an issue**:
    - Search existing issues for the error class before creating a new one to avoid duplicate reports.
-   - File an anonymized issue in the repository of the owning layer.
+   - File an anonymized issue in the repository of the owning layer. Name it as `owner/name` on the command line rather than changing directory, because the session may have no checkout of it.
    - Ground the issue description in the trace record (tool calls, error spans, latencies). Strip personal names, credentials, file paths containing sensitive usernames, and raw environment details.
 5. **No direct fixes**:
    - Diagnose only; do not propose fixes, select enforcement mechanisms, or open tasks to implement remedies. Findings serve as evidence for the framework enforcement loop (`specs/enforcement/enforcement.md`).
