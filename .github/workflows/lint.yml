@@ -126,7 +126,7 @@ jobs:
         timeout-minutes: 2
         run: uv run python scripts/check_refs.py
 
-      # Commit-time secret backstop (Layer 2, aops_8c697102). No autofix: a
+      # Commit-time secret backstop (Layer 2). No autofix: a
       # secret found here always blocks, the same as check_refs.py above.
       - name: Secret scan (gitleaks)
         if: always()

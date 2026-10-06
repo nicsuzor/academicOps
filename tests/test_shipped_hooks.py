@@ -1043,7 +1043,7 @@ def test_rbg_wires_preinvocation_on_agy(dist_root):
     which is enough to state the live rule set for the turn.
 
     PostInvocation is no longer wired: dispatch.py's
-    TO_CANONICAL["agy"]["PostInvocation"] is now None (aops_73e25af2 — it
+    TO_CANONICAL["agy"]["PostInvocation"] is now None (it
     fired once per internal invocation/tool-call round-trip, not once per
     turn), and rbg's own Stop-side handler is commented out anyway, so
     there was nothing left for it to reach."""

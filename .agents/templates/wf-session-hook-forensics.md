@@ -1,12 +1,9 @@
 ---
-alias:
-- kb_4d8dc3c6-wf-session-hook-forensics
-- kb_4d8dc3c6
 created: 2026-07-28T02:39:00.049328431+00:00
-id: kb_4d8dc3c6
+id: wf-session-hook-forensics
 last_modified: 2026-07-28T03:01:21.927217011+00:00
 modified: 2026-07-28T03:01:21.927215337+00:00
-permalink: kb_4d8dc3c6
+permalink: wf-session-hook-forensics
 tags:
 - wf-template
 - workflow

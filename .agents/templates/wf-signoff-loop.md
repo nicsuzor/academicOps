@@ -16,7 +16,6 @@ tags:
   - workflow
   - sign-off
   - review
-source: "aops-1e4cbf7e"
 ---
 
 ## What this step does
@@ -111,7 +110,7 @@ restated fresh each round** — or is put through a direct question surface. Nev
 mid-digest, and never a back-reference to an earlier unanswered ask.
 
 **Every proposition carries a verbatim excerpt** — inline, quoted, and sufficient for
-`<principal>` to reach his **own** verdict on it **without opening `<record>` or following
+`<principal>` to reach their **own** verdict on it **without opening `<record>` or following
 anything**. Evidence forms include, non-exhaustively: quoted text from the artifact or the
 record; `path:line`; a command with its observed output; an exit code; the quoted criterion being
 applied.
@@ -127,11 +126,11 @@ rejected and redone before it reaches `<principal>`.
 exception **for excerpts only** — never for narration or prose restating what an excerpt already
 shows.
 
-**Gate A — the principal assesses the digest himself.**
+**Gate A — the principal assesses the digest themself.**
 
 - **Approved, no defects → the loop terminates here.** That approval is the sign-off; `<unit>`
   may be marked done.
-- **Defects confirmed by him → step 6.**
+- **Defects confirmed by the principal → step 6.**
 - **No reply → nothing is approved.**
 
 ### 6. Propose a remediation plan — **Gate B**

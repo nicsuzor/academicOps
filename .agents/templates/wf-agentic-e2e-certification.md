@@ -1,14 +1,11 @@
 ---
-id: temp_f4a9cb82
+id: wf-agentic-e2e-certification
 title: "wf-agentic-e2e-certification"
 type: template
 created: 2026-07-28T03:02:03.400645342+00:00
 modified: 2026-07-28T03:02:03.400645342+00:00
 last_modified: 2026-07-28T03:02:03.400675899+00:00
-alias:
-  - "temp_f4a9cb82-wf-agentic-e2e-certification"
-  - "temp_f4a9cb82"
-permalink: temp_f4a9cb82
+permalink: wf-agentic-e2e-certification
 tags:
   - wf-template
   - workflow

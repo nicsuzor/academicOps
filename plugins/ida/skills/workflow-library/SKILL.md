@@ -70,10 +70,10 @@ Simulate how `dispatch` would assemble workflow templates for a stated objective
 
 A template carries only what a composing agent needs to select it and to know
 the step is finished -- the same sufficient-and-no-more standard `/dispatch`
-composes to ([[aops_brief_workflow_assembly]]). Nothing else is mandatory:
+composes to. Nothing else is mandatory:
 inventing exclusions, contraindications, or gates the work doesn't call for
 overshoots it. No fixed kind is required either -- components sit on one flat
-spine, not sorted into types ([[aops-composable-workflow-system]] §6); a
+spine, not sorted into types; a
 template stating an obligation that blocks acceptance rather than a process
 that proceeds conventionally carries a `wf-` prefix, no frontmatter field
 needed to say so.

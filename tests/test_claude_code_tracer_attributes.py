@@ -183,7 +183,7 @@ def test_build_and_export_spans_sets_attributes():
             username="test-user",
             span_records=records,
             agent_name="sara",
-            cwd="/workspace/junior/dispatch",
+            cwd="/workspace/project",
         )
 
     # Inspect set_attribute calls on the span
@@ -191,7 +191,7 @@ def test_build_and_export_spans_sets_attributes():
 
     assert called_attrs.get("service.name") == "academicOps"
     assert called_attrs.get("agent.name") == "sara"
-    assert called_attrs.get("cwd") == "/workspace/junior/dispatch"
-    assert called_attrs.get("project.dir") == "/workspace/junior/dispatch"
+    assert called_attrs.get("cwd") == "/workspace/project"
+    assert called_attrs.get("project.dir") == "/workspace/project"
     assert "task.id" not in called_attrs
     assert "tag.task_id" not in called_attrs

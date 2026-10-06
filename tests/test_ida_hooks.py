@@ -1,4 +1,4 @@
-"""Tests for re-enabled ida hooks: hearsay, honesty, and quiet."""
+"""Tests for ida hooks: hearsay, honesty, and quiet."""
 
 from __future__ import annotations
 
@@ -143,9 +143,9 @@ def test_hearsay_dispatch_agy_end_to_end(staged_hooks: Path):
 # ---------------------------------------------------------------------------
 
 
-def test_honesty_registered_on_stop():
+def test_honesty_not_registered_on_stop():
     assert "Stop" in handlers.HANDLERS
-    assert handlers.honest_output in handlers.HANDLERS["Stop"]
+    assert handlers.honest_output not in handlers.HANDLERS["Stop"]
 
 
 def test_honesty_fires_for_all_agents_on_stop():
@@ -176,48 +176,16 @@ def test_honesty_does_not_fire_when_background_tasks_running():
     assert res is None
 
 
-def test_honesty_blocks_once_on_claude_end_to_end(staged_hooks: Path):
-    # First attempt: blocks and returns decision: "block"
+@pytest.mark.parametrize("client", ["claude", "agy"])
+@pytest.mark.parametrize("agent", ["worker", "ida:ida"])
+def test_stop_passes_through_end_to_end(staged_hooks: Path, client: str, agent: str):
     payload = {
         "hook_event_name": "Stop",
-        "agent_type": "worker",
-        "session_id": "s-stop-1",
-    }
-    proc1 = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "Stop"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc1.returncode == 0
-    data1 = json.loads(proc1.stdout)
-    assert data1["decision"] == "block"
-    expected_inject, _ = load_message_pair(staged_hooks, "honesty")
-    assert expected_inject in data1["reason"]
-
-    # Second attempt (continuation): stop_hook_active allows stop through cleanly
-    payload["stop_hook_active"] = True
-    proc2 = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "Stop"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc2.returncode == 0
-    assert proc2.stdout.strip() == ""
-
-
-def test_honesty_degrades_to_advisory_on_agy(staged_hooks: Path):
-    payload = {
-        "agent_type": "worker",
-        "session_id": "s-stop-agy",
+        "agent_type": agent,
+        "session_id": f"s-stop-{client}-{agent}",
     }
     proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "Stop"],
+        [sys.executable, str(staged_hooks / "dispatch.py"), client, "Stop"],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
@@ -225,24 +193,23 @@ def test_honesty_degrades_to_advisory_on_agy(staged_hooks: Path):
         cwd=str(staged_hooks),
     )
     assert proc.returncode == 0
-    data = json.loads(proc.stdout)
-    assert "decision" not in data or data["decision"] != "deny"
-    expected_inject, _ = load_message_pair(staged_hooks, "honesty")
-    assert any(
-        step.get("ephemeralMessage") == expected_inject for step in data.get("injectSteps", [])
-    )
+    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
+    expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
+    assert expected_honesty not in proc.stdout
+    assert expected_quiet not in proc.stdout
+    assert '"block"' not in proc.stdout
 
 
 # ---------------------------------------------------------------------------
-# 3. Quiet hook on Stop and PreToolUse for Ida Prime (blocking once)
+# 3. Quiet hook on Stop and PreToolUse for Ida Prime
 # ---------------------------------------------------------------------------
 
 
-def test_quiet_registered_on_stop_and_pretooluse():
+def test_quiet_not_registered_on_stop_or_pretooluse():
     assert "Stop" in handlers.HANDLERS
-    assert handlers.be_quiet in handlers.HANDLERS["Stop"]
+    assert handlers.be_quiet not in handlers.HANDLERS["Stop"]
     assert "PreToolUse" in handlers.HANDLERS
-    assert handlers.quiet_channel_reply in handlers.HANDLERS["PreToolUse"]
+    assert handlers.quiet_channel_reply not in handlers.HANDLERS["PreToolUse"]
 
 
 def test_quiet_stop_fires_only_for_ida():
@@ -269,30 +236,7 @@ def test_quiet_stop_fires_only_for_ida():
     assert handlers.be_quiet(ctx_other) is None
 
 
-def test_ida_prime_stop_combines_honesty_and_quiet(staged_hooks: Path):
-    payload = {
-        "hook_event_name": "Stop",
-        "agent_type": "ida:ida",
-        "session_id": "s-ida-combined",
-    }
-    proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "Stop"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc.returncode == 0
-    data = json.loads(proc.stdout)
-    assert data["decision"] == "block"
-    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
-    expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
-    assert expected_honesty in data["reason"]
-    assert expected_quiet in data["reason"]
-
-
-def test_quiet_pretooluse_channel_reply_denies_once_for_ida(staged_hooks: Path):
+def test_quiet_channel_reply_denies_once_for_ida():
     channel_tools = (
         "telegram_reply",
         "telegram_send_message",
@@ -303,56 +247,36 @@ def test_quiet_pretooluse_channel_reply_denies_once_for_ida(staged_hooks: Path):
         "AskUserQuestion",
         "ask_question",
     )
+    expected_honesty, _ = load_message_pair(IDA_HOOKS, "honesty")
+    expected_quiet, _ = load_message_pair(IDA_HOOKS, "quiet")
     for tool in channel_tools:
         handlers.clear_channel_gate_state("s-chan-1")
-        payload = {
-            "hook_event_name": "PreToolUse",
-            "agent_type": "ida:ida",
-            "session_id": "s-chan-1",
-            "tool_name": tool,
-        }
-
-        # Attempt 1: Denied once with honesty and quiet
-        proc1 = subprocess.run(
-            [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
-            input=json.dumps(payload),
-            text=True,
-            capture_output=True,
-            timeout=15,
-            cwd=str(staged_hooks),
+        ctx = HookContext(
+            client="claude",
+            event="PreToolUse",
+            agent_type="ida:ida",
+            session_id="s-chan-1",
+            tool=tool,
+            hooks_dir=IDA_HOOKS,
         )
-        assert proc1.returncode == 0
-        data1 = json.loads(proc1.stdout)
-        specific1 = data1["hookSpecificOutput"]
-        assert specific1["permissionDecision"] == "deny"
-        expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
-        expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
-        assert expected_honesty in specific1["permissionDecisionReason"]
-        assert expected_quiet in specific1["permissionDecisionReason"]
-
-        # Attempt 2: Permitted
-        proc2 = subprocess.run(
-            [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
-            input=json.dumps(payload),
-            text=True,
-            capture_output=True,
-            timeout=15,
-            cwd=str(staged_hooks),
-        )
-        assert proc2.returncode == 0
-        assert proc2.stdout.strip() == ""
+        res1 = handlers.quiet_channel_reply(ctx)
+        assert res1 is not None, f"gate did not fire for {tool}"
+        assert res1.kind is Kind.REFUSE
+        assert expected_honesty in res1.inject_text
+        assert expected_quiet in res1.inject_text
+        assert handlers.quiet_channel_reply(ctx) is None
 
 
-def test_pretooluse_channel_reply_degrades_to_advisory_on_agy(staged_hooks: Path):
-    handlers.clear_channel_gate_state("s-chan-agy")
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_pretooluse_channel_reply_passes_through_for_ida(staged_hooks: Path, client: str):
     payload = {
         "hook_event_name": "PreToolUse",
         "agent_type": "ida:ida",
-        "session_id": "s-chan-agy",
+        "session_id": f"s-chan-{client}",
         "tool_name": "telegram_reply",
     }
     proc = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "agy", "PreToolUse"],
+        [sys.executable, str(staged_hooks / "dispatch.py"), client, "PreToolUse"],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
@@ -360,15 +284,9 @@ def test_pretooluse_channel_reply_degrades_to_advisory_on_agy(staged_hooks: Path
         cwd=str(staged_hooks),
     )
     assert proc.returncode == 0
-    data = json.loads(proc.stdout)
-    assert "decision" not in data or data["decision"] != "deny"
-    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
     expected_quiet, _ = load_message_pair(staged_hooks, "quiet")
-    assert any(
-        expected_honesty in step.get("ephemeralMessage", "")
-        and expected_quiet in step.get("ephemeralMessage", "")
-        for step in data.get("injectSteps", [])
-    )
+    assert expected_quiet not in proc.stdout
+    assert '"deny"' not in proc.stdout
 
 
 def test_quiet_pretooluse_ignores_non_channel_tools(staged_hooks: Path):
@@ -411,33 +329,18 @@ def test_quiet_pretooluse_ignores_non_ida_agents(staged_hooks: Path):
 
 def test_user_prompt_submit_clears_channel_reply_gate_state(staged_hooks: Path):
     session_id = "s-reset-test"
-    payload_reply = {
-        "hook_event_name": "PreToolUse",
-        "agent_type": "ida:ida",
-        "session_id": session_id,
-        "tool_name": "telegram_reply",
-    }
-    # Turn 1: 1st call denied
-    proc1 = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
-        input=json.dumps(payload_reply),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
+    ctx_reply = HookContext(
+        client="claude",
+        event="PreToolUse",
+        agent_type="ida:ida",
+        session_id=session_id,
+        tool="telegram_reply",
+        hooks_dir=IDA_HOOKS,
     )
-    assert json.loads(proc1.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
-
-    # Turn 1: 2nd call allowed
-    proc2 = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
-        input=json.dumps(payload_reply),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert proc2.stdout.strip() == ""
+    # Turn 1: 1st call denied, 2nd allowed
+    res1 = handlers.quiet_channel_reply(ctx_reply)
+    assert res1 is not None and res1.kind is Kind.REFUSE
+    assert handlers.quiet_channel_reply(ctx_reply) is None
 
     # New turn arrives (UserPromptSubmit)
     proc_submit = subprocess.run(
@@ -458,27 +361,20 @@ def test_user_prompt_submit_clears_channel_reply_gate_state(staged_hooks: Path):
     assert proc_submit.returncode == 0
 
     # Turn 2: 1st call denied again!
-    proc3 = subprocess.run(
-        [sys.executable, str(staged_hooks / "dispatch.py"), "claude", "PreToolUse"],
-        input=json.dumps(payload_reply),
-        text=True,
-        capture_output=True,
-        timeout=15,
-        cwd=str(staged_hooks),
-    )
-    assert json.loads(proc3.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+    res3 = handlers.quiet_channel_reply(ctx_reply)
+    assert res3 is not None and res3.kind is Kind.REFUSE
 
 
 def test_is_ida_variants():
     from dispatch import HookContext
 
-    for valid_agent in ("ida", "ida:ida", "plugin:ida", "ida-prime", "ida_prime", "ida:custom"):
+    for valid_agent in ("ida", "ida:ida", "plugin:ida", "ida-prime", "ida_prime"):
         ctx = HookContext(client="claude", event="Stop", agent_type=valid_agent)
         assert handlers._is_ida(ctx) is True, f"failed for {valid_agent}"
         assert handlers.is_ida(ctx) is True, f"failed for {valid_agent}"
         assert handlers.is_agent(ctx, "ida") is True, f"failed for {valid_agent}"
 
-    for invalid_agent in ("aops:james", "james", "pauli", "marsha", "rbg", ""):
+    for invalid_agent in ("aops:james", "james", "pauli", "marsha", "rbg", "ida:custom", ""):
         ctx = HookContext(client="claude", event="Stop", agent_type=invalid_agent)
         assert handlers._is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
         assert handlers.is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
