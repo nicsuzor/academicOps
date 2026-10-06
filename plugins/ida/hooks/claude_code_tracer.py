@@ -1114,6 +1114,49 @@ def _otel_imports():
 # per call; this caps one failed export at roughly a second.
 _EXPORT_TIMEOUT_S = 2
 
+# CA bundles a proxied export trusts when the OTel certificate variables are
+# unset. A TLS-re-terminating egress proxy (e.g. a Claude Code cloud session)
+# publishes its CA through these.
+_CA_BUNDLE_ENV_VARS = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "SSL_CERT_FILE")
+_OTEL_CERTIFICATE_ENV_VARS = (
+    "OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE",
+    "OTEL_EXPORTER_OTLP_CERTIFICATE",
+)
+
+
+def _proxy_http_kwargs(endpoint: str) -> dict[str, Any]:
+    """Extra OTLP HTTP exporter kwargs that route *endpoint* through the env proxy.
+
+    The OTLP HTTP exporter's default transport (a bare ``urllib3.PoolManager``
+    in recent opentelemetry-exporter-otlp-proto-http releases) ignores
+    ``HTTPS_PROXY`` and connects directly, which an egress firewall rejects
+    (403 host_not_allowed in a Claude Code cloud session). When the environment
+    names a proxy for *endpoint* (honouring ``NO_PROXY``), hand the exporter a
+    ``requests.Session``, which reads the proxy variables itself, and point TLS
+    at the environment's CA bundle. Returns ``{}`` when no proxy applies, so
+    direct export keeps the exporter's default transport.
+    """
+    try:
+        import requests
+        from requests.utils import get_environ_proxies, select_proxy
+    except ImportError:
+        if any(os.environ.get(v) for v in ("HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy")):
+            log.warning(
+                "A proxy is set but 'requests' is not installed; OTel spans will export directly"
+            )
+        return {}
+
+    if not select_proxy(endpoint, get_environ_proxies(endpoint)):
+        return {}
+
+    kwargs: dict[str, Any] = {"session": requests.Session()}
+    if not any(os.environ.get(v) for v in _OTEL_CERTIFICATE_ENV_VARS):
+        ca_bundle = next((os.environ[v] for v in _CA_BUNDLE_ENV_VARS if os.environ.get(v)), None)
+        if ca_bundle:
+            kwargs["certificate_file"] = ca_bundle
+    log.debug("Routing OTLP HTTP export for %s through the environment proxy", endpoint)
+    return kwargs
+
 
 def _create_exporter(
     endpoint: str,
@@ -1155,6 +1198,7 @@ def _create_exporter(
             endpoint=endpoint,
             headers=headers if headers else None,
             timeout=_EXPORT_TIMEOUT_S,
+            **_proxy_http_kwargs(endpoint),
         )
     except Exception as e:
         log.debug("HTTP exporter unavailable (%s), trying Console fallback", e)

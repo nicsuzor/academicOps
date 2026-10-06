@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
+from premise_check_gate import premise_check_arm, premise_check_handler
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -179,21 +180,6 @@ def honest_output(ctx: HookContext) -> Result | None:
     return block(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
-def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
-    pkb_bin = shutil.which("pkb")
-    if pkb_bin:
-        return pkb_bin
-    candidates: list[Path] = []
-    if cwd:
-        candidates.append(Path(cwd) / "pkb")
-    candidates.append(Path.cwd() / "pkb")
-    for candidate in candidates:
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate.resolve())
-
-    return None
-
-
 def _cap_output(out: str) -> str:
     """Bound injected payload size, independent of what the backend returns.
 
@@ -212,15 +198,38 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     query = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", prompt).strip()[:200]
     if not query:
         return None
-    pkb_bin = _find_pkb_bin(cwd)
-    if not pkb_bin:
-        log.warning("pkb binary not found for UserPromptSubmit hook")
+
+    mcp_url = os.environ.get("PKB_MCP_URL")
+    if not mcp_url:
+        log.warning("PKB_MCP_URL not found for UserPromptSubmit hook")
         return None
+
+    mcp_bin = shutil.which("fastmcp") or shutil.which("mcp")
+    if not mcp_bin:
+        log.warning("fastmcp/mcp binary not found for UserPromptSubmit hook")
+        return None
+
     try:
         env = dict(os.environ)
         env["NO_COLOR"] = "1"
+
+        cmd = [
+            mcp_bin,
+            "call",
+            mcp_url,
+            "pkb__search",
+            "--input-json",
+            json.dumps({"query": query}),
+        ]
+
+        mcp_token = os.environ.get("PKB_MCP_TOKEN")
+        if mcp_token:
+            cmd.extend(["--auth", mcp_token])
+        else:
+            cmd.extend(["--auth", "none"])
+
         proc = subprocess.run(
-            [pkb_bin, "search", query],
+            cmd,
             capture_output=True,
             text=True,
             timeout=_SEARCH_TIMEOUT_SECONDS,
@@ -233,9 +242,9 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
             if out:
                 return _cap_output(out)
         else:
-            log.warning("pkb search exited with returncode %s: %s", proc.returncode, proc.stderr)
+            log.warning("mcp search exited with returncode %s: %s", proc.returncode, proc.stderr)
     except Exception as exc:
-        log.warning("pkb search execution failed: %s", exc)
+        log.warning("mcp search execution failed: %s", exc)
     return None
 
 
@@ -637,9 +646,11 @@ HANDLERS: dict[str, list] = {
         agy_user_prompt_submit,
         search_the_pkb,
         rule_against_hearsay,
+        premise_check_arm,
     ],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool) if h is not None],
-    "PostToolUse": [post_tool, agy_post_tool],
+    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
+    "PostToolUse": [post_tool, agy_post_tool, premise_check_arm],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop],
+    "PostToolBatch": [premise_check_arm],
+    "Stop": [stop, agy_stop, premise_check_handler],
 }

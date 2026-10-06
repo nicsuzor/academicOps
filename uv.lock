@@ -25,6 +25,7 @@ dependencies = [
     { name = "psutil" },
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "requests" },
     { name = "rich" },
     { name = "streamlit" },
 ]
@@ -70,6 +71,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.0" },
     { name = "python-ntfy", marker = "extra == 'notify'", specifier = ">=0.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "requests", specifier = ">=2.32.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "scipy", marker = "extra == 'analysis'", specifier = ">=1.17.0" },
     { name = "streamlit", specifier = ">=1.54.0" },
