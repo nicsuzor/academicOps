@@ -22,7 +22,7 @@ For each claimed task (releasing child tasks first), call `pkb.release_task` (th
 
 - `done`: All acceptance criteria are fully met with verified evidence.
 - `partial`: Agent work remains -- a scope seam, an external dependency, or a missing tool. A follow-up task carries the remainder; record it under Next.
-- `review`: The next step is a decision only Nic can make. Name that decision in the required `reason`.
+- `review`: The next step is a decision that must be escalated for review. Name that decision in the required `reason`.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
 - Wire directed `blocks` edges to represent dependencies.

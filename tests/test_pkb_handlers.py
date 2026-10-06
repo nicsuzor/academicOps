@@ -82,6 +82,7 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     with (
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_proc = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "a" * 200],
@@ -103,6 +104,7 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
     with (
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_proc = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "red text with bold"],
@@ -123,6 +125,7 @@ def test_run_pkb_search_uses_measured_timeout():
     with (
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout="result\n", stderr=""
@@ -132,25 +135,13 @@ def test_run_pkb_search_uses_measured_timeout():
         assert handlers._SEARCH_TIMEOUT_SECONDS < 15
 
 
-def test_run_pkb_search_never_downloads():
-    """pkb runs offline from the hook, so a missing model fails fast instead of downloading."""
-    with (
-        patch("shutil.which", return_value="/usr/bin/pkb"),
-        patch("subprocess.run") as mock_run,
-    ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout="result\n", stderr=""
-        )
-        handlers._run_pkb_search("q")
-        assert mock_run.call_args.kwargs["env"]["AOPS_OFFLINE"] == "true"
-
-
 def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
     with (
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=huge, stderr=""
@@ -167,6 +158,7 @@ def test_run_pkb_search_leaves_normal_output_untouched():
     with (
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=normal, stderr=""

@@ -2,7 +2,7 @@
 alias:
   - wf-research-and-implement
   - wf-research-implement
-description: "Composite for research-then-build asks: research, spec, independent review of both, human approval of the full spec, then implementation in a dependent task."
+description: "Composite for research-then-build asks: research, spec, independent review of both, escalated approval of the full spec, then implementation in a dependent task."
 id: wf-research-and-implement
 tags:
   - wf-template
