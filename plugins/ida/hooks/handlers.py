@@ -8,9 +8,9 @@ import logging
 import os
 import re
 import shlex
-import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable
 from datetime import datetime
@@ -54,6 +54,8 @@ _BASIC_VARS = (
 # on a stalled backend from 15s to 5s -- this hook is synchronous ahead of
 # every prompt, so a hang here is a hang for the whole turn.
 _SEARCH_TIMEOUT_SECONDS = 5
+
+_PKB_SEARCH_CLIENT = Path(__file__).resolve().with_name("pkb_search_client.py")
 
 # Same measurement run: payload size for 5 results was 3.5-6.4KB (p95). This
 # hook fires on every single UserPromptSubmit -- the highest-frequency
@@ -205,30 +207,15 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
         log.warning("PKB_MCP_URL not found for UserPromptSubmit hook")
         return None
 
-    mcp_bin = shutil.which("fastmcp") or shutil.which("mcp")
-    if not mcp_bin:
-        log.warning("fastmcp/mcp binary not found for UserPromptSubmit hook")
-        return None
-
+    # The bundled MCP client (same interpreter, so fastmcp is importable)
+    # handles Cloudflare Access auth and the portal's code-mode indirection;
+    # see pkb_search_client. Run as a subprocess so the timeout is a hard kill.
     try:
         env = dict(os.environ)
         env["NO_COLOR"] = "1"
         env["AOPS_OFFLINE"] = "true"
 
-        cmd = [
-            mcp_bin,
-            "call",
-            mcp_url,
-            "pkb__search",
-            "--input-json",
-            json.dumps({"query": query}),
-        ]
-
-        mcp_token = os.environ.get("PKB_MCP_TOKEN")
-        if mcp_token:
-            cmd.extend(["--auth", mcp_token])
-        else:
-            cmd.extend(["--auth", "none"])
+        cmd = [sys.executable, str(_PKB_SEARCH_CLIENT), query]
 
         proc = subprocess.run(
             cmd,
@@ -244,9 +231,11 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
             if out:
                 return _cap_output(out)
         else:
-            log.warning("mcp search exited with returncode %s: %s", proc.returncode, proc.stderr)
+            log.warning(
+                "pkb search exited with returncode %s: %s", proc.returncode, proc.stderr.strip()
+            )
     except Exception as exc:
-        log.warning("mcp search execution failed: %s", exc)
+        log.warning("pkb search execution failed: %s", exc)
     return None
 
 
