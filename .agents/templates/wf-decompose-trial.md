@@ -24,7 +24,7 @@ which is a change and follows a change's process.
 
 One level, and it is the level below. Effort is not a parameter on `/decompose`
 and no run of this template sets one: how much rigour a piece of work gets is
-already decided by which templates and gates `brief` composes for it. A proposal to fix review depth in a table
+already decided by which templates and gates `/reify` composes for it. A proposal to fix review depth in a table
 rather than compose it per task is settled ground and the settlement was against.
 
 The care this template obliges: two runs, blind, with the executor's verbatim

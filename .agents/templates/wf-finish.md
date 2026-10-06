@@ -13,7 +13,7 @@ type: template
 
 ## What this template does
 
-Specifies how tasks in `nicsuzor/academicOps` finish. All individual task changes deliver via PR targeting `dev`. A PR merges into `dev` on green; functional changes also require independent QA review first. Merging to `main` requires Nic's review.
+Specifies how tasks in `nicsuzor/academicOps` finish. All individual task changes deliver via PR targeting `dev`. A PR merges into `dev` on green; functional changes also require independent QA review first. Merging to `main` requires escalated review.
 
 ## Finish Policy
 
@@ -23,7 +23,7 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 - **Releases to main**: A PR from `dev` into `main` merges only with Nic's review.
 - **Commit trailer**: Commits must carry `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
 - **QA review**:
-  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts. `/dispatch` mints a follow-up verifying task.
+  - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts. `/reify` mints a follow-up verifying task.
   - **None**: For pure documentation, notes, or prompt triage changes with no functional impact.
 
 ## Worker Completion Checklist

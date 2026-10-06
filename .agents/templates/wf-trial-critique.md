@@ -9,7 +9,7 @@ tags: [dogfood, trial, blind-run, critique, spec, fragment]
 ## wf-trial-critique -- step: trial a capability, critique the result against its spec
 
 **This is a fragment.** It is one step inside a composed workflow — the generic
-half of "test X", which `brief` weaves together with the workflow specific to
+half of "test X", which `/reify` weaves together with the workflow specific to
 whatever X is. Never dispatch it standalone: on its own it has no X, no spec,
 and no next iteration to feed.
 

@@ -1,18 +1,18 @@
 ---
-id: enforcement-human-delivery-contract
-title: In-Session Enforcement — The Human Delivery Contract (Layer 2.5)
+id: enforcement-escalated-delivery-contract
+title: In-Session Enforcement -- The Escalated Delivery Contract (Layer 2.5)
 type: spec
 status: draft
-tags: [enforcement, human-delivery, task-contract, verification, surfacing, ida]
+tags: [enforcement, escalated-delivery, task-contract, verification, surfacing, ida]
 ---
 
-# In-Session Enforcement — The Human Delivery Contract (Layer 2.5)
+# In-Session Enforcement -- The Escalated Delivery Contract (Layer 2.5)
 
 ## 1. Problem Statement & Specimen Diagnostics
 
 The academicOps framework enforces rigorous boundaries on task execution: Layer 2 ([`task-contract.md`](task-contract.md)) requires `claim_task` → `release_task` with verifiable evidence written to the PKB task record, and universal task verification ([`evidence-contract.md`](evidence-contract.md)) enforces substance-over-form checks.
 
-However, an architectural blind spot exists between **task graph completion** and **human delivery**:
+However, an architectural blind spot exists between **task graph completion** and **escalated delivery**:
 
 > A task can be verified by peer reconcile, marked `status: done`, and archived to the graph without the resulting artifact ever reaching the human who asked for it.
 
@@ -34,15 +34,15 @@ However, an architectural blind spot exists between **task graph completion** an
 
 ### 1.3 Secondary Specimen: Partial Release Without Follow-Up (2026-09-15)
 
-- **Failure Point:** A task was released as `partial` on 2026-09-15. Without an active follow-up trigger or human delivery obligation, it stalled for 16 days unaddressed before decomposing into research.
+- **Failure Point:** A task was released as `partial` on 2026-09-15. Without an active follow-up trigger or escalated delivery obligation, it stalled for 16 days unaddressed before decomposing into research.
 
 ### 1.4 Secondary Specimen: Self-Certification & Task Overwrite (2026-10-02)
 
 - **Failure Point:** On one task, a polecat worker rewrote the whole task body, deleted the coordinator's prior review notes, and ticked all four acceptance criteria itself that a reviewer had left unticked (an aops-twin subsequently restored the review notes and unticked criteria). Overwriting task bodies to erase reviewer feedback and self-certify unverified criteria destroys auditability and circumvents review gates.
 
-### 1.5 Review-State Gap: `wf-human-approval`
+### 1.5 Review-State Gap: `wf-escalated-approval`
 
-- **Failure Point:** In universal template `wf-human-approval`, step 2 releases the task as `status: review` and stops, specifying delivery only _"in the form the project or user preferences name"_. Because no user preference names a default delivery channel, review tasks sit in `review` silently on the graph without notifying the user.
+- **Failure Point:** In universal template `wf-escalated-approval`, step 2 releases the task as `status: review` and stops, specifying delivery only _"in the form the project or user preferences name"_. Because no user preference names a default delivery channel, review tasks sit in `review` silently on the graph without notifying the user.
 
 ### 1.6 Prior Structural Attempts & The Parked Mechanical Trigger
 
@@ -51,13 +51,11 @@ However, an architectural blind spot exists between **task graph completion** an
 - The reconcile trigger task: The worker that wrote the systemd timer could not install from its container, and the user parked the mechanical trigger on 2026-09-15:
   > _"we forget building a mechanical trigger for now, and we either change who's allowed to write to the graph or change graph states"_
 
-  The present design builds squarely on the **"change graph states"** alternative: rather than attempting to construct an unprompted background reconcile daemon or mechanical event wake, it introduces a distinct graph state (`ida_held`) and binds human delivery to graph state transitions and human-directed trigger commands.
-
----
+  The present design builds squarely on the **"change graph states"** alternative: rather than attempting to construct an unprompted background reconcile daemon or mechanical event wake, it introduces a distinct graph state (`ida_held`) and binds escalated delivery to graph state transitions and human-directed trigger commands.
 
 ## 2. Architecture & Data Flow
 
-The Human Delivery Contract sits at **Layer 2.5** of the enforcement pyramid: between single work-unit execution (Layer 2) and system-wide peer truth maintenance (Layer 3).
+The Escalated Delivery Contract sits at **Layer 2.5** of the enforcement pyramid: between single work-unit execution (Layer 2) and system-wide peer truth maintenance (Layer 3).
 
 ```mermaid
 sequenceDiagram
@@ -86,7 +84,7 @@ sequenceDiagram
     
     Reconcile->>PKB: Audit Working Task & Follow-up
     Note over Reconcile: Checks artifact matches ask AND delivery_evidence exists
-    Reconcile->>PKB: Certify Human Delivery
+    Reconcile->>PKB: Certify Escalated Delivery
 ```
 
 ### 2.1 The Inbound Origin Binding
@@ -113,7 +111,7 @@ When the user asks Ida for work that will not be executed to verified delivery i
    - Contains goal, deliverable, and acceptance criteria for the technical artifact.
    - Carries the `origin` block.
 2. **The Follow-up Task**:
-   - Belongs to Ida's task tree — the PKB parent the installer designates for Ida-held work.
+   - Belongs to Ida's task tree -- the PKB parent the installer designates for Ida-held work.
    - `assignee: ida`.
    - `status: ida_held` (see §2.4).
    - Links to the working task via `depends_on: [<working_task_id>]` or frontmatter pointer.
@@ -128,15 +126,15 @@ This architecture strictly honors that ruling:
 - Follow-ups are standard first-class PKB task nodes.
 - They live in the graph under Ida's task tree, queryable by standard `pkb_list_tasks` tools.
 
-### 2.3 The Human Delivery Gate (Done-Claims and Review-State Items)
+### 2.3 The Escalated Delivery Gate (Done-Claims and Review-State Items)
 
-The human delivery gate covers **both** completed tasks with human origin and any task released to `status: review` for the user:
+The escalated delivery gate covers **both** completed tasks with human origin and any task released to `status: review` for the user:
 
 1. **Terminal Done Delivery:** A task with `origin` cannot reach `status: done` from the principal's perspective until an outbound delivery action occurs:
    - For `channel: telegram`: An outbound message sent to the originating chat containing the artifact summary, permanent links, and next actions.
    - For `channel: claude_turn` / `agy_session`: Direct presentation of the completed artifact to the human turn.
-2. **Review-State Delivery (e.g. `wf-human-approval`):** Any task released to `status: review` for the user represents an explicit human decision gate. It must never sit silently on the graph.
-   - **Change to `wf-human-approval` Step 2:** In `plugins/ida/skills/workflow-library/workflows/wf-human-approval.md`, Step 2 ("File it for review") previously instructed workers to place the artifact "in the form the project or user preferences name", which led to silent in-graph releases because no channel preference is registered.
+2. **Review-State Delivery (e.g. `wf-escalated-approval`):** Any task released to `status: review` for the user represents an explicit human decision gate. It must never sit silently on the graph.
+   - **Change to `wf-escalated-approval` Step 2:** In `plugins/ida/skills/workflow-library/workflows/wf-escalated-approval.md`, Step 2 ("File it for review") previously instructed workers to place the artifact "in the form the project or user preferences name", which led to silent in-graph releases because no channel preference is registered.
    - Step 2 is updated to mandate: **delivery goes through Ida Prime**. The worker must route delivery through Ida Prime (by filing an Ida-held follow-up or tagging the task `ida-tracked` with `assignee: ida`), ensuring Ida Prime actively posts the review card to the user's originating channel (Telegram), lists the item on the review surface named in the user's preferences, and surfaces it during the surfacing pass (§2.5).
 3. **Delivery Evidence:** The releasing agent or coordinator must record `delivery_evidence`:
    ```yaml
@@ -187,7 +185,7 @@ To prevent project work from either being mis-parented under Ida's task tree or 
 2. **Surfacing Pass:** The bare surfacing pass queries:
    - All tasks under Ida's task tree with `assignee: ida` and `status: ida_held`.
    - All tasks across the entire graph outside Ida's task tree carrying the `ida-tracked` tag.
-3. **Outcome:** Project-tracked tasks remain in their proper domain hierarchies, yet surface immediately during the user's surfacing pass when they reach completion or review states requiring human delivery.
+3. **Outcome:** Project-tracked tasks remain in their proper domain hierarchies, yet surface immediately during the user's surfacing pass when they reach completion or review states requiring escalated delivery.
 
 ### 2.7 Task Modification Discipline: The Workers-Append Rule
 
@@ -195,8 +193,6 @@ To maintain task graph integrity and prevent self-certification:
 
 - **The Rule:** Reviewer notes and earlier rounds stay intact; the worker ticks the current round's criteria with evidence beside each; there are no separate evidence blocks.
 - **Specimen (§1.4):** On one task, a polecat worker rewrote the whole task body, deleted the coordinator's prior review, and ticked all four acceptance criteria itself until an aops-twin restored them.
-
----
 
 ## 3. Interface Contracts & Schemas
 
@@ -236,8 +232,8 @@ When peer reconcile audits tasks:
 1. For any task where `origin` is set:
    - Does `status == 'done'`?
    - If yes: verify that `delivery_evidence` is present and resolves to a verifiable outbound event (e.g. Telegram message span or interactive turn).
-   - If `delivery_evidence` is missing: **Demote task status to `review` or `inbox`** with rejection reason: _"Artifact exists but human delivery was not evidenced."_
-2. For any task in `status: review` for the user (including `wf-human-approval` releases):
+   - If `delivery_evidence` is missing: **Demote task status to `review` or `inbox`** with rejection reason: _"Artifact exists but escalated delivery was not evidenced."_
+2. For any task in `status: review` for the user (including `wf-escalated-approval` releases):
    - Verify that an Ida-held follow-up or `ida-tracked` tag is present and delivery has been surfaced to the user.
 3. For any task where `status == 'ida_held'`:
    - Does `trigger` exist and resolve?
@@ -248,7 +244,7 @@ When peer reconcile audits tasks:
 The following rule will be incorporated into `plugins/ida/skills/q/SKILL.md` and `plugins/ida/agents/ida.md`:
 
 ```markdown
-### Rule: Human Delivery & Follow-up Decoupling
+### Rule: Escalated Delivery & Follow-up Decoupling
 
 1. **Origin Binding:** When capturing any ask originating from the user (via Telegram, interactive CLI, or voice), record the `origin` block in frontmatter with channel, session_id, message_id, host, and prompt.
 2. **Dual-Task Capture:** If the ask will not be executed to verified delivery in the immediate turn and is not part of an actively monitored project pipeline, create two distinct tasks:
@@ -263,8 +259,6 @@ The following rule will be incorporated into `plugins/ida/skills/q/SKILL.md` and
 
 See [§2.7 Task Modification Discipline: The Workers-Append Rule](#27-task-modification-discipline-the-workers-append-rule) for the authoritative rule definition and specimen.
 
----
-
 ## 4. Acceptance Criteria & Test Strategy
 
 ### 4.1 Falsifiable Acceptance Criteria
@@ -274,7 +268,7 @@ See [§2.7 Task Modification Discipline: The Workers-Append Rule](#27-task-modif
 - [ ] **AC-3 (Settled Status `ida_held`):** Status `ida_held` is established for Ida-held follow-ups; creation requires a valid `trigger`.
 - [ ] **AC-4 (Delivery Gate Enforcement):** `pkb_release_task` with `status: done` on an `origin`-bearing task requires `delivery_evidence`.
 - [ ] **AC-5 (Reconcile Catch):** Peer reconcile demotes any `done` task with `origin` that lacks valid `delivery_evidence`.
-- [ ] **AC-6 (Review-State Delivery via Ida Prime):** `wf-human-approval` step 2 routes delivery through Ida Prime so review tasks are actively surfaced to the user on their originating channel and on the review surface named in the user's preferences.
+- [ ] **AC-6 (Review-State Delivery via Ida Prime):** `wf-escalated-approval` step 2 routes delivery through Ida Prime so review tasks are actively surfaced to the user on their originating channel and on the review surface named in the user's preferences.
 - [ ] **AC-7 (Project-Tracked Surfacing):** The bare surfacing pass lists both tasks under Ida's task tree and domain tasks bearing `ida-tracked` tags.
 - [ ] **AC-8 (Workers-Append Rule):** See [§2.7 Task Modification Discipline: The Workers-Append Rule](#27-task-modification-discipline-the-workers-append-rule).
 

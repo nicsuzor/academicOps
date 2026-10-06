@@ -3,7 +3,7 @@ id: wf-signoff-loop
 title: "wf-signoff-loop"
 type: template
 category: gate
-description: The review-until-approval loop the principal runs at a human sign-off gate, over one completed unit, before it may be marked done. Select when human sign-off is the recorded review obligation. Not a step inside a worker's process; no producer runs it over its own output.
+description: The review-until-approval loop the principal runs at an escalated sign-off gate, over one completed unit, before it may be marked done. Select when escalated sign-off is the recorded review obligation. Not a step inside a worker's process; no producer runs it over its own output.
 created: 2026-08-18T02:55:48.170276131+00:00
 modified: 2026-08-18T02:55:48.170276131+00:00
 last_modified: 2026-08-18T02:55:48.170278295+00:00
@@ -21,7 +21,7 @@ tags:
 ## What this step does
 
 The review-until-approval loop run **at** a sign-off gate, over one completed unit of work,
-before it may be marked done. It is the interior of the heaviest review obligation `brief` can
+before it may be marked done. It is the interior of the heaviest review obligation `/reify` can
 record on a task.
 
 **Do not select it** as a step composed into a worker's process, and never where the producer

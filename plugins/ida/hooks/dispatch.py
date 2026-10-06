@@ -339,11 +339,20 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
         or kwargs.get("agent_type", "")
     )
 
+    cwd = raw.get("cwd") or ""
+    if not cwd:
+        wp = raw.get("workspacePaths") or raw.get("workspace_paths")
+        if isinstance(wp, (list, tuple)) and wp:
+            cwd = str(wp[0]).strip()
+        elif isinstance(wp, str) and wp.strip():
+            cwd = wp.strip()
+
     kwargs.update(
         client=client,
         event=event,
         tool=raw.get("tool_name") or raw.get("toolName") or kwargs.get("tool", ""),
         command=command,
+        cwd=cwd or kwargs.get("cwd", ""),
         session_id=raw.get("session_id")
         or raw.get("conversationId")
         or raw.get("conversation_id")

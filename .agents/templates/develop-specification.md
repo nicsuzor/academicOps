@@ -26,7 +26,7 @@ implementation without this template first is scope-creep waiting to happen.
 9. **Effort and risk** — estimates, mitigation plans.
 10. **Review** — full summary review with the user.
 11. **Finalize and submit** — open a PR for bazaar review; implementation
-    proceeds only after approval (compose [[wf-human-approval]] for the
+    proceeds only after approval (compose [[wf-escalated-approval]] for the
     go-ahead if the spec commits to something hard to walk back).
 
 ## Verification before proceeding to implementation
