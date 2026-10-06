@@ -42,4 +42,4 @@ A result resting on one fact needs no argument: the outcome, then one tagged sta
 - **Negative and capability claims** ("does not exist", "cannot", "failed") rest on #attempted-and-failed or #exhaustively-searched; #not-observed grounds neither.
 - **Alternatives and caveats.** Write each alternative you ruled out as a premise. Write each caveat still open as an attack (`->`).
 - **No horizontal rules.** Use the named derivation line (`-- from … --`), never a bare `----`. Use no `---` separators anywhere in the report: headings and blank lines carry the structure.
-- **Fences.** Put a ledger in an `argdown` fenced block, never in inline code. To nest one inside another fenced block, make the outer fence longer (````` ````markdown `````).
+- **Fences.** Put a ledger in an `argdown` fenced block, never in inline code. To nest one inside another fenced block, make the outer fence longer (`` ````markdown ``).

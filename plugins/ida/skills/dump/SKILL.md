@@ -43,7 +43,7 @@ If the release tool is unavailable, record the failure trace and list claimed ta
 
 Compile the overall session outcome:
 
-````markdown
+```markdown
 ## Handover: <agent> <session-id>
 
 1. **Task**: Restatement of original objective and scope.
@@ -56,4 +56,4 @@ Compile the overall session outcome:
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
 5. **Receipts** (Claim Ledger): The load-bearing claims as a claim ledger, written per the `claim-ledger` skill.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-````
+```
