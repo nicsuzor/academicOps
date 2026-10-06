@@ -66,10 +66,10 @@ independently confirming the thing claimed is actually true.
 
 ## The canonical structured-handback format
 
-This section is the single source of truth for the claim ledger format.
-Every other surface that uses it links here rather than restating the rules.
+This section is the single source of truth for the handback shape.
+Every other surface that uses it links here rather than restating the fields.
 
-The report format is a strict Argdown claim ledger. The parser accepts this form as written.
+The report format uses a simple, qualitative Argdown claim ledger syntax. By using native Argdown structures (Warrants, Defeaters, and Support), the format inherently surfaces epistemic vulnerabilities, replacing the need for separate metadata fields like `CONFIDENCE` or `CONFOUND CHECK`.
 
 ```argdown
 ===
@@ -77,13 +77,24 @@ title: Handover Receipts
 ===
 
 [Outcome]: VERDICT: PASS
+  <+ [Gate]: Acceptance criterion met
 
-[C1]: Atomic empirical claim 1 (basis: observed, pointer: git show HEAD --stat)
+[C1]: Atomic empirical claim 1 #observed
+  pointer: git show HEAD --stat
 
-[C2]: Atomic empirical claim 2 (basis: observed, pointer: tests/test\_hooks.py:42)
+[C2]: Atomic empirical claim 2 #observed
+  pointer: tests/test_hooks.py:42
 
-[C3]: THEREFORE (C1, C2): Derived claim. {uses: [C1, C2]}
+[C3]: Derived claim blaming external library #inferred
+  <+ [C1]
+  <+ [C2]
   +> [Outcome]
+
+[Confound]: The inputs to the library were malformed
+  -> [C3]
+
+[Control Run]: Clean room test isolated the library and reproduced the error #observed
+  -> [Confound]
 ```
 
 - `PARTIAL` = a legal partial completion -- the existing PKB terminal status
@@ -93,17 +104,17 @@ title: Handover Receipts
   between partial and broken-ship lives in
   [`spec-partial-work-tight-loop-delivery.md`](../polecat/spec-partial-work-tight-loop-delivery.md#the-discriminator-partial-vs-broken-ship).
 - **One line per criterion:** Prime checks what was done and where it was saved. Make the report one line per criterion where possible.
-- **Traceability:** Derived claims must cite their premises using `{uses: [...]}` for the parser.
-- **Warrants and Defeaters only when contested:** Do not use `W` and `D` nodes unless explicitly arguing a contested claim. For standard work, use direct deduction.
-- **Argdown parser compliance:** Separate statements with blank lines. Enclose basis tags and pointers in parentheses `(basis: <tag>, pointer: <ref>)` or escaped brackets `\[basis: ...\]` so they are not parsed as statement titles. Escape underscores `\_` in filenames and code symbols.
+- **Traceability:** Derived claims must cite their premises directly using Argdown support edges (`<+ [C1]`) or simple text references.
+- **Falsification (Replacing CONFIDENCE):** Instead of a separate confidence field, any uncertain inference must explicitly state what single check would falsify it using an attacking Defeater node (`-> [Claim]`).
+- **Confound Checks:** Instead of a standalone field, any claim blaming anything outside the agent's own change must explicitly model the obvious confound as a Defeater node (`[Confound] -> [Claim]`). `NOT RUN` is equivalent to leaving the Defeater un-attacked. The claim is only established if the Defeater is attacked by a `[Control Run]` node.
 - **Every itemized load-bearing claim carries its BASIS tag:**
-  - `[observed]` -- the agent saw the primary evidence itself this session, and cites a pinpoint pointer (`file:line`, command + output, node ID, URL).
-  - `[attempted-and-failed]` -- an attempted action/command/tool execution with its verbatim error output attached. (Mandatory for capability claims.)
-  - `[exhaustively-searched]` -- a search whose query, tool, and exact boundary are explicitly stated (e.g. `rg -i "pattern" lib/` → 0 matches).
-  - `[not-observed]` -- data or event not seen within the specific scope examined. Never grounds an assertion of non-existence or inability.
-  - `[inferred]` -- a conclusion deduced from stated premises and warrants.
-  - `[assumed]` -- an explicit working hypothesis or premise.
-  - `[reported-by-another]` -- a finding reported by another agent, subagent, or transcript, citing the source and propagating its qualification.
+  - `#observed` -- the agent saw the primary evidence itself this session, and cites a pinpoint pointer (`file:line`, command + output, node ID, URL).
+  - `#attempted-and-failed` -- an attempted action/command/tool execution with its verbatim error output attached. (Mandatory for capability claims.)
+  - `#exhaustively-searched` -- a search whose query, tool, and exact boundary are explicitly stated (e.g. `rg -i "pattern" lib/` → 0 matches).
+  - `#not-observed` -- data or event not seen within the specific scope examined. Never grounds an assertion of non-existence or inability.
+  - `#inferred` -- a conclusion deduced from stated premises and warrants.
+  - `#assumed` -- an explicit working hypothesis or premise.
+  - `#reported-by-another` -- a finding reported by another agent, subagent, or transcript, citing the source and propagating its qualification.
 
 ## The hard gate on negative and capability claims
 
@@ -113,14 +124,14 @@ gated hardest, because they are the claims an agent is most likely to assert
 from absence rather than from a test.
 
 1. **Attempt or scope required.** Such a claim is established only by
-   `[attempted-and-failed: <command/tool> → <verbatim error>]` or
-   `[exhaustively-searched: <tool/query/scope> → 0 results]`. Absent one of those,
-   the state is strictly `[not-observed]` -- which never grounds "does not exist".
+   `#attempted-and-failed: <command/tool> → <verbatim error>` or
+   `#exhaustively-searched: <tool/query/scope> → 0 results`. Absent one of those,
+   the state is strictly `#not-observed` -- which never grounds "does not exist".
    An agent must never assert a limit on its own capabilities or environment
    without having executed the test.
 2. **Status survival (anti-laundering).** Downstream consumers and controllers
-   are prohibited from promoting `[inferred]`, `[assumed]`, or
-   `[reported-by-another]` claims to established fact. The basis qualifier must
+   are prohibited from promoting `#inferred`, `#assumed`, or
+   `#reported-by-another` claims to established fact. The basis qualifier must
    survive every hop.
 
 ## Why prose, not a schema
@@ -173,3 +184,6 @@ existing `created` frontmatter timestamp against its own ship date, and tasks
 created earlier are not retroactively held to a stricter check than existed when
 they were claimed. No new frontmatter field. The agentic obligation binds
 immediately and universally.
+
+```
+```

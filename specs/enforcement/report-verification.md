@@ -24,12 +24,10 @@ This spec supplies all three. It also supplies an OpenTelemetry trace, so that w
 - **What a hook may key on.** A hook may key on fields the client sets (`tool_response.status`, the transcript's `origin` object, the harness-authored envelope at the head of a prompt). It never keys on words the reporting agent wrote ("HALTED", "cannot"). That would be content-sniffing ([enforcement.md](enforcement.md) line 20).
 - **Reports stay prose.** The format is a hint to the reader, never "a regex over field names" ([evidence-contract.md](evidence-contract.md) lines 122–130). The claim ledger below consists of numbered English sentences. Nothing parses it mechanically.
 - **Ida's verification is a logic check** (`plugins/ida/agents/ida.md:57`). She never opens a primary source, never authenticates internal ledgers, and never runs code to verify a claim. When a pointer needs spot-checking, she dispatches the spot-check.
-- **Basis vocabulary is unchanged.** The design uses the seven tags at `evidence-contract.md:95-103` as they stand (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`, `[reported-by-another]`).
+- **Basis vocabulary is unchanged.** The design uses the seven tags at `evidence-contract.md:95-103` as they stand (`#observed`, `#attempted-and-failed`, `#exhaustively-searched`, `#not-observed`, `#inferred`, `#assumed`, `#reported-by-another`).
 - **Least-invasive rung first** ([enforcement.md](enforcement.md) lines 58–62; design principles 2–3 at lines 77–78). Arrival reminders ship as JIT injection. Blocking-once enforcement is restricted strictly to procedural exit/contact gates (`Stop` and channel reply tools per Nic's 2026-09-30 ruling), never content evaluation.
 - **Ida Twin execution topology** (`mem_eb7b438c`). Ida Prime is the conversational face to Nic. Her `Agent` tool was deliberately denied on 2026-09-22; she communicates with twins over the cross-session bus (`SendMessage`). Reports from below arrive at Prime as peer messages, not subagent tool returns.
 - **Hooks-off ruling scope** (`mem_v9_arch_decisions`). While the standing doctrine keeps dormant hooks built and off, Nic's 2026-09-30 ruling explicitly lifted this restriction for hearsay, honesty, and quiet hooks (`aops_89015fc6`).
-
----
 
 ## 1. The report format: the claim ledger (Argdown-Lite)
 
@@ -37,7 +35,7 @@ As established in `ida_research_nl_output_contracts` and synthesized in `aops-nl
 
 The recommended format is **Argdown-Lite**: a semi-structured claim ledger synthesizing Argdown's numbered premises and derivation lines, Toulmin's explicit structural warrants, Catala's defeasible exception clauses (`UNLESS`), and FActScore/Claimify's atomic proposition discipline.
 
-The ledger forms the body of the evidence contract's `CLAIM`/`EVIDENCE` fields (`evidence-contract.md:91-94`). Where the six-field handback is used, the ledger replaces a single CLAIM/EVIDENCE pair with a numbered set; it does not replace the outer handback schema.
+The ledger fully replaces the original six-field handback schema. Epistemic safeguards like CONFIDENCE and CONFOUND CHECK are now handled natively within the Argdown syntax using Defeater and Control Run nodes.
 
 ### Governing Rules
 
@@ -46,9 +44,9 @@ The ledger forms the body of the evidence contract's `CLAIM`/`EVIDENCE` fields (
 3. **Every leaf line ends with a basis tag and pinpoint pointer:** For example, `[observed: plugins/ida/skills/pull/SKILL.md:25]`.
 4. **Derived lines trace their lineage:** A derived line specifies the exact premises and warrants it uses: `C4. THEREFORE (C1, C2, C3 via W1 - D1): …`. A derived line carries no independent basis tag; its strength is strictly bounded by the weakest basis among its transitive leaves (the status-survival / anti-laundering rule).
 5. **Explicit written warrants:** If a deduction requires a bridging invariant or domain rule, that warrant must be explicitly written out as a numbered line: `[Wn] WARRANT: <structural mechanism or domain invariant>`. An unstated warrant exposes a hidden premise.
-6. **Defeaters handled via UNLESS:** Competing hypotheses or exception conditions must be stated with `[Dn] UNLESS: <condition>` and tagged with an empirical basis (typically `[not-observed]`).
+6. **Defeaters handled via UNLESS:** Competing hypotheses or exception conditions must be stated with `[Dn] UNLESS: <condition>` and tagged with an empirical basis (typically `#not-observed`).
 7. **Explicit scope:** Claims must quantify their domain explicitly ("every", "no", "at least one") and name boundaries ("in `plugins/ida/`", "at commit `5382d880`", "in session `02a8…`").
-8. **Negative and capability lines require empirical bounding:** A negative or capability assertion must cite `[attempted-and-failed: cmd → verbatim error]` or `[exhaustively-searched: tool/query/scope → 0 matches]`. Otherwise, it is classified as `[not-observed]` and cannot ground a conclusion.
+8. **Negative and capability lines require empirical bounding:** A negative or capability assertion must cite `[attempted-and-failed: cmd → verbatim error]` or `[exhaustively-searched: tool/query/scope → 0 matches]`. Otherwise, it is classified as `#not-observed` and cannot ground a conclusion.
 
 **Short form:** A report whose outcome rests on a single observed fact requires no deduction: `STATUS: DONE (from C1)` followed by a single tagged line. The ledger expands only with the inferential depth of the argument.
 
@@ -69,14 +67,14 @@ If the author had attempted to state the premise explicitly, the ledger would ha
 ```text
 VERDICT: BLOCKED (from C4)
 C1. `ls <dir>` exited "Operation not permitted". [attempted-and-failed: `ls <dir>` → "ls: <dir>: Operation not permitted"]
-C2. The workflow-library skill reads project templates from <dir>. [assumed]
-C3. The workflow-library skill names no other project-template location. [not-observed]
+C2. The workflow-library skill reads project templates from <dir>. `#assumed`
+C3. The workflow-library skill names no other project-template location. `#not-observed`
 W1. WARRANT: When all documented locations for a template tier are unreadable, the tier cannot be listed.
-D1. UNLESS: The template tier is readable via an alternative path permitted to the session. [not-observed]
+D1. UNLESS: The template tier is readable via an alternative path permitted to the session. `#not-observed`
 C4. THEREFORE (C1, C2, C3 via W1 - D1): the project template tier cannot be listed in this session.
 ```
 
-The report still fails to establish a capability block: it rests on an `[assumed]` leaf and a `[not-observed]` negative claim, which grounds nothing under Rule 8. In the original unstructured prose, neither C2 nor C3 was stated at all, and no deduction was exposed.
+The report still fails to establish a capability block: it rests on an `#assumed` leaf and a `#not-observed` negative claim, which grounds nothing under Rule 8. In the original unstructured prose, neither C2 nor C3 was stated at all, and no deduction was exposed.
 
 ### Proven Viability on Real PKB Reports
 
@@ -124,8 +122,6 @@ C9. THEREFORE (C1, C3, C4, C6, C7, C8 via W1): Acceptance criteria 1-5 are satis
 C10. THEREFORE (C9): VERDICT is FIXED-THEN-READY.
 ```
 
----
-
 ## 2. How the receiver verifies a report
 
 This operationalizes the "Audit Criteria" in `plugins/ida/skills/premise-check/SKILL.md` (lines 22–29) into an executable 7-step procedure mapping directly to `hearsay.md`'s six logic-check questions. Steps 0–6 are purely logical deductions and require no external tool calls (`plugins/ida/agents/ida.md:57`).
@@ -140,16 +136,16 @@ This operationalizes the "Audit Criteria" in `plugins/ida/skills/premise-check/S
 3. **Check each leaf premise (`hearsay.md` Q1, Q4):**
    - Verify every leaf has an explicit basis tag.
    - Verify pinpoint pointers are checkable (`file:line`, command output, node ID).
-   - Ensure negative or capability assertions carry `[attempted-and-failed]` or `[exhaustively-searched]`.
+   - Ensure negative or capability assertions carry `#attempted-and-failed` or `#exhaustively-searched`.
 4. **Check scope (`hearsay.md` Q5):** Compare the domain covered by the premise against the scope asserted in the conclusion. Searching a single directory does not warrant a repo-wide or environment-wide claim.
 5. **Cap the conclusion (`hearsay.md` Q4):**
    - The outcome inherits the weakest basis among the spine's leaf premises.
-   - Any leaf tagged `[inferred]`, `[assumed]`, or `[reported-by-another]` caps the entire outcome at that level (status survival).
+   - Any leaf tagged `#inferred`, `#assumed`, or `#reported-by-another` caps the entire outcome at that level (status survival).
 6. **Evaluate alternatives and defeaters (`hearsay.md` Q2):**
    - For outcomes asserting BLOCKED, FAIL, or inability, evaluate whether obvious alternative explanations or bypass routes were tested via `UNLESS`.
 7. **Emit a categorical verdict token:**
-   - **`ACCEPT`**: Every inferential step is valid, all leaves are adequately based, and the resulting cap is `[observed]`, `[attempted-and-failed]`, or `[exhaustively-searched]`.
-   - **`DOWNGRADE`**: Reasoning is valid, but the cap is `[inferred]`, `[assumed]`, or `[reported-by-another]`. The outcome may be relayed only with its basis qualification stated in the same sentence.
+   - **`ACCEPT`**: Every inferential step is valid, all leaves are adequately based, and the resulting cap is `#observed`, `#attempted-and-failed`, or `#exhaustively-searched`.
+   - **`DOWNGRADE`**: Reasoning is valid, but the cap is `#inferred`, `#assumed`, or `#reported-by-another`. The outcome may be relayed only with its basis qualification stated in the same sentence.
    - **`RETURN`**: A missing warrant, invalid step, scope mismatch, unbased negative, or supplied warrant was identified.
      - Send the report back to the author, citing the exact claim numbers and specifying the missing warrant or scope gap.
      - If the author session has ended, dispatch the question to a new worker (`plugins/ida/agents/ida.md:70`).
@@ -158,8 +154,6 @@ This operationalizes the "Audit Criteria" in `plugins/ida/skills/premise-check/S
    - **Prohibition on self-repair:** The receiver must never fill an empirical gap with personal assumptions. Spot-checking a pointer is a separate task and must be dispatched (`plugins/ida/agents/ida.md:57`).
 
 A `RETURN` verdict never reaches Nic, hedged or otherwise (`plugins/ida/skills/premise-check/SKILL.md:39`). A `DOWNGRADE` reaches him only with its cap explicitly declared and the source agent attributed.
-
----
 
 ## 3. The write obligation
 
@@ -178,8 +172,6 @@ The write obligation must be delivered **before** the author writes its report. 
 
 The write obligation remains advisory. A poorly formatted report is not rejected at write time; it is intercepted at the receiver, where epistemic judgment belongs.
 
----
-
 ## 4. The read obligation: where the reminder attaches
 
 Reports arrive across four distinct runtime channels:
@@ -189,7 +181,7 @@ Reports arrive across four distinct runtime channels:
 | **R1** | Foreground subagent returning text                                                        | `PostToolUse` on `Agent` with `tool_response.status == "completed"` and report in `tool_response.content`.                                                                                                         | [observed: hooks docs, `PostToolUse` "Agent" `tool_response` table] |
 | **R2** | Hand-back, background completion, or twin-to-twin message arriving while receiver is idle | Turn starts and `UserPromptSubmit` fires. Prompt opens with harness envelope (`<agent-message from=…>`). Transcript entry carries `origin: {kind: "peer", from, senderTaskId, body}` and `promptSource: "system"`. | [observed: transcript `02a8997d`, entries 111, 191]                 |
 | **R3** | Background completion or peer message arriving **mid-turn**                               | The `<task-notification>` is queued as a `queued_command` attachment; `UserPromptSubmit` fires mid-turn.                                                                                                           | [observed: transcript `02a8997d`, entries 132–134, 170–171]         |
-| **R4** | Report read from persistent graph (`/gather`, `/reconcile`, `/pull` reading task body)    | No hook event. Governed by skill instruction text.                                                                                                                                                                 | [inferred]                                                          |
+| **R4** | Report read from persistent graph (`/gather`, `/reconcile`, `/pull` reading task body)    | No hook event. Governed by skill instruction text.                                                                                                                                                                 | `#inferred`                                                         |
 
 **De-duplication:** Background subagents that hand back can produce both a peer message and a subsequent task-notification. Injections and telemetry counters de-duplicate on sender ID (`origin.from`, `senderTaskId`, `<task-id>`).
 
@@ -225,8 +217,6 @@ Ida twins operate as independent Claude Code sessions communicating over the cro
 - agy maps `PreInvocation` to `UserPromptSubmit` (`plugins/ida/hooks/dispatch.py`).
 - agy enforces `allow_blocking_agy = false` (`tests/policy.toml:51`). Blocking hooks gracefully degrade to advisory warnings on agy sessions.
 
----
-
 ## 5. The verdict trace (OTel)
 
 The existing `plugins/ida/hooks/premise_check_verdict.py` emits a generic `TOOL` span with hardcoded text, preventing aggregation. The replacement emits structured OpenInference spans via `claude_code_tracer`:
@@ -252,8 +242,6 @@ The existing `plugins/ida/hooks/premise_check_verdict.py` emits a generic `TOOL`
 - **Defect Distribution:** Frequencies of `defect.kind` grouped by agent persona, pinpointing author instruction weaknesses.
 - **Format Uptake:** Percentage of incoming reports adhering natively to `report.format = ledger`.
 
----
-
 ## 6. Probes owed before wiring
 
 | Probe  | Question                                                                                                                                            | Method                                                                                                                     |
@@ -264,8 +252,6 @@ The existing `plugins/ida/hooks/premise_check_verdict.py` emits a generic `TOOL`
 | **P4** | Delivery and compliance of A1/A2 JIT reminders.                                                                                                     | Model-echo control test and measure verdict coverage in Phoenix.                                                           |
 | **P5** | What `origin.kind` does an incoming channel (Telegram) message from Nic carry?                                                                      | Send test message via Telegram; inspect transcript entry for `origin.kind == "human"`.                                     |
 | **P6** | Operational viability of claim ledger syntax.                                                                                                       | Rewrite five historical handbacks into Argdown-Lite; conduct blind premise checks; evaluate friction and defect discovery. |
-
----
 
 ## 7. Enforcement map rows to add & Article 19(3) Evaluation
 
@@ -304,8 +290,6 @@ Under Nic's standing ruling (`mem_96366172`), all new enforcement code (hooks, g
    - **Legitimate Aim:** Providing empirical visibility into the unverified-relay rate and defect taxonomy, replacing subjective impressions with audit data.
    - **Necessity:** Telemetry is passive post-hoc observability (`post-hoc → observability`), introducing zero runtime friction or blocking behavior.
 
----
-
 ## 8. Code this replaces or retires
 
 - `plugins/ida/hooks/premise_check_gate.py`: **Retire and delete.**
@@ -315,8 +299,6 @@ Under Nic's standing ruling (`mem_96366172`), all new enforcement code (hooks, g
   - It imports `disarm()` from the gate (line 20); both will be retired together in `aops_89015fc6`.
 - `plugins/ida/skills/premise-check/scripts/verdict.py`: **Retain and refactor.**
   - Update path resolution: lines 12–13 reference nonexistent `plugins/orchestrate/hooks/` and `dist/orchestrate-*/hooks/`, and line 26 references nonexistent `lib/hooks`. Repoint imports directly to `plugins/ida/hooks/`.
-
----
 
 ## 9. Open questions for Nic and recorded decision departures
 
@@ -343,7 +325,7 @@ Under Nic's standing ruling (`mem_96366172`), all new enforcement code (hooks, g
 ### 3. Execution Topology Mismatch: Ida Prime has no `Agent` Tool (`mem_eb7b438c`)
 
 - **Recorded Decision:** `mem_eb7b438c` (_"Ida prime, the face... never executes. Her Agent tool is deliberately denied (Nic removed it 2026-09-22)... her only execution route is a brief to a peer Ida over the cross-session bus"_; also `plugins/ida/agents/ida.md:29`).
-- **Why this is open:** The original proposal attached hook A1 to `PostToolUse(Agent)`. However, Ida Prime—the face who speaks to Nic and where unverified relays to Nic actually occur—cannot call `Agent`. Twin reports arrive at Prime via `SendMessage` over the cross-session bus (Channel R2).
+- **Why this is open:** The original proposal attached hook A1 to `PostToolUse(Agent)`. However, Ida Prime--the face who speaks to Nic and where unverified relays to Nic actually occur--cannot call `Agent`. Twin reports arrive at Prime via `SendMessage` over the cross-session bus (Channel R2).
 - **Options:**
   - _Option A:_ Retain A1 only for worker supervisors (e.g. James or twins executing subagent batches), and rely on A2 (`UserPromptSubmit` on peer message envelope / `origin.kind == "peer"`) as the sole arrival hook for Ida Prime.
   - _Option B:_ Restore the `Agent` tool to Ida Prime.
