@@ -212,6 +212,7 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     try:
         env = dict(os.environ)
         env["NO_COLOR"] = "1"
+        env["AOPS_OFFLINE"] = "true"
 
         cmd = [
             mcp_bin,
