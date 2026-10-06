@@ -1528,9 +1528,19 @@ def _build_and_export_spans(
     parent_session_id: str | None = None,
     agent_name: str | None = None,
     cwd: str | None = None,
-) -> None:
-    """Create spans from records and export via OTLP gRPC (with fallbacks)."""
+) -> bool:
+    """Create spans from records and export via OTLP gRPC (with fallbacks).
+
+    Returns True only when every record was handed to an exporter and every
+    export call returned SUCCESS. SimpleSpanProcessor discards the exporter's
+    result and swallows its exceptions, so the outcome is captured here, in
+    the wrapping exporter. SUCCESS means the OTLP endpoint acknowledged the
+    request; it does not prove the span was stored downstream of it.
+    """
     from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
+    export_results: list[bool] = []
+    all_records_exported = True
 
     (
         trace,
@@ -1566,7 +1576,12 @@ def _build_and_export_spans(
             handler = CaptureHandler()
             target_logger.addHandler(handler)
             try:
-                res = self._target.export(spans)
+                try:
+                    res = self._target.export(spans)
+                except Exception:
+                    export_results.append(False)
+                    raise
+                export_results.append(res == SpanExportResult.SUCCESS)
                 if res != SpanExportResult.SUCCESS and handler.messages:
                     error_text = "\n".join(handler.messages)
                     print(f"ERROR: OTel span export failed: {error_text}")
@@ -1653,6 +1668,7 @@ def _build_and_export_spans(
             )
             if not exporter:
                 log.warning("Failed to create any OTel span exporter")
+                all_records_exported = False
                 continue
 
             # Resolve None kind (used for LLM spans set by caller)
@@ -1729,11 +1745,17 @@ def _build_and_export_spans(
             if rec.get("error"):
                 span.set_status(StatusCode.ERROR, description=rec.get("error_msg", ""))
 
+            results_before = len(export_results)
             span.end(end_time=rec["end_ns"])
             provider.shutdown()
+            if len(export_results) == results_before:
+                # The processor never reached the exporter (e.g. unsampled span).
+                all_records_exported = False
         except Exception as e:
             log.warning("Exporting OTel span failed: %s", e)
             raise
+
+    return all_records_exported and all(export_results)
 
 
 # ---------------------------------------------------------------------------
