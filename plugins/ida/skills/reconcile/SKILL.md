@@ -44,7 +44,7 @@ When a task marked `done` fails the facial sufficiency or scope check:
 
 1. **Remedy before escalation where possible**: A failure remedied before reaching the user (e.g. missing evidence supplied by an independent verification check that passes) is not a failure -- confirm `status: done` citing the remedied evidence.
 2. **Escalate unremedied failures**: For failures that cannot be remedied in-session, route the task for ratification or reversal rather than returning it to `inbox`. Set `status: review` and document the exact failure reason and unverified criteria in the task body.
-3. **Convert PR to draft with comment**: If a PR was filed, convert it to a draft PR and post an explanatory comment stating which check failed and what the user needs to decide, preventing accidental merge before ratification. Address the PR by its URL (`gh pr ready --undo <url>`, `gh pr comment <url>`), so no checkout is needed.
+3. **Convert PR to draft with comment**: If a PR was filed, convert it to a draft PR and post an explanatory comment stating which check failed and what the user needs to decide, preventing accidental merge before ratification. Address the PR directly by its URL or repository-qualified reference rather than relying on a local checkout.
 
 ## Graph Maintenance & World-Facts
 
