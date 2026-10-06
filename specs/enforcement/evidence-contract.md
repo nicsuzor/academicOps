@@ -105,6 +105,7 @@ RECEIPTS:
   agent's own change. `NOT RUN` means the claim is not relayed as established
   until the control runs: any agent relaying a "not our bug" claim without a
   control is relaying an unverified claim.
+
 ### Ledger rules
 
 The ledger combines two strengths seen in workers' reports on 2026-10-06. Antigravity
@@ -153,7 +154,7 @@ no outcome line and no derivation.
   pointer is acceptable. Structure (titles, tags, relations, `----` or
   `-- … --` derivations) should parse.
 - **Fences.** To show an Argdown ledger inside another fenced block, make the outer
-  fence longer and labelled (` ````markdown ` around ` ```argdown `). An inner fence
+  fence longer and labelled (`` ````markdown `` around `` ```argdown ``). An inner fence
   of equal length closes the outer one early, and the formatter then swallows the
   following prose into a code block. `tests/test_markdown_fences.py` fails on such
   a collision. Indented Argdown never goes in inline code: the formatter trims
