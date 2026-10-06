@@ -80,7 +80,6 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
     long_prompt = "a" * 350
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
@@ -93,16 +92,15 @@ def test_user_prompt_submit_truncates_prompt_to_200():
         mock_run.return_value = mock_proc
         out = handlers._run_pkb_search(long_prompt)
         assert out == "result line"
-        assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
-    assert mock_run.call_args[0][0][3:5] == ["pkb__search", "--input-json"]
-    assert "a" * 200 in mock_run.call_args[0][0][5]
+    cmd = mock_run.call_args[0][0]
+    assert cmd[:2] == [sys.executable, str(PKB_HOOKS / "pkb_search_client.py")]
+    assert cmd[2] == "a" * 200
 
 
 def test_user_prompt_submit_strips_ansi_from_prompt():
     """ANSI escape sequences in prompt are stripped before passing to pkb search."""
     ansi_prompt = "\x1b[31mred text\x1b[0m with \x1b[1mbold\x1b[0m"
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
@@ -115,15 +113,12 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
         mock_run.return_value = mock_proc
         out = handlers._run_pkb_search(ansi_prompt)
         assert out == "result line"
-        assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
-    assert mock_run.call_args[0][0][3:5] == ["pkb__search", "--input-json"]
-    assert "red text with bold" in mock_run.call_args[0][0][5]
+    assert mock_run.call_args[0][0][2] == "red text with bold"
 
 
 def test_run_pkb_search_uses_measured_timeout():
     """subprocess timeout matches the measured backend-latency ceiling, not the old 15s guess."""
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
@@ -139,7 +134,6 @@ def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
@@ -156,7 +150,6 @@ def test_run_pkb_search_leaves_normal_output_untouched():
     """Output well under the cap passes through byte-for-byte."""
     normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
@@ -279,3 +272,37 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     msg = steps[0].get("ephemeralMessage", "")
     expected_inject, _ = load_message_pair(staged_hooks, "honesty")
     assert msg.startswith("<academicOps PKB search results>") or msg == expected_inject
+
+
+def test_run_pkb_search_returns_none_on_client_failure():
+    """A failed search (e.g. HTTP 401 from the portal) injects nothing and never raises."""
+    with (
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="", stderr="pkb search failed: 401"
+        )
+        assert handlers._run_pkb_search("q") is None
+
+
+def test_run_pkb_search_returns_none_on_timeout():
+    """A stalled backend is cut off at the timeout and the turn proceeds."""
+    with (
+        patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="x", timeout=5)),
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
+    ):
+        assert handlers._run_pkb_search("q") is None
+
+
+def test_run_pkb_search_does_not_need_a_fastmcp_binary():
+    """The transport is the bundled Python client, not the `fastmcp call` CLI."""
+    with (
+        patch("shutil.which", return_value=None),
+        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="hit\n", stderr=""
+        )
+        assert handlers._run_pkb_search("q") == "hit"
