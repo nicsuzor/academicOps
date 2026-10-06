@@ -10,7 +10,7 @@ tags: [enforcement, framework-architecture, verification, workflow]
 
 ## aops -- Workflow
 
-A set of PKB tasks and subtasks that make up a more user-reviewable,
+A set of tasks and subtasks that make up a more user-reviewable,
 user-directed unit of work.
 
 This is the first layer where the framework cares about _how_ the work is
@@ -64,7 +64,7 @@ workflow is the only differentiator; there is no separate research path.
    followed, QA-around asks whether the work is good.
 5. **Principal sign-off** -- [sign-off.md](sign-off.md) (Layer 4). Final review
    over the workflow as a whole unit, independent of whatever review happened
-   inside it at steps 3–4.
+   inside it at steps 3-4.
 
 Steps 3, 4, and 5 all read and produce claims in the same shape: see
 [evidence-contract.md](evidence-contract.md), the canonical universal
@@ -96,22 +96,22 @@ checked and cannot see.
 
 ### Review composition
 
-Steps 3–5 are assembled by pauli from composable rules at brief time. Review
+Steps 3-5 are assembled by pauli from composable rules at brief time. Review
 composition -- the lenses, the depth, whether reviewers are independent from
 authors -- is structural rather than an agent-facing instruction. Base
-workflows, living as PKB templates, set the default standard for these choices
+workflows, living as workflow templates, set the default standard for these choices
 and evolve over time. Any surface satisfying the assembled workflow's
 requirements qualifies as an executor: an independent polecat session that
 spins the container and validates with the marsha lens for code changes, or
 dispatch-layer subagents running the rbg lens for textual/rules compliance.
-Proof is always written to the PKB, typically as a review task plus receipt.
+Proof is always written to the task record, typically as a review task plus receipt.
 GitHub/GHA is one optional executor of code review, never the review system
 itself.
 
 ### Recursion
 
 A task decomposed into subtasks nests this shape: each subtask runs its own
-contract → execution → boundary-check → QA-around cycle, and the parent
+contract -> execution -> boundary-check -> QA-around cycle, and the parent
 workflow's own step 4/5 read the aggregate of its children's outcomes rather
 than re-deriving them. An epic is a workflow whose execution step (2) is
 itself one or more nested workflows -- the same five steps at a coarser grain,
@@ -119,7 +119,7 @@ with no separate contract for "epic-shaped" work.
 
 ### Risk-scaled review depth -- pauli's call
 
-How much of steps 3–4 run as standalone review subtasks versus how much the
+How much of steps 3-4 run as standalone review subtasks versus how much the
 executing agent self-assesses and hands back for one consolidated review is
 pauli's call, made via the `brief` skill at dispatch time (step 1), based on
 the task's risk and blast radius. Two ends of the same shape, not two
@@ -131,15 +131,15 @@ different contracts:
 - **Low-risk / narrow blast radius** -- workers self-assess against the
   exit-reflection checklist and hand back separate commits under one shared
   branch; a single consolidated boundary-check + QA-around pass runs once --
-  a review pass whose receipt lands in the PKB. One final PR over the coupled
+  a review pass whose receipt lands in the task record. One final PR over the coupled
   set -- never a spray of per-child PRs, per the return contract in
   [task-contract.md](task-contract.md) -- is the PR-surface instance of that
   pass, and the GHA PR pipeline is one optional executor of it.
 
-The invariant across the whole range: a complete set of steps 3–5 runs per the
+The invariant across the whole range: a complete set of steps 3-5 runs per the
 assembled workflow before a workflow is marked done, regardless of how pauli
 chose to distribute it. A unit may also legally terminate `partial` (see
 [spec-partial-work-tight-loop-delivery.md](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)):
-steps 3–5 then review the shipped chunk plus its declared-deferred
-remainder, and draft → ready-for-the-principal still requires the
+steps 3-5 then review the shipped chunk plus its declared-deferred
+remainder, and draft -> ready-for-the-principal still requires the
 pauli-specified review.

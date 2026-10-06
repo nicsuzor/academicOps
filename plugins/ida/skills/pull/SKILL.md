@@ -21,15 +21,14 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 3. Consolidate Findings
 
-- Synthesize results once execution finishes; avoid intermediate status noise.
-- Itemize load-bearing claims, tagging each with its explicit basis (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[inferred]`, `[assumed]`).
+- Itemize load-bearing claims in a claim ledger ([evidence-contract.md](../../../../specs/enforcement/evidence-contract.md)), tagging each with its explicit basis (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`, `[reported-by-another]`).
 - Negative and capability assertions require a failed command execution or stated search boundary.
 
 ### 4. Validate Against Criteria
 
 - Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations.
 - When acceptance criteria are met, mark the task `done` via `/dump` (workers with PKB access mark `done` after `/pull`; asserting that tests ran is sufficient for a completion claim).
-- If the next step is a decision that must be escalated for review, release as `review`, naming that decision in the required `reason`.
+- If the next step is a decision only Nic can make, release as `review`, naming that decision in the required `reason`.
 - If agent work remains -- an external blocker, a missing tool, or a scope seam -- release as `partial` with a follow-up task carrying the remainder, and wire directed `blocks` edges from any blocker.
 
 ### 5. Handover

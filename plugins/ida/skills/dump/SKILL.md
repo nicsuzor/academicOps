@@ -22,7 +22,7 @@ For each claimed task (releasing child tasks first), call `pkb.release_task` (th
 
 - `done`: All acceptance criteria are fully met with verified evidence.
 - `partial`: Agent work remains -- a scope seam, an external dependency, or a missing tool. A follow-up task carries the remainder; record it under Next.
-- `review`: The next step is a decision that must be escalated for review. Name that decision in the required `reason`.
+- `review`: The next step is a decision only Nic can make. Name that decision in the required `reason`.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
 - Wire directed `blocks` edges to represent dependencies.
@@ -43,12 +43,30 @@ If the release tool is unavailable, record the failure trace and list claimed ta
 
 Compile the overall session outcome:
 
-```markdown
+````markdown
 ## Handover: <agent> <session-id>
 
 1. **Task**: Restatement of original objective and scope.
 2. **Summary**: Concise synthesis of findings and modifications.
-3. **Output**: <branch + commit SHA> | <PR or artifact link>
-4. **Receipts**: Itemized load-bearing claims with basis tags and citations.
-5. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-```
+3. **Verdict & Safeguards**:
+   - VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
+   - GATE: <the acceptance criterion tested, and observed result against it>
+   - CONFIDENCE: <high | med | low> + <what single check would falsify this>
+   - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
+4. **Output**: <branch + commit SHA> | <PR or artifact link>
+5. **Receipts** (Claim Ledger): Itemized load-bearing claims structured as a native Argdown claim ledger per [evidence-contract.md](../../../../specs/enforcement/evidence-contract.md).
+   ```argdown
+   ===
+   title: Handover Receipts
+   ===
+
+   [Outcome]: VERDICT: PASS
+
+   [C1]: Criterion 1 verified (basis: observed, pointer: git show HEAD --stat)
+     +> [Outcome]
+
+   [C2]: Criterion 2 verified (basis: observed, pointer: uv run pytest)
+     +> [Outcome]
+   ```
+6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
+````
