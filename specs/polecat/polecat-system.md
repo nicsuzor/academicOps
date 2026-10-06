@@ -20,8 +20,9 @@ the container.
 This file is the umbrella. The individual designs are
 [base-ref resolution](spec-base-ref-resolution.md),
 [image staleness detection](spec-image-staleness-detection.md),
-[partial-work delivery](spec-partial-work-tight-loop-delivery.md), and
-[interactive tmux driving](tmux-interactive-driving.md).
+[partial-work delivery](spec-partial-work-tight-loop-delivery.md),
+[interactive tmux driving](tmux-interactive-driving.md), and
+[observability across dispatch surfaces](spec-observability.md).
 
 ## Giving Effect
 
