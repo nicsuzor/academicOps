@@ -21,7 +21,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 3. Consolidate Findings
 
-- Itemize load-bearing claims in a claim ledger ([evidence-contract.md](../../../../specs/enforcement/evidence-contract.md)), tagging each with its explicit basis (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`, `[not-observed]`, `[inferred]`, `[assumed]`, `[reported-by-another]`).
+- Itemize load-bearing claims in a claim ledger ([evidence-contract.md](../../../../specs/enforcement/evidence-contract.md)), tagging each with its explicit basis (`#observed`, `#attempted-and-failed`, `#exhaustively-searched`, `#not-observed`, `#inferred`, `#assumed`, `#reported-by-another`) and a pointer the reader can open.
 - Negative and capability assertions require a failed command execution or stated search boundary.
 
 ### 4. Validate Against Criteria

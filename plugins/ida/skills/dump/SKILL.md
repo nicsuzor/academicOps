@@ -56,17 +56,14 @@ Compile the overall session outcome:
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
 5. **Receipts** (Claim Ledger): Itemized load-bearing claims structured as a native Argdown claim ledger per [evidence-contract.md](../../../../specs/enforcement/evidence-contract.md).
    ```argdown
-   ===
-   title: Handover Receipts
-   ===
+   [Outcome]: <The result in one plain sentence, with its scope.>
 
-   [Outcome]: VERDICT: PASS
+   <Gate>: <What this argument establishes.>
 
-   [C1]: Criterion 1 verified (basis: observed, pointer: git show HEAD --stat)
-     +> [Outcome]
-
-   [C2]: Criterion 2 verified (basis: observed, pointer: uv run pytest)
-     +> [Outcome]
+   (1) [Criterion 1]: <What was verified.> #observed `<owner/repo@sha:path:line>`
+   (2) [Criterion 2]: <What was verified.> #observed `uv run pytest tests/test_x.py` → "12 passed"
+   -- from (1) and (2) --
+   (3) [Outcome]
    ```
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ````

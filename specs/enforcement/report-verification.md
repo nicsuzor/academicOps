@@ -37,18 +37,18 @@ The receiving agent evaluates the report against seven qualitative audit steps:
    unstated bridging assumptions. If a domain rule or invariant is required to
    bridge the gap, that rule must be explicitly formulated as a warrant.
 3. **Check leaf premises:** Verify that every leaf premise carries an explicit basis
-   tag from the 7-tag vocabulary ([evidence-contract.md](evidence-contract.md)) and
-   a checkable pinpoint pointer (`file:line`, command output, URL).
+   tag from the vocabulary in [evidence-contract.md](evidence-contract.md) and
+   a pointer the receiver can open (identifier or pinpoint, per that spec's ledger rules).
 4. **Enforce negative and capability claim gates:** Negative assertions ("does not
-   exist", "cannot run", "failed") must carry `[attempted-and-failed]` with verbatim
-   error output, or `[exhaustively-searched]` with explicit query and scope. A tag of
-   `[not-observed]` cannot ground a conclusion of inability or non-existence.
+   exist", "cannot run", "failed") must carry `#attempted-and-failed` with verbatim
+   error output, or `#exhaustively-searched` with explicit query and scope. A tag of
+   `#not-observed` cannot ground a conclusion of inability or non-existence.
 5. **Check scope:** Confirm that the empirical scope examined in the premises matches
    the domain asserted in the conclusion. Evidence from a single directory or test
    file does not warrant a repository-wide or environment-wide conclusion.
 6. **Cap conclusion status (status survival):** The conclusion's epistemic status is
    bounded by the weakest basis among its transitive leaves. Any leaf tagged
-   `[inferred]`, `[assumed]`, or `[reported-by-another]` caps the entire outcome at
+   `#inferred`, `#assumed`, or `#reported-by-another` caps the entire outcome at
    that qualification level.
 7. **Evaluate defeaters and alternatives:** For negative, blocked, or failure outcomes,
    verify whether competing hypotheses, alternative configurations, or bypass routes
@@ -59,10 +59,10 @@ The receiving agent evaluates the report against seven qualitative audit steps:
 The receiver concludes the premise-check by recording a categorical verdict token:
 
 - **`ACCEPT`**: Every inferential step is valid, all premises are grounded in primary
-  empirical observations (`[observed]`, `[attempted-and-failed]`, `[exhaustively-searched]`),
+  empirical observations (`#observed`, `#attempted-and-failed`, `#exhaustively-searched`),
   and no bridging warrants are missing.
 - **`DOWNGRADE`**: The reasoning is logically valid, but the conclusion is capped by
-  a weaker premise (`[inferred]`, `[assumed]`, `[reported-by-another]`). The outcome
+  a weaker premise (`#inferred`, `#assumed`, `#reported-by-another`). The outcome
   may be relayed only with its basis qualification explicitly stated.
 - **`RETURN`**: A missing warrant, invalid inference step, scope mismatch, or
   unevidenced negative claim was identified. The receiver sends the report back to
