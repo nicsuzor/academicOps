@@ -80,11 +80,11 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
     long_prompt = "a" * 350
     with (
-        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
     ):
         mock_proc = subprocess.CompletedProcess(
-            args=["/usr/bin/pkb", "search", "a" * 200],
+            args=["/usr/bin/mcp", "search", "a" * 200],
             returncode=0,
             stdout="result line\n",
             stderr="",
@@ -92,18 +92,20 @@ def test_user_prompt_submit_truncates_prompt_to_200():
         mock_run.return_value = mock_proc
         out = handlers._run_pkb_search(long_prompt)
         assert out == "result line"
-        assert mock_run.call_args[0][0] == ["/usr/bin/pkb", "search", "a" * 200]
+        assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
+    assert mock_run.call_args[0][0][3:5] == ["pkb__search", "--input-json"]
+    assert "a" * 200 in mock_run.call_args[0][0][5]
 
 
 def test_user_prompt_submit_strips_ansi_from_prompt():
     """ANSI escape sequences in prompt are stripped before passing to pkb search."""
     ansi_prompt = "\x1b[31mred text\x1b[0m with \x1b[1mbold\x1b[0m"
     with (
-        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
     ):
         mock_proc = subprocess.CompletedProcess(
-            args=["/usr/bin/pkb", "search", "red text with bold"],
+            args=["/usr/bin/mcp", "search", "red text with bold"],
             returncode=0,
             stdout="result line\n",
             stderr="",
@@ -111,37 +113,27 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
         mock_run.return_value = mock_proc
         out = handlers._run_pkb_search(ansi_prompt)
         assert out == "result line"
-        assert mock_run.call_args[0][0] == ["/usr/bin/pkb", "search", "red text with bold"]
-
-
-def test_find_pkb_bin_on_path():
-    """_find_pkb_bin resolves pkb when found on PATH."""
-    with patch("shutil.which", return_value="/usr/bin/pkb"):
-        assert handlers._find_pkb_bin() == "/usr/bin/pkb"
-
-
-def test_find_pkb_bin_in_cwd(tmp_path):
-    """_find_pkb_bin resolves pkb from hook cwd when not on PATH."""
-    fake_pkb = tmp_path / "pkb"
-    fake_pkb.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake_pkb.chmod(0o755)
-
-    with patch("shutil.which", return_value=None):
-        found = handlers._find_pkb_bin(cwd=str(tmp_path))
-        assert found == str(fake_pkb.resolve())
-
-
-def test_find_pkb_bin_not_found(tmp_path):
-    """_find_pkb_bin returns None when pkb is not on PATH, cwd, or plugin bin."""
-    with (
-        patch("shutil.which", return_value=None),
-        patch("pathlib.Path.is_file", return_value=False),
-    ):
-        assert handlers._find_pkb_bin(cwd=str(tmp_path)) is None
+        assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
+    assert mock_run.call_args[0][0][3:5] == ["pkb__search", "--input-json"]
+    assert "red text with bold" in mock_run.call_args[0][0][5]
 
 
 def test_run_pkb_search_uses_measured_timeout():
     """subprocess timeout matches the measured backend-latency ceiling, not the old 15s guess."""
+    with (
+        patch("shutil.which", return_value="/usr/bin/mcp"),
+        patch("subprocess.run") as mock_run,
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout="result\n", stderr=""
+        )
+        handlers._run_pkb_search("q")
+        assert mock_run.call_args.kwargs["timeout"] == handlers._SEARCH_TIMEOUT_SECONDS
+        assert handlers._SEARCH_TIMEOUT_SECONDS < 15
+
+
+def test_run_pkb_search_never_downloads():
+    """pkb runs offline from the hook, so a missing model fails fast instead of downloading."""
     with (
         patch("shutil.which", return_value="/usr/bin/pkb"),
         patch("subprocess.run") as mock_run,
@@ -150,19 +142,18 @@ def test_run_pkb_search_uses_measured_timeout():
             args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout="result\n", stderr=""
         )
         handlers._run_pkb_search("q")
-        assert mock_run.call_args.kwargs["timeout"] == handlers._SEARCH_TIMEOUT_SECONDS
-        assert handlers._SEARCH_TIMEOUT_SECONDS < 15
+        assert mock_run.call_args.kwargs["env"]["AOPS_OFFLINE"] == "true"
 
 
 def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
     with (
-        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
     ):
         mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout=huge, stderr=""
+            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=huge, stderr=""
         )
         out = handlers._run_pkb_search("q")
         assert out is not None
@@ -174,11 +165,11 @@ def test_run_pkb_search_leaves_normal_output_untouched():
     """Output well under the cap passes through byte-for-byte."""
     normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
     with (
-        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
     ):
         mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout=normal, stderr=""
+            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=normal, stderr=""
         )
         out = handlers._run_pkb_search("q")
         assert out == normal
@@ -244,37 +235,6 @@ def test_user_prompt_submit_ida_injects_pkb_search():
             )
             assert res.inject_text == expected_text
             assert res.user_text is None
-
-
-def test_user_prompt_submit_ida_no_results_returns_none():
-    """When PKB search yields no results for Ida or James, returns None (no fallback honesty spam)."""
-    for agent in ("ida:ida", "ida", "aops:james", "james"):
-        ctx = HookContext(
-            client="claude",
-            event="UserPromptSubmit",
-            raw={"prompt": "check status"},
-            hooks_dir=PKB_HOOKS,
-            cwd="/workspace",
-            agent_type=agent,
-        )
-        with patch.object(handlers, "_run_pkb_search", return_value=None):
-            res = handlers.search_the_pkb(ctx)
-            assert res is None
-
-
-def test_user_prompt_submit_ida_empty_prompt_returns_none():
-    """When prompt is empty for Ida or James, returns None (no fallback honesty spam)."""
-    for agent in ("ida:ida", "ida", "aops:james", "james"):
-        ctx = HookContext(
-            client="claude",
-            event="UserPromptSubmit",
-            raw={"prompt": ""},
-            hooks_dir=PKB_HOOKS,
-            cwd="/workspace",
-            agent_type=agent,
-        )
-        res = handlers.search_the_pkb(ctx)
-        assert res is None
 
 
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):

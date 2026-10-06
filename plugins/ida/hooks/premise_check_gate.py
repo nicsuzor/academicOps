@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """Hook arm/disarm lifecycle for premise checking.
 
-<!-- NS: let's change this to require a premise check verdict before contacting the user or finishing a task. Try to make a list of events where it makes sense to require consideration of logical consistency and sufficiency of evidence before proceeding. Candidates include: Stop; whatever tool call the Channels plugins use; AskUserQuestion; Dump? Maybe supplement by telling Pauli not to write an update if it's not accompanied by a recorded premise check (leave for later)? -->
-
 Enforces that a supervisor (Ida) evaluates incoming subagent reports against
-logic-check doctrine before dispatching further subagents:
+logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
-- ``premise_check_arm``: a ``PostToolBatch`` handler that arms the check when
-  an agent finishes calling tools (including subagents, before results return).
-- ``premise_check_handler``: a ``PreToolUse`` handler that refuses the
-  supervisor's next subagent dispatch (``Agent``/``Task``) while armed.
+- ``premise_check_arm``: a ``PostToolBatch`` / ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
+  an agent finishes calling tools (including subagents, before results return) or receives a teammate message.
+- ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
+  supervisor's next subagent dispatch, communication, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
   clears the check once a verdict is recorded.
 
@@ -27,7 +25,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from dispatch import HookContext, Result, refuse, warn
+from dispatch import HookContext, Result, block, refuse, warn
 
 
 def _now() -> str:
@@ -37,7 +35,12 @@ def _now() -> str:
 
 # Agent profiles this check applies to
 _GATED_AGENT_TYPES = ["ida:ida"]
-_GATED_TOOLS = ["Agent"]
+
+# Tools that dispatch subagents (arming the check)
+_DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
+
+# Tools that are blocked while the check is armed
+_BLOCKED_TOOLS = ["Agent", "Task", "invoke_subagent", "SendMessage", "AskUserQuestion", "Dump"]
 
 
 # ---------------------------------------------------------------------------
@@ -134,8 +137,11 @@ is_gate_open = is_disarmed
 
 
 def _derive_claim_id(ctx: HookContext) -> str:
+    if ctx.event == "UserPromptSubmit":
+        return "incoming teammate message"
+
     for call in ctx.tool_calls:
-        if call.get("tool_name") in _GATED_TOOLS:
+        if call.get("tool_name") in _DISPATCH_TOOLS:
             tool_input = call.get("tool_input") or {}
             desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
             if desc:
@@ -143,6 +149,19 @@ def _derive_claim_id(ctx: HookContext) -> str:
             call_id = call.get("tool_use_id") or ""
             if call_id:
                 return str(call_id)
+
+    if ctx.tool in _DISPATCH_TOOLS:
+        tool_input = ctx.raw.get("tool_input") or {}
+        if isinstance(tool_input, dict):
+            desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
+            if desc:
+                return desc[:80]
+        call_id = (
+            ctx.raw.get("tool_call_id") or ctx.raw.get("id") or ctx.raw.get("tool_use_id") or ""
+        )
+        if call_id:
+            return str(call_id)
+
     return "unnamed-claim"
 
 
@@ -164,26 +183,31 @@ def _is_override_active() -> bool:
 
 
 def premise_check_arm(ctx: HookContext) -> Result | None:
-    """PostToolBatch handler: arm the premise check when an agent calls tools.
-
-    PostToolBatch is called when an agent finishes calling tools, including
-    subagents (though the subagent results haven't returned yet). This arms
-    the premise check, which then needs to be cleared (disarmed via verdict)
-    before the next tool use.
-    """
+    """PostToolBatch/PostToolUse/UserPromptSubmit handler: arm the premise check."""
     if ctx.agent_type not in _GATED_AGENT_TYPES:
         return None
-    if not any(call.get("tool_name") in _GATED_TOOLS for call in ctx.tool_calls):
+
+    if ctx.event == "UserPromptSubmit":
+        arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
         return None
+
+    has_dispatch = any(call.get("tool_name") in _DISPATCH_TOOLS for call in ctx.tool_calls)
+    if not has_dispatch and ctx.tool in _DISPATCH_TOOLS:
+        has_dispatch = True
+
+    if not has_dispatch:
+        return None
+
     arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
     return None
 
 
 def premise_check_handler(ctx: HookContext) -> Result | None:
-    """PreToolUse handler: refuse the next subagent dispatch while armed."""
-    if ctx.tool not in _GATED_TOOLS:
-        return None
+    """PreToolUse/Stop handler: refuse the next restricted action while armed."""
     if ctx.agent_type not in _GATED_AGENT_TYPES:
+        return None
+
+    if ctx.event == "PreToolUse" and ctx.tool not in _BLOCKED_TOOLS:
         return None
 
     mode = (
@@ -198,18 +222,28 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
     if not is_armed(ctx.session_id):
         return None
 
-    claim_id = get_state(ctx.session_id).get("claim_id", "the pending subagent report")
+    claim_id = get_state(ctx.session_id).get("claim_id", "the pending report")
+    action_desc = (
+        "finishing the task or contacting the user/teammates"
+        if ctx.event == "Stop"
+        else "dispatching another subagent or message"
+    )
+
     reason = (
-        f"A subagent report ({claim_id!r}) is pending its logic-check verdict for session "
+        f"A subagent or teammate report ({claim_id!r}) is pending its logic-check verdict for session "
         f"'{ctx.session_id or 'current'}'. Use the 'premise-check' skill "
         "(or run scripts/verdict.py with your one reasoned verdict, thought through "
-        "against hearsay.md's six logic-check questions) before dispatching another "
-        "subagent."
+        f"against hearsay.md's six logic-check questions) before {action_desc}."
     )
     user_msg = (
-        "Blocked: record the logic-check verdict on the last subagent report "
-        "(use 'premise-check' skill) before dispatching another subagent."
+        f"Blocked: record the logic-check verdict on the last report ({claim_id!r}) "
+        f"(use 'premise-check' skill) before {action_desc}."
     )
+
     if mode == "warn":
         return warn(reason, user_msg)
+
+    if ctx.event == "Stop":
+        return block(reason, user_msg)
+
     return refuse(reason, user_msg)
