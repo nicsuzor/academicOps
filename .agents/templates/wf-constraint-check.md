@@ -56,4 +56,4 @@ A violated plan is revised or escalated to human review — it does not proceed 
 
 ## Declared stakes
 
-Cheap and two-way — re-running this check costs nothing. Its value is entirely upstream: it stops a downstream one-way-door gate (e.g. [[wf-human-approval]]) from being reached by a plan that was never going to satisfy it.
+Cheap and two-way — re-running this check costs nothing. Its value is entirely upstream: it stops a downstream one-way-door gate (e.g. [[wf-escalated-approval]]) from being reached by a plan that was never going to satisfy it.

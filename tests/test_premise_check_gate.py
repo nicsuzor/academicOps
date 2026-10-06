@@ -1,5 +1,4 @@
-"""Tests for the forced per-claim logic-check verdict script and its gate
-(task_db1da567, epic aops_premise_check_gate).
+"""Tests for the forced per-claim logic-check verdict script and its gate.
 
 Covers:
 1. The logic-check sequence is parsed live from hearsay.md -- six questions,

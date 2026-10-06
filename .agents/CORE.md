@@ -35,12 +35,13 @@ On top of them:
 - **Fail fast.** A documented path that does not exist, a tool that does not
   behave as documented, an acceptance criterion you cannot meet as written — stop
   and report. Do not substitute an adjacent action you can perform.
-- **Nic already knows.** He wrote this. Do not explain his own system back to
-  him, restate what he just said, or re-justify a decision he has made. Report
-  what he does not already have: what you found, what is false, what you changed.
+- **The user already knows.** They wrote this. Do not explain their own system
+  back to them, restate what they just said, or re-justify a decision they have
+  made. Report what they do not already have: what you found, what is false, what
+  you changed.
 - **Answer the question asked, then stop.** In conversation, do not pre-empt the
-  next question, propose the following three steps, or open a design fork he has
-  not reached. He sets the pace. One thing at a time, and hold.
+  next question, propose the following three steps, or open a design fork they
+  have not reached. They set the pace. One thing at a time, and hold.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md).
 

@@ -19,7 +19,7 @@ type: template
 ---
 
 ---
-requires: [wf-verification, wf-human-approval]
+requires: [wf-verification, wf-escalated-approval]
 pairs-with: [wf-handover, wf-design-conversation]
 recommends: [wf-self-test]
 conflicts: [wf-batch-fanout]
@@ -69,7 +69,7 @@ Move the agreed feature into the plugin it belongs to. Where the feature is a
 hook, check **both** halves before believing it works: the event declared in
 `hooks.template.json`, _and_ `[[shared]] from="hooks" to="hooks"` present in
 `manifest/plugin.toml`. Either half missing leaves the hook silently dead with no
-error surfaced to anyone — see [[mem_7b9c90b1]]. A third half exists for a _new_
+error surfaced to anyone. A third half exists for a _new_
 event: it must appear in `CANONICAL_EVENTS` in `lib/hooks/dispatch.py`, or the
 dispatcher drops it, and the per-client map in the same file decides whether it
 reaches agy at all.
@@ -81,11 +81,11 @@ reaches agy at all.
 **State what you expect to observe before the restart**, so the test is capable of
 failing. Registration is not evidence; a hook is done when its effect has been
 seen live. Where the feature is an injection, confirm _which context it lands in_
-rather than that it fired at all — see [[mem_fb6189a2]].
+rather than that it fired at all.
 
 **7. Close the pass.**
 Update the map's provenance line to the commit you grounded against, update the
-sync-state table on [[academicops-wired-map]] to match, **re-check the stroke
+sync-state record kept alongside the map, if there is one, to match, **re-check the stroke
 style of every element this pass touched against what is now actually built**,
 then record what landed,
 what is now live, and the one thing worth doing next — or say plainly that there
@@ -109,14 +109,11 @@ The map holds the design, and nothing else.
 - **Lifecycle is carried by the outline alone**, per the map key, and the three
   states are mutually exclusive: **solid** = current & live; **dashed** = built
   but currently dark / untested / broken; **dotted** = proposed and not yet
-  built. Bracket tags (`[ACTIVE] [DARK] [PROPOSED]` …) are **abolished** —
-  Nic, 2026-08-23, "no dumb tags please" ([[aops_8f38ffdc]]). Do not reintroduce
-  them, and do not read "dotted" as retired: retired material comes off the map.
+  built. Never use bracket tags (`[ACTIVE] [DARK] [PROPOSED]` …), and do not
+  read "dotted" as retired: retired material comes off the map.
 - **A stroke style is a falsifiable claim about build state, and it is the only
   such claim the map makes.** Never draw one you have not checked at a named
-  ref. Three were measured wrong within two days of the v8 map becoming the
-  reset reference, two of them flattering ([[aops_stroke_reconcile]]). Checking
-  a stroke costs a grep; a wrong one sends someone to rebuild a working
+  ref. Checking a stroke costs a grep; a wrong one sends someone to rebuild a working
   subsystem or to trust a dead one.
 
 ## Gates
@@ -132,8 +129,8 @@ The map holds the design, and nothing else.
 Load the shipped diagram skill before editing; never hand-edit the file and
 never touch it with `sed` or a heredoc. [[wf-design-conversation]]'s
 Excalidraw rider (its **Mechanics** section) is the single source for the
-file-mechanics checklist — the pre-edit scratch copy, pausing the brain
-auto-sync daemon before the write, the post-edit validation and verify
+file-mechanics checklist — the pre-edit scratch copy, pausing any
+auto-committing sync process before the write, the post-edit validation and verify
 commands, and what a clean `check` does not cover. Follow it as written;
 nothing in map-then-wire changes it.
 

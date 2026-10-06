@@ -19,7 +19,7 @@ claude plugin install aops@academicOps
 
 The `services` MCP server is installed at user level across all surfaces, never shipped inside a plugin:
 
-- **Local Claude Code**: `claude mcp add --transport http --scope user services <PKB_MCP_URL>`. Must use `--scope user`; `--scope local` was observed to register nothing. Note: on local machines, `~/dotfiles/scripts/sync-mcp-servers.sh` is the appropriate home to synchronize user-scoped MCP registrations.
+- **Local Claude Code**: `claude mcp add --transport http --scope user services <PKB_MCP_URL>`. Must use `--scope user`; `--scope local` was observed to register nothing.
 - **Claude Code Cloud / Cowork**: The claude.ai account connector named `services`.
 - **Antigravity (agy)**: Configured in user-level MCP settings (`~/.gemini/antigravity-cli/settings.json` or `~/.gemini/antigravity-cli/mcp/services.json`).
 
@@ -46,7 +46,7 @@ make install-dev
 
 ## Polecat
 
-Polecat container images and launcher build and run from `nicsuzor/dotfiles` (`containers/nicwin/nicdev/`), backed by the Docker MCP server on `nicwin` behind the `services` portal.
+The polecat container image and launcher are maintained outside this repository and supplied by the installer, together with any Docker MCP server registered behind the `services` portal.
 
 ## Design
 

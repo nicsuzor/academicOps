@@ -27,7 +27,7 @@ flowchart TD
     E2 --> F([Task Handover & Completion])
 
     subgraph Tracing["<b>Telemetry & Tracing (c)</b>"]
-        OTEL["<b>OpenTelemetry Collector</b><br/>Session/Container Traces → Local Tailnet → GCP Cloud Trace"]
+        OTEL["<b>OpenTelemetry Collector</b><br/>Session/Container Traces → installer's OTLP collector"]
     end
 
     P1 -.-> OTEL
@@ -53,13 +53,12 @@ Every hook across the plugins is deterministic, lightweight, and single-purpose.
 
 ## Telemetry & OTEL Tracing Architecture
 
-academicOps uses Claude Code's native OpenTelemetry export forwarded through a local Tailnet server to GCP:
+academicOps uses Claude Code's native OpenTelemetry export, sent to an OTLP collector the installer supplies:
 
-- **Local Collector Relay:** Session and Polecat container traces send OTLP spans to a local Tailnet OTLP collector endpoint (`OTEL_EXPORTER_OTLP_ENDPOINT`).
-- **GCP Export:** The collector relays traces directly to GCP Cloud Trace (`cloudtrace.googleapis.com`) and Cloud Logging.
+- **Collector:** Session and Polecat container traces send OTLP spans to the collector endpoint named by `OTEL_EXPORTER_OTLP_ENDPOINT`. Where the collector relays them is the installer's choice.
 - **Contract Variables:**
   - `CLAUDE_CODE_ENABLE_TELEMETRY=true`
-  - `OTEL_EXPORTER_OTLP_ENDPOINT=http://<tailnet-collector-ip>:4318`
+  - `OTEL_EXPORTER_OTLP_ENDPOINT=http://<collector-host>:4318`
   - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
   - `OTEL_RESOURCE_ATTRIBUTES=service.name=academicOps,service.version=<your installed version>`
 

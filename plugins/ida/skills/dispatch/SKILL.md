@@ -22,7 +22,12 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 ## 2. Compose workflows
 
-Call `/workflow-library` to weave together every workflow relevant to the task in context. A skill counts as a template: when one is composed, the Instructions tell the worker to invoke it by name, as one step or as all of them. Never copy its contents into the task; the skill is maintained where it lives.
+Call `/workflow-library` to weave together every workflow relevant to the task in context. The composed workflow draws on two kinds of component, and they enter the Instructions differently:
+
+- **Workflow templates** (`type: template`, including every `wf-*`): the worker cannot invoke them. Read each one and write its steps into the Instructions. Where a template names a stage or a class of workflow rather than a step, resolve it to the matching templates and write their steps in too.
+- **Skills**: the worker invokes them. Write `invoke /<skill-name>` as the step and leave its contents where the skill is maintained.
+
+Then assemble the steps:
 
 - Combine template steps into a logical order (e.g., failing tests first, implementation, then QA).
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
@@ -84,7 +89,7 @@ Where the project finish template calls for QA review:
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
 - Leave out methods, tool names, runtime hints, notes on the worker's limits, summaries of linked notes, counts and history.
 - Change an existing task only for a defect you can point to in its text; otherwise send it as written.
-- It is valid for a task to call a skill as a step (even as the only step). Write `invoke /<skill-name>` as the step; do not repeat the skill's implementation in the task itself.
+- A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
 
 **Exclusions:**
 
