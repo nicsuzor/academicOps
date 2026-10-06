@@ -589,9 +589,9 @@ def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_pre_invocation(data, config)
     except Exception as exc:
         log.warning("agy_user_prompt_submit tracer failed: %s", exc)
@@ -602,9 +602,9 @@ def agy_pre_tool(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_pre_tool(data, config)
     except Exception as exc:
         log.warning("agy_pre_tool tracer failed: %s", exc)
@@ -615,9 +615,9 @@ def agy_post_tool(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_post_tool(data, config)
     except Exception as exc:
         log.warning("agy_post_tool tracer failed: %s", exc)
@@ -628,9 +628,9 @@ def agy_stop(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_stop(data, config)
     except Exception as exc:
         log.warning("agy_stop tracer failed: %s", exc)

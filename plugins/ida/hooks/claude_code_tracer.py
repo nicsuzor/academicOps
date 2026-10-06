@@ -169,6 +169,69 @@ def resolve_canonical_project(project: str | None, config: dict | None = None) -
     return project_str
 
 
+def resolve_project_from_dir(cwd: str) -> str:
+    """Resolve project name from git metadata, worktree layout, or directory structure."""
+    if not cwd:
+        return ""
+    try:
+        p = Path(cwd).resolve()
+
+        # 1. Check if git worktree file exists (.git file with gitdir pointer)
+        git_target = p / ".git"
+        if git_target.is_file():
+            try:
+                text = git_target.read_text(encoding="utf-8").strip()
+                if text.startswith("gitdir:"):
+                    gitdir_path = Path(text.split(":", 1)[1].strip())
+                    if not gitdir_path.is_absolute():
+                        gitdir_path = (p / gitdir_path).resolve()
+                    for parent in (gitdir_path, *gitdir_path.parents):
+                        if parent.name == ".git":
+                            repo_name = parent.parent.name
+                            if repo_name and repo_name not in ("/", "\\", ".", "workspace"):
+                                return repo_name
+            except Exception:
+                pass
+
+        # 2. Check worktree path convention: .../worktrees/<project>/<branch>
+        parts = p.parts
+        if "worktrees" in parts:
+            idx = parts.index("worktrees")
+            if idx + 1 < len(parts):
+                cand = parts[idx + 1]
+                if cand and cand not in ("/", "\\", "."):
+                    return cand
+
+        # 3. Check enclosing git repo
+        for parent in (p, *p.parents):
+            if (parent / ".git").is_dir():
+                repo_name = parent.name
+                if repo_name and repo_name not in ("/", "\\", ".", "workspace"):
+                    return repo_name
+                if repo_name == "workspace":
+                    try:
+                        import subprocess
+
+                        out = subprocess.check_output(
+                            ["git", "-C", str(parent), "config", "--get", "remote.origin.url"],
+                            text=True,
+                            timeout=2,
+                            stderr=subprocess.DEVNULL,
+                        ).strip()
+                        if out:
+                            remote_name = (
+                                out.rstrip("/").removesuffix(".git").split("/")[-1].split(":")[-1]
+                            )
+                            if remote_name and remote_name not in ("/", "\\", "."):
+                                return remote_name
+                    except Exception:
+                        pass
+                break
+    except Exception:
+        pass
+    return ""
+
+
 def resolve_project_name(
     data: dict | None = None,
     project: str = "",
@@ -177,37 +240,43 @@ def resolve_project_name(
     """Resolve project name from environment, config, hook payload cwd, or starting dirname.
 
     Priority:
-    1. Explicit project if non-empty
-    2. PHOENIX_PROJECT_NAME env var
-    3. OTEL_SERVICE_NAME env var
-    4. service.name attribute in OTEL_RESOURCE_ATTRIBUTES env var
-    5. Hook payload cwd or CLAUDE_PROJECT_DIR or current working directory basename
-    6. Fallback to 'default'
+    1. Explicit project if non-empty and not 'default'
+    2. PHOENIX_PROJECT_NAME env var (ignoring 'default')
+    3. OTEL_SERVICE_NAME env var (ignoring 'default')
+    4. service.name attribute in OTEL_RESOURCE_ATTRIBUTES env var (ignoring 'default')
+    5. Git repo / worktree resolution from hook payload cwd or CLAUDE_PROJECT_DIR or current working directory
+    6. Directory basename fallback or 'default'
 
     Any resolved project name is automatically mapped to its canonical slug if defined
     in polecat.yaml aliases or default canonical aliases.
     """
     raw_name = ""
-    if project and project.strip():
+    if project and project.strip() and project.strip().lower() != "default":
         raw_name = project.strip()
-    elif env_phoenix := os.environ.get("PHOENIX_PROJECT_NAME", "").strip():
+    elif (
+        env_phoenix := os.environ.get("PHOENIX_PROJECT_NAME", "").strip()
+    ) and env_phoenix.lower() != "default":
         raw_name = env_phoenix
-    elif env_service := os.environ.get("OTEL_SERVICE_NAME", "").strip():
+    elif (
+        env_service := os.environ.get("OTEL_SERVICE_NAME", "").strip()
+    ) and env_service.lower() != "default":
         raw_name = env_service
     elif env_res := os.environ.get("OTEL_RESOURCE_ATTRIBUTES", "").strip():
         for pair in env_res.split(","):
             if "=" in pair:
                 k, v = pair.split("=", 1)
-                if k.strip() == "service.name" and v.strip():
+                if k.strip() == "service.name" and v.strip() and v.strip().lower() != "default":
                     raw_name = v.strip()
                     break
     if not raw_name:
         # Directory resolution
         cwd = resolve_cwd(data)
         if cwd:
-            name = Path(cwd).resolve().name
-            if name and name not in ("/", "\\", "."):
-                raw_name = name
+            raw_name = resolve_project_from_dir(cwd)
+            if not raw_name:
+                name = Path(cwd).resolve().name
+                if name and name not in ("/", "\\", "."):
+                    raw_name = name
 
     if not raw_name:
         raw_name = "default"
@@ -220,7 +289,7 @@ def resolve_cwd(data: dict | None = None, state: dict | None = None) -> str:
     """Resolve the working directory path for this session.
 
     Priority:
-    1. data['cwd'] (hook payload)
+    1. data['cwd'] (hook payload) or data['workspacePaths'] / data['workspace_paths']
     2. state['cwd'] (cached session state)
     3. CLAUDE_PROJECT_DIR env var
     4. os.getcwd()
@@ -228,6 +297,12 @@ def resolve_cwd(data: dict | None = None, state: dict | None = None) -> str:
     cwd = ""
     if data and isinstance(data, dict):
         cwd = str(data.get("cwd") or "").strip()
+        if not cwd:
+            wp = data.get("workspacePaths") or data.get("workspace_paths")
+            if isinstance(wp, (list, tuple)) and wp:
+                cwd = str(wp[0]).strip()
+            elif isinstance(wp, str) and wp.strip():
+                cwd = wp.strip()
     if not cwd and state and isinstance(state, dict):
         cwd = str(state.get("cwd") or "").strip()
     if not cwd:
