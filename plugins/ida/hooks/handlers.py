@@ -19,6 +19,7 @@ from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 from premise_check_gate import premise_check_arm, premise_check_handler
+from prompt_origin import classify_prompt, prompt_from_payload
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -250,21 +251,19 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
-    """Ground every prompt in the PKB before the agent acts on it.
+    """Ground Nic's messages in the PKB before the agent acts on them.
 
-    Tries first to return the output of `pkb search {prompt:200}` wrapped in
-    `<academicOps PKB search results>` tags; if that fails, returns the
+    Only the part of the prompt Nic wrote (console text, Telegram message
+    body -- see prompt_origin) is searched; messages from agents are not
+    hydrated, they get the hearsay reminder and the premise-check gate
+    instead. Search output is wrapped in `<academicOps PKB search results>`
+    tags; if there is nothing to search or the search fails, returns the
     existing messages.
     """
-    raw_prompt = ctx.raw.get("prompt")
-    if raw_prompt is None and hasattr(ctx, "prompt"):
-        raw_prompt = ctx.prompt
-    if isinstance(raw_prompt, dict):
-        raw_prompt = raw_prompt.get("text") or raw_prompt.get("content") or ""
-    prompt_str = str(raw_prompt or "").strip()
+    nic_text = classify_prompt(prompt_from_payload(ctx.raw)).nic_text
 
-    if prompt_str:
-        output = _run_pkb_search(prompt_str, cwd=ctx.cwd)
+    if nic_text:
+        output = _run_pkb_search(nic_text, cwd=ctx.cwd)
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
@@ -493,9 +492,14 @@ def session_start(ctx: HookContext) -> Result | None:
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind Ida on UserPromptSubmit that incoming reports are hearsay and require premise verification."""
+    """Remind Ida that a message from another agent is hearsay and needs premise verification.
+
+    Nic's own messages (console, Telegram) are not hearsay and get no reminder.
+    """
     clear_channel_gate_state(ctx.session_id)
     if not _is_ida(ctx):
+        return None
+    if not classify_prompt(prompt_from_payload(ctx.raw)).from_agent:
         return None
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 

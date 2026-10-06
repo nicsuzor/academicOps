@@ -5,7 +5,9 @@ Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
 - ``premise_check_arm``: a ``PostToolBatch`` / ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
-  an agent finishes calling tools (including subagents, before results return) or receives a teammate message.
+  an agent finishes calling tools (including subagents, before results return) or receives a message from another agent
+  (cross-session, teammate, task-notification; see ``prompt_origin``). Nic's own
+  console and Telegram messages do not arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
   supervisor's next subagent dispatch, communication, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
@@ -26,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, refuse, warn
+from prompt_origin import classify_prompt, prompt_from_payload
 
 
 def _now() -> str:
@@ -188,7 +191,10 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
         return None
 
     if ctx.event == "UserPromptSubmit":
-        arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
+        # Only messages from agents carry claims to verify. Nic's own
+        # messages neither arm the gate nor discharge a pending verdict.
+        if classify_prompt(prompt_from_payload(ctx.raw)).from_agent:
+            arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
         return None
 
     has_dispatch = any(call.get("tool_name") in _DISPATCH_TOOLS for call in ctx.tool_calls)
