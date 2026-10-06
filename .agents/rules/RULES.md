@@ -1,5 +1,5 @@
 ---
-trigger: always
+trigger: always_on
 description: Project-local rules for the academicOps repository, applied on top of the axioms.
 ---
 

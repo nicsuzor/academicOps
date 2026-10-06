@@ -13,7 +13,7 @@ type: template
 
 ## What this template does
 
-Specifies how tasks in `nicsuzor/academicOps` finish. All individual task changes deliver via PR targeting `dev`. A PR merges into `dev` on green; functional changes also require independent QA review first. Merging to `main` requires Nic's review.
+Specifies how tasks in `nicsuzor/academicOps` finish. All individual task changes deliver via PR targeting `dev`. A PR merges into `dev` on green; functional changes also require independent QA review first. Merging to `main` requires escalated review.
 
 ## Finish Policy
 

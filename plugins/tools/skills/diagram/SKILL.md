@@ -78,6 +78,20 @@ pkb-excalidraw FILE update <id> --set '{"strokeStyle": "dashed"}'
 - Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
 - Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
 
+### Editing an existing diagram
+
+When the diagram already exists and the ask changes the plan or state it shows, edit the existing elements in place so the delta is visible on the canvas:
+
+- **Moved** thing: `move-elem` the existing element.
+- **Renamed** thing: `set-text` or `fit` the existing element.
+- **Changed status**: set `strokeColor`/`backgroundColor` on the existing element to the palette role for its new state.
+- **Removed** thing: `delete-elem` it, and its bound text and arrows.
+- **Genuinely new** thing: `add-node` only for this.
+
+Keep the `id` of every surviving element. `pkb excalidraw diff` and `sync` match canvas elements to PKB nodes by `id`; a replaced element reads as a deletion plus an unrelated addition.
+
+**Anti-pattern -- the parallel system.** Do not draw a fresh set of elements beside the old ones to depict the new state. It leaves two contradictory versions on one canvas, hides what changed, and severs every `id` binding. Before adding any element, check whether an existing element already represents that thing; if one does, edit it.
+
 ### PKB export and sync
 
 ```bash

@@ -19,7 +19,7 @@ type: template
 ---
 
 ---
-requires: [wf-verification, wf-human-approval]
+requires: [wf-verification, wf-escalated-approval]
 pairs-with: [wf-handover, wf-design-conversation]
 recommends: [wf-self-test]
 conflicts: [wf-batch-fanout]
