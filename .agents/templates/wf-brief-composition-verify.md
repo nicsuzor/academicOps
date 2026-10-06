@@ -153,7 +153,7 @@ Every test case is evaluated against the three readers defined in `brief/SKILL.m
   - States independent verification of the migration as an acceptance criterion on the task body, checkable by a stranger at the merge boundary.
   - Does NOT emit a separate blocking child task node for review or sign-off.
 - **Concrete FAIL Description**:
-  - Emitting an independent blocking child task node (e.g. `wf-qa-verify` or `wf-human-approval`) in the graph for verification, rather than an acceptance criterion.
+  - Emitting an independent blocking child task node (e.g. `wf-qa-verify` or `wf-escalated-approval`) in the graph for verification, rather than an acceptance criterion.
   - Omitting the irreversibility risk and its gating criterion entirely, leaving acceptance ungated.
 
 ## Execution & Reporting Procedure

@@ -68,7 +68,7 @@ The reviewer ranks rather than evaluating every selected lens:
 The loop converges by resolution, not by counting rounds.
 
 - Each round must resolve at least one concern from the previous round.
-- A round that introduces new concerns without resolving old ones escalates to the human.
+- A round that introduces new concerns without resolving old ones escalates for review.
 - All concerns resolved or explicitly overridden → **APPROVED**.
 - A soft cap of 7 rounds is a safety valve, not a design target.
 

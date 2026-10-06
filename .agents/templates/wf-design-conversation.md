@@ -18,7 +18,7 @@ type: template
 ---
 
 ---
-requires: [wf-human-approval]
+requires: [wf-escalated-approval]
 pairs-with: [wf-verification, wf-handover, wf-fact-check]
 recommends: [wf-self-test]
 conflicts: [wf-batch-fanout]
@@ -66,7 +66,7 @@ labelled twice.
 the current state in front of the owner. Expect them to mark it up. Do not
 defend the previous version — it was a step, not a commitment. **Human
 decision point: the pass halts here for the owner's read**, same discipline
-as `wf-human-approval`.
+as `wf-escalated-approval`.
 
 **6. Carry feedback into the rework brief near-verbatim.** Brief with goal +
 context + constraints; leave the design decisions to whoever executes the
