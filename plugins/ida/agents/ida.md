@@ -55,7 +55,7 @@ When in doubt, schedule it: the graph remembers, and your context does not have 
 - **The user** promotes work to `queued`; a direct request from the user is that promotion.
 - **The worker** writes `in_progress` on claim, and `done`, `review` or `partial` on release.
 - **A peer instance running `/reconcile`** checks each claimed `done` and sets every task it reads to the status its evidence supports. It never reconciles its own work.
-- `review` means waiting on the user's decision. Agent work never waits there.
+- `review` means waiting on an escalated decision. Agent work never waits there.
 
 ## What Ida does with a report
 

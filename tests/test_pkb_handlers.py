@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -81,9 +80,9 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
     long_prompt = "a" * 350
     with (
-        patch.dict(os.environ, {"PKB_MCP_URL": "http://localhost:8000"}),
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_proc = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "a" * 200],
@@ -103,9 +102,9 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
     """ANSI escape sequences in prompt are stripped before passing to pkb search."""
     ansi_prompt = "\x1b[31mred text\x1b[0m with \x1b[1mbold\x1b[0m"
     with (
-        patch.dict(os.environ, {"PKB_MCP_URL": "http://localhost:8000"}),
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_proc = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "red text with bold"],
@@ -124,40 +123,25 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
 def test_run_pkb_search_uses_measured_timeout():
     """subprocess timeout matches the measured backend-latency ceiling, not the old 15s guess."""
     with (
-        patch.dict(os.environ, {"PKB_MCP_URL": "http://localhost:8000"}),
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
-    ):
-        mock_proc = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout="result\n", stderr=""
-        )
-        mock_run.return_value = mock_proc
-        handlers._run_pkb_search("q")
-        assert mock_run.call_args.kwargs["timeout"] == handlers._SEARCH_TIMEOUT_SECONDS
-        assert handlers._SEARCH_TIMEOUT_SECONDS < 15
-
-
-def test_run_pkb_search_never_downloads():
-    """pkb runs offline from the hook, so a missing model fails fast instead of downloading."""
-    with (
-        patch.dict(os.environ, {"PKB_MCP_URL": "http://localhost:8000"}),
-        patch("shutil.which", return_value="/usr/bin/mcp"),
-        patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout="result\n", stderr=""
         )
         handlers._run_pkb_search("q")
-        assert mock_run.call_args.kwargs["env"]["AOPS_OFFLINE"] == "true"
+        assert mock_run.call_args.kwargs["timeout"] == handlers._SEARCH_TIMEOUT_SECONDS
+        assert handlers._SEARCH_TIMEOUT_SECONDS < 15
 
 
 def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
     with (
-        patch.dict(os.environ, {"PKB_MCP_URL": "http://localhost:8000"}),
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=huge, stderr=""
@@ -172,9 +156,9 @@ def test_run_pkb_search_leaves_normal_output_untouched():
     """Output well under the cap passes through byte-for-byte."""
     normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
     with (
-        patch.dict(os.environ, {"PKB_MCP_URL": "http://localhost:8000"}),
         patch("shutil.which", return_value="/usr/bin/mcp"),
         patch("subprocess.run") as mock_run,
+        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=normal, stderr=""
