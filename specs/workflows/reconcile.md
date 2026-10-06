@@ -48,16 +48,20 @@ one is covered.
 
 ## Invocation contexts
 
-The context changes the input subset, not the procedure.
+The context picks the mode and the input subset; the rules are the same. The skill has two
+modes: `check`, a short pass over named tasks that a supervisor runs in its own session, and
+`sweep`, the graph-wide pass that runs only as a scheduled run.
 
-| Context    | Owner                                                                        | Input subset                                                                                     |
-| ---------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Engagement | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: tasks marked `done` within it, and pull requests closed during it            |
-| Batch      | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                                        |
-| On-demand  | The `reconcile` skill, invoked directly                                      | Full sweep across tasks marked `done` in the sweep window, pull requests, and non-terminal tasks |
+| Context     | Mode    | Owner                                                                        | Input subset                                                                                |
+| ----------- | ------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Supervision | `check` | A supervisor (Sara) on dispatched work that has come back                    | The task IDs it names and the pull requests those tasks record                              |
+| Engagement  | `check` | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: tasks released within it and the pull requests they record              |
+| Batch       | `sweep` | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                                   |
+| Scheduled   | `sweep` | A worker running `/pull` on a dispatched task that directs the sweep         | Every non-terminal task in the sweep window, and every pull request that names a task in it |
 
-Each subset covers tasks marked `done` and pull requests. Once the forward-issue leg lands, each extends to the open
-issues in the same window.
+`check` reads only the tasks it is handed; matching unnamed pull requests, demotion and
+world-fact cancellation are the sweep's, and `check` hands what it notices of them to the next
+sweep. Once the forward-issue leg lands, the sweep extends to the open issues in its window.
 
 The face does not touch the knowledge base, so its engagement sweep is a delegation: it
 commissions an agent that runs the reconcile workflow and returns one synthesized result.
