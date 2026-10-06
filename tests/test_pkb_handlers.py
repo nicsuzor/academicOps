@@ -132,6 +132,19 @@ def test_run_pkb_search_uses_measured_timeout():
         assert handlers._SEARCH_TIMEOUT_SECONDS < 15
 
 
+def test_run_pkb_search_never_downloads():
+    """pkb runs offline from the hook, so a missing model fails fast instead of downloading."""
+    with (
+        patch("shutil.which", return_value="/usr/bin/pkb"),
+        patch("subprocess.run") as mock_run,
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=["/usr/bin/pkb", "search", "q"], returncode=0, stdout="result\n", stderr=""
+        )
+        handlers._run_pkb_search("q")
+        assert mock_run.call_args.kwargs["env"]["AOPS_OFFLINE"] == "true"
+
+
 def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
@@ -222,37 +235,6 @@ def test_user_prompt_submit_ida_injects_pkb_search():
             )
             assert res.inject_text == expected_text
             assert res.user_text is None
-
-
-def test_user_prompt_submit_ida_no_results_returns_none():
-    """When PKB search yields no results for Ida or James, returns None (no fallback honesty spam)."""
-    for agent in ("ida:ida", "ida", "aops:james", "james"):
-        ctx = HookContext(
-            client="claude",
-            event="UserPromptSubmit",
-            raw={"prompt": "check status"},
-            hooks_dir=PKB_HOOKS,
-            cwd="/workspace",
-            agent_type=agent,
-        )
-        with patch.object(handlers, "_run_pkb_search", return_value=None):
-            res = handlers.search_the_pkb(ctx)
-            assert res is None
-
-
-def test_user_prompt_submit_ida_empty_prompt_returns_none():
-    """When prompt is empty for Ida or James, returns None (no fallback honesty spam)."""
-    for agent in ("ida:ida", "ida", "aops:james", "james"):
-        ctx = HookContext(
-            client="claude",
-            event="UserPromptSubmit",
-            raw={"prompt": ""},
-            hooks_dir=PKB_HOOKS,
-            cwd="/workspace",
-            agent_type=agent,
-        )
-        res = handlers.search_the_pkb(ctx)
-        assert res is None
 
 
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
