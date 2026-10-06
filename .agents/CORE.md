@@ -43,7 +43,7 @@ On top of them:
   next question, propose the following three steps, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
 
-Project-local rules: [`rules/RULES.md`](rules/RULES.md).
+Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
 
 ## Build and test
 
