@@ -21,7 +21,7 @@ tags:
 ## What this step does
 
 The review-until-approval loop run **at** a sign-off gate, over one completed unit of work,
-before it may be marked done. It is the interior of the heaviest review obligation `brief` can
+before it may be marked done. It is the interior of the heaviest review obligation `/reify` can
 record on a task.
 
 **Do not select it** as a step composed into a worker's process, and never where the producer

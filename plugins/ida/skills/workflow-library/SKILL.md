@@ -60,7 +60,7 @@ Update existing templates in place.
 
 ### preview
 
-Simulate how `dispatch` would assemble workflow templates for a stated objective:
+Simulate how `/reify` would assemble workflow templates for a stated objective:
 
 1. Enumerate and read relevant candidate templates across tiers.
 2. Read the templates and combine their steps into a single, logical sequence (e.g., TDD red tests first, then implementation, then QA integration tests at the end).
@@ -75,7 +75,7 @@ Simulate how `dispatch` would assemble workflow templates for a stated objective
 3. Name the superseding workflow in the release message or commit.
 
 A template carries only what a composing agent needs to select it and to know
-the step is finished -- the same sufficient-and-no-more standard `/dispatch`
+the step is finished -- the same sufficient-and-no-more standard `/reify`
 composes to. Nothing else is mandatory:
 inventing exclusions, contraindications, or gates the work doesn't call for
 overshoots it. No fixed kind is required either -- components sit on one flat
