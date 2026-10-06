@@ -60,6 +60,9 @@ def test_hearsay_fires_for_ida_on_user_prompt_submit():
         agent_type="ida:ida",
         session_id="s-ida-1",
         hooks_dir=IDA_HOOKS,
+        # Hearsay is for messages from agents; Nic's own prompts skip it
+        # (tests/test_origin_routing.py).
+        raw={"prompt": "<task-notification>\n<status>completed</status>\n</task-notification>"},
     )
     res = handlers.rule_against_hearsay(ctx)
     assert res is not None
