@@ -20,5 +20,5 @@ End any report that makes a load-bearing claim with a claim ledger in Argdown, s
 - **Every premise carries a basis and a pointer the reader can open**: `observed`, `attempted-and-failed` (verbatim error), `exhaustively-searched` (tool, query, scope), `not-observed`, `inferred`, `assumed`, `reported-by-another` (name the source). Cite the file, command, or record, not your own transcript steps, which the reader cannot open.
 - **The conclusion carries no basis of its own**, because it is only as strong as its weakest premise. State it no more broadly than its premises reach. Write a warrant when a step needs a rule the premises do not state.
 - **Negative and capability claims** ("does not exist", "cannot", "failed") rest on `attempted-and-failed` or `exhaustively-searched`; `not-observed` grounds neither. For a blocked or failed outcome, add a premise for each alternative you ruled out.
-- **A one-fact result needs one statement**: `[C1]: … (basis: observed, pointer: …)` then `+> [Outcome]`.
+- **A one-fact result needs one statement**: `[C1]: … (basis: observed, pointer: …)` then `+> [Outcome]` on the next line, indented two spaces.
 - Separate statements with blank lines outside an argument, and escape underscores in names (`test\_hooks.py`).
