@@ -65,13 +65,15 @@ independently confirming the thing claimed is actually true.
 
 ## The Canonical Structured-Handback Format
 
-This section is the single source of truth for the handback shape and claim ledger.
-Every other surface that uses it links here rather than restating the rules.
+This section is the design source for the handback shape and claim ledger. The
+operative ledger format agents follow is the
+[`claim-ledger` skill](../../plugins/ida/skills/claim-ledger/SKILL.md). Agents
+load it when they write a report; the per-message honesty reminder names it.
 
 A task handback couples the boundary verdict and epistemic safeguards with a
 plain-prose answer and a native Argdown claim ledger in the receipts section:
 
-````markdown
+```markdown
 VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
 GATE: <the acceptance criterion tested, and observed result against it>
 CONFIDENCE: <high | med | low> + <what single check would falsify this>
@@ -81,21 +83,8 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT R
 
 RECEIPTS:
 
-```argdown
-[Outcome]: <The result in one plain sentence, with its scope.>
-
-<Gate>: <What this argument establishes.>
-
-(1) [Short title]: <One atomic claim, scope named.> #observed `<pointer>`
-(2) [Short title]: <One atomic claim.> #exhaustively-searched `<tool and query>` → <count> in <scope>
-(3) [Rule]: <The rule that turns (1) and (2) into the outcome.> #warrant
--- from (1) and (2) by (3) --
-(4) [Outcome]
-
-[Open limit]: <Something that still weakens the outcome.> #<basis> `<pointer>`
-  -> [Outcome]
+<the claim ledger, per the claim-ledger skill>
 ```
-````
 
 - `PARTIAL` = a legal partial completion -- the existing terminal status `partial`.
   The shipped chunk carries checkable evidence, every remaining acceptance criterion
@@ -114,51 +103,30 @@ derivation line naming the premises and warrant. Claude Code receipts made the
 evidence easy to check: span ids, verbatim errors, and searches bounded by query
 and scope. Each was weak where the other was strong. Antigravity cited its own
 transcript steps and drew conclusions wider than its premises. Claude Code gave
-no outcome line and no derivation.
+no outcome line and no derivation. The skill's rules take each side's strength.
 
-- **Readable at a glance.** The outcome states the result in one plain sentence
-  with its scope. Each statement has a short title. The derivation line
-  (`-- from (1) and (2) by (3) --`) names what the conclusion uses. Only the spine
-  goes in the ledger; context stays in the prose above it.
-- **One claim per statement**, true on its own, with its scope stated.
-- **Pointers.** A pointer is the identifier of the evidence, as specific as the
-  author can make it:
-  1. A pinpoint is best: `owner/repo@sha:path:line`, a Phoenix span id, a PR
-     comment URL, or a PKB node id plus its section.
-  2. Next best is the bare identifier: commit `owner/repo@sha`, a PR URL, a task id.
-  3. Give a command only when its output is the evidence (a probe, a test run, a
-     search), and quote the output: `cmd` → "verbatim result". A command that
-     merely fetches something with an identifier (`git show …`) is not a pointer;
-     give the identifier instead.
-  4. The author's own transcript steps, "tree inspection", and "pytest output"
-     without the output are not pointers, because the reader cannot open them.
-- **Basis tags are Argdown tags** (`#observed`), placed after the claim and before
-  its pointer. A rule carries `#warrant`. The conclusion carries no tag: it is only
-  as strong as its weakest premise (status survival, below), and it is worded no
-  wider than its premises reach.
-- **Alternatives and caveats.** Write each ruled-out alternative as a premise. Write
-  each caveat still open as an attack: a separate statement with `-> [Outcome]`
-  indented beneath it.
-- **Short form.** A result resting on one observed fact needs no argument:
+Design choices behind the skill:
 
-```argdown
-[Outcome]: <The result, with its scope.>
-
-[Short title]: <The fact.> #observed `<pointer>`
-  +> [Outcome]
-```
-
-- **Parsing is approximate.** Write pointers verbatim in backticks. `@argdown/cli`
-  rejects any unescaped underscore, even inside backticks, and escaping would break
-  copy-paste of the pointer, so a parse failure caused only by an underscore in a
-  pointer is acceptable. Structure (titles, tags, relations, `----` or
-  `-- … --` derivations) should parse.
-- **Fences.** To show an Argdown ledger inside another fenced block, make the outer
-  fence longer and labelled (`` ````markdown `` around `` ```argdown ``). An inner fence
-  of equal length closes the outer one early, and the formatter then swallows the
-  following prose into a code block. `tests/test_markdown_fences.py` fails on such
-  a collision. Indented Argdown never goes in inline code: the formatter trims
-  leading spaces inside backticks.
+- **Delivery.** The full format lives in a skill, loaded when a report is written.
+  The honesty reminder injected on every incoming message stays a few lines long and
+  names the skill, because repeating the full format on every turn costs context
+  without adding information.
+- **Pointers are identifiers.** The user's ruling: citation by identifier is
+  preferred, and a pinpoint is best. A command that merely fetches something with
+  an identifier is not a pointer. A command counts only when its output is the
+  evidence, and then the output is quoted.
+- **Parsing is approximate.** `@argdown/cli` rejects any unescaped underscore, even
+  inside backticks. Escaping would break copy-paste of the pointer, so pointers stay
+  verbatim, and a parse failure caused only by an underscore in a pointer is
+  acceptable. Titles, tags, relations, and the named derivation line should parse.
+- **No horizontal rules.** The derivation is the named line `-- from … by … --`.
+  A bare `----` reads as a horizontal rule and says less, so it is not used.
+  Reports use no `---` separators either.
+- **Fences.** An inner fence as long as its outer fence closes the outer one early,
+  and the formatter then swallows the following prose into a code block.
+  `tests/test_markdown_fences.py` fails on such a collision. The formatter also
+  trims leading spaces inside inline code, so indented Argdown goes only in fenced
+  blocks.
 
 ### Worked example
 

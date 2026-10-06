@@ -54,16 +54,6 @@ Compile the overall session outcome:
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Receipts** (Claim Ledger): Itemized load-bearing claims structured as a native Argdown claim ledger per [evidence-contract.md](../../../../specs/enforcement/evidence-contract.md).
-   ```argdown
-   [Outcome]: <The result in one plain sentence, with its scope.>
-
-   <Gate>: <What this argument establishes.>
-
-   (1) [Criterion 1]: <What was verified.> #observed `<owner/repo@sha:path:line>`
-   (2) [Criterion 2]: <What was verified.> #observed `uv run pytest tests/test_x.py` → "12 passed"
-   -- from (1) and (2) --
-   (3) [Outcome]
-   ```
+5. **Receipts** (Claim Ledger): The load-bearing claims as a claim ledger, written per the `claim-ledger` skill.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ````
