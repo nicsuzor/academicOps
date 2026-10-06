@@ -21,7 +21,7 @@ A bare `/ida:reconcile` runs `check`; `sweep` runs only when named.
 The short pass. A supervisor runs it on work that has come back, so it stays small enough to run without leaving the supervisor's session.
 
 1. **Input**: The task IDs the caller names -- typically the tasks it dispatched that are now `done`, `review` or `partial`. With none named, take the tasks released to those statuses since the caller's previous check (`pkb.list_tasks(status=..., since=...)`), at most 20.
-2. **Read each task** and the pull request it records (`pr_url`, or its recorded branch). Address the PR by URL (`gh pr view <url> --json state,mergedAt`); do not search for PRs the task does not name.
+2. **Read each task** and the pull request it records (`pr_url`, or its recorded branch). Address the PR by URL (`gh pr view <url> --json state,mergedAt`); do not search for PRs the task does not name. A PR the task records that closed without merge is the check's to surface for routing, as the sweep's pull-request step does.
 3. **For a task marked `done`**, run the per-task checks below. For any other status, apply the row of the status table that its own record decides.
 4. **Set the status** each task's evidence supports, under Settle Decisions Before Escalation, Failed-Check Outcome and the two-step mutation contract.
 5. **Leave the rest to the sweep.** Check reads no task it was not handed: it does not list the graph, match PRs that name no task, mint or re-queue next tasks, demote dependents or siblings, or cancel on world-facts. Anything of that kind it notices it appends to the handed task's body under `## For the next sweep` -- one line each, naming the task ID affected and the evidence -- and lists in its result.
