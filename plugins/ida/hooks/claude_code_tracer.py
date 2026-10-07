@@ -1515,6 +1515,41 @@ def _make_fixed_id_generator(forced_span_id_hex: str):
 
 
 # ---------------------------------------------------------------------------
+# Parent-cycle guard
+# ---------------------------------------------------------------------------
+
+
+def _closes_parent_cycle(
+    span_id_hex: str,
+    parent_hex: str,
+    known_parents: dict[str, str | None],
+) -> bool:
+    """True if parenting *span_id_hex* under *parent_hex* would form a loop.
+
+    Phoenix walks a new span's ancestors with a recursive query that has no
+    loop guard, so one loop in the stored parent links stalls its writer.
+    The walk follows *known_parents* (span id -> parent id) from *parent_hex*;
+    it is bounded by the map's size, so a loop already in the map cannot
+    trap it.
+    """
+    cur: str | None = parent_hex
+    seen: set[str] = set()
+    while cur is not None and cur not in seen:
+        if cur == span_id_hex:
+            return True
+        seen.add(cur)
+        cur = known_parents.get(cur)
+    return False
+
+
+def _known_span_parents(current_trace: dict) -> dict[str, str | None]:
+    """Parent links of the forced-id spans this turn has emitted, plus the turn root."""
+    known: dict[str, str | None] = dict(current_trace.get("span_parents", {}))
+    known.setdefault(current_trace["root_span_id"], current_trace.get("parent_span_id"))
+    return known
+
+
+# ---------------------------------------------------------------------------
 # OTLP export helper
 # ---------------------------------------------------------------------------
 
@@ -1528,6 +1563,7 @@ def _build_and_export_spans(
     parent_session_id: str | None = None,
     agent_name: str | None = None,
     cwd: str | None = None,
+    known_parents: dict[str, str | None] | None = None,
 ) -> bool:
     """Create spans from records and export via OTLP gRPC (with fallbacks).
 
@@ -1536,6 +1572,11 @@ def _build_and_export_spans(
     result and swallows its exceptions, so the outcome is captured here, in
     the wrapping exporter. SUCCESS means the OTLP endpoint acknowledged the
     request; it does not prove the span was stored downstream of it.
+
+    ``known_parents`` maps span ids already emitted to their parent ids. A
+    record whose parent is itself, or whose parent chain through
+    ``known_parents`` and the records earlier in this batch leads back to it,
+    is exported without a parent (see ``_closes_parent_cycle``).
     """
     from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 
@@ -1639,8 +1680,23 @@ def _build_and_export_spans(
         resource_attrs["project.dir"] = cwd
 
     resource = Resource.create(resource_attrs)
+    parents: dict[str, str | None] = dict(known_parents or {})
 
     for rec in span_records:
+        parent_hex: str | None = rec.get("parent_span_id_hex")
+        # Only a forced span id is known before export; any other span gets a
+        # fresh random id, which nothing can already name as its parent.
+        if rec.get("force_span_id"):
+            span_id_hex = rec["span_id_hex"]
+            if parent_hex and _closes_parent_cycle(span_id_hex, parent_hex, parents):
+                log.warning(
+                    "Dropping parent %s of span %s (%s): the link would close a parent cycle",
+                    parent_hex,
+                    span_id_hex,
+                    rec.get("name"),
+                )
+                parent_hex = None
+            parents[span_id_hex] = parent_hex
         try:
             headers = {}
             if config.get("api_key"):
@@ -1688,10 +1744,10 @@ def _build_and_export_spans(
             tracer = provider.get_tracer("claude-code-tracer")
 
             ctx = None
-            if rec.get("parent_span_id_hex"):
+            if parent_hex:
                 parent_sc = SpanContext(
                     trace_id=int(rec["trace_id_hex"], 16),
-                    span_id=int(rec["parent_span_id_hex"], 16),
+                    span_id=int(parent_hex, 16),
                     is_remote=True,
                     trace_flags=TraceFlags(TraceFlags.SAMPLED),
                 )
@@ -1904,6 +1960,7 @@ def _complete_turn(
         parent_session_id=parent_session_id,
         agent_name=agent_name,
         cwd=cwd,
+        known_parents=current_trace.get("span_parents", {}),
     )
 
 
@@ -2028,6 +2085,12 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
+    with _session_lock(session_id):
+        _start_turn(data, config, session_id)
+
+
+def _start_turn(data: dict, config: dict, session_id: str) -> None:
+    """Complete the previous turn and open a new one. Caller holds the session lock."""
     prompt = data.get("prompt", "")
     now_ns = time.time_ns()
 
@@ -2137,6 +2200,14 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             "and $AOPS_SESSION_ID unset — skipping span emission",
         )
         return
+    # Parallel tool calls fire concurrent PreToolUse hooks; without the lock
+    # each would save its own copy of pending_tools and drop the others'.
+    with _session_lock(session_id):
+        _start_tool_call(data, config, session_id)
+
+
+def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
+    """Record a pending tool call. Caller holds the session lock."""
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
     now_ns = time.time_ns()
@@ -2309,6 +2380,7 @@ def _find_pending_tool_entry(
 def _find_active_agent_span_id(
     state: dict,
     current_pending_key: str,
+    tool_name: str,
 ) -> str | None:
     """Return the pre_allocated_span_id of the innermost pending Agent/Task call.
 
@@ -2317,7 +2389,13 @@ def _find_active_agent_span_id(
     This detects that situation and returns the Agent's span_id so the sub-tool
     is correctly parented under the Agent span rather than the CHAIN root.
     For nested agents, the most-recently-started one wins (innermost parent).
+
+    An Agent/Task call is never parented under another pending Agent/Task
+    call: parallel Agent calls in one session are siblings, and two of them
+    finishing together would otherwise name each other as parent.
     """
+    if tool_name in ("Agent", "Task"):
+        return None
     pending = state.get("pending_tools", {})
     best_start_ns = -1
     best_span_id: str | None = None
@@ -2341,79 +2419,122 @@ def handle_post_tool(data: dict, config: dict) -> None:
         )
         return
     end_ns = time.time_ns()
+    _finish_tool_call(data, config, session_id, end_ns, is_failure=False)
 
-    # Read state once to build the tool span (no mutation needed).
-    state = _load_state(session_id)
-    if not state:
-        log.warning("No state found for session %s in post_tool", session_id)
-        return
 
-    current_trace = state.get("current_trace")
-    if not current_trace:
-        log.debug("No current trace for session %s in post_tool", session_id)
-        return
+def _tool_error_message(data: dict, tool_response: Any) -> str:
+    """Extract the error message a PostToolUseFailure payload carries."""
+    error_msg = ""
+    if isinstance(tool_response, dict):
+        error_msg = tool_response.get("error", tool_response.get("message", ""))
+    elif isinstance(tool_response, str):
+        error_msg = tool_response
+    if not error_msg:
+        error_msg = data.get("error", data.get("error_message", "Tool call failed"))
+    return error_msg
 
-    tool_name = data.get("tool_name", "unknown")
-    data_tool_input = data.get("tool_input")
-    current_tool, pending_key = _find_pending_tool_entry(
-        state,
-        tool_name,
-        data_tool_input,
-    )
-    tool_input = data_tool_input or current_tool.get("tool_input", {})
-    tool_response = data.get("tool_response", {})
-    start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
-    # For Agent tool calls the span ID was pre-allocated at PreToolUse time so
-    # the subagent could reference it as its parent span.
-    pre_allocated_span_id = current_tool.get("pre_allocated_span_id")
 
-    # If an Agent/Task tool is still pending, this tool ran inside that agent
-    # (inline subagent pattern). Parent it to the agent span, not the CHAIN root.
-    active_agent_span_id = _find_active_agent_span_id(state, pending_key)
-    tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
-    span_record = _build_tool_span_record(
-        tool_name=tool_name,
-        tool_input=tool_input,
-        tool_response=tool_response,
-        start_ns=start_ns,
-        end_ns=end_ns,
-        trace_id=current_trace["trace_id"],
-        root_span_id=active_agent_span_id or current_trace["root_span_id"],
-        span_id=pre_allocated_span_id,
-        tool_call_id=tool_call_id,
-    )
+def _finish_tool_call(
+    data: dict,
+    config: dict,
+    session_id: str,
+    end_ns: int,
+    *,
+    is_failure: bool,
+) -> None:
+    """Close a pending tool call: resolve, parent and emit its span.
 
-    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state, data)
-
-    # Export the tool span before acquiring the lock — this is the slow network
-    # I/O and does not mutate state, so it is safe to run outside the lock.
-    _build_and_export_spans(
-        config=config,
-        session_id=phoenix_session_id,
-        username=state.get("username", "unknown"),
-        span_records=[span_record],
-        agent_id=agent_id,
-        parent_session_id=parent_session_id,
-        agent_name=state.get("agent_name"),
-        cwd=state.get("cwd"),
-    )
-
-    # Acquire an exclusive per-session lock before emitting LLM spans.
-    # Parallel PostToolUse processes race on emitted_llm_span_count; the lock
-    # ensures each process re-reads the latest count and never double-emits.
-    # Resolve the transcript path *inside* the lock so we always use the path
-    # that was cached in state at UserPromptSubmit time — not the (potentially
-    # stale or redirected) path carried in the current hook payload.
+    Claude Code runs parallel tool calls' hooks as concurrent processes, so
+    the pending entry is resolved, its parent chosen and the entry removed in
+    one read-modify-write under the session lock. A hook that read the state
+    before a sibling removed its entry would otherwise still see that sibling
+    as pending. The tool span itself is exported after the lock is released;
+    the export is network I/O and needs nothing further from the state file.
+    """
+    event = "post_tool_failure" if is_failure else "post_tool"
     with _session_lock(session_id):
         state = _load_state(session_id)
-        # Use the compound key resolved above; fall back to tool_name for
-        # any other entry that might have been written with the old plain key.
+        if not state:
+            log.warning("No state found for session %s in %s", session_id, event)
+            return
+
+        current_trace = state.get("current_trace")
+        if not current_trace:
+            log.debug("No current trace for session %s in %s", session_id, event)
+            return
+
+        tool_name = data.get("tool_name", "unknown")
+        data_tool_input = data.get("tool_input")
+        current_tool, pending_key = _find_pending_tool_entry(
+            state,
+            tool_name,
+            data_tool_input,
+        )
+        tool_input = data_tool_input or current_tool.get("tool_input", {})
+        tool_response = data.get("tool_response", {})
+        start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
+        # For Agent tool calls the span ID was pre-allocated at PreToolUse time so
+        # the subagent could reference it as its parent span. A failed call's
+        # span keeps a fresh id.
+        pre_allocated_span_id = None if is_failure else current_tool.get("pre_allocated_span_id")
+
+        # If an Agent/Task tool is still pending, this tool ran inside that agent
+        # (inline subagent pattern). Parent it to the agent span, not the CHAIN root.
+        active_agent_span_id = _find_active_agent_span_id(state, pending_key, tool_name)
+        tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
+        span_record = _build_tool_span_record(
+            tool_name=tool_name,
+            tool_input=tool_input,
+            tool_response=tool_response,
+            start_ns=start_ns,
+            end_ns=end_ns,
+            trace_id=current_trace["trace_id"],
+            root_span_id=active_agent_span_id or current_trace["root_span_id"],
+            is_failure=is_failure,
+            error_msg=_tool_error_message(data, tool_response) if is_failure else "",
+            span_id=pre_allocated_span_id,
+            tool_call_id=tool_call_id,
+        )
+
+        known_parents = _known_span_parents(current_trace)
+        if span_record["force_span_id"]:
+            # Record the link before export so a later span this turn (e.g. the
+            # turn root) can be checked against it.
+            current_trace.setdefault("span_parents", {})[span_record["span_id_hex"]] = span_record[
+                "parent_span_id_hex"
+            ]
+
+        phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(
+            state,
+            data,
+        )
+        username = state.get("username", "unknown")
+        agent_name = state.get("agent_name")
+        cwd = state.get("cwd")
+
+        # Fall back to tool_name for any entry written with the old plain key.
         pt = state.get("pending_tools", {})
         pt.pop(pending_key, None)
         pt.pop(tool_name, None)
+        # Resolve the transcript path from the state cached at UserPromptSubmit
+        # time, not the (potentially stale or redirected) path in this payload.
         transcript_path = _get_cached_transcript_path(data, state, session_id)
+        # Under the lock so parallel hooks read the latest
+        # emitted_llm_span_count and never double-emit.
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
+
+    _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=username,
+        span_records=[span_record],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=agent_name,
+        cwd=cwd,
+        known_parents=known_parents,
+    )
 
 
 def handle_post_tool_failure(data: dict, config: dict) -> None:
@@ -2426,73 +2547,7 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         )
         return
     end_ns = time.time_ns()
-
-    state = _load_state(session_id)
-    if not state:
-        log.warning("No state found for session %s in post_tool_failure", session_id)
-        return
-
-    current_trace = state.get("current_trace")
-    if not current_trace:
-        log.debug("No current trace for session %s in post_tool_failure", session_id)
-        return
-
-    tool_name = data.get("tool_name", "unknown")
-    data_tool_input = data.get("tool_input")
-    current_tool, pending_key = _find_pending_tool_entry(
-        state,
-        tool_name,
-        data_tool_input,
-    )
-    tool_input = data_tool_input or current_tool.get("tool_input", {})
-    tool_response = data.get("tool_response", {})
-    start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
-
-    # Extract error message from various possible fields
-    error_msg = ""
-    if isinstance(tool_response, dict):
-        error_msg = tool_response.get("error", tool_response.get("message", ""))
-    elif isinstance(tool_response, str):
-        error_msg = tool_response
-    if not error_msg:
-        error_msg = data.get("error", data.get("error_message", "Tool call failed"))
-
-    active_agent_span_id = _find_active_agent_span_id(state, pending_key)
-    tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
-    span_record = _build_tool_span_record(
-        tool_name=tool_name,
-        tool_input=tool_input,
-        tool_response=tool_response,
-        start_ns=start_ns,
-        end_ns=end_ns,
-        trace_id=current_trace["trace_id"],
-        root_span_id=active_agent_span_id or current_trace["root_span_id"],
-        is_failure=True,
-        error_msg=error_msg,
-        tool_call_id=tool_call_id,
-    )
-
-    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state, data)
-
-    _build_and_export_spans(
-        config=config,
-        session_id=phoenix_session_id,
-        username=state.get("username", "unknown"),
-        span_records=[span_record],
-        agent_id=agent_id,
-        parent_session_id=parent_session_id,
-        agent_name=state.get("agent_name"),
-        cwd=state.get("cwd"),
-    )
-
-    with _session_lock(session_id):
-        state = _load_state(session_id)
-        pt = state.get("pending_tools", {})
-        pt.pop(pending_key, None)
-        pt.pop(tool_name, None)
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
-        _emit_pending_llm_spans(state, transcript_path, config)
-        _save_state(session_id, state)
+    _finish_tool_call(data, config, session_id, end_ns, is_failure=True)
 
 
 def handle_stop(data: dict, config: dict) -> None:
