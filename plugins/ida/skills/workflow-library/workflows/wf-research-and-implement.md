@@ -24,7 +24,7 @@ Sequences an ask that needs investigation and an agreed design before anything i
 2. **Spec** -- a complete specification built on those findings: design, interfaces, and falsifiable acceptance criteria mapped to tests.
 3. **Review** -- an independent verdict on the research and on the spec, from an evaluator who did not author them, covering both the factual claims and the fitness of the design. Resolve defects before advancing.
 4. **Approval** -- the full spec, not a summary, handed to the human who commissioned the work for an explicit decision. The task ends here in `review`.
-5. **Implementation** -- in a separate task that `depends_on` the approval task, so it cannot start until the spec is approved. Test-first implementation of the approved spec, an independent check against its acceptance criteria, and a sign-off summary for the human.
+5. **Implementation** -- in a separate task that `depends_on` the approval task, so it cannot start until the spec is approved. Implementation of the approved spec, test-first for code that executes, an independent check against its acceptance criteria, and a sign-off summary for the human.
 
 ## Composition
 

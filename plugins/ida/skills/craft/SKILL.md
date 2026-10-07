@@ -12,7 +12,7 @@ Author and review agent-facing instructions for operational clarity and token ef
 
 1. **Trust the harness, not today's quirks**: Write for durable capabilities. Avoid hard-coding workarounds for transient model behaviors.
 2. **Specify process, not keystrokes**: State when to invoke a capability and what outcome proves it worked. Omit basic sub-steps or flags the agent already knows.
-3. **One skill, one job**: Keep instructions focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals.
+3. **One skill, one job**: Keep instructions focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals. Leave another agent's domain to that agent: name the hand-off, never how it does its work (e.g. how to write to the PKB is Pauli's).
 4. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
 5. **Every line earns its place**: Relocate historical narratives, incident stories, and philosophical justifications to change records.
 
@@ -50,6 +50,8 @@ Limit agent definition bodies to:
 2. **Behavioral rules**: Terse operational constraints.
 3. **Output schema**: Expected report structure and verdict states.
 4. **Routing table**: Clean table without per-route narrative.
+
+Name a skill the agent uses; leave its modes, arguments, and when each applies to the skill. A change to a skill owes the agent definitions that use it no edit.
 
 ## Schemas and Construction
 

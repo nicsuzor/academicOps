@@ -21,7 +21,7 @@ Process for adding new framework capability — a hook, skill, script, or comman
 ## Procedure
 
 1. **Verify necessity** — search existing components for similar functionality, document why they're insufficient, confirm alignment with framework philosophy.
-2. **Design the integration test FIRST** — define success criteria, write a test that validates the component end-to-end. The test must fail before the component exists (proof it's testing something real).
+2. **Design the integration test FIRST** — define success criteria, write a test that validates the component end-to-end. The test must fail before the component exists (proof it's testing something real). A skill is instruction text: its test is a recorded run of an agent following it, never a test that reads the file.
 3. **Document in an experiment log** — hypothesis, design, expected outcomes.
 4. **Implement the component** — single source of truth, reference existing documentation rather than duplicating it, minimal bounded scope. For hooks specifically, see Hook Safety below.
 5. **Run the integration test** — must pass completely. No partial success within the claimed component's own surface: a narrower scope honestly disclosed as partial is legitimate, a claimed component with a red test inside its own surface is not.

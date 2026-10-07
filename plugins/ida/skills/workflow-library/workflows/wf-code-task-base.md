@@ -14,8 +14,8 @@ tags: [base, task, code, composite]
 
 ## Stages
 
-1. **Build test-first** -- a red-green-refactor implementation of the acceptance criteria: each behaviour's failing test captured before its code, full suite green at the end.
-2. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the tests and commits that meet it. Record the PR URL on the task and release it as `done`.
+1. **Build** -- implement the acceptance criteria, full suite green at the end. Code that executes is built test-first per [[wf-tdd]]. Instruction text -- agent definitions, skills, workflow templates, specs -- has no behaviour a test can check: prove it by a run that follows it, and add no test that reads it. Write agent definitions and skills per `/craft`.
+2. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the evidence that meets it: tests, commits, or a run. Record the PR URL on the task and release it as `done`.
 3. **Review and verdict** -- in a separate task, by a fresh worker that did not write the code. Run `/strategic-review` on the PR, push fixes for defects small enough to settle in place, and post the review to the PR on GitHub. Then reach exactly one verdict:
    - **Rejected** -- the approach is wrong or the PR cannot be salvaged: close the PR with the review as the closing comment, and set the implementation task to `cancelled` with the reason.
    - **Extensive revisions** -- the PR is sound in direction but needs more than in-place fixes: file a fix follow-up task that names each required change and `depends_on` the review task, leave the PR open, and link the follow-up from the review.
@@ -27,7 +27,7 @@ Cut the chain after stage 2: stages 1--2 form one task; stage 3 is a second task
 
 ## Output contract
 
-- Stage 1--2 task: tests with their red failure traces, a green full-suite run, and the open PR with its URL on the task record.
+- Stage 1--2 task: for code, tests with their red failure traces; for instruction text, the run that followed it; a green full-suite run, and the open PR with its URL on the task record.
 - Stage 3 task: the review posted on the PR, any in-place fix commits, and one verdict carried out -- PR closed and implementation task `cancelled`, a fix follow-up task filed, or a merge recommendation posted with the review task released as `merge_ready`.
 
 ## When to include

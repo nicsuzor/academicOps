@@ -20,7 +20,7 @@ Truth maintenance over the task graph. Reconcile evaluates claimed evidence, ver
 
 ## Set the Status on Each Task
 
-Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass, under the two-step mutation contract below. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
+Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
 
 | Task is in    | Evidence on the record                                                               | Set it to                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -104,20 +104,16 @@ When a task marked `done` fails the facial sufficiency or scope check:
    - _Superseded by merge_: Merged PR mooted or settled the task's question.
    - _Premise falsified_: Named assumption or precondition no longer holds.
 2. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations. Do not send failed `done` tasks to inbox. Do not demote a task that is the only next task for unfinished work (see Next-Task Assurance). Surface a stale one in the sweep's result instead.
-3. **Two-step mutation contract**: Write annotation and evidence to markdown body first, then mutate frontmatter via `pkb.update_task`, then read back to confirm status.
-4. **Daily note boundary**: Reconcile does not append to or own daily-note sections.
+3. **Daily note boundary**: Reconcile does not append to or own daily-note sections.
 
 ## Output Contract
 
 Emit one synthesized result:
 
-
-
-
 1. Rulings made without escalation (task ID, ruling, citation).
 2. Decisions escalated for review (task ID, the one-line question, the test that escalated it).
 3. Checks failed: Tasks escalated for ratification or reversal (with recorded reasons and PR draft links).
-4. Unfinished work recovered: next tasks minted or re-queued, and PRs marked ready (task IDs, PR links, evidence that the work had no next task). 
+4. Unfinished work recovered: next tasks minted or re-queued, and PRs marked ready (task IDs, PR links, evidence that the work had no next task).
 5. Status updates made (task IDs, PR links, verified completions).
 6. Cancellations (task ID, trigger fired, verbatim evidence written to body).
 7. Tasks demoted to `inbox` (dependents, stale items).
