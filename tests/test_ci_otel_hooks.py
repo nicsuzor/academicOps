@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import stat
 import subprocess
 import sys
@@ -94,7 +95,7 @@ def test_configured_registers_tracer_for_every_traced_event(tmp_path):
         (entry,) = hooks[event]
         (command,) = entry["hooks"]
         assert command["type"] == "command"
-        assert command["command"] == f"'{hook_sh}' {tracer_event}"
+        assert command["command"] == f"{shlex.quote(str(hook_sh))} {tracer_event}"
     assert hooks["PreToolUse"][0]["matcher"] == "*"
 
 
