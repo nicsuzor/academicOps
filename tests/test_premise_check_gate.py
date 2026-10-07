@@ -212,8 +212,14 @@ def test_cli_reads_reason_from_file(tmp_path, monkeypatch):
 
     rc = pcv.main(
         [
-            "--report", "claim-1", "--verdict", "FAIL",
-            "--reason-file", str(reason_file), "--session", session_id,
+            "--report",
+            "claim-1",
+            "--verdict",
+            "FAIL",
+            "--reason-file",
+            str(reason_file),
+            "--session",
+            session_id,
         ]
     )
 
@@ -229,8 +235,16 @@ def test_cli_accepts_inline_reason(monkeypatch):
     monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
 
     rc = pcv.main(
-        ["--report", "claim-1", "--verdict", "REVISE", "--reason", "No evidence for AC2.",
-         "--session", session_id]
+        [
+            "--report",
+            "claim-1",
+            "--verdict",
+            "REVISE",
+            "--reason",
+            "No evidence for AC2.",
+            "--session",
+            session_id,
+        ]
     )
 
     assert rc == 0
@@ -243,8 +257,18 @@ def test_cli_rejects_free_text_as_the_verdict(monkeypatch):
     monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
 
     with pytest.raises(SystemExit):
-        pcv.main(["--report", "claim-1", "--verdict", "it is fine", "--reason", "r",
-                  "--session", session_id])
+        pcv.main(
+            [
+                "--report",
+                "claim-1",
+                "--verdict",
+                "it is fine",
+                "--reason",
+                "r",
+                "--session",
+                session_id,
+            ]
+        )
     assert pcg.is_armed(session_id) is True
 
 
