@@ -21,8 +21,8 @@ Finalize session work and provide a structured handover before exit.
 For each claimed task (releasing child tasks first), call `pkb.release_task` (the `services` MCP server's code-mode interface: `listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode` calling `pkb.release_task(...)`) with the appropriate terminal status:
 
 - `done`: All acceptance criteria are fully met with verified evidence.
-- `partial`: A functional increment is delivered; remaining work is explicitly documented under Next.
-- `review`: Task is blocked by external dependencies, missing tools, or requires human judgment. Include required `reason`.
+- `partial`: Agent work remains -- a scope seam, an external dependency, or a missing tool. A follow-up task carries the remainder; record it under Next.
+- `review`: The next step is a decision only Nic can make. Name that decision in the required `reason`.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
 - Wire directed `blocks` edges to represent dependencies.
@@ -48,7 +48,12 @@ Compile the overall session outcome:
 
 1. **Task**: Restatement of original objective and scope.
 2. **Summary**: Concise synthesis of findings and modifications.
-3. **Output**: <branch + commit SHA> | <PR or artifact link>
-4. **Receipts**: Itemized load-bearing claims with basis tags and citations.
-5. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
+3. **Verdict & Safeguards**:
+   - VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
+   - GATE: <the acceptance criterion tested, and observed result against it>
+   - CONFIDENCE: <high | med | low> + <what single check would falsify this>
+   - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
+4. **Output**: <branch + commit SHA> | <PR or artifact link>
+5. **Receipts** (Claim Ledger): The load-bearing claims as a claim ledger, written per the `claim-ledger` skill.
+6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ```

@@ -1,6 +1,5 @@
 ---
-id: workflows-workflow
-title: Workflow — the three-stage pipeline
+title: Workflow — the four-stage pipeline
 type: spec
 category: workflow
 status: ready
@@ -9,42 +8,43 @@ tags: [spec, workflow, composition, pipeline]
 
 # Workflow
 
-Work moves through three stages. Each runs, then stops; no stage fires the next.
+Work moves through four stages. Each runs, then stops; no stage fires the next.
 
-| Stage      | Skill        | What it does                                                                                                                                              |
-| ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Capture | `/q`         | Situate an ask on the graph — under the right parent, wired to what it serves, valued at intake.                                                          |
-| 2. Expand  | `/decompose` | Expand the objective into an abstract graph of sub-objectives, decision branches, prerequisites, and alternate paths. Stops before implementation detail. |
-| 3. Reify   | `/dispatch`  | Assemble workflows from templates, write dispatchable task briefs, and dispatch them.                                                                     |
+| Stage       | Skill        | What it does                                                                                                                                              |
+| ----------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Capture  | `/q`         | Situate an ask on the graph — under the right parent, wired to what it serves, valued at intake.                                                          |
+| 2. Expand   | `/decompose` | Expand the objective into an abstract graph of sub-objectives, decision branches, prerequisites, and alternate paths. Stops before implementation detail. |
+| 3. Reify    | `/reify`     | Assemble workflows from templates and write dispatchable tasks to the graph.                                                                              |
+| 4. Dispatch | `/dispatch`  | Start polecat workers on queued, ready tasks. Writes no tasks.                                                                                            |
 
 The stages are operative instructions and live in `plugins/ida/skills/`. This spec does not restate them.
 
 ## Workflow components
 
-A workflow component is a short outline of the steps a class of work requires — not a script. It names what must happen and in what order, and leaves a **blank** at every point where the executing agent supplies something the component cannot fix in advance: which lens reviews it, how deep verification runs, who else gets pulled in, what the artifact itself looks like. A component that fills in every blank stops composing — it becomes the one process it happens to describe.
+A workflow component is a short outline of the steps a class of work requires -- not a script. It names what must happen and in what order, and leaves a **blank** at every point where the executing agent supplies something the component cannot fix in advance: which lens reviews it, how deep verification runs, who else gets pulled in, what the artifact itself looks like. A component that fills in every blank stops composing -- it becomes the one process it happens to describe.
 
 Two things keep a component composable:
 
 - **Steps are outcomes, not instructions.** State what must be true when a step completes ("criteria are locked before evidence is gathered"), not the keystrokes that get there. An abstract step accepts whatever the caller's context supplies to satisfy it; a prescriptive one only accepts its own.
-- **Blanks are named, not hidden.** Where a step depends on something outside the component's own authority — a review lens, a depth setting, a companion component — the step says so, so the composing agent knows exactly what to bring.
+- **Blanks are named, not hidden.** Where a step depends on something outside the component's own authority -- a review lens, a depth setting, a companion component -- the step says so, so the composing agent knows exactly what to bring.
 
-Carries `type: template`. An agent reads a component and composes it in context, by comprehension — never parsed, never solved.
+Carries `type: template`. An agent reads a component and composes it in context, by comprehension -- never parsed, never solved.
 
 Components come from three sources:
 
-| Source                  | Where                                                                      |
-| ----------------------- | -------------------------------------------------------------------------- |
-| Project-local           | `$CWD/.agents/templates/*.md` — an absent directory is empty, not an error |
-| Universal               | `plugins/ida/skills/workflow-library/workflows/*.md`                       |
-| Personal knowledge base | documents carrying `type: template`                                        |
+| Source                  | Where                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| Project                 | PKB documents carrying `type: template` and the task's `project`, id `<project>-<slug>` |
+| Universal               | `plugins/ida/skills/workflow-library/workflows/*.md`                                    |
+| Personal knowledge base | PKB documents carrying `type: template` and no `project`                                |
 
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
 
 ## Authoring a component
 
-1. **Outline, not script.** Enumerate the steps the class of work requires, each stated as an outcome the caller can recognise as met — never the specific tool calls or prose that satisfy it this time. Several components must fit in one context window together; target ≲100 lines. Substance that outgrows that belongs in a skill the component points at — a component orchestrates, a skill executes.
-2. **Name the blanks.** Every point where a step depends on something the caller supplies — a lens, a depth, a sibling component, an artifact shape — is stated as a blank in that step, not silently assumed.
-3. **No history or meta-commentary in the body.** A component states the current process only, per [`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md) — never why a step was added, what it replaced, or how the template evolved. That belongs in git.
+1. **Outline, not script.** Enumerate the steps the class of work requires, each stated as an outcome the caller can recognise as met -- never the specific tool calls or prose that satisfy it this time. Several components must fit in one context window together; target ≲100 lines. Substance that outgrows that belongs in a skill the component points at -- a component orchestrates, a skill executes.
+2. **Name the blanks.** Every point where a step depends on something the caller supplies -- a lens, a depth, a sibling component, an artifact shape -- is stated as a blank in that step, not silently assumed.
+3. **No history or meta-commentary in the body.** A component states the current process only, per [`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md) -- never why a step was added, what it replaced, or how the template evolved. That belongs in git.
 4. **Revisable.** Components are standardised work, not law: versioned, and improved from execution feedback.
 
 ## Existence, not registration

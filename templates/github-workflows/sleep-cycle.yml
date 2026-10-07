@@ -156,8 +156,7 @@ jobs:
               missing tool`. Maintain a counter across all dispatched sub-agents
               and surface the total at the TOP of `$GITHUB_STEP_SUMMARY` (not
               buried inside per-phase output). If halts > 0, list the affected
-              phase and missing tool for each. This closes the silent-failure
-              mode tracked in task-1460d6cf.
+              phase and missing tool for each.
             - Email/calendar MCP tools are NOT available on GitHub Actions.
               Degrade gracefully per the skill instructions (flag instead of verify).
             - Transcript mining (Phase 2): requires $AOPS_SESSIONS. Skip if not available.

@@ -1,5 +1,4 @@
-"""Tests for the forced per-claim logic-check verdict script and its gate
-(task_db1da567, epic aops_premise_check_gate).
+"""Tests for the forced per-claim logic-check verdict script and its gate.
 
 Covers:
 1. The logic-check sequence is parsed live from hearsay.md -- six questions,
@@ -63,8 +62,9 @@ def _isolate_state(tmp_path, monkeypatch):
 class _StubTracer:
     """A minimal stand-in for claude_code_tracer, recording what it was asked to export."""
 
-    def __init__(self, config: dict[str, Any] | None):
+    def __init__(self, config: dict[str, Any] | None, export_ok: bool = True):
         self._config = config
+        self._export_ok = export_ok
         self.exported: list[dict[str, Any]] = []
 
     def discover_config(self):
@@ -107,6 +107,7 @@ class _StubTracer:
                 "spans": span_records,
             }
         )
+        return self._export_ok
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +231,19 @@ def test_record_verdict_disarms_even_when_tracer_unconfigured():
     assert result["span_error"] is None
     assert tracer.exported == []
     assert pcg.is_armed(session_id) is False  # still disarmed: the check ran locally
+
+
+def test_record_verdict_reports_unacknowledged_export_as_not_emitted():
+    session_id = "sess-export-failed"
+    pcg.arm(session_id, claim_id="claim-4")
+
+    tracer = _StubTracer(config={"endpoint": "http://collector:4317"}, export_ok=False)
+
+    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-4", ["verdict"], tracer_mod=tracer)
+
+    assert len(tracer.exported) == 1  # the export was attempted
+    assert result["span_emitted"] is False
+    assert pcg.is_armed(session_id) is False  # the check still ran locally
 
 
 # ---------------------------------------------------------------------------

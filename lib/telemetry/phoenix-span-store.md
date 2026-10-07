@@ -2,9 +2,7 @@
 
 Canonical facts about the Arize Phoenix OpenTelemetry span store, shared by
 every skill that queries or exports it. Read this before writing a query,
-sorting spans, or trusting a span's `duration_ms`. Reconciled against
-`kb_e6180e88` (deployment, port map, working query recipe) and `kb_b3308a41`
-(the session-id groupability ruling) in the PKB.
+sorting spans, or trusting a span's `duration_ms`.
 
 ## Classify the identifier before you query
 
@@ -24,17 +22,14 @@ by itself a finding that telemetry was dropped.
 ## Filter on `session.id`, never `trace_id`
 
 A trace is not session-scoped: OTel context propagates across inter-agent
-messages, so one trace can carry spans from more than one session. Verified
-case: trace `3f52bfc5eaabe0fed6a557dae5d590b7` carried spans from two
-different sessions (`kb_e6180e88`). Grouping by `trace_id` silently mixes
-sessions together. Use `trace_id` only to resolve the owning `session.id`,
+messages, so one trace can carry spans from more than one session. Grouping
+by `trace_id` silently mixes sessions together. Use `trace_id` only to resolve the owning `session.id`,
 then pivot every subsequent query onto `session.id`
 (`attributes->>'session.id'` / `JSON_EXTRACT(attributes, '$.session.id')`).
 
-The session-id groupability ruling (`kb_b3308a41`) guarantees every span and
-turn-trace belonging to a session carries a consistent `session.id`, across
-both harnesses (`claude` and `agy`) and across subagent activity. It does
-**not** guarantee nested parent/child span structure, and it does not give
+Every span and turn-trace belonging to a session carries a consistent
+`session.id`, across both harnesses (`claude` and `agy`) and across subagent
+activity. That does **not** guarantee nested parent/child span structure, and it does not give
 per-agent attribution: a subagent shares the dispatching session's
 `session.id` by design, with no attribute marking which agent produced a
 given span.
@@ -45,7 +40,7 @@ given span.
 resets at that file's init, so every subagent has its own counter sharing the
 parent's `session.id` — the numbers overlap and repeat within one exported
 session. In practice it has been observed to take only the values 1 or 2: a
-hook-ordering artifact, not a genuine per-turn counter (`kb_e6180e88`). Never
+hook-ordering artifact, not a genuine per-turn counter. Never
 sort or discriminate on it. Sort by `start_time` for session-wide chronology.
 
 ## A `teammate_spawned` span's duration is not the worker's runtime

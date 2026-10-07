@@ -183,7 +183,7 @@ def test_build_and_export_spans_sets_attributes():
             username="test-user",
             span_records=records,
             agent_name="sara",
-            cwd="/workspace/junior/dispatch",
+            cwd="/workspace/project",
         )
 
     # Inspect set_attribute calls on the span
@@ -191,7 +191,73 @@ def test_build_and_export_spans_sets_attributes():
 
     assert called_attrs.get("service.name") == "academicOps"
     assert called_attrs.get("agent.name") == "sara"
-    assert called_attrs.get("cwd") == "/workspace/junior/dispatch"
-    assert called_attrs.get("project.dir") == "/workspace/junior/dispatch"
+    assert called_attrs.get("cwd") == "/workspace/project"
+    assert called_attrs.get("project.dir") == "/workspace/project"
     assert "task.id" not in called_attrs
     assert "tag.task_id" not in called_attrs
+
+
+def test_resolve_project_name_ignores_default_env_var(tmp_path):
+    repo_dir = tmp_path / "my-repo"
+    repo_dir.mkdir()
+    (repo_dir / ".git").mkdir()
+
+    with patch.dict(
+        "os.environ",
+        {
+            "PHOENIX_PROJECT_NAME": "default",
+            "OTEL_SERVICE_NAME": "default",
+            "OTEL_RESOURCE_ATTRIBUTES": "service.name=default",
+        },
+        clear=True,
+    ):
+        # 'default' must be ignored and fallback to cwd / git resolution
+        resolved = claude_code_tracer.resolve_project_name(data={"cwd": str(repo_dir)})
+        assert resolved == "my-repo"
+
+
+def test_resolve_project_name_routes_to_custom_and_test_project():
+    with patch.dict(
+        "os.environ",
+        {"PHOENIX_PROJECT_NAME": "academicOps-test"},
+        clear=True,
+    ):
+        resolved = claude_code_tracer.resolve_project_name()
+        assert resolved == "academicOps-test"
+
+    with patch.dict(
+        "os.environ",
+        {"OTEL_SERVICE_NAME": "academicOps-test"},
+        clear=True,
+    ):
+        resolved = claude_code_tracer.resolve_project_name()
+        assert resolved == "academicOps-test"
+
+    # Explicit non-default project argument takes precedence
+    resolved = claude_code_tracer.resolve_project_name(project="custom-proj")
+    assert resolved == "custom-proj"
+
+
+def test_resolve_project_from_git_worktree(tmp_path):
+    main_repo = tmp_path / "academicOps"
+    main_git = main_repo / ".git"
+    worktrees_git = main_git / "worktrees" / "fix-branch"
+    worktrees_git.mkdir(parents=True)
+
+    wt_dir = tmp_path / "worktrees" / "academicOps" / "fix-branch"
+    wt_dir.mkdir(parents=True)
+    git_file = wt_dir / ".git"
+    git_file.write_text(f"gitdir: {worktrees_git}\n", encoding="utf-8")
+
+    # Should resolve gitdir pointer to main_repo name 'academicOps'
+    resolved = claude_code_tracer.resolve_project_from_dir(str(wt_dir))
+    assert resolved == "academicOps"
+
+
+def test_resolve_cwd_from_agy_workspace_paths(tmp_path):
+    ws = str(tmp_path / "from_agy_ws")
+    data = {"workspacePaths": [ws]}
+    assert claude_code_tracer.resolve_cwd(data) == str(Path(ws).resolve())
+
+    data_snake = {"workspace_paths": [ws]}
+    assert claude_code_tracer.resolve_cwd(data_snake) == str(Path(ws).resolve())

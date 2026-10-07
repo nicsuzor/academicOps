@@ -12,7 +12,7 @@ tags: [spec, polecat, git, freshness]
 
 How isolated workspace cloning resolves the commit a worker diverges from.
 Originally implemented in `lib/polecat/cli.py` in academicOps; the container launcher
-is now maintained in `nicsuzor/dotfiles` (`scripts/polecat`).
+is now maintained outside this repository and supplied by the installer.
 
 ## The two failure modes this design closes
 

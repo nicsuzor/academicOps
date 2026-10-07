@@ -17,7 +17,7 @@ known_user_blind = { "rbg: rule-check" = "stop-side block with no line for the p
 search_the_pkb_enabled = true
 
 [aops.taxonomy]
-# Closed 11-value status set from mem's VALID_STATUSES (references/TAXONOMY.md)
+# Closed 11-value status set from the PKB taxonomy
 valid_statuses = [
   "inbox",
   "ready",

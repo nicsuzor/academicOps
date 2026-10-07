@@ -8,8 +8,6 @@ depends_on: [pauli]
 created: 2026-02-28
 tags: [spec, review, multi-agent, workflow]
 related:
-  - non-interactive-agent-workflow-spec
-  - polecat-swarms
   - pauli
   - research-decomposition
 ---
@@ -70,7 +68,7 @@ The reviewer ranks rather than evaluating every selected lens:
 The loop converges by resolution, not by counting rounds.
 
 - Each round must resolve at least one concern from the previous round.
-- A round that introduces new concerns without resolving old ones escalates to the human.
+- A round that introduces new concerns without resolving old ones escalates for review.
 - All concerns resolved or explicitly overridden → **APPROVED**.
 - A soft cap of 7 rounds is a safety valve, not a design target.
 
@@ -128,4 +126,4 @@ governs _how to review_; GitHub governs _when and where_.
 - [[specs/workflows/research-decomposition.md]] -- downstream domain application
 - [[plugins/pkb/skills/brief/SKILL.md]] -- records this workflow's review obligations as
   acceptance criteria on the task body
-- [[polecat-swarms]] -- execution layer; consumes reviewed artifacts
+- [[specs/polecat/polecat-system.md]] -- execution layer; consumes reviewed artifacts

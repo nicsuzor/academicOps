@@ -189,7 +189,7 @@ Each processed session writes five files to
 | `.html`          | Standalone dark-mode document, styled blocks for prompts, thinking, assistant turns, and tool output                                                           |
 | `.json`          | Machine-readable sidecar: front-matter attributes, event counts, insights, user prompts, for search indexing                                                   |
 
-Five is the count today, not a closed design. Ruling `aops_22c422dc` further
+Five is the count today, not a closed design. A recorded design ruling further
 requires a separate file per subagent, linked from the parent and recorded in a
 `manifest.json`; neither ships. Anything asserting how many artifacts exist —
 tests included — asserts that these tiers exist, not that nothing else does, so
@@ -290,7 +290,7 @@ destroying the shape the patterns look for.
 **The Markdown tiers therefore carry text verbatim**, for two reasons
 independent of any redactor. Escaping turns the body of a fenced code block into
 `&lt;`-noise, corrupting the content for every reader forever. And an escaped
-corpus is permanently unauditable: the recorded design (`aops-00c0fa10`) puts
+corpus is permanently unauditable: the recorded design puts
 three layers over secrets — a pre-tool guard, this write-time scrub, and a
 pre-commit backstop — all sharing one pattern definition, which presupposes the
 committed corpus stays scannable after the fact. `_SENSITIVE_NAME` admits no `&`

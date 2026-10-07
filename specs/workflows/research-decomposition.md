@@ -3,13 +3,10 @@ created: 2026-02-28
 depends_on:
 - conceptual-review-workflow
 - pauli
-id: workflows-8f0b0787
 modified: 2026-05-17T00:40:26.340717030+00:00
 related:
 - conceptual-review-workflow
 - pauli
-- non-interactive-agent-workflow-spec
-- polecat-swarms
 status: draft
 tags:
 - spec
@@ -139,7 +136,7 @@ the judgement they demand.
 3. **Non-linear dependencies.** `depends_on` for hard gates, `soft_depends_on` for informational
    dependencies where findings reshape downstream work. The downstream task is not blocked; when
    the upstream lands, `reconcile` writes the finding and returns what it touched to `inbox`.
-4. **Collaboration gates.** Any step requiring human judgment or external input is a separate task
+4. **Collaboration gates.** Any step requiring judgment beyond the assigned agent's scope or external input is a separate task
    marked as a gate.
 5. **Artifact-aware.** Each task specifies its output type: document, dataset, code, presentation,
    decision.
@@ -149,7 +146,7 @@ the judgement they demand.
    nobody, add a convergence check.
 7. **Every decomposition creating parallel tracks includes an explicit convergence task**
    depending on all of them, whose job is synthesising findings across threads. Assign it to a
-   human or to a judgment-requiring review, never to an unsupervised agent.
+   higher-tier or judgment-requiring review, never directly to an unsupervised agent.
 8. **Decompose to the level of rigor, not just the level of action.** Work needing care splits
    into methodology decision, implementation, validation, and documentation rather than one task
    covering all four. Test: "if an agent rushed this in 15 minutes, would the output be usable?"
@@ -211,7 +208,7 @@ seedling they chose to develop, or an existing plan needing restructuring.
    the prioritised critique protocol. Lead concern is typically methodological coherence or
    assumption hygiene.
 3. **Converge** -- the convergence rules from the conceptual review workflow. Each round resolves
-   at least one concern; new concerns without resolution escalate to the researcher; soft cap at 7
+   at least one concern; new concerns without resolution escalate for review; soft cap at 7
    rounds.
 
 ## Out of scope

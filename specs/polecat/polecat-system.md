@@ -20,12 +20,13 @@ the container.
 This file is the umbrella. The individual designs are
 [base-ref resolution](spec-base-ref-resolution.md),
 [image staleness detection](spec-image-staleness-detection.md),
-[partial-work delivery](spec-partial-work-tight-loop-delivery.md), and
-[interactive tmux driving](tmux-interactive-driving.md).
+[partial-work delivery](spec-partial-work-tight-loop-delivery.md),
+[interactive tmux driving](tmux-interactive-driving.md), and
+[observability across dispatch surfaces](spec-observability.md).
 
 ## Giving Effect
 
-Container execution and worker images are maintained in `nicsuzor/dotfiles` (`containers/nicwin/nicdev/` and `scripts/polecat`), backed by the Docker MCP server behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
+The container launcher (`polecat`) and worker image are maintained outside this repository and supplied by the installer, together with any Docker MCP server registered behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
 
 - [[plugins/pkb/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
   over -- what a seeded `/pull <task-id>` prompt actually does once inside the

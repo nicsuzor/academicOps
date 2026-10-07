@@ -1,12 +1,9 @@
 ---
-alias:
-- kb_d1f982cd-wf-design-new-component
-- kb_d1f982cd
 created: 2026-07-28T02:37:35.295841559+00:00
-id: kb_d1f982cd
+id: wf-design-new-component
 last_modified: 2026-07-28T03:01:21.926000443+00:00
 modified: 2026-07-28T03:01:21.925998419+00:00
-permalink: kb_d1f982cd
+permalink: wf-design-new-component
 tags:
 - wf-template
 - workflow

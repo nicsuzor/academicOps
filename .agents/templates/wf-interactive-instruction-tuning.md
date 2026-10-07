@@ -1,6 +1,6 @@
 ---
 created: 2026-08-12T11:21:37.055549675+00:00
-id: aops_cd98ee81
+id: wf-interactive-instruction-tuning
 last_modified: 2026-08-13T04:54:21.428004367+00:00
 modified: 2026-08-13T04:54:21.428002033+00:00
 priority: 2
@@ -37,7 +37,7 @@ Instead of running an agent end-to-end unsupervised (where failures are hard to 
 ### Phase 1: Research & Step Decomposition
 
 1. **Thorough PKB & Spec Search**:
-   - Query PKB, `/workspace/specs/`, `.agents/skills/`, and `plugins/` for relevant specifications, rules, axioms, and prior art.
+   - Query PKB, `specs/`, `.agents/skills/`, and `plugins/` for relevant specifications, rules, axioms, and prior art.
    - Map out all hard invariants (paths, schemas, rules, formatting, user data preservation).
 2. **Formulate Step-by-Step Expected Micro-Actions**:
    - Break down the task into numbered, granular micro-steps.

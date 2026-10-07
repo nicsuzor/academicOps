@@ -25,6 +25,7 @@ dependencies = [
   "opentelemetry-exporter-otlp-json-file>=0.65b0",
   "opentelemetry-exporter-otlp-proto-http>=1.40.0",
   "opentelemetry-exporter-otlp-proto-grpc>=1.40.0",
+  "requests>=2.32.0",
 ]
 
 [project.optional-dependencies]
