@@ -269,7 +269,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
 
-    if is_agent(ctx, "ida", "james"):
+    if is_agent(ctx, "ida", "sara", "james"):
         return None
 
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
