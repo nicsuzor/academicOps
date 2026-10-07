@@ -48,25 +48,19 @@ one is covered.
 
 ## Invocation contexts
 
-The context picks the mode and the input subset; the rules are the same. The skill has two
-modes: `check`, a short pass over named tasks that a supervisor runs in its own session, and
-`sweep`, the graph-wide pass that runs only as a scheduled run.
+The context picks the mode; the rules are the same.
 
-| Context     | Mode    | Owner                                                                        | Input subset                                                                                |
-| ----------- | ------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Supervision | `check` | A supervisor (Sara) on dispatched work that has come back                    | The task IDs it names and the pull requests those tasks record                              |
-| Engagement  | `check` | The `reconcile` skill, commissioned by the interactive face on re-engagement | The absence window: tasks released within it and the pull requests they record              |
-| Batch       | `sweep` | The `remember` skill's consolidation cycle, delegating to `reconcile`        | The cycle's window, at the cycle's pacing                                                   |
-| Scheduled   | `sweep` | A worker running `/pull` on a dispatched task that directs the sweep         | Every non-terminal task in the sweep window, and every pull request that names a task in it |
+| Mode    | Run by                        | Input subset                                         |
+| ------- | ----------------------------- | ---------------------------------------------------- |
+| `check` | A supervisor                  | The tasks it names and the pull requests they record |
+| `sweep` | A scheduled or dispatched run | Non-terminal tasks and pull requests in its window   |
 
-`check` reads only the tasks it is handed; matching unnamed pull requests, demotion and
-world-fact cancellation are the sweep's, and `check` hands what it notices of them to the next
-sweep. Once the forward-issue leg lands, the sweep extends to the open issues in its window.
+Once the forward-issue leg lands, the sweep extends to the open issues in its window.
 
 The face does not touch the knowledge base, so its engagement sweep is a delegation: it
 commissions an agent that runs the reconcile workflow and returns one synthesized result.
 
-**The reverse direction is not a fourth context.** What a task's completion resolves on the issue
+**The reverse direction is not a third mode.** What a task's completion resolves on the issue
 tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on a
 different trigger, which reconcile does not run.
 
