@@ -18,12 +18,12 @@ yet cover.
 The skill's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
 one is covered.
 
-| Gap                                                                                    | State                                          |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built -- forward-issue leg, below          |
-| Closed-not-merged PR that was legitimately superseded                                  | Built -- the skill's pull-request routing step |
-| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built -- forward-issue leg, below          |
-| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3             |
+| Gap                                                                                    | State                                 |
+| -------------------------------------------------------------------------------------- | ------------------------------------- |
+| GH issue closed via `Closes #N` → PKB task carrying `gates_on` for it                  | Not built -- forward-issue leg, below |
+| Closed-not-merged PR that was legitimately superseded                                  | Built                                 |
+| Manual `gh issue close` with `state_reason: not_planned` or `duplicate`                | Not built -- forward-issue leg, below |
+| PKB task done → GH issue comment/close beyond the native `Closes #N` commit convention | Not built -- reverse direction, M3    |
 
 ## Design constraints
 
@@ -48,21 +48,20 @@ one is covered.
 
 ## Invocation contexts
 
-The context picks the mode; the rules are the same.
+Two contexts need reconcile, under the same rules:
 
-| Mode    | Run by                        | Input subset                                         |
-| ------- | ----------------------------- | ---------------------------------------------------- |
-| `check` | A supervisor                  | The tasks it names and the pull requests they record |
-| `sweep` | A scheduled or dispatched run | Non-terminal tasks and pull requests in its window   |
+- **A supervisor closing out work it dispatched** needs the tasks it names, and the pull requests
+  they record, to agree with GitHub before it reports that work finished.
+- **A scheduled or dispatched run** needs drift caught that no supervisor is watching: the
+  non-terminal tasks and pull requests in its window, and once the forward-issue leg lands, the
+  open issues in it too.
 
-Once the forward-issue leg lands, the sweep extends to the open issues in its window.
+The face does not touch the knowledge base, so it delegates: it commissions an agent that runs
+reconcile and returns one synthesized result.
 
-The face does not touch the knowledge base, so its engagement sweep is a delegation: it
-commissions an agent that runs the reconcile workflow and returns one synthesized result.
-
-**The reverse direction is not a third mode.** What a task's completion resolves on the issue
-tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on a
-different trigger, which reconcile does not run.
+**The reverse direction is not a reconcile context.** What a task's completion resolves on the
+issue tracker belongs on the release path that already writes the task -- `dump` and `pull` -- on
+a different trigger, which reconcile does not run.
 
 ## Frontmatter markers
 
