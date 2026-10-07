@@ -1,7 +1,7 @@
 ---
 alias:
   - wf-spec
-description: Author a comprehensive technical specification covering architecture, interfaces, acceptance criteria, and test design before implementation.
+description: Author a comprehensive technical specification covering architecture, interfaces, acceptance criteria, and, for code that executes, test design before implementation.
 id: wf-spec
 tags:
   - wf-template
@@ -12,7 +12,7 @@ type: template
 
 ## What this step does
 
-Authors a complete, unambiguous technical specification grounded in the evidence available to it. Establishes system architecture, data models, public interfaces, observable acceptance criteria, and integration test plans before any implementation code is written.
+Authors a complete, unambiguous technical specification grounded in the evidence available to it. Establishes system architecture, data models, public interfaces, observable acceptance criteria, and, for code that executes, integration test plans before any implementation code is written.
 
 ## Procedure
 

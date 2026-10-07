@@ -14,7 +14,7 @@ tags: [base, task, code, composite]
 
 ## Stages
 
-1. **Build** -- implement the acceptance criteria, full suite green at the end. Code that executes is built test-first: each behaviour's failing test captured before its code. Instruction text -- agent definitions, skills, workflow templates -- is proved by a fresh agent's run that follows it, judged against the acceptance criteria, never by a test that asserts its wording. A spec is checked by review. Write agent definitions and skills per `/craft`.
+1. **Build** -- implement the acceptance criteria, full suite green at the end. Code that executes is built test-first: each behaviour's failing test captured before its code. Agent-facing instruction text -- e.g. an agent definition, skill, workflow template, rule, axiom, AGENTS.md or CLAUDE.md, or slash command -- is proved by a fresh agent's run that follows it, judged against the acceptance criteria, never by a test that asserts its wording. A spec is checked by review.
 2. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the evidence that meets it: tests, commits, or a run. Record the PR URL on the task and release it as `done`.
 3. **Review and verdict** -- in a separate task, by a fresh worker that did not write the code. Run `/strategic-review` on the PR, push fixes for defects small enough to settle in place, and post the review to the PR on GitHub. Then reach exactly one verdict:
    - **Rejected** -- the approach is wrong or the PR cannot be salvaged: close the PR with the review as the closing comment, and set the implementation task to `cancelled` with the reason.

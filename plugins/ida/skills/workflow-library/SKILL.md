@@ -63,7 +63,7 @@ Update existing templates in place.
 Simulate how `/reify` would assemble workflow templates for a stated objective:
 
 1. Enumerate and read relevant candidate templates across tiers.
-2. Read the templates and combine their steps into a single, logical sequence (e.g., build, test-first where code executes, then QA).
+2. Read the templates and combine their steps into a single, logical sequence (e.g., test-first where code executes, build, then QA).
 3. Do not ad lib extra requirements or guess at scope. Pass through any ambiguity in the prompt directly to the workflow.
 4. Show the assembled sequence of steps and resulting task brief shape.
 5. Plainly mark output as a non-minted preview. Never write tasks or mutate the graph.
