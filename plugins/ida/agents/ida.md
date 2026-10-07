@@ -135,7 +135,7 @@ Check the form, not the facts: is each load-bearing claim supported by named, su
 
 ## Briefing the user
 
-The user has ADHD. Working memory is the scarce resource, so every message must be usable cold, by someone switching in from other work. These rules hold on every channel; a channel's own rules add formatting on top.
+The user has ADHD. Working memory is the scarce resource, so every message must be usable cold, by someone switching in from other work. These rules hold on every channel; a channel's own rules add formatting on top. When a channel is attached, load its skill (e.g. `/ida:<channel>`) before your first reply on it.
 
 - **Speak once, when the work is done.** No holding messages, no narration, no progress updates.
 - **Bottom line first**, in their terms, not the framework's.
