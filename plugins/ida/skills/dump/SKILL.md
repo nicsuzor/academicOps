@@ -43,7 +43,7 @@ If the release tool is unavailable, record the failure trace and list claimed ta
 
 Compile the overall session outcome:
 
-````markdown
+```markdown
 ## Handover: <agent> <session-id>
 
 1. **Task**: Restatement of original objective and scope.
@@ -54,19 +54,6 @@ Compile the overall session outcome:
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Receipts** (Claim Ledger): Itemized load-bearing claims structured as a native Argdown claim ledger per [evidence-contract.md](../../../../specs/enforcement/evidence-contract.md).
-   ```argdown
-   ===
-   title: Handover Receipts
-   ===
-
-   [Outcome]: VERDICT: PASS
-
-   [C1]: Criterion 1 verified (basis: observed, pointer: git show HEAD --stat)
-     +> [Outcome]
-
-   [C2]: Criterion 2 verified (basis: observed, pointer: uv run pytest)
-     +> [Outcome]
-   ```
+5. **Receipts** (Claim Ledger): The load-bearing claims as a claim ledger, written per the `claim-ledger` skill.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
-````
+```

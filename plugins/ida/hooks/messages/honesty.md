@@ -1,3 +1,5 @@
-## Evidence contract and reporting protocol
+## Evidence contract
 
-Provide logical reasons and pinpoint citations (`file:line`, command output, or URL) for all significant claims. Itemize receipts as a claim ledger with explicit basis tags per the evidence contract.
+Back every load-bearing claim with a pointer the reader can open. Cite the evidence's identifier, pinpointed where you can (`owner/repo@sha:path:line`, a span id, a comment URL), rather than a command that fetches it or a step in your own transcript. Prove negatives with the failed attempt or the bounded search.
+
+Before writing any report or handback that rests on evidence, load the `claim-ledger` skill and end the report with the ledger it specifies.

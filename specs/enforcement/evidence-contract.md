@@ -65,36 +65,27 @@ independently confirming the thing claimed is actually true.
 
 ## The Canonical Structured-Handback Format
 
-This section is the single source of truth for the handback shape and claim ledger.
-Every other surface that uses it links here rather than restating the rules.
+This section is the design source for the handback shape and claim ledger. The
+operative ledger format agents follow is the
+[`claim-ledger` skill](../../plugins/ida/skills/claim-ledger/SKILL.md). Agents
+load it when they write a report; the per-message honesty reminder names it.
 
 A task handback couples the boundary verdict and epistemic safeguards with a
-native Argdown claim ledger in the receipts section:
+plain-prose answer and a native Argdown claim ledger in the receipts section:
 
-````markdown
+```markdown
 VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
 GATE: <the acceptance criterion tested, and observed result against it>
 CONFIDENCE: <high | med | low> + <what single check would falsify this>
 CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 
+<One to three sentences of plain prose: the answer.>
+
 RECEIPTS:
 
-```argdown
-===
-title: Handover Receipts
-===
-
-[Outcome]: VERDICT: PASS
-
-[C1]: Atomic empirical claim 1 (basis: observed, pointer: git show HEAD --stat)
-  +> [Outcome]
-
-[C2]: Atomic empirical claim 2 (basis: observed, pointer: tests/test\_hooks.py:42)
-  +> [Outcome]
+<the claim ledger, per the claim-ledger skill>
 ```
-````
 
-````
 - `PARTIAL` = a legal partial completion -- the existing terminal status `partial`.
   The shipped chunk carries checkable evidence, every remaining acceptance criterion
   is declared-deferred with a live continue task, and refused judgment calls are
@@ -103,35 +94,72 @@ title: Handover Receipts
   agent's own change. `NOT RUN` means the claim is not relayed as established
   until the control runs: any agent relaying a "not our bug" claim without a
   control is relaying an unverified claim.
-- **One line per criterion:** Make the ledger report one line per criterion where possible.
-- **Argdown parser compliance:** Separate statements with blank lines. Enclose basis
-  tags and pointers in parentheses `(basis: <tag>, pointer: <ref>)` so they are not
-  parsed as statement titles. Escape literal underscores `\_` in filenames and symbols.
-- **Relations:** Support relations link directly to the target (`+> [Outcome]`).
-  Defeaters or counter-claims link with attack arrows (`-> [Outcome]`).
-  If a multi-premise deduction requires explicit structure, use native Argdown
-  premise-conclusion arguments:
+
+### Ledger rules
+
+The ledger combines two strengths seen in workers' reports on 2026-10-06. Antigravity
+ledgers made the logic easy to follow: outcome first, numbered premises, and a
+derivation line naming the premises and warrant. Claude Code receipts made the
+evidence easy to check: span ids, verbatim errors, and searches bounded by query
+and scope. Each was weak where the other was strong. Antigravity cited its own
+transcript steps and drew conclusions wider than its premises. Claude Code gave
+no outcome line and no derivation. The skill's rules take each side's strength.
+
+Design choices behind the skill:
+
+- **Delivery.** The full format lives in a skill, loaded when a report is written.
+  The honesty reminder injected on every incoming message stays a few lines long and
+  names the skill, because repeating the full format on every turn costs context
+  without adding information.
+- **Pointers are identifiers.** The user's ruling: citation by identifier is
+  preferred, and a pinpoint is best. A command that merely fetches something with
+  an identifier is not a pointer. A command counts only when its output is the
+  evidence, and then the output is quoted.
+- **Parsing is approximate.** `@argdown/cli` rejects any unescaped underscore, even
+  inside backticks. Escaping would break copy-paste of the pointer, so pointers stay
+  verbatim, and a parse failure caused only by an underscore in a pointer is
+  acceptable. Titles, tags, relations, and the named derivation line should parse.
+- **No horizontal rules.** The derivation is the named line `-- from … by … --`.
+  A bare `----` reads as a horizontal rule and says less, so it is not used.
+  Reports use no `---` separators either.
+- **Fences.** An inner fence as long as its outer fence closes the outer one early,
+  and the formatter then swallows the following prose into a code block.
+  `tests/test_markdown_fences.py` fails on such a collision. The formatter also
+  trims leading spaces inside inline code, so indented Argdown goes only in fenced
+  blocks.
+
+### Worked example
+
+From the 2026-10-06 comparison of worker reports:
 
 ```argdown
-<Gate Verification>: Verification of criterion 1
+[Outcome]: The 2026-10-06 morning Claude Code workers were never asked for a claim ledger, so their reports cannot show whether the model can write one.
 
-(1) [C1]: Atomic empirical claim 1 (basis: observed, pointer: git show HEAD --stat)
-(2) [C2]: Atomic empirical claim 2 (basis: observed, pointer: tests/test\_hooks.py:42)
-----
-(3) [Outcome]: VERDICT: PASS
-````
+<Unequal prompts>: Why the comparison does not isolate the model.
+
+(1) [Claude prompt]: The honesty text Claude Code workers received asks for "verifiable extracts" and never mentions a ledger. #observed `nicsuzor/academicOps@5324e68:plugins/ida/hooks/messages/honesty.md:5-10`
+(2) [Seen in traces]: That text appears in the recorded prompts of Claude Code sessions 7b76832d, 6cbf8525 and ce707f7a. #exhaustively-searched `Phoenix spans since 2026-10-06T19:00Z, attributes LIKE '%Verifiable extracts%'` → 3 Claude Code sessions
+(3) [Agy prompt]: Antigravity session bccf078e received "Itemize receipts as a claim ledger" from its second turn. #observed `nicsuzor/academicOps@e49f1a0:plugins/ida/hooks/messages/honesty.md:3`
+(4) [Rule]: Two runs compare models only when both received the same instruction. #warrant
+-- from (1), (2) and (3) by (4) --
+(5) [Outcome]
+
+[Unrecorded prompts]: Phoenix does not record the injected prompt for the other Claude Code sessions that morning, so their instruction is not observed. #not-observed
+  -> [Outcome]
+```
 
 ## Epistemic Basis Vocabulary
 
-Every itemized load-bearing claim carries its BASIS tag:
+Every itemized load-bearing claim carries its basis tag:
 
-- `[observed]` -- the agent saw the primary evidence itself this session, and cites a pinpoint pointer (`file:line`, command + output, URL).
-- `[attempted-and-failed]` -- an attempted action/command/tool execution with its verbatim error output attached. (Mandatory for capability claims.)
-- `[exhaustively-searched]` -- a search whose query, tool, and exact boundary are explicitly stated (e.g. `rg -i "pattern" lib/` -> 0 matches).
-- `[not-observed]` -- data or event not seen within the specific scope examined. Never grounds an assertion of non-existence or inability.
-- `[inferred]` -- a conclusion deduced from stated premises and warrants.
-- `[assumed]` -- an explicit working hypothesis or premise.
-- `[reported-by-another]` -- a finding reported by another agent, subagent, or transcript, citing the source and propagating its qualification.
+- `#observed` -- the agent saw the primary evidence itself this session, and cites a pointer to it.
+- `#attempted-and-failed` -- an attempted action, command, or tool call, with its verbatim error output attached. (Mandatory for capability claims.)
+- `#exhaustively-searched` -- a search whose tool, query, exact boundary, and result count are stated (e.g. `rg -i "pattern" lib/` → 0 matches).
+- `#not-observed` -- data or event not seen within the specific scope examined. Never grounds an assertion of non-existence or inability.
+- `#inferred` -- a conclusion deduced from stated premises and warrants.
+- `#assumed` -- an explicit working hypothesis or premise.
+- `#reported-by-another` -- a finding reported by another agent, subagent, or transcript, citing the source and propagating its qualification.
+- `#warrant` -- a rule or invariant that bridges premises to a conclusion. The reader judges whether it holds.
 
 ## The Hard Gate on Negative and Capability Claims
 
@@ -141,14 +169,14 @@ gated hardest, because they are the claims an agent is most likely to assert
 from absence rather than from a test.
 
 1. **Attempt or scope required.** Such a claim is established only by
-   `[attempted-and-failed: <command/tool> -> <verbatim error>]` or
-   `[exhaustively-searched: <tool/query/scope> -> 0 results]`. Absent one of those,
-   the state is strictly `[not-observed]` -- which never grounds "does not exist".
+   `#attempted-and-failed` with the command and its verbatim error, or
+   `#exhaustively-searched` with the tool, query, scope, and zero count. Absent one
+   of those, the state is strictly `#not-observed`, which never grounds "does not exist".
    An agent must never assert a limit on its own capabilities or environment
    without having executed the test.
 2. **Status survival (anti-laundering).** Downstream consumers and controllers
-   are prohibited from promoting `[inferred]`, `[assumed]`, or
-   `[reported-by-another]` claims to established fact. The basis qualifier must
+   are prohibited from promoting `#inferred`, `#assumed`, or
+   `#reported-by-another` claims to established fact. The basis qualifier must
    survive every hop. A derived claim's strength is strictly bounded by the
    weakest basis among its transitive premises.
 
