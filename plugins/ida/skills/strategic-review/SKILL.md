@@ -20,15 +20,15 @@ Load the artifact, its diff (for PRs), and relevant quality standards. If origin
 
 ### 2. Strategic Fit Check
 
-Before implementation detail is reviewed, the strategic-fit reviewer situates the artifact against the objectives it claims to serve in the PKB graph and returns an explicit `FIT`/`MISFIT` verdict, distinct from the compliance verdict and the quality verdict.
+Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `pauli`) situates the artifact against the objectives it claims to serve in the PKB graph using the analytical lenses in `strategize/SKILL.md` and returns an explicit `FIT`/`MISFIT` verdict, distinct from the compliance verdict and the quality verdict.
 
 ### 3. Deploy Parallel Reviewers
 
-Dispatch all three reviewers concurrently in a single message with neutral prompts:
+Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts:
 
-- **Rule compliance**: Axiom and rule compliance.
-- **Strategic fit**: Strategic Fit Check (step 2).
-- **Quality**: Runtime quality, user ask satisfaction, and excellence.
+- **Rule compliance** (TypeName `rbg`): Axiom and rule compliance.
+- **Strategic fit** (TypeName `pauli`): Strategic Fit Check (step 2).
+- **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence.
 
 Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility).
 
