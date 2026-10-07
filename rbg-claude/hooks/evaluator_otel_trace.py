@@ -15,10 +15,10 @@ though nothing links them by id (see "Field mapping" below for what each side
 carries).
 
 **Why OTLP JSON and not a network exporter.** The framework's only existing
-OTel machinery (``lib/polecat/env_contract.py`` ``TELEMETRY_ENV``,
+OTel machinery (polecat container telemetry environment contract,
 specs/ARCHITECTURE.md "Observability & OTEL Tracing") is Claude Code's own
-native session export — token counts, tool invocations — forwarded to a
-Tailnet OTLP collector. It carries no knowledge of a rule evaluation, and
+native session export — token counts, tool invocations — forwarded to an
+OTLP collector. It carries no knowledge of a rule evaluation, and
 nothing in this repository built a span of its own before this module.
 ``opentelemetry-exporter-otlp-proto-http`` is the wire format that collector
 already speaks, but it is protobuf, not JSON, and it exists to reach a
@@ -156,8 +156,8 @@ def _extract_parent_context() -> Any | None:
     populated — ``CLAUDE_CODE_ENABLE_TELEMETRY``, ``CLAUDE_CODE_ENHANCED_TELEMETRY_BETA``,
     and ``OTEL_TRACES_EXPORTER=otlp`` together (verified empirically against a
     real headless ``claude`` session with a diagnostic hook: absent with any one
-    of the three missing, present with all three). The framework's own
-    ``lib/polecat/env_contract.py`` ``TELEMETRY_ENV`` already forwards this
+    of the three missing, present with all three). The framework's
+    polecat container telemetry environment contract already forwards this
     whole contract, so any session with telemetry enabled the way the
     framework sets it up carries this context into every hook subprocess,
     this one included.

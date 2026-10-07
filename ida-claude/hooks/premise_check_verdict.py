@@ -61,7 +61,11 @@ def emit_verdict_span(
     answers: list[str],
     config: dict[str, Any] | None = None,
 ) -> bool:
-    """Ship one TOOL span for this verdict via claude_code_tracer's pipeline."""
+    """Ship one TOOL span for this verdict via claude_code_tracer's pipeline.
+
+    Returns True only when the OTLP exporter reported SUCCESS for the span;
+    False when tracing is unconfigured or the export was not acknowledged.
+    """
     if config is None:
         config = tracer_mod.discover_config()
     if config is None:
@@ -105,13 +109,13 @@ def emit_verdict_span(
         record["attributes"]["premise_check.verdict"] = tracer_mod._truncate("\n\n".join(answers))
 
     username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
-    tracer_mod._build_and_export_spans(
+    exported = tracer_mod._build_and_export_spans(
         config=config,
         session_id=phoenix_session_id,
         username=username,
         span_records=[record],
     )
-    return True
+    return exported is True
 
 
 def record_verdict(

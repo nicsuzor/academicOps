@@ -9,8 +9,8 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 
 Two PKB nodes are the single source of truth for note standards, and this skill is the operating procedure for them. Read them when a rule here is ambiguous, and correct them rather than this file when the standard itself changes:
 
-- **`kb_634e639c`** -- doctrine: what the PKB may contain, how a node is rewritten, and whose duty extraction is.
-- **`inde_pkb_node_linking`** -- mechanics: valid node types, which fields are real graph edges, and what frontmatter the tools accept. Node-type semantics live in `pkb-type-taxonomy`.
+- **The PKB doctrine note** -- what the PKB may contain, how a node is rewritten, and whose duty extraction is.
+- **The PKB node-linking note** -- mechanics: valid node types, which fields are real graph edges, and what frontmatter the tools accept. Node-type semantics live in the PKB type taxonomy.
 
 A rule stated in only one of those two is not in conflict with the other; a rule restated here that contradicts either is a defect in this file.
 

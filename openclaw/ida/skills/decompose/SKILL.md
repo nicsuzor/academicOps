@@ -45,4 +45,4 @@ Expand a situated objective into smaller, abstract components: sub-objectives, d
 - Define abstract outcomes, not execution methods or implementation scripts.
 - Do not create standalone "decision" tasks; use mutually exclusive option branches or probes.
 - Do not mint a node where an existing one can carry the work; report the merge instead.
-- Do not write acceptance criteria or release tasks for dispatch (handled by `brief`).
+- Do not write acceptance criteria or release tasks for dispatch (handled by `/reify`).

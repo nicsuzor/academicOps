@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, excalidraw-view CLI, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
+description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
 ---
 
 # Diagram
@@ -64,18 +64,33 @@ Identify the chart's core objective (the action or decision it enables) and read
 
 ### CLI tools and invariants
 
-Inspect and modify `.excalidraw` files via `excalidraw-view`:
+`pkb-excalidraw` is the preferred way to read and edit `.excalidraw` files; use it before reading or writing the JSON directly, because its mutations refuse to save a file that fails validation. Run `pkb-excalidraw --help` for the full command set.
 
 ```bash
-excalidraw-view FILE [summary | map | nodes | edges | style | check]
-excalidraw-view FILE add-node --type <type> --text "<text>" [--preset hero|sticky|zone] [--at X,Y]
-excalidraw-view FILE connect --from <id1> --to <id2> [--label "<label>"] [--curved]
-excalidraw-view FILE [set-text <id> "<text>" | fit <id> "<text>" | move-elem <id> --by DX,DY | delete-elem <id>]
+pkb-excalidraw FILE [summary | map | nodes | edges | style | check | overlap | arrows-check]
+pkb-excalidraw FILE add-node --type <type> --text "<text>" [--preset hero|sticky|zone] [--at X,Y]
+pkb-excalidraw FILE connect --from <id1> --to <id2> [--label "<label>"] [--curved] [--stroke-style dashed]
+pkb-excalidraw FILE [set-text <id> "<text>" | fit <id> "<text>" | move-elem <id> --by DX,DY | delete-elem <id>]
+pkb-excalidraw FILE update <id> --set '{"strokeStyle": "dashed"}'
 ```
 
 - **Invariants**: Text binds to container (`containerId`/`boundElements`); arrows bind both ends (`startBinding`/`endBinding`).
-- Update `text` and `originalText` together. Keep elements sorted by ascending fractional `index`.
-- Validate with `excalidraw-view FILE check` and `excalidraw-view FILE overlap`.
+- Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
+- Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
+
+### Editing an existing diagram
+
+When the diagram already exists and the ask changes the plan or state it shows, edit the existing elements in place so the delta is visible on the canvas:
+
+- **Moved** thing: `move-elem` the existing element.
+- **Renamed** thing: `set-text` or `fit` the existing element.
+- **Changed status**: set `strokeColor`/`backgroundColor` on the existing element to the palette role for its new state.
+- **Removed** thing: `delete-elem` it, and its bound text and arrows.
+- **Genuinely new** thing: `add-node` only for this.
+
+Keep the `id` of every surviving element. `pkb excalidraw diff` and `sync` match canvas elements to PKB nodes by `id`; a replaced element reads as a deletion plus an unrelated addition.
+
+**Anti-pattern -- the parallel system.** Do not draw a fresh set of elements beside the old ones to depict the new state. It leaves two contradictory versions on one canvas, hides what changed, and severs every `id` binding. Before adding any element, check whether an existing element already represents that thing; if one does, edit it.
 
 ### PKB export and sync
 

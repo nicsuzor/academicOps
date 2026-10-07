@@ -12,7 +12,7 @@ Invoke the headless `agy` CLI to execute tasks using Gemini models. If currently
 Normal execution dispatches a task to `agy` by ID. Use `tmux` to run in a detached session, allowing the task to complete without you:
 
 ```bash
-tmux new-session -d -s "$TMUX_NAME" agy --sandbox --mode accept-edits --output-format text --print-timeout 50m --add-dir <worktree> --agent james --print "/ida:pull <task_id>"
+tmux new-session -d -s "$TMUX_NAME" agy --sandbox --mode accept-edits --output-format text --print-timeout 50m --add-dir <worktree> --agent <worker_agent> --print "/ida:pull <task_id>"
 ```
 
 ## Ad-hoc, short tasks that do not require repo access
@@ -22,7 +22,7 @@ For ad-hoc, one-off tasks with an immediate result, you can invoke `agy` directl
 - Do not use this direct invocation mode for any tasks that require r/w repo access or that may take longer than 5 minutes to complete.
 
 ```bash
-agy --sandbox --mode accept-edits --output-format text --print-timeout 5m --agent james --print '<instructions>'
+agy --sandbox --mode accept-edits --output-format text --print-timeout 5m --agent <worker_agent> --print '<instructions>'
 ```
 
 ## Required arguments

@@ -5,7 +5,7 @@ description: Judgement-based QA pass verifying artifacts against acceptance crit
 
 # Verify
 
-Rigorous quality review evaluating correctness, completion, and fitness for purpose. Default posture: assume the artifact is broken until proven working. Bound to `marsha`.
+Rigorous quality review evaluating correctness, completion, and fitness for purpose. Default posture: assume the artifact is broken until proven working.
 
 ## 1. Classify the Bar
 
@@ -50,7 +50,7 @@ Evaluate live rendered screenshots (1920x1080) across three dimensions:
 
 ### Concrete Observations
 
-[Observed findings with basis tags ([observed], [attempted-and-failed], etc.) and file:line citations]
+[Observed findings with basis tags (`#observed`, `#attempted-and-failed`, etc.) and file:line citations]
 
 ### Forcing Checks
 

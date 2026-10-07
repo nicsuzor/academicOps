@@ -1,0 +1,55 @@
+===
+title: Mill, On Liberty (1859), ch. II, closing recapitulation
+source: Project Gutenberg eBook #34901, lines 2312-2335
+===
+
+# Main conclusion
+
+[Free Opinion]: Freedom of thought and expression is necessary for human well-being.
+  {source: "We have now recognised the necessity to the mental well-being of mankind (on which all their other well-being depends) of freedom of opinion, and freedom of the expression of opinion, on four distinct grounds", locator: "para. 1"}
+
+# Arguments
+
+<Fallibility>: Silencing an opinion assumes an infallibility no one has.
+
+(1) Any silenced opinion might actually be true.
+    {source: "if any opinion is compelled to silence, that opinion may, for aught we can certainly know, be true", locator: "para. 2"}
+(2) Refusing to hear an opinion presumes our own judgment cannot be mistaken.
+    {source: "To deny this is to assume our own infallibility.", locator: "para. 2"}
+(3) No one is infallible.
+    {implicit: true, reason: "needed for (1)-(2) to yield (4); Mill leaves it unstated here"}
+----
+(4) Silencing ideas risks suppressing truth based on an unwarranted claim of certainty.
+  +> [Free Opinion]
+
+<Partial Truth>: Even an erroneous opinion supplies the part of the truth the prevailing view lacks.
+
+(1) Even mistaken opinions often contain elements of truth.
+    {source: "though the silenced opinion be an error, it may, and very commonly does, contain a portion of truth", locator: "para. 3"}
+(2) The prevailing view on any topic is rarely the whole truth.
+    {source: "the general or prevailing opinion on any subject is rarely or never the whole truth", locator: "para. 3"}
+(3) Missing aspects of the truth emerge only when opposing viewpoints clash.
+    {source: "it is only by the collision of adverse opinions, that the remainder of the truth has any chance of being supplied", locator: "para. 3"}
+----
+(4) Silencing erroneous views removes the debate needed to complete the truth.
+  +> [Free Opinion]
+
+<Dead Dogma>: Uncontested truth is held as prejudice.
+
+(1) Without vigorous debate, people hold even true beliefs as prejudices rather than reasoned ideas.
+    {source: "unless it is suffered to be, and actually is, vigorously and earnestly contested, it will, by most of those who receive it, be held in the manner of a prejudice, with little comprehension or feeling of its rational grounds", locator: "para. 4"}
+(2) Holding beliefs as prejudices without understanding their rational basis harms mental well-being.
+    {implicit: true, reason: "links (1) to the thesis's 'mental well-being'"}
+----
+(3) Even completely true beliefs need open challenge to remain understood.
+  +> [Free Opinion]
+
+<Lost Meaning>: Uncontested doctrine loses its meaning and its effect on conduct.
+
+(1) When never challenged, a doctrine risks losing its meaning and its practical influence on conduct.
+    {source: "the meaning of the doctrine itself will be in danger of being lost, or enfeebled, and deprived of its vital effect on the character and conduct", locator: "para. 4"}
+(2) Reducing a belief to empty recitation prevents genuine, deeply felt conviction from developing.
+    {source: "the dogma becoming a mere formal profession, inefficacious for good, but cumbering the ground, and preventing the growth of any real and heartfelt conviction, from reason or personal experience", locator: "para. 4"}
+----
+(3) Suppressing debate robs even true doctrines of their vitality and power.
+  +> [Free Opinion]

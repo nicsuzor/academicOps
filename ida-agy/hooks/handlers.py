@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
+from premise_check_gate import premise_check_arm, premise_check_handler
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -67,7 +68,7 @@ def is_agent(ctx: HookContext | str | None, *targets: str) -> bool:
     """Check if the context or agent string matches any target agent names.
 
     Matches bare names (e.g. 'ida', 'james'), namespaced forms (e.g. 'ida:ida',
-    'aops:james', 'plugin:ida', 'ida:custom'), prime variants (e.g. 'ida-prime',
+    'aops:james', 'plugin:ida'), prime variants (e.g. 'ida-prime',
     'ida_prime'), and colon-delimited components.
     """
     if ctx is None:
@@ -82,7 +83,6 @@ def is_agent(ctx: HookContext | str | None, *targets: str) -> bool:
             continue
         if (
             agent == target
-            or agent.startswith(f"{target}:")
             or agent.endswith(f":{target}")
             or agent in (f"{target}-prime", f"{target}_prime")
             or f":{target}:" in agent
@@ -112,11 +112,21 @@ _CHANNEL_REPLY_TOOLS = {
 def _is_channel_reply_tool(tool_name: str) -> bool:
     if not tool_name:
         return False
+    if tool_name in _CHANNEL_REPLY_TOOLS:
+        return True
     name = tool_name.split("__")[-1]
     if name in _CHANNEL_REPLY_TOOLS:
         return True
-    lower = name.lower()
-    if lower in (
+    tool_lower = tool_name.lower()
+    name_lower = name.lower()
+    if tool_lower in (
+        "telegram_reply",
+        "discord_reply",
+        "askuserquestion",
+        "ask_user_question",
+        "ask_question",
+        "askquestion",
+    ) or name_lower in (
         "telegram_reply",
         "discord_reply",
         "askuserquestion",
@@ -125,7 +135,9 @@ def _is_channel_reply_tool(tool_name: str) -> bool:
         "askquestion",
     ):
         return True
-    if ("telegram" in lower or "discord" in lower) and ("reply" in lower or "send" in lower):
+    if ("telegram" in tool_lower or "discord" in tool_lower) and (
+        "reply" in tool_lower or "send" in tool_lower
+    ):
         return True
     return False
 
@@ -168,21 +180,6 @@ def honest_output(ctx: HookContext) -> Result | None:
     return block(*load_message_pair(ctx.hooks_dir, "honesty"))
 
 
-def _find_pkb_bin(cwd: str | Path | None = None) -> str | None:
-    pkb_bin = shutil.which("pkb")
-    if pkb_bin:
-        return pkb_bin
-    candidates: list[Path] = []
-    if cwd:
-        candidates.append(Path(cwd) / "pkb")
-    candidates.append(Path.cwd() / "pkb")
-    for candidate in candidates:
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate.resolve())
-
-    return None
-
-
 def _cap_output(out: str) -> str:
     """Bound injected payload size, independent of what the backend returns.
 
@@ -201,15 +198,39 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     query = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", prompt).strip()[:200]
     if not query:
         return None
-    pkb_bin = _find_pkb_bin(cwd)
-    if not pkb_bin:
-        log.warning("pkb binary not found for UserPromptSubmit hook")
+
+    mcp_url = os.environ.get("PKB_MCP_URL")
+    if not mcp_url:
+        log.warning("PKB_MCP_URL not found for UserPromptSubmit hook")
         return None
+
+    mcp_bin = shutil.which("fastmcp") or shutil.which("mcp")
+    if not mcp_bin:
+        log.warning("fastmcp/mcp binary not found for UserPromptSubmit hook")
+        return None
+
     try:
         env = dict(os.environ)
         env["NO_COLOR"] = "1"
+        env["AOPS_OFFLINE"] = "true"
+
+        cmd = [
+            mcp_bin,
+            "call",
+            mcp_url,
+            "pkb__search",
+            "--input-json",
+            json.dumps({"query": query}),
+        ]
+
+        mcp_token = os.environ.get("PKB_MCP_TOKEN")
+        if mcp_token:
+            cmd.extend(["--auth", mcp_token])
+        else:
+            cmd.extend(["--auth", "none"])
+
         proc = subprocess.run(
-            [pkb_bin, "search", query],
+            cmd,
             capture_output=True,
             text=True,
             timeout=_SEARCH_TIMEOUT_SECONDS,
@@ -222,9 +243,9 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
             if out:
                 return _cap_output(out)
         else:
-            log.warning("pkb search exited with returncode %s: %s", proc.returncode, proc.stderr)
+            log.warning("mcp search exited with returncode %s: %s", proc.returncode, proc.stderr)
     except Exception as exc:
-        log.warning("pkb search execution failed: %s", exc)
+        log.warning("mcp search execution failed: %s", exc)
     return None
 
 
@@ -264,7 +285,7 @@ def be_quiet(ctx: HookContext) -> Result | None:
 
 
 def quiet_channel_reply(ctx: HookContext) -> Result | None:
-    """Deny channel replies once for Ida Prime to enforce ADHD executive protection."""
+    """Deny channel replies once for Ida Prime to enforce honesty and ADHD executive protection."""
     if not _is_ida(ctx):
         return None
     if not _is_channel_reply_tool(ctx.tool):
@@ -286,10 +307,22 @@ def quiet_channel_reply(ctx: HookContext) -> Result | None:
     except Exception:
         pass
 
-    if ctx.client == "agy":
-        return warn(*load_message_pair(ctx.hooks_dir, "quiet"))
+    honesty_inject, honesty_user = load_message_pair(ctx.hooks_dir, "honesty")
+    quiet_inject, quiet_user = load_message_pair(ctx.hooks_dir, "quiet")
 
-    return refuse(*load_message_pair(ctx.hooks_dir, "quiet"))
+    inject_parts = [p for p in (honesty_inject, quiet_inject) if p]
+    combined_inject = "\n\n".join(inject_parts)
+
+    user_parts = [u for u in (honesty_user, quiet_user) if u]
+    combined_user = "\n\n".join(user_parts) if user_parts else None
+
+    if ctx.client == "agy":
+        return warn(combined_inject, combined_user)
+
+    return refuse(combined_inject, combined_user)
+
+
+channel_reply_gate = quiet_channel_reply
 
 
 def _scrub(value: object) -> str:
@@ -559,9 +592,9 @@ def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_pre_invocation(data, config)
     except Exception as exc:
         log.warning("agy_user_prompt_submit tracer failed: %s", exc)
@@ -572,9 +605,9 @@ def agy_pre_tool(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_pre_tool(data, config)
     except Exception as exc:
         log.warning("agy_pre_tool tracer failed: %s", exc)
@@ -585,9 +618,9 @@ def agy_post_tool(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_post_tool(data, config)
     except Exception as exc:
         log.warning("agy_post_tool tracer failed: %s", exc)
@@ -598,9 +631,9 @@ def agy_stop(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
     try:
-        config = agy_tracer.discover_config()
+        data = _prepare_tracer_data(ctx)
+        config = agy_tracer.discover_config(data)
         if config is not None:
-            data = _prepare_tracer_data(ctx)
             agy_tracer.handle_stop(data, config)
     except Exception as exc:
         log.warning("agy_stop tracer failed: %s", exc)
@@ -614,9 +647,11 @@ HANDLERS: dict[str, list] = {
         agy_user_prompt_submit,
         search_the_pkb,
         rule_against_hearsay,
+        premise_check_arm,
     ],
-    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, quiet_channel_reply) if h is not None],
-    "PostToolUse": [post_tool, agy_post_tool],
+    "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
+    "PostToolUse": [post_tool, agy_post_tool, premise_check_arm],
     "PostToolUseFailure": [post_tool_failure],
-    "Stop": [stop, agy_stop, honest_output, be_quiet],
+    "PostToolBatch": [premise_check_arm],
+    "Stop": [stop, agy_stop, premise_check_handler],
 }

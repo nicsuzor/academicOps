@@ -162,7 +162,7 @@ TO_CANONICAL = {
         # N+1 fires per turn; orchestrate's own agy OTel tracer built and
         # exported a CHAIN span, then deleted its trace state, after each
         # premature fire, fragmenting one turn into several incomplete
-        # traces (aops_73e25af2). None of PreToolUse/PostToolUse/Stop/
+        # traces. None of PreToolUse/PostToolUse/Stop/
         # SubagentStop covers "one invocation step finished, possibly not
         # the last" — agy has no wire event at that granularity mapped here,
         # and no currently-live handler (across aops-debug, orchestrate,
@@ -239,9 +239,14 @@ def _merge(results: list[Result | None]) -> Result | None:
     not precedence between plugins — the client decides that.
     """
     present = [r for r in results if r is not None]
-    for r in present:
-        if r.kind is Kind.REFUSE:
-            return r
+    refuses = [r for r in present if r.kind is Kind.REFUSE]
+    if refuses:
+        if len(refuses) == 1:
+            return refuses[0]
+        merged_inject = "\n\n".join(r.inject_text for r in refuses if r.inject_text)
+        user_texts = [r.user_text for r in refuses if r.user_text]
+        merged_user = "\n\n".join(user_texts) if user_texts else None
+        return Result(merged_inject, merged_user, Kind.REFUSE)
     blocks = [r for r in present if r.kind is Kind.BLOCK]
     if blocks:
         if len(blocks) == 1:
@@ -334,11 +339,20 @@ def normalize(client: str, event: str, raw: dict[str, Any], hooks_dir: Path) -> 
         or kwargs.get("agent_type", "")
     )
 
+    cwd = raw.get("cwd") or ""
+    if not cwd:
+        wp = raw.get("workspacePaths") or raw.get("workspace_paths")
+        if isinstance(wp, (list, tuple)) and wp:
+            cwd = str(wp[0]).strip()
+        elif isinstance(wp, str) and wp.strip():
+            cwd = wp.strip()
+
     kwargs.update(
         client=client,
         event=event,
         tool=raw.get("tool_name") or raw.get("toolName") or kwargs.get("tool", ""),
         command=command,
+        cwd=cwd or kwargs.get("cwd", ""),
         session_id=raw.get("session_id")
         or raw.get("conversationId")
         or raw.get("conversation_id")

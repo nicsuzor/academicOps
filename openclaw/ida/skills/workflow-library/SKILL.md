@@ -11,13 +11,19 @@ Manage composable workflow templates (`type: template`) across three resolution 
 
 Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tiers completely; never merge text across tiers.
 
-| Tier         | Location                         | Enumeration                                  |
-| ------------ | -------------------------------- | -------------------------------------------- |
-| 1. Project   | `$CWD/.agents/templates/*.md`    | `Glob $CWD/.agents/templates/*.md` (or `ls`) |
-| 2. PKB       | PKB graph                        | `pkb.list_documents(type="template")`        |
-| 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/` | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md`    |
+| Tier         | Location                                            | Enumeration                                                                |
+| ------------ | --------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1. Project   | PKB templates whose `project` is the task's project | `pkb.list_tasks(type="template", project=<project>, include_done=True)`    |
+| 2. PKB       | PKB templates with no `project`                     | `pkb.list_tasks(type="template", include_done=True)`, keep `project: null` |
+| 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/`                    | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md`                                  |
 
-Enumerate and read filesystem templates using file tools (`Glob`, `Read`) rather than `Bash` so resolution succeeds under non-interactive and `dontAsk` permission modes.
+The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty. Templates scoped to any other project are out of scope.
+
+A project template's id is `<project>-<slug>`, so the same slug can exist in several projects. Strip the `<project>-` prefix to get the slug that shadows lower tiers.
+
+Both PKB tiers resolve from the graph alone, so a session needs no checkout of the project's repository. A repository's `.agents/templates/` directory is not a tier.
+
+Enumerate and read universal templates using file tools (`Glob`, `Read`) rather than `Bash`, so resolution succeeds under non-interactive and `dontAsk` permission modes.
 
 ## Modes
 
@@ -25,7 +31,7 @@ Enumerate and read filesystem templates using file tools (`Glob`, `Read`) rather
 
 Enumerate all three tiers live. Return a unified table: **slug \| tier \| coverage \| status**.
 
-- Extract coverage from `description` in frontmatter (filesystem) or the initial sentence of `## What this step does` (PKB). Read template files directly via `Read`; do not run `Bash` loops.
+- Extract coverage from `description` in frontmatter, or, if that is missing, from the first sentence of `## What this step does`. Read universal template files directly via `Read`; do not run `Bash` loops.
 - Filter out dated instances (`-*-\d{8}-*`), foreign-project templates, and `status: cancelled`.
 - Flag shadowed slugs and templates missing coverage lines.
 
@@ -37,8 +43,8 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 
 1. Check existing library to avoid duplicating covered workflows.
 2. Select destination tier:
-   - **Project**: Local repository specific.
-   - **PKB**: Portable personal workflow.
+   - **Project**: Specific to one project. Write it to the PKB with `project: <project>` and id `<project>-<slug>`.
+   - **PKB**: Portable personal workflow. Write it to the PKB with no `project`.
    - **Universal**: Core baseline standard across projects.
 3. Write template using the template schema (<100 lines), to these rules:
    - **State the contract, not the neighbour.** Say what the step needs as input and what it hands back. Never name another template, in the body or the frontmatter: the composing agent decides at composition time what fills each slot. A composite lists its stages as contract expectations in order ("an independent review verdict on the spec"), not as slugs.
@@ -49,12 +55,12 @@ Resolve the template slug across tiers in precedence order. Output the winning c
 
 Update existing templates in place.
 
-- **Filesystem**: Edit file directly.
+- **Universal**: Edit the file directly.
 - **PKB**: Pass only the markdown body below the closing `---` to `pkb.update_body` to prevent frontmatter duplication.
 
 ### preview
 
-Simulate how `dispatch` would assemble workflow templates for a stated objective:
+Simulate how `/reify` would assemble workflow templates for a stated objective:
 
 1. Enumerate and read relevant candidate templates across tiers.
 2. Read the templates and combine their steps into a single, logical sequence (e.g., TDD red tests first, then implementation, then QA integration tests at the end).
@@ -65,15 +71,15 @@ Simulate how `dispatch` would assemble workflow templates for a stated objective
 ### retire
 
 1. Check for tasks governing retirement (`pkb.search`). Halt if unfulfilled dependencies exist.
-2. Delete the artifact (`rm` for files, `pkb.delete` for PKB nodes).
+2. Delete the artifact (`rm` for universal files, `pkb.delete` for PKB nodes).
 3. Name the superseding workflow in the release message or commit.
 
 A template carries only what a composing agent needs to select it and to know
-the step is finished -- the same sufficient-and-no-more standard `/dispatch`
-composes to ([[aops_brief_workflow_assembly]]). Nothing else is mandatory:
+the step is finished -- the same sufficient-and-no-more standard `/reify`
+composes to. Nothing else is mandatory:
 inventing exclusions, contraindications, or gates the work doesn't call for
 overshoots it. No fixed kind is required either -- components sit on one flat
-spine, not sorted into types ([[aops-composable-workflow-system]] §6); a
+spine, not sorted into types; a
 template stating an obligation that blocks acceptance rather than a process
 that proceeds conventionally carries a `wf-` prefix, no frontmatter field
 needed to say so.

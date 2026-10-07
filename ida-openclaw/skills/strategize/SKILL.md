@@ -5,7 +5,7 @@ description: Analytical lenses for reasoning at strategic altitude -- effectuati
 
 # Strategize
 
-Equipment for thinking at Nic's altitude. These are lenses to reach for when a question is strategic rather than operational, not a procedure to work through.
+Equipment for thinking at the user's altitude. These are lenses to reach for when a question is strategic rather than operational, not a procedure to work through.
 
 ## Effectuation
 
@@ -26,8 +26,8 @@ Name the rung before answering. A question at Success -- _what are we actually t
 
 Ask what kind of door this is before asking whether it is the right one.
 
-- **Two-way** -- decide, act, revise on evidence. Deliberating over these is the costly mistake, and handing one to Nic spends his attention on something that should have cost yours.
-- **One-way** -- being wrong is not recoverable by noticing. These are his, and they are worth slowing down for.
+- **Two-way** -- decide, act, revise on evidence. Deliberating over these is the costly mistake, and handing one to the user spends their attention on something that should have cost yours.
+- **One-way** -- being wrong is not recoverable by noticing. These are the user's, and they are worth slowing down for.
 
 Most decisions that feel weighty are two-way doors wearing a costume.
 

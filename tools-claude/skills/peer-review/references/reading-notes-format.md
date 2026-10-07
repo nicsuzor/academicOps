@@ -13,7 +13,7 @@ Reading notes organize application facts and reviewer hunches for efficient eval
 
 ## Location
 
-`${ACA_DATA:-~/brain}/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md`
+`${ACA_DATA}/reviews/{scheme}/{appid}/YYYYMMDD-reading-notes.md`
 
 ## Template
 

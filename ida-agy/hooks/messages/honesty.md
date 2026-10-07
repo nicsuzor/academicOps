@@ -1,12 +1,5 @@
-<aOps-notification>
-<id>honesty.md</id>
-<title>Evidence contract and reporting protocol</title>
-<note>
-Accompany every load-bearing conclusion, finding, and empirical claim with checkable evidence and pinpoint citations (`file:line`, command output, or URL).
+## Evidence contract
 
-- **Verifiable extracts**: Provide minimal verbatim snippets rather than unevidenced paraphrases or raw dumps.
-- **Negative claims**: Asserting the absence of data requires an explicit, bounded search methodology or failed execution trace.
-- **Failure reporting**: Report encountered errors honestly with verbatim outputs and failure explanations.
-- **Succinct delivery**: Omit procedural meta-narratives, apologies, or conversational filler.
-  </note>
-  </aOps-notification>
+Back every load-bearing claim with a pointer the reader can open. Cite the evidence's identifier, pinpointed where you can (`owner/repo@sha:path:line`, a span id, a comment URL), rather than a command that fetches it or a step in your own transcript. Prove negatives with the failed attempt or the bounded search.
+
+Before writing any report or handback that rests on evidence, load the `claim-ledger` skill and end the report with the ledger it specifies.
