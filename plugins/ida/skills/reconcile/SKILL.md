@@ -23,7 +23,7 @@ The short pass. A supervisor runs it on work that has come back, so it stays sma
 1. **Input**: The task IDs the caller names -- typically the tasks it dispatched that are now `done`, `review` or `partial`. With none named, take the tasks released to those statuses since the caller's previous check (`pkb.list_tasks(status=..., since=...)`), at most 20.
 2. **Read each task** and the pull request it records (`pr_url`, or its recorded branch). Address the PR by URL (`gh pr view <url> --json state,mergedAt`); do not search for PRs the task does not name. A PR the task records that closed without merge is the check's to surface for routing, as the sweep's pull-request step does.
 3. **For a task marked `done`**, run the per-task checks below. For any other status, apply the row of the status table that its own record decides.
-4. **Set the status** each task's evidence supports, under Settle Decisions Before Escalation, Failed-Check Outcome and the two-step mutation contract.
+4. **Set the status** each task's evidence supports, under Settle Decisions Before Escalation and Failed-Check Outcome.
 5. **Leave the rest to the sweep.** Check reads no task it was not handed: it does not list the graph, match PRs that name no task, mint or re-queue next tasks, demote dependents or siblings, or cancel on world-facts. Anything of that kind it notices it appends to the handed task's body under `## For the next sweep` -- one line each, naming the task ID affected and the evidence -- and lists in its result.
 
 ## Sweep
@@ -57,7 +57,7 @@ For a task marked `done`:
 
 ## Set the Status on Each Task
 
-Every task a pass reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass, under the two-step mutation contract below. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
+Every task a pass reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
 
 | Task is in    | Evidence on the record                                                               | Set it to                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -138,10 +138,7 @@ When a task marked `done` fails the facial sufficiency or scope check:
 
 ## Writes
 
-Both modes:
-
-1. **Two-step mutation contract**: Write annotation and evidence to markdown body first, then mutate frontmatter via `pkb.update_task`, then read back to confirm status.
-2. **Daily note boundary**: Reconcile does not append to or own daily-note sections.
+Reconcile does not append to or own daily-note sections.
 
 ## Output Contract
 
