@@ -1,14 +1,9 @@
 ---
-id: workflows-reconcile
 title: GH ↔ PKB Reconcile (Close-the-Loop)
 type: spec
 category: workflow
 status: ready
 tags: [spec, workflow, reconcile, github, pkb, closure-loop]
-related:
-  - feedback-loops
-  - pr-pipeline
-  - work-management
 ---
 
 # GH ↔ PKB Reconcile

@@ -22,8 +22,8 @@ EOF
 
 chmod +x /usr/local/bin/gh-token-askpass
 
-# 2) Identity rewrite with a LONGER prefix than the proxy rule (…/nicsuzor/ beats https://github.com/)
-#    -> canonical github URLs for your repos resolve direct instead of via the brain-scoped proxy
+# 2) Identity rewrite with a LONGER prefix than the proxy rule (…/<owner>/<repo> beats https://github.com/)
+#    -> canonical github URLs for your repos resolve direct instead of via the repository-scoped proxy
 git config --global url."https://github.com/nicsuzor/academicOps".insteadOf "https://github.com/nicsuzor/academicOps"
 git config --global core.askPass /usr/local/bin/gh-token-askpass
 

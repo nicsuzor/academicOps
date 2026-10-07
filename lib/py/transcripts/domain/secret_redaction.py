@@ -1,17 +1,17 @@
-"""Write-time secret redaction for session artifacts (aops-9f290e36).
+"""Write-time secret redaction for session artifacts.
 
 Session transcripts (``transcripts/*.md``) and insight summaries
 (``summaries/*.json``) are committed to the GitHub-backed sessions repo. A
 ``bash`` tool that runs ``export``/``env``, or any command that echoes a
-credential, would otherwise land verbatim in those files. On 2026-06-01 a full
-environment dump (GH PAT, Anthropic OAuth, Tailscale authkey, etc.) leaked into
-``summaries/user-prompts-2026-06.txt`` exactly this way.
+credential, would otherwise land verbatim in those files: a full environment
+dump (GH PAT, Anthropic OAuth, Tailscale authkey, etc.) in a prompt summary is
+the failure this prevents.
 
 This module scrubs known credential shapes at write time. It is deliberately
 pattern-based — known token prefixes plus sensitively-named ``KEY=VALUE``
 assignments — rather than entropy-based, to avoid mangling ordinary prose. It
-is the producer-side facet of the structural secret-leakage epic
-(``aops-00c0fa10``); a pre-commit secret linter is the complementary backstop.
+is the producer-side layer of secret-leakage protection; a pre-commit secret
+linter is the complementary backstop.
 
 Apply :func:`redact_obj` to anything with structure — a JSON sidecar, a tool
 call's arguments — *before* it is serialised, and :func:`redact_secrets` only to

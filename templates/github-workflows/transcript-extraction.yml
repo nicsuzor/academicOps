@@ -186,8 +186,7 @@ jobs:
             - **Halt surfacing**: parse sub-agent returns for `HALT:`, `HALTED`,
               `tool gap`, `tool not available`, or `cannot proceed: missing
               tool`. Surface the count and missing tool names at the TOP of
-              `$GITHUB_STEP_SUMMARY`. Closes silent-failure mode tracked in
-              task-1460d6cf.
+              `$GITHUB_STEP_SUMMARY`.
 
             ## CRITICAL Rules
 

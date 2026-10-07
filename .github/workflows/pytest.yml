@@ -8,7 +8,7 @@ on:
     # forced it). The gap this closes: pr-pipeline.yml already covered PRs
     # *into* `v[0-9]*` bases, but nothing covered pushes to a release branch's
     # own tip, so `v0.9.1` reached release-readiness having never had a single
-    # CI run against it (aops_v091_ci_never_ran). A release line is now checked
+    # CI run against it. A release line is now checked
     # from the day it is cut, not the day someone notices.
     branches:
       - dev

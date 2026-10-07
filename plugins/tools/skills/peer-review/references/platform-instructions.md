@@ -12,7 +12,7 @@ tags: [reference, peer-review, platforms]
 - **ERC (EvalAccess)**: Focus on scientific relevance and groundbreaking nature. Reward high-risk, ambitious methodology unless unmitigated.
 - **SNSF mySNF**: Weight scientific relevance heavily. Account for opportunity-adjusted track record and career interruptions.
 - **NHMRC Sapphire**: Approach and methodology criteria typically dominate; follow scheme-specific scoring scales.
-- **Archiving**: Download and archive a copy of the final submitted assessment in `${ACA_DATA:-~/brain}/reviews/{scheme}/{appid}/`.
+- **Archiving**: Download and archive a copy of the final submitted assessment in `${ACA_DATA}/reviews/{scheme}/{appid}/`.
 
 ## Integrity & Foreign Affiliations
 

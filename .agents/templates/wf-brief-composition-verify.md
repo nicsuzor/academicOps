@@ -25,14 +25,9 @@ A live, TDD-shaped verification workflow that tests whether `aops:pauli` reliabl
 
 This workflow distinguishes "the skill instructions say X" from "a cold agent composing under `/brief` actually executes X." It provides a repeatable qualitative test harness to verify that `/brief` reads components from all three sources, and adheres to the sizing rules and acceptance criteria formulation.
 
-## Scope & Superseded Context
+## Scope
 
-Part 2 of the original capture for `task_45f7a617` ("confirm search path and precedence for workflow components") is **superseded and closed**:
-
-- `[[aops-composable-workflow-system]]` §7 defines the two-tier resolution order (git `plugins/aops/workflows/*.md` via `INDEX.md`, then PKB `wf-template` / `custom-template`, resolved by name, later tiers winning).
-- `[[workflow-library-moc]]` documents the same precedence, the git-tier-first-check rule, and the portable/non-portable split test.
-
-No further investigation of search path or precedence is needed or permitted in this workflow.
+Template search path and tier precedence are out of scope: the `workflow-library` skill defines them. Do not investigate them in this workflow.
 
 ## Core Disciplines & Ordering
 
@@ -51,17 +46,14 @@ No further investigation of search path or precedence is needed or permitted in 
 
 ## Remedy Constraints: Foreclosure of Prose-Only Fixes
 
-Governed by `[[ref-brief-detail-verdict-20260818]]`:
-
 - **Prose instructions at the decision point do not bind composing agents.** As established in PR #1133 and subsequent recurrences, same-model self-instruction competes with the authoring impulse and repeatedly loses.
 - Any proposed fix for an identified composition failure must **NOT** default to adding prose to `pauli.md` or `brief/SKILL.md`.
 - Remedies must prefer structural enforcement (schema validation, hook gates, tool parameter constraints, state machine gates).
 - Any prose-only remedy proposal must be explicitly flagged as `unproven-to-bind` rather than presented as a certified fix.
 
-## Finding-Routing Target & Fallback
+## Finding Routing
 
-- `[[aops_1d36fadf]]` (the 6th `learn` routing row for workflow-template feedback) is currently `ready` (not `done`).
-- **Fallback**: Any confirmed failure discovered during execution cannot yet route through `learn`. File a defect task directly against the specific `pauli.md`, `brief/SKILL.md`, or `wf-template` node the failure implicates, or update the affected template under standard maintenance authority.
+- File each confirmed failure discovered during execution as a defect task directly against the specific `pauli.md`, `brief/SKILL.md`, or `wf-template` node the failure implicates, or update the affected template under standard maintenance authority.
 
 ## Retrigger Condition
 
@@ -69,7 +61,7 @@ Modeled on `[[wf-self-test]]` and `[[wf-agentic-e2e-certification]]` ("when to i
 
 - **Triggered, not continuously automated.**
 - Run after any change to `plugins/aops/skills/brief/SKILL.md` or `plugins/pkb/agents/pauli.md`.
-- Run after any change to composed `wf-template` documents in `pkb-workflow-index` or `plugins/aops/workflows/*.md`.
+- Run after any change to composed `wf-template` documents in the PKB template tier or `plugins/aops/workflows/*.md`.
 - Run as a periodic audit or quality certification before minor/major framework releases.
 
 ## Evaluation Rubric (from `brief/SKILL.md` Fitness Test)
@@ -161,7 +153,7 @@ Every test case is evaluated against the three readers defined in `brief/SKILL.m
   - States independent verification of the migration as an acceptance criterion on the task body, checkable by a stranger at the merge boundary.
   - Does NOT emit a separate blocking child task node for review or sign-off.
 - **Concrete FAIL Description**:
-  - Emitting an independent blocking child task node (e.g. `wf-qa-verify` or `wf-human-approval`) in the graph for verification, rather than an acceptance criterion.
+  - Emitting an independent blocking child task node (e.g. `wf-qa-verify` or `wf-escalated-approval`) in the graph for verification, rather than an acceptance criterion.
   - Omitting the irreversibility risk and its gating criterion entirely, leaving acceptance ungated.
 
 ## Execution & Reporting Procedure

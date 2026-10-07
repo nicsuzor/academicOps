@@ -273,6 +273,9 @@ def _run_shipped_hook(
     # stderr output into these runs that the field never produces — and the
     # silence assertions would be measuring the test runner, not the hook.
     env.pop("VIRTUAL_ENV", None)
+    # Route any OTel telemetry generated during shipped hook runs to the dedicated test project
+    env.setdefault("PHOENIX_PROJECT_NAME", "academicOps-test")
+    env.setdefault("OTEL_SERVICE_NAME", "academicOps-test")
     for key, value in (env_overrides or {}).items():
         if value is None:
             env.pop(key, None)
@@ -1043,7 +1046,7 @@ def test_rbg_wires_preinvocation_on_agy(dist_root):
     which is enough to state the live rule set for the turn.
 
     PostInvocation is no longer wired: dispatch.py's
-    TO_CANONICAL["agy"]["PostInvocation"] is now None (aops_73e25af2 — it
+    TO_CANONICAL["agy"]["PostInvocation"] is now None (it
     fired once per internal invocation/tool-call round-trip, not once per
     turn), and rbg's own Stop-side handler is commented out anyway, so
     there was nothing left for it to reach."""

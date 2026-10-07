@@ -50,7 +50,7 @@ Evaluate live rendered screenshots (1920x1080) across three dimensions:
 
 ### Concrete Observations
 
-[Observed findings with basis tags ([observed], [attempted-and-failed], etc.) and file:line citations]
+[Observed findings with basis tags (`#observed`, `#attempted-and-failed`, etc.) and file:line citations]
 
 ### Forcing Checks
 

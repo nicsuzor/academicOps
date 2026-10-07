@@ -15,7 +15,7 @@ Answers three questions with numbers, not impression, before anyone touches
    no source for it anywhere reachable) — see NOTES below. This is the
    closest faithful proxy available for what a real fire pays.
 3. **Retrieval relevance** on a fixed, versioned prompt set spanning the two
-   topic families named in task_206a0832: (A) instruction auditing / plugin
+   topic families: (A) instruction auditing / plugin
    structure, and (B) agent design / evidence standards. Scoring rule is a
    stated, mechanical keyword-domain match against each prompt's declared
    keyword set — never a model judging its own homework.
@@ -49,7 +49,7 @@ LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 PKB_HOOKS = REPO_ROOT / "plugins" / "pkb" / "hooks"
 
 # --------------------------------------------------------------------------
-# Fixed, versioned prompt set. Both families are turns Nic plausibly types;
+# Fixed, versioned prompt set. Both families are turns the user plausibly types;
 # wording fixed here so a re-run is measuring drift in the backend, not
 # drift in the prompt set.
 # --------------------------------------------------------------------------
@@ -66,7 +66,7 @@ PROMPT_FAMILIES: dict[str, list[str]] = {
         "what evidence standard should james use before accepting a subagent's report",
         "design the verification rubric for judging a subagent's claim",
         "how should agents cite basis tags for load-bearing claims",
-        "what does premise-check look for in a report before it reaches nic",
+        "what does premise-check look for in a report before it reaches the user",
         "review whether marsha's QA pass actually verifies runtime behaviour",
     ],
 }
