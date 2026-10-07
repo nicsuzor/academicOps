@@ -81,7 +81,9 @@ provide timely reminders and non-content-sniffing friction:
      an advisory reminder instructs the supervisor to premise-check the returned spine.
    - On peer message or background completion arrival (`UserPromptSubmit` carrying
      a message envelope), an advisory reminder instructs the receiver to verify the
-     incoming spine before acting on or relaying it.
+     incoming spine before acting on or relaying it, and the premise-check gate arms.
+     Nic's own console and Telegram messages get neither; they are hydrated from the
+     PKB (`specs/agents/prompt-hydration.md`).
 2. **Block-Once Procedural Friction Gate:**
    - On session exit (`Stop`) and external user communications (`PreToolUse` on channel
      reply tools such as `telegram_reply` or `ask_question`), the harness inspects

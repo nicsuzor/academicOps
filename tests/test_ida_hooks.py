@@ -50,7 +50,7 @@ def clean_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 def test_hearsay_registered_on_user_prompt_submit():
     assert "UserPromptSubmit" in handlers.HANDLERS
-    assert handlers.rule_against_hearsay in handlers.HANDLERS["UserPromptSubmit"]
+    assert handlers.hydrate_and_rule_on_hearsay in handlers.HANDLERS["UserPromptSubmit"]
 
 
 def test_hearsay_fires_for_ida_on_user_prompt_submit():

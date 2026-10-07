@@ -1,10 +1,10 @@
 """Tests for the PKB hydration transport (plugins/ida/hooks/pkb_search_client.py).
 
-The deployed endpoint ($PKB_MCP_URL) sits behind Cloudflare Access and is an
-MCP portal: unauthenticated calls get HTTP 401, and with CF-Access headers it
-lists only portal_* tools, so PKB search goes through portal_codemode_execute.
-The client resolves credentials, picks a direct search tool when the server
-exposes one, falls back to the portal otherwise, and returns plain text.
+The deployed endpoint ($PKB_MCP_URL) is the services MCP portal behind
+Cloudflare Access: unauthenticated calls get HTTP 401, and PKB tools are only
+reachable through portal_codemode_execute. The live round trip is exercised
+by running the real hook (see the PR); these tests cover credentials, the
+generated code, unwrapping and the timeout.
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from fastmcp import Client, FastMCP
 
 _HOOKS_DIR = Path(__file__).resolve().parent.parent / "plugins" / "ida" / "hooks"
 if str(_HOOKS_DIR) not in sys.path:
@@ -26,11 +25,8 @@ import pkb_search_client as psc  # noqa: E402
 URL = "https://pkb.example.test/mcp"
 
 
-def _write_claude_json(path: Path, servers: dict, project_servers: dict | None = None) -> Path:
-    data: dict = {"mcpServers": servers}
-    if project_servers is not None:
-        data["projects"] = {"/workspace": {"mcpServers": project_servers}}
-    path.write_text(json.dumps(data), encoding="utf-8")
+def _config(path: Path, servers: dict) -> Path:
+    path.write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
     return path
 
 
@@ -38,118 +34,66 @@ def _write_claude_json(path: Path, servers: dict, project_servers: dict | None =
 
 
 def test_cf_access_env_vars_win(tmp_path):
-    cfg = _write_claude_json(
-        tmp_path / "c.json",
-        {"services": {"url": URL, "headers": {"CF-Access-Client-Id": "from-file"}}},
-    )
-    env = {"CF_ACCESS_CLIENT_ID": "id-env", "CF_ACCESS_CLIENT_SECRET": "secret-env"}
-    assert psc.resolve_headers(URL, env, cfg) == {
-        "CF-Access-Client-Id": "id-env",
-        "CF-Access-Client-Secret": "secret-env",
+    cfg = _config(tmp_path / "c.json", {"s": {"url": URL, "headers": {"X": "from-file"}}})
+    env = {"CF_ACCESS_CLIENT_ID": "id", "CF_ACCESS_CLIENT_SECRET": "secret"}
+    assert psc.headers_for(URL, env, (cfg,)) == {
+        "CF-Access-Client-Id": "id",
+        "CF-Access-Client-Secret": "secret",
     }
 
 
-def test_headers_come_from_claude_json_entry_matching_the_url(tmp_path):
-    cfg = _write_claude_json(
-        tmp_path / "c.json",
-        {
-            "other": {"url": "https://elsewhere.test/mcp", "headers": {"X": "no"}},
-            "services": {
-                "url": URL + "/",
-                "headers": {"CF-Access-Client-Id": "i", "CF-Access-Client-Secret": "s"},
-            },
-        },
+def test_headers_come_from_claude_code_config(tmp_path):
+    cfg = _config(
+        tmp_path / ".claude.json", {"services": {"url": URL + "/", "headers": {"X": "1"}}}
     )
-    assert psc.resolve_headers(URL, {}, cfg) == {
-        "CF-Access-Client-Id": "i",
-        "CF-Access-Client-Secret": "s",
-    }
+    assert psc.headers_for(URL, {}, (cfg,)) == {"X": "1"}
 
 
-def test_headers_from_project_scoped_mcp_server(tmp_path):
-    cfg = _write_claude_json(
-        tmp_path / "c.json", {}, {"svc": {"url": URL, "headers": {"CF-Access-Client-Id": "p"}}}
+def test_headers_come_from_agy_config(tmp_path):
+    """agy's mcp_config.json names the endpoint ``serverUrl``."""
+    missing = tmp_path / "absent.json"
+    cfg = _config(
+        tmp_path / "mcp_config.json", {"services": {"serverUrl": URL, "headers": {"X": "2"}}}
     )
-    assert psc.resolve_headers(URL, {}, cfg) == {"CF-Access-Client-Id": "p"}
+    assert psc.headers_for(URL, {}, (missing, cfg)) == {"X": "2"}
 
 
-def test_no_matching_entry_and_no_env_gives_no_headers(tmp_path):
-    cfg = _write_claude_json(tmp_path / "c.json", {"x": {"url": "https://other.test/mcp"}})
-    assert psc.resolve_headers(URL, {}, cfg) == {}
-    assert psc.resolve_headers(URL, {}, tmp_path / "missing.json") == {}
+def test_no_matching_entry_gives_no_headers(tmp_path):
+    cfg = _config(
+        tmp_path / "c.json", {"other": {"url": "https://elsewhere/mcp", "headers": {"X": "1"}}}
+    )
+    assert psc.headers_for(URL, {}, (cfg,)) == {}
 
 
-def test_bearer_token_is_still_supported(tmp_path):
-    headers = psc.resolve_headers(URL, {"PKB_MCP_TOKEN": "tok"}, tmp_path / "missing.json")
-    assert headers == {"Authorization": "Bearer tok"}
+def test_bearer_token_is_added(tmp_path):
+    assert psc.headers_for(URL, {"PKB_MCP_TOKEN": "t"}, ()) == {"Authorization": "Bearer t"}
 
 
-# --- tool selection and call shape ----------------------------------------
+# --- call and result -------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["pkb__search", "pkb_search", "search"])
-def test_direct_search_tool_is_preferred(name):
-    tool, args = psc.build_call([name, "portal_codemode_execute"], "hello")
-    assert tool == name
-    assert args == {"query": "hello"}
+def test_query_is_embedded_as_a_json_literal_with_a_result_limit():
+    query = 'a"); evil(); ("'
+    code = psc.search_code(query)
+    prefix = "async () => await codemode.pkb_search("
+    assert code.startswith(prefix) and code.endswith(")")
+    assert json.loads(code[len(prefix) : -1]) == {"query": query, "limit": psc.RESULT_LIMIT}
 
 
-def test_portal_codemode_fallback_embeds_query_as_a_json_literal():
-    query = 'x"}); evil(); ({"a":"'
-    tool, args = psc.build_call(["portal_list_servers", "portal_codemode_execute"], query)
-    assert tool == "portal_codemode_execute"
-    code = args["code"]
-    assert code.startswith("async () => await codemode.pkb_search(")
-    payload = code[len("async () => await codemode.pkb_search(") : -1]
-    assert json.loads(payload) == {"query": query}
+def test_result_text_unwraps_portal_content_blocks():
+    blocks = json.dumps([{"type": "text", "text": "**Found 5 results**"}])
+    assert psc.result_text(blocks) == "**Found 5 results**"
 
 
-def test_no_usable_tool_raises():
-    with pytest.raises(psc.NoSearchTool):
-        psc.build_call(["portal_list_servers"], "q")
+def test_result_text_passes_plain_text_through():
+    assert psc.result_text("  plain  ") == "plain"
 
 
-# --- result text -----------------------------------------------------------
+def test_search_is_cut_off_at_the_timeout(monkeypatch):
+    async def stalled(url, query, headers):
+        await asyncio.sleep(5)
+        return "late"
 
-
-def test_extract_text_unwraps_portal_content_blocks():
-    # Shape observed from portal_codemode_execute -> pkb_search on 2026-10-06.
-    raw = json.dumps([{"type": "text", "text": "**Found 1 results**\n### 1. A"}])
-    assert psc.extract_text(raw) == "**Found 1 results**\n### 1. A"
-
-
-def test_extract_text_unwraps_result_envelope():
-    assert psc.extract_text(json.dumps({"result": "found it"})) == "found it"
-
-
-def test_extract_text_passes_plain_text_through():
-    assert psc.extract_text("1. Some doc\n   path.md") == "1. Some doc\n   path.md"
-
-
-# --- against in-memory MCP servers -----------------------------------------
-
-
-def test_search_calls_direct_tool_on_server():
-    server = FastMCP("direct")
-
-    @server.tool
-    def pkb_search(query: str) -> str:
-        return f"direct hit for {query}"
-
-    out = asyncio.run(psc.search_with_client(Client(server), "axioms"))
-    assert out == "direct hit for axioms"
-
-
-def test_search_goes_through_portal_when_no_direct_tool():
-    server = FastMCP("portal")
-
-    @server.tool
-    def portal_list_servers() -> str:
-        return "[]"
-
-    @server.tool
-    def portal_codemode_execute(code: str) -> str:
-        return json.dumps([{"type": "text", "text": f"portal ran: {code}"}])
-
-    out = asyncio.run(psc.search_with_client(Client(server), "axioms"))
-    assert out == 'portal ran: async () => await codemode.pkb_search({"query": "axioms"})'
+    monkeypatch.setattr(psc, "_search", stalled)
+    with pytest.raises(TimeoutError):
+        psc.search(URL, "q", {}, timeout=0.05)

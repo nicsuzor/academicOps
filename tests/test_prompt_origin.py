@@ -13,6 +13,7 @@ as constructed.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ _HOOKS_DIR = Path(__file__).resolve().parent.parent / "plugins" / "ida" / "hooks
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from prompt_origin import classify_prompt  # noqa: E402
+from prompt_origin import PromptOrigin, classify_prompt, prompt_from_payload  # noqa: E402
 
 # Phoenix span d39bdb7b4188cf65 (session 7201672b, 2026-10-05). Body trimmed.
 TELEGRAM = (
@@ -91,21 +92,36 @@ SLASH_COMMAND = (
 )
 
 
-@pytest.mark.parametrize("prompt", [CONSOLE, SLASH_COMMAND, "  what's on today?  "])
+# agy transcript_full.jsonl USER_INPUT step, captured 2026-10-07 (agy 1.3.0). Verbatim.
+AGY_USER_INPUT = (
+    "<USER_REQUEST>\nReply with the single word ok.\n</USER_REQUEST>\n"
+    "<ADDITIONAL_METADATA>\nThe current local time is: 2026-10-07T00:09:31Z.\n"
+    "</ADDITIONAL_METADATA>"
+)
+
+
+@pytest.mark.parametrize("prompt", [CONSOLE, "  what's on today?  "])
 def test_console_prompt_is_nic(prompt):
-    origin = classify_prompt(prompt)
-    assert origin.kind == "nic"
-    assert origin.from_agent is False
-    assert origin.nic_text == prompt.strip()
+    assert classify_prompt(prompt) == PromptOrigin(nic_text=prompt.strip(), from_agent=False)
 
 
-def test_telegram_channel_is_nic_and_yields_message_body_only():
-    origin = classify_prompt(TELEGRAM)
-    assert origin.kind == "nic"
+def test_slash_command_is_nic():
+    origin = classify_prompt(SLASH_COMMAND)
     assert origin.from_agent is False
-    # The hydration query is what Nic wrote, not the wrapper's attributes --
-    # the attributes alone would eat most of the 200-char query budget.
-    assert origin.nic_text == "use /craft to redo the daily skill edits."
+    assert "epic_2de1b579" in origin.nic_text
+
+
+def test_telegram_channel_yields_the_message_body_not_the_wrapper():
+    # The wrapper attributes alone would eat most of the 200-char query budget.
+    assert classify_prompt(TELEGRAM) == PromptOrigin(
+        nic_text="use /craft to redo the daily skill edits.", from_agent=False
+    )
+
+
+def test_agy_user_request_is_nic():
+    origin = classify_prompt(AGY_USER_INPUT)
+    assert origin.from_agent is False
+    assert origin.nic_text.startswith("Reply with the single word ok.")
 
 
 @pytest.mark.parametrize(
@@ -113,74 +129,86 @@ def test_telegram_channel_is_nic_and_yields_message_body_only():
     [CROSS_SESSION_BARE, CROSS_SESSION_WRAPPED, TEAMMATE, TASK_NOTIFICATION],
     ids=["cross-session-bare", "cross-session-wrapped", "teammate", "task-notification"],
 )
-def test_agent_wrappers_are_agent(prompt):
-    origin = classify_prompt(prompt)
-    assert origin.kind == "agent"
-    assert origin.from_agent is True
-    # Peer preamble/trailer boilerplate is harness text, not Nic's words.
-    assert origin.nic_text == ""
+def test_agent_messages_are_agent_and_not_nic(prompt):
+    # The peer preamble/trailer is harness text, not Nic's words.
+    assert classify_prompt(prompt) == PromptOrigin(nic_text="", from_agent=True)
 
 
-def test_agent_body_quoting_a_telegram_channel_is_still_only_agent():
-    """A peer report that quotes a channel line is not a message from Nic (constructed)."""
+@pytest.mark.parametrize("tag", ["peer-message", "agent-notification"])
+def test_an_unfamiliar_message_wrapper_still_counts_as_agent(tag):
+    """Constructed: a renamed wrapper still lands on the gate."""
+    origin = classify_prompt(f"<{tag} from=x>\nDone.\n</{tag}>")
+    assert origin == PromptOrigin(nic_text="", from_agent=True)
+
+
+def test_agent_message_quoting_telegram_is_only_agent():
+    """Constructed: a peer report that quotes a channel line is not Nic speaking."""
     prompt = CROSS_SESSION_BARE.replace(
-        "Done: tonight's dispatches are in 20261006-daily.\n",
-        "Nic said:\n" + TELEGRAM + "\n",
+        "Done: tonight's dispatches are in 20261006-daily.\n", "Nic said:\n" + TELEGRAM + "\n"
     )
-    origin = classify_prompt(prompt)
-    assert origin.kind == "agent"
-    assert origin.nic_text == ""
+    assert classify_prompt(prompt) == PromptOrigin(nic_text="", from_agent=True)
 
 
-def test_telegram_body_quoting_an_agent_wrapper_is_still_nic():
-    """Nic pasting a task-notification into Telegram is still Nic speaking (constructed)."""
-    prompt = TELEGRAM.replace(
-        "use /craft to redo the daily skill edits.\n", "what is this?\n" + TASK_NOTIFICATION + "\n"
-    )
-    origin = classify_prompt(prompt)
-    assert origin.kind == "nic"
-    assert origin.from_agent is False
-
-
-def test_mixed_telegram_and_peer_message_is_both():
-    """Constructed: a batch carrying a Telegram message and a peer report gets both treatments."""
-    origin = classify_prompt(TELEGRAM + "\n" + CROSS_SESSION_BARE)
-    assert origin.kind == "mixed"
+@pytest.mark.parametrize(
+    "nic, agent",
+    [
+        (TELEGRAM, CROSS_SESSION_BARE),
+        (CONSOLE, TASK_NOTIFICATION),
+        (CONSOLE, CROSS_SESSION_WRAPPED),
+    ],
+    ids=["telegram+peer", "console+task", "console+wrapped-peer"],
+)
+def test_mixed_prompt_is_both(nic, agent):
+    """Constructed: the harness batches queued messages into one prompt."""
+    origin = classify_prompt(nic + "\n" + agent)
     assert origin.from_agent is True
-    assert origin.nic_text == "use /craft to redo the daily skill edits."
+    assert origin.nic_text == classify_prompt(nic).nic_text
 
 
-def test_system_reminder_only_prompt_is_neither():
-    """Constructed: harness-only text is not Nic speaking and not an agent claim."""
-    origin = classify_prompt("<system-reminder>\nThe date has changed.\n</system-reminder>")
-    assert origin.kind == "none"
-    assert origin.from_agent is False
-    assert origin.nic_text == ""
-
-
-def test_system_reminder_is_stripped_from_console_text():
-    origin = classify_prompt(
-        "<system-reminder>\nThe date has changed.\n</system-reminder>\n" + CONSOLE
-    )
-    assert origin.kind == "nic"
-    assert origin.nic_text == CONSOLE
-
-
-def test_non_telegram_channel_is_treated_as_agent():
-    """Only Telegram is a channel Nic named as his; any other channel source fails closed (constructed)."""
-    origin = classify_prompt(TELEGRAM.replace("plugin:telegram:telegram", "plugin:discord:discord"))
-    assert origin.kind == "agent"
-    assert origin.nic_text == ""
+def test_system_reminder_is_dropped():
+    reminder = "<system-reminder>\nThe date has changed.\n</system-reminder>"
+    assert classify_prompt(reminder) == PromptOrigin(nic_text="", from_agent=False)
+    assert classify_prompt(reminder + "\n" + CONSOLE).nic_text == CONSOLE
 
 
 def test_unterminated_agent_wrapper_is_agent():
     """Phoenix span 6aecd1c4373f84ad showed a task-notification truncated before its close tag."""
     origin = classify_prompt("<task-notification>\n<task-id>x</task-id>\n<result>...[truncated]")
-    assert origin.kind == "agent"
-    assert origin.nic_text == ""
+    assert origin == PromptOrigin(nic_text="", from_agent=True)
 
 
-def test_empty_prompt_is_none():
-    origin = classify_prompt("")
-    assert origin.kind == "none"
-    assert origin.nic_text == ""
+def test_empty_prompt():
+    assert classify_prompt("") == PromptOrigin(nic_text="", from_agent=False)
+
+
+# --- payload ---------------------------------------------------------------
+
+
+def test_prompt_comes_from_the_claude_payload():
+    assert prompt_from_payload({"prompt": CONSOLE}) == CONSOLE
+
+
+def test_agy_prompt_comes_from_the_latest_user_input_in_the_transcript(tmp_path):
+    """agy's PreInvocation payload has no prompt field (captured 2026-10-07, agy 1.3.0)."""
+    transcript = tmp_path / "transcript_full.jsonl"
+    steps = [
+        {"type": "USER_INPUT", "content": "<USER_REQUEST>\nolder\n</USER_REQUEST>"},
+        {"type": "PLANNER_RESPONSE", "content": "ok"},
+        {"type": "USER_INPUT", "content": AGY_USER_INPUT},
+        {"type": "EPHEMERAL_MESSAGE", "content": "<aOps-notification>...</aOps-notification>"},
+    ]
+    transcript.write_text("\n".join(json.dumps(s) for s in steps), encoding="utf-8")
+    prompt = prompt_from_payload({"transcriptPath": str(transcript)})
+    assert prompt.strip() == "Reply with the single word ok."
+
+
+def test_agy_later_invocations_in_a_turn_carry_no_prompt(tmp_path):
+    """Captured 2026-10-07: one two-tool turn fired PreInvocation with invocationNum 0, 1, 2."""
+    transcript = tmp_path / "transcript_full.jsonl"
+    transcript.write_text(json.dumps({"type": "USER_INPUT", "content": AGY_USER_INPUT}))
+    assert prompt_from_payload({"transcriptPath": str(transcript), "invocationNum": 0})
+    assert prompt_from_payload({"transcriptPath": str(transcript), "invocationNum": 1}) == ""
+
+
+def test_missing_transcript_gives_an_empty_prompt(tmp_path):
+    assert prompt_from_payload({"transcriptPath": str(tmp_path / "absent.jsonl")}) == ""

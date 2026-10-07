@@ -1,50 +1,42 @@
-"""Who is speaking in a UserPromptSubmit prompt: Nic, another agent, or both.
+"""Who wrote a UserPromptSubmit prompt: Nic, another agent, or both.
 
-Nic's messages (console prompts, Telegram channel messages) get PKB hydration.
-Messages flowing the other way (peer sessions, teammates, background task
-results) get the hearsay reminder and arm the premise-check verdict gate.
+Nic's text is hydrated from the PKB. A message from an agent gets the hearsay
+reminder and arms the premise-check gate. The harness batches queued messages
+into one prompt, so a prompt can carry both, and then it gets both treatments.
 
-Wrapper formats come from real ``claude-code-turn`` spans in Phoenix (samples
-and span ids in tests/test_prompt_origin.py):
+The rules are deliberately loose so they survive changes to the harness's
+wrapper formats on Claude Code and agy:
 
-- Telegram: ``<channel source="plugin:telegram:telegram" ...>body</channel>``
-- Peer:     ``<cross-session-message from=... from-name=...>...</cross-session-message>``,
-            sometimes preceded by "Another Claude session sent a message:" and
-            followed by a harness trailer paragraph.
-- Teammate: ``<teammate-message teammate_id=...>...</teammate-message>``, same
-            preamble/trailer.
-- Task:     ``<task-notification>...</task-notification>``
+- An agent message is any ``<...-message>`` or ``<...-notification>`` block
+  (``cross-session-message``, ``teammate-message`` and ``task-notification``
+  today), up to its close tag or the end of the prompt.
+- Nic's text is what is left once agent blocks, ``<system-reminder>`` blocks
+  and Claude Code's peer preamble and trailer are removed, with tag markup
+  stripped. A Telegram ``<channel>`` or an agy ``<USER_REQUEST>`` therefore
+  contributes its body. If the boilerplate wording changes, the cost is one
+  wasted search.
 
-Rules, applied to top-level wrappers only (a wrapper opening at the start of
-a line, scanned left to right; anything inside a wrapper is that wrapper's
-content and is never re-classified, so a peer report quoting a Telegram line
-stays a peer report and vice versa):
-
-- ``<system-reminder>`` blocks are harness text: dropped.
-- A Telegram ``<channel>`` contributes its body to ``nic_text``.
-- A ``<channel>`` from any other source counts as agent: Nic named only
-  Telegram and the console, so unknown channels fail closed onto the gate.
-- An agent wrapper sets ``from_agent``. An unterminated one runs to the end.
-- Text outside every wrapper is Nic's console text, unless an agent wrapper
-  is present -- then it is the harness preamble/trailer and is dropped.
-
-``kind`` is ``nic``, ``agent``, ``mixed`` (both), or ``none`` (empty or
-harness-only, e.g. a lone system-reminder: not Nic speaking, not a claim).
+Nothing here is authenticated. A message that imitates a wrapper is taken at
+its word.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
-_AGENT_TAGS = frozenset({"cross-session-message", "teammate-message", "task-notification"})
-
-_OPEN_RE = re.compile(
-    r"^[ \t]*<(cross-session-message|teammate-message|task-notification|channel|system-reminder)"
-    r"\b([^>]*)>",
+_AGENT_BLOCK = re.compile(
+    r"<((?!command-)[\w-]+-(?:message|notification))\b[^>]*>.*?(?:</\1>|\Z)", re.DOTALL
+)
+_SYSTEM_REMINDER = re.compile(r"<system-reminder>.*?(?:</system-reminder>|\Z)", re.DOTALL)
+_PEER_BOILERPLATE = re.compile(
+    r"^Another Claude session sent a message:\s*$|^This came from another Claude session\b.*$",
     re.MULTILINE,
 )
-_SOURCE_RE = re.compile(r'\bsource="([^"]*)"')
+_USER_REQUEST = re.compile(r"<USER_REQUEST>(.*?)</USER_REQUEST>", re.DOTALL)
+_TAG = re.compile(r"</?[A-Za-z][\w:-]*(?:\s[^<>]*)?/?>")
 
 
 @dataclass(frozen=True)
@@ -52,57 +44,47 @@ class PromptOrigin:
     nic_text: str
     from_agent: bool
 
-    @property
-    def kind(self) -> str:
-        if self.nic_text and self.from_agent:
-            return "mixed"
-        if self.from_agent:
-            return "agent"
-        if self.nic_text:
-            return "nic"
-        return "none"
-
 
 def classify_prompt(prompt: str) -> PromptOrigin:
-    text = prompt or ""
-    nic_parts: list[str] = []
-    outside: list[str] = []
-    from_agent = False
-    pos = 0
-
-    while (m := _OPEN_RE.search(text, pos)) is not None:
-        outside.append(text[pos : m.start()])
-        tag = m.group(1)
-        close_tag = f"</{tag}>"
-        close = text.find(close_tag, m.end())
-        body_end = len(text) if close < 0 else close
-        pos = len(text) if close < 0 else close + len(close_tag)
-
-        if tag == "system-reminder":
-            continue
-        if tag == "channel":
-            source = _SOURCE_RE.search(m.group(2))
-            if source and "telegram" in source.group(1):
-                body = text[m.end() : body_end].strip()
-                if body:
-                    nic_parts.append(body)
-            else:
-                from_agent = True
-            continue
-        if tag in _AGENT_TAGS:
-            from_agent = True
-
-    outside.append(text[pos:])
-    loose = "".join(outside).strip()
-    if loose and not from_agent:
-        nic_parts.insert(0, loose)
-
-    return PromptOrigin(nic_text="\n\n".join(nic_parts), from_agent=from_agent)
+    text = _SYSTEM_REMINDER.sub(" ", prompt or "")
+    text, agent_blocks = _AGENT_BLOCK.subn(" ", text)
+    text = _TAG.sub(" ", _PEER_BOILERPLATE.sub(" ", text))
+    return PromptOrigin(nic_text=" ".join(text.split()), from_agent=agent_blocks > 0)
 
 
 def prompt_from_payload(raw: dict) -> str:
-    """The prompt string from a UserPromptSubmit payload, whatever its shape."""
+    """The prompt text of a UserPromptSubmit payload, on Claude Code or agy.
+
+    agy's PreInvocation payload carries no prompt, only ``transcriptPath``,
+    whose latest ``USER_INPUT`` step holds it inside ``<USER_REQUEST>``,
+    followed by harness metadata. PreInvocation also fires once per model
+    invocation within a turn; only the first (``invocationNum`` 0) is the
+    prompt arriving, so the later ones read as empty.
+    """
     value = raw.get("prompt")
     if isinstance(value, dict):
-        value = value.get("text") or value.get("content") or ""
-    return str(value or "")
+        value = value.get("text") or value.get("content")
+    if value:
+        return str(value)
+    if str(raw.get("invocationNum", "0")) != "0":
+        return ""
+    return _last_user_input(raw.get("transcriptPath"))
+
+
+def _last_user_input(path: object) -> str:
+    if not path:
+        return ""
+    try:
+        lines = Path(str(path)).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ""
+    for line in reversed(lines):
+        try:
+            step = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(step, dict) and step.get("type") == "USER_INPUT":
+            content = str(step.get("content") or "")
+            request = _USER_REQUEST.search(content)
+            return request.group(1) if request else content
+    return ""

@@ -9,14 +9,13 @@ import os
 import re
 import shlex
 import socket
-import subprocess
-import sys
 import tempfile
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import pkb_search_client
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 from premise_check_gate import premise_check_arm, premise_check_handler
 from prompt_origin import classify_prompt, prompt_from_payload
@@ -48,14 +47,11 @@ _BASIC_VARS = (
 )
 
 
-# Measured 2026-09-12 (scripts/measure_pkb_injection.py, n=30 live fires
-# across two prompt families): backend search latency p95 ~1.35s, median
-# ~1.29s. 5s clears that with >3x margin while cutting the worst-case block
-# on a stalled backend from 15s to 5s -- this hook is synchronous ahead of
-# every prompt, so a hang here is a hang for the whole turn.
-_SEARCH_TIMEOUT_SECONDS = 5
-
-_PKB_SEARCH_CLIENT = Path(__file__).resolve().with_name("pkb_search_client.py")
+# Measured 2026-10-07 through the CF-Access portal (n=15 live hook runs): the
+# whole hook took 2.7-5.2s, most of it connection setup. 8s keeps those runs
+# inside the budget while still bounding a stalled backend -- this hook is
+# synchronous ahead of every prompt, so a hang here is a hang for the whole turn.
+_SEARCH_TIMEOUT_SECONDS = 8
 
 # Same measurement run: payload size for 5 results was 3.5-6.4KB (p95). This
 # hook fires on every single UserPromptSubmit -- the highest-frequency
@@ -197,7 +193,7 @@ def _cap_output(out: str) -> str:
     return out[:cutoff].rstrip() + _TRUNCATION_MARKER
 
 
-def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
+def _run_pkb_search(prompt: str) -> str | None:
     query = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", prompt).strip()[:200]
     if not query:
         return None
@@ -207,36 +203,13 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
         log.warning("PKB_MCP_URL not found for UserPromptSubmit hook")
         return None
 
-    # The bundled MCP client (same interpreter, so fastmcp is importable)
-    # handles Cloudflare Access auth and the portal's code-mode indirection;
-    # see pkb_search_client. Run as a subprocess so the timeout is a hard kill.
     try:
-        env = dict(os.environ)
-        env["NO_COLOR"] = "1"
-        env["AOPS_OFFLINE"] = "true"
-
-        cmd = [sys.executable, str(_PKB_SEARCH_CLIENT), query]
-
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=_SEARCH_TIMEOUT_SECONDS,
-            cwd=str(cwd) if cwd and Path(cwd).is_dir() else None,
-            env=env,
-        )
-        if proc.returncode == 0:
-            out = proc.stdout.strip()
-            out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", out).strip()
-            if out:
-                return _cap_output(out)
-        else:
-            log.warning(
-                "pkb search exited with returncode %s: %s", proc.returncode, proc.stderr.strip()
-            )
-    except Exception as exc:
-        log.warning("pkb search execution failed: %s", exc)
-    return None
+        headers = pkb_search_client.headers_for(mcp_url, os.environ)
+        out = pkb_search_client.search(mcp_url, query, headers, _SEARCH_TIMEOUT_SECONDS)
+    except Exception as exc:  # type and message only; headers are never formatted into it
+        log.warning("pkb search failed: %s: %s", type(exc).__name__, str(exc)[:200])
+        return None
+    return _cap_output(out) if out else None
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
@@ -252,7 +225,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
     nic_text = classify_prompt(prompt_from_payload(ctx.raw)).nic_text
 
     if nic_text:
-        output = _run_pkb_search(nic_text, cwd=ctx.cwd)
+        output = _run_pkb_search(nic_text)
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
@@ -493,6 +466,22 @@ def rule_against_hearsay(ctx: HookContext) -> Result | None:
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
 
+def hydrate_and_rule_on_hearsay(ctx: HookContext) -> Result | None:
+    """PKB results for Nic's text, the hearsay reminder for an agent message, both for both.
+
+    One handler, not two: dispatch delivers only the first advisory, so a
+    mixed prompt would otherwise lose the reminder.
+    """
+    present = [r for r in (search_the_pkb(ctx), rule_against_hearsay(ctx)) if r is not None]
+    if len(present) < 2:
+        return present[0] if present else None
+    user_texts = [r.user_text for r in present if r.user_text]
+    return warn(
+        "\n\n".join(r.inject_text for r in present if r.inject_text),
+        "\n\n".join(user_texts) if user_texts else None,
+    )
+
+
 def _prepare_tracer_data(ctx: HookContext) -> dict[str, Any]:
     """Extract and normalize payload dictionary for claude_code_tracer."""
     data = dict(ctx.raw)
@@ -638,8 +627,7 @@ HANDLERS: dict[str, list] = {
     "UserPromptSubmit": [
         user_prompt_submit,
         agy_user_prompt_submit,
-        search_the_pkb,
-        rule_against_hearsay,
+        hydrate_and_rule_on_hearsay,
         premise_check_arm,
     ],
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],

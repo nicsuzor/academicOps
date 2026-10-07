@@ -43,10 +43,8 @@ def staged_hooks(tmp_path: Path) -> Path:
 
 
 def test_search_the_pkb_registered_in_handlers():
-    """Verify that search_the_pkb is wired to UserPromptSubmit."""
-    assert "UserPromptSubmit" in handlers.HANDLERS
-    registered = handlers.HANDLERS["UserPromptSubmit"]
-    assert handlers.search_the_pkb in registered
+    """search_the_pkb is wired to UserPromptSubmit, through the hydration/hearsay handler."""
+    assert handlers.hydrate_and_rule_on_hearsay in handlers.HANDLERS["UserPromptSubmit"]
 
 
 def test_user_prompt_submit_pkb_search_success():
@@ -65,7 +63,7 @@ def test_user_prompt_submit_pkb_search_success():
 
     with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results) as mock_search:
         res = handlers.search_the_pkb(ctx)
-        mock_search.assert_called_once_with("what are the axioms of academicOps?", cwd="/workspace")
+        mock_search.assert_called_once_with("what are the axioms of academicOps?")
         assert res is not None
         expected_text = (
             "<academicOps PKB search results>\n"
@@ -76,88 +74,60 @@ def test_user_prompt_submit_pkb_search_success():
         assert res.user_text is None
 
 
+def _search_patch(**kwargs):
+    return patch.object(handlers.pkb_search_client, "search", **kwargs)
+
+
 def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
-    long_prompt = "a" * 350
     with (
-        patch("subprocess.run") as mock_run,
+        _search_patch(return_value="result line") as search,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_proc = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "a" * 200],
-            returncode=0,
-            stdout="result line\n",
-            stderr="",
-        )
-        mock_run.return_value = mock_proc
-        out = handlers._run_pkb_search(long_prompt)
-        assert out == "result line"
-    cmd = mock_run.call_args[0][0]
-    assert cmd[:2] == [sys.executable, str(PKB_HOOKS / "pkb_search_client.py")]
-    assert cmd[2] == "a" * 200
+        assert handlers._run_pkb_search("a" * 350) == "result line"
+    assert search.call_args.args[1] == "a" * 200
 
 
 def test_user_prompt_submit_strips_ansi_from_prompt():
     """ANSI escape sequences in prompt are stripped before passing to pkb search."""
-    ansi_prompt = "\x1b[31mred text\x1b[0m with \x1b[1mbold\x1b[0m"
     with (
-        patch("subprocess.run") as mock_run,
+        _search_patch(return_value="result line") as search,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_proc = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "red text with bold"],
-            returncode=0,
-            stdout="result line\n",
-            stderr="",
-        )
-        mock_run.return_value = mock_proc
-        out = handlers._run_pkb_search(ansi_prompt)
-        assert out == "result line"
-    assert mock_run.call_args[0][0][2] == "red text with bold"
+        handlers._run_pkb_search("\x1b[31mred text\x1b[0m with \x1b[1mbold\x1b[0m")
+    assert search.call_args.args[1] == "red text with bold"
 
 
-def test_run_pkb_search_uses_measured_timeout():
-    """subprocess timeout matches the measured backend-latency ceiling, not the old 15s guess."""
+def test_run_pkb_search_uses_the_hook_timeout():
     with (
-        patch("subprocess.run") as mock_run,
+        _search_patch(return_value="result") as search,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout="result\n", stderr=""
-        )
         handlers._run_pkb_search("q")
-        assert mock_run.call_args.kwargs["timeout"] == handlers._SEARCH_TIMEOUT_SECONDS
-        assert handlers._SEARCH_TIMEOUT_SECONDS < 15
+    assert search.call_args.args[3] == handlers._SEARCH_TIMEOUT_SECONDS
 
 
 def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
     with (
-        patch("subprocess.run") as mock_run,
+        _search_patch(return_value=huge),
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=huge, stderr=""
-        )
         out = handlers._run_pkb_search("q")
-        assert out is not None
-        assert len(out) == handlers._MAX_INJECT_CHARS
-        assert out.endswith(handlers._TRUNCATION_MARKER)
+    assert out is not None
+    assert len(out) == handlers._MAX_INJECT_CHARS
+    assert out.endswith(handlers._TRUNCATION_MARKER)
 
 
 def test_run_pkb_search_leaves_normal_output_untouched():
     """Output well under the cap passes through byte-for-byte."""
     normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
     with (
-        patch("subprocess.run") as mock_run,
+        _search_patch(return_value=normal),
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=normal, stderr=""
-        )
-        out = handlers._run_pkb_search("q")
-        assert out == normal
+        assert handlers._run_pkb_search("q") == normal
 
 
 def test_user_prompt_submit_fallback_when_prompt_is_empty():
@@ -274,35 +244,11 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     assert msg.startswith("<academicOps PKB search results>") or msg == expected_inject
 
 
-def test_run_pkb_search_returns_none_on_client_failure():
-    """A failed search (e.g. HTTP 401 from the portal) injects nothing and never raises."""
+@pytest.mark.parametrize("exc", [RuntimeError("HTTP 401"), TimeoutError()])
+def test_run_pkb_search_returns_none_on_failure(exc):
+    """A failed or timed-out search injects nothing and never raises."""
     with (
-        patch("subprocess.run") as mock_run,
-        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
-    ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=1, stdout="", stderr="pkb search failed: 401"
-        )
-        assert handlers._run_pkb_search("q") is None
-
-
-def test_run_pkb_search_returns_none_on_timeout():
-    """A stalled backend is cut off at the timeout and the turn proceeds."""
-    with (
-        patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="x", timeout=5)),
+        _search_patch(side_effect=exc),
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
         assert handlers._run_pkb_search("q") is None
-
-
-def test_run_pkb_search_does_not_need_a_fastmcp_binary():
-    """The transport is the bundled Python client, not the `fastmcp call` CLI."""
-    with (
-        patch("shutil.which", return_value=None),
-        patch("subprocess.run") as mock_run,
-        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
-    ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="hit\n", stderr=""
-        )
-        assert handlers._run_pkb_search("q") == "hit"
