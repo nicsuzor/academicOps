@@ -8,8 +8,8 @@ traced without inheriting ida's gates.
 
 Configuration comes from the same variables every other surface uses
 (``GENAI_ENGINE_TRACE_ENDPOINT``, ``GENAI_ENGINE_API_KEY``,
-``GENAI_ENGINE_TRACE_PROTOCOL``). With no endpoint the settings carry no hooks
-and the run is untraced. Tracing never fails the run: setup problems degrade
+``GENAI_ENGINE_TRACE_PROTOCOL``). Without an endpoint and an Access token the
+settings carry no hooks and the run is untraced. Tracing never fails the run: setup problems degrade
 to no hooks with a ``::warning::``, and the hook wrapper always exits 0.
 
 The Access token never enters settings.json, which claude-code-action logs on
@@ -123,6 +123,11 @@ def _hooks(hook_sh: Path) -> dict:
 def build_settings(aops_root: Path, out_dir: Path, project: str, base: dict, python: str | None) -> dict:
     if not os.environ.get("GENAI_ENGINE_TRACE_ENDPOINT", "").strip():
         print("::notice::GENAI_ENGINE_TRACE_ENDPOINT is not set; this agent run is not traced to Phoenix.")
+        return base
+    if not os.environ.get("GENAI_ENGINE_API_KEY", "").strip():
+        # A fork PR or a caller that doesn't pass the secret: the collector would
+        # refuse every export, after making each tool call wait for it.
+        print("::notice::GENAI_ENGINE_API_KEY is not set; this agent run is not traced to Phoenix.")
         return base
 
     tracer_src = aops_root / TRACER_RELPATH
