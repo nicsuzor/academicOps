@@ -29,4 +29,5 @@ description: Index of academicOps axioms.
 | `bounded-execution`      | Ensure every command carries a visible terminating bound or timeout; reap processes.  | always_on |
 | `pull-over-push`         | Reserve pushed instruction context for essential cues; demote details to pull docs.   | always_on |
 | `delay-decisions`        | Delay decisions without cost until necessary to maximize evidence.                    | always_on |
+| `proportionate`          | Build the least that meets the request; guard a risk by its likelihood × consequence. | always_on |
 | `AXIOMS-REVIEW`          | Per-axiom review checklist loaded explicitly by reviewing agents.                     | off       |
