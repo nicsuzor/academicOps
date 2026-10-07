@@ -109,7 +109,8 @@ def test_failed_export_flows_through_to_span_emitted(outcome, tmp_path, monkeypa
         patch.object(claude_code_tracer, "_create_exporter", return_value=_FakeExporter(outcome)),
     ):
         result = pcv.record_verdict(
-            session_id="sess-flow", claim_id="c", answers=["v"], tracer_mod=claude_code_tracer
+            session_id="sess-flow", claim_id="c", verdict="PASS", reason="v",
+            tracer_mod=claude_code_tracer,
         )
 
     assert result["span_emitted"] is False

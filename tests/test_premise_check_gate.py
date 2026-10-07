@@ -1,22 +1,18 @@
-"""Tests for the forced per-claim logic-check verdict script and its gate.
+"""Tests for the premise-check verdict script and its gate.
 
 Covers:
-1. The logic-check sequence is parsed live from hearsay.md -- six questions,
-   in order -- so "same number of questions, same order" holds by construction.
-2. record_verdict() requires at least one verdict and rejects more answers
-   than there are questions, and never closes the gate on a malformed verdict.
-3. record_verdict() emits a TOOL span (via a stubbed claude_code_tracer)
-   carrying the six questions as the frame, plus either a single
-   premise_check.verdict or one answer per question, and closes the gate.
-4. record_verdict() still closes the gate (verdict-ran-locally) when the
-   tracer is unconfigured, but reports span_emitted=False -- telemetry and
-   "the check ran" are separable.
-5. The forcing mechanism: premise_check_gate_handler refuses the next
-   Agent/Task dispatch while the gate is open, allows it once closed, and
-   respects mode=warn/off and the override env vars.
-6. premise_check_open_gate opens the gate only for the scoped agent types,
-   and only when an Agent call is present in the batch.
-7. Both handlers are wired into handlers.py's HANDLERS mapping.
+1. A verdict is one token (PASS, REVISE, FAIL) plus a free-text reason; the
+   reason may come inline, from a file, or from stdin. A malformed verdict
+   never disarms the gate.
+2. record_verdict() emits a TOOL span (via a stubbed claude_code_tracer)
+   carrying the token and the reason, and disarms the gate.
+3. record_verdict() still disarms when the tracer is unconfigured, but reports
+   span_emitted=False -- telemetry and "the check ran" are separable.
+4. premise_check_handler refuses the next dispatch, message or stop while
+   armed, allows it once disarmed, and respects mode=warn/off and overrides.
+5. premise_check_arm arms only for the gated agents (ida, sara): after a
+   dispatch batch, or on an incoming peer report -- never on the user's own
+   messages.
 """
 
 from __future__ import annotations
@@ -111,106 +107,145 @@ class _StubTracer:
 
 
 # ---------------------------------------------------------------------------
-# 2. Answer-count validation
+# 2. Verdict format: an enum token plus free text
 # ---------------------------------------------------------------------------
 
 
-def test_record_verdict_rejects_empty_answers():
-    session_id = "sess-empty"
-    pcg.arm(session_id, claim_id="claim-1")
-
-    with pytest.raises(ValueError, match="at least one verdict"):
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id="claim-1",
-            answers=[],
-            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
-        )
-
-    # Malformed verdict must not disarm.
-    assert pcg.is_armed(session_id) is True
-
-
-def test_record_verdict_rejects_more_answers_than_questions():
-    session_id = "sess-toomany"
-    pcg.arm(session_id, claim_id="claim-1")
-
-    with pytest.raises(ValueError, match="at most 6 answers"):
-        pcv.record_verdict(
-            session_id=session_id,
-            claim_id="claim-1",
-            answers=[f"a{i}" for i in range(7)],
-            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
-        )
-
-    assert pcg.is_armed(session_id) is True
-
-
-def test_record_verdict_accepts_single_verdict_and_disarms():
-    """The normal path: one reasoned verdict, six questions still recorded as
-    the frame that was reasoned through."""
-    session_id = "sess-single"
+@pytest.mark.parametrize("token", ["PASS", "REVISE", "FAIL"])
+def test_record_verdict_accepts_each_token_with_reason_and_disarms(token):
+    session_id = f"sess-{token}"
     pcg.arm(session_id, claim_id="claim-1")
     tracer = _StubTracer(config={"endpoint": "http://x"})
 
     result = pcv.record_verdict(
         session_id=session_id,
         claim_id="claim-1",
-        answers=["Evidence is sufficient; the one unstated premise is named and checked."],
+        verdict=token,
+        reason="The cited diff supports each claim; the conclusion answers the ask.",
         tracer_mod=tracer,
     )
 
     assert result["ok"] is True
-    assert result["question_count"] == 6
+    assert result["verdict"] == token
     assert result["disarmed"] is True
-
     attrs = tracer.exported[0]["spans"][0]["attributes"]
-    assert attrs["premise_check.answer_count"] == 1
-    assert attrs["premise_check.question_count"] == 6
-    assert "the one unstated premise" in attrs["premise_check.verdict"]
-    # The six questions survive as the documented frame.
-    for i in range(1, 7):
-        assert f"premise_check.q{i}.question" in attrs
-    assert "premise_check.q1.answer" not in attrs
-
+    assert attrs["premise_check.verdict"] == token
+    assert "conclusion answers the ask" in attrs["premise_check.reason"]
+    assert attrs["premise_check.claim_id"] == "claim-1"
     assert pcg.is_armed(session_id) is False
+    last = pcg.get_state(session_id)["last_verdict"]
+    assert last["verdict"] == token
+    assert "conclusion answers the ask" in last["reason"]
 
 
-# ---------------------------------------------------------------------------
-# 3. Span emission — one attribute per question
-# ---------------------------------------------------------------------------
+def test_record_verdict_normalises_token_case():
+    session_id = "sess-case"
+    pcg.arm(session_id, claim_id="claim-1")
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id="claim-1",
+        verdict="revise",
+        reason="r",
+        tracer_mod=_StubTracer(config=None),
+    )
+    assert result["verdict"] == "REVISE"
 
 
-def test_record_verdict_emits_one_attribute_per_question_and_disarms():
-    session_id = "sess-emit"
-    pcg.arm(session_id, claim_id="claim-2")
+def test_record_verdict_rejects_unknown_token_and_stays_armed():
+    session_id = "sess-bad-token"
+    pcg.arm(session_id, claim_id="claim-1")
 
-    answers = [f"answer {i}" for i in range(6)]
-    tracer = _StubTracer(
-        config={"endpoint": "http://collector:4317", "project_name": "academicOps"}
+    with pytest.raises(ValueError, match="PASS, REVISE, FAIL"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-1",
+            verdict="Looks fine to me",
+            reason="r",
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )
+    assert pcg.is_armed(session_id) is True
+
+
+def test_record_verdict_rejects_empty_reason_and_stays_armed():
+    session_id = "sess-no-reason"
+    pcg.arm(session_id, claim_id="claim-1")
+
+    with pytest.raises(ValueError, match="reason"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="claim-1",
+            verdict="PASS",
+            reason="   ",
+            tracer_mod=_StubTracer(config={"endpoint": "http://x"}),
+        )
+    assert pcg.is_armed(session_id) is True
+
+
+def test_cli_reads_reason_from_stdin(monkeypatch, capsys):
+    """Free text can stay off the command line, where harness guards scan it."""
+    import io
+    import json
+
+    session_id = "sess-cli-stdin"
+    pcg.arm(session_id, claim_id="claim-1")
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    reason = "Worker says it ran git push to the branch; the PR link backs that."
+    monkeypatch.setattr("sys.stdin", io.StringIO(reason))
+
+    rc = pcv.main(
+        ["--report", "claim-1", "--verdict", "PASS", "--reason-file", "-", "--session", session_id]
     )
 
-    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-2", answers, tracer_mod=tracer)
-
-    assert result["ok"] is True
-    assert result["span_emitted"] is True
-    assert result["question_count"] == 6
-
-    assert len(tracer.exported) == 1
-    spans = tracer.exported[0]["spans"]
-    assert len(spans) == 1
-    attrs = spans[0]["attributes"]
-    for i in range(1, 7):
-        assert attrs[f"premise_check.q{i}.answer"] == answers[i - 1]
-        assert f"premise_check.q{i}.question" in attrs
-    assert attrs["premise_check.claim_id"] == "claim-2"
-    assert attrs["premise_check.question_count"] == 6
-
-    # Disarmed.
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["verdict"] == "PASS"
+    assert pcg.get_state(session_id)["last_verdict"]["reason"] == reason
     assert pcg.is_armed(session_id) is False
-    state = pcg.get_state(session_id)
-    assert state["last_verdict"]["claim_id"] == "claim-2"
-    assert state["last_verdict"]["answers"] == answers
+
+
+def test_cli_reads_reason_from_file(tmp_path, monkeypatch):
+    session_id = "sess-cli-file"
+    pcg.arm(session_id, claim_id="claim-1")
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+    reason_file = tmp_path / "reason.txt"
+    reason_file.write_text("Claims follow from the cited evidence.\n", encoding="utf-8")
+
+    rc = pcv.main(
+        [
+            "--report", "claim-1", "--verdict", "FAIL",
+            "--reason-file", str(reason_file), "--session", session_id,
+        ]
+    )
+
+    assert rc == 0
+    last = pcg.get_state(session_id)["last_verdict"]
+    assert last["verdict"] == "FAIL"
+    assert last["reason"] == "Claims follow from the cited evidence."
+
+
+def test_cli_accepts_inline_reason(monkeypatch):
+    session_id = "sess-cli-inline"
+    pcg.arm(session_id, claim_id="claim-1")
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+
+    rc = pcv.main(
+        ["--report", "claim-1", "--verdict", "REVISE", "--reason", "No evidence for AC2.",
+         "--session", session_id]
+    )
+
+    assert rc == 0
+    assert pcg.get_state(session_id)["last_verdict"]["reason"] == "No evidence for AC2."
+
+
+def test_cli_rejects_free_text_as_the_verdict(monkeypatch):
+    session_id = "sess-cli-bad"
+    pcg.arm(session_id, claim_id="claim-1")
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+
+    with pytest.raises(SystemExit):
+        pcv.main(["--report", "claim-1", "--verdict", "it is fine", "--reason", "r",
+                  "--session", session_id])
+    assert pcg.is_armed(session_id) is True
 
 
 # ---------------------------------------------------------------------------
@@ -222,10 +257,11 @@ def test_record_verdict_disarms_even_when_tracer_unconfigured():
     session_id = "sess-unconfigured"
     pcg.arm(session_id, claim_id="claim-3")
 
-    answers = [f"answer {i}" for i in range(6)]
     tracer = _StubTracer(config=None)  # discover_config() -> None, silent no-op
 
-    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-3", answers, tracer_mod=tracer)
+    result = pcv.record_verdict(
+        session_id=session_id, claim_id="claim-3", verdict="PASS", reason="r", tracer_mod=tracer
+    )
 
     assert result["span_emitted"] is False
     assert result["span_error"] is None
@@ -239,7 +275,9 @@ def test_record_verdict_reports_unacknowledged_export_as_not_emitted():
 
     tracer = _StubTracer(config={"endpoint": "http://collector:4317"}, export_ok=False)
 
-    result = pcv.record_verdict(_HOOKS_DIR, session_id, "claim-4", ["verdict"], tracer_mod=tracer)
+    result = pcv.record_verdict(
+        session_id=session_id, claim_id="claim-4", verdict="PASS", reason="r", tracer_mod=tracer
+    )
 
     assert len(tracer.exported) == 1  # the export was attempted
     assert result["span_emitted"] is False
@@ -274,7 +312,7 @@ def test_handler_refuses_next_dispatch_while_armed_default_mode():
 def test_handler_allows_dispatch_once_disarmed():
     session_id = "sess-gate-2"
     pcg.arm(session_id, claim_id="claim-5")
-    pcg.disarm(session_id, "claim-5", ["q"] * 6, ["a"] * 6)
+    pcg.disarm(session_id, "claim-5", "PASS", "r")
 
     assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
@@ -400,10 +438,72 @@ def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
     pcv.record_verdict(
         session_id=session_id,
         claim_id="researched X",
-        answers=[f"a{i}" for i in range(6)],
+        verdict="PASS",
+        reason="The report's evidence supports its conclusion.",
         tracer_mod=_StubTracer(config=None),
     )
 
     # Now the dispatch is permitted.
     assert pcg.is_armed(session_id) is False
     assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
+
+
+# ---------------------------------------------------------------------------
+# Incoming messages: peer reports arm the check; the user's messages do not
+# ---------------------------------------------------------------------------
+
+
+def _prompt_ctx(session_id: str, prompt: str, agent_type: str = "ida:ida") -> dispatch.HookContext:
+    return dispatch.HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        session_id=session_id,
+        agent_type=agent_type,
+        raw={"prompt": prompt},
+    )
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
+        '<teammate-message teammate_id="worker">done</teammate-message>',
+        "\n  <task-notification>\nworker finished\n</task-notification>",
+    ],
+)
+def test_arm_handler_arms_on_peer_report(prompt):
+    session_id = "sess-peer"
+    pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">do the thing</channel>',
+        "can you check the release?",
+        "",
+    ],
+)
+def test_arm_handler_ignores_the_users_own_messages(prompt):
+    session_id = "sess-user"
+    pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert pcg.is_armed(session_id) is False
+
+
+def test_users_message_does_not_disarm_a_pending_check():
+    session_id = "sess-user-pending"
+    pcg.arm(session_id, claim_id="claim-11")
+    pcg.premise_check_arm(_prompt_ctx(session_id, "what's the status?"))
+    assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize("agent_type", ["ida:sara", "sara"])
+def test_sara_is_gated_like_ida(agent_type):
+    session_id = f"sess-{agent_type}"
+    pcg.premise_check_arm(
+        _prompt_ctx(session_id, "<cross-session-message>report</cross-session-message>", agent_type)
+    )
+    assert pcg.is_armed(session_id) is True
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type=agent_type))
+    assert res is not None and res.kind == dispatch.Kind.REFUSE
