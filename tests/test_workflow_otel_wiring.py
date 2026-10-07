@@ -21,7 +21,9 @@ def _agent_jobs():
         doc = yaml.safe_load(path.read_text(encoding="utf-8"))
         for job_name, job in (doc.get("jobs") or {}).items():
             steps = job.get("steps") or []
-            if any(str(s.get("uses", "")).startswith("anthropics/claude-code-action") for s in steps):
+            if any(
+                str(s.get("uses", "")).startswith("anthropics/claude-code-action") for s in steps
+            ):
                 yield pytest.param(path.name, job_name, steps, id=f"{path.name}:{job_name}")
 
 
@@ -40,7 +42,9 @@ def test_agent_job_configures_otel_before_the_agent(workflow, job, steps):
     assert "ci_otel_hooks.py" in otel["run"]
     assert otel.get("continue-on-error") is True
     first_agent = next(
-        i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("anthropics/claude-code-action")
+        i
+        for i, s in enumerate(steps)
+        if str(s.get("uses", "")).startswith("anthropics/claude-code-action")
     )
     assert ids.index("otel") < first_agent
     assert otel["env"]["GENAI_ENGINE_API_KEY"] == "${{ secrets.GENAI_ENGINE_API_KEY }}"
@@ -51,9 +55,9 @@ def test_agent_job_configures_otel_before_the_agent(workflow, job, steps):
 def test_every_agent_step_takes_the_otel_settings(workflow, job, steps):
     for step in steps:
         if str(step.get("uses", "")).startswith("anthropics/claude-code-action"):
-            assert step["with"].get("settings") == "${{ steps.otel.outputs.settings }}", (
-                f"{workflow}:{job}:{step.get('name')}"
-            )
+            assert str(step["with"].get("settings", "")).startswith(
+                "${{ steps.otel.outputs.settings"
+            ), f"{workflow}:{job}:{step.get('name')}"
 
 
 def _reusable(path: Path) -> dict | None:
@@ -70,3 +74,13 @@ def test_reusable_agent_workflows_accept_the_otel_secret(workflow):
     secret = (call.get("secrets") or {}).get("GENAI_ENGINE_API_KEY")
     assert secret is not None
     assert secret.get("required") is False
+
+
+@pytest.mark.parametrize(("workflow", "job", "steps"), AGENT_JOBS)
+def test_sparse_aops_clone_materialises_the_tracer(workflow, job, steps):
+    otel = next(s for s in steps if s.get("id") == "otel")
+    if "--aops-root .aops" not in otel["run"]:
+        pytest.skip("tracer comes from a full checkout")
+    sparse = "\n".join(s.get("run", "") for s in steps if "sparse-checkout set" in s.get("run", ""))
+    assert "/plugins/ida/hooks/claude_code_tracer.py" in sparse
+    assert "/scripts/ci_otel_hooks.py" in sparse
