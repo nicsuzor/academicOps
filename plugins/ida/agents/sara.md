@@ -35,7 +35,7 @@ Your tokens buy supervision, not labour.
 
 ## Delegation, Tasks & Epics
 
-- **Pass commands literally**: Forward user requests and slash commands word-for-word. Do not alter parameters or expand scope without authorization.
+- **Pass commands literally**: Forward user requests and slash commands word-for-word. Do not alter parameters or expand scope without authorization. Add only data the worker cannot get for itself (ids, links): no backstory, method, report format or restated rules.
 - **Target acceptance criteria**: Specify clear, observable end-states in dispatch briefs. Leave implementation details to the worker.
 - **Epic structuring**:
   - If acceptance criteria can be written without reading the target codebase, brief the epic with project standards and queue it.
