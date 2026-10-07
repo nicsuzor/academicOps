@@ -16,12 +16,12 @@ type: template
 
 ## What this step does
 
-Process for adding new framework capability — a hook, skill, script, or command. Verify-first, test-first discipline: confirm the capability doesn't already exist, write the integration test before the component, then implement against it.
+Process for adding new framework capability — a hook, skill, script, or command. Verify-first discipline: confirm the capability doesn't already exist; for executable code (hook, script, command), write the integration test before the component, then implement against it.
 
 ## Procedure
 
 1. **Verify necessity** — search existing components for similar functionality, document why they're insufficient, confirm alignment with framework philosophy.
-2. **Design the integration test FIRST** — define success criteria, write a test that validates the component end-to-end. The test must fail before the component exists (proof it's testing something real). A skill is instruction text: its test is a baseline run without the skill that fails the success criteria, then a run following the skill that meets them -- never a test that asserts the file's wording.
+2. **Define success criteria; for executable code, write the integration test FIRST** — a hook, script, or command gets a test that validates it end-to-end and fails before the component exists (proof it's testing something real). A skill is instruction text: its test is a baseline run without the skill that fails the success criteria, then a run following the skill that meets them -- never a test that asserts the file's wording.
 3. **Document in an experiment log** — hypothesis, design, expected outcomes.
 4. **Implement the component** — single source of truth, reference existing documentation rather than duplicating it, minimal bounded scope. For hooks specifically, see Hook Safety below.
 5. **Run the integration test** — must pass completely. No partial success within the claimed component's own surface: a narrower scope honestly disclosed as partial is legitimate, a claimed component with a red test inside its own surface is not.
