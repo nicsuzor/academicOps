@@ -29,7 +29,7 @@ Call `/workflow-library` to weave together every workflow relevant to the task i
 
 Then assemble the steps:
 
-- Combine template steps into a logical order (e.g., failing tests first, implementation, then QA).
+- Combine template steps into a logical order (e.g., build (test-first where code executes), then QA).
 - Base the assembly only on what is explicitly requested. Do not investigate, guess at scope, or ad-lib extra requirements. If the request is ambiguous, preserve that ambiguity.
 - Resolve the finish template (e.g., `wf-finish`) to determine delivery route (target branch, PR requirements) and whether an independent QA follow-up is required.
 

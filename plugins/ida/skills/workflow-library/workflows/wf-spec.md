@@ -17,10 +17,10 @@ Authors a complete, unambiguous technical specification grounded in the evidence
 ## Procedure
 
 1. **Problem statement and target** -- define the problem, user/caller context, and required capabilities.
-2. **Architecture and data flow** -- describe components, responsibilities, internal mechanics, and external integration points.
+2. **Architecture and data flow** -- describe components, responsibilities, owning components, and external integration points.
 3. **Interface contracts** -- define data types, function signatures, schemas, or protocols with precision.
 4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.
-5. **Test and verification strategy** -- specify test cases (unit, integration, regression) validating each criterion.
+5. **Test and verification strategy** -- for code that executes, specify test cases (unit, integration, regression) validating each criterion; for any other criterion, how it is verified.
 
 ## Output contract
 
@@ -28,7 +28,7 @@ A complete specification artifact (full spec, not a summary) that someone other 
 
 - Problem statement and architectural design.
 - Concrete interface definitions and signatures.
-- Itemized acceptance criteria with test mapping.
+- Itemized acceptance criteria, each mapped to its test where code executes, or to its verification otherwise.
 
 ## When to include
 

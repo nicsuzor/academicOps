@@ -37,4 +37,4 @@ State which behaviors were covered by which tests, the red failure trace for eac
 
 ## When to include
 
-Any testable code change with machine-checkable correctness. Not for a change to instruction text alone: an instruction's only checkable property is its wording, so a test of it is a configuration mirror. Composes as the implementation phase inside a larger [[wf-qa]]-gated feature: the TDD cycle produces the artifact; [[wf-qa]] independently checks it's actually right.
+Any testable code change with machine-checkable correctness. Not for a change to instruction text alone: a test that asserts what an instruction says is a configuration mirror; a run that follows the instruction proves it. Composes as the implementation phase inside a larger [[wf-qa]]-gated feature: the TDD cycle produces the artifact; [[wf-qa]] independently checks it's actually right.
