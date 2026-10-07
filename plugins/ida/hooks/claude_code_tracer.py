@@ -1491,6 +1491,42 @@ def _truncate(value: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
+_GITHUB_RESOURCE_ENV = (
+    ("github.repository", "GITHUB_REPOSITORY"),
+    ("github.run_id", "GITHUB_RUN_ID"),
+    ("github.run_attempt", "GITHUB_RUN_ATTEMPT"),
+    ("github.workflow", "GITHUB_WORKFLOW"),
+    ("github.job", "GITHUB_JOB"),
+    ("github.event_name", "GITHUB_EVENT_NAME"),
+    ("github.ref", "GITHUB_REF"),
+    ("github.sha", "GITHUB_SHA"),
+)
+
+
+def _github_resource_attrs() -> dict[str, str]:
+    """The GitHub Actions run a session belongs to, so its spans link back to the run.
+
+    Empty outside Actions (``GITHUB_ACTIONS`` is not ``true``), even when a stray
+    ``GITHUB_*`` variable is set.
+    """
+    if os.environ.get("GITHUB_ACTIONS", "").strip().lower() != "true":
+        return {}
+    attrs = {
+        key: value
+        for key, var in _GITHUB_RESOURCE_ENV
+        if (value := os.environ.get(var, "").strip())
+    }
+    server = os.environ.get("GITHUB_SERVER_URL", "").strip()
+    repo = attrs.get("github.repository")
+    run_id = attrs.get("github.run_id")
+    if server and repo and run_id:
+        url = f"{server}/{repo}/actions/runs/{run_id}"
+        if attempt := attrs.get("github.run_attempt"):
+            url += f"/attempts/{attempt}"
+        attrs["github.run_url"] = url
+    return attrs
+
+
 def _make_fixed_id_generator(forced_span_id_hex: str):
     import secrets
 
@@ -1678,6 +1714,8 @@ def _build_and_export_spans(
     if cwd:
         resource_attrs["cwd"] = cwd
         resource_attrs["project.dir"] = cwd
+    github_attrs = _github_resource_attrs()
+    resource_attrs.update(github_attrs)
 
     resource = Resource.create(resource_attrs)
     parents: dict[str, str | None] = dict(known_parents or {})
@@ -1795,6 +1833,8 @@ def _build_and_export_spans(
                 span.set_attribute("tag.task_id", task_id)
             if host_name:
                 span.set_attribute("host.name", host_name)
+            for gh_key, gh_value in github_attrs.items():
+                span.set_attribute(gh_key, gh_value)
             for k, v in rec.get("attributes", {}).items():
                 span.set_attribute(k, v)
 
