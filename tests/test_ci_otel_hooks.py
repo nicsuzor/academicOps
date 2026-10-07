@@ -224,3 +224,15 @@ def test_blank_endpoint_counts_as_unconfigured(tmp_path, value):
 
     assert proc.returncode == 0, proc.stderr
     assert _settings(tmp_path) == {}
+
+
+def test_missing_api_key_counts_as_unconfigured(tmp_path):
+    # Fork PRs and callers that don't pass the secret: no hooks, rather than
+    # every tool call waiting on a collector that will refuse the export.
+    env = {k: v for k, v in _CONFIGURED.items() if k != "GENAI_ENGINE_API_KEY"}
+
+    proc = _run(tmp_path, env)
+
+    assert proc.returncode == 0, proc.stderr
+    assert _settings(tmp_path) == {}
+    assert "GENAI_ENGINE_API_KEY" in proc.stdout
