@@ -111,13 +111,10 @@ When a task marked `done` fails the facial sufficiency or scope check:
 
 Emit one synthesized result:
 
-
-
-
 1. Rulings made without escalation (task ID, ruling, citation).
 2. Decisions escalated for review (task ID, the one-line question, the test that escalated it).
 3. Checks failed: Tasks escalated for ratification or reversal (with recorded reasons and PR draft links).
-4. Unfinished work recovered: next tasks minted or re-queued, and PRs marked ready (task IDs, PR links, evidence that the work had no next task). 
+4. Unfinished work recovered: next tasks minted or re-queued, and PRs marked ready (task IDs, PR links, evidence that the work had no next task).
 5. Status updates made (task IDs, PR links, verified completions).
 6. Cancellations (task ID, trigger fired, verbatim evidence written to body).
 7. Tasks demoted to `inbox` (dependents, stale items).

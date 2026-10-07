@@ -1,5 +1,78 @@
 # Changelog
 
+## [0.10.7](https://github.com/nicsuzor/academicOps/compare/v0.10.6...v0.10.7) (2026-10-07)
+
+### Features
+
+- **diagram:** make pkb-excalidraw the preferred Excalidraw mode ([f63c233](https://github.com/nicsuzor/academicOps/commit/f63c2338215713aa12dc64794561f66a22afe668))
+- **diagram:** make pkb-excalidraw the preferred Excalidraw mode ([c3491bd](https://github.com/nicsuzor/academicOps/commit/c3491bdc91db8156516012faf5e4ac272f1035c7))
+- **enforcement:** claim-and-evidence report format and honesty contract ([82d3453](https://github.com/nicsuzor/academicOps/commit/82d3453e291bcaf008ebf6031d37abe7462f885f))
+- **enforcement:** claim-and-evidence report format and honesty contract ([1abb135](https://github.com/nicsuzor/academicOps/commit/1abb1356b70cf6dbfada40c8569f6a50f6214b03))
+- **ida:** name status owners and make /reconcile set each task's status ([f1b1748](https://github.com/nicsuzor/academicOps/commit/f1b1748c27e4c136efe176be11fc78ed1cb0f4af))
+- **ida:** name status owners and make /reconcile set each task's status ([7f90a6d](https://github.com/nicsuzor/academicOps/commit/7f90a6d13be020765afd7a514c9ba6f140e2f2aa))
+- **ida:** split /dispatch into /reify (pauli) and /dispatch (start polecats) ([cf355d8](https://github.com/nicsuzor/academicOps/commit/cf355d8001637643f4a33e4ceb5c0e2a3492467d))
+- **ida:** split /dispatch into /reify (pauli) and /dispatch (start polecats) ([47be1ff](https://github.com/nicsuzor/academicOps/commit/47be1ffe22fe1af210157763f52c7b603260e902))
+- **pkb:** update hydrate pkb hook to use cli mcp interface ([cd171dc](https://github.com/nicsuzor/academicOps/commit/cd171dc449ffeaa35fb3fba17b7e39caf6a505f2))
+- **pkb:** update hydrate pkb hook to use cli mcp interface ([6ba5f9d](https://github.com/nicsuzor/academicOps/commit/6ba5f9d62e157911bc7b0a32ba2d1d7e30233a0a))
+- **reconcile:** ensure every unfinished piece of work has a next task ([4d66469](https://github.com/nicsuzor/academicOps/commit/4d66469058626e1991549c131a1409c0d6cfe4bf))
+- **reconcile:** ensure every unfinished piece of work has a next task ([b73b207](https://github.com/nicsuzor/academicOps/commit/b73b20759738e8144a5f7869c65fb4918d7f61d6))
+- **tools:** add argument-extraction skill emitting Argdown ([f6ce5ba](https://github.com/nicsuzor/academicOps/commit/f6ce5bab484fed5c5f7ed61fe40d38535f9f9511))
+- **tools:** add argument-extraction skill emitting parser-valid Argdown ([0d0c4a3](https://github.com/nicsuzor/academicOps/commit/0d0c4a32805bc7f78c876793a21907a178350b06))
+- **tools:** add unit-of-analysis guidance to analyst skill ([#2755](https://github.com/nicsuzor/academicOps/issues/2755)) ([c26b6ff](https://github.com/nicsuzor/academicOps/commit/c26b6ff42f86480d624824fbee0aa624f4b2426c))
+- **workflow-library:** add wf-code-task-base ([ed5ef62](https://github.com/nicsuzor/academicOps/commit/ed5ef62cd5498c8828e250163cf06104d02e5758))
+- **workflow-library:** add wf-code-task-base, a code alternative to the general task base ([e217d06](https://github.com/nicsuzor/academicOps/commit/e217d066954c25ac3c824fd24023c59853c98173))
+
+### Bug Fixes
+
+- **argument-extraction:** address review feedback on modern phrasing, workflow decoupling, and bounded validation ([5da32bd](https://github.com/nicsuzor/academicOps/commit/5da32bd3025cbd80b0c38cd54c7c01da335c3c98))
+- **axioms:** treat a guard refusal as a halt, never forced past ([e4f49b3](https://github.com/nicsuzor/academicOps/commit/e4f49b3ba7ba3b1cb75578578c516d5cc13cefee))
+- **build:** restore marketplace and dist variables in Makefile ([eaf8552](https://github.com/nicsuzor/academicOps/commit/eaf8552f830020bf1eb37e047e6a2a524cc7763e))
+- **dispatch:** compose workflow-template steps instead of invoking templates ([7fca631](https://github.com/nicsuzor/academicOps/commit/7fca631b8a35fc06dcd3e2aeaa25a85245ea5ae5))
+- **dispatch:** compose workflow-template steps instead of invoking templates ([eef7c03](https://github.com/nicsuzor/academicOps/commit/eef7c03388d5d5a98ac9c8fea30e188cf656ac3c))
+- **enforcement:** parser-compliant Argdown claim ledger template and syntax rules ([d79dd1b](https://github.com/nicsuzor/academicOps/commit/d79dd1b19870cdadda445732b5caeac643bacc6d))
+- **enforcement:** relax argdown parser constraints for qualitative claims ([3e7d9f0](https://github.com/nicsuzor/academicOps/commit/3e7d9f08aae727b6fcfeccb279a0d1b0bcc0c5e4))
+- **ida:** export OTel spans through HTTPS_PROXY ([1845f51](https://github.com/nicsuzor/academicOps/commit/1845f51bbe0b5bf10528fca62ff1faac00af15f9))
+- **ida:** export OTel spans through HTTPS_PROXY ([1303718](https://github.com/nicsuzor/academicOps/commit/1303718215e831dd19422c6d1d986e372a622c49))
+- **ida:** refine repo targeting, remove keystrokes, and allow /learn fallback without traces ([2bd6574](https://github.com/nicsuzor/academicOps/commit/2bd65742a7f429a8ff4698082b3c360d2c00390f))
+- **ida:** skills name the repo on gh calls instead of relying on a checkout ([94761ca](https://github.com/nicsuzor/academicOps/commit/94761ca4fd32656f3975c9502b453efd0dabd039))
+- **ida:** skills name the repo on gh calls instead of relying on a checkout ([74474ba](https://github.com/nicsuzor/academicOps/commit/74474baba8d3f35a19faaa4c57081bdee733ac7e))
+- **reconcile:** fix queueing of active tasks, add orphaned in_progress, remove rationale ([a3c15e3](https://github.com/nicsuzor/academicOps/commit/a3c15e3345acb432582e1c1506d69637ec31abeb))
+- **skills:** remove named agents from agy, restore strategic-review TypeNames and pauli pointer ([ca78693](https://github.com/nicsuzor/academicOps/commit/ca78693a72fa1b56e7327d6255ef62035a062071))
+- **strategic-review:** use relative path to strategize skill ([c678208](https://github.com/nicsuzor/academicOps/commit/c678208e54661ed25cfd131274824369e9a15baa))
+- **telemetry:** route test otel spans to test project and resolve default projects ([97ec18c](https://github.com/nicsuzor/academicOps/commit/97ec18c3b0db92d799229d6d4c28b4d1115a174f))
+- **telemetry:** route test otel spans to test project and resolve default projects ([e6c3a1c](https://github.com/nicsuzor/academicOps/commit/e6c3a1c07ca0985462966d66a8293400ff0ee0fb))
+- **tracer:** never emit Agent spans whose parent links form a loop ([959fdba](https://github.com/nicsuzor/academicOps/commit/959fdbad9bf50e1cd76950ec84a1e7a3d2d1efc8))
+- **tracer:** never emit Agent spans whose parent links form a loop ([db77db8](https://github.com/nicsuzor/academicOps/commit/db77db8d9a2c82aebff4da7dc1d74777c6071f7a))
+- **tracer:** report OTLP export outcome instead of assuming success ([5c9d2f3](https://github.com/nicsuzor/academicOps/commit/5c9d2f3f1be5e83fe62033a1c0005d5231d011ef))
+- **tracer:** report OTLP export outcome instead of assuming success ([9f02407](https://github.com/nicsuzor/academicOps/commit/9f0240738b0acb11b92dfac9cb50d98b5cb3c0f7))
+
+### Code Refactoring
+
+- **enforcement:** rewrite evidence and report-verification specs with native Argdown and qualitative assessment ([e49f1a0](https://github.com/nicsuzor/academicOps/commit/e49f1a08c5bc1ef60f852349d303180dd01158d6))
+- **ida:** move /dispatch's composition steps to a /reify skill ([6add575](https://github.com/nicsuzor/academicOps/commit/6add5751024133012d2aa22cd052b9876496fe08))
+
+### Documentation
+
+- **pauli:** own graph upkeep unasked and decline interference ([2053051](https://github.com/nicsuzor/academicOps/commit/20530514cb0a8ee7cc56b5b4af380537151a0671))
+- **pauli:** own graph upkeep unasked and decline interference ([965cba2](https://github.com/nicsuzor/academicOps/commit/965cba22ad81ba2a6fda3ff9cb95fc41b53500d6))
+- **polecat:** add spec for observability across dispatch surfaces ([66cf021](https://github.com/nicsuzor/academicOps/commit/66cf021dbbcfb6ee6e16dbc52f2090b3e1b8e32f))
+- **polecat:** add spec for observability across dispatch surfaces ([b2591db](https://github.com/nicsuzor/academicOps/commit/b2591dbe9502d56f1600f80e36a3bd64900793a7))
+- **polecat:** document concurrent agy log tailing alongside stream-json ([70fa402](https://github.com/nicsuzor/academicOps/commit/70fa402461e16eb0bc536f903b2420dc25ef3550))
+
+### Tests
+
+- **ida:** match hook wiring after honesty/quiet hooks were unwired ([16c22b0](https://github.com/nicsuzor/academicOps/commit/16c22b0f4343ed8413af91561c4eff5be8ebd661))
+- **ida:** match hook wiring after honesty/quiet hooks were unwired (aops_26ccb091) ([bc0afcc](https://github.com/nicsuzor/academicOps/commit/bc0afcc9ad413536e58adfe913d0bc3591d58395))
+- **pkb:** patch PKB_MCP_URL in unit tests and restore AOPS_OFFLINE ([fcfca09](https://github.com/nicsuzor/academicOps/commit/fcfca098e487e743ab07ccf4a4d433acd462b7cd))
+
+### Miscellaneous
+
+- depersonalise prose; remove host paths and local-infrastructure references ([2d58e2a](https://github.com/nicsuzor/academicOps/commit/2d58e2aca181330c48637b4d1d58dc96a091ea86))
+- remove host paths and local-infrastructure references ([7034d15](https://github.com/nicsuzor/academicOps/commit/7034d159559aa9bef7b0c8982fd396c5fd9406dc))
+- replace personal references to Nic with 'the user' in public code ([a455c55](https://github.com/nicsuzor/academicOps/commit/a455c55e74fcf211a860148611aac856822b2843))
+- **rulesets:** dev merges on green; main requires Nic's review ([6df1cf7](https://github.com/nicsuzor/academicOps/commit/6df1cf798bbe2b690b4a4c04f76ffc71f6e09125))
+- **rulesets:** dev merges on green; main requires Nic's review ([8fab659](https://github.com/nicsuzor/academicOps/commit/8fab659e802ea58425f657d21684c5b51ff3d72d))
+
 ## [0.10.6](https://github.com/nicsuzor/academicOps/compare/v0.10.5...v0.10.6) (2026-10-03)
 
 ### Features
