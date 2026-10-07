@@ -20,7 +20,7 @@ Load the artifact, its diff (for PRs), and relevant quality standards. If origin
 
 ### 2. Strategic Fit Check
 
-Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `pauli`) situates the artifact against the objectives it claims to serve in the PKB graph using the analytical lenses in `strategize/SKILL.md` and returns an explicit `FIT`/`MISFIT` verdict, distinct from the compliance verdict and the quality verdict.
+Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `pauli`) situates the artifact against the objectives it claims to serve in the PKB graph using the analytical lenses in `../strategize/SKILL.md` and returns an explicit `FIT`/`MISFIT` verdict, distinct from the compliance verdict and the quality verdict.
 
 ### 3. Deploy Parallel Reviewers
 
