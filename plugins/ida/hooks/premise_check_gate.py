@@ -5,7 +5,8 @@ Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
 - ``premise_check_arm``: a ``PostToolBatch`` / ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
-  an agent finishes calling tools (including subagents, before results return) or receives a teammate message.
+  an agent finishes calling tools (including subagents, before results return) or receives a peer's report.
+  The user's own messages never arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
   supervisor's next subagent dispatch, communication, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
@@ -33,8 +34,13 @@ def _now() -> str:
     return datetime.now().astimezone().isoformat()
 
 
-# Agent profiles this check applies to
-_GATED_AGENT_TYPES = ["ida:ida"]
+# Agent profiles this check applies to: the manager (ida) and the dispatcher (sara)
+_GATED_AGENT_TYPES = ["ida:ida", "ida", "ida:sara", "sara"]
+
+# Envelopes the harness wraps around a report from another agent. Anything
+# else arriving on UserPromptSubmit -- a channel message or a typed prompt -- is
+# the user's own message, which is an ask, not a claim to check.
+_PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notification")
 
 # Tools that dispatch subagents (arming the check)
 _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
@@ -98,12 +104,7 @@ def arm(session_id: str, claim_id: str | None = None) -> None:
     _save_state(session_id, state)
 
 
-def disarm(
-    session_id: str,
-    claim_id: str,
-    questions: list[str] | None = None,
-    answers: list[str] | None = None,
-) -> None:
+def disarm(session_id: str, claim_id: str, verdict: str, reason: str) -> None:
     """Disarm the premise check after a verdict is recorded."""
     state = _load_state(session_id)
     state["armed"] = False
@@ -111,8 +112,8 @@ def disarm(
     state["claim_id"] = claim_id
     state["last_verdict"] = {
         "claim_id": claim_id,
-        "questions": list(questions or []),
-        "answers": list(answers or []),
+        "verdict": verdict,
+        "reason": reason,
         "recorded_at": _now(),
     }
     _save_state(session_id, state)
@@ -136,9 +137,21 @@ open_gate = disarm
 is_gate_open = is_disarmed
 
 
+def _prompt_text(ctx: HookContext) -> str:
+    prompt = ctx.raw.get("prompt")
+    if isinstance(prompt, dict):
+        prompt = prompt.get("text") or prompt.get("content") or ""
+    return str(prompt or "")
+
+
+def is_peer_report(ctx: HookContext) -> bool:
+    """True when an incoming prompt is another agent's report, not the user's message."""
+    return _prompt_text(ctx).lstrip().startswith(_PEER_ENVELOPES)
+
+
 def _derive_claim_id(ctx: HookContext) -> str:
     if ctx.event == "UserPromptSubmit":
-        return "incoming teammate message"
+        return "incoming peer report"
 
     for call in ctx.tool_calls:
         if call.get("tool_name") in _DISPATCH_TOOLS:
@@ -188,7 +201,8 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
         return None
 
     if ctx.event == "UserPromptSubmit":
-        arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
+        if is_peer_report(ctx):
+            arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
         return None
 
     has_dispatch = any(call.get("tool_name") in _DISPATCH_TOOLS for call in ctx.tool_calls)
@@ -230,14 +244,13 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
     )
 
     reason = (
-        f"A subagent or teammate report ({claim_id!r}) is pending its logic-check verdict for session "
-        f"'{ctx.session_id or 'current'}'. Use the 'premise-check' skill "
-        "(or run scripts/verdict.py with your one reasoned verdict, thought through "
-        f"against hearsay.md's six logic-check questions) before {action_desc}."
+        f"A subagent or peer report ({claim_id!r}) is pending its premise-check verdict for session "
+        f"'{ctx.session_id or 'current'}'. Use the 'premise-check' skill to record "
+        f"PASS, REVISE or FAIL with your reason before {action_desc}."
     )
     user_msg = (
-        f"Blocked: record the logic-check verdict on the last report ({claim_id!r}) "
-        f"(use 'premise-check' skill) before {action_desc}."
+        f"Blocked: record the premise-check verdict on the last report ({claim_id!r}) "
+        f"before {action_desc}."
     )
 
     if mode == "warn":
