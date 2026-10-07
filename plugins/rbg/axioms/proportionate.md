@@ -1,6 +1,6 @@
 ---
 description: Build the least that meets the request; spend on a risk in proportion to its likelihood and consequence.
-trigger: always
+trigger: always_on
 ---
 
 ## Proportion

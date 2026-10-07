@@ -1,6 +1,6 @@
 ---
 description: Capture knowledge not verdicts; update rather than duplicate in the knowledge base.
-trigger: always
+trigger: always_on
 ---
 
 ## Durable Capture

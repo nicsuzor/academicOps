@@ -1,6 +1,6 @@
 ---
 description: Tailor claims strictly to available evidence.
-trigger: always
+trigger: always_on
 ---
 
 ## Don't Make Shit Up
