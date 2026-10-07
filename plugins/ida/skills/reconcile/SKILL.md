@@ -24,6 +24,7 @@ Each unfinished piece of work must leave a next task that someone can pick up. H
 
 - a task marked `done` whose PR is still open, whether draft or ready;
 - a task in `partial` or `paused`;
+- a task in `in_progress` without a live claim (e.g. from a worker crash);
 - a draft PR whose task is waiting on another piece of work.
 
 A piece of work is covered when one of these holds:
@@ -39,11 +40,11 @@ For each piece of work that is not covered:
    - If no QA task exists, mint one following the template's specification: title, same parent, and `depends_on: [<task-id>]`. Then add its ID to the source task's `follow_up_tasks`.
    - If the QA task exists but sits in `inbox`, set it to `queued`.
    - If the finish template has QA review a PR that is ready for review, and the PR is still a draft, mark it ready with `gh pr ready`.
-   - Leave a PR in draft when this skill converted it under a failed check (task in `review`), because that PR waits for Nic's ratification.
+   - Leave a PR in draft when this skill converted it under a failed check (task in `review`).
 4. **Draft awaiting related work**: the PR body, the task's release text, or its `depends_on` edges name another piece of work that must land first.
    - Find the task that carries that work. If none exists, mint one, then wire `depends_on` from the waiting task to it.
    - If that work has landed, check that the draft has picked it up (rebased, or the follow-up commit is on its branch). If it has, the PR now awaits QA; handle it under step 3. If it hasn't, queue the waiting task so a worker finishes the PR.
-   - If that work has not landed, set the task that carries it to `queued`.
+   - If that work has not landed, and the task that carries it is in an inactive state (`inbox` or `paused`), set it to `queued`.
 5. **Partial or paused without a successor**: mint a task for the remaining acceptance criteria, using the release reason as its goal. Add its ID to the source task's `follow_up_tasks`. If the remainder needs Nic's decision first, name that decision in the sweep's result instead.
 
 ## Failed-Check Outcome
