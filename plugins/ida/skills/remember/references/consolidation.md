@@ -5,7 +5,7 @@ Consolidation synthesises episodic records into durable knowledge and maintains 
 ## Safety Controls
 
 - **Dry run by default**: Bulk operations (`batch_update`, `batch_merge`, `apply_consolidation_batch`) default to `dry_run=true`. Set `dry_run=false` only after inspecting previews.
-- **Destination-first persistence**: Verify destination note writes by ID before modifying or deleting any source task body or episodic note. If the destination write fails, halt immediately.
+- **Destination-first persistence**: Write the destination note before modifying or deleting any source task body or episodic note. If the destination write fails, halt immediately.
 - **Halt on tool failure**: When a tool fails, emit `HALT: <tool_name>` and report immediately; never use workarounds or perform destructive partial edits.
 - **Control context volume**: Query slices by `status` or `project` rather than pulling full unindexed graphs.
 - **Invocation is code-mode, not flat tools**: every `pkb.<op>(...)` call below runs inside the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`). There is no directly-invocable flat tool named `pkb__<op>` or `pkb-<op>`.
@@ -25,8 +25,8 @@ Without a focus, stages run in order as listed below.
 
 1. **Cluster siblings**: Group sibling tasks under the same parent to synthesise into one canonical note.
 2. **Find canonical note**: Search with `pkb.search(query="<topic>")`. Augment existing notes via `pkb.update_body` or create via `pkb.create`.
-3. **Persist destination first**: Write durable content to the destination note and verify readback by ID.
-4. **Rewrite source task body**: Once verified, rewrite the task body in place (<1,500 chars) to its minimal form: Goal, completed checklist, and `## Pointers` with `[[destination-id]]` and PR links. Do not alter status or graph edges.
+3. **Persist destination first**: Write durable content to the destination note.
+4. **Rewrite source task body**: Once the destination write succeeds, rewrite the task body in place (<1,500 chars) to its minimal form: Goal, completed checklist, and `## Pointers` with `[[destination-id]]` and PR links. Do not alter status or graph edges.
 5. **Densify links**: Add `[[wikilink]]` pointers from the destination note to peer concepts and Maps of Content.
 
 ### Content Boundaries
@@ -62,7 +62,7 @@ Audit generated notes for:
 
 1. **Baseline**: Run `pkb.status` and `pkb.get_stats`. Record document count and index freshness.
 2. **Mine transcripts**: Process unmined transcripts (up to 15 per cycle). Synthesise durable topics and record provenance as a `[[wikilink]]` to the transcript or evidence node -- `sources:` and `mined:` are not writable frontmatter; `update_task` and `batch_update` reject unknown keys. Do not edit transcript bodies.
-3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once verified at destination.
+3. **Consolidate knowledge**: Extract durable content from daily notes, meeting notes, and closed tasks to canonical topic notes per the extraction method. Create navigation nodes (`type: index`) for clusters of 5+ notes -- there is no `moc` type. Delete episodic notes once their content is written at the destination.
 4. **Reconcile data quality**:
    - _Duplicates_: Inspect candidates from `find_duplicates(mode="both")` semantically before merging.
    - _Staleness_: Delegate task staleness and closure to `/ida:reconcile sweep`, scoped to the cycle's window.

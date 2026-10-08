@@ -87,12 +87,10 @@ defers to it rather than duplicating it.
   is nothing written elsewhere for it to protect.
 
 **Before deleting a capture folded into another node** (Note, or Task folded into an existing
-task), run the same Pre-Deletion Verification Gate
-`/reconcile` already applies: confirm the destination
-resolves, its `modified` timestamp is fresh, the content reads back, and any external references
-are reparented. Only then `pkb__delete` the source capture note. A gate failure halts on that
-capture and leaves it in place -- same abort semantics as the hygiene route, never a retry against
-a different destination in the same pass.
+task), the destination write has succeeded and any external references are reparented. Only then
+`pkb__delete` the source capture note. A failed destination write halts on that capture and leaves
+it in place -- same abort semantics as the hygiene route, never a retry against a different
+destination in the same pass.
 
 ## Gap: no PKB write converts a document in place
 
