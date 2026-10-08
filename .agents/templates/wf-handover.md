@@ -23,7 +23,7 @@ Work is NOT complete until `git push` succeeds, a PR is filed, and reflection is
 
 1. **Complete all file changes.**
 2. **Run quality gates** — compose [[wf-verification]] or [[wf-qa]] proportionate to stakes.
-3. **Update task status** (workers with PKB access mark done after `/pull`, or partial/review) and release the claim.
+3. **Update task status** (workers with PKB access mark done after `/pull`, or partial when agent work remains; review only for a decision only Nic can make) and release the claim.
 4. **Codify learnings** — file an issue or memory entry if something durable was learned (compose [[wf-memory-capture]] / remember).
 5. **Commit, push, file PR** — the mechanical crossing:
    - Stage specific files (never blanket `add -A`).
