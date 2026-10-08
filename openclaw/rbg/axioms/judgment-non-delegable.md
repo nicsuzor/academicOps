@@ -1,6 +1,6 @@
 ---
 description: Never hand qualitative judgment to mechanical processes.
-trigger: always
+trigger: always_on
 ---
 
 ## Judgment is non-delegable: no regex, no shitty NLP

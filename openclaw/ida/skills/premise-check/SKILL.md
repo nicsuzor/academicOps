@@ -1,39 +1,37 @@
 ---
 name: premise-check
-description: Evaluate the logical integrity of reports and record a reasoned verdict. Mandatory before a claim reaches the user.
+description: Judge a report's logic against the original ask and record a PASS, REVISE or FAIL verdict with its reason. Use when a peer or worker report arrives, and before any claim goes up the chain. Not a fact check, and not a review that adds requirements.
 ---
 
 # Premise Check
 
-Audit reports before adopting or relaying their claims. Do not accept assertions at face value: evaluate the supporting evidence, verify logical consistency, and require independent sources of record.
+Check the form of a report, not its facts. Form done properly is the quality of the logic, measured against the original ask:
 
-This applies to your own claims as much as anyone else's. Intending to be careful is not an audit -- run the same six checks against what you are about to say.
+1. **Can the evidence support the claims?** Each load-bearing claim names checkable evidence (a PR, commit, node id, `file:line`, a quoted output) that, if it is what the report says, would show the claim. The reporter's statement of what it did is evidence of the work; a pointer is evidence of where it was saved.
+2. **Do the claims lead to the conclusion?** The steps are valid: no unstated premise, no inference passed off as observation, no conclusion wider than the evidence.
+3. **Does the conclusion fully answer the original ask?** Every part of the ask is addressed, in the ask's own terms.
+
+Do not open sources, re-run work or authenticate a reporter's records to confirm the facts. Do not add requirements, gates or standards the original ask did not set: quality assurance and process are set by the workflow, not by this check. Match rigour to the output's purpose.
 
 ## When
 
-Run at intake, not only before reporting. Anything unevaluated that enters your context is a claim you will otherwise carry forward as fact:
+- A peer or worker report arrives. The user's own messages are asks, not reports.
+- Before you pass any claim up the chain, including your own.
 
-- **Results returned by a subagent or `agy`.** Their conclusions are reported, not observed. Check what they actually ran before you adopt what they concluded.
-- **Anything read from the graph** -- retrieved memories, notes, task records, and search results injected into your context. A stored claim is only as good as the evidence recorded with it, and it may have been true when written and false now.
-- **Your own conclusions**, before they reach the user.
+## Verdict
 
-Nothing propagates unevaluated. If a claim cannot pass, say so where you use it rather than passing it on unmarked.
+| Token  | Meaning                                                                        |
+| ------ | ------------------------------------------------------------------------------ |
+| PASS   | All three hold.                                                                |
+| REVISE | The logic holds in part; name what is missing or does not follow.              |
+| FAIL   | The report does not answer the ask, or its conclusion does not follow from it. |
 
-## Audit Criteria
-
-1. **Independent record**: confirm the subject's standing against an independent source of record cited by the reporter. Treat unverified claims as unresolved.
-2. **Alternative explanations**: test whether the evidence also supports unstated alternative hypotheses.
-3. **Sufficiency**: ensure sample size, coverage, and methodology warrant the conclusions drawn.
-4. **Fact vs. inference**: distinguish directly observed facts from derived interpretations, and ensure stated confidence matches evidence strength.
-5. **Generalisation**: check that findings do not extrapolate beyond the cases actually tested.
-6. **Unstated premises**: identify the underlying assumptions and verify they hold.
-
-## Verdict Recording
-
-Synthesise the evaluation into a single reasoned judgment naming any defects, and record it:
+Record it, with the reason in free text:
 
 ```bash
-uv run python3 scripts/verdict.py --report <report_id> --verdict "<your reasoned verdict>"
+uv run python3 scripts/verdict.py --report <report_id> --verdict PASS --reason "<why>"
 ```
 
-Bounce reports lacking independent citations or adequate evidence back to their author. A failing report does not reach the user hedged or caveated -- it does not reach them until it passes.
+When the reason is long or quotes commands, write it to a file and pass `--reason-file <path>` (or `--reason-file -` to read stdin), so free text stays off the command line.
+
+A REVISE or FAIL goes back to its author. It does not reach the user hedged; it reaches them only once it passes.

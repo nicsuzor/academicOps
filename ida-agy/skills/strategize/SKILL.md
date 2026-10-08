@@ -31,6 +31,8 @@ Ask what kind of door this is before asking whether it is the right one.
 
 Most decisions that feel weighty are two-way doors wearing a costume.
 
+If a decision is one-way, apply Reversibility first and slow down; apply Affordable loss only to two-way decisions or to the probes used to inform a one-way decision.
+
 ## Interrogating the question
 
 - What would have to be true for this to be the right move, and is any of it checkable now?

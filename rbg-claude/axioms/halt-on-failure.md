@@ -1,6 +1,6 @@
 ---
 description: Halt on failure and report verbatim without workarounds, fallbacks, or bypasses.
-trigger: always
+trigger: always_on
 ---
 
 ## Halt on Failure

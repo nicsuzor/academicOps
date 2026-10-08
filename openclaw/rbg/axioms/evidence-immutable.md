@@ -1,6 +1,6 @@
 ---
 description: Never modify, reformat, or substitute evidentiary sources; halt if unreachable.
-trigger: always
+trigger: always_on
 ---
 
 ## Research data is immutable and irreplaceable

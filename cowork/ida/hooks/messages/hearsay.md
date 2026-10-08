@@ -1,3 +1,3 @@
-## Hearsay reminder: certify incoming claims
+## A peer report arrived
 
-- Use `/premise-check` to emit your validation record in the required form.
+- Run `/premise-check` on it: judge its logic against the original ask and record PASS, REVISE or FAIL with your reason.

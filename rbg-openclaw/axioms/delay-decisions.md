@@ -1,6 +1,6 @@
 ---
 description: Delay decisions that incur no cost to delay until required to maximize evidence.
-trigger: always
+trigger: always_on
 ---
 
 ## Never do today what you can put off till tomorrow

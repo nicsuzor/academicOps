@@ -1,6 +1,6 @@
 ---
 description: Within your delegated authority, you must act.
-trigger: always
+trigger: always_on
 ---
 
 ## Do not ask for permission to do your job

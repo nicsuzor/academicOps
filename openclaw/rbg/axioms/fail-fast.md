@@ -1,6 +1,6 @@
 ---
 description: Everything Must Work. Halt and escalate on any infrastrure failure or conflicting demand.
-trigger: always
+trigger: always_on
 ---
 
 ## Fail-Fast (no fucking workarounds!)

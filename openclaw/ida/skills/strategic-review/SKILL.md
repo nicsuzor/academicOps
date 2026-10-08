@@ -24,13 +24,13 @@ Before implementation detail is reviewed, the strategic-fit reviewer (TypeName `
 
 ### 3. Deploy Parallel Reviewers
 
-Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts:
+Dispatch all three reviewers concurrently via `invoke_subagent` in a single message with neutral prompts: the artifact and its acceptance criteria, with no lenses or verdict scale of your own. Each reviewer returns its verdict on its own definition's scale.
 
 - **Rule compliance** (TypeName `rbg`): Axiom and rule compliance.
 - **Strategic fit** (TypeName `pauli`): Strategic Fit Check (step 2).
 - **Quality** (TypeName `marsha`): Runtime quality, user ask satisfaction, and excellence.
 
-Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility).
+Reviewers select 3-4 relevant lenses (e.g. Scope discipline, Self-consistency, Assumption hygiene, Attribution, Feasibility). Every reviewer also judges proportion: whether the artifact is larger than the request needs, and whether each fix it asks for is worth its cost given the failure's likelihood and consequence.
 
 ### 4. Reconcile Findings
 
@@ -39,10 +39,10 @@ Synthesize reviewer outputs into a unified findings table:
 | Reviewer | Issue | Feedback | Severity |
 | -------- | ----- | -------- | -------- |
 
-- Collapse concordant findings across reviewers into a single row.
+- Collapse concordant findings across reviewers into a single row that keeps each reviewer's own severity; where they differ, state the severity adopted and why.
 - Give the fit verdict its own row (`FIT`/`MISFIT`), even when concordant with other rows.
-- **Severities**: `REJECT` (fundamental redesign), `REVISE` (substantial rework), `FIX` (straightforward resolution), `TRIVIAL` (cosmetic polish), `ADVISORY` (non-blocking).
-- **Overall verdict**: `APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`. A `MISFIT` forces `REVISE` or `REJECT` even when the compliance and quality reviews both pass.
+- **Severities**: `REJECT` (fundamental redesign, or work out of proportion to the request), `REVISE` (substantial rework), `FIX` (straightforward resolution), `TRIVIAL` (cosmetic polish), `ADVISORY` (non-blocking).
+- **Overall verdict**: `APPROVE`, `MINOR CHANGES`, `REVISE`, or `REJECT`. A `MISFIT` forces `REVISE` or `REJECT` even when the compliance and quality reviews both pass. A reviewer's `REJECT` stands unless the synthesis names the finding that overrules it.
 
 ### 5. Action and Reporting
 
