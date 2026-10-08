@@ -114,6 +114,34 @@ def test_completion_tokens_are_counted_once_per_response_not_per_entry(tmp_path)
     assert attrs["llm.token_count.total"] == 3 + 1000 + 200 + 142
 
 
+def test_thinking_text_and_tool_use_sharing_one_usage_count_completion_once(tmp_path):
+    # Shape of session 99639e57: one API response written as three entries,
+    # each repeating the full usage (777945efbbafdfef recorded 1155 for 385).
+    usage = _usage(385, input_tokens=7)
+    path = _write(
+        tmp_path / "t.jsonl",
+        [
+            _human("hi", "2026-10-08T00:00:00.000Z"),
+            _assistant(
+                "msg_1", "2026-10-08T00:00:01.000Z", {"type": "thinking", "thinking": ""}, usage
+            ),
+            _assistant(
+                "msg_1", "2026-10-08T00:00:02.000Z", {"type": "text", "text": "Checking."}, usage
+            ),
+            _assistant(
+                "msg_1", "2026-10-08T00:00:03.000Z", _tool_use("toolu_1"), usage, "tool_use"
+            ),
+        ],
+    )
+    (span,) = _extract(path)
+    attrs = span["attributes"]
+    assert attrs["llm.token_count.completion"] == 385
+    assert attrs["llm.token_count.prompt"] == 7 + 1000 + 200
+    assert attrs["llm.token_count.prompt_details.cache_read"] == 1000
+    assert attrs["llm.token_count.prompt_details.cache_write"] == 200
+    assert attrs["llm.token_count.total"] == 7 + 1000 + 200 + 385
+
+
 def test_fullest_usage_snapshot_wins_when_earlier_entries_are_partial(tmp_path):
     path = _write(
         tmp_path / "t.jsonl",
