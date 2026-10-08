@@ -16,17 +16,17 @@ type: template
 
 ## What this step does
 
-Process for adding new framework capability — a hook, skill, script, or command. Verify-first, test-first discipline: confirm the capability doesn't already exist, write the integration test before the component, then implement against it.
+Process for adding new framework capability — a hook, skill, script, CLI, or slash command. Verify-first discipline: confirm the capability doesn't already exist; for executable code (hook, script, CLI), write the integration test before the component, then implement against it. A skill or slash command is markdown instruction text, not executable code.
 
 ## Procedure
 
 1. **Verify necessity** — search existing components for similar functionality, document why they're insufficient, confirm alignment with framework philosophy.
-2. **Design the integration test FIRST** — define success criteria, write a test that validates the component end-to-end. The test must fail before the component exists (proof it's testing something real).
+2. **Define success criteria; for executable code, write the integration test FIRST** — a hook, script, or CLI gets a test that validates it end-to-end and fails before the component exists (proof it's testing something real). A skill or slash command is instruction text: its test is a baseline run without the skill that fails the success criteria, then a run following the skill that meets them -- never a test that asserts the file's wording.
 3. **Document in an experiment log** — hypothesis, design, expected outcomes.
 4. **Implement the component** — single source of truth, reference existing documentation rather than duplicating it, minimal bounded scope. For hooks specifically, see Hook Safety below.
-5. **Run the integration test** — must pass completely. No partial success within the claimed component's own surface: a narrower scope honestly disclosed as partial is legitimate, a claimed component with a red test inside its own surface is not.
+5. **Verify against step 2** — executable code: the integration test must pass completely. A skill or slash command: the run following it must meet the success criteria that its baseline run failed. No partial success within the claimed component's own surface: a narrower scope honestly disclosed as partial is legitimate, a claimed component with a red test or a failed run inside its own surface is not.
 6. **Update authoritative sources** — reconcile any index/registry documents against the actual structure; verify no documentation conflicts introduced.
-7. **Commit only if all tests pass** — confirm single source of truth held, no bloat introduced.
+7. **Commit only if step 5 passed and the full suite is green** — confirm single source of truth held, no bloat introduced.
 
 ## Hook Safety (normative)
 
@@ -46,7 +46,7 @@ Deleting a hook script while a session is running it causes repeated errors unti
 
 ## When to include
 
-Any change that adds a new hook, skill, script, or command to the framework's own capability surface. Not for changes to existing components — this is specifically the "does this need to exist at all, and does it work end-to-end before it ships" gate for net-new capability.
+Any change that adds a new hook, skill, script, CLI, or slash command to the framework's own capability surface. Not for changes to existing components — this is specifically the "does this need to exist at all, and does it work end-to-end before it ships" gate for net-new capability.
 
 ## Source
 

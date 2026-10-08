@@ -20,8 +20,9 @@ implementation without this template first is scope-creep waiting to happen.
    qualitative dimensions, not just mechanical checks.
 5. **Scope** — propose initial scope, explicitly define boundaries (what's out).
 6. **Dependencies** — required infrastructure/data; document error handling.
-7. **Integration test design** — a test that validates EACH acceptance
-   criterion and detects EACH failure mode.
+7. **Test and verification design** — for code that executes, an integration
+   test that validates each criterion it serves and detects each failure mode;
+   for any other criterion, how it is verified.
 8. **Implementation approach** — components, data flow, risk assessment.
 9. **Effort and risk** — estimates, mitigation plans.
 10. **Review** — full summary review with the user.
@@ -31,5 +32,5 @@ implementation without this template first is scope-creep waiting to happen.
 
 ## Verification before proceeding to implementation
 
-Acceptance criteria section complete; integration test design maps to each
-criterion; user confirms these criteria define "done".
+Acceptance criteria section complete; each criterion maps to its test where
+code executes, or to its verification otherwise; user confirms these criteria define "done".

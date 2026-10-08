@@ -26,7 +26,7 @@ Red-green-refactor development for any testable code change, where correctness i
 - One behavior per test, one behavior per cycle. Test before code.
 - Black-box only: assert inputs → output or observable effect, never internals.
 - No tautologies -- never assert against a hardcoded value inserted solely to satisfy that assertion.
-- No configuration mirrors -- never assert that an agent, skill, settings, or instruction file _contains_ a given string, tool name, or skill name. Test what the code does with the file (it parses, a path it names resolves, its content drives an observable effect), never that the file says what was just written into it. A test of the form "the agent file contains tool x" fails on every legitimate edit to that file and proves nothing about behavior. If a value must be checked, read it live from its real source and compare it to a real, independently-produced outcome -- never restate the value as a second literal in the test.
+- No configuration mirrors -- never assert that an agent, skill, settings, or instruction file _contains_ a given string, tool name, or skill name. Test what the code does with the file (it parses, a path it names resolves, its content drives an observable effect), never that the file says what was just written into it. A test of the form "the agent file contains tool x" fails on every legitimate edit to that file and proves nothing about behavior. If a value must be checked, read it live from its real source and compare it to a real, independently-produced outcome -- never restate the value as a second literal in the test. A change to instruction text alone owes no such test: a run that follows the instruction proves it.
 - At least 2-3 distinct cases per non-trivial behavior, including boundary and error conditions.
 - Never commit with a failing test, or a failing test without its implementation.
 - Never implement beyond the minimum needed to pass the current test.
@@ -37,4 +37,4 @@ State which behaviors were covered by which tests, the red failure trace for eac
 
 ## When to include
 
-Any testable code change with machine-checkable correctness. Composes as the implementation phase inside a larger [[wf-qa]]-gated feature: the TDD cycle produces the artifact; [[wf-qa]] independently checks it's actually right.
+Any testable code change with machine-checkable correctness. Not for a change to instruction text alone.
