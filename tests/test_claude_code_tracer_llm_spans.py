@@ -577,3 +577,123 @@ def test_pending_inline_agent_outranks_the_issuing_llm_span_as_tool_parent(trace
     ), "the issuing LLM span is known, so the Agent must win on precedence"
     assert read.parent.span_id == agent.context.span_id
     assert agent.parent.span_id == int(cct._llm_span_id("msg_A"), 16)
+
+
+def _interrupted(tool_use_id: str, ts: str) -> list[dict]:
+    """What Esc writes while a tool runs: an error tool result and a marker."""
+    return [
+        {
+            "type": "user",
+            "timestamp": ts,
+            "message": {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_id,
+                        "content": "The user doesn't want to proceed with this tool use.",
+                        "is_error": True,
+                    }
+                ],
+            },
+        },
+        {
+            "type": "user",
+            "timestamp": ts,
+            "message": {
+                "role": "user",
+                "content": [{"type": "text", "text": "[Request interrupted by user for tool use]"}],
+            },
+        },
+    ]
+
+
+def test_prompts_queued_mid_turn_and_released_by_esc_keep_their_llm_spans(tracer_env):
+    """QA capture E3: E-FIRST runs a tool, E-Q1 and E-Q2 are queued, then Esc.
+
+    Each queued prompt fires UserPromptSubmit as it is queued, so the third
+    turn opens with only E-FIRST in the transcript. Esc then writes E-Q1 and
+    E-Q2 back to back, and one response answers both.
+    """
+    transcript = tracer_env / "session.jsonl"
+    transcript.write_text("")
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        _hook(cct.handle_user_prompt_submit, str(transcript), prompt="E-FIRST")
+        sleep_in = {"command": "sleep 30"}
+        entries = [
+            _human("E-FIRST", "2026-10-08T00:00:00.000Z"),
+            _assistant(
+                "msg_1",
+                "2026-10-08T00:00:01.000Z",
+                _tool_use("toolu_1", "Bash", sleep_in),
+                _usage(10),
+                "tool_use",
+            ),
+        ]
+        _write(transcript, entries)
+        _hook(
+            cct.handle_pre_tool,
+            str(transcript),
+            tool_name="Bash",
+            tool_input=sleep_in,
+            tool_use_id="toolu_1",
+        )
+        _hook(cct.handle_user_prompt_submit, str(transcript), prompt="E-Q1")
+        _hook(cct.handle_user_prompt_submit, str(transcript), prompt="E-Q2")
+
+        bash_in = {"command": "echo hi"}
+        entries += [
+            *_interrupted("toolu_1", "2026-10-08T00:00:02.000Z"),
+            _human("E-Q1", "2026-10-08T00:00:03.000Z"),
+            _human("E-Q2", "2026-10-08T00:00:03.001Z"),
+            _assistant(
+                "msg_2",
+                "2026-10-08T00:00:04.000Z",
+                _tool_use("toolu_2", "Bash", bash_in),
+                _usage(12),
+                "tool_use",
+            ),
+        ]
+        _write(transcript, entries)
+        _hook(
+            cct.handle_pre_tool,
+            str(transcript),
+            tool_name="Bash",
+            tool_input=bash_in,
+            tool_use_id="toolu_2",
+        )
+        _hook(
+            cct.handle_post_tool,
+            str(transcript),
+            tool_name="Bash",
+            tool_input=bash_in,
+            tool_use_id="toolu_2",
+            tool_response="hi",
+        )
+        entries += [
+            _tool_result("toolu_2", "2026-10-08T00:00:05.000Z"),
+            _assistant(
+                "msg_3",
+                "2026-10-08T00:00:06.000Z",
+                {"type": "text", "text": "E-DONE"},
+                _usage(8),
+                "end_turn",
+            ),
+        ]
+        _write(transcript, entries)
+        _hook(cct.handle_stop, str(transcript))
+
+    roots = [sp for sp in exporter.spans if sp.name == "claude-code-turn"]
+    assert [sp.attributes["turn_number"] for sp in roots] == [1, 2, 3]
+    root = roots[-1]
+    assert root.attributes["output.value"] == "E-DONE"
+
+    in_turn = [sp for sp in exporter.spans if sp.context.trace_id == root.context.trace_id]
+    llm = {sp.attributes["llm.message.id"]: sp for sp in in_turn if sp.name.startswith("claude/")}
+    assert sorted(llm) == ["msg_2", "msg_3"]
+    prompt = llm["msg_2"].attributes["llm.input_messages.0.message.content"]
+    assert "E-Q1" in prompt
+    assert "E-Q2" in prompt
+    (bash,) = [sp for sp in in_turn if sp.attributes.get("tool.call_id") == "toolu_2"]
+    assert bash.parent.span_id == llm["msg_2"].context.span_id
