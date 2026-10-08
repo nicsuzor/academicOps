@@ -30,6 +30,7 @@ import re
 import socket
 import sys
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -520,8 +521,8 @@ def resolve_session_id(
     - **Phoenix grouping id** (``prefer_env=True``): the id stamped on the
       ``session.id`` span attribute so a whole multi-agent working session —
       root turn plus every subagent it dispatches — lands in ONE Phoenix
-      session. ``$AOPS_SESSION_ID`` is written once, at the root session's
-      SessionStart, into ``CLAUDE_ENV_FILE`` (handlers.py:_isolate_credentials)
+      session. ``$AOPS_SESSION_ID`` is written at each session's SessionStart
+      into ``CLAUDE_ENV_FILE`` (handlers.py:_export_session_id)
       and inherited via the environment by every descendant subagent
       process — empirically confirmed: a live subagent process in this
       session has ``AOPS_SESSION_ID`` in its environment equal to
@@ -808,13 +809,39 @@ def _find_tool_use_id(transcript_path: str, tool_name: str, tool_input: dict) ->
     return None
 
 
+# Start of string-content user entries that Claude Code writes for local slash
+# commands (/model, /usage, /compact, ...) and bash mode (``!cmd``). Those do
+# not fire UserPromptSubmit and are not turns. Skill and custom-command prompts
+# start with ``<command-message>`` instead and do count.
+_LOCAL_COMMAND_PREFIXES = (
+    "<command-name>",
+    "<local-command-",
+    "<bash-input>",
+    "<bash-stdout>",
+    "<bash-stderr>",
+)
+
+
 def _is_human_message(entry: dict) -> bool:
-    """True for user-initiated messages (not tool results)."""
+    """True for a transcript entry that is a prompt opening a turn.
+
+    Counts ``type=user`` entries whose content is a string: typed prompts and
+    skill or custom slash-command prompts (``<command-message>...``). Does not
+    count tool results (list content), ``isMeta`` entries (e.g. the
+    ``<local-command-caveat>``), ``isCompactSummary`` entries, the
+    ``<command-name>`` / ``<local-command-stdout>`` entries of local slash
+    commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash mode,
+    since none of those fire UserPromptSubmit.
+    """
     if entry.get("type") != "user":
+        return False
+    if entry.get("isMeta") or entry.get("isCompactSummary"):
         return False
     content = entry.get("message", {}).get("content", "")
     # Tool result messages have content as a list; human messages have a string
-    return isinstance(content, str)
+    if not isinstance(content, str):
+        return False
+    return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -832,6 +859,22 @@ def _count_human_messages(transcript_path: str) -> int:
         return count
     except Exception:
         return 0
+
+
+def _next_turn_number(state: dict, prior_human_count: int) -> int:
+    """Return the next turn number and store it on *state*.
+
+    Once the session state has numbered a turn, the next turn is that number
+    plus one: the transcript is not consulted, so no transcript entry can
+    inflate the count. SessionEnd deletes the state file, so a
+    ``claude --resume`` of the same session starts from a fresh state; only
+    then is numbering seeded from *prior_human_count*, the number of prompts
+    in the transcript before this turn's prompt as counted by
+    ``_is_human_message``.
+    """
+    turn_number = (state.get("turn_number") or prior_human_count) + 1
+    state["turn_number"] = turn_number
+    return turn_number
 
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
@@ -1100,7 +1143,7 @@ def _extract_llm_spans_for_turn(
                     in_turn = True
                     human_text = entry.get("message", {}).get("content", "")
                     last_input_value = json.dumps(
-                        {"role": "user", "content": human_text[:500]},
+                        {"role": "user", "content": _truncate(human_text)[:500]},
                     )
                     last_input_mime = "application/json"
                     last_input_role = "user"
@@ -1130,7 +1173,7 @@ def _extract_llm_spans_for_turn(
                             tool_use_id = item.get("tool_use_id", "")
                             break
                     last_input_value = json.dumps(
-                        {"role": "tool", "content": payload[:500]},
+                        {"role": "tool", "content": _truncate(payload)[:500]},
                     )
                     last_input_mime = "application/json"
                     last_input_role = "tool"
@@ -1995,6 +2038,7 @@ def _complete_turn(
     config: dict,
     transcript_path: str | None,
     end_ns: int,
+    failure: dict[str, str] | None = None,
 ) -> None:
     """Send the CHAIN root span for the current turn's trace.
 
@@ -2002,6 +2046,9 @@ def _complete_turn(
     from handle_post_tool and handle_stop), so they do not need to be re-sent
     here.  The root span's output.value is taken from the last LLM output
     already tracked in state.
+
+    ``failure`` carries ``error.type`` and ``error.message`` for a turn that
+    ended in StopFailure; the root span then gets ERROR status.
     """
     current_trace = state.get("current_trace")
     if not current_trace:
@@ -2052,23 +2099,28 @@ def _complete_turn(
         root_attrs["output.value"] = final_output
         root_attrs["output.mime_type"] = "text/plain"
 
+    root_record: dict[str, Any] = {
+        "trace_id_hex": trace_id,
+        "span_id_hex": root_span_id,
+        "parent_span_id_hex": current_trace.get("parent_span_id"),
+        "name": "claude-code-turn",
+        "kind": SpanKind.INTERNAL,
+        "start_ns": turn_start_ns,
+        "end_ns": end_ns,
+        "attributes": root_attrs,
+        "force_span_id": True,
+    }
+    if failure:
+        root_attrs.update(failure)
+        root_attrs["turn.failed"] = True
+        root_record["error"] = True
+        root_record["error_msg"] = failure.get("error.type", "")
+
     _build_and_export_spans(
         config=config,
         session_id=phoenix_session_id,
         username=username,
-        span_records=[
-            {
-                "trace_id_hex": trace_id,
-                "span_id_hex": root_span_id,
-                "parent_span_id_hex": current_trace.get("parent_span_id"),
-                "name": "claude-code-turn",
-                "kind": SpanKind.INTERNAL,
-                "start_ns": turn_start_ns,
-                "end_ns": end_ns,
-                "attributes": root_attrs,
-                "force_span_id": True,
-            },
-        ],
+        span_records=[root_record],
         agent_id=agent_id,
         parent_session_id=parent_session_id,
         agent_name=agent_name,
@@ -2108,13 +2160,14 @@ def _build_tool_span_record(
     else:
         span_kind_str = "TOOL"
 
-    input_value = json.dumps(tool_input) if not isinstance(tool_input, str) else tool_input
+    input_value = _truncate(tool_input)
     output_str = json.dumps(tool_response) if not isinstance(tool_response, str) else tool_response
 
     if is_failure and error_msg:
-        output_value = f"ERROR: {error_msg}\n{output_str}"
+        error_msg = _truncate(error_msg)
+        output_value = _truncate(f"ERROR: {error_msg}\n{output_str}")
     else:
-        output_value = output_str
+        output_value = _truncate(output_str)
 
     attrs: dict[str, Any] = {
         "openinference.span.kind": span_kind_str,
@@ -2147,11 +2200,11 @@ def _build_tool_span_record(
     if span_kind_str == "RETRIEVER":
         if tool_name == "WebSearch":
             query = tool_input.get("query", "") if isinstance(tool_input, dict) else ""
-            attrs["input.value"] = query
+            attrs["input.value"] = _truncate(query)
             attrs["input.mime_type"] = "text/plain"
         elif tool_name == "WebFetch":
             url = tool_input.get("url", "") if isinstance(tool_input, dict) else ""
-            attrs["input.value"] = url
+            attrs["input.value"] = _truncate(url)
             attrs["input.mime_type"] = "text/plain"
 
         # First retrieval document content
@@ -2257,8 +2310,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
 
-    turn_number = state.get("turn_number", 0) + 1
-    state["turn_number"] = turn_number
+    turn_number = _next_turn_number(state, current_human_count)
     state["human_msg_count"] = current_human_count
 
     parent_trace_id = None
@@ -2353,24 +2405,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     if resolved_agent and not state.get("agent_name"):
         state["agent_name"] = resolved_agent
 
-    # Detect context continuation: Claude Code compresses context and continues
-    # without firing UserPromptSubmit for the resumption message. The symptom is
-    # current_trace still set from the previous turn, but the transcript has grown
-    # by more than one human message since that trace started.
-    if state.get("current_trace"):
-        ct = state["current_trace"]
-        _tp = _get_cached_transcript_path(data, state, session_id)
-        if _tp:
-            _cur_human = _count_human_messages(_tp)
-            _start = ct.get("human_count_at_start", 0)
-            if _cur_human > _start + 1:
-                # A new turn started without UserPromptSubmit. Complete the old
-                # trace and fall through to the fallback that creates a new one.
-                _emit_pending_llm_spans(state, _tp, config)
-                _complete_turn(state, config, _tp, now_ns)
-                state.pop("current_trace", None)
-                state.pop("pending_tools", None)
-
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     # This handles cases where the hook isn't registered or fires before the
     # UserPromptSubmit event is available.
@@ -2379,8 +2413,7 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
         prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
 
-        turn_number = state.get("turn_number", 0) + 1
-        state["turn_number"] = turn_number
+        turn_number = _next_turn_number(state, max(0, current_human_count - 1))
         state["human_msg_count"] = current_human_count
 
         state["current_trace"] = {
@@ -2689,44 +2722,240 @@ def handle_stop(data: dict, config: dict) -> None:
 
         transcript_path = _get_cached_transcript_path(data, state, session_id)
 
-        # Detect context continuation: same check as handle_pre_tool.
-        # When no tool calls happen during a continuation turn, handle_pre_tool
-        # never fires, so the stale trace would otherwise be completed with the
-        # wrong LLM spans.  Complete the old trace here and start a new one so
-        # the normal stop logic below runs against the correct turn.
-        if transcript_path:
-            ct = state["current_trace"]
-            _cur_human = _count_human_messages(transcript_path)
-            _start = ct.get("human_count_at_start", 0)
-            if _cur_human > _start + 1:
-                _emit_pending_llm_spans(state, transcript_path, config)
-                _complete_turn(state, config, transcript_path, end_ns)
-                state.pop("current_trace", None)
-                state.pop("pending_tools", None)
-
-                current_human_count = _cur_human
-                prompt_preview = _get_latest_human_message(transcript_path)
-                turn_number = state.get("turn_number", 0) + 1
-                state["turn_number"] = turn_number
-                state["human_msg_count"] = current_human_count
-                state["current_trace"] = {
-                    "trace_id": _new_trace_id(),
-                    "root_span_id": _new_span_id(),
-                    "turn_start_ns": end_ns,
-                    "turn_number": turn_number,
-                    "human_count_at_start": max(0, current_human_count - 1),
-                    "prompt_preview": (_truncate(prompt_preview) if prompt_preview else ""),
-                }
-
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
         _emit_pending_llm_spans(state, transcript_path, config)
 
         _complete_turn(state, config, transcript_path, end_ns)
 
-        _delete_state(session_id)
+        _end_turn(session_id, state)
 
     _cleanup_stale_states()
+
+
+def _end_turn(session_id: str, state: dict) -> None:
+    """Drop the finished turn from *state* and keep the session-level fields.
+
+    ``turn_number`` lives on the session state, so the state file must outlive
+    the turn for the next UserPromptSubmit to number its turn one higher.
+    SessionEnd deletes the file.
+    """
+    state.pop("current_trace", None)
+    state.pop("pending_tools", None)
+    state.pop("transcript_path", None)
+    _save_state(session_id, state)
+
+
+def handle_stop_failure(data: dict, config: dict) -> None:
+    """Handle StopFailure: close the turn with an ERROR root span.
+
+    Claude Code fires StopFailure instead of Stop when the turn ends on an API
+    error, so without this the turn's root span is never sent.
+    """
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        log.warning(
+            "handle_stop_failure: no session id in payload ('session_id' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+        )
+        return
+    end_ns = time.time_ns()
+
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        current_trace = state.get("current_trace")
+        if not current_trace:
+            log.debug("No active trace for session %s at stop failure", session_id)
+            return
+
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        _emit_pending_llm_spans(state, transcript_path, config)
+
+        error_type = str(data.get("error") or "unknown")
+        last_message = data.get("last_assistant_message") or ""
+        if last_message:
+            current_trace["last_llm_output"] = _truncate(last_message)
+        elif not current_trace.get("last_llm_output"):
+            current_trace["last_llm_output"] = f"(Stop failed: {error_type})"
+        _complete_turn(
+            state,
+            config,
+            transcript_path,
+            end_ns,
+            failure={
+                "error.type": error_type,
+                "error.message": _truncate(data.get("error_details") or ""),
+            },
+        )
+
+        _end_turn(session_id, state)
+
+
+def _emit_event_span(
+    data: dict,
+    config: dict,
+    event: str,
+    build: Callable[[dict], tuple[str, dict[str, Any], int] | None],
+) -> None:
+    """Emit one CHAIN span under the current turn's root for a session event.
+
+    ``build`` receives the current trace and returns ``(name, attributes,
+    start_ns)``, or None to emit nothing. Events outside a turn emit nothing:
+    a lone span in a trace of its own has no turn to be read against.
+    """
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        log.warning(
+            "%s: no session id in payload ('session_id' missing) "
+            "and $AOPS_SESSION_ID unset — skipping span emission",
+            event,
+        )
+        return
+    end_ns = time.time_ns()
+
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        current_trace = state.get("current_trace")
+        if not current_trace:
+            log.debug("No active trace for session %s at %s", session_id, event)
+            return
+        built = build(current_trace)
+        _save_state(session_id, state)
+    if built is None:
+        return
+    name, attrs, start_ns = built
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+    phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state, data)
+    _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username", "unknown"),
+        span_records=[
+            {
+                "trace_id_hex": current_trace["trace_id"],
+                "span_id_hex": _new_span_id(),
+                "parent_span_id_hex": current_trace["root_span_id"],
+                "name": name,
+                "kind": SpanKind.INTERNAL,
+                "start_ns": start_ns,
+                "end_ns": end_ns,
+                "attributes": {"openinference.span.kind": "CHAIN", **attrs},
+            },
+        ],
+        agent_id=agent_id,
+        parent_session_id=parent_session_id,
+        agent_name=state.get("agent_name"),
+        cwd=state.get("cwd"),
+        known_parents=_known_span_parents(current_trace),
+    )
+
+
+def _permission_attrs(data: dict) -> dict[str, Any]:
+    attrs: dict[str, Any] = {
+        "permission.mode": str(data.get("permission_mode") or ""),
+        "permission.tool": str(data.get("tool_name") or ""),
+        "input.value": _truncate(data.get("tool_input", {})),
+        "input.mime_type": "application/json",
+    }
+    # PermissionRequest only: the "always allow" rules Claude Code offers.
+    suggestions = data.get("permission_suggestions")
+    if suggestions:
+        attrs["permission.suggestions"] = _truncate(suggestions)
+    tool_call_id = data.get("tool_use_id")
+    if tool_call_id:
+        attrs["tool.call_id"] = str(tool_call_id)
+    return attrs
+
+
+def handle_permission_request(data: dict, config: dict) -> None:
+    """Handle PermissionRequest: a CHAIN span naming the tool awaiting approval."""
+
+    def build(_current_trace: dict) -> tuple[str, dict[str, Any], int]:
+        return "Permission Request", _permission_attrs(data), time.time_ns()
+
+    _emit_event_span(data, config, "handle_permission_request", build)
+
+
+def handle_permission_denied(data: dict, config: dict) -> None:
+    """Handle PermissionDenied: a CHAIN span recording the denied tool call."""
+
+    def build(_current_trace: dict) -> tuple[str, dict[str, Any], int]:
+        attrs = _permission_attrs(data)
+        attrs["permission.denied"] = "true"
+        reason = data.get("reason")
+        if reason:
+            attrs["permission.reason"] = _truncate(reason)
+        return "Permission Denied", attrs, time.time_ns()
+
+    _emit_event_span(data, config, "handle_permission_denied", build)
+
+
+def handle_notification(data: dict, config: dict) -> None:
+    """Handle Notification: a CHAIN span carrying the notification text."""
+
+    def build(_current_trace: dict) -> tuple[str, dict[str, Any], int]:
+        notification_type = str(data.get("notification_type") or data.get("type") or "info")
+        message = _truncate(data.get("message") or "")
+        attrs = {
+            "notification.type": notification_type,
+            "notification.message": message,
+            "notification.title": _truncate(data.get("title") or ""),
+            "input.value": message,
+            "input.mime_type": "text/plain",
+        }
+        return f"Notification: {notification_type}", attrs, time.time_ns()
+
+    _emit_event_span(data, config, "handle_notification", build)
+
+
+def handle_pre_compact(data: dict, config: dict) -> None:
+    """Handle PreCompact: record when and why compaction started in this turn."""
+
+    def build(current_trace: dict) -> None:
+        current_trace["compact_start_ns"] = time.time_ns()
+        if data.get("trigger"):
+            current_trace["compact_trigger"] = str(data["trigger"])
+        return None
+
+    _emit_event_span(data, config, "handle_pre_compact", build)
+
+
+def handle_post_compact(data: dict, config: dict) -> None:
+    """Handle PostCompact: a CHAIN span covering the compaction PreCompact opened."""
+
+    def build(current_trace: dict) -> tuple[str, dict[str, Any], int]:
+        start_ns = current_trace.pop("compact_start_ns", None) or time.time_ns()
+        trigger = str(
+            data.get("trigger") or current_trace.pop("compact_trigger", None) or "unknown"
+        )
+        current_trace.pop("compact_trigger", None)
+        attrs: dict[str, Any] = {"compact.trigger": trigger}
+        summary = data.get("compact_summary")
+        if summary:
+            attrs["output.value"] = _truncate(summary)
+            attrs["output.mime_type"] = "text/plain"
+        return f"Compact ({trigger})", attrs, start_ns
+
+    _emit_event_span(data, config, "handle_post_compact", build)
+
+
+def handle_session_end(data: dict, config: dict) -> None:
+    """Handle SessionEnd: close a turn still open, then delete the state file.
+
+    A session that exits mid-turn gets no Stop, so its open turn is sent here.
+    """
+    session_id = resolve_session_id(data, "session_id")
+    if session_id is None:
+        return
+    end_ns = time.time_ns()
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        if state.get("current_trace"):
+            transcript_path = _get_cached_transcript_path(data, state, session_id)
+            _emit_pending_llm_spans(state, transcript_path, config)
+            _complete_turn(state, config, transcript_path, end_ns)
+        _delete_state(session_id)
 
 
 # ---------------------------------------------------------------------------
