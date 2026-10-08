@@ -1,6 +1,6 @@
 ---
 description: Do exactly what was asked, then stop.
-trigger: always
+trigger: always_on
 ---
 
 ## Don't be so fucking eager

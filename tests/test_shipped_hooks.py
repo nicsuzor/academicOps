@@ -19,6 +19,7 @@ a `dist/` a developer may or may not have refreshed.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -141,24 +142,13 @@ def dist_root(tmp_path_factory) -> Path:
     """The real plugins, really built — every plugin, both clients.
 
     This is the tree the execution tests run hooks out of, and rbg's hook has
-    nothing to do unless at least one rule is live. Which axioms are switched on
-    is a deliberately movable fact — they are all parked today and are being
-    re-armed one at a time — so the marker is flipped on here rather than left
-    to whatever the roster happens to be. Otherwise every assertion about what
-    the shipped hook *does* would quietly become an assertion that it does
-    nothing, and still pass.
-
-    The axiom bodies are the real ones; only the marker is touched. Assertions
-    about what the build EMITS use `pristine_dist`, which is left exactly as
-    built.
+    nothing to do unless at least one rule is live —
+    `test_every_axiom_is_live_in_the_built_clients` holds that the shipped
+    axioms are. Assertions about what the build EMITS use `pristine_dist`,
+    because executing hooks dirties this tree.
     """
     root = tmp_path_factory.mktemp("shipped-dist")
     build_all(_REPO_ROOT, root, marketplace_path=_MARKETPLACE, version=_VERSION)
-    for md in (root / "rbg-claude" / "axioms").glob("*.md"):
-        text = md.read_text(encoding="utf-8")
-        md.write_text(
-            text.replace("\ntrigger: always\n", "\ntrigger: always_on\n", 1), encoding="utf-8"
-        )
     return root
 
 
@@ -853,6 +843,38 @@ def test_every_shipped_shebang_file_is_executable(pristine_dist):
 
 def _is_artifact(name: str) -> bool:
     return name in EXCLUDE_NAMES or name.endswith((".pyc", ".pyo"))
+
+
+def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monkeypatch):
+    """Every axiom file reaches builders: the client rule channels and cope.
+
+    `build/axioms.py` and `rules.py` both admit only `trigger: always_on`. A file
+    marked anything else ships as reading material that no session is given, so
+    a misspelt marker silently drops the axiom.
+    """
+    source = _REPO_ROOT / "plugins" / "rbg" / "axioms"
+    slugs = {p.stem for p in source.glob("*.md")} - {"README"}
+    assert "proportionate" in slugs
+
+    jsonl = (pristine_dist / "rbg-claude" / "axioms.jsonl").read_text(encoding="utf-8")
+    assert {json.loads(line)["slug"] for line in jsonl.splitlines()} == slugs
+    assert {p.stem for p in (pristine_dist / "rbg-agy" / "rules").glob("*.md")} == slugs
+
+    monkeypatch.delenv("ACA_DATA", raising=False)
+    spec = importlib.util.spec_from_file_location(
+        "rbg_rules", _REPO_ROOT / "plugins" / "rbg" / "hooks" / "rules.py"
+    )
+    assert spec is not None and spec.loader is not None
+    rules = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, "rbg_rules", rules)  # dataclass resolves its module here
+    spec.loader.exec_module(rules)
+
+    loaded = rules.load(pristine_dist / "rbg-claude", tmp_path)
+    assert {s for s, r in loaded.items() if r.trigger == rules.TRIGGER_ON} == slugs
+
+    readme = (source / "README.md").read_text(encoding="utf-8")
+    rows = dict(re.findall(r"^\| `([\w-]+)` +\|.*\| (\S+) +\|$", readme, re.MULTILINE))
+    assert rows == dict.fromkeys(slugs, "always_on")
 
 
 def test_no_build_artifacts_in_dist_tree(pristine_dist):
