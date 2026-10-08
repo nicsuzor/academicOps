@@ -15,6 +15,7 @@ Author and review agent-facing instructions for operational clarity and token ef
 3. **One skill, one job**: Keep instructions focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals.
 4. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
 5. **Every line earns its place**: Relocate historical narratives, incident stories, and philosophical justifications to change records.
+6. **Modular and self-contained**: Avoid dependencies and external references; leave room for change. Describe other components by their general role only.
 
 ## The Deletion Test
 
