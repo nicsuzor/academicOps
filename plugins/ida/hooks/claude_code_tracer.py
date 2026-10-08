@@ -521,8 +521,8 @@ def resolve_session_id(
     - **Phoenix grouping id** (``prefer_env=True``): the id stamped on the
       ``session.id`` span attribute so a whole multi-agent working session —
       root turn plus every subagent it dispatches — lands in ONE Phoenix
-      session. ``$AOPS_SESSION_ID`` is written once, at the root session's
-      SessionStart, into ``CLAUDE_ENV_FILE`` (handlers.py:_export_session_id)
+      session. ``$AOPS_SESSION_ID`` is written at each session's SessionStart
+      into ``CLAUDE_ENV_FILE`` (handlers.py:_export_session_id)
       and inherited via the environment by every descendant subagent
       process — empirically confirmed: a live subagent process in this
       session has ``AOPS_SESSION_ID`` in its environment equal to
@@ -835,6 +835,19 @@ def _count_human_messages(transcript_path: str) -> int:
         return 0
 
 
+def _next_turn_number(state: dict, prior_human_count: int) -> int:
+    """Return the next turn number and store it on *state*.
+
+    SessionEnd deletes the state file, so a ``claude --resume`` of the same
+    session starts from a fresh state. *prior_human_count* is the number of
+    human messages in the transcript before this turn's prompt; taking the
+    larger of it and the stored counter keeps numbering going after a resume.
+    """
+    turn_number = max(state.get("turn_number", 0), prior_human_count) + 1
+    state["turn_number"] = turn_number
+    return turn_number
+
+
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
@@ -1101,7 +1114,7 @@ def _extract_llm_spans_for_turn(
                     in_turn = True
                     human_text = entry.get("message", {}).get("content", "")
                     last_input_value = json.dumps(
-                        {"role": "user", "content": human_text[:500]},
+                        {"role": "user", "content": _truncate(human_text)[:500]},
                     )
                     last_input_mime = "application/json"
                     last_input_role = "user"
@@ -1131,7 +1144,7 @@ def _extract_llm_spans_for_turn(
                             tool_use_id = item.get("tool_use_id", "")
                             break
                     last_input_value = json.dumps(
-                        {"role": "tool", "content": payload[:500]},
+                        {"role": "tool", "content": _truncate(payload)[:500]},
                     )
                     last_input_mime = "application/json"
                     last_input_role = "tool"
@@ -2268,8 +2281,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
 
-    turn_number = state.get("turn_number", 0) + 1
-    state["turn_number"] = turn_number
+    turn_number = _next_turn_number(state, current_human_count)
     state["human_msg_count"] = current_human_count
 
     parent_trace_id = None
@@ -2390,8 +2402,7 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
         prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
 
-        turn_number = state.get("turn_number", 0) + 1
-        state["turn_number"] = turn_number
+        turn_number = _next_turn_number(state, max(0, current_human_count - 1))
         state["human_msg_count"] = current_human_count
 
         state["current_trace"] = {
@@ -2717,8 +2728,7 @@ def handle_stop(data: dict, config: dict) -> None:
 
                 current_human_count = _cur_human
                 prompt_preview = _get_latest_human_message(transcript_path)
-                turn_number = state.get("turn_number", 0) + 1
-                state["turn_number"] = turn_number
+                turn_number = _next_turn_number(state, max(0, current_human_count - 1))
                 state["human_msg_count"] = current_human_count
                 state["current_trace"] = {
                     "trace_id": _new_trace_id(),
@@ -2860,11 +2870,15 @@ def _emit_event_span(
 
 def _permission_attrs(data: dict) -> dict[str, Any]:
     attrs: dict[str, Any] = {
-        "permission.type": str(data.get("permission") or ""),
+        "permission.mode": str(data.get("permission_mode") or ""),
         "permission.tool": str(data.get("tool_name") or ""),
         "input.value": _truncate(data.get("tool_input", {})),
         "input.mime_type": "application/json",
     }
+    # PermissionRequest only: the "always allow" rules Claude Code offers.
+    suggestions = data.get("permission_suggestions")
+    if suggestions:
+        attrs["permission.suggestions"] = _truncate(suggestions)
     tool_call_id = data.get("tool_use_id")
     if tool_call_id:
         attrs["tool.call_id"] = str(tool_call_id)

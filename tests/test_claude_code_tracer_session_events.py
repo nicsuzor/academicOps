@@ -161,6 +161,79 @@ def test_exported_tool_span_is_redacted(tracer_env, exporter, monkeypatch):
     assert SECRET not in span.attributes["output.value"]
 
 
+def test_llm_span_input_redacts_prompt_and_tool_output(tmp_path, monkeypatch):
+    """The LLM span after a tool call carries the tool output as its input,
+    and the first LLM span carries the prompt; both are redacted."""
+    monkeypatch.setenv("GH_TOKEN", SECRET)
+    usage = {"input_tokens": 1, "output_tokens": 1}
+
+    def assistant(msg_id, block):
+        return {
+            "type": "assistant",
+            "timestamp": "2026-10-08T08:00:01.000Z",
+            "message": {"id": msg_id, "model": "m", "content": [block], "usage": usage},
+        }
+
+    entries = [
+        {"type": "user", "message": {"role": "user", "content": f"use token {SECRET}"}},
+        assistant("msg_1", {"type": "tool_use", "id": "toolu_1", "name": "Bash", "input": {}}),
+        {
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "toolu_1",
+                        "content": f"GH_TOKEN={SECRET}",
+                    },
+                ],
+            },
+        },
+        assistant("msg_2", {"type": "text", "text": "done"}),
+    ]
+    transcript = tmp_path / "t.jsonl"
+    transcript.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+
+    spans = cct._extract_llm_spans_for_turn(str(transcript), 0, "0" * 31 + "1", "00000000000000aa")
+    prompt_span, tool_span = (s["attributes"] for s in spans)
+    assert prompt_span["llm.input_messages.0.message.role"] == "user"
+    assert tool_span["llm.input_messages.0.message.role"] == "tool"
+    for attrs in (prompt_span, tool_span):
+        assert SECRET not in attrs["input.value"]
+        assert "<REDACTED_SECRET>" in attrs["input.value"]
+        assert SECRET not in attrs["llm.input_messages.0.message.content"]
+
+
+def test_llm_span_input_redacts_a_secret_cut_by_the_preview_limit(tmp_path, monkeypatch):
+    """Redaction runs before the 500-character preview cut, so no prefix of
+    the secret survives."""
+    monkeypatch.setenv("GH_TOKEN", SECRET)
+    prompt = "x" * 490 + SECRET
+    transcript = tmp_path / "t.jsonl"
+    transcript.write_text(
+        json.dumps({"type": "user", "message": {"role": "user", "content": prompt}})
+        + "\n"
+        + json.dumps(
+            {
+                "type": "assistant",
+                "timestamp": "2026-10-08T08:00:01.000Z",
+                "message": {
+                    "id": "msg_1",
+                    "model": "m",
+                    "content": [{"type": "text", "text": "ok"}],
+                    "usage": {"input_tokens": 1, "output_tokens": 1},
+                },
+            },
+        )
+        + "\n",
+    )
+    (span,) = cct._extract_llm_spans_for_turn(
+        str(transcript), 0, "0" * 31 + "1", "00000000000000aa"
+    )
+    assert SECRET[:10] not in span["attributes"]["input.value"]
+
+
 # --- turn_number across turns -------------------------------------------------
 
 
@@ -207,6 +280,41 @@ def test_session_end_sends_a_turn_left_open(tracer_env, exporter):
     assert not cct._state_path(SESSION).exists()
 
 
+def _append_prompt(transcript: Path, text: str) -> None:
+    """Write a human prompt the way Claude Code does once UserPromptSubmit returns."""
+    entry = {"type": "user", "message": {"role": "user", "content": text}}
+    with transcript.open("a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def _prompted_turn(transcript: Path, text: str) -> None:
+    _hook(cct.handle_user_prompt_submit, transcript, prompt=text)
+    _append_prompt(transcript, text)
+    _hook(cct.handle_stop, transcript)
+
+
+def test_turn_number_continues_after_session_end_and_resume(tracer_env, exporter):
+    """``claude --resume`` reuses the session id and transcript, but SessionEnd
+    deleted the state file holding the counter."""
+    _prompted_turn(tracer_env, "one")
+    _prompted_turn(tracer_env, "two")
+    _hook(cct.handle_session_end, tracer_env)
+    assert not cct._state_path(SESSION).exists()
+
+    _prompted_turn(tracer_env, "three")
+    assert _turn_numbers(exporter) == [1, 2, 3]
+
+
+def test_turn_opened_by_pre_tool_continues_after_resume(tracer_env, exporter):
+    _prompted_turn(tracer_env, "one")
+    _hook(cct.handle_session_end, tracer_env)
+
+    _append_prompt(tracer_env, "two")
+    _hook(cct.handle_pre_tool, tracer_env, tool_name="Bash", tool_input={}, tool_use_id="t")
+    _hook(cct.handle_stop, tracer_env)
+    assert _turn_numbers(exporter) == [1, 2]
+
+
 # --- Permission, notification, compaction spans --------------------------------
 
 
@@ -230,12 +338,22 @@ def test_permission_request_span(tracer_env, exporter, monkeypatch):
         tracer_env,
         tool_name="Bash",
         tool_input={"command": f"rm -rf /tmp/x {SECRET}"},
-        permission="ask",
+        permission_mode="default",
+        permission_suggestions=[
+            {
+                "type": "addRules",
+                "rules": [{"toolName": "Bash", "ruleContent": "rm -rf /tmp/x:*"}],
+                "behavior": "allow",
+                "destination": "localSettings",
+            },
+        ],
     )
     (span,) = exporter.named("Permission Request")
     _assert_child_of_turn(span, ct)
     assert span.attributes["permission.tool"] == "Bash"
-    assert span.attributes["permission.type"] == "ask"
+    assert span.attributes["permission.mode"] == "default"
+    assert "permission.type" not in span.attributes
+    assert json.loads(span.attributes["permission.suggestions"])[0]["behavior"] == "allow"
     assert "rm -rf /tmp/x" in span.attributes["input.value"]
     assert SECRET not in span.attributes["input.value"]
     assert "permission.denied" not in span.attributes
@@ -250,10 +368,13 @@ def test_permission_denied_span(tracer_env, exporter):
         tool_input={"file_path": "/etc/passwd"},
         tool_use_id="toolu_9",
         reason="auto mode classifier denied",
+        permission_mode="auto",
     )
     (span,) = exporter.named("Permission Denied")
     _assert_child_of_turn(span, ct)
     assert span.attributes["permission.denied"] == "true"
+    assert span.attributes["permission.mode"] == "auto"
+    assert "permission.suggestions" not in span.attributes
     assert span.attributes["permission.tool"] == "Write"
     assert span.attributes["permission.reason"] == "auto mode classifier denied"
     assert span.attributes["tool.call_id"] == "toolu_9"
