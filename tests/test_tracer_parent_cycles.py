@@ -286,3 +286,255 @@ def test_turn_root_whose_parent_chain_leads_back_to_it_is_emitted_unparented(tra
     (turn,) = [sp for sp in exporter.spans if sp.name == "claude-code-turn"]
     assert turn.context is not None and turn.context.span_id == root_id
     assert turn.parent is None
+
+
+# --- Agent spans driven through a real transcript ---------------------------
+#
+# The tests above have no transcript, so every Agent span gets a random id.
+# With a transcript the tracer derives an Agent span's id from its tool_use id
+# (and a subagent derives its turn root's parent from the same id), and since
+# #2816 parents Agent spans under the LLM call that issued them. These tests
+# drive that path for the Agent-span case behind the 2026-10-08 Phoenix stall
+# (two Agent spans of session cbe5cf16 that were each other's parent) and check
+# every exported span, not just the Agent spans, for a loop.
+
+
+def _assistant(msg_id: str, ts: str, block: dict, stop_reason: str | None = None) -> dict:
+    return {
+        "type": "assistant",
+        "timestamp": ts,
+        "message": {
+            "id": msg_id,
+            "role": "assistant",
+            "model": "claude-opus-5-5",
+            "content": [block],
+            "usage": {"input_tokens": 3, "output_tokens": 20},
+            "stop_reason": stop_reason,
+        },
+    }
+
+
+def _human(text: str, ts: str) -> dict:
+    return {"type": "user", "timestamp": ts, "message": {"role": "user", "content": text}}
+
+
+def _tool_use(tool_use_id: str, name: str, tool_input: dict) -> dict:
+    return {"type": "tool_use", "id": tool_use_id, "name": name, "input": tool_input}
+
+
+def _tool_result(tool_use_id: str, ts: str) -> dict:
+    return {
+        "type": "user",
+        "timestamp": ts,
+        "message": {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": tool_use_id, "content": "ok"}],
+        },
+    }
+
+
+def _write(path: Path, entries: list[dict]) -> None:
+    import json
+
+    path.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+
+
+def _hook(handler, session: str, transcript: Path, **payload) -> None:
+    handler({"session_id": session, "transcript_path": str(transcript), **payload}, CONFIG)
+
+
+def _tool_hooks(session: str, transcript: Path, name: str, tool_input: dict, tuid: str):
+    payload = {"tool_name": name, "tool_input": tool_input, "tool_use_id": tuid}
+    pre = lambda: _hook(cct.handle_pre_tool, session, transcript, **payload)  # noqa: E731
+    post = lambda: _hook(  # noqa: E731
+        cct.handle_post_tool, session, transcript, tool_response="done", **payload
+    )
+    return pre, post
+
+
+def _start_session(session: str, transcript: Path) -> list[dict]:
+    """A transcript with one finished exchange, then UserPromptSubmit for turn 2."""
+    entries = [
+        _human("hello", "2026-10-08T00:00:00.000Z"),
+        _assistant("msg_0", "2026-10-08T00:00:01.000Z", {"type": "text", "text": "hi"}, "end_turn"),
+    ]
+    _write(transcript, entries)
+    _hook(cct.handle_user_prompt_submit, session, transcript, prompt="dispatch")
+    entries.append(_human("dispatch", "2026-10-08T00:00:02.000Z"))
+    return entries
+
+
+def _assert_no_span_is_its_own_ancestor(spans: list[ReadableSpan]) -> None:
+    parents = _parent_map(spans)
+    print(
+        "span -> parent:",
+        {
+            f"{sp.name}:{sp.context.span_id:016x}": (
+                f"{sp.parent.span_id:016x}" if sp.parent else None
+            )
+            for sp in spans
+            if sp.context is not None
+        },
+    )
+    assert _cycles(parents) == [], "an exported span is its own ancestor"
+
+
+def test_concurrent_agent_calls_in_one_response_emit_no_parent_cycle(tracer_env):
+    """One response dispatches two Agents; their PostToolUse hooks run together."""
+    transcript = tracer_env / "session.jsonl"
+    entries = _start_session(SESSION, transcript)
+    a, b = _agent_input("sweep A"), _agent_input("sweep B")
+    entries += [
+        _assistant("msg_1", "2026-10-08T00:00:03.000Z", _tool_use("toolu_A", "Agent", a)),
+        _assistant(
+            "msg_1", "2026-10-08T00:00:04.000Z", _tool_use("toolu_B", "Agent", b), "tool_use"
+        ),
+    ]
+    _write(transcript, entries)
+    pre_a, post_a = _tool_hooks(SESSION, transcript, "Agent", a, "toolu_A")
+    pre_b, post_b = _tool_hooks(SESSION, transcript, "Agent", b, "toolu_B")
+
+    exporter = _CollectingExporter(hold={"Agent"})
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        _run_parallel(pre_a, pre_b)
+        _run_parallel(post_a, post_b)
+        entries += [
+            _tool_result("toolu_A", "2026-10-08T00:00:05.000Z"),
+            _tool_result("toolu_B", "2026-10-08T00:00:05.100Z"),
+            _assistant(
+                "msg_2", "2026-10-08T00:00:06.000Z", {"type": "text", "text": "ok"}, "end_turn"
+            ),
+        ]
+        _write(transcript, entries)
+        _hook(cct.handle_stop, SESSION, transcript)
+
+    assert len([sp for sp in exporter.spans if sp.name == "Agent"]) == 2
+    _assert_no_span_is_its_own_ancestor(exporter.spans)
+
+
+def test_agent_nested_inside_an_inline_agent_emits_no_parent_cycle(tracer_env):
+    """An inline subagent runs a Read and dispatches its own Agent while the outer Agent is open.
+
+    The inner calls' tool_use blocks live in the subagent's sidechain, not in
+    this transcript, as they do in a real session.
+    """
+    transcript = tracer_env / "session.jsonl"
+    entries = _start_session(SESSION, transcript)
+    outer, inner = _agent_input("outer"), _agent_input("inner")
+    read = {"file_path": "/x"}
+    entries.append(
+        _assistant(
+            "msg_1",
+            "2026-10-08T00:00:03.000Z",
+            _tool_use("toolu_outer", "Agent", outer),
+            "tool_use",
+        )
+    )
+    _write(transcript, entries)
+    pre_outer, post_outer = _tool_hooks(SESSION, transcript, "Agent", outer, "toolu_outer")
+    pre_inner, post_inner = _tool_hooks(SESSION, transcript, "Agent", inner, "toolu_inner")
+    pre_read, post_read = _tool_hooks(SESSION, transcript, "Read", read, "toolu_read")
+
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        pre_outer()
+        pre_inner()
+        pre_read()
+        post_read()
+        post_inner()
+        post_outer()
+        entries += [
+            _tool_result("toolu_outer", "2026-10-08T00:00:05.000Z"),
+            _assistant(
+                "msg_2", "2026-10-08T00:00:06.000Z", {"type": "text", "text": "ok"}, "end_turn"
+            ),
+        ]
+        _write(transcript, entries)
+        _hook(cct.handle_stop, SESSION, transcript)
+
+    assert len([sp for sp in exporter.spans if sp.name == "Agent"]) == 2
+    _assert_no_span_is_its_own_ancestor(exporter.spans)
+
+
+def test_out_of_process_subagent_linked_to_its_agent_span_emits_no_parent_cycle(
+    tracer_env, monkeypatch
+):
+    """A subagent process parents its turn root under the dispatching Agent span, then dispatches an Agent itself.
+
+    Spans from both processes are checked together, as Phoenix sees them.
+    """
+    sub_session = "sess-sub"
+    project_dir = str(tracer_env / "proj")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", project_dir)
+    transcript = tracer_env / "session.jsonl"
+    sub_transcript = tracer_env / "sub.jsonl"
+    entries = _start_session(SESSION, transcript)
+    a = _agent_input("A")
+    entries.append(
+        _assistant(
+            "msg_1", "2026-10-08T00:00:03.000Z", _tool_use("toolu_A", "Agent", a), "tool_use"
+        )
+    )
+    _write(transcript, entries)
+    pre_a, post_a = _tool_hooks(SESSION, transcript, "Agent", a, "toolu_A")
+
+    sidecar = (
+        tracer_env
+        / ".claude"
+        / "projects"
+        / project_dir.replace("/", "-")
+        / SESSION
+        / "subagents"
+        / f"agent-{sub_session}.meta.json"
+    )
+    sidecar.parent.mkdir(parents=True)
+    sidecar.write_text('{"toolUseId": "toolu_A"}')
+
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        pre_a()
+        monkeypatch.setenv("AOPS_SESSION_ID", SESSION)
+        sub_entries = _start_session(sub_session, sub_transcript)
+        assert (
+            cct._load_state(sub_session)["current_trace"]["parent_span_id"]
+            == (
+                cct._load_state(SESSION)["pending_tools"][
+                    next(iter(cct._load_state(SESSION)["pending_tools"]))
+                ]["pre_allocated_span_id"]
+            )
+        ), "the subagent's turn root must link to the dispatching Agent span"
+        sub_in = _agent_input("sub")
+        sub_entries.append(
+            _assistant(
+                "msg_s1",
+                "2026-10-08T00:00:03.500Z",
+                _tool_use("toolu_S", "Agent", sub_in),
+                "tool_use",
+            )
+        )
+        _write(sub_transcript, sub_entries)
+        pre_s, post_s = _tool_hooks(sub_session, sub_transcript, "Agent", sub_in, "toolu_S")
+        pre_s()
+        post_s()
+        sub_entries += [
+            _tool_result("toolu_S", "2026-10-08T00:00:04.000Z"),
+            _assistant(
+                "msg_s2", "2026-10-08T00:00:04.500Z", {"type": "text", "text": "ok"}, "end_turn"
+            ),
+        ]
+        _write(sub_transcript, sub_entries)
+        _hook(cct.handle_stop, sub_session, sub_transcript)
+        monkeypatch.delenv("AOPS_SESSION_ID")
+
+        post_a()
+        entries += [
+            _tool_result("toolu_A", "2026-10-08T00:00:05.000Z"),
+            _assistant(
+                "msg_2", "2026-10-08T00:00:06.000Z", {"type": "text", "text": "ok"}, "end_turn"
+            ),
+        ]
+        _write(transcript, entries)
+        _hook(cct.handle_stop, SESSION, transcript)
+
+    assert len([sp for sp in exporter.spans if sp.name == "claude-code-turn"]) == 2
+    _assert_no_span_is_its_own_ancestor(exporter.spans)
