@@ -60,6 +60,9 @@ on:
       CLAUDE_CODE_OAUTH_TOKEN:
         description: "OAuth token for Claude agent"
         required: true
+      GENAI_ENGINE_API_KEY:
+        description: "Cloudflare Access token for the OTel collector (scripts/ci_otel_hooks.py). Without it the agent runs untraced."
+        required: false
     outputs:
       committed:
         description: "true if this agent pushed a commit in this pass (drives §3.4 short-circuit)"
@@ -168,6 +171,19 @@ jobs:
             echo "AGENT_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # Traces this job's Claude Code session to Phoenix with the ida tracer
+      # (scripts/ci_otel_hooks.py). Unconfigured or failing, it leaves the agent
+      # untraced and never fails the job.
+      - name: Configure OTel tracing
+        id: otel
+        if: steps.sha-skip.outputs.skip != 'true'
+        continue-on-error: true
+        env:
+          GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
+          GENAI_ENGINE_TRACE_PROTOCOL: ${{ vars.GENAI_ENGINE_TRACE_PROTOCOL }}
+          GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
+        run: python3 scripts/ci_otel_hooks.py --aops-root . --out-dir "$RUNNER_TEMP/aops-otel"
+
       - name: Run Pre-Admission Responder
         id: run
         if: steps.sha-skip.outputs.skip != 'true'
@@ -183,6 +199,7 @@ jobs:
           AGENT_NAME: pre-admission-responder
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
+          settings: ${{ steps.otel.outputs.settings }}
           # Run when the pull_request event was triggered by a bot actor (the
           # normal case — bots push fix commits). Without this, claude-code-action
           # aborts with "Workflow initiated by non-human actor" and exits 1, the
@@ -229,6 +246,7 @@ jobs:
           AGENT_NAME: pre-admission-responder
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
+          settings: ${{ steps.otel.outputs.settings }}
           # Same bot-actor allowance as the primary step above — without it a
           # retry after a transient failure on a bot-triggered event would just
           # re-hit the "non-human actor" abort.

@@ -279,3 +279,18 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
     msg = steps[0].get("ephemeralMessage", "")
     expected_inject, _ = load_message_pair(staged_hooks, "honesty")
     assert msg.startswith("<academicOps PKB search results>") or msg == expected_inject
+
+
+@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara", "james"])
+def test_no_honesty_fallback_for_coordinators_when_search_fails(agent):
+    """Ida and Sara get the hearsay reminder on a peer report; the honesty
+    fallback would displace it, since only the first advisory is delivered."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "<cross-session-message>report</cross-session-message>"},
+        hooks_dir=PKB_HOOKS,
+        agent_type=agent,
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value=None):
+        assert handlers.search_the_pkb(ctx) is None
