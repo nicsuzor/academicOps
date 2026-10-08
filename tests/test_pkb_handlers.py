@@ -405,5 +405,3 @@ def test_run_pkb_search_prefers_fastmcp_when_headers_present():
             "https://mcp.example.com", "query text", {"CF-Access-Client-Id": "test-id"}
         )
         mock_subproc.assert_not_called()
-
-
