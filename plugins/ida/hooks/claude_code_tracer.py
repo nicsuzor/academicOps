@@ -1056,7 +1056,13 @@ def _extract_llm_spans_for_turn(
                     "end_ns": end_ns,
                     "attributes": attrs,
                     "force_span_id": bool(group_message_id),
-                    "tool_call_ids": [tc["id"] for tc in group_tool_use_parts if tc.get("id")],
+                    # Without a message.id the span id is fresh on every
+                    # re-extraction, so a tool parented to it would dangle.
+                    "tool_call_ids": (
+                        [tc["id"] for tc in group_tool_use_parts if tc.get("id")]
+                        if group_message_id
+                        else []
+                    ),
                 },
             )
 

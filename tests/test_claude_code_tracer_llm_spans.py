@@ -459,3 +459,121 @@ def test_response_still_streaming_at_post_tool_use_is_emitted_once_complete(trac
     assert msg_a.end_time == _ns("2026-10-08T00:00:02.000Z")
     tools = [sp for sp in exporter.spans if sp.name == "Bash"]
     assert [sp.parent.span_id for sp in tools] == [msg_a.context.span_id] * 2
+
+
+def test_tool_issued_by_a_response_without_message_id_never_gets_a_dangling_parent(tracer_env):
+    """A response with no message.id gets a fresh span id on every re-extraction.
+
+    PostToolUse and Stop each re-extract the turn, so the id a tool would be
+    parented to at PostToolUse is not the id the LLM span is exported under.
+    """
+    transcript = tracer_env / "session.jsonl"
+    transcript.write_text("")
+    _hook(cct.handle_user_prompt_submit, str(transcript), prompt="go")
+    entries = [
+        _human("go", "2026-10-08T00:00:00.000Z"),
+        _assistant("", "2026-10-08T00:00:01.000Z", _tool_use("toolu_a"), _usage(9), "tool_use"),
+    ]
+    _write(transcript, entries)
+
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        _hook(
+            cct.handle_pre_tool,
+            str(transcript),
+            tool_name="Bash",
+            tool_input={},
+            tool_use_id="toolu_a",
+        )
+        _hook(
+            cct.handle_post_tool,
+            str(transcript),
+            tool_name="Bash",
+            tool_input={},
+            tool_use_id="toolu_a",
+            tool_response="x",
+        )
+        entries += [
+            _tool_result("toolu_a", "2026-10-08T00:00:02.000Z"),
+            _assistant(
+                "msg_B",
+                "2026-10-08T00:00:03.000Z",
+                {"type": "text", "text": "done"},
+                _usage(5),
+                "end_turn",
+            ),
+        ]
+        _write(transcript, entries)
+        _hook(cct.handle_stop, str(transcript))
+
+    exported = {sp.context.span_id for sp in exporter.spans}
+    (root,) = [sp for sp in exporter.spans if sp.name == "claude-code-turn"]
+    (bash,) = [sp for sp in exporter.spans if sp.name == "Bash"]
+    assert bash.parent.span_id in exported, "tool span parent was never exported (dangling)"
+    assert bash.parent.span_id == root.context.span_id
+
+
+def test_pending_inline_agent_outranks_the_issuing_llm_span_as_tool_parent(tracer_env):
+    """Precedence rule 1: a tool run while an Agent is pending nests under the Agent."""
+    transcript = tracer_env / "session.jsonl"
+    transcript.write_text("")
+    _hook(cct.handle_user_prompt_submit, str(transcript), prompt="go")
+    agent_in = {"description": "look", "prompt": "look", "subagent_type": "Explore"}
+    entries = [
+        _human("go", "2026-10-08T00:00:00.000Z"),
+        _assistant(
+            "msg_A",
+            "2026-10-08T00:00:01.000Z",
+            _tool_use("toolu_agent", "Agent", agent_in),
+            _usage(20),
+        ),
+        _assistant(
+            "msg_A",
+            "2026-10-08T00:00:02.000Z",
+            _tool_use("toolu_read", "Read", {"file_path": "/a"}),
+            _usage(20),
+            "tool_use",
+        ),
+    ]
+    _write(transcript, entries)
+
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        _hook(
+            cct.handle_pre_tool,
+            str(transcript),
+            tool_name="Agent",
+            tool_input=agent_in,
+            tool_use_id="toolu_agent",
+        )
+        _hook(
+            cct.handle_pre_tool,
+            str(transcript),
+            tool_name="Read",
+            tool_input={"file_path": "/a"},
+            tool_use_id="toolu_read",
+        )
+        _hook(
+            cct.handle_post_tool,
+            str(transcript),
+            tool_name="Read",
+            tool_input={"file_path": "/a"},
+            tool_use_id="toolu_read",
+            tool_response="x",
+        )
+        _hook(
+            cct.handle_post_tool,
+            str(transcript),
+            tool_name="Agent",
+            tool_input=agent_in,
+            tool_use_id="toolu_agent",
+            tool_response="found it",
+        )
+
+    (agent,) = [sp for sp in exporter.spans if sp.name.startswith("Agent")]
+    (read,) = [sp for sp in exporter.spans if sp.name == "Read"]
+    assert cct._load_state(SESSION)["current_trace"]["llm_span_by_tool_call"]["toolu_read"] == (
+        cct._llm_span_id("msg_A")
+    ), "the issuing LLM span is known, so the Agent must win on precedence"
+    assert read.parent.span_id == agent.context.span_id
+    assert agent.parent.span_id == int(cct._llm_span_id("msg_A"), 16)
