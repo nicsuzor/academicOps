@@ -530,6 +530,74 @@ def test_no_dispatch_hook_is_wired_to_an_unmappable_event(dist_root):
             )
 
 
+def test_ida_shipped_subagent_stop_only_traces(dist_root, tmp_path):
+    """ida registers ``SubagentStop`` for its tracer alone, which routes the
+    event through dispatch.py paths ida never reached before. Each is pinned
+    here against the shipped hook:
+
+    - ``is_continuation``: a re-fired stop (``stop_hook_active``) exits before
+      the fire is logged or any handler runs. ida never blocks a subagent
+      stop, so the re-fire only follows another plugin's block; the subagent's
+      remaining LLM spans then go out on the Agent call's PostToolUse.
+    - Block disposition: no ida handler on ``SubagentStop`` returns a result,
+      so the hook emits nothing — never ``decision: "block"``.
+    - OTel instrumentation: ``detect_agent_idle_timeout`` and
+      ``record_subagent_stop`` live in ``evaluator_otel_trace``, which ships
+      in rbg, not ida. ida's dispatch cannot import it, so it records nothing
+      even with the trace path set — rbg's own SubagentStop hook stays the
+      only recorder, and nothing is counted twice.
+
+    Run once to warm the plugin's venv, so the stderr assertions measure the
+    hook rather than ``uv`` creating ``.venv/``.
+    """
+    build_dir = dist_root / "ida-claude"
+    command = _command_for("claude", build_dir, "SubagentStop")
+    assert not (build_dir / "hooks" / "evaluator_otel_trace.py").exists()
+
+    fire_log = tmp_path / "fires.jsonl"
+    otel_path = tmp_path / "otel" / "spans.jsonl"
+    env = {
+        "AOPS_HOOK_LOG_PATH": str(fire_log),
+        "OTEL_EXPORTER_OTLP_ENDPOINT": None,
+        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": None,
+        "GENAI_ENGINE_TRACE_ENDPOINT": None,
+        "COPE_EVALUATOR_OTEL_TRACE_PATH": None,
+    }
+    payload = {**_PAYLOADS["SubagentStop"], "agent_id": "a1", "agent_type": "james"}
+    _run_shipped_hook("claude", build_dir, command, payload, env_overrides=env)
+    fire_log.unlink(missing_ok=True)
+
+    continuation = _run_shipped_hook(
+        "claude",
+        build_dir,
+        command,
+        {**payload, "stop_hook_active": True},
+        env_overrides=env,
+    )
+    assert continuation.returncode == 0, continuation.stderr
+    assert continuation.stdout == ""
+    assert continuation.stderr == ""
+    assert not fire_log.exists(), "a continuation stop reached the handlers"
+
+    stop = _run_shipped_hook("claude", build_dir, command, payload, env_overrides=env)
+    assert stop.returncode == 0, stop.stderr
+    assert stop.stdout == ""
+    assert stop.stderr == ""
+    fired = [json.loads(line) for line in fire_log.read_text(encoding="utf-8").splitlines()]
+    assert [f["event"] for f in fired] == ["SubagentStop"]
+
+    traced = _run_shipped_hook(
+        "claude",
+        build_dir,
+        command,
+        payload,
+        env_overrides={**env, "COPE_EVALUATOR_OTEL_TRACE_PATH": str(otel_path)},
+    )
+    assert traced.returncode == 0, traced.stderr
+    assert traced.stdout == ""
+    assert not otel_path.exists()
+
+
 class _StubReflexesEvaluator(BaseHTTPRequestHandler):
     """A loopback CoPE label endpoint, speaking the Reflexes evaluator contract:
     one policy in (`criteria_text`), one `label` out. cope ships with no

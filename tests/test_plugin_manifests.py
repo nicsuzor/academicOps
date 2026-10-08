@@ -220,10 +220,39 @@ def test_ida_ships_the_quiet_gate_on_claude_only():
     person.
 
     ida is now its own plugin (plugins/ida),
-    so its gate ships from ``ida-claude``."""
+    so its gate ships from ``ida-claude``.
+
+    ida does register ``SubagentStop``, for the tracer: a subagent's final
+    LLM span is followed by no tool call, so only its stop can send it. The
+    invariant is therefore not "no SubagentStop hook" but "no quiet-gate
+    handler reachable on SubagentStop", checked against the shipped
+    ``HANDLERS`` by identity so a rename or alias cannot slip past."""
     events = _claude_hook_events("ida-claude")
     assert {"PreToolUse", "Stop"} <= events
-    assert "SubagentStop" not in events
+
+    hooks_dir = DIST_ROOT / "ida-claude" / "hooks"
+    probe = (
+        "import json, sys\n"
+        f"sys.path.insert(0, {str(hooks_dir)!r})\n"
+        "import handlers\n"
+        "gates = (handlers.be_quiet, handlers.quiet_channel_reply)\n"
+        "reachable = handlers.HANDLERS.get('SubagentStop', []) + handlers.HANDLERS.get('*', [])\n"
+        "print(json.dumps({\n"
+        "    'names': [h.__name__ for h in reachable],\n"
+        "    'gated': [h.__name__ for h in reachable if any(h is g for g in gates)],\n"
+        "}))\n"
+    )
+    proc = subprocess.run(
+        ["uv", "run", "--project", str(DIST_ROOT / "ida-claude"), "python3", "-c", probe],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env={k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"},
+    )
+    assert proc.returncode == 0, proc.stderr
+    reachable = json.loads(proc.stdout.strip().splitlines()[-1])
+    assert reachable["gated"] == []
+    assert reachable["names"] == ["subagent_stop"]
 
 
 @pytest.mark.skipif(not DIST_ROOT.exists(), reason=f"{DIST_ROOT} does not exist — run 'make build'")
