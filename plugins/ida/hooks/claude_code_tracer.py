@@ -860,6 +860,29 @@ def _tool_result_text(content: list) -> str:
     return "\n".join(parts)
 
 
+def _llm_span_id(message_id: str) -> str:
+    """Span id for the LLM span of one API response, derived from its message.id.
+
+    Deterministic so a tool span can name the LLM call that issued it as its
+    parent without the two hooks sharing anything but the transcript.
+    """
+    import hashlib
+
+    return hashlib.sha256(f"llm:{message_id}".encode()).hexdigest()[:16]
+
+
+def _usage_total(usage: dict) -> int:
+    return sum(
+        usage.get(k, 0) or 0
+        for k in (
+            "input_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+            "output_tokens",
+        )
+    )
+
+
 def _extract_llm_spans_for_turn(
     transcript_path: str,
     human_count_at_start: int,
@@ -897,13 +920,18 @@ def _extract_llm_spans_for_turn(
         the single span for that API call.
 
     Grouping strategy:
-      - Input tokens  → first entry in the group (avoids duplication).
-      - Output tokens → sum across all entries (each entry captures the tokens
-                        for its own block).
+      - Usage         → the fullest snapshot in the group (largest token total).
+                        Every entry repeats the usage of the whole response, so
+                        summing per entry would count it once per block; on
+                        older harness versions earlier snapshots are partial.
       - Text output   → concatenate all ``text`` blocks from any entry.
       - Tool output   → JSON of tool_use blocks from the last entry (fall-back
                         when no text is present).
-      - Timestamp     → first entry.
+      - Timing        → first entry's timestamp to last entry's timestamp.
+      - Span id       → derived from message.id (``_llm_span_id``), recorded as
+                        ``llm.message.id``; each record also lists the
+                        ``tool_call_ids`` it issued so tool spans can be
+                        parented under it.
     """
     spans = []
     try:
@@ -920,29 +948,30 @@ def _extract_llm_spans_for_turn(
 
         # Accumulator for the current message.id group
         current_group_id: str | None = None
-        group_first_usage: dict = {}
-        group_total_output_tokens: int = 0
+        group_message_id: str = ""  # real message.id; "" when the entry had none
+        group_usage: dict = {}
         group_text_parts: list = []
         group_tool_use_parts: list = []
         group_model: str = "claude"
         group_ts: str = ""
+        group_last_ts: str = ""
         group_stop_reason: str = ""
         group_input_snapshot: dict = {}  # last_input* captured at group start
 
         def _flush_group() -> None:
             """Emit one LLM span for the accumulated group, if non-empty."""
-            nonlocal current_group_id, group_first_usage, group_total_output_tokens
-            nonlocal group_text_parts, group_tool_use_parts, group_model, group_ts
+            nonlocal current_group_id, group_message_id, group_usage
+            nonlocal group_text_parts, group_tool_use_parts, group_model, group_ts, group_last_ts
             nonlocal group_input_snapshot, group_stop_reason
 
             if not current_group_id:
                 return
 
-            usage = group_first_usage
+            usage = group_usage
             input_tokens = usage.get("input_tokens", 0)
             cache_read = usage.get("cache_read_input_tokens", 0)
             cache_create = usage.get("cache_creation_input_tokens", 0)
-            output_tokens = group_total_output_tokens
+            output_tokens = usage.get("output_tokens", 0)
 
             if group_text_parts:
                 output_value = _truncate("".join(group_text_parts))
@@ -961,7 +990,7 @@ def _extract_llm_spans_for_turn(
             )
 
             start_ns = _iso_to_ns(group_ts)
-            end_ns = start_ns + max(output_tokens * 10_000_000, 1_000_000)
+            end_ns = max(_iso_to_ns(group_last_ts or group_ts), start_ns)
 
             snap = group_input_snapshot
             attrs: dict[str, Any] = {
@@ -983,6 +1012,8 @@ def _extract_llm_spans_for_turn(
             }
             if output_message_content:
                 attrs["llm.output_messages.0.message.content"] = output_message_content
+            if group_message_id:
+                attrs["llm.message.id"] = group_message_id
 
             # Structured tool_calls attributes (OpenInference spec)
             for i, tc in enumerate(group_tool_use_parts):
@@ -1009,25 +1040,29 @@ def _extract_llm_spans_for_turn(
             spans.append(
                 {
                     "trace_id_hex": trace_id_hex,
-                    "span_id_hex": _new_span_id(),
+                    "span_id_hex": (
+                        _llm_span_id(group_message_id) if group_message_id else _new_span_id()
+                    ),
                     "parent_span_id_hex": root_span_id_hex,
                     "name": f"claude/{group_model}",
                     "kind": None,
                     "start_ns": start_ns,
                     "end_ns": end_ns,
                     "attributes": attrs,
-                    "force_span_id": False,
+                    "force_span_id": bool(group_message_id),
+                    "tool_call_ids": [tc["id"] for tc in group_tool_use_parts if tc.get("id")],
                 },
             )
 
             # Reset accumulator
             current_group_id = None
-            group_first_usage = {}
-            group_total_output_tokens = 0
+            group_message_id = ""
+            group_usage = {}
             group_text_parts = []
             group_tool_use_parts = []
             group_model = "claude"
             group_ts = ""
+            group_last_ts = ""
             group_stop_reason = ""
             group_input_snapshot = {}
 
@@ -1107,8 +1142,8 @@ def _extract_llm_spans_for_turn(
             if msg_id != current_group_id:
                 _flush_group()
                 current_group_id = msg_id
-                group_first_usage = usage
-                group_total_output_tokens = 0
+                group_message_id = msg.get("id", "") or ""
+                group_usage = usage
                 group_text_parts = []
                 group_tool_use_parts = []
                 group_model = model
@@ -1127,8 +1162,11 @@ def _extract_llm_spans_for_turn(
                 if stop_reason:
                     group_stop_reason = stop_reason
 
-            # Accumulate output tokens and content blocks for this group
-            group_total_output_tokens += usage.get("output_tokens", 0)
+            # Keep the fullest usage snapshot and extend the time window
+            if _usage_total(usage) > _usage_total(group_usage):
+                group_usage = usage
+            if ts:
+                group_last_ts = ts
             for block in content_blocks:
                 if not isinstance(block, dict):
                     continue
@@ -1868,7 +1906,9 @@ def _emit_pending_llm_spans(
 
     Called from handle_post_tool (real-time, after each tool response) and
     handle_stop (catches the final LLM response after the last tool call).
-    Updates state.current_trace in-place so the caller must save state afterwards.
+    Updates state.current_trace in-place so the caller must save state afterwards,
+    including ``llm_span_by_tool_call`` (tool_use id -> span id of the LLM call
+    that issued it), which _finish_tool_call uses to parent tool spans.
     """
     current_trace = state.get("current_trace")
     if not current_trace or not transcript_path:
@@ -1882,6 +1922,11 @@ def _emit_pending_llm_spans(
         current_trace["trace_id"],
         current_trace["root_span_id"],
     )
+
+    by_tool_call = current_trace.setdefault("llm_span_by_tool_call", {})
+    for sp in all_llm_spans:
+        for tool_call_id in sp.get("tool_call_ids", []):
+            by_tool_call[tool_call_id] = sp["span_id_hex"]
 
     emitted = current_trace.get("emitted_llm_span_count", 0)
     new_spans = all_llm_spans[emitted:]
@@ -1898,8 +1943,12 @@ def _emit_pending_llm_spans(
     if not new_spans:
         return
 
+    known_parents = _known_span_parents(current_trace)
+    span_parents = current_trace.setdefault("span_parents", {})
     for sp in new_spans:
         sp["kind"] = SpanKind.CLIENT
+        if sp["force_span_id"]:
+            span_parents[sp["span_id_hex"]] = sp["parent_span_id_hex"]
 
     phoenix_session_id, agent_id, parent_session_id = _resolve_agent_and_parent_ids(state)
 
@@ -1912,6 +1961,7 @@ def _emit_pending_llm_spans(
         parent_session_id=parent_session_id,
         agent_name=state.get("agent_name"),
         cwd=state.get("cwd"),
+        known_parents=known_parents,
     )
 
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
@@ -2518,10 +2568,22 @@ def _finish_tool_call(
         # span keeps a fresh id.
         pre_allocated_span_id = None if is_failure else current_tool.get("pre_allocated_span_id")
 
-        # If an Agent/Task tool is still pending, this tool ran inside that agent
-        # (inline subagent pattern). Parent it to the agent span, not the CHAIN root.
+        # Resolve the transcript path from the state cached at UserPromptSubmit
+        # time, not the (potentially stale or redirected) path in this payload.
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+        # Under the lock so parallel hooks read the latest
+        # emitted_llm_span_count and never double-emit. Run before the tool
+        # span is built: it maps this tool call to the LLM call that issued it.
+        _emit_pending_llm_spans(state, transcript_path, config)
+
+        # Parent precedence: a still-pending Agent/Task (inline subagent
+        # pattern), then the LLM call whose response issued this tool_use,
+        # then the CHAIN root.
         active_agent_span_id = _find_active_agent_span_id(state, pending_key, tool_name)
         tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
+        issuing_llm_span_id = current_trace.get("llm_span_by_tool_call", {}).get(
+            str(tool_call_id or ""),
+        )
         span_record = _build_tool_span_record(
             tool_name=tool_name,
             tool_input=tool_input,
@@ -2529,7 +2591,9 @@ def _finish_tool_call(
             start_ns=start_ns,
             end_ns=end_ns,
             trace_id=current_trace["trace_id"],
-            root_span_id=active_agent_span_id or current_trace["root_span_id"],
+            root_span_id=(
+                active_agent_span_id or issuing_llm_span_id or current_trace["root_span_id"]
+            ),
             is_failure=is_failure,
             error_msg=_tool_error_message(data, tool_response) if is_failure else "",
             span_id=pre_allocated_span_id,
@@ -2556,12 +2620,6 @@ def _finish_tool_call(
         pt = state.get("pending_tools", {})
         pt.pop(pending_key, None)
         pt.pop(tool_name, None)
-        # Resolve the transcript path from the state cached at UserPromptSubmit
-        # time, not the (potentially stale or redirected) path in this payload.
-        transcript_path = _get_cached_transcript_path(data, state, session_id)
-        # Under the lock so parallel hooks read the latest
-        # emitted_llm_span_count and never double-emit.
-        _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
 
     _build_and_export_spans(
