@@ -944,7 +944,10 @@ def _extract_llm_spans_for_turn(
     A turn starts after the `human_count_at_start`-th human message and ends
     at the next human message (or end of transcript).  Scanning stops as soon
     as a second human message is seen while in_turn is True — those subsequent
-    turns belong to their own traces.
+    turns belong to their own traces.  Human messages that follow one another
+    with no assistant entry between them are one prompt block, not a turn
+    boundary: prompts queued mid-turn and released by Esc are written that way
+    and answered by one response.
     Uses actual timestamps from the transcript.
 
     For each LLM call we use the immediately-preceding message as the input:
@@ -987,6 +990,9 @@ def _extract_llm_spans_for_turn(
         lines = Path(transcript_path).read_text().splitlines()
         human_count = 0
         in_turn = False
+        # True from the turn's first prompt until its first assistant entry.
+        in_prompt_block = False
+        prompt_block_text = ""
 
         # Tracks the input for the *next* LLM call we encounter
         last_input_value = ""
@@ -1135,13 +1141,17 @@ def _extract_llm_spans_for_turn(
             if _is_human_message(entry):
                 _flush_group()
                 human_count += 1
-                if in_turn:
+                if in_turn and not in_prompt_block:
                     # Next user turn has started — stop here.  Its spans belong
                     # to a different trace.
                     break
                 if human_count > human_count_at_start:
-                    in_turn = True
                     human_text = entry.get("message", {}).get("content", "")
+                    if in_prompt_block:
+                        human_text = f"{prompt_block_text}\n\n{human_text}"
+                    in_turn = True
+                    in_prompt_block = True
+                    prompt_block_text = human_text
                     last_input_value = json.dumps(
                         {"role": "user", "content": _truncate(human_text)[:500]},
                     )
@@ -1184,6 +1194,7 @@ def _extract_llm_spans_for_turn(
             # ── Non-assistant entries (progress, system, …) ───────────────────
             if entry_type != "assistant":
                 continue
+            in_prompt_block = False
 
             msg = entry.get("message", {})
             usage = msg.get("usage", {})
@@ -2280,7 +2291,6 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
             "USER",
             os.environ.get("USERNAME", "unknown"),
         )
-        state["human_msg_count"] = 0
         state["turn_number"] = 0
 
     resolved_cwd = resolve_cwd(data, state)
@@ -2311,7 +2321,6 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     current_human_count = _count_human_messages(transcript_path) if transcript_path else 0
 
     turn_number = _next_turn_number(state, current_human_count)
-    state["human_msg_count"] = current_human_count
 
     parent_trace_id = None
     parent_span_id = None
@@ -2395,7 +2404,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
             "USER",
             os.environ.get("USERNAME", "unknown"),
         )
-        state["human_msg_count"] = 0
         state["turn_number"] = 0
 
     resolved_cwd = resolve_cwd(data, state)
@@ -2414,7 +2422,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
         prompt_preview = _get_latest_human_message(transcript_path) if transcript_path else ""
 
         turn_number = _next_turn_number(state, max(0, current_human_count - 1))
-        state["human_msg_count"] = current_human_count
 
         state["current_trace"] = {
             "trace_id": _new_trace_id(),
