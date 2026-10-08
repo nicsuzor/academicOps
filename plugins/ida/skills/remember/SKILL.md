@@ -50,5 +50,5 @@ All PKB calls above go through the `services` MCP server's code-mode interface: 
 Consolidate episodic sources (daily notes, meeting notes, closed tasks) into canonical topic notes per `references/consolidation.md` and `references/quality.md`.
 
 - **Synthesis over collection**: Synthesise underlying principles across sources; do not concatenate bullet lists.
-- **Repair drifted tasks**: Extract durable knowledge (models, architecture, decisions) to destination notes first, verify readback, then rewrite the task body to minimal goal, deliverable, scope, checklist, and pointers.
-- **Retire primary records**: Delete episodic notes and replaced memories once arrival at the destination node is verified by reading it back by id. Delete outright -- no tombstone, no `status: archived`, no archive copy. Git, session transcripts, and audit logs hold the history, and none of them is loaded on every retrieval.
+- **Repair drifted tasks**: Extract durable knowledge (models, architecture, decisions) to destination notes first, then rewrite the task body to minimal goal, deliverable, scope, checklist, and pointers.
+- **Retire primary records**: Delete episodic notes and replaced memories once their content is written to the destination node. Delete outright -- no tombstone, no `status: archived`, no archive copy. Git, session transcripts, and audit logs hold the history, and none of them is loaded on every retrieval.
