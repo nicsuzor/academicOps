@@ -15,6 +15,7 @@ Author and review agent-facing instructions for operational clarity and token ef
 3. **One skill, one job**: Keep instructions focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals.
 4. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
 5. **Every line earns its place**: Relocate historical narratives, incident stories, and philosophical justifications to change records.
+6. **Grant discretion; checks live in workflows**: Let the agent make the calls its role covers -- weights, estimates, placements, judgements -- and act on them as final. Never write confirmation gates, sign-off requirements, or "mark it provisional until the user rules" into instructions or notes; a check on discretion belongs in a workflow template, where it is calibrated against the rest of the framework.
 
 ## The Deletion Test
 
