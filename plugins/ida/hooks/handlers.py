@@ -621,6 +621,11 @@ def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
         log.warning("claude_code_tracer %s failed: %s", handler_name, exc)
 
 
+def subagent_stop(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_subagent_stop")
+    return None
+
+
 def stop_failure(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_stop_failure")
     return None
@@ -722,6 +727,7 @@ HANDLERS: dict[str, list] = {
     "PostToolUseFailure": [post_tool_failure],
     "PostToolBatch": [premise_check_arm],
     "Stop": [stop, agy_stop, premise_check_handler],
+    "SubagentStop": [subagent_stop],
     "StopFailure": [stop_failure],
     "PermissionRequest": [permission_request],
     "PermissionDenied": [permission_denied],
