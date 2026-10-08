@@ -33,6 +33,10 @@
 - [polecat/spec-base-ref-resolution.md](polecat/spec-base-ref-resolution.md) -- how `resolve_isolated_workspace()` picks the commit a worker's isolated clone diverges from.
 - [polecat/spec-image-staleness-detection.md](polecat/spec-image-staleness-detection.md) -- detecting and surfacing a stale baked plugin payload against a bind-mounted workspace.
 
+## Tools
+
+- [tools/diagram-pkb-graphs.md](tools/diagram-pkb-graphs.md) -- how an agent using `tools:diagram` draws a PKB graph selection as a layered Excalidraw map: procedure, layout, kind and state encoding, weight-to-width scale, gap badges.
+
 ## Workflows
 
 - [workflows/workflow.md](workflows/workflow.md) -- the four-stage pipeline and where workflow components come from.
