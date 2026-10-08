@@ -13,7 +13,7 @@ tags: [spec, workflow, valuation, ranking, densify, deadlines, intake, email, pk
 changes are listed in §9.
 
 **Depends on:** the flow-rule spec,
-[`specs/flow-rule.md` in nicsuzor/mem](https://github.com/nicsuzor/mem/blob/dev/specs/flow-rule.md)
+[`specs/flow-rule.md` in nicsuzor/mem](https://github.com/nicsuzor/mem/blob/main/specs/flow-rule.md)
 (cited below as `FR:<line>`, at mem commit `2c3fef2`). That spec owns the maths, the edge fields and
 the scales. This spec owns everything an agent does around them: who writes which field, when,
 on what evidence, and when Nic is asked.
@@ -59,7 +59,7 @@ sender's name adds no weight.
 or one pricing set. At most one other valuation question a day, sent in the daily digest, and only
 for a proposed hard date within 14 days or a new opportunity that would rank in your top twenty.
 Everything else waits for the batch. Nothing in this spec asks you mid-conversation. At this rate
-the current backlog of 154 inputs (FR:472) clears in about four weeks.
+the current backlog of 154 inputs (FR:472) clears in about five weeks.
 
 **What goes.** The seven-word "stated weight" scale on links. Severity as something agents set.
 Defaulting new asks to "planned". Turning an email date into a deadline. `soft_depends_on` and
@@ -107,7 +107,7 @@ flowchart LR
   G --> P["Densify draft (R3)<br/>pauli, weekly"] --> AQ[[Ask queue]]
   G --> PR["Pricing draft (R4)"] --> AQ
   G --> DL["Deadline review (R5)"] --> AQ
-  AQ --> I["ida presents<br/>within budget (R8)"] --> N((Nic))
+  AQ --> I["ida presents<br/>within budget (R7)"] --> N((Nic))
   N -->|approve / price / drop| W["pauli writes<br/>set_by: nic"] --> G
   N -->|"drop X"| R["Retire (R6)"] --> G
 ```
@@ -184,14 +184,14 @@ asks "through intake" (module C). This spec adds a placement judgment to that st
    worth only through an edge to a priced target.
 6. **Strategic contacts.** Some senders bear on a target, for example institutional leadership
    (calibration case 4). The agent proposes the edge to that target. If no target fits, it adds a
-   one-line "no target fits" entry to the ask queue (R8). It never forces a mismatched target.
+   one-line "no target fits" entry to the ask queue (R7). It never forces a mismatched target.
 
 ## 5. R3 -- The densify routine (batches of fifty)
 
 Covers S7, U20, FR:474, and FR:472.
 
 **Trigger.** Weekly, as one step of the sleep-cycle run (`specs/agents/sleep-cycle.md`). It drafts
-one batch and runs again only after the previous batch is answered or expires (R8).
+one batch and runs again only after the previous batch is answered or expires (R7).
 
 **Candidate pool.** Rows are drawn in this order. Pricing comes first, through R4, before any link
 batch.
@@ -328,7 +328,7 @@ When asked "why does X carry this?", an agent answers from the flow outputs only
 priced targets in X's `stake` map and the edge route to each. It never answers from a ranking
 position or a display order.
 
-## 8. R8 -- Budget for asking Nic
+## 8. R7 -- Budget for asking Nic
 
 Covers U20, S11, and the attention rules already in `plugins/ida/agents/ida.md:120-125`. The brief
 sets no budget; the figures below are proposed (K2).
@@ -359,15 +359,15 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `plugins/ida/skills/q/SKILL.md`                                                                                                                     | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
 | `plugins/ida/agents/pauli.md`                                                                                                                       | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and target prices, and writes `set_by: nic` only from Nic's reply. :23 "carry … severity magnitude" becomes "carry worth".                                                                                                                                                                                                   |
-| `plugins/ida/agents/ida.md`                                                                                                                         | Adds that valuation asks reach the user only through the weekly sitting and the digest (R8). The one-question cap :125 is unchanged.                                                                                                                                                                                                                                                                                                                        |
+| `plugins/ida/agents/ida.md`                                                                                                                         | Adds that valuation asks reach the user only through the weekly sitting and the digest (R7). The one-question cap :125 is unchanged.                                                                                                                                                                                                                                                                                                                        |
 | `plugins/ida/skills/remember/SKILL.md`                                                                                                              | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`.                                                                                                                                                                                                                                                          |
 | `plugins/ida/skills/remember/references/consolidation.md`                                                                                           | Adds a weekly densify stage that runs `wf-densify` (R3).                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `plugins/ida/skills/reconcile/SKILL.md`                                                                                                             | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard`, target worth and `set_by: nic`.                                                                                                                                                                                                                                                                                                                |
-| `plugins/ida/skills/gather/SKILL.md`                                                                                                                | Adds the ask queue as a source, and the sitting and priority-ask channels with their caps (R8).                                                                                                                                                                                                                                                                                                                                                             |
+| `plugins/ida/skills/gather/SKILL.md`                                                                                                                | Adds the ask queue as a source, and the sitting and priority-ask channels with their caps (R7).                                                                                                                                                                                                                                                                                                                                                             |
 | `plugins/ida/skills/decompose/SKILL.md`                                                                                                             | :21 and :30: probes wire `settles` and options wire `alternative` (FQ8). `depends_on` becomes `needs`; `soft_depends_on` becomes `supports` at the default quantum.                                                                                                                                                                                                                                                                                         |
 | `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md`                                                                         | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517).                                                                                                                                                                                                                                                                                                                                                    |
 | `plugins/ida/skills/pull/SKILL.md`, `plugins/ida/skills/dump/SKILL.md`                                                                              | "wire directed `blocks` edges" becomes "wire a `needs` edge from the blocked task" (FR:334).                                                                                                                                                                                                                                                                                                                                                                |
-| `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs`. The parent in `wf-finish` follows FQ1.                                                                                                                                                                                                                                                                                                                                                                                        |
+| `plugins/ida/skills/workflow-library/SKILL.md` and templates `wf-escalated-approval`, `wf-research-and-implement`, `wf-code-task-base`, `wf-finish` | `depends_on` becomes `needs` in the skill and the first three templates. The parent in `wf-finish` follows FQ1.                                                                                                                                                                                                                                                                                                                                             |
 | New universal template `wf-densify` (in `plugins/ida/skills/workflow-library/workflows/`)                                                           | R3 as an outline: pool, ordering, granularity, table, reply grammar, readback, exit criteria.                                                                                                                                                                                                                                                                                                                                                               |
 | New universal template `wf-price-targets` (same directory)                                                                                          | R4 as an outline.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | PKB-tier template `wf-weight-repair`                                                                                                                | Retired in favour of `wf-densify`. Its granularity rule, correction tests and "measure from the source of record" rule move across.                                                                                                                                                                                                                                                                                                                         |
@@ -451,7 +451,7 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A13 | Fake never hardens                        | Extend a `fake` date three times. The class is still `fake`.                                                                                                                                                                               | S5            |
 | A14 | One input retires                         | Nic says "drop X". X reads `cancelled` with a `not ripe:` reason, and no other node's fields changed. X's flow pull is zero on the next run.                                                                                               | S6, U19, I9   |
 | A15 | Nothing retires by age                    | Over a 30-day replay of sleep-cycle and reconcile runs on a fixture graph, no opportunity is cancelled without a quoted statement.                                                                                                         | S6            |
-| A16 | Budget held                               | Over one week of transcripts there is ≤ 1 sitting, ≤ 7 priority asks, 0 in-conversation valuation questions, and no queue item presented twice.                                                                                            | R8, K2        |
+| A16 | Budget held                               | Over one week of transcripts there is ≤ 1 sitting, ≤ 7 priority asks, 0 in-conversation valuation questions, and no queue item presented twice.                                                                                            | R7, K2        |
 | A17 | Weights explain themselves                | Ask "why does X carry this?" for 5 nodes. Each answer names priced targets and routes matching X's `stake` map.                                                                                                                            | U18, I12      |
 | A18 | Harms are wired, not netted               | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero.                                                                          | S12, S16, I15 |
 | A19 | Every changed file changed as §9 says     | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed.                                                                                                                                             | this spec     |
@@ -511,5 +511,5 @@ spec follows whatever FQ1, FQ8, FQ10, FQ13, FQ18, FQ21, FQ23, FQ24 and FQ25 deci
 | R6 ripeness     | S6, U19, I9, G10                                                                        |
 | 7.3 decisions   | U12, I10                                                                                |
 | 7.4 explanation | U18, I12                                                                                |
-| R8 budget       | U20, S11                                                                                |
+| R7 budget       | U20, S11                                                                                |
 | §9, §13         | brief "Existing work this would supersede"; common expectations "names what is removed" |
