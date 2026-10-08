@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.10.8](https://github.com/nicsuzor/academicOps/compare/v0.10.7...v0.10.8) (2026-10-08)
+
+### Features
+
+- **ci:** no Access token means no tracer hooks ([a3c9ca1](https://github.com/nicsuzor/academicOps/commit/a3c9ca19beef801923f20e7e56a5cccfbf29c6a4))
+- **ci:** scripts/ci_otel_hooks.py writes tracer hooks for claude-code-action ([39bd130](https://github.com/nicsuzor/academicOps/commit/39bd1309ae6a2fcf6f626625ccabde0813f4e10f))
+- **ida:** consolidate local Ida instruction amendments into the plugin ([e1a5b98](https://github.com/nicsuzor/academicOps/commit/e1a5b98120efe28abc592f803238cf73344bee9d))
+- **ida:** consolidate the ida repo's local instruction amendments into the plugin (aops_6f734d6a) ([0ce94c6](https://github.com/nicsuzor/academicOps/commit/0ce94c6ec21568b7ba1701b13c5bfcf132956d7e))
+- **ida:** premise check skips the user's messages, gates sara, records PASS/REVISE/FAIL + reason ([35b0910](https://github.com/nicsuzor/academicOps/commit/35b09103bc5ec1189068c087526687e5984f6a29))
+- **ida:** stamp tracer spans with the GitHub Actions run they came from ([2abbeaf](https://github.com/nicsuzor/academicOps/commit/2abbeaf3f13b84544c3cfe2d66f151dc788dee77))
+- **ida:** telegram channel skill carries Prime's format rules ([f80c420](https://github.com/nicsuzor/academicOps/commit/f80c420606b38190e2a6b4082e9a842ae6c30b3c))
+- **ida:** telegram channel skill carries Prime's format rules (aops_5a134574) ([51c9a6b](https://github.com/nicsuzor/academicOps/commit/51c9a6bb2e7b274b3fc8908624677b271c6e2f2d))
+- **ida:** telegram skill carries Prime's reaction states (aops_be30ea94) ([e1eef3a](https://github.com/nicsuzor/academicOps/commit/e1eef3aa832b5665abb8a7bd74b5fcef4d58c1e4))
+- **ida:** telegram skill carries Prime's reaction states (aops_be30ea94) ([81efcb3](https://github.com/nicsuzor/academicOps/commit/81efcb330e95773e4505212658840cb47de6697e))
+
+### Bug Fixes
+
+- **ida:** persona checks its own explanations; tool claims need an upstream source ([4ff8612](https://github.com/nicsuzor/academicOps/commit/4ff8612132e714fe96f705a5119b46c4356c9396))
+- **ida:** persona checks its own explanations; tool claims need an upstream source (aops_419e7602) ([54b99c4](https://github.com/nicsuzor/academicOps/commit/54b99c460b0adac68511f871e56db8196d8edaa7))
+- **ida:** sara skips the honesty fallback like ida, so the hearsay reminder is delivered ([ef36138](https://github.com/nicsuzor/academicOps/commit/ef36138203a6e445bb14014df075ca905641d364))
+- **instructions:** why [#2788](https://github.com/nicsuzor/academicOps/issues/2788) was over-engineered and why review didn't reject it ([1c315c2](https://github.com/nicsuzor/academicOps/commit/1c315c2e7dcbd21ac17153bd7c7b927a3b447f93))
+
+### Code Refactoring
+
+- **reconcile:** split into a supervisor check and a scheduled sweep ([829afd6](https://github.com/nicsuzor/academicOps/commit/829afd60ad7bf54512cd0a5e1c757add1fc48a61))
+
+### Documentation
+
+- **ida:** premise-check checks form against the ask; ida/sara split; no added gates ([579a6ea](https://github.com/nicsuzor/academicOps/commit/579a6ea9fa2388d2c519ca9c6681cd6ef757954b))
+
+### CI/CD
+
+- trace every claude-code-action job to Phoenix ([ab688aa](https://github.com/nicsuzor/academicOps/commit/ab688aa6a2077adfe60977e46357cdfafdb0a0b1))
+- trace GitHub Actions Claude Code sessions to Phoenix ([71c5546](https://github.com/nicsuzor/academicOps/commit/71c55464959f85ee965a11410195dd3a13aea0c4))
+
+### Tests
+
+- every claude-code-action job is traced; no Access token, no hooks (failing) ([239b557](https://github.com/nicsuzor/academicOps/commit/239b557c37c1361675f0068deb7be71bfde8a9b0))
+- GitHub Actions agent runs trace to Phoenix (failing) ([dfed125](https://github.com/nicsuzor/academicOps/commit/dfed1255f8d09f41d7145fb3fb030ba51885692f))
+- **ida:** premise check ignores the user's messages, gates sara, takes token+reason verdicts (red) ([567a7ad](https://github.com/nicsuzor/academicOps/commit/567a7ada8888d34daa273365d03d7e737b400d3a))
+
 ## [0.10.7](https://github.com/nicsuzor/academicOps/compare/v0.10.6...v0.10.7) (2026-10-07)
 
 ### Features
