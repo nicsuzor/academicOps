@@ -30,7 +30,7 @@ import re
 import socket
 import sys
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -834,11 +834,17 @@ def _count_human_messages(transcript_path: str) -> int:
         return 0
 
 
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+
+
 def _iso_to_ns(ts: str) -> int:
     """Convert ISO 8601 timestamp string to nanoseconds."""
     try:
-        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        return int(dt.timestamp() * 1_000_000_000)
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
+        # Integer arithmetic: dt.timestamp() * 1e9 loses sub-microsecond
+        # precision and can floor a millisecond timestamp to the one before.
+        delta = dt - _EPOCH
+        return (delta.days * 86_400 + delta.seconds) * 1_000_000_000 + delta.microseconds * 1_000
     except Exception:
         return time.time_ns()
 
@@ -1101,7 +1107,12 @@ def _extract_llm_spans_for_turn(
 
             # ── Tool result (user message with list content) ──────────────────
             if entry_type == "user":
-                _flush_group()
+                # A tool can finish before its response has streamed its next
+                # tool_use block, so a tool result may sit between two records
+                # of one message.id; keep that group open. Groups without a
+                # real message.id are keyed by object id and must not span it.
+                if not group_message_id:
+                    _flush_group()
                 content = entry.get("message", {}).get("content", "")
                 if isinstance(content, list):
                     text = _tool_result_text(content)
@@ -1901,8 +1912,13 @@ def _emit_pending_llm_spans(
     state: dict,
     transcript_path: str | None,
     config: dict,
+    hold_open: bool = False,
 ) -> None:
     """Emit any new LLM spans from the transcript that haven't been sent yet.
+
+    With ``hold_open`` (mid-turn callers), the turn's last LLM span is not
+    emitted: its response may still be streaming tool_use blocks, and a span is
+    never re-emitted once counted. It goes out on a later call or at Stop.
 
     Called from handle_post_tool (real-time, after each tool response) and
     handle_stop (catches the final LLM response after the last tool call).
@@ -1929,7 +1945,8 @@ def _emit_pending_llm_spans(
             by_tool_call[tool_call_id] = sp["span_id_hex"]
 
     emitted = current_trace.get("emitted_llm_span_count", 0)
-    new_spans = all_llm_spans[emitted:]
+    emittable = all_llm_spans[:-1] if hold_open else all_llm_spans
+    new_spans = emittable[emitted:]
 
     # Always keep last_llm_output in sync with the last known assistant message,
     # even if there are no new spans to emit (e.g. all were emitted by post_tool
@@ -2574,7 +2591,7 @@ def _finish_tool_call(
         # Under the lock so parallel hooks read the latest
         # emitted_llm_span_count and never double-emit. Run before the tool
         # span is built: it maps this tool call to the LLM call that issued it.
-        _emit_pending_llm_spans(state, transcript_path, config)
+        _emit_pending_llm_spans(state, transcript_path, config, hold_open=True)
 
         # Parent precedence: a still-pending Agent/Task (inline subagent
         # pattern), then the LLM call whose response issued this tool_use,

@@ -368,3 +368,94 @@ def test_tool_span_falls_back_to_turn_root_when_its_tool_use_is_not_in_the_trans
 
     (read_span,) = [sp for sp in exporter.spans if sp.name == "Read"]
     assert read_span.parent.span_id == root
+
+
+# --- Found replaying session c710709d against the Arize harness ---------------
+
+
+def test_tool_result_between_records_of_one_response_does_not_split_it(tmp_path):
+    """A tool can finish before its response streams the next tool_use block."""
+    path = _write(
+        tmp_path / "t.jsonl",
+        [
+            _human("go", "2026-10-08T00:00:00.000Z"),
+            _assistant("msg_A", "2026-10-08T00:00:01.000Z", _tool_use("toolu_a"), _usage(552)),
+            _tool_result("toolu_a", "2026-10-08T00:00:01.500Z"),
+            _assistant(
+                "msg_A", "2026-10-08T00:00:02.000Z", _tool_use("toolu_b"), _usage(552), "tool_use"
+            ),
+            _tool_result("toolu_b", "2026-10-08T00:00:02.500Z"),
+            _assistant(
+                "msg_B", "2026-10-08T00:00:03.000Z", {"type": "text", "text": "ok"}, _usage(5)
+            ),
+        ],
+    )
+    spans = _extract(path)
+    assert [sp["attributes"]["llm.message.id"] for sp in spans] == ["msg_A", "msg_B"]
+    assert spans[0]["attributes"]["llm.token_count.completion"] == 552
+    assert spans[0]["start_ns"] == _ns("2026-10-08T00:00:01.000Z")
+    assert spans[0]["end_ns"] == _ns("2026-10-08T00:00:02.000Z")
+    assert spans[0]["tool_call_ids"] == ["toolu_a", "toolu_b"]
+
+
+def test_iso_to_ns_is_exact_to_the_millisecond():
+    # dt.timestamp() * 1e9 gives ...308999936 here, which floors to the wrong ms.
+    assert cct._iso_to_ns("2026-10-08T06:22:12.309Z") == 1_791_440_532_309_000_000
+
+
+def test_response_still_streaming_at_post_tool_use_is_emitted_once_complete(tracer_env):
+    """PostToolUse for toolu_a fires before msg_A has written toolu_b."""
+    transcript = tracer_env / "session.jsonl"
+    transcript.write_text("")
+    _hook(cct.handle_user_prompt_submit, str(transcript), prompt="go")
+    entries = [
+        _human("go", "2026-10-08T00:00:00.000Z"),
+        _assistant("msg_A", "2026-10-08T00:00:01.000Z", _tool_use("toolu_a"), _usage(40)),
+    ]
+    _write(transcript, entries)
+
+    exporter = _CollectingExporter()
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        for tuid, ts_use, ts_result in (
+            ("toolu_a", None, "2026-10-08T00:00:01.500Z"),
+            ("toolu_b", "2026-10-08T00:00:02.000Z", "2026-10-08T00:00:02.500Z"),
+        ):
+            if ts_use:
+                entries.append(_assistant("msg_A", ts_use, _tool_use(tuid), _usage(40), "tool_use"))
+                _write(transcript, entries)
+            _hook(
+                cct.handle_pre_tool,
+                str(transcript),
+                tool_name="Bash",
+                tool_input={},
+                tool_use_id=tuid,
+            )
+            _hook(
+                cct.handle_post_tool,
+                str(transcript),
+                tool_name="Bash",
+                tool_input={},
+                tool_use_id=tuid,
+                tool_response="x",
+            )
+            entries.append(_tool_result(tuid, ts_result))
+            _write(transcript, entries)
+        assert not [sp for sp in exporter.spans if sp.name.startswith("claude/")], (
+            "the open response is held back mid-turn"
+        )
+
+        entries.append(
+            _assistant(
+                "msg_B", "2026-10-08T00:00:03.000Z", {"type": "text", "text": "ok"}, _usage(5)
+            )
+        )
+        _write(transcript, entries)
+        _hook(cct.handle_stop, str(transcript))
+
+    llm = [sp for sp in exporter.spans if sp.name.startswith("claude/")]
+    assert [sp.attributes["llm.message.id"] for sp in llm] == ["msg_A", "msg_B"]
+    msg_a = llm[0]
+    assert msg_a.attributes["llm.token_count.completion"] == 40
+    assert msg_a.end_time == _ns("2026-10-08T00:00:02.000Z")
+    tools = [sp for sp in exporter.spans if sp.name == "Bash"]
+    assert [sp.parent.span_id for sp in tools] == [msg_a.context.span_id] * 2
