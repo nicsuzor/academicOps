@@ -69,6 +69,18 @@ jobs:
             echo "DISPATCH_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # Traces this job's Claude Code session to Phoenix with the ida tracer
+      # (scripts/ci_otel_hooks.py). Unconfigured or failing, it leaves the agent
+      # untraced and never fails the job.
+      - name: Configure OTel tracing
+        id: otel
+        continue-on-error: true
+        env:
+          GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
+          GENAI_ENGINE_TRACE_PROTOCOL: ${{ vars.GENAI_ENGINE_TRACE_PROTOCOL }}
+          GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
+        run: python3 scripts/ci_otel_hooks.py --aops-root . --out-dir "$RUNNER_TEMP/aops-otel"
+
       - name: Run Claude Code
         id: claude
         continue-on-error: true
@@ -76,6 +88,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AOPS_BOT_GH_TOKEN }}
         with:
+          settings: ${{ steps.otel.outputs.settings }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
           # This is an optional setting that allows Claude to read CI results on PRs
@@ -140,11 +153,24 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Traces this job's Claude Code session to Phoenix with the ida tracer
+      # (scripts/ci_otel_hooks.py). Unconfigured or failing, it leaves the agent
+      # untraced and never fails the job.
+      - name: Configure OTel tracing
+        id: otel
+        continue-on-error: true
+        env:
+          GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
+          GENAI_ENGINE_TRACE_PROTOCOL: ${{ vars.GENAI_ENGINE_TRACE_PROTOCOL }}
+          GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
+        run: python3 scripts/ci_otel_hooks.py --aops-root . --out-dir "$RUNNER_TEMP/aops-otel"
+
       - name: Run Claude Code
         id: claude
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
+          settings: ${{ steps.otel.outputs.settings }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
           # This is an optional setting that allows Claude to read CI results on PRs

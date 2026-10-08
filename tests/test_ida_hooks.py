@@ -53,13 +53,19 @@ def test_hearsay_registered_on_user_prompt_submit():
     assert handlers.rule_against_hearsay in handlers.HANDLERS["UserPromptSubmit"]
 
 
-def test_hearsay_fires_for_ida_on_user_prompt_submit():
+_PEER_REPORT = '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>'
+_USER_MESSAGE = '<channel source="plugin:telegram:telegram" user="nic">ship it</channel>'
+
+
+@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara"])
+def test_hearsay_fires_on_a_peer_report(agent):
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
-        agent_type="ida:ida",
+        agent_type=agent,
         session_id="s-ida-1",
         hooks_dir=IDA_HOOKS,
+        raw={"prompt": _PEER_REPORT},
     )
     res = handlers.rule_against_hearsay(ctx)
     assert res is not None
@@ -67,6 +73,19 @@ def test_hearsay_fires_for_ida_on_user_prompt_submit():
     expected_inject, expected_user = load_message_pair(IDA_HOOKS, "hearsay")
     assert res.inject_text == expected_inject
     assert res.user_text == expected_user
+
+
+@pytest.mark.parametrize("prompt", [_USER_MESSAGE, "what's next?"])
+def test_hearsay_does_not_fire_on_the_users_own_messages(prompt):
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id="s-ida-2",
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": prompt},
+    )
+    assert handlers.rule_against_hearsay(ctx) is None
 
 
 def test_hearsay_does_not_fire_for_non_ida_agents():
@@ -77,6 +96,7 @@ def test_hearsay_does_not_fire_for_non_ida_agents():
             agent_type=agent,
             session_id="s-other",
             hooks_dir=IDA_HOOKS,
+            raw={"prompt": _PEER_REPORT},
         )
         res = handlers.rule_against_hearsay(ctx)
         assert res is None, f"hearsay fired for non-ida agent {agent}"
