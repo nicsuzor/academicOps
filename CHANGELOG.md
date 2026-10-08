@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.9](https://github.com/nicsuzor/academicOps/compare/v0.10.8...v0.10.9) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ida:** tracer session id, tool-span redaction, turn numbers, and Arize-only spans ([#2818](https://github.com/nicsuzor/academicOps/issues/2818)) ([b34ab30](https://github.com/nicsuzor/academicOps/commit/b34ab306046021d1d32189d7280c3c9a6f5873de))
+* **instructions:** root-cause the recurring flaws from the [#2792](https://github.com/nicsuzor/academicOps/issues/2792) review ([1025f20](https://github.com/nicsuzor/academicOps/commit/1025f20c00cae8bc0ef24db2ebf189b8d7487cb7))
+* **tracer:** keep LLM spans when queued prompts arrive as one turn ([#2820](https://github.com/nicsuzor/academicOps/issues/2820)) ([d64154b](https://github.com/nicsuzor/academicOps/commit/d64154b3e26a7306811d3c5e67089d96b0a3e695))
+* **tracer:** real LLM usage, timing, message id and tool nesting ([#2816](https://github.com/nicsuzor/academicOps/issues/2816)) ([f19b4f7](https://github.com/nicsuzor/academicOps/commit/f19b4f7c827b633fb264acc31c15cfe2a51bf11b))
+
+
+### Tests
+
+* **tracer:** Agent spans driven through a real transcript form no parent cycle ([#2821](https://github.com/nicsuzor/academicOps/issues/2821)) ([435106a](https://github.com/nicsuzor/academicOps/commit/435106aff08b9b1a9d64cee5f27c117a783e6b5b))
+* **tracer:** thinking + text + tool_use sharing one usage count completion once ([#2822](https://github.com/nicsuzor/academicOps/issues/2822)) ([abe6a47](https://github.com/nicsuzor/academicOps/commit/abe6a47195341172c7248f97848b9bef5b7b2270))
+
 ## [0.10.8](https://github.com/nicsuzor/academicOps/compare/v0.10.7...v0.10.8) (2026-10-08)
 
 ### Features
