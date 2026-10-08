@@ -459,6 +459,70 @@ def test_skill_prompt_counts_as_a_turn(tracer_env, exporter):
     assert _turn_numbers(exporter) == [1, 2, 3]
 
 
+def _bash_command(transcript: Path, command: str, stdout: str, prompt_id: str) -> None:
+    """``!cmd`` as Claude Code 2.1.291 writes it: two string-content user
+    entries sharing one promptId, and no UserPromptSubmit."""
+    _append(
+        transcript,
+        {
+            "type": "user",
+            "promptId": prompt_id,
+            "message": {"role": "user", "content": f"<bash-input>{command}</bash-input>"},
+        },
+        {
+            "type": "user",
+            "promptId": prompt_id,
+            "turnOrigin": "human",
+            "message": {
+                "role": "user",
+                "content": f"<bash-stdout>{stdout}</bash-stdout><bash-stderr></bash-stderr>",
+            },
+        },
+    )
+
+
+def test_bash_command_before_the_first_prompt_does_not_advance_turn_number(tracer_env, exporter):
+    _bash_command(tracer_env, "echo qa-bash-probe", "qa-bash-probe", "pb")
+    _real_prompted_turn(tracer_env, "say ok", 0)
+    assert _turn_numbers(exporter) == [1]
+
+
+def test_bash_command_between_prompts_does_not_advance_turn_number(tracer_env, exporter):
+    _real_prompted_turn(tracer_env, "one", 0)
+    _bash_command(tracer_env, "echo qa-bash-probe", "qa-bash-probe", "pb")
+    _real_prompted_turn(tracer_env, "two", 1)
+    assert _turn_numbers(exporter) == [1, 2]
+
+
+_UNKNOWN_ENTRY = {
+    "type": "user",
+    "message": {"role": "user", "content": "<some-future-entry>not a prompt</some-future-entry>"},
+}
+
+
+def test_unknown_entry_between_turns_does_not_advance_turn_number(tracer_env, exporter):
+    """Within a live session the counter on the state numbers turns; the
+    transcript count only seeds numbering after a resume."""
+    _real_prompted_turn(tracer_env, "one", 0)
+    _append(tracer_env, _UNKNOWN_ENTRY, _UNKNOWN_ENTRY)
+    _real_prompted_turn(tracer_env, "two", 1)
+    _real_prompted_turn(tracer_env, "three", 2)
+    assert _turn_numbers(exporter) == [1, 2, 3]
+
+
+def test_unknown_entry_mid_turn_does_not_advance_turn_number(tracer_env, exporter):
+    _hook(cct.handle_user_prompt_submit, tracer_env, prompt="one")
+    _append(
+        tracer_env,
+        {"type": "user", "promptId": "p0", "message": {"role": "user", "content": "one"}},
+        _UNKNOWN_ENTRY,
+    )
+    _hook(cct.handle_pre_tool, tracer_env, tool_name="Bash", tool_input={}, tool_use_id="t")
+    _hook(cct.handle_stop, tracer_env)
+    _real_prompted_turn(tracer_env, "two", 1)
+    assert _turn_numbers(exporter) == [1, 2]
+
+
 # --- Permission, notification, compaction spans --------------------------------
 
 

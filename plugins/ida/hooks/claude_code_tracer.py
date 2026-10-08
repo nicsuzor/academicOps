@@ -810,10 +810,16 @@ def _find_tool_use_id(transcript_path: str, tool_name: str, tool_input: dict) ->
 
 
 # Start of string-content user entries that Claude Code writes for local slash
-# commands (/model, /usage, /compact, ...). Those commands do not fire
-# UserPromptSubmit and are not turns. Skill and custom-command prompts start
-# with ``<command-message>`` instead and do count.
-_LOCAL_COMMAND_PREFIXES = ("<command-name>", "<local-command-")
+# commands (/model, /usage, /compact, ...) and bash mode (``!cmd``). Those do
+# not fire UserPromptSubmit and are not turns. Skill and custom-command prompts
+# start with ``<command-message>`` instead and do count.
+_LOCAL_COMMAND_PREFIXES = (
+    "<command-name>",
+    "<local-command-",
+    "<bash-input>",
+    "<bash-stdout>",
+    "<bash-stderr>",
+)
 
 
 def _is_human_message(entry: dict) -> bool:
@@ -822,9 +828,10 @@ def _is_human_message(entry: dict) -> bool:
     Counts ``type=user`` entries whose content is a string: typed prompts and
     skill or custom slash-command prompts (``<command-message>...``). Does not
     count tool results (list content), ``isMeta`` entries (e.g. the
-    ``<local-command-caveat>``), ``isCompactSummary`` entries, or the
+    ``<local-command-caveat>``), ``isCompactSummary`` entries, the
     ``<command-name>`` / ``<local-command-stdout>`` entries of local slash
-    commands, since none of those fire UserPromptSubmit.
+    commands, or the ``<bash-input>`` / ``<bash-stdout>`` entries of bash mode,
+    since none of those fire UserPromptSubmit.
     """
     if entry.get("type") != "user":
         return False
@@ -857,14 +864,15 @@ def _count_human_messages(transcript_path: str) -> int:
 def _next_turn_number(state: dict, prior_human_count: int) -> int:
     """Return the next turn number and store it on *state*.
 
-    SessionEnd deletes the state file, so a ``claude --resume`` of the same
-    session starts from a fresh state. *prior_human_count* is the number of
-    prompts in the transcript before this turn's prompt, counted by
-    ``_is_human_message`` (local slash commands, compaction summaries and
-    ``isMeta`` entries are not prompts); taking the larger of it and the
-    stored counter keeps numbering going after a resume.
+    Once the session state has numbered a turn, the next turn is that number
+    plus one: the transcript is not consulted, so no transcript entry can
+    inflate the count. SessionEnd deletes the state file, so a
+    ``claude --resume`` of the same session starts from a fresh state; only
+    then is numbering seeded from *prior_human_count*, the number of prompts
+    in the transcript before this turn's prompt as counted by
+    ``_is_human_message``.
     """
-    turn_number = max(state.get("turn_number", 0), prior_human_count) + 1
+    turn_number = (state.get("turn_number") or prior_human_count) + 1
     state["turn_number"] = turn_number
     return turn_number
 
@@ -2397,24 +2405,6 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     if resolved_agent and not state.get("agent_name"):
         state["agent_name"] = resolved_agent
 
-    # Detect context continuation: Claude Code compresses context and continues
-    # without firing UserPromptSubmit for the resumption message. The symptom is
-    # current_trace still set from the previous turn, but the transcript has grown
-    # by more than one human message since that trace started.
-    if state.get("current_trace"):
-        ct = state["current_trace"]
-        _tp = _get_cached_transcript_path(data, state, session_id)
-        if _tp:
-            _cur_human = _count_human_messages(_tp)
-            _start = ct.get("human_count_at_start", 0)
-            if _cur_human > _start + 1:
-                # A new turn started without UserPromptSubmit. Complete the old
-                # trace and fall through to the fallback that creates a new one.
-                _emit_pending_llm_spans(state, _tp, config)
-                _complete_turn(state, config, _tp, now_ns)
-                state.pop("current_trace", None)
-                state.pop("pending_tools", None)
-
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     # This handles cases where the hook isn't registered or fires before the
     # UserPromptSubmit event is available.
@@ -2731,34 +2721,6 @@ def handle_stop(data: dict, config: dict) -> None:
             return
 
         transcript_path = _get_cached_transcript_path(data, state, session_id)
-
-        # Detect context continuation: same check as handle_pre_tool.
-        # When no tool calls happen during a continuation turn, handle_pre_tool
-        # never fires, so the stale trace would otherwise be completed with the
-        # wrong LLM spans.  Complete the old trace here and start a new one so
-        # the normal stop logic below runs against the correct turn.
-        if transcript_path:
-            ct = state["current_trace"]
-            _cur_human = _count_human_messages(transcript_path)
-            _start = ct.get("human_count_at_start", 0)
-            if _cur_human > _start + 1:
-                _emit_pending_llm_spans(state, transcript_path, config)
-                _complete_turn(state, config, transcript_path, end_ns)
-                state.pop("current_trace", None)
-                state.pop("pending_tools", None)
-
-                current_human_count = _cur_human
-                prompt_preview = _get_latest_human_message(transcript_path)
-                turn_number = _next_turn_number(state, max(0, current_human_count - 1))
-                state["human_msg_count"] = current_human_count
-                state["current_trace"] = {
-                    "trace_id": _new_trace_id(),
-                    "root_span_id": _new_span_id(),
-                    "turn_start_ns": end_ns,
-                    "turn_number": turn_number,
-                    "human_count_at_start": max(0, current_human_count - 1),
-                    "prompt_preview": (_truncate(prompt_preview) if prompt_preview else ""),
-                }
 
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
