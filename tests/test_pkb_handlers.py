@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -294,3 +295,115 @@ def test_no_honesty_fallback_for_coordinators_when_search_fails(agent):
     )
     with patch.object(handlers, "_run_pkb_search", return_value=None):
         assert handlers.search_the_pkb(ctx) is None
+
+
+def test_user_prompt_submit_unwraps_telegram_channel_message():
+    """Telegram channel prompts are unwrapped so PKB search queries the inner user text."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={
+            "prompt": (
+                '<channel source="plugin:telegram:telegram" user="nic">'
+                "what are the axioms of academicOps?"
+                "</channel>"
+            )
+        },
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+        agent_type="ida:ida",
+    )
+    mock_search_results = "specs/AXIOMS.md: Found 1 match."
+    with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results) as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        mock_search.assert_called_once_with("what are the axioms of academicOps?", cwd="/workspace")
+        assert res is not None
+        assert "<academicOps PKB search results>" in res.inject_text
+
+
+@pytest.mark.parametrize(
+    "peer_prompt",
+    [
+        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
+        '<teammate-message teammate_id="worker">done</teammate-message>',
+        "<task-notification>worker finished</task-notification>",
+    ],
+)
+def test_search_the_pkb_skips_peer_reports(peer_prompt):
+    """search_the_pkb does not run on peer reports, leaving hearsay to fire and gate to arm."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": peer_prompt},
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        mock_search.assert_not_called()
+        assert res is None
+
+
+def test_extract_prompt_query_unwraps_channels_and_strips_ansi():
+    raw = '<channel source="telegram" user="nic">\x1b[32mhello world\x1b[0m</channel>'
+    assert handlers.extract_prompt_query(raw) == "hello world"
+    assert handlers.extract_prompt_query("plain prompt") == "plain prompt"
+    assert handlers.extract_prompt_query("") == ""
+
+
+def test_resolve_mcp_headers(tmp_path: Path):
+    # 1. From PKB_MCP_HEADERS
+    with patch.dict(os.environ, {"PKB_MCP_HEADERS": json.dumps({"X-Custom": "val"})}):
+        headers = handlers._resolve_mcp_headers("https://example.com/mcp")
+        assert headers.get("X-Custom") == "val"
+
+    # 2. From CF credentials env vars
+    with patch.dict(
+        os.environ,
+        {"CF_ACCESS_CLIENT_ID": "id123", "CF_ACCESS_CLIENT_SECRET": "sec456"},
+        clear=True,
+    ):
+        headers = handlers._resolve_mcp_headers("https://example.com/mcp")
+        assert headers.get("CF-Access-Client-Id") == "id123"
+        assert headers.get("CF-Access-Client-Secret") == "sec456"
+
+    # 3. From mock ~/.claude.json
+    fake_claude_json = tmp_path / ".claude.json"
+    fake_claude_json.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "services": {
+                        "url": "https://mcp.example.com",
+                        "headers": {"X-Service-Auth": "tok789"},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    with patch("pathlib.Path.home", return_value=tmp_path):
+        headers = handlers._resolve_mcp_headers("https://mcp.example.com")
+        assert headers.get("X-Service-Auth") == "tok789"
+
+
+def test_run_pkb_search_prefers_fastmcp_when_headers_present():
+    with (
+        patch.object(
+            handlers, "_resolve_mcp_headers", return_value={"CF-Access-Client-Id": "test-id"}
+        ),
+        patch.object(
+            handlers, "_search_via_fastmcp_client", return_value="fastmcp search result"
+        ) as mock_fastmcp,
+        patch("subprocess.run") as mock_subproc,
+        patch.dict("os.environ", {"PKB_MCP_URL": "https://mcp.example.com"}),
+    ):
+        res = handlers._run_pkb_search("query text")
+        assert res == "fastmcp search result"
+        mock_fastmcp.assert_called_once_with(
+            "https://mcp.example.com", "query text", {"CF-Access-Client-Id": "test-id"}
+        )
+        mock_subproc.assert_not_called()
+
+
