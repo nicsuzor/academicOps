@@ -809,13 +809,32 @@ def _find_tool_use_id(transcript_path: str, tool_name: str, tool_input: dict) ->
     return None
 
 
+# Start of string-content user entries that Claude Code writes for local slash
+# commands (/model, /usage, /compact, ...). Those commands do not fire
+# UserPromptSubmit and are not turns. Skill and custom-command prompts start
+# with ``<command-message>`` instead and do count.
+_LOCAL_COMMAND_PREFIXES = ("<command-name>", "<local-command-")
+
+
 def _is_human_message(entry: dict) -> bool:
-    """True for user-initiated messages (not tool results)."""
+    """True for a transcript entry that is a prompt opening a turn.
+
+    Counts ``type=user`` entries whose content is a string: typed prompts and
+    skill or custom slash-command prompts (``<command-message>...``). Does not
+    count tool results (list content), ``isMeta`` entries (e.g. the
+    ``<local-command-caveat>``), ``isCompactSummary`` entries, or the
+    ``<command-name>`` / ``<local-command-stdout>`` entries of local slash
+    commands, since none of those fire UserPromptSubmit.
+    """
     if entry.get("type") != "user":
+        return False
+    if entry.get("isMeta") or entry.get("isCompactSummary"):
         return False
     content = entry.get("message", {}).get("content", "")
     # Tool result messages have content as a list; human messages have a string
-    return isinstance(content, str)
+    if not isinstance(content, str):
+        return False
+    return not content.lstrip().startswith(_LOCAL_COMMAND_PREFIXES)
 
 
 def _count_human_messages(transcript_path: str) -> int:
@@ -840,8 +859,10 @@ def _next_turn_number(state: dict, prior_human_count: int) -> int:
 
     SessionEnd deletes the state file, so a ``claude --resume`` of the same
     session starts from a fresh state. *prior_human_count* is the number of
-    human messages in the transcript before this turn's prompt; taking the
-    larger of it and the stored counter keeps numbering going after a resume.
+    prompts in the transcript before this turn's prompt, counted by
+    ``_is_human_message`` (local slash commands, compaction summaries and
+    ``isMeta`` entries are not prompts); taking the larger of it and the
+    stored counter keeps numbering going after a resume.
     """
     turn_number = max(state.get("turn_number", 0), prior_human_count) + 1
     state["turn_number"] = turn_number
