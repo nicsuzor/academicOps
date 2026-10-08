@@ -84,6 +84,7 @@ Where the project finish template calls for QA review:
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
+- State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.

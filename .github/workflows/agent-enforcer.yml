@@ -37,6 +37,9 @@ on:
       CLAUDE_CODE_OAUTH_TOKEN:
         description: "OAuth token for Claude agent"
         required: true
+      GENAI_ENGINE_API_KEY:
+        description: "Cloudflare Access token for the OTel collector (scripts/ci_otel_hooks.py). Without it the agent runs untraced."
+        required: false
     outputs:
       committed:
         description: "true if this agent pushed a commit in this pass (drives §3.4 short-circuit)"
@@ -180,6 +183,8 @@ jobs:
             /.github/agents/shared-error-handling.md \
             /.github/agents/enforcer.agent.md \
             /scripts/ci/reap-agent-processes.sh \
+            /plugins/ida/hooks/claude_code_tracer.py \
+            /scripts/ci_otel_hooks.py \
             /scripts/ci/reconcile-enforcer-reviews.sh && cd ..
           if [ ! -f .aops/plugins/rbg/agents/rbg.md ] || [ ! -f .aops/.github/agents/enforcer.agent.md ] || [ ! -f .aops/.github/agents/shared-error-handling.md ]; then
             echo "::error::Enforcer prompt files were not materialised by sparse-checkout" >&2
@@ -199,6 +204,19 @@ jobs:
             echo "AGENT_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # Traces this job's Claude Code session to Phoenix with the ida tracer
+      # (scripts/ci_otel_hooks.py). Unconfigured or failing, it leaves the agent
+      # untraced and never fails the job.
+      - name: Configure OTel tracing
+        id: otel
+        if: steps.sha-skip.outputs.skip != 'true'
+        continue-on-error: true
+        env:
+          GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
+          GENAI_ENGINE_TRACE_PROTOCOL: ${{ vars.GENAI_ENGINE_TRACE_PROTOCOL }}
+          GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
+        run: python3 .aops/scripts/ci_otel_hooks.py --aops-root .aops --out-dir "$RUNNER_TEMP/aops-otel"
+
       - name: Run Enforcer Review
         id: review
         if: steps.sha-skip.outputs.skip != 'true'
@@ -213,6 +231,7 @@ jobs:
           AGENT_NAME: enforcer
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
+          settings: ${{ steps.otel.outputs.settings }}
           # Run when the pull_request event was triggered by a bot actor (the
           # normal case — bots push fix commits). Previously only the retry step
           # below set this, so every bot-triggered PR failed the primary on the
@@ -303,6 +322,7 @@ jobs:
           AGENT_NAME: enforcer
           GITHUB_RUN_ID: ${{ github.run_id }}
         with:
+          settings: ${{ steps.otel.outputs.settings }}
           allowed_bots: "claude[bot],github-actions[bot]"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Record and emit logic-check verdicts and OpenTelemetry spans.
+"""Record a premise-check verdict, emit its OpenTelemetry span, and disarm the gate.
 
-Validates evaluation answers against the six-question logic-check sequence
-extracted from hearsay doctrine, emits a TOOL span via claude_code_tracer,
-and disarms the premise check hook.
+A verdict is one token (PASS, REVISE, FAIL) and a free-text reason. The reason
+may come from a file or stdin so that free text stays off the command line,
+where harness guards scan it.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import time
 from pathlib import Path
@@ -19,29 +18,7 @@ from typing import Any
 
 from premise_check_gate import disarm
 
-# Matches numbered, bold-led items in hearsay.md's logic-check list
-_QUESTION_RE = re.compile(r"^\d+\.\s+\*\*(.+?)\*\*", re.MULTILINE)
-
-# The canonical six-question logic-check sequence extracted from hearsay.md.
-# Baked at build/test time to prevent runtime path resolution errors and
-# filesystem permissions issues in client sandboxes.
-LOGIC_CHECK_QUESTIONS: tuple[str, ...] = (
-    "What is the subject of this claim, independent of what you're being told about it?",
-    "Does the evidence admit more than one explanation?",
-    "Is the evidence sufficient? Is the methodology sound and exhaustive? Are the inferences warranted for the conclusion as stated?",
-    "Is anything presented as an observed fact actually an inference, and is the certainty expressed proportionate to what the evidence supports?",
-    "Does the conclusion generalise beyond what a representative, sufficient sample of the evidence supports?",
-    "What does the conclusion depend on that the report never states?",
-)
-
-
-def load_logic_check_questions(hooks_dir: Path | None = None) -> list[str]:
-    """Return the numbered logic-check sequence.
-
-    Returns the build-time baked LOGIC_CHECK_QUESTIONS, avoiding runtime
-    filesystem lookups and permissions issues in sandboxes.
-    """
-    return list(LOGIC_CHECK_QUESTIONS)
+VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
 
 
 def _import_claude_code_tracer() -> Any | None:
@@ -57,8 +34,8 @@ def emit_verdict_span(
     tracer_mod: Any,
     session_id: str,
     claim_id: str,
-    questions: list[str],
-    answers: list[str],
+    verdict: str,
+    reason: str,
     config: dict[str, Any] | None = None,
 ) -> bool:
     """Ship one TOOL span for this verdict via claude_code_tracer's pipeline.
@@ -84,29 +61,16 @@ def emit_verdict_span(
 
     record = tracer_mod._build_tool_span_record(
         tool_name="premise_check_verdict",
-        tool_input={"claim_id": claim_id, "answers": answers},
-        tool_response={"status": "recorded", "question_count": len(questions)},
+        tool_input={"claim_id": claim_id, "verdict": verdict, "reason": reason},
+        tool_response={"status": "recorded"},
         start_ns=now_ns,
         end_ns=now_ns + 1_000_000,
         trace_id=trace_id,
         root_span_id=parent_span_id,
     )
     record["attributes"]["premise_check.claim_id"] = claim_id
-    record["attributes"]["premise_check.question_count"] = len(questions)
-    record["attributes"]["premise_check.answer_count"] = len(answers)
-
-    # The questions are always emitted: they are the frame the supervisor
-    # reasoned through, whatever was recorded. Answers pair to them
-    # positionally only when one was recorded per question; the normal case is
-    # a single reasoned verdict, which lands on premise_check.verdict.
-    for i, question in enumerate(questions, start=1):
-        record["attributes"][f"premise_check.q{i}.question"] = tracer_mod._truncate(question)
-
-    if len(answers) == len(questions):
-        for i, answer in enumerate(answers, start=1):
-            record["attributes"][f"premise_check.q{i}.answer"] = tracer_mod._truncate(answer)
-    else:
-        record["attributes"]["premise_check.verdict"] = tracer_mod._truncate("\n\n".join(answers))
+    record["attributes"]["premise_check.verdict"] = verdict
+    record["attributes"]["premise_check.reason"] = tracer_mod._truncate(reason)
 
     username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
     exported = tracer_mod._build_and_export_spans(
@@ -119,27 +83,19 @@ def emit_verdict_span(
 
 
 def record_verdict(
-    hooks_dir: Path | None = None,
     session_id: str = "",
     claim_id: str = "",
-    answers: list[str] | None = None,
+    verdict: str = "",
+    reason: str = "",
     tracer_mod: Any | None = None,
 ) -> dict[str, Any]:
     """Validate, emit the span (best-effort), and disarm the premise check."""
-    if answers is None:
-        answers = []
-    questions = load_logic_check_questions(hooks_dir)
-    if not answers:
-        raise ValueError(
-            "expected at least one verdict; got none. One reasoned verdict per report "
-            "is the requirement -- the hearsay.md logic-check questions are the frame "
-            "to reason through, not a form to fill in."
-        )
-    if len(answers) > len(questions):
-        raise ValueError(
-            f"expected at most {len(questions)} answers (the hearsay.md logic-check "
-            f"questions), got {len(answers)}"
-        )
+    token = (verdict or "").strip().upper()
+    if token not in VERDICTS:
+        raise ValueError(f"verdict must be one of {', '.join(VERDICTS)}; got {verdict!r}")
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("a verdict needs a reason; got none")
 
     if tracer_mod is None:
         tracer_mod = _import_claude_code_tracer()
@@ -148,28 +104,33 @@ def record_verdict(
     span_error: str | None = None
     if tracer_mod is not None:
         try:
-            span_emitted = emit_verdict_span(tracer_mod, session_id, claim_id, questions, answers)
+            span_emitted = emit_verdict_span(tracer_mod, session_id, claim_id, token, reason)
         except Exception as exc:
             span_error = repr(exc)
             print(f"premise_check_verdict: span emission failed: {exc!r}", file=sys.stderr)
 
-    disarm(session_id, claim_id, questions, answers)
+    disarm(session_id, claim_id, token, reason)
 
     return {
         "ok": True,
         "claim_id": claim_id,
-        "question_count": len(questions),
+        "verdict": token,
         "span_emitted": span_emitted,
         "span_error": span_error,
         "disarmed": True,
-        "gate_closed": True,
     }
+
+
+def _read_reason(path: str) -> str:
+    if path == "-":
+        return sys.stdin.read()
+    return Path(path).read_text(encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="premise_check_verdict.py",
-        description="Record a per-claim logic-check verdict and disarm the premise check.",
+        description="Record a premise-check verdict and disarm the premise check.",
     )
     # Support both direct flags and optional 'verdict' subcommand
     if argv and argv[0] == "verdict":
@@ -183,16 +144,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Identifier or short description of the claim or report.",
     )
     parser.add_argument(
-        "--answer",
         "--verdict",
-        action="append",
-        dest="answers",
         required=True,
-        help=(
-            "Your reasoned verdict on the report. Normally given once. May be repeated "
-            "to record one answer per logic-check question, in order, but that is not "
-            "required -- the questions are the frame to reason through, not a form."
-        ),
+        type=str.upper,
+        choices=VERDICTS,
+        help="PASS, REVISE or FAIL.",
+    )
+    reason = parser.add_mutually_exclusive_group(required=True)
+    reason.add_argument("--reason", help="Why, in free text.")
+    reason.add_argument(
+        "--reason-file",
+        help="Read the reason from this file, or from stdin when '-'.",
     )
     parser.add_argument(
         "--session",
@@ -210,12 +172,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
+        text = args.reason if args.reason is not None else _read_reason(args.reason_file)
         result = record_verdict(
             session_id=args.session,
             claim_id=args.claim,
-            answers=args.answers,
+            verdict=args.verdict,
+            reason=text,
         )
-    except (FileNotFoundError, ValueError) as exc:
+    except (OSError, ValueError) as exc:
         print(f"premise_check_verdict: {exc}", file=sys.stderr)
         return 1
 

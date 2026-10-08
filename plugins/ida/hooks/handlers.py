@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
-from premise_check_gate import premise_check_arm, premise_check_handler
+from premise_check_gate import is_peer_report, premise_check_arm, premise_check_handler
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -269,7 +269,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
 
-    if is_agent(ctx, "ida", "james"):
+    if is_agent(ctx, "ida", "sara", "james"):
         return None
 
     return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
@@ -493,9 +493,11 @@ def session_start(ctx: HookContext) -> Result | None:
 
 
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind Ida on UserPromptSubmit that incoming reports are hearsay and require premise verification."""
+    """Remind Ida and Sara that an incoming peer report is hearsay; the user's own messages are not."""
     clear_channel_gate_state(ctx.session_id)
-    if not _is_ida(ctx):
+    if not is_agent(ctx, "ida", "sara"):
+        return None
+    if not is_peer_report(ctx):
         return None
     return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
 
