@@ -49,7 +49,7 @@ The MCP server invokes `docker.models.containers.ContainerCollection.run` with `
 3. **Container State & Health (`polecat_list_containers`)**:
    - Query container state via `polecat_list_containers(filters={"id": "<short_id>"})` to inspect execution state (`running`, `exited`), health, and exit code.
 4. **Task Graph State**:
-   - The worker claims its assigned task in the PKB (`in_progress`) and releases it (`done` or `review`) with verified delivery evidence.
+   - The worker claims its assigned task in the PKB (`in_progress`) and releases it (`done` or `partial`; `review` only for a decision only the user can make) with verified delivery evidence.
 
 ## 2. Host Script Launcher Route
 
