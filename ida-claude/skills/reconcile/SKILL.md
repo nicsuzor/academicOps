@@ -57,7 +57,7 @@ For a task marked `done`:
 
 ## Set the Status on Each Task
 
-Every task a pass reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
+Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
 
 | Task is in    | Evidence on the record                                                               | Set it to                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -138,7 +138,11 @@ When a task marked `done` fails the facial sufficiency or scope check:
 
 ## Writes
 
-Reconcile does not append to or own daily-note sections.
+1. **Cancel on world-facts**: Cancel tasks only on affirmative evidence recorded in the node body:
+   - _Referent destroyed_: Target artifact was deleted, verified across checkouts and refs.
+   - _Superseded by merge_: Merged PR mooted or settled the task's question.
+   - _Premise falsified_: Named assumption or precondition no longer holds.
+2. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations. Do not send failed `done` tasks to inbox. Do not demote a task that is the only next task for unfinished work (see Next-Task Assurance). Surface a stale one in the sweep's result instead.
 
 ## Output Contract
 

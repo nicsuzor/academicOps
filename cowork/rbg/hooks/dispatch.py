@@ -116,6 +116,13 @@ CANONICAL_EVENTS = (
     "SubagentStart",
     "Stop",
     "SubagentStop",
+    # Claude Code only; agy has no wire equivalent for any of these.
+    "StopFailure",
+    "PermissionRequest",
+    "PermissionDenied",
+    "Notification",
+    "PreCompact",
+    "PostCompact",
 )
 
 STOP_EVENTS = ("Stop", "SubagentStop")

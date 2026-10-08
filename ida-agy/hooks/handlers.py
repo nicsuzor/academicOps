@@ -458,6 +458,24 @@ def _isolate_credentials(ctx: HookContext) -> bool:
     return True
 
 
+def _export_session_id(ctx: HookContext) -> bool:
+    """Write this session's id to CLAUDE_ENV_FILE as AOPS_SESSION_ID.
+
+    The premise-check gate keys its state by the hook payload's session id,
+    so the verdict script run from this session's Bash must default to the
+    same id. CLAUDE_ENV_FILE is sourced before every Bash command, so each
+    session's own file carries its own id.
+    """
+    env_file_str = os.environ.get("CLAUDE_ENV_FILE")
+    if not env_file_str or not ctx.session_id:
+        return False
+    env_file = Path(env_file_str)
+    values = _read_env_file(env_file)
+    values["AOPS_SESSION_ID"] = ctx.session_id
+    _write_env_file(env_file, values)
+    return True
+
+
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
     metadata = _format_session_metadata(ctx)
@@ -482,6 +500,7 @@ def session_start(ctx: HookContext) -> Result | None:
     if _isolate_credentials(ctx):
         parts.append("Credentials have been isolated in CLAUDE_ENV_FILE.")
         user_parts.insert(0, "Credentials isolated.")
+    _export_session_id(ctx)
 
     injected = _get_injected_files(ctx)
     if injected:
@@ -590,6 +609,53 @@ def stop(ctx: HookContext) -> Result | None:
     return None
 
 
+def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
+    if claude_code_tracer is None or ctx.client != "claude":
+        return
+    try:
+        data = _prepare_tracer_data(ctx)
+        config = claude_code_tracer.discover_config(data)
+        if config is not None:
+            getattr(claude_code_tracer, handler_name)(data, config)
+    except Exception as exc:
+        log.warning("claude_code_tracer %s failed: %s", handler_name, exc)
+
+
+def stop_failure(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_stop_failure")
+    return None
+
+
+def permission_request(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_permission_request")
+    return None
+
+
+def permission_denied(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_permission_denied")
+    return None
+
+
+def notification(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_notification")
+    return None
+
+
+def pre_compact(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_pre_compact")
+    return None
+
+
+def post_compact(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_post_compact")
+    return None
+
+
+def session_end(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_session_end")
+    return None
+
+
 def agy_user_prompt_submit(ctx: HookContext) -> Result | None:
     if agy_tracer is None or ctx.client != "agy":
         return None
@@ -656,4 +722,11 @@ HANDLERS: dict[str, list] = {
     "PostToolUseFailure": [post_tool_failure],
     "PostToolBatch": [premise_check_arm],
     "Stop": [stop, agy_stop, premise_check_handler],
+    "StopFailure": [stop_failure],
+    "PermissionRequest": [permission_request],
+    "PermissionDenied": [permission_denied],
+    "Notification": [notification],
+    "PreCompact": [pre_compact],
+    "PostCompact": [post_compact],
+    "SessionEnd": [session_end],
 }

@@ -12,9 +12,11 @@ Author and review agent-facing instructions for operational clarity and token ef
 
 1. **Trust the harness, not today's quirks**: Write for durable capabilities. Avoid hard-coding workarounds for transient model behaviors.
 2. **Specify process, not keystrokes**: State when to invoke a capability and what outcome proves it worked. Omit basic sub-steps or flags the agent already knows.
-3. **One skill, one job**: Keep instructions focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals.
+3. **One skill, one job**: Keep instructions focused on their singular purpose. Dispatch to peer skills rather than summarizing their internals. Leave another agent's domain to that agent: name the hand-off, never how it does its work.
 4. **Verification must be real**: Demand direct inspection of live artifacts (outputs, logs, diffs) rather than relying on compliance checklists.
 5. **Every line earns its place**: Relocate historical narratives, incident stories, and philosophical justifications to change records.
+6. **Grant discretion; checks live in workflows**: Let the agent make the calls its role covers -- weights, estimates, placements, judgements -- and act on them as final. Never write confirmation gates, sign-off requirements, or "mark it provisional until the user rules" into instructions or notes; a check on discretion belongs in a workflow template, where it is calibrated against the rest of the framework.
+7. **Modular and self-contained**: Avoid dependencies and external references; leave room for change. Describe other components by their general role only.
 
 ## The Deletion Test
 
@@ -50,6 +52,8 @@ Limit agent definition bodies to:
 2. **Behavioral rules**: Terse operational constraints.
 3. **Output schema**: Expected report structure and verdict states.
 4. **Routing table**: Clean table without per-route narrative.
+
+Name a skill the agent uses; leave its modes, arguments, and when each applies to the skill. A change to a skill's modes or arguments owes the agent definitions that use it no edit.
 
 ## Schemas and Construction
 
