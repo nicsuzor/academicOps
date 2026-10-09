@@ -198,28 +198,38 @@ def _cap_output(out: str) -> str:
 def extract_prompt_query(prompt: str) -> str:
     """Extract the searchable user text from a prompt, unwrapping channel envelopes.
 
-    Strips any `<channel ...>...</channel>` wrapper from Telegram or other channels,
-    removes ANSI escape codes, and returns stripped user text.
+    A prompt that begins with a `<channel ...>` envelope (Telegram or another
+    channel) is unwrapped to its body; any other prompt is used as typed. ANSI
+    escape codes are removed and surrounding whitespace stripped.
     """
     if not prompt:
         return ""
-    m = re.search(r"<channel\b[^>]*>(.*?)(?:</channel>|$)", prompt, flags=re.DOTALL)
+    m = re.match(r"\s*<channel\b[^>]*>(.*?)(?:</channel>|$)", prompt, flags=re.DOTALL)
     text = m.group(1) if m else prompt
     return re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
 
 
-def _resolve_mcp_headers(mcp_url: str) -> dict[str, str]:
-    """Resolve authentication headers for MCP requests (e.g. Cloudflare Access)."""
+def _resolve_mcp_headers() -> dict[str, str]:
+    """HTTP headers for the PKB endpoint, from the environment only.
+
+    `PKB_MCP_HEADERS` is a JSON object of header name to value.
+    `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` together supply the
+    Cloudflare Access service-token headers. A malformed `PKB_MCP_HEADERS` is
+    logged and ignored, never silently swallowed.
+    """
     headers: dict[str, str] = {}
 
     env_headers = os.environ.get("PKB_MCP_HEADERS")
     if env_headers:
         try:
             parsed = json.loads(env_headers)
+        except json.JSONDecodeError as exc:
+            log.warning("PKB_MCP_HEADERS is not valid JSON, ignoring it: %s", exc)
+        else:
             if isinstance(parsed, dict):
                 headers.update({str(k): str(v) for k, v in parsed.items()})
-        except Exception:
-            pass
+            else:
+                log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
 
     cf_id = os.environ.get("CF_ACCESS_CLIENT_ID")
     cf_secret = os.environ.get("CF_ACCESS_CLIENT_SECRET")
@@ -227,77 +237,35 @@ def _resolve_mcp_headers(mcp_url: str) -> dict[str, str]:
         headers.setdefault("CF-Access-Client-Id", cf_id)
         headers.setdefault("CF-Access-Client-Secret", cf_secret)
 
-    try:
-        claude_json_path = Path.home() / ".claude.json"
-        if claude_json_path.exists():
-            cfg = json.loads(claude_json_path.read_text(encoding="utf-8"))
-            mcp_servers = cfg.get("mcpServers") or {}
-            for _name, server in mcp_servers.items():
-                if not isinstance(server, dict):
-                    continue
-                srv_url = server.get("url", "")
-                if srv_url and (srv_url == mcp_url or mcp_url.rstrip("/") == srv_url.rstrip("/")):
-                    srv_headers = server.get("headers")
-                    if isinstance(srv_headers, dict):
-                        for k, v in srv_headers.items():
-                            headers.setdefault(str(k), str(v))
-    except Exception as exc:
-        log.debug("Failed to read MCP headers from ~/.claude.json: %s", exc)
-
     return headers
 
 
+async def _call_pkb_search(mcp_url: str, query: str, headers: dict[str, str]) -> str | None:
+    from fastmcp import Client
+    from fastmcp.client.transports import StreamableHttpTransport
+
+    transport = StreamableHttpTransport(mcp_url, headers=headers)
+    async with Client(transport=transport) as client:
+        res = await client.call_tool("pkb_search", {"query": query})
+    texts = [item.text if hasattr(item, "text") else str(item) for item in res.content]
+    out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", "\n".join(texts)).strip()
+    return _cap_output(out) if out else None
+
+
 def _search_via_fastmcp_client(mcp_url: str, query: str, headers: dict[str, str]) -> str | None:
-    """Execute search via fastmcp Python client with custom HTTP headers."""
+    """Search the PKB in-process over streamable HTTP with the given headers.
+
+    The whole connect-and-call is bounded by `_SEARCH_TIMEOUT_SECONDS`. Any
+    failure is logged and returns None; there is no second transport to try.
+    """
     try:
-        from fastmcp import Client
-        from fastmcp.client.transports import StreamableHttpTransport
-    except ImportError:
-        return None
-
-    async def _call() -> str | None:
-        transport = StreamableHttpTransport(mcp_url, headers=headers)
-        async with Client(transport=transport) as client:
-            res = None
-            try:
-                res = await client.call_tool("pkb_search", {"query": query})
-            except Exception:
-                try:
-                    res = await client.call_tool("pkb__search", {"query": query})
-                except Exception as exc:
-                    log.warning("FastMCP client tool call failed: %s", exc)
-                    return None
-
-            if not res or not hasattr(res, "content"):
-                return None
-            texts = []
-            for item in res.content:
-                if hasattr(item, "text"):
-                    texts.append(item.text)
-                elif isinstance(item, dict) and "text" in item:
-                    texts.append(item["text"])
-                else:
-                    texts.append(str(item))
-            out = "\n".join(texts).strip()
-            out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", out).strip()
-            return _cap_output(out) if out else None
-
-    try:
-        loop = None
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            pass
-
-        if loop and loop.is_running():
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(asyncio.run, _call()).result(timeout=_SEARCH_TIMEOUT_SECONDS)
-        else:
-            return asyncio.run(_call())
+        return asyncio.run(
+            asyncio.wait_for(
+                _call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS
+            )
+        )
     except Exception as exc:
-        log.warning("FastMCP client execution failed: %s", exc)
+        log.warning("PKB search over HTTP failed: %r", exc)
         return None
 
 
@@ -311,11 +279,9 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
         log.warning("PKB_MCP_URL not found for UserPromptSubmit hook")
         return None
 
-    headers = _resolve_mcp_headers(mcp_url)
+    headers = _resolve_mcp_headers()
     if headers:
-        out = _search_via_fastmcp_client(mcp_url, query, headers)
-        if out is not None:
-            return out
+        return _search_via_fastmcp_client(mcp_url, query, headers)
 
     mcp_bin = shutil.which("fastmcp") or shutil.which("mcp")
     if not mcp_bin:

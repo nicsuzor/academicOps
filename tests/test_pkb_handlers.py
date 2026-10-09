@@ -352,56 +352,71 @@ def test_extract_prompt_query_unwraps_channels_and_strips_ansi():
     assert handlers.extract_prompt_query("") == ""
 
 
-def test_resolve_mcp_headers(tmp_path: Path):
-    # 1. From PKB_MCP_HEADERS
-    with patch.dict(os.environ, {"PKB_MCP_HEADERS": json.dumps({"X-Custom": "val"})}):
-        headers = handlers._resolve_mcp_headers("https://example.com/mcp")
-        assert headers.get("X-Custom") == "val"
+def test_extract_prompt_query_keeps_typed_prompt_that_quotes_a_channel_tag():
+    """A typed prompt that mentions a channel envelope mid-text is searched whole,
+    not truncated to the quoted fragment."""
+    typed = 'why does <channel source="telegram">hi</channel> skip hydration?'
+    assert handlers.extract_prompt_query(typed) == typed
 
-    # 2. From CF credentials env vars
+
+def test_resolve_mcp_headers_reads_environment():
+    with patch.dict(os.environ, {"PKB_MCP_HEADERS": json.dumps({"X-Custom": "val"})}, clear=True):
+        assert handlers._resolve_mcp_headers() == {"X-Custom": "val"}
+
     with patch.dict(
         os.environ,
         {"CF_ACCESS_CLIENT_ID": "id123", "CF_ACCESS_CLIENT_SECRET": "sec456"},
         clear=True,
     ):
-        headers = handlers._resolve_mcp_headers("https://example.com/mcp")
-        assert headers.get("CF-Access-Client-Id") == "id123"
-        assert headers.get("CF-Access-Client-Secret") == "sec456"
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "id123",
+            "CF-Access-Client-Secret": "sec456",
+        }
 
-    # 3. From mock ~/.claude.json
-    fake_claude_json = tmp_path / ".claude.json"
-    fake_claude_json.write_text(
-        json.dumps(
-            {
-                "mcpServers": {
-                    "services": {
-                        "url": "https://mcp.example.com",
-                        "headers": {"X-Service-Auth": "tok789"},
-                    }
-                }
-            }
-        ),
+
+def test_resolve_mcp_headers_ignores_client_config_files(tmp_path: Path):
+    """Headers come from the environment only, never from a client's own config file."""
+    (tmp_path / ".claude.json").write_text(
+        json.dumps({"mcpServers": {"s": {"url": "https://x", "headers": {"A": "b"}}}}),
         encoding="utf-8",
     )
-    with patch("pathlib.Path.home", return_value=tmp_path):
-        headers = handlers._resolve_mcp_headers("https://mcp.example.com")
-        assert headers.get("X-Service-Auth") == "tok789"
+    with patch.dict(os.environ, {"HOME": str(tmp_path)}, clear=True):
+        assert handlers._resolve_mcp_headers() == {}
 
 
-def test_run_pkb_search_prefers_fastmcp_when_headers_present():
+def test_resolve_mcp_headers_logs_malformed_json(caplog):
+    with patch.dict(os.environ, {"PKB_MCP_HEADERS": "{not json"}, clear=True):
+        with caplog.at_level("WARNING"):
+            assert handlers._resolve_mcp_headers() == {}
+    assert any("PKB_MCP_HEADERS" in r.getMessage() for r in caplog.records)
+
+
+def test_run_pkb_search_with_headers_never_falls_back_to_unauthenticated_cli():
+    """With headers configured, a failed HTTP search returns None; it does not
+    retry unauthenticated through the CLI and double the prompt's wait."""
     with (
-        patch.object(
-            handlers, "_resolve_mcp_headers", return_value={"CF-Access-Client-Id": "test-id"}
-        ),
-        patch.object(
-            handlers, "_search_via_fastmcp_client", return_value="fastmcp search result"
-        ) as mock_fastmcp,
+        patch.object(handlers, "_resolve_mcp_headers", return_value={"X-Auth": "t"}),
+        patch.object(handlers, "_search_via_fastmcp_client", return_value=None) as mock_http,
         patch("subprocess.run") as mock_subproc,
         patch.dict("os.environ", {"PKB_MCP_URL": "https://mcp.example.com"}),
     ):
-        res = handlers._run_pkb_search("query text")
-        assert res == "fastmcp search result"
-        mock_fastmcp.assert_called_once_with(
-            "https://mcp.example.com", "query text", {"CF-Access-Client-Id": "test-id"}
-        )
+        assert handlers._run_pkb_search("query text") is None
+        mock_http.assert_called_once_with("https://mcp.example.com", "query text", {"X-Auth": "t"})
         mock_subproc.assert_not_called()
+
+
+def test_search_via_fastmcp_client_is_bounded_by_timeout():
+    """A stalled backend cannot hold the prompt past the search timeout."""
+    import asyncio
+    import time
+
+    async def stall(*_args):
+        await asyncio.sleep(30)
+
+    with (
+        patch.object(handlers, "_call_pkb_search", stall),
+        patch.object(handlers, "_SEARCH_TIMEOUT_SECONDS", 0.2),
+    ):
+        start = time.monotonic()
+        assert handlers._search_via_fastmcp_client("https://x", "q", {"A": "b"}) is None
+        assert time.monotonic() - start < 5
