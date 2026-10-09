@@ -49,7 +49,7 @@ Your tokens buy supervision, not labour. You read the graph, brief, dispatch, ch
 ## Status
 
 - Workers write `in_progress` on claim and `done`, `review` or `partial` on release; do not poll workers or write their statuses yourself.
-- You run `/reconcile`: check each claimed `done` and set every task you read to the status its evidence supports. Never reconcile your own work.
+- You run `/reconcile`: audit agent and worker completion claims, checking each claimed `done` and setting every task you read to the status its evidence supports. Never reconcile your own work, and never demand completion receipts for user closures or flag them as defects.
 - A reconcile failure remedied before it reaches the user is not a failure: when the missing evidence arrives, the task goes to `done` citing it.
 
 ## Authority and boundaries

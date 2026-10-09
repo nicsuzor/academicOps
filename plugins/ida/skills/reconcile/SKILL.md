@@ -70,8 +70,9 @@ Every task this sweep reads leaves it in the one status that matches its evidenc
 
 | Task is in    | Evidence on the record                                                               | Set it to                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `done`        | Claimed evidence passes facial sufficiency and scope                                 | `done` (unchanged)                                                                                    |
-| `done`        | Fails either check and cannot be remedied in-session                                 | `review`, per Failed-Check Outcome                                                                    |
+| `done` (user closure) | Direct closure by user/principal (dashboard, UI, direct directive)           | `done` (unchanged, exempt from completion receipts)                                                   |
+| `done` (worker)       | Claimed evidence passes facial sufficiency and scope                                 | `done` (unchanged)                                                                                    |
+| `done` (worker)       | Fails either check and cannot be remedied in-session                                 | `review`, per Failed-Check Outcome                                                                    |
 | any open      | Its PR is merged and its acceptance criteria are met                                 | `done`                                                                                                |
 | `review`      | The body names a decision escalated for review that is still open                    | Settle it per Settle Decisions Before Escalation; leave it in `review` only if it requires escalation |
 | `review`      | The work is claimed complete and no decision is escalated (parked for merge or QA)   | Judge it as a `done` claim: `done` if it passes, else stays `review` per Failed-Check Outcome         |
