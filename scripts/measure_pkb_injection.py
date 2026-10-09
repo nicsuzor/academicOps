@@ -198,7 +198,7 @@ def measure_hook_overhead(repeats: int) -> dict:
 
 async def _one_search(client, prompt: str, family: str) -> SearchSample:
     t0 = time.perf_counter()
-    res = await client.call_tool("pkb__search", {"query": prompt, "limit": 5, "format": "json"})
+    res = await client.call_tool("pkb_search", {"query": prompt, "limit": 5, "format": "json"})
     t1 = time.perf_counter()
     text = next((getattr(b, "text", "") for b in res.content if getattr(b, "text", "")), "")
     payload_bytes = len(text.encode())
@@ -233,7 +233,7 @@ async def measure_backend(repeats: int) -> list[SearchSample]:
     async with Client(url) as client:
         # Warm-up call, excluded from the distribution -- first call pays
         # model/index cold-start, which every subsequent real fire does not.
-        await client.call_tool("pkb__search", {"query": "warmup", "limit": 1})
+        await client.call_tool("pkb_search", {"query": "warmup", "limit": 1})
         for family, prompts in PROMPT_FAMILIES.items():
             for prompt in prompts:
                 for _ in range(repeats):

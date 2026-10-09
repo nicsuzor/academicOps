@@ -297,7 +297,7 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
             mcp_bin,
             "call",
             mcp_url,
-            "pkb__search",
+            "pkb_search",
             "--input-json",
             json.dumps({"query": query}),
         ]

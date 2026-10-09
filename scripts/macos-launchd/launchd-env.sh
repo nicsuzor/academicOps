@@ -10,8 +10,9 @@
 # The plist looks there by default -- adjust the plist if you keep it elsewhere.
 #
 # SCOPE: This file forwards the bot PAT (AOPS_BOT_GH_TOKEN and its
-# GH_TOKEN/GITHUB_TOKEN aliases), AOPS directory vars, and the GENAI_ENGINE_*
-# tracing vars into the GLOBAL per-user launchd context -- but only for
+# GH_TOKEN/GITHUB_TOKEN aliases), AOPS directory vars, the PKB endpoint URL and
+# credentials, and the GENAI_ENGINE_* tracing vars into the GLOBAL per-user
+# launchd context -- but only for
 # whatever the plist already sourced (~/.env, ~/.env.local) into this
 # process's environment before it runs; it never invents a value. It
 # deliberately does NOT set any global SSH lockdown (SSH_AUTH_SOCK /
@@ -34,6 +35,13 @@
 
 # --- AOPS URLs ---
 [ -n "$PKB_MCP_URL" ] && launchctl setenv PKB_MCP_URL "$PKB_MCP_URL"
+
+# --- PKB endpoint credentials (read by the ida UserPromptSubmit hook) ---
+# Expected in ~/.env.local. Set whichever the endpoint accepts.
+[ -n "$PKB_MCP_HEADERS" ] && launchctl setenv PKB_MCP_HEADERS "$PKB_MCP_HEADERS"
+[ -n "$PKB_MCP_TOKEN" ] && launchctl setenv PKB_MCP_TOKEN "$PKB_MCP_TOKEN"
+[ -n "$CF_ACCESS_CLIENT_ID" ] && launchctl setenv CF_ACCESS_CLIENT_ID "$CF_ACCESS_CLIENT_ID"
+[ -n "$CF_ACCESS_CLIENT_SECRET" ] && launchctl setenv CF_ACCESS_CLIENT_SECRET "$CF_ACCESS_CLIENT_SECRET"
 
 # --- Bot PAT pass-through ---
 # AOPS_BOT_GH_TOKEN is expected in ~/.env.local (sourced by the plist before
