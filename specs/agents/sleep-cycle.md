@@ -20,9 +20,9 @@ then launches a Claude agent under a 30-minute job timeout with a 25-minute
 agent budget and a per-phase batch limit (default 100).
 
 The procedure that agent follows lives in the `remember` skill --
-[`plugins/pkb/skills/remember/SKILL.md`](../../plugins/pkb/skills/remember/SKILL.md)
-(maintenance mode) and
-[`plugins/pkb/skills/remember/references/consolidation.md`](../../plugins/pkb/skills/remember/references/consolidation.md),
+[`plugins/ida/skills/remember/SKILL.md`](../../plugins/ida/skills/remember/SKILL.md)
+(Consolidation) and
+[`plugins/ida/skills/remember/references/consolidation.md`](../../plugins/ida/skills/remember/references/consolidation.md),
 which owns the stage list, batch limits, extraction tests, and defect classes.
 This document is the rationale behind that workflow, not a second copy of it;
 nothing here restates a stage.

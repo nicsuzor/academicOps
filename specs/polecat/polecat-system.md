@@ -28,7 +28,7 @@ This file is the umbrella. The individual designs are
 
 The container launcher (`polecat`) and worker image are maintained outside this repository and supplied by the installer, together with any Docker MCP server registered behind the `services` portal. The legacy in-tree `Dockerfile` and `lib/polecat/` CLI scripts in academicOps have been removed.
 
-- [[plugins/pkb/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
+- [[plugins/ida/skills/pull/SKILL.md]] -- worker-side: claim, execute, record, hand
   over -- what a seeded `/pull <task-id>` prompt actually does once inside the
   container
 - [[plugins/aops/skills/polecat/SKILL.md]] -- coordinator-side: the launcher skill that builds

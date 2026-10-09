@@ -122,7 +122,7 @@ governs _how to review_; GitHub governs _when and where_.
 
 ## Related
 
-- [[plugins/pkb/agents/pauli.md]] -- upstream; strategic planning under uncertainty
+- [[plugins/ida/agents/pauli.md]] -- upstream; strategic planning under uncertainty
 - [[specs/workflows/research-decomposition.md]] -- downstream domain application
 - [[plugins/pkb/skills/brief/SKILL.md]] -- records this workflow's review obligations as
   acceptance criteria on the task body
