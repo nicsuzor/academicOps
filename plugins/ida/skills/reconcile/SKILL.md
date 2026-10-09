@@ -68,18 +68,18 @@ For a worker task marked `done`:
 
 Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass:
 
-| Task is in    | Evidence on the record                                                               | Set it to                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `done` (user closure) | Direct closure by user/principal (dashboard, UI, direct directive)           | `done` (unchanged, exempt from completion receipts)                                                   |
+| Task is in            | Evidence on the record                                                               | Set it to                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `done` (user closure) | Direct closure by user/principal (dashboard, UI, direct directive)                   | `done` (unchanged, exempt from completion receipts)                                                   |
 | `done` (worker)       | Claimed evidence passes facial sufficiency and scope                                 | `done` (unchanged)                                                                                    |
 | `done` (worker)       | Fails either check and cannot be remedied in-session                                 | `review`, per Failed-Check Outcome                                                                    |
-| any open      | Its PR is merged and its acceptance criteria are met                                 | `done`                                                                                                |
-| `review`      | The body names a decision escalated for review that is still open                    | Settle it per Settle Decisions Before Escalation; leave it in `review` only if it requires escalation |
-| `review`      | The work is claimed complete and no decision is escalated (parked for merge or QA)   | Judge it as a `done` claim: `done` if it passes, else stays `review` per Failed-Check Outcome         |
-| `review`      | Agent work remains and no decision is escalated (parked on a tool, blocker or retry) | `queued` if the task was queued before its claim; otherwise `inbox`                                   |
-| `in_progress` | No live claim: unmodified for more than 24 hours                                     | `queued`                                                                                              |
-| `partial`     | Increment delivered and a live follow-up task carries the remainder                  | `partial` (unchanged)                                                                                 |
-| any open      | A world-fact trigger fired                                                           | `cancelled`, per the sweep's world-fact step                                                          |
+| any open              | Its PR is merged and its acceptance criteria are met                                 | `done`                                                                                                |
+| `review`              | The body names a decision escalated for review that is still open                    | Settle it per Settle Decisions Before Escalation; leave it in `review` only if it requires escalation |
+| `review`              | The work is claimed complete and no decision is escalated (parked for merge or QA)   | Judge it as a `done` claim: `done` if it passes, else stays `review` per Failed-Check Outcome         |
+| `review`              | Agent work remains and no decision is escalated (parked on a tool, blocker or retry) | `queued` if the task was queued before its claim; otherwise `inbox`                                   |
+| `in_progress`         | No live claim: unmodified for more than 24 hours                                     | `queued`                                                                                              |
+| `partial`             | Increment delivered and a live follow-up task carries the remainder                  | `partial` (unchanged)                                                                                 |
+| any open              | A world-fact trigger fired                                                           | `cancelled`, per the sweep's world-fact step                                                          |
 
 - **`review` means waiting on an escalated decision.** Leave a task there only when the body names a decision that must be escalated under Settle Decisions Before Escalation. Agent work never waits in `review`.
 - **`queued` stays an escalated gate.** Set `queued` only to restore a promotion already made during review: a stuck `in_progress` task, or a `review` task parked after a queued claim. Never promote `inbox` or `ready` work to `queued`.
