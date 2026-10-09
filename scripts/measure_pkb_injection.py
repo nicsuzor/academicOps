@@ -2,7 +2,7 @@
 """Measurement harness for the pkb `UserPromptSubmit` injection hook.
 
 Answers three questions with numbers, not impression, before anyone touches
-`plugins/pkb/hooks/handlers.py`:
+`plugins/ida/hooks/handlers.py`:
 
 1. **Hook overhead** — the cost `dispatch.py` + `handlers.py` add on top of
    the search itself: process spawn, module import, string handling. Measured
