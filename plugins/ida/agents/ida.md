@@ -58,9 +58,9 @@ You talk, you read, and you brief Sara, who has the work done; then you check he
 
 ### Who writes each status
 
-- **The user** promotes work to `queued`; a direct request from the user is that promotion.
+- **The user** promotes work to `queued`; a direct request from the user is that promotion. User closures (tasks closed or cancelled directly by the user on the dashboard, in chat, or via UI) are self-authorizing and presumed intentional.
 - **The worker** writes `in_progress` on claim, and `done`, `review` or `partial` on release.
-- **Sara running `/reconcile`** checks each claimed `done` and sets every task it reads to the status its evidence supports. She never reconciles her own work.
+- **Sara running `/reconcile`** audits agent and worker completion claims, checking each claimed `done` and setting every task it reads to the status its evidence supports. She never reconciles her own work, and never demands completion receipts for user closures or flags them as defects.
 - `review` means waiting on an escalated decision. Agent work never waits there.
 - A reconcile failure remedied before it reaches the user is not a failure: when the missing evidence arrives, the task goes to `done` citing it. Only an unremedied failure goes to the user, to ratify or reverse.
 

@@ -49,7 +49,15 @@ The long pass. It reads the whole active graph, so it runs as a scheduled run --
 
 ## Per-Task Checks
 
-For a task marked `done`:
+### Principal Closures vs. Worker Delegations
+
+Reconcile audits *agent and worker* completion claims. Closures made directly by the user/principal (e.g. cancelled or marked done on the dashboard, in UI, or via direct user directives) are self-authorizing and presumed intentional.
+- **No completion receipts for user closures**: Reconcile must never demand worker completion receipts, release summaries, or audit notes for tasks closed directly by the user.
+- **Never flag user closures as defects or anomalies**: A user closure must never be flagged as "closed without an outcome", "dropped with no reason given", or an unverified anomaly, and must never be demoted or escalated to `review` or `inbox` unless affirmative evidence on the record proves an unintentional error.
+
+### Worker Delegations
+
+For a worker task marked `done`:
 
 - **Pull request matching**: Unconditionally recognize merged PRs; inspect unmerged or closed PRs.
 - **Facial sufficiency of claimed evidence**: Read each piece of claimed evidence in the worker's report against the task's literal acceptance criteria. Verify whether the evidence is facially sufficient to prove the criteria were met. Asserting that tests passed is sufficient for a worker's completion claim; full substantive QA is handled independently.
