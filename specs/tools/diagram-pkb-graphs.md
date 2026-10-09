@@ -22,30 +22,30 @@ The contract for how an agent using `tools:diagram` turns a PKB graph selection 
 | this skill                                                                                                                                  | The procedure below; layout; the kind and state encoding; the weight-to-width scale; labels, legend, headings, badges and title elements.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | overwhelm-dashboard, [`specs/view-force-layered.md`](https://github.com/nicsuzor/overwhelm-dashboard/blob/main/specs/view-force-layered.md) | The interactive force view of the same data. It adopts the encoding table and weight-to-width scale defined here; this spec is canonical where they diverge.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
-Nothing here restates a mem requirement. Where a rule below depends on one, it names the mem capability.
+Nothing here restates a mem requirement. Where a rule below depends on one, it cites the mem requirement id (`GV-…`).
 
 ## Core behaviour
 
 ### Procedure
 
-- **DG-P1 Select by closure [now].** A layered map starts from mem's closure or trace selection over `contributes_to`, never a hop-based fetch. If mem reports the selection truncated, the agent stops and reports the dropped count before drawing.
-- **DG-P2 Edit in place [now].** The agent applies layout and encoding to mem's exported elements with mem's primitives. Every managed element (one carrying `customData.pkb`) keeps its `id`; none is deleted and redrawn. Everything the agent adds that is not a node or edge (headings, legend, badges, title, summary) is a presentation element, created through mem's presentation route.
-- **DG-P3 Presentation is not data [now].** Every display change to a managed element (restyle, re-wrap, shortened display text) goes through mem's presentation route, so that diff does not read it as a data edit.
-- **DG-P4 Zero diff before handover [now].** After drawing, the agent runs mem's diff of the canvas against the live PKB. Any change of any kind is a failure: the agent stops and reports it and does not hand the canvas over.
-- **DG-P5 Projection only [now].** The agent never authors parentage, weight or status on the map, and never syncs the canvas to the graph as part of drawing. If the map looks wrong, the fix is to the node; the map is a projection. (Weights written from the canvas by a person: open decision OD-6.)
-- **DG-P6 Redraw into an existing canvas [now].** The agent redraws through mem's merge. It lays out only the cards mem flags as new, places them in their layer column without overlap, and leaves every card the person moved or resized where it is. It does not touch unmanaged elements.
+- **DG-P1 Select by closure [now].** A layered map starts from mem's closure or trace selection over `contributes_to` (GV-S1, GV-S4), never a hop-based fetch. If mem reports the selection truncated (GV-S2), the agent stops and reports the dropped count before drawing.
+- **DG-P2 Edit in place [now].** The agent applies layout and encoding to mem's exported elements with mem's primitives (GV-P1 to GV-P5). Every managed element (one carrying `customData.pkb`) keeps its `id`; none is deleted and redrawn. Everything the agent adds that is not a node or edge (headings, legend, badges, title, summary) is a presentation element, created through mem's presentation route (GV-R9).
+- **DG-P3 Presentation is not data [now].** Every display change to a managed element (restyle, re-wrap, shortened display text) goes through mem's presentation route (GV-R9), so that diff does not read it as a data edit.
+- **DG-P4 Zero diff before handover [now].** After drawing, the agent runs mem's diff of the canvas against the live PKB (GV-R1). Any change of any kind is a failure: the agent stops and reports it and does not hand the canvas over.
+- **DG-P5 Projection only [now].** The agent never authors parentage, weight or status on the map, and never syncs the canvas to the graph as part of drawing. If the map looks wrong, the fix is to the node; the map is a projection. (Weights written from the canvas by a person: open decision OD-4.)
+- **DG-P6 Redraw into an existing canvas [now].** The agent redraws through mem's merge (GV-M1 to GV-M4). It lays out only the cards mem flags as new, places them in their layer column without overlap, and leaves every card the person moved or resized where it is. It does not touch unmanaged elements.
 
 ### Layout
 
-- **DG-L1 Layer columns [now].** Every card sits in the column for its `layer`, columns left to right in mem's configured layer order. Above each column is a heading naming the layer and the number of cards in it.
-- **DG-L2 No collisions [now].** No two cards overlap; no card overlaps a heading, the legend or an arrow label; no `contributes_to` arrow passes through a card that is not one of its endpoints. Arrows are routed around cards, or cards are ordered within columns so that none is crossed. Test: mem's overlap and arrow-crossing audits each report zero over all non-frame elements.
+- **DG-L1 Layer columns [now].** Every card sits in the column for its `layer`, columns left to right in mem's configured layer order (GV-L1, GV-L2). Above each column is a heading naming the layer and the number of cards in it.
+- **DG-L2 No collisions [now].** No two cards overlap; no card overlaps a heading, the legend or an arrow label; no `contributes_to` arrow passes through a card that is not one of its endpoints. Arrows are routed around cards, or cards are ordered within columns so that none is crossed. Test: mem's overlap and arrow-crossing audits (GV-P4) each report zero over all non-frame elements.
 - **DG-L3 Fits a laptop screen [now].** The scene's aspect ratio (width to height) is between 1:1 and 2.5:1, and at zoom-to-fit on a 1,366 by 768 viewport, card title text renders at 9 px or larger. Test: from the scene's extents, `title font size × min(1366 / width, 768 / height) ≥ 9`.
 - **DG-L4 Fits an iPad [now].** In Excalidraw on an iPad in landscape (1,180 by 820 points), zoom-to-fit shows every column heading legibly and zoom to 100% shows full card text. Checked by a person on the device.
 - **DG-L5 Guard band [now].** Nodes in the `guard` layer sit in a separate, labelled band outside the columns, not in the flow.
 
 ### Card text
 
-- **DG-T1 Layer prefix [now].** A title prefix that repeats the layer ("Future:", "Resource class:", "Audience:", "Channel:", "Stakeholder:", "Guard:") may be dropped from the displayed text, only when the card's layer is shown by both its column and its shape, and only through mem's presentation route. The stored title is unchanged and DG-P4 still holds. Any re-wrap keeps the full title.
+- **DG-T1 Layer prefix [now].** A title prefix that repeats the layer ("Future:", "Resource class:", "Audience:", "Channel:", "Stakeholder:", "Guard:") may be dropped from the displayed text, only when the card's layer is shown by both its column and its DG-K1 encoding, and only through mem's presentation route. The stored title is unchanged and DG-P4 still holds. Any re-wrap keeps the full title.
 - **DG-T2 No tags [now].** Cards in a layered map do not print tags.
 
 ### Link strength
@@ -64,7 +64,7 @@ Nothing here restates a mem requirement. Where a rule below depends on one, it n
 
   Test: in the scene JSON, for every pair of fixture arrows with different valid terms, the arrow with the higher weight is wider.
 - **DG-W2 Term labels and legend [now].** Each `contributes_to` arrow carries a bound label with its verbal term as stored. A legend on the canvas lists each term, its numeric value and its width.
-- **DG-W3 Invalid term [now].** An arrow mem reports with `weight_valid: false` is drawn dashed, width 2, in the palette's warning colour, labelled with the raw term followed by "?". Test: every fixture edge with `weight_valid: false` is drawn this way, and no other.
+- **DG-W3 Invalid term [now].** An arrow mem reports with `weight_valid: false` (GV-D1) is drawn dashed, width 2, in the palette's warning colour, labelled with the raw term followed by "?". Test: every fixture edge with `weight_valid: false` is drawn this way, and no other.
 - **DG-W4 Probability [needs model change].** When edges carry probability, width comes from weight × probability on the DG-W1 bins; the label shows both terms; the legend says so.
 - **DG-W5 Negative contribution [needs model change].** A negative edge is drawn dotted, with a bar arrowhead, in the palette's error colour, and its label starts with a minus sign. It reads as negative without colour.
 - **DG-W6 Severity [needs model change].** A target's severity is drawn on its card, not its edges: border width in discrete steps plus a text badge. The legend names the channel.
@@ -85,11 +85,11 @@ Nothing here restates a mem requirement. Where a rule below depends on one, it n
   | guard        | rectangle, sharp corners | muted       | cross-hatch  |
 
   A layer the configuration defines but this table does not gets a rounded rectangle with no fill and a text badge naming the layer, and the agent reports it. The skill ships this table and the DG-W1 scale as one reference file in its own directory; this spec is the contract that file implements. An on-canvas legend shows each kind present.
-- **DG-K2 State channel [now].** State uses border style, border colour and a text badge, which kind does not use. `ready`: solid border, no badge. `inbox`: dashed border, badge "inbox". `done`: muted border and text, reduced fill opacity, badge "done". Any other status: solid border, badge naming the status. A node with no status has a solid border and no badge.
+- **DG-K2 State channel [now].** State uses border style, border colour and a status badge. Kind uses none of these, except the layer badge that DG-K1 and DG-K6 add. `ready`: solid border, no badge. `inbox`: dashed border, badge "inbox". `done`: muted border and text, reduced fill opacity, badge "done". Any other status: solid border, badge naming the status. A node with no status has a solid border and no badge.
 - **DG-K3 Greyscale [now].** Kind and state are each readable in a greyscale render of the scene. Checked by a person against a greyscale export.
 - **DG-K4 Satisfied [needs model change].** A target in the satisfied state carries a "satisfied" badge and reduced emphasis. Until the model has that state, the card shows its stored status only; the agent never infers state from body prose.
-- **DG-K5 Unconfirmed estimate [needs model change; OD-4].** A node or edge recorded as an agent's unconfirmed estimate carries a distinct marker. Not buildable until a field exists; never inferred from prose.
-- **DG-K6 Merge markers [now].** A card mem flags as new since the last export carries a "new" badge. A card mem flags as no longer in the selection carries a "no longer in graph selection" badge and muted styling; it is not removed. A card whose colour or shape the person has overridden keeps the override, and also carries text badges for its kind and state so both stay readable.
+- **DG-K5 Unconfirmed estimate [needs model change; OD-3].** A node or edge recorded as an agent's unconfirmed estimate carries a distinct marker. Not buildable until a field exists; never inferred from prose.
+- **DG-K6 Merge markers [now].** A card mem flags as new since the last export (GV-M1) carries a "new" badge. A card mem flags as no longer in the selection (GV-M3) carries a "no longer in graph selection" badge and muted styling; it is not removed. A card whose colour or shape the person has overridden (GV-M4) keeps the override, and also carries text badges for its kind and state so both stay readable.
 
 ### Traces
 
@@ -98,7 +98,7 @@ Nothing here restates a mem requirement. Where a rule below depends on one, it n
 
 ### Gaps
 
-- **DG-G1 No feeders [now].** A card outside the work layer with no incoming `contributes_to` edge in the whole graph (mem's feeder count and outside-contributor count both zero) carries a "no feeders" badge. The guard never carries it.
+- **DG-G1 No feeders [now].** A card outside the work layer with no incoming `contributes_to` edge in the whole graph (mem's feeder count and outside-feeder count both zero, GV-C1, GV-S3) carries a "no feeders" badge. The guard never carries it.
 - **DG-G2 No onward path [now].** A card in any layer before goal with no outgoing `contributes_to` edge in the whole graph (onward count and outside-destination count both zero) carries a "no onward path" badge. Goals and the guard never carry it.
 - **DG-G3 Outside the selection [now].** A card with contributors or destinations outside the selection carries a "+n outside" marker, n being mem's count, and no gap badge on that account.
 - **DG-G4 Gap legend and summary [now].** The legend explains each badge. A summary text element gives the count of each badge on the canvas.
@@ -107,13 +107,13 @@ Test for DG-G1 to DG-G3: the expected sets are computed from the export at test 
 
 ### Images
 
-- **DG-I1 Legible PNG [now].** The PNG rendered by mem's renderer at 2× scale shows every card title legibly when viewed at 100%, with no title text outside its card. Checked by a person.
+- **DG-I1 Legible PNG [now].** The PNG rendered by mem's renderer (GV-I1) at 2× scale shows every card title legibly when viewed at 100%, with no title text outside its card. Checked by a person.
 - **DG-I2 Real commands only [now].** `SKILL.md` names only commands that exist. Test: every command it names runs its help in the worker container and exits 0.
 
 ## Boundaries and constraints
 
 - The skill does not compute selections, counts or layers, and does not truncate text; those are mem's. It does not reimplement merge or the round trip.
-- It draws `contributes_to` only, without frames or containment, unless asked (OD-7).
+- It draws `contributes_to` only, without frames or containment, unless asked (OD-5).
 - It never parses justifications or body prose for state, provenance or weight.
 - It never ranks or sorts futures by any computed score. A path's product of weights is not a ranking signal.
 - Out of scope: the model changes themselves (probability, negative contributions, non-linear severity, a satisfied state, a provenance field); pricing targets or changing any weight, intent, severity or due date; the dashboard's views; hand-built maps and their separate builder; hosted or multi-user canvas services; PKB search and tag listing.
@@ -128,13 +128,15 @@ On handover the agent reports:
 - the selection used, and mem's truncation flag;
 - the count of each badge (DG-G4), and any layer not in the DG-K1 table.
 
-Tests compute every expected value (node, edge and badge counts, invalid edges, longest title) from mem's export of the career-set fixture at test time. None is hard-coded.
+Tests compute every expected value (node, edge and badge counts, invalid edges, longest title) from mem's export of the career-set fixture (GV-F1) at test time. None is hard-coded.
 
 ## Open decisions (Nic)
 
-- **OD-2 A target that feeds futures and is also linked from one.** Recommended: draw it in the layer its edges give it (resource); the goal column holds only nodes with no onward edge, unless edges are added from futures to it.
-- **OD-3 Notes tagged into the selection with no contribution edges.** Recommended: off the map by default, available as an option; when included, drawn in a separate labelled band.
-- **OD-4 Unconfirmed estimates.** No field exists. Recommended: do not parse prose; make DG-K5 depend on a provenance value on the edge, decided alongside the other edge changes.
-- **OD-6 Weights from the canvas.** Should a hand-drawn arrow or an edited weight label be allowed to write a `contributes_to` edge? Recommended: yes, through dry-run and confirmation only, because weights are the user's to set and the canvas is where they will be looking. This reverses DG-P5 for this one field.
-- **OD-7 Other edge types.** Recommended: `contributes_to` only by default; `depends_on` as an option, drawn thin and grey with no weight label; `parent` and body links off.
-- **OD-8 Done work.** Recommended: shown, greyed (DG-K2), by default, because finished work that built a resource is part of how a future became reachable.
+Each is the drawing side of a decision the mem spec also holds open; the mem number is given so that one ruling settles both.
+
+- **OD-1 A target that feeds futures and is also linked from one (mem 3).** Recommended: draw it in the layer its edges give it (resource); the goal column holds only nodes with no onward edge, unless edges are added from futures to it.
+- **OD-2 Notes tagged into the selection with no contribution edges (mem 4).** Recommended: off the map by default, available as an option; when included, drawn in a separate labelled band.
+- **OD-3 Unconfirmed estimates (mem 8).** No field exists. Recommended: do not parse prose; make DG-K5 depend on a provenance value on the edge, decided alongside the other edge changes.
+- **OD-4 Weights from the canvas (mem 5).** Should a hand-drawn arrow or an edited weight label be allowed to write a `contributes_to` edge? Recommended: yes, through dry-run and confirmation only, because weights are the user's to set and the canvas is where they will be looking. This reverses DG-P5 for this one field.
+- **OD-5 Other edge types (mem 6).** Recommended: `contributes_to` only by default; `depends_on` as an option, drawn thin and grey with no weight label; `parent` and body links off.
+- **OD-6 Done work (mem 7).** Recommended: shown, greyed (DG-K2), by default, because finished work that built a resource is part of how a future became reachable.
