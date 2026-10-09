@@ -57,7 +57,7 @@ For a task marked `done`:
 
 ## Set the Status on Each Task
 
-Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
+Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass:
 
 | Task is in    | Evidence on the record                                                               | Set it to                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -73,7 +73,7 @@ Every task this sweep reads leaves it in the one status that matches its evidenc
 
 - **`review` means waiting on an escalated decision.** Leave a task there only when the body names a decision that must be escalated under Settle Decisions Before Escalation. Agent work never waits in `review`.
 - **`queued` stays an escalated gate.** Set `queued` only to restore a promotion already made during review: a stuck `in_progress` task, or a `review` task parked after a queued claim. Never promote `inbox` or `ready` work to `queued`.
-- **Use only the statuses in the table.** Never write `merge_ready` or any status outside the taxonomy.
+- **Use only the statuses in the table.** Never write `merge_ready` or any other status the table does not name.
 
 ## Settle Decisions Before Escalation
 
