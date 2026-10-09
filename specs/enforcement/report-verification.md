@@ -9,8 +9,8 @@ tags: [enforcement, framework-architecture, verification, premise-check, hooks]
 # Report Verification -- Premise-Check Protocol and Arrival Gates
 
 This specification defines the verification protocol by which an agent receiving an
-incoming report or claim ledger validates its inferential and empirical soundness
-before acting on it or relaying it to other agents or users.
+incoming report, claim ledger, or relayed direction validates its inferential and empirical soundness
+or logical derivation from cited authority before acting on it or relaying it to other agents or users.
 
 ## Governing Principles
 
@@ -54,22 +54,31 @@ The receiving agent evaluates the report against seven qualitative audit steps:
    verify whether competing hypotheses, alternative configurations, or bypass routes
    were evaluated (`->`).
 
+### Verifying Relayed Directions
+
+When an incoming message conveys a direction, instruction, or brief relayed from the user (carrying a citation and extract of the user's authorizing words, e.g. `(derived from: '...' [source:id])`), the receiver verifies that the direction can be logically derived from the cited original ask:
+
+1. **Verify authority extract:** Check that the cited user words authorize the direction.
+2. **Verify derivation:** If the direction adds detail, constraints, scope, or methods that the cited ask does not support, flag the unsupported portion (`RETURN` or `REVISE`, citing the gap).
+3. **Pass when derivable:** If the direction is logically derivable from the cited ask without unsupported additions, pass it (`ACCEPT` or `PASS`).
+
 ### Categorical Verdicts
 
 The receiver concludes the premise-check by recording a categorical verdict token:
 
 - **`ACCEPT`**: Every inferential step is valid, all premises are grounded in primary
   empirical observations (`#observed`, `#attempted-and-failed`, `#exhaustively-searched`),
-  and no bridging warrants are missing.
+  and no bridging warrants are missing; or a relayed direction is logically derivable from
+  the cited original ask.
 - **`DOWNGRADE`**: The reasoning is logically valid, but the conclusion is capped by
   a weaker premise (`#inferred`, `#assumed`, `#reported-by-another`). The outcome
   may be relayed only with its basis qualification explicitly stated.
-- **`RETURN`**: A missing warrant, invalid inference step, scope mismatch, or
-  unevidenced negative claim was identified. The receiver sends the report back to
-  the author citing the specific statement numbers and the exact gap to resolve.
-  A report with a `RETURN` verdict is never relayed to the user.
+- **`RETURN`**: A missing warrant, invalid inference step, scope mismatch,
+  unevidenced negative claim, or unsupported addition in a relayed direction was identified.
+  The receiver sends the report or direction back to the author citing the specific statement
+  numbers or unsupported detail to resolve. A report with a `RETURN` verdict is never relayed to the user.
 - **`NO-CLAIM`**: The incoming message contains no substantive or load-bearing outcome
-  (e.g. an acknowledgement, informational query, or task assignment).
+  (e.g. an acknowledgement or informational query without directions).
 
 ## Arrival-Time Mechanics and Procedural Friction
 
