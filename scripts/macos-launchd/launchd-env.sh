@@ -35,6 +35,12 @@
 # --- AOPS URLs ---
 [ -n "$PKB_MCP_URL" ] && launchctl setenv PKB_MCP_URL "$PKB_MCP_URL"
 
+# --- Git configuration ---
+# Sourced from ~/.env as AOPS_GIT_CONFIG_GLOBAL. Forwarded to launchd without
+# GIT_CONFIG_* prefix so VS Code is not broken; the startup hook turns it into
+# GIT_CONFIG_GLOBAL session-scoped only.
+[ -n "$AOPS_GIT_CONFIG_GLOBAL" ] && launchctl setenv AOPS_GIT_CONFIG_GLOBAL "$AOPS_GIT_CONFIG_GLOBAL"
+
 # --- Bot PAT pass-through ---
 # AOPS_BOT_GH_TOKEN is expected in ~/.env.local (sourced by the plist before
 # this file). Each export is gated on a non-empty token; skip silently if absent.

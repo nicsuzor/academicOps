@@ -448,14 +448,14 @@ def _isolate_credentials(ctx: HookContext) -> bool:
         if val is not None:
             moved[var] = val
 
-    gitconfig_claude = Path.home() / ".gitconfig-claude"
+    aops_gitconfig = os.environ.get("AOPS_GIT_CONFIG_GLOBAL")
     added_git_isolation = False
     if (
         "GIT_CONFIG_GLOBAL" not in existing
         and "GIT_CONFIG_GLOBAL" not in moved
-        and gitconfig_claude.is_file()
+        and aops_gitconfig
     ):
-        existing["GIT_CONFIG_GLOBAL"] = str(gitconfig_claude)
+        existing["GIT_CONFIG_GLOBAL"] = str(Path(aops_gitconfig).expanduser())
         existing.setdefault("GIT_CONFIG_NOSYSTEM", "1")
         added_git_isolation = True
 
