@@ -26,6 +26,13 @@ Do not open sources, re-run work or authenticate a reporter's records to confirm
 | REVISE | The logic holds in part; name what is missing or does not follow.              |
 | FAIL   | The report does not answer the ask, or its conclusion does not follow from it. |
 
+## Proportionality
+
+Before a REVISE or FAIL sends a report back, weigh the gap against the ask:
+
+- An invalid claim is incidental when the assessment going up the chain does not rest on it and no durable record needs correcting because of it. Note it in the reason; do not send the report back for it.
+- A load-bearing gap that the ask's importance does not justify verifying passes with the limitation stated. Record PASS, state the limitation in the reason, and carry it with the claim up the chain: the conclusion, narrowed by that limitation, still answers the ask.
+
 ## Gate and Verdict Recording
 
 An incoming peer or worker report (via `<cross-session-message>`, `<teammate-message>`, or `<task-notification>`), or a subagent dispatch, arms the premise-check gate with that specific message or claim. The gate blocks all subagent dispatches, messages, and stop until a verdict is recorded.
@@ -41,10 +48,3 @@ From this repository's root, the path is `plugins/ida/skills/premise-check/scrip
 When the reason is long or quotes commands, write it to a file and pass `--reason-file <path>` (or `--reason-file -` to read stdin), so free text stays off the command line.
 
 A REVISE or FAIL goes back to its author. It does not reach the user hedged; it reaches them only once it passes.
-
-## Proportionality
-
-Before a REVISE or FAIL sends a report back, apply a proportionality test:
-
-- An invalid claim that is incidental (not needed for the assessment sent up the chain, and not correcting the durable record) is noted, not returned.
-- Even a load-bearing gap is passed up with a stated limitation (PASS with limitation) when the ask's importance does not justify a verification exercise.
