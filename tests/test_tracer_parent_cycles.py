@@ -410,6 +410,13 @@ def test_concurrent_agent_calls_in_one_response_emit_no_parent_cycle(tracer_env)
 
     assert len([sp for sp in exporter.spans if sp.name == "Agent"]) == 2
     _assert_no_span_is_its_own_ancestor(exporter.spans)
+    agent_spans_by_call_id = {
+        sp.attributes.get("tool.call_id"): f"{sp.context.span_id:016x}"
+        for sp in exporter.spans
+        if sp.name == "Agent" and sp.attributes and "tool.call_id" in sp.attributes
+    }
+    assert agent_spans_by_call_id.get("toolu_A") == cct._agent_span_id("toolu_A")
+    assert agent_spans_by_call_id.get("toolu_B") == cct._agent_span_id("toolu_B")
 
 
 def test_agent_nested_inside_an_inline_agent_emits_no_parent_cycle(tracer_env):
@@ -454,6 +461,13 @@ def test_agent_nested_inside_an_inline_agent_emits_no_parent_cycle(tracer_env):
 
     assert len([sp for sp in exporter.spans if sp.name == "Agent"]) == 2
     _assert_no_span_is_its_own_ancestor(exporter.spans)
+    agent_spans_by_call_id = {
+        sp.attributes.get("tool.call_id"): f"{sp.context.span_id:016x}"
+        for sp in exporter.spans
+        if sp.name == "Agent" and sp.attributes and "tool.call_id" in sp.attributes
+    }
+    assert agent_spans_by_call_id.get("toolu_outer") == cct._agent_span_id("toolu_outer")
+    assert agent_spans_by_call_id.get("toolu_inner") == cct._agent_span_id("toolu_inner")
 
 
 def test_out_of_process_subagent_linked_to_its_agent_span_emits_no_parent_cycle(
@@ -538,3 +552,26 @@ def test_out_of_process_subagent_linked_to_its_agent_span_emits_no_parent_cycle(
 
     assert len([sp for sp in exporter.spans if sp.name == "claude-code-turn"]) == 2
     _assert_no_span_is_its_own_ancestor(exporter.spans)
+
+
+def test_find_tool_use_id_matches_tool_input_across_concurrent_and_nested_calls(tracer_env):
+    """_find_tool_use_id distinguishes tool calls in the transcript by tool_input."""
+    transcript = tracer_env / "find_session.jsonl"
+    a, b = _agent_input("sweep A"), _agent_input("sweep B")
+    entries = [
+        _assistant("msg_1", "2026-10-08T00:00:03.000Z", _tool_use("toolu_A", "Agent", a)),
+        _assistant(
+            "msg_1", "2026-10-08T00:00:04.000Z", _tool_use("toolu_B", "Agent", b), "tool_use"
+        ),
+    ]
+    _write(transcript, entries)
+    # Concurrent calls: each input resolves to its own tool_use_id, not the last one
+    assert cct._find_tool_use_id(str(transcript), "Agent", a) == "toolu_A"
+    assert cct._find_tool_use_id(str(transcript), "Agent", b) == "toolu_B"
+
+    # Nested/unseen call: an input not in the transcript returns None rather than stealing an unrelated call's id
+    inner = _agent_input("inner")
+    assert cct._find_tool_use_id(str(transcript), "Agent", inner) is None
+
+    # Empty/None tool_input falls back to the latest tool_use for that tool
+    assert cct._find_tool_use_id(str(transcript), "Agent", {}) == "toolu_B"
