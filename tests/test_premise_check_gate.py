@@ -18,6 +18,7 @@ Covers:
 from __future__ import annotations
 
 import importlib.util
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -506,6 +507,8 @@ def test_arm_handler_arms_on_peer_report(prompt):
     [
         '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">do the thing</channel>',
         "can you check the release?",
+        "what does <task-notification> mean?",
+        "check <cross-session-message from='twin'>",
         "",
     ],
 )
@@ -622,6 +625,10 @@ def test_stop_block_message_contains_three_elements():
     assert "--report" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
+    # The script path in the stop block message must exist on disk
+    cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("python3 ")][0]
+    script_path = Path(shlex.split(cmd_line)[1])
+    assert script_path.is_file(), f"script path does not exist: {script_path}"
 
 
 def test_format_verdict_command_resolves_runnable_script():
@@ -631,6 +638,16 @@ def test_format_verdict_command_resolves_runnable_script():
     assert "--verdict PASS" in cmd
     assert '--reason "<why>"' in cmd
     # The script path in the command must exist on disk
-    parts = cmd.split()
+    parts = shlex.split(cmd)
     script_path = Path(parts[1])
     assert script_path.is_file(), f"script path does not exist: {script_path}"
+
+
+def test_resolve_verdict_script_with_empty_or_relative_hooks_dir_resolves_absolute_existing_file():
+    script_default = pcg.resolve_verdict_script(Path())
+    assert script_default.is_absolute()
+    assert script_default.is_file()
+
+    script_none = pcg.resolve_verdict_script(None)
+    assert script_none.is_absolute()
+    assert script_none.is_file()

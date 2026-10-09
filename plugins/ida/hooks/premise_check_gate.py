@@ -147,12 +147,15 @@ def _prompt_text(ctx: HookContext) -> str:
 
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report, not the user's message."""
-    text = _prompt_text(ctx)
-    return any(env in text for env in _PEER_ENVELOPES)
+    text = _prompt_text(ctx).lstrip()
+    return text.startswith(_PEER_ENVELOPES)
 
 
 def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:
-    base = hooks_dir or Path(__file__).resolve().parent
+    if hooks_dir and hooks_dir.is_absolute():
+        base = hooks_dir
+    else:
+        base = Path(__file__).resolve().parent
     # 1. Skill script: <plugin-dir>/skills/premise-check/scripts/verdict.py
     skill_script = base.parent / "skills" / "premise-check" / "scripts" / "verdict.py"
     if skill_script.is_file():
@@ -170,8 +173,9 @@ def format_verdict_command(
     session_id: str = "",
 ) -> str:
     script_path = resolve_verdict_script(hooks_dir)
+    quoted_script = shlex.quote(str(script_path))
     quoted_claim = shlex.quote(claim_id)
-    cmd = f'python3 {script_path} --report {quoted_claim} --verdict PASS --reason "<why>"'
+    cmd = f'python3 {quoted_script} --report {quoted_claim} --verdict PASS --reason "<why>"'
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
     return cmd
