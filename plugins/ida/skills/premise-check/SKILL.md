@@ -41,3 +41,10 @@ From this repository's root, the path is `plugins/ida/skills/premise-check/scrip
 When the reason is long or quotes commands, write it to a file and pass `--reason-file <path>` (or `--reason-file -` to read stdin), so free text stays off the command line.
 
 A REVISE or FAIL goes back to its author. It does not reach the user hedged; it reaches them only once it passes.
+
+## Proportionality
+
+Before a REVISE or FAIL sends a report back, apply a proportionality test:
+
+- An invalid claim that is incidental (not needed for the assessment sent up the chain, and not correcting the durable record) is noted, not returned.
+- Even a load-bearing gap is passed up with a stated limitation (PASS with limitation) when the ask's importance does not justify a verification exercise.
