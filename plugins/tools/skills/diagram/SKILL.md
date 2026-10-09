@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, faithful SVG/PNG rendering, visual QA, fractional index validation, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
+description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, SVG/PNG rendering, visual QA, fractional index validation, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
 ---
 
 # Diagram
@@ -86,7 +86,7 @@ pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-backgroun
   1. `startBinding` and `endBinding` must be valid objects with `elementId` matching existing elements, numeric `focus` (between -1.0 and 1.0), numeric `gap`, and optional `fixedPoint` (`[x_ratio, y_ratio]` normalized between 0.0 and 1.0).
   2. Reciprocal `boundElements`: The source and target elements must each list `{ "id": arrow_id, "type": "arrow" }` in `boundElements`.
   3. Points envelope: `points` array must start at `[0, 0]`, with `width` and `height` matching the points' bounding box envelope.
-  4. Editability cause: Canvases whose arrows pass static checks and static rendering can still fail interactive editing in Excalidraw (edges cannot be selected or dragged, or detach on movement; diagnosed on `research_supervision_3142606b` / `aops_ae441dcc`). The cause is malformed bindings, out-of-envelope points, or missing `boundElements` backreferences that Excalidraw's interactive editor engine rejects.
+  4. Editability cause: Canvases whose arrows pass static checks and static rendering can still fail interactive editing in Excalidraw (edges cannot be selected or dragged, or detach on movement). The cause is malformed bindings, out-of-envelope points, or missing `boundElements` backreferences that Excalidraw's interactive editor engine rejects.
 - **`add-node` and `connect` invalid index key defect**: `pkb-excalidraw add-node` and `connect` mint fractional `index` keys by appending digit pairs (`00`, `01`) to the previous key (`a000`, `a001`, `a00100`, `a00101`, `a0010100` ...), leaving trailing zeros in the fractional part. While `pkb-excalidraw check` passes these files (verifying only monotonic ordering), `fractional-indexing` (`validateOrderKey`/`midpoint`) strictly rejects keys with trailing zeros in their fractional part (`invalid order key`). Excalidraw 0.18.1 validates keys whenever minting a key next to an existing element (e.g. on arrow labelling, duplicate, or z-order adjustments), throwing `invalid order key` and causing operations to silently fail, leaving edges uneditable.
 - **Structural fractional index check**: Validate every element's `index` key against Excalidraw's `fractional-indexing` schema:
   1. Base-62 character set: Keys must consist only of base-62 digits (`0-9`, `A-Z`, `a-z`).
@@ -107,7 +107,7 @@ pkb-excalidraw FILE screenshot --out <path>.svg --format svg
 pkb-excalidraw FILE screenshot --out <path>.png --format png
 ```
 
-- **Faithful render path**: `pkb-excalidraw FILE screenshot` renders the canvas in its real font (Virgil), wrapping, and bindings.
+- **What the render shows**: `screenshot` draws the canvas's stored geometry: shape outlines, arrow points, and bound text as its stored lines. It names Virgil without embedding it and draws fills flat, so text in the image uses Virgil only where Virgil is installed. Judge arrow placement, overlaps, and crossings from the image directly; treat a label that sits close to its container edge as a possible overflow in Excalidraw.
 - **CLI check blind spots**: `pkb-excalidraw check`, `overlap`, and `arrows-check` cannot catch arrows ending inside boxes. `check` tests structural references and half-bound arrows, `overlap` tests only shape AABBs, and `arrows-check` only checks whether arrow polylines intersect unrelated intermediate boxes (ignoring endpoints at connected shapes). All three checks will pass a canvas whose every arrow ends inside its box. Rendering via `pkb-excalidraw FILE screenshot` and visually inspecting the resulting image is mandatory to verify that arrowheads terminate outside shapes.
 - **Missing tool or converter**:
   - If `pkb-excalidraw` is missing or fails to render, halt immediately and report the failure verbatim. Never substitute an ad-hoc or homemade renderer (such as manual SVG construction or custom canvas scripts); alternative renderers produce incorrect typography, drop bindings, and conceal layout defects.
