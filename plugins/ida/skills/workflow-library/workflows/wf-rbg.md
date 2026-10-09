@@ -37,8 +37,8 @@ The invoking workflow provides:
 2. **Judge proportion first** -- state the smallest mechanism meeting the request across its class before reading the artifact; reject excess machinery under `proportionate`.
 3. **Evaluate against rules** -- test the artifact against governing axioms (categorical imperative, closure, data boundaries, fail-fast, full observability, honest epistemics, non-delegable qualitative judgment, single source of truth).
 4. **Determine required changes vs suggested improvements**:
-   - A *Required Change* names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
-   - Anything else is a *Suggested Improvement*. Where the work exceeds the request, require less, not more.
+   - A _Required Change_ names a rule violation, its likelihood and consequence, and costs less than the failure it prevents.
+   - Anything else is a _Suggested Improvement_. Where the work exceeds the request, require less, not more.
 5. **Issue verdict**: exactly one of `APPROVE`, `SUGGEST`, `REVISE`, or `REJECT`.
 
 ## Verdict contract
