@@ -46,7 +46,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
-PKB_HOOKS = REPO_ROOT / "plugins" / "pkb" / "hooks"
+PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
 # --------------------------------------------------------------------------
 # Fixed, versioned prompt set. Both families are turns the user plausibly types;
