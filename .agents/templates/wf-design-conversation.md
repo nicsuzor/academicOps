@@ -161,12 +161,16 @@ test below.
   make it worse.
 - What a clean `check` does **not** tell you: it fails only on **content**
   divergence between `text` and `originalText`, not on line-wrap divergence,
-  so wrap-only mismatches pass.
+  so wrap-only mismatches pass. Its other blind spots, and the arrow-binding and
+  `index`-key checks that cover them, are in the `diagram` skill.
 - Git history is the only versioning: never keep a backup copy or a versioned
   filename.
 
 **Before calling a pass done**
 
+- Render the finished canvas and pass the visual QA and structural checks in
+  the `diagram` skill's "Rendering and visual QA" and "CLI tools and
+  invariants" sections.
 - Re-verify "solid" (built/wired) claims against the code as actually
   shipped, not the code as understood when the element was drawn — solid can
   go stale between draw and merge; a real instance surfaced only at
