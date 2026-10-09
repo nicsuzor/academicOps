@@ -78,10 +78,7 @@ pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-backgroun
 - **Invariants**: Text binds to container (`containerId`/`boundElements`); arrows bind both ends (`startBinding`/`endBinding`).
 - Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
 - Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
-- **`connect` limitation and boundary-trim step**: `pkb-excalidraw connect` writes centre-to-centre arrow points in both straight and `--curved` modes; boundary attachment described in `--help` is not yet implemented. Connectors cut through shape interiors and arrowheads terminate inside destination boxes. Until the CLI implements boundary clipping natively, apply a boundary-trim step:
-  1. Calculate the center-to-center vector $(\Delta x, \Delta y)$ between source $(cx_1, cy_1)$ and target $(cx_2, cy_2)$.
-  2. Compute ray intersections with the source perimeter $(sx, sy)$ and target perimeter $(ex, ey)$ (for rectangles of half-extents $hw, hh$, offset along the vector by $t = \min(hw/|\Delta x|, hh/|\Delta y|)$, plus gap).
-  3. Update the arrow via `pkb-excalidraw FILE update <id> --set '{"x": sx, "y": sy, "points": [[0,0],[ex-sx,ey-sy]], "width": |ex-sx|, "height": |ey-sy|}'` (or via `batch`) so arrowheads sit cleanly outside shape borders.
+- Requires `pkb-excalidraw` from `mem >= v0.3.101` (carrying `mem#691`) or newer, which natively trims `connect` arrow endpoints to shape outlines and mints valid fractional index keys.
 - **Structural arrow binding check and edge editability**: Inspect every arrow against Excalidraw's element schema so edges remain interactively selectable and draggable in the Excalidraw editor:
   1. `startBinding` and `endBinding` must be valid objects with `elementId` matching existing elements, numeric `focus` (between -1.0 and 1.0), numeric `gap`, and optional `fixedPoint` (`[x_ratio, y_ratio]` normalized between 0.0 and 1.0).
   2. Reciprocal `boundElements`: The source and target elements must each list `{ "id": arrow_id, "type": "arrow" }` in `boundElements`.
@@ -92,10 +89,6 @@ pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-backgroun
   1. Base-62 character set: Keys must consist only of base-62 digits (`0-9`, `A-Z`, `a-z`).
   2. Integer head and length: For keys starting with lowercase `a-z`, integer part length is `head.charCodeAt(0) - 97 + 2` (e.g. `'a'` is 2 characters: `a0`--`az`; `'b'` is 3 characters: `b00`--`bzz`). For uppercase `A-Z`, integer part length is `90 - head.charCodeAt(0) + 2` (`'Z'` is 2 characters, `'A'` is 27 characters).
   3. Reject trailing zeros in fractional part: The fractional part comprises all characters after the integer part (`index.slice(integerLength)`). If the fractional part is non-empty, its final character must NOT be `'0'`. Reject any key where `fractionalPart.endsWith('0')` (e.g. `a000`, `a00100`, `a0010100`).
-- **Reindex repair step**: Until the CLI minting defect is fixed, repair any canvas modified with `add-node`/`connect`:
-  1. Sort existing elements by current index order.
-  2. Assign each element $k \in [0, N-1]$ a canonical sequential integer key: for $k < 62$, `a0`, `a1`, ... `az`; for $k \ge 62$, `b00`, `b01`, ... (or generate via `generateNKeysBetween(null, null, N)`). These pure integer keys have no fractional part and zero trailing zeros.
-  3. Update elements via `pkb-excalidraw FILE update <id> --set '{"index": "<new_key>"}'` (or write the updated elements directly into the canvas JSON), then verify with `pkb-excalidraw FILE check`.
 
 ### Rendering and visual QA
 
