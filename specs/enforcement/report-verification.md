@@ -9,110 +9,116 @@ tags: [enforcement, framework-architecture, verification, premise-check, hooks]
 # Report Verification -- Premise-Check Protocol and Arrival Gates
 
 This specification defines the verification protocol by which an agent receiving an
-incoming report or claim ledger validates its inferential and empirical soundness
-before acting on it or relaying it to other agents or users.
+incoming report judges its logic before acting on it or relaying it to other agents
+or users, and the hook mechanics that hold the receiver to it.
+
+The operative instructions are the `premise-check` skill
+(`plugins/ida/skills/premise-check/SKILL.md`). The mechanics are
+`plugins/ida/hooks/premise_check_gate.py` (arming and the gate) and
+`plugins/ida/hooks/premise_check_verdict.py` (verdict recording).
 
 ## Governing Principles
 
 1. **Verification is qualitative judgment:** No mechanical parser or regex filter
-   can determine whether an argument holds or whether primary evidence proves what
-   it claims. Verification is strictly an agentic qualitative assessment.
-2. **Context protection:** A receiving agent (such as Ida Prime or a worker
-   supervisor) evaluates the inferential spine of a report without polluting its
-   own context by re-running tasks or reading entire source trees. When primary
-   citations need spot-checking, the receiver dispatches targeted probes.
+   can determine whether an argument holds. Verification is strictly an agentic
+   qualitative assessment.
+2. **Form, not facts:** The receiver checks the quality of the report's logic
+   against the original ask. It does not open sources, re-run work, or authenticate
+   the reporter's records to confirm the facts, and it adds no requirements the
+   original ask did not set. Rigour is matched to the output's purpose.
 3. **Delivery channels guide and never decide:** Hooks provide timely advisory
-   reminders (JIT injection) and procedural friction (block-once gates). They inspect
-   session metadata and presence of recorded verdicts, never report text or substance.
+   reminders (JIT injection) and procedural friction (the premise-check gate). They
+   inspect session metadata and whether a verdict has been recorded, never report
+   text or substance.
 
 ## The Premise-Check Procedure
 
-The receiving agent evaluates the report against seven qualitative audit steps:
+The receiving agent asks three questions of the report:
 
-1. **Find the spine:** Trace backward from the terminal outcome statement
-   (`VERDICT`, `STATUS`, `Outcome`) and isolate only the claims and relations it
-   transitively relies upon. Narrative context outside the spine is disregarded.
-2. **Check inferential steps:** For every support relation (`+>`) or derivation,
-   verify that the conclusion follows strictly from the stated premises without
-   unstated bridging assumptions. If a domain rule or invariant is required to
-   bridge the gap, that rule must be explicitly formulated as a warrant.
-3. **Check leaf premises:** Verify that every leaf premise carries an explicit basis
-   tag from the vocabulary in [evidence-contract.md](evidence-contract.md) and
-   a pointer the receiver can open (identifier or pinpoint, per that spec's ledger rules).
-4. **Enforce negative and capability claim gates:** Negative assertions ("does not
-   exist", "cannot run", "failed") must carry `#attempted-and-failed` with verbatim
-   error output, or `#exhaustively-searched` with explicit query and scope. A tag of
-   `#not-observed` cannot ground a conclusion of inability or non-existence.
-5. **Check scope:** Confirm that the empirical scope examined in the premises matches
-   the domain asserted in the conclusion. Evidence from a single directory or test
-   file does not warrant a repository-wide or environment-wide conclusion.
-6. **Cap conclusion status (status survival):** The conclusion's epistemic status is
-   bounded by the weakest basis among its transitive leaves. Any leaf tagged
-   `#inferred`, `#assumed`, or `#reported-by-another` caps the entire outcome at
-   that qualification level.
-7. **Evaluate defeaters and alternatives:** For negative, blocked, or failure outcomes,
-   verify whether competing hypotheses, alternative configurations, or bypass routes
-   were evaluated (`->`).
+1. **Can the evidence support the claims?** Each load-bearing claim names checkable
+   evidence (a PR, commit, node id, `file:line`, a quoted output) that, if it is what
+   the report says, would show the claim. The reporter's statement of what it did is
+   evidence of the work; a pointer is evidence of where it was saved.
+2. **Do the claims lead to the conclusion?** The steps are valid: no unstated
+   premise, no inference passed off as observation, no conclusion wider than the
+   evidence.
+3. **Does the conclusion fully answer the original ask?** Every part of the ask is
+   addressed, in the ask's own terms.
+
+The check runs when a peer or worker report arrives, and before any claim -- the
+receiver's own included -- goes up the chain. The user's own messages are asks, not
+reports, and are never checked.
 
 ### Categorical Verdicts
 
-The receiver concludes the premise-check by recording a categorical verdict token:
+The receiver concludes the premise-check by recording one verdict token
+(`VERDICTS` in `premise_check_verdict.py`) with a free-text reason:
 
-- **`ACCEPT`**: Every inferential step is valid, all premises are grounded in primary
-  empirical observations (`#observed`, `#attempted-and-failed`, `#exhaustively-searched`),
-  and no bridging warrants are missing.
-- **`DOWNGRADE`**: The reasoning is logically valid, but the conclusion is capped by
-  a weaker premise (`#inferred`, `#assumed`, `#reported-by-another`). The outcome
-  may be relayed only with its basis qualification explicitly stated.
-- **`RETURN`**: A missing warrant, invalid inference step, scope mismatch, or
-  unevidenced negative claim was identified. The receiver sends the report back to
-  the author citing the specific statement numbers and the exact gap to resolve.
-  A report with a `RETURN` verdict is never relayed to the user.
-- **`NO-CLAIM`**: The incoming message contains no substantive or load-bearing outcome
-  (e.g. an acknowledgement, informational query, or task assignment).
+- **`PASS`**: All three questions hold.
+- **`REVISE`**: The logic holds in part; the reason names what is missing or does
+  not follow.
+- **`FAIL`**: The report does not answer the ask, or its conclusion does not follow
+  from it.
+
+A `REVISE` or `FAIL` goes back to its author. It does not reach the user hedged; it
+reaches the user only once it passes.
 
 ## Arrival-Time Mechanics and Procedural Friction
 
-To prevent unverified reports from passing unnoticed across boundaries, runtime hooks
-provide timely reminders and non-content-sniffing friction:
+The gate applies only to sessions whose agent type is ida or sara (`ida:ida`,
+`ida`, `ida:sara`, `sara`). Every other agent is unaffected.
 
-1. **Advisory JIT Reminders:**
-   - On foreground subagent completion (`PostToolUse` on `Agent` with `completed` status),
-     an advisory reminder instructs the supervisor to premise-check the returned spine.
-   - On peer message or background completion arrival (`UserPromptSubmit` carrying
-     a peer message envelope, such as `<cross-session-message`, `<teammate-message`, or
-     `<task-notification`), an advisory reminder (`"## A peer report arrived"`) instructs
-     the receiver to verify the incoming spine before acting on or relaying it.
-     User prompts (both direct console inputs and `<channel...>` messages from Telegram or Discord)
-     never trigger hearsay reminders or gate arming.
-2. **Block-Once Procedural Friction Gate:**
-   - On session exit (`Stop`) and external user communications (`PreToolUse` on channel
-     reply tools such as `telegram_reply` or `ask_question`), the harness inspects
-     local session state for unverified arrivals lacking a recorded verdict.
-   - On `UserPromptSubmit`, `premise_check_arm` arms only when the prompt begins with a
-     peer envelope (`<cross-session-message`, `<teammate-message`, `<task-notification`).
-     User messages (console or channel envelopes) never arm it. Separately, a subagent
-     dispatch (`PostToolUse` / `PostToolBatch` on `Agent`, `Task`, or `invoke_subagent`)
-     arms it.
-   - If an unverified report exists, the harness pauses execution once (`honesty.md`
-     and `quiet.md`) and prompts the agent to record a verdict (`scripts/verdict.py`).
-   - On the immediate continuation turn, the block disarms (`stop_hook_active` or
-     channel gate state), preventing deadlock.
-   - This gate is strictly structural: it checks presence of a recorded verdict in
-     local session state and never inspects report text.
+1. **Advisory JIT reminder:** On `UserPromptSubmit`, when the prompt begins with a
+   peer envelope (`<cross-session-message`, `<teammate-message`, `<task-notification`),
+   `rule_against_hearsay` injects the hearsay reminder (`"## A peer report arrived"`)
+   for ida and sara, directing them to run `/premise-check` on it. User prompts --
+   typed console input and `<channel ...>` messages from Telegram or Discord -- never
+   trigger it.
+2. **Arming (`premise_check_arm`):**
+   - On `UserPromptSubmit`, a prompt beginning with a peer envelope arms the gate
+     with a claim id derived from the envelope (tag, sender, and the first 80
+     characters of the body) and injects the exact verdict command to run. User
+     messages never arm it.
+   - On `PostToolUse` and `PostToolBatch`, a call to a subagent-dispatch tool
+     (`Agent`, `Task`, `invoke_subagent`) arms the gate, with a claim id from the
+     call's description or prompt (first 80 characters) or its tool-use id.
+     `PostToolBatch` is registered for Claude Code only.
+3. **The gate (`premise_check_handler`):** While armed, the gate:
+   - refuses `PreToolUse` on `Agent`, `Task`, `invoke_subagent`, `SendMessage`,
+     `AskUserQuestion`, and `Dump`, on every attempt, until a verdict is recorded;
+   - blocks `Stop`, giving the session another turn. The dispatcher skips all
+     handlers on the re-fired stop (`stop_hook_active`), so a stop is withheld once
+     per stop chain.
+
+   Channel reply tools (such as `telegram_reply`) are not on the refused list. The
+   refusal and block messages name the claim that armed the gate and give the
+   runnable verdict command.
+4. **Disarming:** Recording a verdict disarms the gate. The agent runs
+   `scripts/verdict.py` in the skill directory (a wrapper around
+   `premise_check_verdict.py`) with `--report <claim> --verdict PASS|REVISE|FAIL` and
+   `--reason`, or `--reason-file <path>` (`-` for stdin) to keep free text off the
+   command line. The session id defaults to `$AOPS_SESSION_ID`, which the
+   `SessionStart` hook exports to `CLAUDE_ENV_FILE`; otherwise `--session` is
+   required. Gate state is a per-session JSON file under the system temp directory
+   (`aops_premise_check/`, overridable with `AOPS_PREMISE_CHECK_DIR`).
+5. **Modes and override:** `PREMISE_CHECK_GATE_MODE` is `block` by default; `warn`
+   injects the gate message instead of refusing or blocking, and `off` disables the
+   gate. A truthy `PREMISE_CHECK_OVERRIDE`, `PREMISE_CHECK_GATE_OVERRIDE`,
+   `AOP_FORCE`, or `AOP_OVERRIDE` also disables it.
+
+The gate is strictly structural: it checks whether a verdict is recorded in local
+session state and never inspects report text.
 
 ## Observability and Telemetry
 
-Verification events are recorded via structured OpenTelemetry spans to measure
-verification coverage and diagnose systemic defect patterns:
+Recording a verdict emits one OpenTelemetry TOOL span (`tool.name`
+`premise_check_verdict`) through the `claude_code_tracer` export pipeline, parented
+to the session's current trace when one exists. It carries:
 
-- **`premise_check.arrival` (Arrival Span):** Emitted upon report arrival. Provides
-  the denominator for session verification coverage.
-- **`premise_check.verdict` (Verdict Span):** Emitted when a verdict is recorded via
-  `scripts/verdict.py`. Records:
-  - `report.sender`: Source agent identifier.
-  - `report.channel`: Subagent, peer, or background completion.
-  - `outcome`: `ACCEPT`, `DOWNGRADE`, `RETURN`, or `NO-CLAIM`.
-  - `cap`: Weakest leaf basis on the spine.
-  - `defect.kind`: Classification of flaws (`missing-warrant`, `invalid-step`,
-    `scope-mismatch`, `unbased-negative`, `missing-alternative`).
+- `premise_check.claim_id`: the claim the verdict is for.
+- `premise_check.verdict`: `PASS`, `REVISE`, or `FAIL`.
+- `premise_check.reason`: the reason, truncated.
+
+Span emission is best-effort: when tracing is unconfigured or the export is not
+acknowledged, the verdict is still recorded and the gate disarmed, and the script
+says so on stderr. No span is emitted on arrival or arming.

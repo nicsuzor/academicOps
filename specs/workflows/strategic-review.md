@@ -50,7 +50,7 @@ The workflow is implemented operationally via `plugins/aops/skills/strategic-rev
 
 ### 1. The Strategic Fit Check
 
-Before inspecting code details or prose phrasing, `pauli` runs the Strategic Fit Check defined in its own agent instructions (`plugins/pkb/agents/pauli.md`, Reviewer Mode) and returns a `FIT`/`MISFIT` verdict per `plugins/aops/skills/strategic-review/SKILL.md`.
+Before inspecting code details or prose phrasing, `pauli` (`plugins/ida/agents/pauli.md`) runs the Strategic Fit Check defined in step 2 of `plugins/ida/skills/strategic-review/SKILL.md` and returns a `FIT`/`MISFIT` verdict.
 
 ### 2. Specialized Reviewer Roles
 

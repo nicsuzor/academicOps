@@ -60,7 +60,7 @@ Template search path and tier precedence are out of scope: the `workflow-library
 Modeled on `[[wf-self-test]]` and `[[wf-agentic-e2e-certification]]` ("when to include"):
 
 - **Triggered, not continuously automated.**
-- Run after any change to `plugins/aops/skills/brief/SKILL.md` or `plugins/pkb/agents/pauli.md`.
+- Run after any change to `plugins/aops/skills/brief/SKILL.md` or `plugins/ida/agents/pauli.md`.
 - Run after any change to composed `wf-template` documents in the PKB template tier or `plugins/aops/workflows/*.md`.
 - Run as a periodic audit or quality certification before minor/major framework releases.
 
