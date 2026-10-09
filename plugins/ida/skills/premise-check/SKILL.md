@@ -26,11 +26,17 @@ Do not open sources, re-run work or authenticate a reporter's records to confirm
 | REVISE | The logic holds in part; name what is missing or does not follow.              |
 | FAIL   | The report does not answer the ask, or its conclusion does not follow from it. |
 
-Record it, with the reason in free text:
+## Gate and Verdict Recording
+
+An incoming peer or worker report (via `<cross-session-message>`, `<teammate-message>`, or `<task-notification>`), or a subagent dispatch, arms the premise-check gate with that specific message or claim. The gate blocks all subagent dispatches, messages, and stop until a verdict is recorded.
+
+Record the verdict using the exact runnable call given in the hook's prompt note or block message:
 
 ```bash
-uv run python3 scripts/verdict.py --report <report_id> --verdict PASS --reason "<why>"
+python3 <path/to/verdict.py> --report <report_id> --verdict PASS --reason "<why>"
 ```
+
+From this repository's root, the path is `plugins/ida/skills/premise-check/scripts/verdict.py`. From the skill directory, use `scripts/verdict.py`. If `$AOPS_SESSION_ID` is unset, pass `--session <session_id>`.
 
 When the reason is long or quotes commands, write it to a file and pass `--reason-file <path>` (or `--reason-file -` to read stdin), so free text stays off the command line.
 

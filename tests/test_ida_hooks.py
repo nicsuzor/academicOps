@@ -402,3 +402,15 @@ def test_merge_combines_multiple_refusals():
     assert merged.kind is Kind.REFUSE
     assert "first reason\n\nsecond reason" == merged.inject_text
     assert "user 1\n\nuser 2" == merged.user_text
+
+
+def test_merge_combines_multiple_advisories():
+    from dispatch import Kind, Result, _merge
+
+    r1 = Result("first note", "user 1", Kind.ADVISE)
+    r2 = Result("second note", "user 2", Kind.ADVISE)
+    merged = _merge([r1, r2])
+    assert merged is not None
+    assert merged.kind is Kind.ADVISE
+    assert "first note\n\nsecond note" == merged.inject_text
+    assert "user 1\n\nuser 2" == merged.user_text
