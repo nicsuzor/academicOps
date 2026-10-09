@@ -18,6 +18,7 @@ Covers:
 from __future__ import annotations
 
 import importlib.util
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -506,6 +507,8 @@ def test_arm_handler_arms_on_peer_report(prompt):
     [
         '<channel source="plugin:telegram:telegram" chat_id="1" user="nic">do the thing</channel>',
         "can you check the release?",
+        "what does <task-notification> mean?",
+        "check <cross-session-message from='twin'>",
         "",
     ],
 )
@@ -531,3 +534,120 @@ def test_sara_is_gated_like_ida(agent_type):
     assert pcg.is_armed(session_id) is True
     res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id, agent_type=agent_type))
     assert res is not None and res.kind == dispatch.Kind.REFUSE
+
+
+# ---------------------------------------------------------------------------
+# Prompt note and block message: three required elements
+# 1. which incoming message armed the gate
+# 2. that the gate blocks until a verdict is recorded
+# 3. the exact runnable call that records one
+# ---------------------------------------------------------------------------
+
+
+def test_derive_claim_id_extracts_incoming_peer_message_details():
+    ctx1 = _prompt_ctx(
+        "s1", '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>'
+    )
+    claim1 = pcg._derive_claim_id(ctx1)
+    assert "twin-a" in claim1
+    assert "PR #12 is merged." in claim1
+
+    ctx2 = _prompt_ctx("s2", '<teammate-message teammate_id="worker">done</teammate-message>')
+    claim2 = pcg._derive_claim_id(ctx2)
+    assert "worker" in claim2
+    assert "done" in claim2
+
+    ctx3 = _prompt_ctx("s3", "\n  <task-notification>\nworker finished\n</task-notification>")
+    claim3 = pcg._derive_claim_id(ctx3)
+    assert "worker finished" in claim3
+
+
+def test_arm_handler_returns_prompt_note_with_three_elements():
+    session_id = "sess-note-1"
+    prompt = '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>'
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is not None
+    assert res.kind == dispatch.Kind.ADVISE
+    # 1. which incoming message armed the gate
+    assert "twin-a" in res.inject_text
+    assert "PR #12 is merged." in res.inject_text
+    # 2. that the gate blocks until a verdict is recorded
+    assert "blocks until a verdict is recorded" in res.inject_text
+    # 3. the exact runnable call that records one
+    assert "python3" in res.inject_text
+    assert "verdict.py" in res.inject_text
+    assert "--report" in res.inject_text
+    assert "--verdict PASS" in res.inject_text
+    assert '--reason "<why>"' in res.inject_text
+
+
+def test_handler_block_message_contains_three_elements():
+    session_id = "sess-block-elements"
+    claim = "cross-session-message from twin-a: PR #12 is merged."
+    pcg.arm(session_id, claim_id=claim)
+
+    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert res is not None
+    assert res.kind == dispatch.Kind.REFUSE
+    # 1. which incoming message armed the gate
+    assert claim in res.inject_text
+    # 2. that the gate blocks until a verdict is recorded
+    assert "blocks until a verdict is recorded" in res.inject_text
+    # 3. the exact runnable call that records one
+    assert "python3" in res.inject_text
+    assert "verdict.py" in res.inject_text
+    assert "--report" in res.inject_text
+    assert "--verdict PASS" in res.inject_text
+    assert '--reason "<why>"' in res.inject_text
+
+
+def test_stop_block_message_contains_three_elements():
+    session_id = "sess-stop-elements"
+    claim = "teammate-message from worker: done"
+    pcg.arm(session_id, claim_id=claim)
+
+    stop_ctx = dispatch.HookContext(
+        client="claude",
+        event="Stop",
+        session_id=session_id,
+        agent_type="ida:ida",
+    )
+    res = pcg.premise_check_handler(stop_ctx)
+    assert res is not None
+    assert res.kind == dispatch.Kind.BLOCK
+    # 1. which incoming message armed the gate
+    assert claim in res.inject_text
+    # 2. that the gate blocks until a verdict is recorded
+    assert "blocks until a verdict is recorded" in res.inject_text
+    # 3. the exact runnable call that records one
+    assert "python3" in res.inject_text
+    assert "verdict.py" in res.inject_text
+    assert "--report" in res.inject_text
+    assert "--verdict PASS" in res.inject_text
+    assert '--reason "<why>"' in res.inject_text
+    # The script path in the stop block message must exist on disk
+    cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("python3 ")][0]
+    script_path = Path(shlex.split(cmd_line)[1])
+    assert script_path.is_file(), f"script path does not exist: {script_path}"
+
+
+def test_format_verdict_command_resolves_runnable_script():
+    cmd = pcg.format_verdict_command(claim_id="my claim with spaces")
+    assert cmd.startswith("python3 ")
+    assert "--report 'my claim with spaces'" in cmd or '--report "my claim with spaces"' in cmd
+    assert "--verdict PASS" in cmd
+    assert '--reason "<why>"' in cmd
+    # The script path in the command must exist on disk
+    parts = shlex.split(cmd)
+    script_path = Path(parts[1])
+    assert script_path.is_file(), f"script path does not exist: {script_path}"
+
+
+def test_resolve_verdict_script_with_empty_or_relative_hooks_dir_resolves_absolute_existing_file():
+    script_default = pcg.resolve_verdict_script(Path())
+    assert script_default.is_absolute()
+    assert script_default.is_file()
+
+    script_none = pcg.resolve_verdict_script(None)
+    assert script_none.is_absolute()
+    assert script_none.is_file()

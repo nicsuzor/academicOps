@@ -262,7 +262,14 @@ def _merge(results: list[Result | None]) -> Result | None:
         user_texts = [b.user_text for b in blocks if b.user_text]
         merged_user = "\n\n".join(user_texts) if user_texts else None
         return Result(merged_inject, merged_user, Kind.BLOCK)
-    return present[0] if present else None
+    if present:
+        if len(present) == 1:
+            return present[0]
+        merged_inject = "\n\n".join(r.inject_text for r in present if r.inject_text)
+        user_texts = [r.user_text for r in present if r.user_text]
+        merged_user = "\n\n".join(user_texts) if user_texts else None
+        return Result(merged_inject, merged_user, Kind.ADVISE)
+    return None
 
 
 def _render_claude(result: Result, event: str) -> dict:
