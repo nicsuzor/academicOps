@@ -56,6 +56,31 @@ def test_session_start_keeps_existing_env_file_entries(tmp_path, monkeypatch):
     assert values["AOPS_SESSION_ID"] == SESSION
 
 
+def test_session_start_isolates_git_config_env_vars(tmp_path, monkeypatch):
+    env_file = tmp_path / "env.sh"
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/custom/gitconfig")
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    handlers.session_start(_ctx())
+    values = handlers._read_env_file(env_file)
+    assert values["GIT_CONFIG_GLOBAL"] == "/custom/gitconfig"
+    assert values["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert "GIT_CONFIG_GLOBAL" not in os.environ
+    assert "GIT_CONFIG_NOSYSTEM" not in os.environ
+
+
+def test_session_start_activates_gitconfig_claude_when_present(tmp_path, monkeypatch):
+    env_file = tmp_path / "env.sh"
+    gitconfig_claude = tmp_path / ".gitconfig-claude"
+    gitconfig_claude.write_text("# claude git config\n")
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    handlers.session_start(_ctx())
+    values = handlers._read_env_file(env_file)
+    assert values["GIT_CONFIG_GLOBAL"] == str(gitconfig_claude)
+    assert values["GIT_CONFIG_NOSYSTEM"] == "1"
+
+
 def test_each_session_writes_its_own_id(tmp_path, monkeypatch):
     """A nested session inheriting a parent's AOPS_SESSION_ID still writes its
     own: the premise-check gate keys its state by this session's id."""
