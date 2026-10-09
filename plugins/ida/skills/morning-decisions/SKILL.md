@@ -10,6 +10,7 @@ Walk the user through pending morning decisions — daily emails, tasks awaiting
 ## 1. Prepare Decision Cards
 
 Harvest candidate decisions that genuinely require the user's judgment:
+
 - **Daily email / inbox**: Unread messages requiring personal approval, response, or scheduling.
 - **Task graph / open asks**: Tasks in `review` or `partial` status waiting on a decision only the user can make.
 - **External reviews**: PR reviews or external requests blocking active work.
@@ -17,6 +18,7 @@ Harvest candidate decisions that genuinely require the user's judgment:
 Filter out noise: Items that can be resolved autonomously or are purely informational do not become decision cards.
 
 Every decision card must contain all four parts:
+
 1. **The Choice**: Clear, atomic statement of what is being decided.
 2. **The Facts with Pointers**: Verifiable facts bearing on the decision, citing exact identifiers (`email:<id>`, task ID, PR URL, `path:line`).
 3. **Recommendation and Why**: Concrete suggestion paired with functional rationale ("Recommend X because Y").
@@ -36,6 +38,7 @@ Hold the ordered list in memory and present exactly one card per turn.
 ## 3. Turn-by-Turn Hand-off and Advance
 
 On each answer from the user:
+
 1. **Hand off verbatim**: Pass the user's exact words and the decision card verbatim to the dispatcher or downstream execution tool (e.g., to record the decision, update/release the PKB task, send the email reply, or unblock workers).
 2. **Advance**: Immediately output the next card (`Decision N+1 of M`) with no intermediate chatter.
 3. **Wrap-up**: After the final card (`Decision M of M`), provide a concise one-line receipt summarizing the actions dispatched and accounting for any non-decision items reviewed.
