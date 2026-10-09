@@ -51,7 +51,8 @@ The long pass. It reads the whole active graph, so it runs as a scheduled run --
 
 ### Principal Closures vs. Worker Delegations
 
-Reconcile audits *agent and worker* completion claims. Closures made directly by the user/principal (e.g. cancelled or marked done on the dashboard, in UI, or via direct user directives) are self-authorizing and presumed intentional.
+Reconcile audits _agent and worker_ completion claims. Closures made directly by the user/principal (e.g. cancelled or marked done on the dashboard, in UI, or via direct user directives) are self-authorizing and presumed intentional.
+
 - **No completion receipts for user closures**: Reconcile must never demand worker completion receipts, release summaries, or audit notes for tasks closed directly by the user.
 - **Never flag user closures as defects or anomalies**: A user closure must never be flagged as "closed without an outcome", "dropped with no reason given", or an unverified anomaly, and must never be demoted or escalated to `review` or `inbox` unless affirmative evidence on the record proves an unintentional error.
 
