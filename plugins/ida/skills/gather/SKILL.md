@@ -67,8 +67,6 @@ Every claim in your report cites a node id or a named artifact. **If you cannot 
 do not write it** -- an uncitable assertion in this report is the exact failure this pass
 exists to prevent.
 
-End with the single smallest next action.
-
 ## Must not
 
 - Set task status. The dispatcher chooses `partial` / `review` / `queued`; workers mark tasks `done` after `/pull`; `/reconcile` verifies claimed evidence.
