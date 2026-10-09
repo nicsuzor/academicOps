@@ -45,7 +45,7 @@ the account of the work holds together.
 
 | Verdict        | Means                                                    | Goes to the user?                              |
 | -------------- | -------------------------------------------------------- | ---------------------------------------------- |
-| `needs-user`   | A real question, evidence sound, only they can answer it | Yes -- with a recommendation                   |
+| `needs-user`   | A real question, evidence sound, only they can answer it | Yes                                            |
 | `insufficient` | The account does not support its claim                   | No -- back to dispatch, naming what is missing |
 | `moot`         | Events settled it; cite what settled it                  | No -- note it in the tally                     |
 | `noise`        | Mechanically waiting, nothing to decide                  | No -- tally only                               |
@@ -56,8 +56,8 @@ the work and you cannot.
 
 ### 4. Report
 
-Lead with the decisions. For each `needs-user` item: what is being asked, what you would
-do and why, and the cited evidence. One short paragraph each, ADHD-readable, scannable,
+Lead with the decisions. For each `needs-user` item: what is being asked, the real
+options and what each costs, and the cited evidence. One short paragraph each, ADHD-readable, scannable,
 no preamble.
 
 Then one line accounting for everything else -- how many `insufficient`, `moot`, `noise`,
