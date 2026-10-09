@@ -47,11 +47,11 @@ Then assemble the steps:
 ```markdown
 ## Goal
 
-[ Concise description of the purpose of the task, describing the required end state, naming the repository or project and the objective. ]
+[ Concise description of the purpose of the task, describing the required end state, naming the repository or project and the objective. Recompose the ask into a clear logical structure; never quote the user's words verbatim. ]
 
 ## Context
 
-[ only include decisions and facts the worker cannot find (omit if none) ]
+[ Decisions and facts the worker cannot find (omit if none). Cite message ids as pointers; never record or quote the user's words verbatim. The tracing hook preserves raw prompts. ]
 
 ## Acceptance
 
@@ -84,6 +84,7 @@ Where the project finish template calls for QA review:
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
+- Never quote or record the user's words verbatim in Goal, Context, or instructions. Make sense of asks in context, link them to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.

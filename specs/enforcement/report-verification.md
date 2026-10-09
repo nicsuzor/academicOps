@@ -56,9 +56,9 @@ The receiving agent evaluates the report against seven qualitative audit steps:
 
 ### Verifying Relayed Directions
 
-When an incoming message conveys a direction, instruction, or brief relayed from the user (carrying a citation and extract of the user's authorizing words, e.g. `(derived from: '...' [source:id])`), the receiver verifies that the direction can be logically derived from the cited original ask:
+When an incoming message conveys a direction, instruction, or brief relayed from the user (carrying a citation pointing to the user's authorizing ask, e.g. `(derived from: ask summary [source:id])`), the receiver verifies that the direction can be logically derived from the cited original ask:
 
-1. **Verify authority extract:** Check that the cited user words authorize the direction.
+1. **Verify authority citation:** Check that the cited user ask authorizes the direction.
 2. **Verify derivation:** If the direction adds detail, constraints, scope, or methods that the cited ask does not support, flag the unsupported portion (`RETURN` or `REVISE`, citing the gap).
 3. **Pass when derivable:** If the direction is logically derivable from the cited ask without unsupported additions, pass it (`ACCEPT` or `PASS`).
 
