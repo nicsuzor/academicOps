@@ -161,13 +161,17 @@ test below.
   make it worse.
 - What a clean `check` does **not** tell you: it fails only on **content**
   divergence between `text` and `originalText`, not on line-wrap divergence,
-  so wrap-only mismatches pass.
+  so wrap-only mismatches pass. Nor can `check`, `overlap`, or `arrows-check` catch
+  arrows terminating inside boxes (endpoints at connected shapes are ignored).
+  Note that `pkb-excalidraw connect` writes centre-to-centre points until boundary
+  attachment is implemented in the CLI; apply a boundary-trim step to shape perimeters.
 - Git history is the only versioning: never keep a backup copy or a versioned
   filename.
 
 **Before calling a pass done**
 
-- Render the finished canvas through `pkb-excalidraw <file> screenshot [--out <path>] [--format svg|png]` and conduct a visual QA check on the rendered image covering label overflow, overlaps, crossing arrows, and at-a-glance legibility. If `pkb-excalidraw` is missing or fails to render, halt and report rather than substituting an ad-hoc renderer.
+- Render the finished canvas through `pkb-excalidraw <file> screenshot [--out <path>] [--format svg|png]` and conduct a visual QA check on the rendered image covering label overflow, overlaps, crossing arrows, arrowheads buried inside boxes, and at-a-glance legibility. If `pkb-excalidraw` is missing or fails to render, halt and report rather than substituting an ad-hoc renderer.
+- Check arrow bindings structurally against Excalidraw's element schema (valid `startBinding`/`endBinding`, reciprocal `boundElements` backreferences, and points envelope) so edges remain interactively editable.
 - Re-verify "solid" (built/wired) claims against the code as actually
   shipped, not the code as understood when the element was drawn — solid can
   go stale between draw and merge; a real instance surfaced only at

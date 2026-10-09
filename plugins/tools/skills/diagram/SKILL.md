@@ -78,6 +78,15 @@ pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-backgroun
 - **Invariants**: Text binds to container (`containerId`/`boundElements`); arrows bind both ends (`startBinding`/`endBinding`).
 - Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
 - Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
+- **`connect` limitation and boundary-trim step**: `pkb-excalidraw connect` writes centre-to-centre arrow points in both straight and `--curved` modes; boundary attachment described in `--help` is not yet implemented. Connectors cut through shape interiors and arrowheads terminate inside destination boxes. Until the CLI implements boundary clipping natively, apply a boundary-trim step:
+  1. Calculate the center-to-center vector $(\Delta x, \Delta y)$ between source $(cx_1, cy_1)$ and target $(cx_2, cy_2)$.
+  2. Compute ray intersections with the source perimeter $(sx, sy)$ and target perimeter $(ex, ey)$ (for rectangles of half-extents $hw, hh$, offset along the vector by $t = \min(hw/|\Delta x|, hh/|\Delta y|)$, plus gap).
+  3. Update the arrow via `pkb-excalidraw FILE update <id> --set '{"x": sx, "y": sy, "points": [[0,0],[ex-sx,ey-sy]], "width": |ex-sx|, "height": |ey-sy|}'` (or via `batch`) so arrowheads sit cleanly outside shape borders.
+- **Structural arrow binding check and edge editability**: Inspect every arrow against Excalidraw's element schema so edges remain interactively selectable and draggable in the Excalidraw editor:
+  1. `startBinding` and `endBinding` must be valid objects with `elementId` matching existing elements, numeric `focus` (between -1.0 and 1.0), numeric `gap`, and optional `fixedPoint` (`[x_ratio, y_ratio]` normalized between 0.0 and 1.0).
+  2. Reciprocal `boundElements`: The source and target elements must each list `{ "id": arrow_id, "type": "arrow" }` in `boundElements`.
+  3. Points envelope: `points` array must start at `[0, 0]`, with `width` and `height` matching the points' bounding box envelope.
+  4. Editability cause: Canvases whose arrows pass static checks and static rendering can still fail interactive editing in Excalidraw (edges cannot be selected or dragged, or detach on movement; diagnosed on `research_supervision_3142606b` / `aops_ae441dcc`). The cause is malformed bindings, out-of-envelope points, or missing `boundElements` backreferences that Excalidraw's interactive editor engine rejects.
 
 ### Rendering and visual QA
 
@@ -90,15 +99,17 @@ pkb-excalidraw FILE screenshot --out <path>.png --format png
 ```
 
 - **Faithful render path**: `pkb-excalidraw FILE screenshot` renders the canvas in its real font (Virgil), wrapping, and bindings.
+- **CLI check blind spots**: `pkb-excalidraw check`, `overlap`, and `arrows-check` cannot catch arrows ending inside boxes. `check` tests structural references and half-bound arrows, `overlap` tests only shape AABBs, and `arrows-check` only checks whether arrow polylines intersect unrelated intermediate boxes (ignoring endpoints at connected shapes). All three checks will pass a canvas whose every arrow ends inside its box. Rendering via `pkb-excalidraw FILE screenshot` and visually inspecting the resulting image is mandatory to verify that arrowheads terminate outside shapes.
 - **Missing tool or converter**:
   - If `pkb-excalidraw` is missing or fails to render, halt immediately and report the failure verbatim. Never substitute an ad-hoc or homemade renderer (such as manual SVG construction or custom canvas scripts); alternative renderers produce incorrect typography, drop bindings, and conceal layout defects.
   - When `--format png` is requested without a system rasterizer (`resvg`, `rsvg-convert`, `magick`) on `PATH`, the tool outputs a notice and saves an SVG fallback to `<path>.svg`. Use this SVG render for visual QA. If a PNG image is explicitly required by acceptance criteria and no rasterizer exists, halt and surface the missing dependency.
 - **Visual QA criteria**:
   Inspect the rendered image directly to verify:
-  1. **Label overflow**: Text does not exceed container bounds, spill across borders, or wrap awkwardly across lines.
-  2. **Overlaps**: Text elements and shapes do not collide with or obscure neighbouring elements.
-  3. **Crossing arrows**: Connector polylines do not cut through unrelated boxes or labels.
-  4. **At-a-glance legibility**: Visual hierarchy is obvious, labels are readable at standard zoom, and flows are intuitive without clutter.
+  1. **Arrowhead placement**: Arrows terminate cleanly at container boundaries; no arrowheads are buried inside boxes or cut across labels.
+  2. **Label overflow**: Text does not exceed container bounds, spill across borders, or wrap awkwardly across lines.
+  3. **Overlaps**: Text elements and shapes do not collide with or obscure neighbouring elements.
+  4. **Crossing arrows**: Connector polylines do not cut through unrelated boxes or labels.
+  5. **At-a-glance legibility**: Visual hierarchy is obvious, labels are readable at standard zoom, and flows are intuitive without clutter.
 
 ### Editing an existing diagram
 
