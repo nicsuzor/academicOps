@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, faithful SVG/PNG rendering, visual QA, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
+description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, faithful SVG/PNG rendering, visual QA, fractional index validation, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
 ---
 
 # Diagram
@@ -87,6 +87,15 @@ pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-backgroun
   2. Reciprocal `boundElements`: The source and target elements must each list `{ "id": arrow_id, "type": "arrow" }` in `boundElements`.
   3. Points envelope: `points` array must start at `[0, 0]`, with `width` and `height` matching the points' bounding box envelope.
   4. Editability cause: Canvases whose arrows pass static checks and static rendering can still fail interactive editing in Excalidraw (edges cannot be selected or dragged, or detach on movement; diagnosed on `research_supervision_3142606b` / `aops_ae441dcc`). The cause is malformed bindings, out-of-envelope points, or missing `boundElements` backreferences that Excalidraw's interactive editor engine rejects.
+- **`add-node` and `connect` invalid index key defect**: `pkb-excalidraw add-node` and `connect` mint fractional `index` keys by appending digit pairs (`00`, `01`) to the previous key (`a000`, `a001`, `a00100`, `a00101`, `a0010100` ...), leaving trailing zeros in the fractional part. While `pkb-excalidraw check` passes these files (verifying only monotonic ordering), `fractional-indexing` (`validateOrderKey`/`midpoint`) strictly rejects keys with trailing zeros in their fractional part (`invalid order key`). Excalidraw 0.18.1 validates keys whenever minting a key next to an existing element (e.g. on arrow labelling, duplicate, or z-order adjustments), throwing `invalid order key` and causing operations to silently fail, leaving edges uneditable.
+- **Structural fractional index check**: Validate every element's `index` key against Excalidraw's `fractional-indexing` schema:
+  1. Base-62 character set: Keys must consist only of base-62 digits (`0-9`, `A-Z`, `a-z`).
+  2. Integer head and length: For keys starting with lowercase `a-z`, integer part length is `head.charCodeAt(0) - 97 + 2` (e.g. `'a'` is 2 characters: `a0`--`az`; `'b'` is 3 characters: `b00`--`bzz`). For uppercase `A-Z`, integer part length is `90 - head.charCodeAt(0) + 2` (`'Z'` is 2 characters, `'A'` is 27 characters).
+  3. Reject trailing zeros in fractional part: The fractional part comprises all characters after the integer part (`index.slice(integerLength)`). If the fractional part is non-empty, its final character must NOT be `'0'`. Reject any key where `fractionalPart.endsWith('0')` (e.g. `a000`, `a00100`, `a0010100`).
+- **Reindex repair step**: Until the CLI minting defect is fixed, repair any canvas modified with `add-node`/`connect`:
+  1. Sort existing elements by current index order.
+  2. Assign each element $k \in [0, N-1]$ a canonical sequential integer key: for $k < 62$, `a0`, `a1`, ... `az`; for $k \ge 62$, `b00`, `b01`, ... (or generate via `generateNKeysBetween(null, null, N)`). These pure integer keys have no fractional part and zero trailing zeros.
+  3. Update elements via `pkb-excalidraw FILE update <id> --set '{"index": "<new_key>"}'` (or write the updated elements directly into the canvas JSON), then verify with `pkb-excalidraw FILE check`.
 
 ### Rendering and visual QA
 
