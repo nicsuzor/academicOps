@@ -41,7 +41,7 @@ On top of them:
   you changed.
 - **Don't be so eager: answer what was asked, then stop.** In conversation
   or task execution, do not pre-empt the next question or task, propose
-  following steps, offer unasked recommendations, or open a design fork they
+  next steps, offer unasked recommendations, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).
