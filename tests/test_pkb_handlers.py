@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -294,3 +295,128 @@ def test_no_honesty_fallback_for_coordinators_when_search_fails(agent):
     )
     with patch.object(handlers, "_run_pkb_search", return_value=None):
         assert handlers.search_the_pkb(ctx) is None
+
+
+def test_user_prompt_submit_unwraps_telegram_channel_message():
+    """Telegram channel prompts are unwrapped so PKB search queries the inner user text."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={
+            "prompt": (
+                '<channel source="plugin:telegram:telegram" user="nic">'
+                "what are the axioms of academicOps?"
+                "</channel>"
+            )
+        },
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+        agent_type="ida:ida",
+    )
+    mock_search_results = "specs/AXIOMS.md: Found 1 match."
+    with patch.object(handlers, "_run_pkb_search", return_value=mock_search_results) as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        mock_search.assert_called_once_with("what are the axioms of academicOps?", cwd="/workspace")
+        assert res is not None
+        assert "<academicOps PKB search results>" in res.inject_text
+
+
+@pytest.mark.parametrize(
+    "peer_prompt",
+    [
+        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
+        '<teammate-message teammate_id="worker">done</teammate-message>',
+        "<task-notification>worker finished</task-notification>",
+    ],
+)
+def test_search_the_pkb_skips_peer_reports(peer_prompt):
+    """search_the_pkb does not run on peer reports, leaving hearsay to fire and gate to arm."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": peer_prompt},
+        hooks_dir=PKB_HOOKS,
+        cwd="/workspace",
+        agent_type="ida:ida",
+    )
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        res = handlers.search_the_pkb(ctx)
+        mock_search.assert_not_called()
+        assert res is None
+
+
+def test_extract_prompt_query_unwraps_channels_and_strips_ansi():
+    raw = '<channel source="telegram" user="nic">\x1b[32mhello world\x1b[0m</channel>'
+    assert handlers.extract_prompt_query(raw) == "hello world"
+    assert handlers.extract_prompt_query("plain prompt") == "plain prompt"
+    assert handlers.extract_prompt_query("") == ""
+
+
+def test_extract_prompt_query_keeps_typed_prompt_that_quotes_a_channel_tag():
+    """A typed prompt that mentions a channel envelope mid-text is searched whole,
+    not truncated to the quoted fragment."""
+    typed = 'why does <channel source="telegram">hi</channel> skip hydration?'
+    assert handlers.extract_prompt_query(typed) == typed
+
+
+def test_resolve_mcp_headers_reads_environment():
+    with patch.dict(os.environ, {"PKB_MCP_HEADERS": json.dumps({"X-Custom": "val"})}, clear=True):
+        assert handlers._resolve_mcp_headers() == {"X-Custom": "val"}
+
+    with patch.dict(
+        os.environ,
+        {"CF_ACCESS_CLIENT_ID": "id123", "CF_ACCESS_CLIENT_SECRET": "sec456"},
+        clear=True,
+    ):
+        assert handlers._resolve_mcp_headers() == {
+            "CF-Access-Client-Id": "id123",
+            "CF-Access-Client-Secret": "sec456",
+        }
+
+
+def test_resolve_mcp_headers_ignores_client_config_files(tmp_path: Path):
+    """Headers come from the environment only, never from a client's own config file."""
+    (tmp_path / ".claude.json").write_text(
+        json.dumps({"mcpServers": {"s": {"url": "https://x", "headers": {"A": "b"}}}}),
+        encoding="utf-8",
+    )
+    with patch.dict(os.environ, {"HOME": str(tmp_path)}, clear=True):
+        assert handlers._resolve_mcp_headers() == {}
+
+
+def test_resolve_mcp_headers_logs_malformed_json(caplog):
+    with patch.dict(os.environ, {"PKB_MCP_HEADERS": "{not json"}, clear=True):
+        with caplog.at_level("WARNING"):
+            assert handlers._resolve_mcp_headers() == {}
+    assert any("PKB_MCP_HEADERS" in r.getMessage() for r in caplog.records)
+
+
+def test_run_pkb_search_with_headers_never_falls_back_to_unauthenticated_cli():
+    """With headers configured, a failed HTTP search returns None; it does not
+    retry unauthenticated through the CLI and double the prompt's wait."""
+    with (
+        patch.object(handlers, "_resolve_mcp_headers", return_value={"X-Auth": "t"}),
+        patch.object(handlers, "_search_via_fastmcp_client", return_value=None) as mock_http,
+        patch("subprocess.run") as mock_subproc,
+        patch.dict("os.environ", {"PKB_MCP_URL": "https://mcp.example.com"}),
+    ):
+        assert handlers._run_pkb_search("query text") is None
+        mock_http.assert_called_once_with("https://mcp.example.com", "query text", {"X-Auth": "t"})
+        mock_subproc.assert_not_called()
+
+
+def test_search_via_fastmcp_client_is_bounded_by_timeout():
+    """A stalled backend cannot hold the prompt past the search timeout."""
+    import asyncio
+    import time
+
+    async def stall(*_args):
+        await asyncio.sleep(30)
+
+    with (
+        patch.object(handlers, "_call_pkb_search", stall),
+        patch.object(handlers, "_SEARCH_TIMEOUT_SECONDS", 0.2),
+    ):
+        start = time.monotonic()
+        assert handlers._search_via_fastmcp_client("https://x", "q", {"A": "b"}) is None
+        assert time.monotonic() - start < 5

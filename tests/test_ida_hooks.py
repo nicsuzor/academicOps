@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -414,3 +415,83 @@ def test_merge_combines_multiple_advisories():
     assert merged.kind is Kind.ADVISE
     assert "first note\n\nsecond note" == merged.inject_text
     assert "user 1\n\nuser 2" == merged.user_text
+
+
+@pytest.mark.parametrize(
+    ("prompt", "expected_query"),
+    [
+        ("what are the axioms of academicOps?", "what are the axioms of academicOps?"),
+        ('<channel source="plugin:telegram:telegram" user="nic">ship it</channel>', "ship it"),
+    ],
+)
+def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected_query):
+    import premise_check_gate as pcg
+
+    session_id = f"s-test-user-{abs(hash(prompt))}"
+    pcg.clear_state(session_id)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id=session_id,
+        hooks_dir=IDA_HOOKS,
+        cwd="/workspace",
+        raw={"prompt": prompt},
+    )
+
+    with patch.object(handlers, "_run_pkb_search", return_value="1. Match in pkb") as mock_search:
+        # 1. PKB search runs with the unwrapped query
+        search_res = handlers.search_the_pkb(ctx)
+        mock_search.assert_called_once_with(expected_query, cwd="/workspace")
+        assert search_res is not None
+        assert "<academicOps PKB search results>" in search_res.inject_text
+
+        # 2. Hearsay does not fire
+        hearsay_res = handlers.rule_against_hearsay(ctx)
+        assert hearsay_res is None
+
+        # 3. Gate is not armed
+        handlers.premise_check_arm(ctx)
+        assert pcg.is_armed(session_id) is False
+
+
+@pytest.mark.parametrize(
+    "peer_prompt",
+    [
+        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
+        '<teammate-message teammate_id="worker">done</teammate-message>',
+        "<task-notification>worker finished</task-notification>",
+    ],
+)
+def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
+    import premise_check_gate as pcg
+
+    session_id = f"s-test-peer-{abs(hash(peer_prompt))}"
+    pcg.clear_state(session_id)
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida:ida",
+        session_id=session_id,
+        hooks_dir=IDA_HOOKS,
+        cwd="/workspace",
+        raw={"prompt": peer_prompt},
+    )
+
+    with patch.object(handlers, "_run_pkb_search") as mock_search:
+        # 1. Hydration skips peer reports
+        search_res = handlers.search_the_pkb(ctx)
+        mock_search.assert_not_called()
+        assert search_res is None
+
+        # 2. Hearsay fires
+        hearsay_res = handlers.rule_against_hearsay(ctx)
+        assert hearsay_res is not None
+        expected_hearsay, _ = load_message_pair(IDA_HOOKS, "hearsay")
+        assert hearsay_res.inject_text == expected_hearsay
+
+        # 3. Gate arms
+        handlers.premise_check_arm(ctx)
+        assert pcg.is_armed(session_id) is True

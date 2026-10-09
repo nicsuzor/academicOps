@@ -80,12 +80,20 @@ provide timely reminders and non-content-sniffing friction:
    - On foreground subagent completion (`PostToolUse` on `Agent` with `completed` status),
      an advisory reminder instructs the supervisor to premise-check the returned spine.
    - On peer message or background completion arrival (`UserPromptSubmit` carrying
-     a message envelope), an advisory reminder instructs the receiver to verify the
-     incoming spine before acting on or relaying it.
+     a peer message envelope, such as `<cross-session-message`, `<teammate-message`, or
+     `<task-notification`), an advisory reminder (`"## A peer report arrived"`) instructs
+     the receiver to verify the incoming spine before acting on or relaying it.
+     User prompts (both direct console inputs and `<channel...>` messages from Telegram or Discord)
+     never trigger hearsay reminders or gate arming.
 2. **Block-Once Procedural Friction Gate:**
    - On session exit (`Stop`) and external user communications (`PreToolUse` on channel
      reply tools such as `telegram_reply` or `ask_question`), the harness inspects
      local session state for unverified arrivals lacking a recorded verdict.
+   - On `UserPromptSubmit`, `premise_check_arm` arms only when the prompt begins with a
+     peer envelope (`<cross-session-message`, `<teammate-message`, `<task-notification`).
+     User messages (console or channel envelopes) never arm it. Separately, a subagent
+     dispatch (`PostToolUse` / `PostToolBatch` on `Agent`, `Task`, or `invoke_subagent`)
+     arms it.
    - If an unverified report exists, the harness pauses execution once (`honesty.md`
      and `quiet.md`) and prompts the agent to record a verdict (`scripts/verdict.py`).
    - On the immediate continuation turn, the block disarms (`stop_hook_active` or
