@@ -91,9 +91,10 @@ provide timely reminders and non-content-sniffing friction:
      local session state for unverified arrivals lacking a recorded verdict.
    - On `UserPromptSubmit`, `premise_check_arm` arms only when the prompt begins with a
      peer envelope (`<cross-session-message`, `<teammate-message`, `<task-notification`).
-     User messages (console or channel envelopes) never arm it. Separately, a subagent
-     dispatch (`PostToolUse` / `PostToolBatch` on `Agent`, `Task`, or `invoke_subagent`)
-     arms it.
+     Each armed report is named by a short id carrying no message text, and the printed
+     verdict command takes that id. User messages (console or channel envelopes) never arm it.
+     Separately, a subagent dispatch (`PostToolUse` / `PostToolBatch` on `Agent`, `Task`,
+     or `invoke_subagent`) arms it.
    - If an unverified report exists, the harness pauses execution once (`honesty.md`
      and `quiet.md`) and prompts the agent to record a verdict (`scripts/verdict.py`).
    - On the immediate continuation turn, the block disarms (`stop_hook_active` or

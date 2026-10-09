@@ -18,11 +18,13 @@ Verdict recording and OpenTelemetry trace emission live separately in
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shlex
 import tempfile
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -98,9 +100,14 @@ def get_state(session_id: str) -> dict[str, Any]:
 def arm(session_id: str, claim_id: str | None = None) -> None:
     """Arm the premise check for a session until a verdict disarms it."""
     state = _load_state(session_id)
+    cid = claim_id or state.get("claim_id") or "unnamed-claim"
     state["armed"] = True
     state["pending"] = True  # backward compat
-    state["claim_id"] = claim_id or state.get("claim_id") or "unnamed-claim"
+    state["claim_id"] = cid
+    claim_ids = state.get("claim_ids") or []
+    if cid not in claim_ids:
+        claim_ids.append(cid)
+    state["claim_ids"] = claim_ids
     state["armed_at"] = _now()
     _save_state(session_id, state)
 
@@ -108,9 +115,20 @@ def arm(session_id: str, claim_id: str | None = None) -> None:
 def disarm(session_id: str, claim_id: str, verdict: str, reason: str) -> None:
     """Disarm the premise check after a verdict is recorded."""
     state = _load_state(session_id)
-    state["armed"] = False
-    state["pending"] = False  # backward compat
-    state["claim_id"] = claim_id
+    claim_ids = state.get("claim_ids") or []
+    if claim_id in claim_ids:
+        claim_ids.remove(claim_id)
+    state["claim_ids"] = claim_ids
+
+    if claim_ids:
+        state["armed"] = True
+        state["pending"] = True
+        state["claim_id"] = claim_ids[-1]
+    else:
+        state["armed"] = False
+        state["pending"] = False
+        state["claim_id"] = claim_id
+
     state["last_verdict"] = {
         "claim_id": claim_id,
         "verdict": verdict,
@@ -186,30 +204,21 @@ def _derive_claim_id(ctx: HookContext) -> str:
         prompt = _prompt_text(ctx).strip()
         match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>(.*?)(?:</\1>|$)", prompt, re.DOTALL)
         if match:
-            tag = match.group(1)
             attrs = match.group(2)
-            raw_body = match.group(3)
-            sender_match = re.search(r'(?:from|teammate_id|sender)=["\']([^"\']+)["\']', attrs)
-            sender = sender_match.group(1) if sender_match else None
-            cleaned_body = re.sub(r"<[^>]+>", "", raw_body)
-            body_snippet = " ".join(cleaned_body.split()).strip()
-            if len(body_snippet) > 80:
-                body_snippet = body_snippet[:77] + "..."
+            id_match = re.search(r'\b(?:id|report_id|task_id)=["\']([^"\']+)["\']', attrs)
+            if id_match:
+                cid = id_match.group(1).strip()
+                if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+                    return cid
 
-            if sender and body_snippet:
-                return f"{tag} from {sender}: {body_snippet}"
-            elif sender:
-                return f"{tag} from {sender}"
-            elif body_snippet:
-                return f"{tag}: {body_snippet}"
-            return tag
+            digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:8]
+            return f"report-{digest}"
 
-        prompt_snippet = " ".join(prompt.split()).strip()
+        prompt_snippet = prompt.strip()
         if prompt_snippet:
-            if len(prompt_snippet) > 80:
-                prompt_snippet = prompt_snippet[:77] + "..."
-            return f"incoming message: {prompt_snippet}"
-        return "incoming peer report"
+            digest = hashlib.sha256(prompt_snippet.encode("utf-8")).hexdigest()[:8]
+            return f"report-{digest}"
+        return f"report-{uuid.uuid4().hex[:8]}"
 
     for call in ctx.tool_calls:
         if call.get("tool_name") in _DISPATCH_TOOLS:
@@ -233,7 +242,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
         if call_id:
             return str(call_id)
 
-    return "unnamed-claim"
+    return "report-unnamed"
 
 
 def _is_override_active() -> bool:
