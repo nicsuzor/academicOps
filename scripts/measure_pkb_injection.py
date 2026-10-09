@@ -45,7 +45,6 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
 PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
 # --------------------------------------------------------------------------
@@ -145,16 +144,10 @@ def measure_hook_overhead(repeats: int) -> dict:
         subprocess.run(["mktemp", "-d"], capture_output=True, text=True, check=True).stdout.strip()
     )
     hooks_dir = tmp / "hooks"
-    shutil.copytree(LIB_HOOKS, hooks_dir, ignore=shutil.ignore_patterns("__pycache__"))
-    for item in PKB_HOOKS.iterdir():
-        if item.name == "__pycache__":
-            continue
-        if item.is_dir():
-            shutil.copytree(item, hooks_dir / item.name, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, hooks_dir / item.name)
+    shutil.copytree(PKB_HOOKS, hooks_dir, ignore=shutil.ignore_patterns("__pycache__"))
 
-    stub = tmp / "pkb"
+    # The hook's CLI path runs `fastmcp call`; a stub on PATH stands in for it.
+    stub = tmp / "fastmcp"
     stub.write_text(
         "#!/bin/sh\necho '1. Stub result (score: 0.50)'\necho '   stub/doc.md'\n",
         encoding="utf-8",
@@ -169,6 +162,20 @@ def measure_hook_overhead(repeats: int) -> dict:
         }
     )
 
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k
+        not in (
+            "PKB_MCP_HEADERS",
+            "PKB_MCP_TOKEN",
+            "CF_ACCESS_CLIENT_ID",
+            "CF_ACCESS_CLIENT_SECRET",
+        )
+    }
+    env["PATH"] = f"{tmp}{os.pathsep}{env.get('PATH', '')}"
+    env["PKB_MCP_URL"] = "http://stub.invalid/mcp"
+
     latencies = []
     try:
         for _ in range(repeats):
@@ -180,6 +187,7 @@ def measure_hook_overhead(repeats: int) -> dict:
                 capture_output=True,
                 timeout=30,
                 cwd=str(hooks_dir),
+                env=env,
             )
             t1 = time.perf_counter()
             if proc.returncode != 0:
