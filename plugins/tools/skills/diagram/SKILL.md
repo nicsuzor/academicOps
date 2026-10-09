@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
+description: Draw, edit, and review diagrams -- Mermaid for version-controlled flowcharts, sequences, and architecture; Excalidraw for mind maps, concept maps, PKB graphs, and sketches. Covers layout routing, house palette, pkb-excalidraw CLI, faithful SVG/PNG rendering, visual QA, and PKB export/diff/sync. Not for plotting quantitative data or UI mockups.
 ---
 
 # Diagram
@@ -68,15 +68,37 @@ Identify the chart's core objective (the action or decision it enables) and read
 
 ```bash
 pkb-excalidraw FILE [summary | map | nodes | edges | style | check | overlap | arrows-check]
-pkb-excalidraw FILE add-node --type <type> --text "<text>" [--preset hero|sticky|zone] [--at X,Y]
-pkb-excalidraw FILE connect --from <id1> --to <id2> [--label "<label>"] [--curved] [--stroke-style dashed]
+pkb-excalidraw FILE add-node --type <type> --text "<text>" [--preset hero|sticky|zone] [--role <role>] [--at X,Y]
+pkb-excalidraw FILE connect --from <id1> --to <id2> [--label "<label>"] [--curved] [--stroke-style dashed] [--color <hex>]
 pkb-excalidraw FILE [set-text <id> "<text>" | fit <id> "<text>" | move-elem <id> --by DX,DY | delete-elem <id>]
 pkb-excalidraw FILE update <id> --set '{"strokeStyle": "dashed"}'
+pkb-excalidraw FILE screenshot [--out <path>] [--format svg|png] [--no-background]
 ```
 
 - **Invariants**: Text binds to container (`containerId`/`boundElements`); arrows bind both ends (`startBinding`/`endBinding`).
 - Change text with `set-text` or `fit`, which update `text` and `originalText` together. Change any other property with `update <id> --set '<json>'`.
 - Validate after every edit with `pkb-excalidraw FILE check` and `pkb-excalidraw FILE overlap`. `check` does not flag line-wrap-only differences between `text` and `originalText`.
+
+### Rendering and visual QA
+
+Every finished canvas must be rendered to vector SVG or PNG using `pkb-excalidraw` and pass visual inspection against the rendered image before presentation, handback, or release.
+
+```bash
+pkb-excalidraw FILE screenshot --out <path>.svg --format svg
+# Or if a PNG deliverable is required:
+pkb-excalidraw FILE screenshot --out <path>.png --format png
+```
+
+- **Faithful render path**: `pkb-excalidraw FILE screenshot` renders the canvas in its real font (Virgil), wrapping, and bindings.
+- **Missing tool or converter**:
+  - If `pkb-excalidraw` is missing or fails to render, halt immediately and report the failure verbatim. Never substitute an ad-hoc or homemade renderer (such as manual SVG construction or custom canvas scripts); alternative renderers produce incorrect typography, drop bindings, and conceal layout defects.
+  - When `--format png` is requested without a system rasterizer (`resvg`, `rsvg-convert`, `magick`) on `PATH`, the tool outputs a notice and saves an SVG fallback to `<path>.svg`. Use this SVG render for visual QA. If a PNG image is explicitly required by acceptance criteria and no rasterizer exists, halt and surface the missing dependency.
+- **Visual QA criteria**:
+  Inspect the rendered image directly to verify:
+  1. **Label overflow**: Text does not exceed container bounds, spill across borders, or wrap awkwardly across lines.
+  2. **Overlaps**: Text elements and shapes do not collide with or obscure neighbouring elements.
+  3. **Crossing arrows**: Connector polylines do not cut through unrelated boxes or labels.
+  4. **At-a-glance legibility**: Visual hierarchy is obvious, labels are readable at standard zoom, and flows are intuitive without clutter.
 
 ### Editing an existing diagram
 

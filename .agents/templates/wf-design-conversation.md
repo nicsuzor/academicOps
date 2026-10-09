@@ -167,6 +167,7 @@ test below.
 
 **Before calling a pass done**
 
+- Render the finished canvas through `pkb-excalidraw <file> screenshot [--out <path>] [--format svg|png]` and conduct a visual QA check on the rendered image covering label overflow, overlaps, crossing arrows, and at-a-glance legibility. If `pkb-excalidraw` is missing or fails to render, halt and report rather than substituting an ad-hoc renderer.
 - Re-verify "solid" (built/wired) claims against the code as actually
   shipped, not the code as understood when the element was drawn — solid can
   go stale between draw and merge; a real instance surfaced only at
