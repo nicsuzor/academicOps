@@ -45,6 +45,8 @@ _BASIC_VARS = (
     "AOPS_BOT_GH_TOKEN",
     "PKB_MCP_URL",
     "PKB_MCP_TOOL_PREFIX",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_NOSYSTEM",
 )
 
 
@@ -530,7 +532,14 @@ def _isolate_credentials(ctx: HookContext) -> bool:
         if val is not None:
             moved[var] = val
 
-    if not moved:
+    aops_gitconfig = os.environ.get("AOPS_GIT_CONFIG_GLOBAL")
+    added_git_isolation = False
+    if "GIT_CONFIG_GLOBAL" not in existing and "GIT_CONFIG_GLOBAL" not in moved and aops_gitconfig:
+        existing["GIT_CONFIG_GLOBAL"] = str(Path(aops_gitconfig).expanduser())
+        existing.setdefault("GIT_CONFIG_NOSYSTEM", "1")
+        added_git_isolation = True
+
+    if not moved and not added_git_isolation:
         return False
 
     existing.update(moved)

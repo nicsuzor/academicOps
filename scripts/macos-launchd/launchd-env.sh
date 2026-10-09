@@ -35,6 +35,12 @@
 # --- AOPS URLs ---
 [ -n "$PKB_MCP_URL" ] && launchctl setenv PKB_MCP_URL "$PKB_MCP_URL"
 
+# --- Git configuration ---
+# Sourced from ~/.env as AOPS_GIT_CONFIG_GLOBAL. Forwarded to launchd without
+# GIT_CONFIG_* prefix so VS Code is not broken; the startup hook turns it into
+# GIT_CONFIG_GLOBAL session-scoped only.
+[ -n "$AOPS_GIT_CONFIG_GLOBAL" ] && launchctl setenv AOPS_GIT_CONFIG_GLOBAL "$AOPS_GIT_CONFIG_GLOBAL"
+
 # --- Bot PAT pass-through ---
 # AOPS_BOT_GH_TOKEN is expected in ~/.env.local (sourced by the plist before
 # this file). Each export is gated on a non-empty token; skip silently if absent.
@@ -64,6 +70,9 @@
 
 # --- CLAUDE CODE & ANTIGRAVITY TELEMETRY ---
 [ -n "$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" ] && launchctl setenv CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS "$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"
+[ -n "$CLAUDE_CODE_ENABLE_TODO_TOOLS" ] && launchctl setenv CLAUDE_CODE_ENABLE_TODO_TOOLS "$CLAUDE_CODE_ENABLE_TODO_TOOLS"
+[ -n "$MCP_TIMEOUT" ] && launchctl setenv MCP_TIMEOUT "$MCP_TIMEOUT"
+[ -n "$MCP_TOOL_TIMEOUT" ] && launchctl setenv MCP_TOOL_TIMEOUT "$MCP_TOOL_TIMEOUT"
 [ -n "$CLAUDE_CODE_STOP_HOOK_BLOCK_CAP" ] && launchctl setenv CLAUDE_CODE_STOP_HOOK_BLOCK_CAP "$CLAUDE_CODE_STOP_HOOK_BLOCK_CAP"
 [ -n "$ANTIGRAVITY_ENABLE_TELEMETRY" ] && launchctl setenv ANTIGRAVITY_ENABLE_TELEMETRY "$ANTIGRAVITY_ENABLE_TELEMETRY"
 [ -n "$CLAUDE_CODE_ENABLE_TELEMETRY" ] && launchctl setenv CLAUDE_CODE_ENABLE_TELEMETRY "$CLAUDE_CODE_ENABLE_TELEMETRY"
