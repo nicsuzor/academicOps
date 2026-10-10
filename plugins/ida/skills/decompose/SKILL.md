@@ -25,11 +25,11 @@ Expand a situated objective into smaller, abstract components: sub-objectives, d
    - **Merge into what exists**: Search the graph before minting, `done` tasks and workflow templates included. Where a candidate overlaps an existing node, extend that node instead of minting a sibling; mint only for a genuinely new step. Where the overlap is with completed work, cut the candidate down to what that work left unanswered and wire it `soft_depends_on` that work -- if nothing is left, do not mint.
    - **A first run is not a step**: The first execution of an existing node -- a baseline, a first pass of a method already modelled -- belongs to that node, not to a new node beside it.
 6. **Wire the graph**:
-   - Use verb-led imperative titles (e.g. `Implement X`, `Verify Y`). Exclude personal names.
+   - Use short, descriptive verb-led imperative titles (e.g. `Implement X`, `Verify Y`) that keep the derived filename within the PKB's 80-character filename limit. Exclude personal names.
    - Set `parent_id` to establish hierarchy; avoid redundant sibling edges.
    - Use `depends_on` for hard blockers and `soft_depends_on` for informational context.
    - Wire explicit convergence nodes where parallel forks rejoin.
-   - Assign slugged human-readable IDs (`id: "aops_<slug>"`).
+   - Assign slugged human-readable IDs (`id: "aops_<slug>"`), keeping ID slugs short so the full filename stays within the 80-character limit.
 
 ## Output Schema
 

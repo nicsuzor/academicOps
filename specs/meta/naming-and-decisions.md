@@ -20,7 +20,7 @@ Authoritative specification for task names, filenames, and the structural repres
 Tasks are actionable units of work. Their titles must communicate clear operational intent at a glance:
 
 1. **Verb-Led Imperative:** Every task title begins with an active imperative verb describing the concrete outcome to achieve (e.g., `Implement X`, `Refactor Y`, `Verify Z`, `Extract A from B`).
-2. **Brief and Descriptive:** Titles must be concise (typically 4–10 words) yet sufficiently descriptive that an executor or supervisor understands the objective without reading the body.
+2. **Brief and Descriptive (Filename Limit):** Titles must be concise (typically 3–6 words, max ~40 characters) so the resulting filename stays strictly within the PKB's 80-character filename limit (`MAX_FILENAME_LEN = 80`). Because filenames are derived as `<project>_<id>_<slug>.md` (where project and ID prefixes can take 30–35 characters), the title slug must remain under ~40–45 characters. Titles must never be complete sentences or paragraph summaries.
 3. **No Person's Name in Titles or Filenames:** A task title, note title, or filename must **never** contain a person's name or moniker (e.g., `<name>: decision: ...`, `<name>-task-...`, `for-<name>.md`). Assignment and human involvement belong exclusively in frontmatter metadata fields (`assigned_to:`, `assignee:`).
 4. **No Artificial Type Prefixes:** Do not encode categories into titles (e.g., avoid `DECISION: ...`, `PROBE: ...`, `TASK: ...`). Node taxonomy and classification are expressed through frontmatter (`type:`, `classification:`) and graph topology.
 
@@ -32,6 +32,7 @@ Filenames identify files within repositories and knowledge bases:
 2. **Purpose-Driven and Descriptive:** Names reflect what the file contains or accomplishes, not historical circumstance or author identity.
 3. **No Person's Name:** Filenames never include individual names or personal prefixes.
 4. **Appropriate Directory Placement:** Files reside in directories defined by [`doc-taxonomy.md`](doc-taxonomy.md) (`specs/`, `plugins/`, `lib/`, `.agents/`).
+5. **Length Limit:** Filenames must not exceed 80 characters (`MAX_FILENAME_LEN = 80`), matching standard terminal column widths and preventing line-wrapping in git status, diffs, and editor tabs. In the PKB, document creation and renames exceeding this limit are rejected and write nothing.
 
 ## 3. Root-Cause Analysis & Resolution of "<name>: decision: xyz"
 

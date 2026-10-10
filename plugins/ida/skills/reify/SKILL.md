@@ -75,7 +75,7 @@ Then assemble the steps:
 Where the project finish template calls for QA review:
 
 1. Mint an independent follow-up task with status `queued`.
-2. Title: `QA: <primary task title>`.
+2. Title: `QA: <primary task title>`. Ensure the primary task title is concise so the `QA: ` prefix does not cause the derived filename to exceed the PKB's 80-character limit.
 3. Set parent to the primary task's parent.
 4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.
@@ -84,6 +84,7 @@ Where the project finish template calls for QA review:
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
+- Give each task a short, descriptive verb-led title that fits within the PKB's 80-character filename limit (accounting for `<project>_<id>` prefix, typically leaving ~40–45 characters for the slug).
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.

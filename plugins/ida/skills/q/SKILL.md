@@ -25,7 +25,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 ## Task body
 
-**Title**: Write a concise, verb-led imperative (e.g. `Implement X`). Do not include unecessary detail -- a short slug is best.
+**Title**: Write a concise, verb-led imperative (e.g. `Implement X`). Keep it short and descriptive (typically 3–6 words) so the derived filename fits within the PKB's 80-character filename limit (`<project>_<id>_<slug>.md`, leaving ~40–45 characters for the slug). Do not include unnecessary detail.
 
 **Description**: Capture the ask in a task body without additional detail:
 

@@ -37,7 +37,7 @@ The implementation worker must satisfy these obligations before marking `status:
 
 When QA review is required, `/reify` mints a follow-up task with:
 
-- **Title**: `QA: <primary task title>`
+- **Title**: `QA: <primary task title>` (keep primary title concise so the `QA: ` prefix does not exceed the PKB's 80-character filename limit)
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]` (hard blocking dependency)
 - **Workflow**: Composes independent verification workflow
