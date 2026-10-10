@@ -75,7 +75,7 @@ Then assemble the steps:
 Where the project finish template calls for QA review:
 
 1. Mint an independent follow-up task with status `queued`.
-2. Title: `QA: <primary task title>`. Ensure the primary task title is concise so the `QA: ` prefix does not cause the derived filename to exceed the PKB's 80-character limit.
+2. Title: `QA: <primary task title>`. Ensure the primary task title is concise so the `QA:` prefix does not cause the derived filename to exceed the PKB's 80-character limit.
 3. Set parent to the primary task's parent.
 4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.

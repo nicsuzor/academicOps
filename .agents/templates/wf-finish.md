@@ -39,7 +39,7 @@ Before marking `status: done`, the worker must:
 
 Where QA is required, the verifying task runs independently on a clean checkout:
 
-- **Title**: `QA: <primary task title>` (keep primary title concise so the `QA: ` prefix does not exceed the PKB's 80-character filename limit)
+- **Title**: `QA: <primary task title>` (keep primary title concise so the `QA:` prefix does not exceed the PKB's 80-character filename limit)
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]`
 - **Workflow**: Composes independent verification workflow
