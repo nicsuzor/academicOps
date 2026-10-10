@@ -27,7 +27,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 ### 4. Validate Against Criteria
 
 - Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations. An item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated.
-- When acceptance criteria are met, mark the task `done` via `/dump` (workers with PKB access mark `done` after `/pull`; asserting that tests ran is sufficient for a completion claim).
+- Mark the task `done` via `/dump` only when its `## Report` section records concrete evidence demonstrating delivery against each acceptance item: quoted output, `file:line` citations, counts, and the specimen run where the task asks for one. Asserting that tests ran or that work was done without concrete evidence in the report is insufficient; if any acceptance item lacks evidence in the Report, release as `partial` naming the missing evidence.
 - Release as `done` or `partial` by default. `review` is the exception.
 - If agent work remains -- an external blocker, a missing tool, a scope seam, or a next step such as a QA run or re-run, a merge, a deploy, a retry, or a routing or dispatch call -- release as `partial` with a follow-up task carrying the remainder, and wire directed `blocks` edges from any blocker.
 - Release as `review` only when the next step is a decision only Nic can make: a choice that turns on Nic's priorities, preferences or authority, such as approving a spec or picking between options only Nic can own. Name that decision in the required `reason` as a question for Nic. If the `reason` names an action an agent could take, the release is `partial`, not `review`.
