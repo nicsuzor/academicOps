@@ -17,14 +17,14 @@ Umbrella architecture: [`polecat-system.md`](polecat-system.md); interactive dri
 
 Polecat execution occurs over two distinct operational routes, each with different visibility characteristics and tooling:
 
-| Attribute               | MCP Server Route (`polecat_run_container`)                     | Host Launcher Route (`scripts/polecat`)                           |
-| :---------------------- | :------------------------------------------------------------- | :---------------------------------------------------------------- |
-| **Execution model**     | Standalone detached Docker container (`detach=True`)           | Direct `docker run`, optionally wrapped in `tmux`                 |
-| **Interactive TTY**     | No TTY / no tmux session                                       | Real TTY inside tmux with `-i`                                    |
-| **Stdout/Stderr**       | Captured by Docker daemon (`docker logs -f` / `stream-json`)   | Attached to terminal or piped to host stdout                      |
-| **Log stream tool**     | MCP `polecat_fetch_container_logs` / `docker logs -f`          | `tmux attach` / `tmux capture-pane` / session dir                 |
-| **Host mount for logs** | `$AOPS_SESSIONS` mounted to `/data/sessions:rw` (auto)         | `$AOPS_SESSIONS` mounted to `/data/sessions:rw` (auto)            |
-| **OTel / Phoenix**      | Forwarded via `nicwin_polecat_workers` network                 | Forwarded via host env allowlist                                  |
+| Attribute               | MCP Server Route (`polecat_run_container`)                   | Host Launcher Route (`scripts/polecat`)                |
+| :---------------------- | :----------------------------------------------------------- | :----------------------------------------------------- |
+| **Execution model**     | Standalone detached Docker container (`detach=True`)         | Direct `docker run`, optionally wrapped in `tmux`      |
+| **Interactive TTY**     | No TTY / no tmux session                                     | Real TTY inside tmux with `-i`                         |
+| **Stdout/Stderr**       | Captured by Docker daemon (`docker logs -f` / `stream-json`) | Attached to terminal or piped to host stdout           |
+| **Log stream tool**     | MCP `polecat_fetch_container_logs` / `docker logs -f`        | `tmux attach` / `tmux capture-pane` / session dir      |
+| **Host mount for logs** | `$AOPS_SESSIONS` mounted to `/data/sessions:rw` (auto)       | `$AOPS_SESSIONS` mounted to `/data/sessions:rw` (auto) |
+| **OTel / Phoenix**      | Forwarded via `nicwin_polecat_workers` network               | Forwarded via host env allowlist                       |
 
 ## 1. MCP Server Dispatch Route
 
@@ -75,9 +75,9 @@ Forwards the OpenTelemetry contract to Phoenix via `GENAI_ENGINE_TRACE_ENDPOINT`
 
 ## Observability Matrix & Failure Signals
 
-| Observation Need                       | MCP Route                                                                                | Host Launcher Route                                         |
-| :------------------------------------- | :--------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
-| **Is the container alive?**            | `polecat_list_containers`                                                                | `tmux has-session -t <name>` / `docker ps`                  |
-| **What is the agent printing?**        | `polecat_fetch_container_logs` (stream-json) or `docker exec` tailing agy log/transcript | `tmux capture-pane` or attached terminal                    |
-| **Which tool is executing right now?** | Phoenix span store query (`executeSql`)                                                  | Phoenix span store query (`executeSql`)                     |
+| Observation Need                       | MCP Route                                                                                      | Host Launcher Route                                                     |
+| :------------------------------------- | :--------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| **Is the container alive?**            | `polecat_list_containers`                                                                      | `tmux has-session -t <name>` / `docker ps`                              |
+| **What is the agent printing?**        | `polecat_fetch_container_logs` (stream-json) or `docker exec` tailing agy log/transcript       | `tmux capture-pane` or attached terminal                                |
+| **Which tool is executing right now?** | Phoenix span store query (`executeSql`)                                                        | Phoenix span store query (`executeSql`)                                 |
 | **Why did the worker fail?**           | `polecat.exit_code` / `polecat_fetch_container_logs` / `$AOPS_SESSIONS/logs/<date>/<task_id>/` | Terminal text / `$AOPS_SESSIONS/logs/<date>/<task_id>/` / Phoenix trace |
