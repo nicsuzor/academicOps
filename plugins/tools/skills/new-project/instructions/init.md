@@ -92,7 +92,7 @@ git add -A && git commit -m "feat: initial project scaffolding" && git push -u o
 Register in `plugins/ida/CORE.md` (the single source of truth for project repositories), and container mount overrides in `$AOPS_SESSIONS/polecat.yaml` if needed:
 
 ```bash
-# Add <slug> and repo to plugins/ida/CORE.md table and YAML block
+# Add <slug> and repo to plugins/ida/CORE.md
 # If container mounts or host overrides are required:
 cd "$AOPS_SESSIONS" && git pull --rebase
 # <slug>:
