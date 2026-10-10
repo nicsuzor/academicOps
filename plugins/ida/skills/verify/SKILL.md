@@ -31,6 +31,7 @@ Render an immediate `FAIL` on:
 - Tests that assert existence or tautologies rather than functional behavior.
 - Data that diverges from primary source records.
 - Edits made directly to runtime install directories instead of source repos.
+- Container or Dockerfile changes passed without building the image and showing changed content present in it, or without a plain statement that the worker could not build.
 
 ## 4. Visual Verification
 
@@ -40,7 +41,15 @@ Evaluate live rendered screenshots (1920x1080) across three dimensions:
 - **Layout**: Clipped elements, collapsed margins, and unintended whitespace.
 - **Hierarchy**: Geometry and visual weight matched to semantic importance.
 
-## 5. Verification Report Schema
+## 5. Container and Dockerfile Verification
+
+Any change touching a container image or Dockerfile requires:
+
+1. **Built image**: Build the container image.
+2. **Content inspection**: Show the changed content present in the built image (e.g. running a container to inspect target files, verify permissions, or test commands).
+3. **Inability to build**: If the execution environment prevents building (e.g. daemon unavailable or insufficient permissions), provide a plain statement that the worker could not build and state the reason. Never pass container verification based solely on source inspection or host-level tests without a built image or an explicit statement of inability to build.
+
+## 6. Verification Report Schema
 
 ```markdown
 ## Verification Report
