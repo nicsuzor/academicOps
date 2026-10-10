@@ -57,8 +57,7 @@ workflow is the only differentiator; there is no separate research path.
    Reviews the task's contract and handback only -- inputs and outputs, never
    the transcript. This is [task-contract.md](task-contract.md)'s
    `release_task` evidence gate (Layer 2) read against the acceptance criteria
-   set in step 1. In workflow composition, this step is authored via the universal
-   [[wf-rbg]] review-step template.
+   set in step 1.
 4. **QA-around** -- marsha's lens: does the delivered artifact actually do what
    step 1's contract asked, and does it do it well? Bar is excellent, not
    passing. Distinct from step 3: boundary check asks whether the rules were

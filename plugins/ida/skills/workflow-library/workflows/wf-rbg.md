@@ -12,7 +12,7 @@ tags:
   - rules
   - compliance
   - gate
-title: RBG Rule-Compliance Review
+title: Rule-Compliance Review
 type: template
 ---
 

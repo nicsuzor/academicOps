@@ -25,9 +25,9 @@ implementation without this template first is scope-creep waiting to happen.
    for any other criterion, how it is verified.
 8. **Implementation approach** — components, data flow, risk assessment.
 9. **Effort and risk** — estimates, mitigation plans.
-10. **Rule-compliance review** — compose [[wf-rbg]] to verify the draft specification
-    against framework axioms and rules (proportionality, single source of truth, closure)
-    before user review. Resolve any required changes before advancing.
+10. **Rule-compliance review** — verify the draft specification against framework
+    axioms and rules (proportionality, single source of truth, closure) before
+    user review. Resolve any required changes before advancing.
 11. **Review** — full summary review with the user.
 12. **Finalize and submit** — open a PR for bazaar review; implementation
     proceeds only after approval (compose [[wf-escalated-approval]] for the

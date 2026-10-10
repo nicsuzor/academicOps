@@ -19,7 +19,7 @@ type: template
 
 ---
 requires: [wf-escalated-approval]
-pairs-with: [wf-verification, wf-handover, wf-fact-check, wf-rbg]
+pairs-with: [wf-verification, wf-handover, wf-fact-check]
 recommends: [wf-self-test]
 conflicts: [wf-batch-fanout]
 ---
@@ -63,9 +63,9 @@ onto it. Declare vocabulary and notation once, in one place. Nothing gets
 labelled twice.
 
 **5. Present, expect taste feedback, treat prior work as not precious.** Before
-presenting, compose [[wf-rbg]] to verify rule compliance (proportionality, axioms,
-data boundaries); resolve any `REVISE` or `REJECT` findings before the owner reads
-the pass. Put the current state in front of the owner. Expect them to mark it up.
+presenting, verify rule compliance (proportionality, axioms, data boundaries);
+resolve any `REVISE` or `REJECT` findings before the owner reads the pass.
+Put the current state in front of the owner. Expect them to mark it up.
 Do not defend the previous version — it was a step, not a commitment. **Human
 decision point: the pass halts here for the owner's read**, same discipline
 as `wf-escalated-approval`.
