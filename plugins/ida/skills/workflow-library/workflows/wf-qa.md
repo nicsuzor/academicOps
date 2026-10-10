@@ -14,7 +14,7 @@ Universal QA gate: assemble criteria, evaluate independently, return a per-crite
 ## Procedure
 
 1. **Assemble criteria** -- record acceptance criteria verbatim from the task specification before inspecting outputs.
-2. **Evaluate** -- run a practical, live test or evaluation of the artifact against those criteria. The evaluator must be independent of the artifact's author.
+2. **Evaluate** -- run a practical, live test or evaluation of the artifact against those criteria. The evaluator must be independent of the artifact's author. An evaluator that changes code or pushes fixes must not approve, accept, or merge its own changes, and must hand off for independent review.
 3. **Report per criterion**:
    - **Criterion** -- verbatim from step 1.
    - **Status** -- `MET` or `UNMET`. A criterion that can't be checked is `UNMET` with the reason recorded, never skipped or assumed.
