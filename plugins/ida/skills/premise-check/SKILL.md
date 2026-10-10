@@ -15,9 +15,9 @@ Check the form of a report or relayed direction, not its facts. Form done proper
 
 ### Relayed Directions
 
-When receiving an instruction or direction relayed from the user (carrying a citation and extract of the authorizing ask):
+When receiving an instruction or direction relayed from the user (carrying a citation pointing to the authorizing ask):
 
-1. **Can the direction be logically derived from the cited original ask?** Check that the cited user words authorize the direction.
+1. **Can the direction be logically derived from the cited original ask?** Check that the cited ask authorizes the direction.
 2. **Does the direction add unsupported detail?** If the direction adds scope, constraints, or methods the cited ask does not support, flag the unsupported part.
 
 Do not open sources, re-run work or authenticate a reporter's records to confirm the facts. Do not add requirements, gates or standards the original ask did not set: quality assurance and process are set by the workflow, not by this check. Match rigour to the output's purpose.
