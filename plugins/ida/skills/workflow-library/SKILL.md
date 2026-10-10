@@ -60,13 +60,12 @@ Update existing templates in place.
 
 ### preview
 
-Simulate how `/reify` would assemble workflow templates for a stated objective:
+Simulate composition for a stated objective at one of two depths. Never write tasks or mutate the graph; mark the output as a non-minted preview.
 
-1. Enumerate and read relevant candidate templates across tiers.
-2. Read the templates and combine their steps into a single, logical sequence (e.g., test-first where code executes, build, then QA).
-3. Do not ad lib extra requirements or guess at scope. Pass through any ambiguity in the prompt directly to the workflow.
-4. Show the assembled sequence of steps and resulting task brief shape.
-5. Plainly mark output as a non-minted preview. Never write tasks or mutate the graph.
+- **stage depth** (what `/decompose` asks for): return the composite that covers this class of work as its ordered stages, each with its input and output contract, unresolved. A stage whose filling is a choice among methods, frames or venues stays a named slot; do not pick for it or expand it into steps.
+- **step depth** (what `/reify` asks for): resolve each stage to the templates and skills that fill it across the tiers and combine their steps into one logical sequence (e.g. test-first where code executes, build, then QA). Show the assembled steps and the resulting task brief shape.
+
+Do not ad lib extra requirements or guess at scope; pass any ambiguity in the prompt through to the preview.
 
 ### retire
 
@@ -74,15 +73,7 @@ Simulate how `/reify` would assemble workflow templates for a stated objective:
 2. Delete the artifact (`rm` for universal files, `pkb.delete` for PKB nodes).
 3. Name the superseding workflow in the release message or commit.
 
-A template carries only what a composing agent needs to select it and to know
-the step is finished -- the same sufficient-and-no-more standard `/reify`
-composes to. Nothing else is mandatory:
-inventing exclusions, contraindications, or gates the work doesn't call for
-overshoots it. No fixed kind is required either -- components sit on one flat
-spine, not sorted into types; a
-template stating an obligation that blocks acceptance rather than a process
-that proceeds conventionally carries a `wf-` prefix, no frontmatter field
-needed to say so.
+A template carries only what a composing agent needs to select it and to know the step is finished, the same sufficient-and-no-more standard `/reify` composes to. Inventing exclusions, contraindications, or gates the work does not call for overshoots it. Components sit on one flat spine, not sorted into types; a composite names its stages by contract, which is the level `/decompose` reads, and leaf templates carry the steps, which is the level `/reify` reads. A template stating an obligation that blocks acceptance rather than a process that proceeds conventionally carries a `wf-` prefix, no frontmatter field needed to say so.
 
 ## Template Schema
 
