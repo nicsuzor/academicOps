@@ -191,7 +191,7 @@ To prevent project work from either being mis-parented under Ida's task tree or 
 
 To maintain task graph integrity and prevent self-certification:
 
-- **The Rule:** Reviewer notes and earlier rounds stay intact; the worker ticks the current round's criteria with evidence beside each; there are no separate evidence blocks.
+- **The Rule:** Reviewer notes and earlier rounds stay intact; the worker ticks an item only with evidence of that item itself, leaving any other item unticked with its limit stated, with evidence or limitation beside each; there are no separate evidence blocks.
 - **Specimen (§1.4):** On one task, a polecat worker rewrote the whole task body, deleted the coordinator's prior review, and ticked all four acceptance criteria itself until an aops-twin restored them.
 
 ## 3. Interface Contracts & Schemas

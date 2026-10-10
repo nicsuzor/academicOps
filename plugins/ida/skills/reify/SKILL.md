@@ -67,7 +67,7 @@ Then assemble the steps:
 
 ## Report
 
-[ Any special reporting requirements; default should be to update the task record with evidence of completion next to each acceptance criterion. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
+[ Any special reporting requirements; default should be to update the task record with evidence next to each acceptance criterion: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
 ```
 
 ### Mint QA follow-up when required

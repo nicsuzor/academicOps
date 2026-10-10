@@ -26,7 +26,7 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 4. Validate Against Criteria
 
-- Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations.
+- Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations. An item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated.
 - When acceptance criteria are met, mark the task `done` via `/dump` (workers with PKB access mark `done` after `/pull`; asserting that tests ran is sufficient for a completion claim).
 - Release as `done` or `partial` by default. `review` is the exception.
 - If agent work remains -- an external blocker, a missing tool, a scope seam, or a next step such as a QA run or re-run, a merge, a deploy, a retry, or a routing or dispatch call -- release as `partial` with a follow-up task carrying the remainder, and wire directed `blocks` edges from any blocker.
