@@ -1,5 +1,80 @@
 # Changelog
 
+## [0.10.10](https://github.com/nicsuzor/academicOps/compare/v0.10.9...v0.10.10) (2026-10-10)
+
+
+### Features
+
+* **diagram:** document connect limitation, boundary trim, and arrow binding schema ([418d2d0](https://github.com/nicsuzor/academicOps/commit/418d2d00fee9b504f5a2406501ec0394f914242a))
+* **diagram:** require faithful SVG/PNG render and visual QA step ([63ac7ff](https://github.com/nicsuzor/academicOps/commit/63ac7ffbf076e880994f9dd3603f10bf4e3c4c00))
+* **diagram:** require faithful SVG/PNG render and visual QA step ([f0583ec](https://github.com/nicsuzor/academicOps/commit/f0583ecd4aff9c800b6ccef5c2cf1a0c2fcae2d0))
+* **diagram:** require mem&gt;=v0.3.101 and cut boundary-trim and reindex workarounds ([544e0c9](https://github.com/nicsuzor/academicOps/commit/544e0c9c49f7d112f0b2d864f22339abb75af0bd)), closes [#2762](https://github.com/nicsuzor/academicOps/issues/2762)
+* **diagram:** validate fractional index keys and document add-node/connect defect ([b1f478f](https://github.com/nicsuzor/academicOps/commit/b1f478f0a25fca55fab3238cdd6db039daa04695))
+* **ida:** add morning-decisions skill for walking through decisions one card at a time ([5218dba](https://github.com/nicsuzor/academicOps/commit/5218dba5d29ca64f2fd4df42a9487a68bfaad375))
+* **ida:** add morning-decisions skill for walking through decisions one card at a time ([9e23ee9](https://github.com/nicsuzor/academicOps/commit/9e23ee98ef2b41e75af571b74f36f545374e0338))
+* **ida:** add thinking-with-the-user register beside briefing on returned work ([329b29e](https://github.com/nicsuzor/academicOps/commit/329b29ea3927e90dcd99f0ed58ccb6d30e75980f))
+* **ida:** add thinking-with-the-user register beside briefing on returned work ([a8d97fd](https://github.com/nicsuzor/academicOps/commit/a8d97fd9f46fd13fd3fe18c7dc75a25a95862feb))
+* **ida:** auto-hydrate user prompts, unwrap channel envelopes, and skip peer reports ([051ccd0](https://github.com/nicsuzor/academicOps/commit/051ccd0088092e07009691e7e20b99432f0b1fb2))
+* **ida:** auto-hydrate user prompts, unwrap channel envelopes, and skip peer reports ([05f91bf](https://github.com/nicsuzor/academicOps/commit/05f91bf91fd475daf5ac366ac1a74b7d26fdca17))
+* **ida:** name armed premise reports by short id and validate on verdict ([838ebd3](https://github.com/nicsuzor/academicOps/commit/838ebd3b55f43b7db0bd75a80f1f60d5820a8228))
+* **ida:** name armed premise reports by short id and validate on verdict ([7a69dde](https://github.com/nicsuzor/academicOps/commit/7a69dded45803aa70998ee6566bab1cd9af46f04))
+* **ida:** write shared CORE.md listing agent roles and project repo registry ([0676b17](https://github.com/nicsuzor/academicOps/commit/0676b17e5d0c152d6798504481344ae1d596b01c))
+* **ida:** write shared CORE.md listing agent roles and project repo registry ([aa85543](https://github.com/nicsuzor/academicOps/commit/aa8554381003e8676d28f2cb4aaa83546ab874dd))
+* **instruction-text:** replace verbatim-relay rules with recomposed asks and message-id citations ([e07f7ba](https://github.com/nicsuzor/academicOps/commit/e07f7bad489e7ae74e720b43145e98d0c1be1aee))
+* **instruction-text:** replace verbatim-relay rules with recomposed asks and message-id citations ([4bb4391](https://github.com/nicsuzor/academicOps/commit/4bb439194e10837f2867daffbe636005a023e014))
+* **instructions:** remove proactive helpfulness drivers and emphasise eagerness axiom ([2f4dbb0](https://github.com/nicsuzor/academicOps/commit/2f4dbb0700cdf9310676072bfc6012afb57eec75))
+* **instructions:** remove proactive helpfulness drivers and emphasise eagerness axiom ([ada7f85](https://github.com/nicsuzor/academicOps/commit/ada7f855914ad47c65bc3499ff5648c9cf47628c))
+* **premise-check:** clear premise check gate with 3 required elements and runnable command ([#2829](https://github.com/nicsuzor/academicOps/issues/2829)) ([bb37030](https://github.com/nicsuzor/academicOps/commit/bb37030ac870a720a2c454493e59a36e76a1c897))
+* **premise-check:** require relayed directions to cite user authority and check derivation ([102eff8](https://github.com/nicsuzor/academicOps/commit/102eff88f06ff93629d569425b9a67e2d34a0bbf))
+* **premise-check:** require relayed directions to cite user authority and check derivation ([39c4961](https://github.com/nicsuzor/academicOps/commit/39c4961c144720c95403b16d7c38d8da6c95e0c5))
+* **settings:** single owner for session startup settings and session-scoped git isolation ([bd244b8](https://github.com/nicsuzor/academicOps/commit/bd244b8480814719c111a0c36bd107670ba2493a))
+* **settings:** single owner for session startup settings and session-scoped git isolation ([6d25b38](https://github.com/nicsuzor/academicOps/commit/6d25b3849bc7e89d287acb91af9cb95ba729be42))
+* **settings:** source session gitconfig path from AOPS_GIT_CONFIG_GLOBAL ([d29c0a5](https://github.com/nicsuzor/academicOps/commit/d29c0a50f89bf41bbd286fb4e58215e835353a89))
+* **workflow:** require direct evidence before ticking acceptance criteria ([71b8b13](https://github.com/nicsuzor/academicOps/commit/71b8b13ca72d5a30daa42fa5951b6fb3528d7f08))
+* **workflow:** require direct evidence before ticking acceptance criteria ([c53a176](https://github.com/nicsuzor/academicOps/commit/c53a176942cfc27eef9c05b009b9093c60f16435))
+* **workflows:** compose rbg as a review step in interactive workflows ([97fb434](https://github.com/nicsuzor/academicOps/commit/97fb434cc887305fcfb98c10c112789695590500))
+* **workflows:** compose rbg as review step in interactive workflows ([515e3c0](https://github.com/nicsuzor/academicOps/commit/515e3c092be0b8de433263b1f16c105862a3938f))
+
+
+### Bug Fixes
+
+* **diagram:** describe screenshot as a geometry render; drop task-id provenance ([9be80be](https://github.com/nicsuzor/academicOps/commit/9be80be642a1dd4cfa5edf87a3daa0a6e56993fc))
+* **gather:** bring decisions as options and costs, not an unasked recommendation ([1b78543](https://github.com/nicsuzor/academicOps/commit/1b78543c49ba69d97d95879b119589e7e2fb5697))
+* **ida:** PKB hook takes headers from env only, bounds HTTP search by timeout, no unauthenticated retry ([f08c4b4](https://github.com/nicsuzor/academicOps/commit/f08c4b4a67a09ec8011cc46a3718dbb8109481c8))
+* **ida:** release done or partial by default; review only for Nic-only decisions ([#2825](https://github.com/nicsuzor/academicOps/issues/2825)) ([32b926d](https://github.com/nicsuzor/academicOps/commit/32b926d8772613aacd32fd637410b0ce7988cd44))
+* **ida:** remove redundant YAML registry block to enforce single format in CORE.md ([3d54c60](https://github.com/nicsuzor/academicOps/commit/3d54c60f025e139a631e685d9e87bec49988ef99))
+* **ida:** state Nic's rule on fixing defects; replace lines contradicting eagerness ([c3b6597](https://github.com/nicsuzor/academicOps/commit/c3b65977014363c5af18a5d5f03af70b284dfe24))
+* **ida:** state the eagerness rule once per scope; keep the option-fit constraint ([72119f5](https://github.com/nicsuzor/academicOps/commit/72119f58e439c2a2abf194bf57a6afe8e22b97ae))
+* **ida:** tracer emits subagent LLM spans and labels subagent spans with the subagent ([#2823](https://github.com/nicsuzor/academicOps/issues/2823)) ([5b55e2a](https://github.com/nicsuzor/academicOps/commit/5b55e2a4fca690a08c1548378574a58716e23f91))
+* **reconcile:** exempt principal closures from worker completion receipts ([#2840](https://github.com/nicsuzor/academicOps/issues/2840)) ([05581aa](https://github.com/nicsuzor/academicOps/commit/05581aaa444c557c539771b896d60d506dd4b925))
+* **reconcile:** exempt principal closures from worker completion receipts ([#2840](https://github.com/nicsuzor/academicOps/issues/2840)) ([661dfe0](https://github.com/nicsuzor/academicOps/commit/661dfe0f309fc47da6f70132254c7e0e555fe85b))
+* **review:** remove prohibited wording test and align reconcile status rules ([#2840](https://github.com/nicsuzor/academicOps/issues/2840)) ([bd462d6](https://github.com/nicsuzor/academicOps/commit/bd462d62697dbde0d19518e5304e6251cbd941b1))
+* **tracer:** match tool_input in _find_tool_use_id to avoid Agent span collisions ([9c1c16e](https://github.com/nicsuzor/academicOps/commit/9c1c16e7df8e067d702b16bb4849bd40c8e75ab7))
+* **tracer:** match tool_input in _find_tool_use_id to avoid Agent span collisions ([0ab2b0f](https://github.com/nicsuzor/academicOps/commit/0ab2b0f3194b5c5cb647467613c4228396f88c72))
+* **wf-design-conversation:** point to the diagram skill instead of restating its checks ([5447f4a](https://github.com/nicsuzor/academicOps/commit/5447f4a1ddbeb0d8d32e8643e4a3e64936c43cfc))
+* **wf-handover:** drop the resume pointer from the user summary ([8dc09bc](https://github.com/nicsuzor/academicOps/commit/8dc09bcb996e749a781413659408b3e3ff743c9b))
+* **workflows:** remove uncommissioned forwarder spec per proportionate axiom ([9e8e7a4](https://github.com/nicsuzor/academicOps/commit/9e8e7a45369f506a463c23c70dc0efb27a32e165))
+* **workflows:** require reviewer that changes code to hand off for independent review ([534a7f2](https://github.com/nicsuzor/academicOps/commit/534a7f2e252369def31cb319a62fe746cb3ed1c3))
+* **workflows:** require reviewer that changes code to hand off for independent review ([e6af3d4](https://github.com/nicsuzor/academicOps/commit/e6af3d41654aa5a6e70e620cb2dd8d24f621fee1))
+* **workflows:** state review stages as contract expectations per runtime composition rule ([3dfeb48](https://github.com/nicsuzor/academicOps/commit/3dfeb484ab07658365e7722a3f214ee04ee639d6))
+
+
+### Documentation
+
+* **ida:** add proportionality test to premise-check skill ([8fc12ad](https://github.com/nicsuzor/academicOps/commit/8fc12addf68620f6d52b9258443b1a0571a6ba98))
+* **ida:** add proportionality test to premise-check skill ([09e3453](https://github.com/nicsuzor/academicOps/commit/09e3453ef642106b1b3b0db5ad31340a979a1846))
+* **ida:** make premise-check proportionality operative ([d6e272a](https://github.com/nicsuzor/academicOps/commit/d6e272aff5a7ecf368a21378edf3cd384ebf473c))
+* **specs:** document prompt hydration mechanics and peer report gate triggers ([6fb7865](https://github.com/nicsuzor/academicOps/commit/6fb7865dec09bf682117d4448e9ef1323acb26c6))
+* **specs:** graph valuation -- skills and agent logic for the flow rule (draft) ([#2787](https://github.com/nicsuzor/academicOps/issues/2787)) ([e694aee](https://github.com/nicsuzor/academicOps/commit/e694aeea2969c65e9d7501a5e070b1fb12779ce2))
+* **specs:** start ENFORCEMENT-MAP empty with 18 current axioms ([cc03c35](https://github.com/nicsuzor/academicOps/commit/cc03c3526103d8556b429c4faa12b8b6e02ab49a))
+* **specs:** start ENFORCEMENT-MAP empty with 18 current axioms ([ce17089](https://github.com/nicsuzor/academicOps/commit/ce170894c9559c7f5895f96715403003d3b886c1))
+* state PKB rules inline instead of citing instance-specific notes ([#2760](https://github.com/nicsuzor/academicOps/issues/2760)) ([c276681](https://github.com/nicsuzor/academicOps/commit/c2766813dbdafa1c0d283e63f05c7861d74d8f7b))
+
+
+### Tests
+
+* **ida:** add regression tests for user prompt hydration, channel unwrapping, and peer report skipping ([b41afd9](https://github.com/nicsuzor/academicOps/commit/b41afd90ede10639b138d7459ceee3baa442b9cd))
+
 ## [0.10.9](https://github.com/nicsuzor/academicOps/compare/v0.10.8...v0.10.9) (2026-10-08)
 
 ### Bug Fixes
