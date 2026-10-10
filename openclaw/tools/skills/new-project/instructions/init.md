@@ -82,23 +82,22 @@ pkb.create_task(
 )
 ```
 
-## Step 8: Git & polecat registration
+## Step 8: Git & project registration
 
 ```bash
 uv sync && pre-commit install
 git add -A && git commit -m "feat: initial project scaffolding" && git push -u origin main
 ```
 
-Register in `$AOPS_SESSIONS/polecat.yaml`:
+Register in `plugins/ida/CORE.md` (the single source of truth for project repositories), and container mount overrides in `$AOPS_SESSIONS/polecat.yaml` if needed:
 
 ```bash
+# Add <slug> and repo to plugins/ida/CORE.md
+# If container mounts or host overrides are required:
 cd "$AOPS_SESSIONS" && git pull --rebase
-# Ensure slug not present, then append:
 # <slug>:
-#   repo: <repo-name>
-#   default_branch: main
 #   mounts: [{host: "$AOPS_SESSIONS/secrets/<slug>/", container: "/run/secrets/project/", mode: "ro"}]
-git add polecat.yaml && git commit -m "chore(projects): register <slug>" && git push
+git add polecat.yaml && git commit -m "chore(projects): register <slug> mounts" && git push
 ```
 
 ## Step 9: Report

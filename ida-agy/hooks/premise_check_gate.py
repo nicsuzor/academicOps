@@ -18,10 +18,13 @@ Verdict recording and OpenTelemetry trace emission live separately in
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import shlex
 import tempfile
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -97,9 +100,14 @@ def get_state(session_id: str) -> dict[str, Any]:
 def arm(session_id: str, claim_id: str | None = None) -> None:
     """Arm the premise check for a session until a verdict disarms it."""
     state = _load_state(session_id)
+    cid = claim_id or state.get("claim_id") or "unnamed-claim"
     state["armed"] = True
     state["pending"] = True  # backward compat
-    state["claim_id"] = claim_id or state.get("claim_id") or "unnamed-claim"
+    state["claim_id"] = cid
+    claim_ids = state.get("claim_ids") or []
+    if cid not in claim_ids:
+        claim_ids.append(cid)
+    state["claim_ids"] = claim_ids
     state["armed_at"] = _now()
     _save_state(session_id, state)
 
@@ -107,9 +115,20 @@ def arm(session_id: str, claim_id: str | None = None) -> None:
 def disarm(session_id: str, claim_id: str, verdict: str, reason: str) -> None:
     """Disarm the premise check after a verdict is recorded."""
     state = _load_state(session_id)
-    state["armed"] = False
-    state["pending"] = False  # backward compat
-    state["claim_id"] = claim_id
+    claim_ids = state.get("claim_ids") or []
+    if claim_id in claim_ids:
+        claim_ids.remove(claim_id)
+    state["claim_ids"] = claim_ids
+
+    if claim_ids:
+        state["armed"] = True
+        state["pending"] = True
+        state["claim_id"] = claim_ids[-1]
+    else:
+        state["armed"] = False
+        state["pending"] = False
+        state["claim_id"] = claim_id
+
     state["last_verdict"] = {
         "claim_id": claim_id,
         "verdict": verdict,
@@ -146,12 +165,60 @@ def _prompt_text(ctx: HookContext) -> str:
 
 def is_peer_report(ctx: HookContext) -> bool:
     """True when an incoming prompt is another agent's report, not the user's message."""
-    return _prompt_text(ctx).lstrip().startswith(_PEER_ENVELOPES)
+    text = _prompt_text(ctx).lstrip()
+    return text.startswith(_PEER_ENVELOPES)
+
+
+def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:
+    if hooks_dir and hooks_dir.is_absolute():
+        base = hooks_dir
+    else:
+        base = Path(__file__).resolve().parent
+    # 1. Skill script: <plugin-dir>/skills/premise-check/scripts/verdict.py
+    skill_script = base.parent / "skills" / "premise-check" / "scripts" / "verdict.py"
+    if skill_script.is_file():
+        return skill_script
+    # 2. Hook script: <plugin-dir>/hooks/premise_check_verdict.py
+    hook_script = base / "premise_check_verdict.py"
+    if hook_script.is_file():
+        return hook_script
+    return skill_script
+
+
+def format_verdict_command(
+    claim_id: str,
+    hooks_dir: Path | None = None,
+    session_id: str = "",
+) -> str:
+    script_path = resolve_verdict_script(hooks_dir)
+    quoted_script = shlex.quote(str(script_path))
+    quoted_claim = shlex.quote(claim_id)
+    cmd = f'python3 {quoted_script} --report {quoted_claim} --verdict PASS --reason "<why>"'
+    if not os.environ.get("AOPS_SESSION_ID") and session_id:
+        cmd += f" --session {shlex.quote(session_id)}"
+    return cmd
 
 
 def _derive_claim_id(ctx: HookContext) -> str:
     if ctx.event == "UserPromptSubmit":
-        return "incoming peer report"
+        prompt = _prompt_text(ctx).strip()
+        match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>(.*?)(?:</\1>|$)", prompt, re.DOTALL)
+        if match:
+            attrs = match.group(2)
+            id_match = re.search(r'\b(?:id|report_id|task_id)=["\']([^"\']+)["\']', attrs)
+            if id_match:
+                cid = id_match.group(1).strip()
+                if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
+                    return cid
+
+            digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:8]
+            return f"report-{digest}"
+
+        prompt_snippet = prompt.strip()
+        if prompt_snippet:
+            digest = hashlib.sha256(prompt_snippet.encode("utf-8")).hexdigest()[:8]
+            return f"report-{digest}"
+        return f"report-{uuid.uuid4().hex[:8]}"
 
     for call in ctx.tool_calls:
         if call.get("tool_name") in _DISPATCH_TOOLS:
@@ -175,7 +242,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
         if call_id:
             return str(call_id)
 
-    return "unnamed-claim"
+    return "report-unnamed"
 
 
 def _is_override_active() -> bool:
@@ -202,7 +269,20 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
 
     if ctx.event == "UserPromptSubmit":
         if is_peer_report(ctx):
-            arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
+            claim_id = _derive_claim_id(ctx)
+            arm(ctx.session_id, claim_id=claim_id)
+            cmd = format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)
+            inject = (
+                f"A peer report arrived and armed the premise-check gate: {claim_id}.\n"
+                f"The premise-check gate blocks until a verdict is recorded.\n"
+                f"To record a verdict and clear the gate, run:\n"
+                f"{cmd}"
+            )
+            user_msg = (
+                f"Premise-check gate armed by: {claim_id}. "
+                f"The gate blocks until a verdict is recorded. Run:\n{cmd}"
+            )
+            return warn(inject, user_msg)
         return None
 
     has_dispatch = any(call.get("tool_name") in _DISPATCH_TOOLS for call in ctx.tool_calls)
@@ -243,14 +323,16 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
         else "dispatching another subagent or message"
     )
 
+    cmd = format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)
     reason = (
-        f"A subagent or peer report ({claim_id!r}) is pending its premise-check verdict for session "
-        f"'{ctx.session_id or 'current'}'. Use the 'premise-check' skill to record "
-        f"PASS, REVISE or FAIL with your reason before {action_desc}."
+        f"The premise-check gate was armed by: {claim_id}.\n"
+        f"The gate blocks until a verdict is recorded before {action_desc}.\n"
+        f"To record a verdict and clear the gate, run:\n"
+        f"{cmd}"
     )
     user_msg = (
-        f"Blocked: record the premise-check verdict on the last report ({claim_id!r}) "
-        f"before {action_desc}."
+        f"Blocked: premise check pending on {claim_id}. "
+        f"The gate blocks until a verdict is recorded. Run:\n{cmd}"
     )
 
     if mode == "warn":

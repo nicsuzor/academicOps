@@ -30,7 +30,7 @@ The implementation worker must satisfy these obligations before marking `status:
 
 1. Verify automated tests and linter pass locally.
 2. Push feature branch to remote and open a draft pull request targeting the project's base branch.
-3. Update the task record: check off met acceptance criteria and record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
+3. Update the task record: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
 4. Release the task as `done` via `pkb.release_task`.
 
 ## Follow-up QA Task Specification
@@ -41,4 +41,4 @@ When QA review is required, `/reify` mints a follow-up task with:
 - **Parent**: Same parent as primary task
 - **Depends on**: `[<primary-task-id>]` (hard blocking dependency)
 - **Workflow**: Composes independent verification workflow
-- **Goal**: Independently verify PR deliverable and claims against literal acceptance criteria in a clean context. When verified, merge to the base branch per project policy.
+- **Goal**: Independently verify PR deliverable and claims against literal acceptance criteria in a clean context. When verified without reviewer code changes, merge to the base branch per project policy. A reviewer that changes code or pushes fixes must never merge; it must hand off for independent review by filing a follow-up QA task.

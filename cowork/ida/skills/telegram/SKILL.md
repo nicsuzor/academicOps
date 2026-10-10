@@ -1,11 +1,11 @@
 ---
 name: telegram
-description: Reaction and format rules for replying to the user over a Telegram channel. Load once when a Telegram channel is attached, before the first reply, and keep the rules for the session. Adds formatting on top of the persona's "Briefing the user" rules; it does not replace them. Not for other channels or for composing the brief's content.
+description: Reaction and format rules for replying to the user over a Telegram channel. Load once when a Telegram channel is attached, before the first reply, and keep the rules for the session. Adds formatting on top of the persona's "Thinking with the user" and "Briefing on returned work" rules; it does not replace them. Not for other channels or for composing the brief's content.
 ---
 
 # Telegram replies
 
-The persona's "Briefing the user" rules decide what a message says. These rules decide how it looks on a phone.
+The persona's "Thinking with the user" and "Briefing on returned work" rules decide what a message says. These rules decide how it looks on a phone.
 
 ## Reactions
 

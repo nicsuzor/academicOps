@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from premise_check_gate import disarm
+from premise_check_gate import disarm, get_state, is_armed
 
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
 
@@ -90,12 +90,27 @@ def record_verdict(
     tracer_mod: Any | None = None,
 ) -> dict[str, Any]:
     """Validate, emit the span (best-effort), and disarm the premise check."""
+    cid = (claim_id or "").strip()
+    if not cid:
+        raise ValueError("a verdict needs a report id; got none")
+
     token = (verdict or "").strip().upper()
     if token not in VERDICTS:
         raise ValueError(f"verdict must be one of {', '.join(VERDICTS)}; got {verdict!r}")
     reason = (reason or "").strip()
     if not reason:
         raise ValueError("a verdict needs a reason; got none")
+
+    if not is_armed(session_id):
+        raise ValueError(f"no premise check is currently armed for session {session_id!r}")
+
+    state = get_state(session_id)
+    expected_id = state.get("claim_id")
+    valid_ids = state.get("claim_ids") or ([expected_id] if expected_id else [])
+    if cid != expected_id and cid not in valid_ids:
+        raise ValueError(
+            f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
+        )
 
     if tracer_mod is None:
         tracer_mod = _import_claude_code_tracer()
@@ -104,12 +119,12 @@ def record_verdict(
     span_error: str | None = None
     if tracer_mod is not None:
         try:
-            span_emitted = emit_verdict_span(tracer_mod, session_id, claim_id, token, reason)
+            span_emitted = emit_verdict_span(tracer_mod, session_id, cid, token, reason)
         except Exception as exc:
             span_error = repr(exc)
             print(f"premise_check_verdict: span emission failed: {exc!r}", file=sys.stderr)
 
-    disarm(session_id, claim_id, token, reason)
+    disarm(session_id, cid, token, reason)
 
     return {
         "ok": True,

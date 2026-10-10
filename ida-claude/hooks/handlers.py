@@ -3,6 +3,7 @@ from __future__ import annotations
 """ida hook handlers."""
 
 
+import asyncio
 import json
 import logging
 import os
@@ -44,6 +45,8 @@ _BASIC_VARS = (
     "AOPS_BOT_GH_TOKEN",
     "PKB_MCP_URL",
     "PKB_MCP_TOOL_PREFIX",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_NOSYSTEM",
 )
 
 
@@ -194,8 +197,82 @@ def _cap_output(out: str) -> str:
     return out[:cutoff].rstrip() + _TRUNCATION_MARKER
 
 
+def extract_prompt_query(prompt: str) -> str:
+    """Extract the searchable user text from a prompt, unwrapping channel envelopes.
+
+    A prompt that begins with a `<channel ...>` envelope (Telegram or another
+    channel) is unwrapped to its body; any other prompt is used as typed. ANSI
+    escape codes are removed and surrounding whitespace stripped.
+    """
+    if not prompt:
+        return ""
+    m = re.match(r"\s*<channel\b[^>]*>(.*?)(?:</channel>|$)", prompt, flags=re.DOTALL)
+    text = m.group(1) if m else prompt
+    return re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text).strip()
+
+
+def _resolve_mcp_headers() -> dict[str, str]:
+    """HTTP headers for the PKB endpoint, from the environment only.
+
+    `PKB_MCP_HEADERS` is a JSON object of header name to value.
+    `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` together supply the
+    Cloudflare Access service-token headers. A malformed `PKB_MCP_HEADERS` is
+    logged and ignored, never silently swallowed.
+    """
+    headers: dict[str, str] = {}
+
+    env_headers = os.environ.get("PKB_MCP_HEADERS")
+    if env_headers:
+        try:
+            parsed = json.loads(env_headers)
+        except json.JSONDecodeError as exc:
+            log.warning("PKB_MCP_HEADERS is not valid JSON, ignoring it: %s", exc)
+        else:
+            if isinstance(parsed, dict):
+                headers.update({str(k): str(v) for k, v in parsed.items()})
+            else:
+                log.warning("PKB_MCP_HEADERS is not a JSON object, ignoring it")
+
+    cf_id = os.environ.get("CF_ACCESS_CLIENT_ID")
+    cf_secret = os.environ.get("CF_ACCESS_CLIENT_SECRET")
+    if cf_id and cf_secret:
+        headers.setdefault("CF-Access-Client-Id", cf_id)
+        headers.setdefault("CF-Access-Client-Secret", cf_secret)
+
+    return headers
+
+
+async def _call_pkb_search(mcp_url: str, query: str, headers: dict[str, str]) -> str | None:
+    from fastmcp import Client
+    from fastmcp.client.transports import StreamableHttpTransport
+
+    transport = StreamableHttpTransport(mcp_url, headers=headers)
+    async with Client(transport=transport) as client:
+        res = await client.call_tool("pkb_search", {"query": query})
+    texts = [item.text if hasattr(item, "text") else str(item) for item in res.content]
+    out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", "\n".join(texts)).strip()
+    return _cap_output(out) if out else None
+
+
+def _search_via_fastmcp_client(mcp_url: str, query: str, headers: dict[str, str]) -> str | None:
+    """Search the PKB in-process over streamable HTTP with the given headers.
+
+    The whole connect-and-call is bounded by `_SEARCH_TIMEOUT_SECONDS`. Any
+    failure is logged and returns None; there is no second transport to try.
+    """
+    try:
+        return asyncio.run(
+            asyncio.wait_for(
+                _call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS
+            )
+        )
+    except Exception as exc:
+        log.warning("PKB search over HTTP failed: %r", exc)
+        return None
+
+
 def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
-    query = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", prompt).strip()[:200]
+    query = extract_prompt_query(prompt)[:200]
     if not query:
         return None
 
@@ -203,6 +280,10 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
     if not mcp_url:
         log.warning("PKB_MCP_URL not found for UserPromptSubmit hook")
         return None
+
+    headers = _resolve_mcp_headers()
+    if headers:
+        return _search_via_fastmcp_client(mcp_url, query, headers)
 
     mcp_bin = shutil.which("fastmcp") or shutil.which("mcp")
     if not mcp_bin:
@@ -254,8 +335,12 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
 
     Tries first to return the output of `pkb search {prompt:200}` wrapped in
     `<academicOps PKB search results>` tags; if that fails, returns the
-    existing messages.
+    existing messages. Peer reports are skipped so they trigger hearsay
+    and premise check gates instead of hydrating from the PKB.
     """
+    if is_peer_report(ctx):
+        return None
+
     raw_prompt = ctx.raw.get("prompt")
     if raw_prompt is None and hasattr(ctx, "prompt"):
         raw_prompt = ctx.prompt
@@ -263,8 +348,9 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
         raw_prompt = raw_prompt.get("text") or raw_prompt.get("content") or ""
     prompt_str = str(raw_prompt or "").strip()
 
-    if prompt_str:
-        output = _run_pkb_search(prompt_str, cwd=ctx.cwd)
+    query = extract_prompt_query(prompt_str)
+    if query:
+        output = _run_pkb_search(query, cwd=ctx.cwd)
         if output:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
@@ -446,7 +532,14 @@ def _isolate_credentials(ctx: HookContext) -> bool:
         if val is not None:
             moved[var] = val
 
-    if not moved:
+    aops_gitconfig = os.environ.get("AOPS_GIT_CONFIG_GLOBAL")
+    added_git_isolation = False
+    if "GIT_CONFIG_GLOBAL" not in existing and "GIT_CONFIG_GLOBAL" not in moved and aops_gitconfig:
+        existing["GIT_CONFIG_GLOBAL"] = str(Path(aops_gitconfig).expanduser())
+        existing.setdefault("GIT_CONFIG_NOSYSTEM", "1")
+        added_git_isolation = True
+
+    if not moved and not added_git_isolation:
         return False
 
     existing.update(moved)
@@ -621,6 +714,11 @@ def _run_claude_tracer(ctx: HookContext, handler_name: str) -> None:
         log.warning("claude_code_tracer %s failed: %s", handler_name, exc)
 
 
+def subagent_stop(ctx: HookContext) -> Result | None:
+    _run_claude_tracer(ctx, "handle_subagent_stop")
+    return None
+
+
 def stop_failure(ctx: HookContext) -> Result | None:
     _run_claude_tracer(ctx, "handle_stop_failure")
     return None
@@ -722,6 +820,7 @@ HANDLERS: dict[str, list] = {
     "PostToolUseFailure": [post_tool_failure],
     "PostToolBatch": [premise_check_arm],
     "Stop": [stop, agy_stop, premise_check_handler],
+    "SubagentStop": [subagent_stop],
     "StopFailure": [stop_failure],
     "PermissionRequest": [permission_request],
     "PermissionDenied": [permission_denied],

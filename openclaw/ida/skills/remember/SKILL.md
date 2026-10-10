@@ -7,15 +7,11 @@ description: Write and maintain durable knowledge in the PKB. Capture persists f
 
 Write and consolidate knowledge notes under `synthesize-not-accrete`. State current truth in synthesised prose; do not accumulate chronological history or changelogs.
 
-Two PKB nodes are the single source of truth for note standards, and this skill is the operating procedure for them. Read them when a rule here is ambiguous, and correct them rather than this file when the standard itself changes:
-
-- **The PKB doctrine note** -- what the PKB may contain, how a node is rewritten, and whose duty extraction is.
-- **The PKB node-linking note** -- mechanics: valid node types, which fields are real graph edges, and what frontmatter the tools accept. Node-type semantics live in the PKB type taxonomy.
-
-A rule stated in only one of those two is not in conflict with the other; a rule restated here that contradicts either is a defect in this file.
-
 ## Invariants
 
+- **Current facts only**: The PKB holds what is true now, one canonical note per topic. Logs, event records, narration of work done, and standing rules about how agents work do not belong in it.
+- **Rewrite in place**: A fact that is no longer true is deleted, not annotated. No superseded sections, changelogs, dated layers, or corrections that quote the old text.
+- **Extraction is every writer's duty**: When you find durable knowledge sitting in a task body, extract it to a knowledge note in the same pass. Do not leave it for a later sweep.
 - **Search before writing**: Query existing notes before creating or updating.
 - **Never fabricate**: Record citable facts and direct implications; omit opinions on what should have happened.
 - **Resolve contradictions**: When sources disagree, state the resolved fact and delete the losing version -- do not record the disagreement. Where a retired premise would otherwise be re-derived by the next reader, keep one forward-looking line of warning and delete the reasoning it came from. If the conflict cannot be resolved from evidence, ask; do not file both claims and move on.

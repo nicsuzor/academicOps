@@ -47,11 +47,11 @@ Then assemble the steps:
 ```markdown
 ## Goal
 
-[ Concise description of the purpose of the task, describing the required end state, naming the repository or project and the objective. ]
+[ Concise description of the purpose of the task, describing the required end state, naming the repository or project and the objective. Recompose the ask into a clear logical structure; never quote the user's words verbatim. ]
 
 ## Context
 
-[ only include decisions and facts the worker cannot find (omit if none) ]
+[ Decisions and facts the worker cannot find (omit if none). Cite message ids as pointers; never record or quote the user's words verbatim. The tracing hook preserves raw prompts. ]
 
 ## Acceptance
 
@@ -67,7 +67,7 @@ Then assemble the steps:
 
 ## Report
 
-[ Any special reporting requirements; default should be to update the task record with evidence of completion next to each acceptance criterion. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
+[ Any special reporting requirements; default should be to update the task record with evidence next to each acceptance criterion: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
 ```
 
 ### Mint QA follow-up when required
@@ -79,11 +79,12 @@ Where the project finish template calls for QA review:
 3. Set parent to the primary task's parent.
 4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.
-6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and merge to the target branch when verified per the finish template.
+6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and merge to the target branch when verified per the finish template; a reviewer that pushes fixes or changes code must never merge and must hand off for independent review.
 
 ### Requirements for writing tasks
 
 - Give the worker the end state and the bounds; leave the method to it.
+- Never quote or record the user's words verbatim in Goal, Context, or instructions. Make sense of asks in context, link them to prior context, recompose into a clear logical structure, and cite message ids.
 - State the Goal and each criterion over the whole class the request covers: "the user's messages", not a named person's or today's channels and formats. Instances the request names are cases to test, not the boundary of the work.
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.

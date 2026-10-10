@@ -570,11 +570,17 @@ def _resolve_agent_and_parent_ids(
     data: dict | None = None,
     payload_key: str = "session_id",
 ) -> tuple[str, str | None, str | None]:
-    """Resolve (phoenix_session_id, local_agent_id, parent_session_id)."""
+    """Resolve (phoenix_session_id, local_agent_id, parent_session_id).
+
+    A hook fired inside an in-process subagent carries the main thread's
+    ``session_id`` and the subagent's own ``agent_id``; the agent id wins.
+    """
     phoenix_session_id = _phoenix_session_id(state)
     local_agent_id = None
     if data:
-        local_agent_id = resolve_session_id(data, payload_key, prefer_env=False)
+        local_agent_id = _subagent_id(data) or resolve_session_id(
+            data, payload_key, prefer_env=False
+        )
     if not local_agent_id:
         local_agent_id = state.get("session_id") or phoenix_session_id
 
@@ -583,6 +589,23 @@ def _resolve_agent_and_parent_ids(
         parent_session_id = phoenix_session_id
 
     return phoenix_session_id, local_agent_id, parent_session_id
+
+
+def _subagent_id(data: dict) -> str | None:
+    """The ``agent_id`` of the in-process subagent a hook fired inside, or None.
+
+    Claude Code adds ``agent_id`` and ``agent_type`` to the payload of every
+    tool hook a subagent fires, and to SubagentStart/SubagentStop; its
+    ``session_id`` stays the main thread's. Main-thread payloads carry no
+    ``agent_id`` (a ``--agent`` session carries ``agent_type`` alone).
+    """
+    return str(data.get("agent_id") or "").strip() or None
+
+
+def _subagent_name(agent_type: Any) -> str:
+    """Agent name from a subagent's type, without its plugin prefix ('ida:james' -> 'james')."""
+    name = str(agent_type or "").strip()
+    return name.split(":", 1)[1] if ":" in name else name
 
 
 # ---------------------------------------------------------------------------
@@ -801,9 +824,13 @@ def _find_tool_use_id(transcript_path: str, tool_name: str, tool_input: dict) ->
             except Exception:
                 continue
             if entry.get("type") == "assistant":
-                for block in entry.get("message", {}).get("content", []):
+                for block in reversed(entry.get("message", {}).get("content", [])):
                     if block.get("type") == "tool_use" and block.get("name") == tool_name:
-                        return block.get("id")
+                        if tool_input:
+                            if block.get("input") == tool_input:
+                                return block.get("id")
+                        else:
+                            return block.get("id")
     except Exception as e:
         log.debug("Failed to find tool_use_id: %s", e)
     return None
@@ -937,6 +964,7 @@ def _extract_llm_spans_for_turn(
     human_count_at_start: int,
     trace_id_hex: str,
     root_span_id_hex: str,
+    stop_at_next_prompt: bool = True,
 ) -> list[dict]:
     """
     Extract LLM spans from transcript entries that belong to this turn.
@@ -947,7 +975,9 @@ def _extract_llm_spans_for_turn(
     turns belong to their own traces.  Human messages that follow one another
     with no assistant entry between them are one prompt block, not a turn
     boundary: prompts queued mid-turn and released by Esc are written that way
-    and answered by one response.
+    and answered by one response. With ``stop_at_next_prompt=False`` it does
+    not stop: a subagent's sidechain transcript is one conversation, and a
+    later prompt in it (a SendMessage continuation) is just the next input.
     Uses actual timestamps from the transcript.
 
     For each LLM call we use the immediately-preceding message as the input:
@@ -1141,7 +1171,7 @@ def _extract_llm_spans_for_turn(
             if _is_human_message(entry):
                 _flush_group()
                 human_count += 1
-                if in_turn and not in_prompt_block:
+                if in_turn and stop_at_next_prompt and not in_prompt_block:
                     # Next user turn has started — stop here.  Its spans belong
                     # to a different trace.
                     break
@@ -2044,6 +2074,141 @@ def _emit_pending_llm_spans(
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
 
 
+def _agent_span_id(tool_use_id: str) -> str:
+    """Span id of the Agent/Task tool span that a tool_use id dispatched."""
+    import hashlib
+
+    return hashlib.sha256(tool_use_id.encode()).hexdigest()[:16]
+
+
+def _subagent_record(
+    state: dict,
+    agent_id: str,
+    agent_type: Any,
+    main_transcript_path: str | None,
+    agent_transcript_path: str | None = None,
+) -> dict | None:
+    """Return the tracing record of in-process subagent *agent_id*, creating it on first use.
+
+    Records live on the session state, not the turn, so a subagent that
+    outlives its turn (background dispatch, SendMessage continuation) keeps
+    its emitted-span count and is never re-emitted. Each holds:
+
+    - ``transcript_path``: the subagent's sidechain transcript,
+      ``<main transcript stem>/subagents/agent-<agent_id>.jsonl``.
+    - ``trace_id`` / ``agent_span_id``: the trace and Agent tool span it
+      nests under. ``agent-<agent_id>.meta.json`` beside the transcript names
+      the dispatching ``toolUseId``; the Agent span id is derived from it as
+      at PreToolUse. Without it, the innermost pending Agent call, then the
+      turn root.
+    - ``emitted_llm_span_count`` / ``llm_span_by_tool_call``: as on the turn.
+
+    Returns None when there is no turn to nest a new record under.
+    """
+    subagents = state.setdefault("subagents", {})
+    record = subagents.get(agent_id)
+    if record is None:
+        current_trace = state.get("current_trace")
+        if not current_trace:
+            return None
+        transcript_path = agent_transcript_path
+        if not transcript_path and main_transcript_path:
+            transcript_path = str(
+                Path(main_transcript_path).with_suffix("") / "subagents" / f"agent-{agent_id}.jsonl"
+            )
+        tool_use_id = ""
+        if transcript_path:
+            meta = Path(transcript_path).with_suffix(".meta.json")
+            try:
+                tool_use_id = str(json.loads(meta.read_text()).get("toolUseId") or "")
+            except (OSError, ValueError) as e:
+                log.debug("No subagent meta for %s at %s: %s", agent_id, meta, e)
+        agent_span_id = (
+            _agent_span_id(tool_use_id)
+            if tool_use_id
+            else _find_active_agent_span_id(state, "", "")
+        )
+        record = {
+            "agent_type": str(agent_type or ""),
+            "transcript_path": transcript_path or "",
+            "tool_use_id": tool_use_id,
+            "trace_id": current_trace["trace_id"],
+            "agent_span_id": agent_span_id or current_trace["root_span_id"],
+            "emitted_llm_span_count": 0,
+            "llm_span_by_tool_call": {},
+        }
+        subagents[agent_id] = record
+    if agent_transcript_path:
+        record["transcript_path"] = agent_transcript_path
+    if agent_type and not record.get("agent_type"):
+        record["agent_type"] = str(agent_type)
+    return record
+
+
+def _emit_pending_subagent_llm_spans(
+    state: dict,
+    agent_id: str,
+    record: dict,
+    config: dict,
+    hold_open: bool = False,
+) -> None:
+    """Emit the subagent's LLM spans not yet sent, nested under its Agent span.
+
+    The subagent's API calls are in its sidechain transcript, never in the
+    main one, so ``_emit_pending_llm_spans`` cannot see them. ``hold_open``
+    as there. The spans carry the subagent's ``agent_id`` and name.
+    """
+    transcript_path = record.get("transcript_path")
+    if not transcript_path or not Path(transcript_path).is_file():
+        log.debug("No sidechain transcript for subagent %s at %r", agent_id, transcript_path)
+        return
+
+    (_, _, _, _, _, _, SpanKind, _, _, _) = _otel_imports()
+
+    all_llm_spans = _extract_llm_spans_for_turn(
+        transcript_path,
+        0,
+        record["trace_id"],
+        record["agent_span_id"],
+        stop_at_next_prompt=False,
+    )
+    by_tool_call = record.setdefault("llm_span_by_tool_call", {})
+    for sp in all_llm_spans:
+        for tool_call_id in sp.get("tool_call_ids", []):
+            by_tool_call[tool_call_id] = sp["span_id_hex"]
+
+    emitted = record.get("emitted_llm_span_count", 0)
+    emittable = all_llm_spans[:-1] if hold_open else all_llm_spans
+    new_spans = emittable[emitted:]
+    if not new_spans:
+        return
+
+    current_trace = state.get("current_trace") or {}
+    same_trace = current_trace.get("trace_id") == record["trace_id"]
+    known_parents = _known_span_parents(current_trace) if same_trace else {}
+    for sp in new_spans:
+        sp["kind"] = SpanKind.CLIENT
+        if same_trace and sp["force_span_id"]:
+            current_trace.setdefault("span_parents", {})[sp["span_id_hex"]] = sp[
+                "parent_span_id_hex"
+            ]
+
+    phoenix_session_id = _phoenix_session_id(state)
+    _build_and_export_spans(
+        config=config,
+        session_id=phoenix_session_id,
+        username=state.get("username", "unknown"),
+        span_records=new_spans,
+        agent_id=agent_id,
+        parent_session_id=phoenix_session_id,
+        agent_name=_subagent_name(record.get("agent_type")),
+        cwd=state.get("cwd"),
+        known_parents=known_parents,
+    )
+
+    record["emitted_llm_span_count"] = emitted + len(new_spans)
+
+
 def _complete_turn(
     state: dict,
     config: dict,
@@ -2460,18 +2625,17 @@ def _start_tool_call(data: dict, config: dict, session_id: str) -> None:
     current_trace = state.get("current_trace")
     if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
+        tuid = str(data.get("tool_use_id") or "")
         transcript_path = state.get("transcript_path")
-        if transcript_path:
-            tuid = _find_tool_use_id(transcript_path, tool_name, tool_input)
-            if tuid:
-                import hashlib
-
-                agent_span_id = hashlib.sha256(tuid.encode()).hexdigest()[:16]
+        if not tuid and transcript_path:
+            tuid = _find_tool_use_id(transcript_path, tool_name, tool_input) or ""
+        if tuid:
+            agent_span_id = _agent_span_id(tuid)
 
         pending_entry["pre_allocated_span_id"] = agent_span_id
         pending_key = f"{tool_name}#{agent_span_id}"
     else:
-        pending_key = tool_name
+        pending_key = _pending_tool_key(data, tool_name)
 
     state.setdefault("pending_tools", {})[pending_key] = pending_entry
     _save_state(session_id, state)
@@ -2497,10 +2661,21 @@ def _get_latest_human_message(transcript_path: str) -> str:
         return ""
 
 
+def _pending_tool_key(data: dict, tool_name: str) -> str:
+    """Pending-tools key of a non-Agent tool call.
+
+    A subagent's calls are keyed apart from the main thread's, so a subagent
+    Bash and a main-thread Bash pending together do not overwrite each other.
+    """
+    agent_id = _subagent_id(data)
+    return f"{tool_name}@{agent_id}" if agent_id else tool_name
+
+
 def _find_pending_tool_entry(
     state: dict,
     tool_name: str,
     data_tool_input: Any,
+    pending_key: str | None = None,
 ) -> tuple[dict, str]:
     """Return (pending_entry, pending_key) for the given tool.
 
@@ -2509,7 +2684,8 @@ def _find_pending_tool_entry(
     ``tool_input``; if no match, fall back to the first entry with the right
     prefix so single-agent sessions and legacy state files still work.
 
-    For all other tools the key is just ``tool_name``.
+    For all other tools the key is *pending_key* (``_pending_tool_key``),
+    defaulting to ``tool_name``.
     """
     pending = state.get("pending_tools", {})
     prefix = f"{tool_name}#"
@@ -2526,8 +2702,8 @@ def _find_pending_tool_entry(
                 return v, k
         return {}, tool_name
 
-    entry = pending.get(tool_name, {})
-    return entry, tool_name
+    key = pending_key or tool_name
+    return pending.get(key, {}), key
 
 
 def _find_active_agent_span_id(
@@ -2618,10 +2794,12 @@ def _finish_tool_call(
 
         tool_name = data.get("tool_name", "unknown")
         data_tool_input = data.get("tool_input")
+        subagent_id = _subagent_id(data)
         current_tool, pending_key = _find_pending_tool_entry(
             state,
             tool_name,
             data_tool_input,
+            _pending_tool_key(data, tool_name),
         )
         tool_input = data_tool_input or current_tool.get("tool_input", {})
         tool_response = data.get("tool_response", {})
@@ -2639,29 +2817,70 @@ def _finish_tool_call(
         # span is built: it maps this tool call to the LLM call that issued it.
         _emit_pending_llm_spans(state, transcript_path, config, hold_open=True)
 
-        # Parent precedence: a still-pending Agent/Task (inline subagent
-        # pattern), then the LLM call whose response issued this tool_use,
-        # then the CHAIN root.
-        active_agent_span_id = _find_active_agent_span_id(state, pending_key, tool_name)
         tool_call_id = data.get("tool_use_id") or data.get("tool_call_id") or data.get("id")
-        issuing_llm_span_id = current_trace.get("llm_span_by_tool_call", {}).get(
-            str(tool_call_id or ""),
+        subagent = (
+            _subagent_record(state, subagent_id, data.get("agent_type"), transcript_path)
+            if subagent_id
+            else None
         )
+        trace_id = current_trace["trace_id"]
+        if subagent_id and subagent is not None:
+            # A subagent's tool call: parent precedence is the subagent LLM
+            # call that issued it, then the Agent span it runs under.
+            _emit_pending_subagent_llm_spans(state, subagent_id, subagent, config, hold_open=True)
+            trace_id = subagent["trace_id"]
+            parent_span_id = (
+                subagent["llm_span_by_tool_call"].get(str(tool_call_id or ""))
+                or subagent["agent_span_id"]
+            )
+        else:
+            # Parent precedence: a still-pending Agent/Task (inline subagent
+            # pattern), then the LLM call whose response issued this tool_use,
+            # then the CHAIN root.
+            parent_span_id = (
+                _find_active_agent_span_id(state, pending_key, tool_name)
+                or current_trace.get("llm_span_by_tool_call", {}).get(str(tool_call_id or ""))
+                or current_trace["root_span_id"]
+            )
         span_record = _build_tool_span_record(
             tool_name=tool_name,
             tool_input=tool_input,
             tool_response=tool_response,
             start_ns=start_ns,
             end_ns=end_ns,
-            trace_id=current_trace["trace_id"],
-            root_span_id=(
-                active_agent_span_id or issuing_llm_span_id or current_trace["root_span_id"]
-            ),
+            trace_id=trace_id,
+            root_span_id=parent_span_id,
             is_failure=is_failure,
             error_msg=_tool_error_message(data, tool_response) if is_failure else "",
             span_id=pre_allocated_span_id,
             tool_call_id=tool_call_id,
         )
+
+        # The Agent tool's response names the subagent it ran. Label the Agent
+        # span with it, and once the subagent has finished, send its last LLM
+        # spans: its final response is followed by no tool call of its own.
+        dispatched_id = (
+            str(tool_response.get("agentId") or "")
+            if tool_name in ("Agent", "Task") and isinstance(tool_response, dict)
+            else ""
+        )
+        if dispatched_id:
+            span_record["attributes"]["agent.id"] = dispatched_id
+            span_record["attributes"]["subagent.id"] = dispatched_id
+            dispatched = _subagent_record(
+                state,
+                dispatched_id,
+                tool_response.get("agentType") or (tool_input or {}).get("subagent_type"),
+                transcript_path,
+            )
+            if dispatched is not None:
+                _emit_pending_subagent_llm_spans(
+                    state,
+                    dispatched_id,
+                    dispatched,
+                    config,
+                    hold_open=tool_response.get("status") != "completed",
+                )
 
         known_parents = _known_span_parents(current_trace)
         if span_record["force_span_id"]:
@@ -2676,13 +2895,18 @@ def _finish_tool_call(
             data,
         )
         username = state.get("username", "unknown")
-        agent_name = state.get("agent_name")
+        agent_name = (
+            _subagent_name(subagent.get("agent_type"))
+            if subagent is not None
+            else state.get("agent_name")
+        )
         cwd = state.get("cwd")
 
-        # Fall back to tool_name for any entry written with the old plain key.
         pt = state.get("pending_tools", {})
         pt.pop(pending_key, None)
-        pt.pop(tool_name, None)
+        if not subagent_id:
+            # Fall back to tool_name for any entry written with the old plain key.
+            pt.pop(tool_name, None)
         _save_state(session_id, state)
 
     _build_and_export_spans(
@@ -2738,6 +2962,40 @@ def handle_stop(data: dict, config: dict) -> None:
         _end_turn(session_id, state)
 
     _cleanup_stale_states()
+
+
+def handle_subagent_stop(data: dict, config: dict) -> None:
+    """Handle SubagentStop: send the subagent's LLM spans not yet sent.
+
+    Its final response is followed by no tool call, so no PostToolUse sends
+    it. A background subagent can finish after the turn that dispatched it;
+    its record still names that turn's trace.
+    """
+    session_id = resolve_session_id(data, "session_id")
+    agent_id = _subagent_id(data)
+    if session_id is None or agent_id is None:
+        log.warning(
+            "handle_subagent_stop: payload lacks 'session_id' or 'agent_id' — skipping span emission",
+        )
+        return
+
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        if not state:
+            log.debug("No state for session %s at subagent stop", session_id)
+            return
+        record = _subagent_record(
+            state,
+            agent_id,
+            data.get("agent_type"),
+            _get_cached_transcript_path(data, state, session_id),
+            agent_transcript_path=data.get("agent_transcript_path"),
+        )
+        if record is None:
+            log.debug("No trace to nest subagent %s under at subagent stop", agent_id)
+            return
+        _emit_pending_subagent_llm_spans(state, agent_id, record, config)
+        _save_state(session_id, state)
 
 
 def _end_turn(session_id: str, state: dict) -> None:
@@ -2852,7 +3110,11 @@ def _emit_event_span(
         ],
         agent_id=agent_id,
         parent_session_id=parent_session_id,
-        agent_name=state.get("agent_name"),
+        agent_name=(
+            _subagent_name(data.get("agent_type"))
+            if _subagent_id(data)
+            else state.get("agent_name")
+        ),
         cwd=state.get("cwd"),
         known_parents=_known_span_parents(current_trace),
     )
@@ -2973,7 +3235,7 @@ def handle_session_end(data: dict, config: dict) -> None:
 def main() -> None:
     if len(sys.argv) < 2:
         print(
-            "Usage: claude_code_tracer.py <pre_tool|post_tool|post_tool_failure|user_prompt_submit|stop>",
+            "Usage: claude_code_tracer.py <pre_tool|post_tool|post_tool_failure|user_prompt_submit|stop|subagent_stop>",
             file=sys.stderr,
         )
         sys.exit(0)
@@ -3003,6 +3265,8 @@ def main() -> None:
             handle_user_prompt_submit(data, config)
         elif event == "stop":
             handle_stop(data, config)
+        elif event == "subagent_stop":
+            handle_subagent_stop(data, config)
         else:
             log.warning("Unknown event: %s", event)
     except Exception as e:
