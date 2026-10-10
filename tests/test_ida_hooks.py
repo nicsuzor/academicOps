@@ -495,3 +495,65 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
         # 3. Gate arms
         handlers.premise_check_arm(ctx)
         assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize("agent", ["ida", "ida:ida", "ida-prime"])
+def test_honesty_reaches_ida_prime_when_search_empty(agent: str):
+    """When PKB search yields no results on UserPromptSubmit, honesty.md applies to Ida Prime."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type=agent,
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": "what is the plan for today?"},
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value=None):
+        res = handlers.search_the_pkb(ctx)
+        assert res is not None
+        expected_inject, expected_user = load_message_pair(IDA_HOOKS, "honesty")
+        assert res.inject_text == expected_inject
+        assert res.user_text == expected_user
+
+
+@pytest.mark.parametrize("agent", ["sara", "ida:sara", "james", "aops:james"])
+def test_honesty_exemption_preserved_for_sara_and_james(agent: str):
+    """Sara and James remain exempted from honesty.md fallback on UserPromptSubmit."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type=agent,
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": "execute task"},
+    )
+    with patch.object(handlers, "_run_pkb_search", return_value=None):
+        res = handlers.search_the_pkb(ctx)
+        assert res is None
+
+
+@pytest.mark.parametrize("client", ["claude", "agy"])
+def test_dispatch_honesty_reaches_ida_prime(staged_hooks: Path, client: str):
+    """End-to-end dispatch confirms honesty.md is returned for Ida Prime on prompt submit."""
+    event = "UserPromptSubmit" if client == "claude" else "PreInvocation"
+    payload = {
+        "hook_event_name": event,
+        "agent_type": "ida:ida",
+        "session_id": f"s-ida-{client}",
+        "prompt": "general user inquiry without pkb match",
+    }
+    proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), client, event],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+    )
+    assert proc.returncode == 0
+    data = json.loads(proc.stdout)
+    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
+    if client == "claude":
+        assert data["hookSpecificOutput"]["additionalContext"] == expected_honesty
+    else:
+        assert any(
+            expected_honesty == step.get("ephemeralMessage") for step in data.get("injectSteps", [])
+        )
