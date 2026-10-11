@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.10.11](https://github.com/nicsuzor/academicOps/compare/v0.10.10...v0.10.11) (2026-10-11)
+
+
+### Features
+
+* **ida:** align verdict tokens in persona with premise-check skill ([01ecb28](https://github.com/nicsuzor/academicOps/commit/01ecb286900275b470e8b25d724cd4d477451677))
+* **ida:** align verdict tokens in persona with premise-check skill ([10cedf6](https://github.com/nicsuzor/academicOps/commit/10cedf61c0b7a6da5ad79de7d7841eeea1118764))
+* **ida:** remove honesty hook exemption for Ida Prime ([944ec0c](https://github.com/nicsuzor/academicOps/commit/944ec0ca25428d228744e80b1647f09516aa6da2))
+* **ida:** remove honesty hook exemption for Ida Prime ([ec2c7fb](https://github.com/nicsuzor/academicOps/commit/ec2c7fbf5e350076e58be6525d00b6724350d22e))
+* **premise-check:** add consistency check against claims in context ([ec01da7](https://github.com/nicsuzor/academicOps/commit/ec01da757f848d5dcc494a78fda46a0eb2333c95))
+* **premise-check:** add consistency check against claims in context ([717a348](https://github.com/nicsuzor/academicOps/commit/717a348303b9b9927c232bdf1f0237dac3654705))
+* **premise-check:** move Ida-only checking rules into premise-check skill ([9d8822c](https://github.com/nicsuzor/academicOps/commit/9d8822c0789fc7b15f1150bf5b9c6ad6a87e6a8c))
+* **premise-check:** move Ida-only checking rules into premise-check skill ([826df20](https://github.com/nicsuzor/academicOps/commit/826df2048fbfeece09da0bd7a6b4bbda731850f7))
+* **rules:** add no-fallbacks rule for infrastructure errors ([8e52344](https://github.com/nicsuzor/academicOps/commit/8e5234498ef877100389541cab62626531048eb9))
+* **rules:** add no-fallbacks rule for infrastructure errors ([ce42f02](https://github.com/nicsuzor/academicOps/commit/ce42f02b832c9a8e36e4e41007468ee8afbb11e1))
+
+
+### Code Refactoring
+
+* **ida:** reduce Ida Prime to three exclusive duties ([8afaa01](https://github.com/nicsuzor/academicOps/commit/8afaa017c6b9213a28efa71eecf32283bcc6eb54))
+* **ida:** reduce Ida Prime to three exclusive duties ([3f09253](https://github.com/nicsuzor/academicOps/commit/3f09253672c26c16e6ecbbd00b6be1525985f048))
+
+
+### Documentation
+
+* **polecat:** document real-time stream-json and sessions mount observability ([e49dd49](https://github.com/nicsuzor/academicOps/commit/e49dd4986ccf0c5a6dba18cab30bcd8e7459ad6d))
+* **polecat:** document real-time stream-json and sessions mount observability ([acf2b97](https://github.com/nicsuzor/academicOps/commit/acf2b972edda4626af6c6a8d6b5eadaf1af96893))
+* **specs:** tools:diagram -- drawing PKB graphs in Excalidraw (draft) ([6c44354](https://github.com/nicsuzor/academicOps/commit/6c4435408bcf74f7cd9f0f0cb8500aba2c0e2525))
+
 ## [0.10.10](https://github.com/nicsuzor/academicOps/compare/v0.10.9...v0.10.10) (2026-10-10)
 
 ### Features
