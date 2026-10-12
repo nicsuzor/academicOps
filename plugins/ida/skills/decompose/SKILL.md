@@ -16,6 +16,7 @@ State what needs doing, never how.
    - A false load-bearing premise halts the run: record it and stop. One that cannot be checked becomes a probe (step 4).
 2. **Ground in existing means**: Base components on available capabilities, tools, and real constraints.
    - Take the stage skeleton for this class of work from `/workflow-library preview` at stage depth (on a bus, send the ask whole to the PKB session). Its stages are the spine; a stage filled by a choice (method, analytical frame, venue) becomes a fork in step 3, never a chosen step.
+   - Place the objective against each stage and record it: met, partly met or open, and the existing node that carries it. Step 5 merges into those nodes.
 3. **Expand within reliable inference**:
    - Model sub-objectives as far as reliable inference allows; stop before implementation details.
    - Fork the graph at branching points, modeling each alternative option wired with `alternative` edges to the decision node `D` (FQ8).
