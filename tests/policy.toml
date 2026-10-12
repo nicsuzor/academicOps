@@ -57,3 +57,10 @@ otel_packages = [
   "opentelemetry-exporter-otlp-proto-grpc",
   "requests",
 ]
+
+[plugins.workflows]
+# Universal workflow templates that must resolve under the ida plugin
+required_universal_workflows = [
+  "wf-reconcile",
+]
+
