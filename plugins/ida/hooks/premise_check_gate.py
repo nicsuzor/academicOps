@@ -226,11 +226,14 @@ def is_peer_report(ctx: HookContext) -> bool:
     return text.startswith(_PEER_ENVELOPES)
 
 
-def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:
+def _hooks_base(hooks_dir: Path | None) -> Path:
     if hooks_dir and hooks_dir.is_absolute():
-        base = hooks_dir
-    else:
-        base = Path(__file__).resolve().parent
+        return hooks_dir
+    return Path(__file__).resolve().parent
+
+
+def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:
+    base = _hooks_base(hooks_dir)
     # 1. Skill script: <plugin-dir>/skills/premise-check/scripts/verdict.py
     skill_script = base.parent / "skills" / "premise-check" / "scripts" / "verdict.py"
     if skill_script.is_file():
@@ -248,9 +251,15 @@ def format_verdict_command(
     session_id: str = "",
 ) -> str:
     script_path = resolve_verdict_script(hooks_dir)
+    # Run in the plugin's own environment, the same one the hooks use, so the
+    # verdict span can import opentelemetry.
+    quoted_project = shlex.quote(str(_hooks_base(hooks_dir).parent))
     quoted_script = shlex.quote(str(script_path))
     quoted_claim = shlex.quote(claim_id)
-    cmd = f'python3 {quoted_script} --claim {quoted_claim} --verdict PASS --reason "<why>"'
+    cmd = (
+        f"uv run --project {quoted_project} python3 {quoted_script}"
+        f' --claim {quoted_claim} --verdict PASS --reason "<why>"'
+    )
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
     return cmd
