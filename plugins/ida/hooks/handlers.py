@@ -19,7 +19,12 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
-from premise_check_gate import is_peer_report, premise_check_arm, premise_check_handler
+from premise_check_gate import (
+    is_harness_notice,
+    is_peer_report,
+    premise_check_arm,
+    premise_check_handler,
+)
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -335,10 +340,11 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
 
     Tries first to return the output of `pkb search {prompt:200}` wrapped in
     `<academicOps PKB search results>` tags; if that fails, returns the
-    existing messages. Peer reports are skipped so they trigger hearsay
-    and premise check gates instead of hydrating from the PKB.
+    existing messages. Peer reports and automated harness notices are skipped
+    so peer reports trigger hearsay and premise check gates instead of
+    hydrating from the PKB, and harness notices do not trigger spurious searches.
     """
-    if is_peer_report(ctx):
+    if is_peer_report(ctx) or is_harness_notice(ctx):
         return None
 
     raw_prompt = ctx.raw.get("prompt")

@@ -21,7 +21,7 @@ Hydration is restricted strictly to user prompts:
 
 - **Interactive Console Inputs:** Plain text prompts submitted by the user are searched directly.
 - **Channel Inputs (Telegram):** Prompts that begin with a `<channel source="..." user="...">...</channel>` envelope are unwrapped by `extract_prompt_query()`; a typed prompt that merely mentions such a tag is searched as typed. The inner user text is stripped of ANSI escape sequences and whitespace, with the first 200 characters sent as the search query.
-- **Peer Agent Reports:** Prompts beginning with peer envelopes (`<cross-session-message`, `<teammate-message`, `<task-notification`) are explicitly skipped. Peer reports are claims to be checked under the premise-check gate, not user requests to be grounded in PKB search results.
+- **Peer Agent Reports and Automated Harness Notices:** Prompts carrying peer envelopes (`<cross-session-message`, `<teammate-message`) or worker reports (`<task-notification` with subagent results) are explicitly skipped so they are checked under the premise-check gate, not grounded in PKB search results. Automated harness notices (background command completions, `/loop` and `/goal` wakeups, lifecycle updates) are also skipped to prevent spurious PKB searches.
 
 ### Transport and Authentication
 

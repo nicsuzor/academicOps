@@ -156,17 +156,187 @@ open_gate = disarm
 is_gate_open = is_disarmed
 
 
-def _prompt_text(ctx: HookContext) -> str:
-    prompt = ctx.raw.get("prompt")
+def _prompt_text(ctx: HookContext | Any) -> str:
+    if isinstance(ctx, str):
+        return ctx
+    raw = getattr(ctx, "raw", {}) if ctx is not None else {}
+    prompt = raw.get("prompt") if isinstance(raw, dict) else None
+    if prompt is None and hasattr(ctx, "prompt"):
+        prompt = ctx.prompt
     if isinstance(prompt, dict):
         prompt = prompt.get("text") or prompt.get("content") or ""
     return str(prompt or "")
 
 
-def is_peer_report(ctx: HookContext) -> bool:
-    """True when an incoming prompt is another agent's report, not the user's message."""
-    text = _prompt_text(ctx).lstrip()
-    return text.startswith(_PEER_ENVELOPES)
+# Envelopes the harness wraps around a report from a peer agent.
+_PEER_MESSAGE_ENVELOPES = ("<cross-session-message", "<teammate-message")
+
+# For backward compatibility with imports
+_PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notification")
+
+# Prefixes identifying /loop autonomous loop ticks or preamble injections.
+_LOOP_WAKEUP_PREFIXES = (
+    "# Autonomous loop tick",
+    "# /loop tick",
+    "# /loop",
+    "/loop tick",
+    "<<loop.md>>",
+    "<<loop.md-dynamic>>",
+    "__autonomous_preamble__",
+)
+
+# Prefixes identifying /goal evaluations or auto-continuation notices.
+_GOAL_WAKEUP_PREFIXES = (
+    "/goal ",
+    "Goal active:",
+    "Goal set:",
+    "<goal-notification",
+    "<goal-wakeup",
+)
+
+# Automated lifecycle and environment notices.
+_OTHER_HARNESS_ENVELOPES = (
+    "<mcp-resource-update",
+    "<mcp-polling-update",
+)
+
+
+def is_background_task_notice(text: str) -> bool:
+    """True when an incoming prompt is an automated background task completion notice.
+
+    Recognized by:
+    1. <task-notification> containing explicit background command/task summaries:
+       '<summary>Background command ...' or '<summary>Background task ...'
+    2. <task-notification> containing monitor events or artifact lifecycle events:
+       '<task-type>artifact-' or '<summary>Monitor event:'
+    3. <task-notification> containing an '<output-file>' without an agent '<result>'
+       block or worker/agent completion signature.
+    """
+    stripped = text.strip()
+    if not stripped.startswith("<task-notification"):
+        return False
+    if re.search(
+        r"<summary>\s*(?:Background (?:command|task)|Remote task|Monitor event:|\d+\s+background\s+tasks)",
+        stripped,
+        re.IGNORECASE,
+    ):
+        return True
+    if "<task-type>artifact-" in stripped:
+        return True
+    if "<output-file>" in stripped and "<result>" not in stripped:
+        if not re.search(r'<summary>\s*Agent\s+"', stripped) and "worker finished" not in stripped:
+            return True
+    return False
+
+
+def is_loop_wakeup(text: str) -> bool:
+    """True when an incoming prompt is an automated /loop or autonomous loop tick wakeup.
+
+    Recognized by prompt text or inner <system-reminder> content starting with:
+    - '# Autonomous loop tick'
+    - '# /loop tick'
+    - '# /loop'
+    - '/loop tick'
+    - '<<loop.md>>' / '<<loop.md-dynamic>>'
+    - '__autonomous_preamble__'
+    """
+    stripped = text.strip()
+    if stripped.startswith(_LOOP_WAKEUP_PREFIXES):
+        return True
+    if stripped.startswith("<system-reminder>"):
+        inner = re.sub(r"^<system-reminder>\s*", "", stripped)
+        if inner.startswith(_LOOP_WAKEUP_PREFIXES):
+            return True
+    return False
+
+
+def is_goal_wakeup(text: str) -> bool:
+    """True when an incoming prompt is an automated /goal evaluation or continuation notice.
+
+    Recognized by prompt text starting with:
+    - '/goal '
+    - 'Goal active:'
+    - 'Goal set:'
+    - '<goal-notification'
+    - '<goal-wakeup'
+    """
+    stripped = text.strip()
+    if stripped.startswith(_GOAL_WAKEUP_PREFIXES):
+        return True
+    if stripped.startswith("<system-reminder>"):
+        inner = re.sub(r"^<system-reminder>\s*", "", stripped)
+        if inner.startswith(_GOAL_WAKEUP_PREFIXES):
+            return True
+    return False
+
+
+def is_other_harness_notice(text: str) -> bool:
+    """True when an incoming prompt is an automated environment or lifecycle notice."""
+    stripped = text.strip()
+    return stripped.startswith(_OTHER_HARNESS_ENVELOPES)
+
+
+def is_harness_notice(ctx_or_text: HookContext | str) -> bool:
+    """True when an incoming prompt is an automated in-session notice injected by the harness.
+
+    Harness notices include:
+    1. Background-task completion notices (e.g. background bash command completions)
+    2. /loop wakeups (e.g. # Autonomous loop tick, # /loop tick)
+    3. /goal wakeups (e.g. Goal active:, Goal set:, /goal)
+    4. Environment/lifecycle notices (e.g. <mcp-resource-update>, monitor events)
+    """
+    text = ctx_or_text if isinstance(ctx_or_text, str) else _prompt_text(ctx_or_text)
+    return (
+        is_background_task_notice(text)
+        or is_loop_wakeup(text)
+        or is_goal_wakeup(text)
+        or is_other_harness_notice(text)
+    )
+
+
+def is_worker_report(text: str) -> bool:
+    """True when a <task-notification> represents a worker or subagent report with findings.
+
+    Recognized by:
+    - <task-notification> that is not a background task notice, and carries:
+      1. '<result>...</result>' block with the subagent's final output
+      2. '<summary>Agent "..." finished' (or similar Agent summary)
+      3. 'worker finished' or subagent token metrics
+    """
+    stripped = text.strip()
+    if not stripped.startswith("<task-notification"):
+        return False
+    if is_background_task_notice(stripped):
+        return False
+    if "<result>" in stripped:
+        return True
+    if re.search(r'<summary>\s*Agent\s+"', stripped):
+        return True
+    if "worker finished" in stripped:
+        return True
+    if "<subagent_tokens>" in stripped:
+        return True
+    return False
+
+
+def is_peer_report(ctx: HookContext | str) -> bool:
+    """True when an incoming prompt is another agent's or worker's report, not a harness notice or user ask."""
+    text = ctx if isinstance(ctx, str) else _prompt_text(ctx)
+    stripped = text.lstrip()
+    if is_harness_notice(stripped):
+        return False
+    if stripped.startswith(_PEER_MESSAGE_ENVELOPES):
+        return True
+    if stripped.startswith("<system-reminder>"):
+        m = re.search(r"<system-reminder\b[^>]*>(.*?)</system-reminder>", stripped, re.DOTALL)
+        if m:
+            inner = m.group(1).strip()
+            if is_harness_notice(inner):
+                return False
+            if inner.startswith(_PEER_MESSAGE_ENVELOPES):
+                return True
+            return is_worker_report(inner)
+    return is_worker_report(stripped)
 
 
 def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:

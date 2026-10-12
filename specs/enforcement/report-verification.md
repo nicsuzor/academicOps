@@ -88,18 +88,22 @@ provide timely reminders and non-content-sniffing friction:
 1. **Advisory JIT Reminders:**
    - On foreground subagent completion (`PostToolUse` on `Agent` with `completed` status),
      an advisory reminder instructs the supervisor to premise-check the returned spine.
-   - On peer message or background completion arrival (`UserPromptSubmit` carrying
-     a peer message envelope, such as `<cross-session-message`, `<teammate-message`, or
-     `<task-notification`), an advisory reminder (`"## A peer report arrived"`) instructs
+   - On peer message or background worker completion arrival (`UserPromptSubmit` carrying
+     a peer message envelope, such as `<cross-session-message` or `<teammate-message`, or
+     a worker report `<task-notification` carrying subagent findings), an advisory reminder (`"## A peer report arrived"`) instructs
      the receiver to verify the incoming spine before acting on or relaying it.
-     User prompts (both direct console inputs and `<channel...>` messages from Telegram or Discord)
+     Harness notices (automated background command completions, `/loop` and `/goal` wakeups, and lifecycle updates) and
+     user prompts (both direct console inputs and `<channel...>` messages from Telegram or Discord)
      never trigger hearsay reminders or gate arming.
 2. **Block-Once Procedural Friction Gate:**
    - On session exit (`Stop`) and external user communications (`PreToolUse` on channel
      reply tools such as `telegram_reply` or `ask_question`), the harness inspects
      local session state for unverified arrivals lacking a recorded verdict.
-   - On `UserPromptSubmit`, `premise_check_arm` arms only when the prompt begins with a
-     peer envelope (`<cross-session-message`, `<teammate-message`, `<task-notification`).
+   - On `UserPromptSubmit`, `premise_check_arm` arms only when the prompt carries a
+     peer envelope (`<cross-session-message`, `<teammate-message`) or a worker report
+     (`<task-notification` carrying subagent results or agent summary). Automated harness notices
+     (background command completions, `/loop` ticks, `/goal` wakeups) are passed over and
+     leave the gate disarmed.
      Each armed report is named by a short id carrying no message text, and the printed
      verdict command takes that id. User messages (console or channel envelopes) never arm it.
      Separately, a subagent dispatch (`PostToolUse` / `PostToolBatch` on `Agent`, `Task`,

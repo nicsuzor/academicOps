@@ -588,13 +588,148 @@ def _prompt_ctx(session_id: str, prompt: str, agent_type: str = "ida:ida") -> di
     [
         '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>',
         '<teammate-message teammate_id="worker">done</teammate-message>',
-        "\n  <task-notification>\nworker finished\n</task-notification>",
     ],
 )
 def test_arm_handler_arms_on_peer_report(prompt):
     session_id = "sess-peer"
-    pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is not None
     assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "\n  <task-notification>\nworker finished\n</task-notification>",
+        (
+            "<task-notification>\n"
+            "<task-id>aa0d1631e916b29a0</task-id>\n"
+            "<tool-use-id>toolu_018mBPH6EDGqmuwYVkvpVhE2</tool-use-id>\n"
+            "<output-file>/tmp/claude-1000/-home-nic-junior-ida/9b48bffa-b561-4481-a767-a650054b946f/tasks/aa0d1631e916b29a0.output</output-file>\n"
+            "<status>completed</status>\n"
+            '<summary>Agent "Read ranking spec on waiting term" finished</summary>\n'
+            "<result>All from `/home/nic/src/mem` (HEAD `6935d77`), read-only.</result>\n"
+            "<usage><subagent_tokens>66713</subagent_tokens><tool_uses>11</tool_uses><duration_ms>94499</duration_ms></usage>\n"
+            "</task-notification>"
+        ),
+        (
+            "<system-reminder>\n"
+            "<task-notification>\n"
+            "<task-id>sub-123</task-id>\n"
+            "<status>completed</status>\n"
+            '<summary>Agent "worker" finished</summary>\n'
+            "<result>Investigation completed</result>\n"
+            "</task-notification>\n"
+            "</system-reminder>"
+        ),
+    ],
+)
+def test_arm_handler_arms_on_worker_report(prompt):
+    session_id = f"sess-worker-{abs(hash(prompt))}"
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is not None
+    assert pcg.is_armed(session_id) is True
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        # Observed case: Nic's Mac session 7079b247-4cf9-43df-9676-347ec6079ea4
+        (
+            "<task-notification>\n"
+            "<task-id>brrmgzp7t</task-id>\n"
+            "<tool-use-id>toolu_0118N5pP4j7f9kotHPwTXPyL</tool-use-id>\n"
+            "<output-file>/private/tmp/claude-503/-Users-suzor-ida/7079b247-4cf9-43df-9676-347ec6079ea4/tasks/brrmgzp7t.output</output-file>\n"
+            "<status>completed</status>\n"
+            '<summary>Background command "Wait four minutes for Sara\'s report" completed (exit code 0)</summary>\n'
+            "</task-notification>"
+        ),
+        # Test fixture from test_task_notification_silent.py
+        (
+            "<task-notification>\n"
+            "<task-id>byszqmmj5</task-id>\n"
+            "<tool-use-id>toolu_01KhbRm2oo5b8gzCqokMY68B</tool-use-id>\n"
+            "<output-file>/tmp/claude-1000/-opt-nic--aops-crew-barbara-5-aops/tasks/byszqmmj5.output</output-file>\n"
+            "<status>completed</status>\n"
+            '<summary>Background command "Generate task graph data" completed (exit code 0)</summary>\n'
+            "</task-notification>\n"
+            "Read the output file to retrieve the result: /tmp/claude-1000/-opt-nic--aops-crew-barbara-5-aops/tasks/byszqmmj5.output"
+        ),
+        # Failed background command
+        (
+            "<task-notification>\n"
+            "<task-id>bg-fail-1</task-id>\n"
+            "<tool-use-id>toolu_01xx</tool-use-id>\n"
+            "<output-file>/tmp/tasks/bg-fail-1.output</output-file>\n"
+            "<status>failed</status>\n"
+            '<summary>Background command "pytest tests" failed (exit code 1)</summary>\n'
+            "</task-notification>"
+        ),
+        # Remote task and monitor notices
+        (
+            "<task-notification>\n"
+            "<status>completed</status>\n"
+            '<summary>Remote task "build" completed</summary>\n'
+            "</task-notification>"
+        ),
+        (
+            "<task-notification>\n"
+            "<status>completed</status>\n"
+            "<summary>Monitor event: build done</summary>\n"
+            "</task-notification>"
+        ),
+        ("<task-notification>\n<task-type>artifact-room-view</task-type>\n</task-notification>"),
+    ],
+)
+def test_arm_handler_stays_disarmed_on_background_task_completion_notice(prompt):
+    session_id = f"sess-bg-task-{abs(hash(prompt))}"
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is None
+    assert pcg.is_armed(session_id) is False
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        (
+            "# Autonomous loop tick\n\n"
+            "Run the autonomous check using the loop instructions established earlier in this conversation."
+        ),
+        (
+            "# Autonomous loop tick (dynamic pacing)\n\n"
+            "Run the autonomous check using the loop instructions established earlier in this conversation."
+        ),
+        (
+            "# /loop tick — loop.md tasks\n\n"
+            "Work the tasks from the loop.md contents established earlier in this conversation."
+        ),
+        "# /loop tick\n\nRun the next cycle.",
+        "__autonomous_preamble__\n\n# Autonomous loop tick\n\nRun loop tasks.",
+        "<<loop.md>>\n# Autonomous loop tick",
+        ("<system-reminder>\n# Autonomous loop tick\n\nRun check\n</system-reminder>"),
+    ],
+)
+def test_arm_handler_stays_disarmed_on_loop_wakeup(prompt):
+    session_id = f"sess-loop-{abs(hash(prompt))}"
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is None
+    assert pcg.is_armed(session_id) is False
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "/goal make tests pass",
+        "Goal active: make tests pass (1 turn)\nLast check: not yet evaluated",
+        "Goal set: implement feature",
+        "<goal-notification>goal reached</goal-notification>",
+    ],
+)
+def test_arm_handler_stays_disarmed_on_goal_wakeup(prompt):
+    session_id = f"sess-goal-{abs(hash(prompt))}"
+    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    assert res is None
+    assert pcg.is_armed(session_id) is False
 
 
 @pytest.mark.parametrize(
