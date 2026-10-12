@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from premise_check_gate import disarm, get_state, is_armed
+from premise_check_gate import disarm, get_state, is_armed, mint_verification_id
 
 VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
 
@@ -36,6 +36,8 @@ def emit_verdict_span(
     claim_id: str,
     verdict: str,
     reason: str,
+    verification_id: str = "",
+    title: str | None = None,
     config: dict[str, Any] | None = None,
 ) -> bool:
     """Ship one TOOL span for this verdict via claude_code_tracer's pipeline.
@@ -59,10 +61,17 @@ def emit_verdict_span(
         trace_id = current_trace["trace_id"]
         parent_span_id = current_trace["root_span_id"]
 
+    tool_input: dict[str, Any] = {"claim_id": claim_id, "verdict": verdict, "reason": reason}
+    if title:
+        tool_input["title"] = title
+    tool_response: dict[str, Any] = {"status": "recorded"}
+    if verification_id:
+        tool_response["verification_id"] = verification_id
+
     record = tracer_mod._build_tool_span_record(
         tool_name="premise_check_verdict",
-        tool_input={"claim_id": claim_id, "verdict": verdict, "reason": reason},
-        tool_response={"status": "recorded"},
+        tool_input=tool_input,
+        tool_response=tool_response,
         start_ns=now_ns,
         end_ns=now_ns + 1_000_000,
         trace_id=trace_id,
@@ -71,6 +80,10 @@ def emit_verdict_span(
     record["attributes"]["premise_check.claim_id"] = claim_id
     record["attributes"]["premise_check.verdict"] = verdict
     record["attributes"]["premise_check.reason"] = tracer_mod._truncate(reason)
+    if verification_id:
+        record["attributes"]["premise_check.verification_id"] = verification_id
+    if title:
+        record["attributes"]["premise_check.title"] = title
 
     username = os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
     exported = tracer_mod._build_and_export_spans(
@@ -87,6 +100,7 @@ def record_verdict(
     claim_id: str = "",
     verdict: str = "",
     reason: str = "",
+    title: str | None = None,
     tracer_mod: Any | None = None,
 ) -> dict[str, Any]:
     """Validate, emit the span (best-effort), and disarm the premise check."""
@@ -112,6 +126,9 @@ def record_verdict(
             f"unknown or mismatched report id {cid!r}; gate is armed for {expected_id!r}"
         )
 
+    clean_title = (title or "").strip() or None
+    verification_id = mint_verification_id(cid, token, reason, title=clean_title)
+
     if tracer_mod is None:
         tracer_mod = _import_claude_code_tracer()
 
@@ -119,21 +136,40 @@ def record_verdict(
     span_error: str | None = None
     if tracer_mod is not None:
         try:
-            span_emitted = emit_verdict_span(tracer_mod, session_id, cid, token, reason)
+            span_emitted = emit_verdict_span(
+                tracer_mod,
+                session_id,
+                cid,
+                token,
+                reason,
+                verification_id=verification_id,
+                title=clean_title,
+            )
         except Exception as exc:
             span_error = repr(exc)
             print(f"premise_check_verdict: span emission failed: {exc!r}", file=sys.stderr)
 
-    disarm(session_id, cid, token, reason)
+    disarm(
+        session_id,
+        cid,
+        token,
+        reason,
+        verification_id=verification_id,
+        title=clean_title,
+    )
 
-    return {
+    result: dict[str, Any] = {
         "ok": True,
-        "claim_id": claim_id,
+        "verification_id": verification_id,
+        "claim_id": cid,
         "verdict": token,
         "span_emitted": span_emitted,
         "span_error": span_error,
         "disarmed": True,
     }
+    if clean_title:
+        result["title"] = clean_title
+    return result
 
 
 def _read_reason(path: str) -> str:
@@ -165,6 +201,11 @@ def main(argv: list[str] | None = None) -> int:
         choices=VERDICTS,
         help="PASS, REVISE or FAIL.",
     )
+    parser.add_argument(
+        "--title",
+        default=None,
+        help="Optional short title for the verification.",
+    )
     reason = parser.add_mutually_exclusive_group(required=True)
     reason.add_argument("--reason", help="Why, in free text.")
     reason.add_argument(
@@ -193,6 +234,7 @@ def main(argv: list[str] | None = None) -> int:
             claim_id=args.claim,
             verdict=args.verdict,
             reason=text,
+            title=args.title,
         )
     except (OSError, ValueError) as exc:
         print(f"premise_check_verdict: {exc}", file=sys.stderr)

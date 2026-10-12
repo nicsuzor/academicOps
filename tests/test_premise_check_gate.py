@@ -252,6 +252,42 @@ def test_cli_accepts_inline_reason(monkeypatch):
     assert pcg.get_state(session_id)["last_verdict"]["reason"] == "No evidence for AC2."
 
 
+def test_cli_records_verdict_with_distinct_verification_id_and_title(capsys, monkeypatch):
+    import json
+
+    session_id = "sess-cli-title"
+    claim_id = "claim-3a4b5c6d"
+    pcg.arm(session_id, claim_id=claim_id)
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+
+    rc = pcv.main(
+        [
+            "--claim",
+            claim_id,
+            "--verdict",
+            "PASS",
+            "--reason",
+            "Evidence supports all claims.",
+            "--title",
+            "unit-tests-passed",
+            "--session",
+            session_id,
+        ]
+    )
+
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["ok"] is True
+    assert out["claim_id"] == claim_id
+    assert out["verification_id"] != claim_id
+    assert out["verification_id"].startswith("verdict-")
+    assert out["verification_id"].endswith("-unit-tests-passed")
+    assert pcg.is_valid_id(out["verification_id"])
+    assert out["verdict"] == "PASS"
+    assert out["title"] == "unit-tests-passed"
+    assert pcg.is_armed(session_id) is False
+
+
 def test_cli_rejects_free_text_as_the_verdict(monkeypatch):
     session_id = "sess-cli-bad"
     pcg.arm(session_id, claim_id="claim-1")
@@ -782,18 +818,21 @@ def test_derive_claim_id_generates_short_id_without_message_text():
     # Must carry no message text, only a short id
     assert "PR #12 is merged." not in claim1
     assert "twin-a" not in claim1
-    assert claim1.startswith("report-")
+    assert claim1.startswith("claim-")
+    assert pcg.is_valid_id(claim1)
 
     ctx2 = _prompt_ctx("s2", '<teammate-message teammate_id="worker">done</teammate-message>')
     claim2 = pcg._derive_claim_id(ctx2)
     assert "done" not in claim2
     assert "worker" not in claim2
-    assert claim2.startswith("report-")
+    assert claim2.startswith("claim-")
+    assert pcg.is_valid_id(claim2)
 
     ctx3 = _prompt_ctx("s3", "\n  <task-notification>\nworker finished\n</task-notification>")
     claim3 = pcg._derive_claim_id(ctx3)
     assert "worker finished" not in claim3
-    assert claim3.startswith("report-")
+    assert claim3.startswith("claim-")
+    assert pcg.is_valid_id(claim3)
 
     # Explicit id attribute on peer envelope is respected
     ctx4 = _prompt_ctx(
@@ -802,6 +841,16 @@ def test_derive_claim_id_generates_short_id_without_message_text():
     )
     claim4 = pcg._derive_claim_id(ctx4)
     assert claim4 == "rep-explicit-42"
+
+    # Optional title on peer envelope is incorporated as slug
+    ctx5 = _prompt_ctx(
+        "s5",
+        '<cross-session-message from="twin-a" title="Deploy Migration">Done</cross-session-message>',
+    )
+    claim5 = pcg._derive_claim_id(ctx5)
+    assert claim5.startswith("claim-")
+    assert claim5.endswith("-deploy-migration")
+    assert pcg.is_valid_id(claim5)
 
 
 def test_arm_handler_returns_prompt_note_with_three_elements_and_no_message_text():
@@ -821,7 +870,7 @@ def test_arm_handler_returns_prompt_note_with_three_elements_and_no_message_text
     # 3. the exact runnable call that records one
     assert "python3" in res.inject_text
     assert "verdict.py" in res.inject_text
-    assert f"--report {claim_id}" in res.inject_text
+    assert f"--claim {claim_id}" in res.inject_text or f"--report {claim_id}" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
 
@@ -841,7 +890,7 @@ def test_handler_block_message_contains_three_elements():
     # 3. the exact runnable call that records one
     assert "python3" in res.inject_text
     assert "verdict.py" in res.inject_text
-    assert "--report" in res.inject_text
+    assert "--claim" in res.inject_text or "--report" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
 
@@ -867,7 +916,7 @@ def test_stop_block_message_contains_three_elements():
     # 3. the exact runnable call that records one
     assert "python3" in res.inject_text
     assert "verdict.py" in res.inject_text
-    assert "--report" in res.inject_text
+    assert "--claim" in res.inject_text or "--report" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
     # The script path in the stop block message must exist on disk
@@ -879,7 +928,12 @@ def test_stop_block_message_contains_three_elements():
 def test_format_verdict_command_resolves_runnable_script():
     cmd = pcg.format_verdict_command(claim_id="my claim with spaces")
     assert cmd.startswith("python3 ")
-    assert "--report 'my claim with spaces'" in cmd or '--report "my claim with spaces"' in cmd
+    assert (
+        "--claim 'my claim with spaces'" in cmd
+        or '--claim "my claim with spaces"' in cmd
+        or "--report 'my claim with spaces'" in cmd
+        or '--report "my claim with spaces"' in cmd
+    )
     assert "--verdict PASS" in cmd
     assert '--reason "<why>"' in cmd
     # The script path in the command must exist on disk
@@ -896,3 +950,123 @@ def test_resolve_verdict_script_with_empty_or_relative_hooks_dir_resolves_absolu
     script_none = pcg.resolve_verdict_script(None)
     assert script_none.is_absolute()
     assert script_none.is_file()
+
+
+# ---------------------------------------------------------------------------
+# Separate short IDs in shared format for claims and verifications
+# ---------------------------------------------------------------------------
+
+
+def test_id_format_helpers():
+    # build_id produces <kind>-<hash>[-<title>]
+    cid = pcg.build_id("claim", "test content")
+    assert pcg.is_valid_id(cid)
+    parsed = pcg.parse_id(cid)
+    assert parsed["kind"] == "claim"
+    assert len(parsed["hash"]) == 8
+    assert parsed["title"] is None
+
+    # build_id with title slugifies title
+    cid_titled = pcg.build_id("claim", "test content", title="My Feature: Auth Gate!")
+    assert pcg.is_valid_id(cid_titled)
+    parsed_titled = pcg.parse_id(cid_titled)
+    assert parsed_titled["kind"] == "claim"
+    assert parsed_titled["title"] == "my-feature-auth-gate"
+
+    # mint_verification_id produces verdict-<hash>[-<title>] distinct from claim id
+    vid = pcg.mint_verification_id(cid, "PASS", "valid logic", title="review-ok")
+    assert pcg.is_valid_id(vid)
+    parsed_vid = pcg.parse_id(vid)
+    assert parsed_vid["kind"] == "verdict"
+    assert parsed_vid["title"] == "review-ok"
+    assert vid != cid
+
+
+def test_record_verdict_returns_distinct_verification_id():
+    session_id = "sess-distinct-id"
+    claim_id = "claim-1a2b3c4d-pr-diff"
+    pcg.arm(session_id, claim_id=claim_id)
+    tracer = _StubTracer(config={"endpoint": "http://x"})
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=claim_id,
+        verdict="PASS",
+        reason="Logic holds against stated premises.",
+        title="logic-pass",
+        tracer_mod=tracer,
+    )
+
+    assert result["ok"] is True
+    verification_id = result["verification_id"]
+    assert verification_id is not None
+    assert verification_id != claim_id
+    assert pcg.is_valid_id(verification_id)
+    parsed = pcg.parse_id(verification_id)
+    assert parsed["kind"] == "verdict"
+    assert parsed["title"] == "logic-pass"
+
+    # Gate state records verification_id alongside claim_id
+    last = pcg.get_state(session_id)["last_verdict"]
+    assert last["verification_id"] == verification_id
+    assert last["claim_id"] == claim_id
+    assert last["title"] == "logic-pass"
+
+    # Span record carries verification_id
+    attrs = tracer.exported[0]["spans"][0]["attributes"]
+    assert attrs["premise_check.verification_id"] == verification_id
+    assert attrs["premise_check.title"] == "logic-pass"
+
+
+def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
+    downstream_session = "sess-downstream"
+    upstream_session = "sess-upstream"
+
+    # 1. Downstream receives a claim and records a verdict
+    downstream_claim = "claim-a1b2c3d4"
+    pcg.arm(downstream_session, claim_id=downstream_claim)
+    downstream_result = pcv.record_verdict(
+        session_id=downstream_session,
+        claim_id=downstream_claim,
+        verdict="PASS",
+        reason="Downstream worker verified test suite.",
+        title="worker-done",
+        tracer_mod=_StubTracer(config=None),
+    )
+    verification_id = downstream_result["verification_id"]
+    assert verification_id.startswith("verdict-")
+    assert verification_id != downstream_claim
+
+    # 2. Downstream emits a verified outgoing message carrying that verification ID
+    outgoing_msg = (
+        f'<cross-session-message from="worker" id="{verification_id}">'
+        "Finished implementation and tests pass."
+        "</cross-session-message>"
+    )
+
+    # 3. Upstream receives this prompt; hook extracts verification_id as incoming claim_id
+    upstream_ctx = _prompt_ctx(upstream_session, outgoing_msg)
+    extracted_claim_id = pcg._derive_claim_id(upstream_ctx)
+    assert extracted_claim_id == verification_id
+
+    # 4. Upstream hook arms with this claim id
+    arm_res = pcg.premise_check_arm(upstream_ctx)
+    assert arm_res is not None
+    assert pcg.is_armed(upstream_session) is True
+    assert pcg.get_state(upstream_session)["claim_id"] == verification_id
+
+    # 5. Upstream records its own verdict referencing the incoming verification ID as claim_id
+    upstream_result = pcv.record_verdict(
+        session_id=upstream_session,
+        claim_id=verification_id,
+        verdict="PASS",
+        reason="Supervisor verified downstream report.",
+        title="supervisor-accept",
+        tracer_mod=_StubTracer(config=None),
+    )
+    assert upstream_result["ok"] is True
+    assert upstream_result["claim_id"] == verification_id
+    upstream_verification_id = upstream_result["verification_id"]
+    assert upstream_verification_id != verification_id
+    assert pcg.is_valid_id(upstream_verification_id)
+    assert pcg.is_armed(upstream_session) is False

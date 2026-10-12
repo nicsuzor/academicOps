@@ -104,10 +104,13 @@ provide timely reminders and non-content-sniffing friction:
      (`<task-notification` carrying subagent results or agent summary). Automated harness notices
      (background command completions, `/loop` ticks, `/goal` wakeups) are passed over and
      leave the gate disarmed.
-     Each armed report is named by a short id carrying no message text, and the printed
-     verdict command takes that id. User messages (console or channel envelopes) never arm it.
-     Separately, a subagent dispatch (`PostToolUse` / `PostToolBatch` on `Agent`, `Task`,
-     or `invoke_subagent`) arms it.
+     Each armed claim is named by a short unique id in the shared format (`<kind>-<hash>[-<title>]`),
+     carrying no message text, and the printed verdict command takes that id. User messages
+     (console or channel envelopes) never arm it. Separately, a subagent dispatch
+     (`PostToolUse` / `PostToolBatch` on `Agent`, `Task`, or `invoke_subagent`) arms it.
+   - A recorded verdict produces its own distinct verification id (`verdict-<hash>[-<title>]`)
+     referencing the verified claim id. When an agent emits a verified outgoing message,
+     upstream receives that verification id and accepts it directly as an incoming claim id.
    - If an unverified report exists, the harness pauses execution once (`honesty.md`
      and `quiet.md`) and prompts the agent to record a verdict (`scripts/verdict.py`).
    - On the immediate continuation turn, the block disarms (`stop_hook_active` or
@@ -124,6 +127,8 @@ verification coverage and diagnose systemic defect patterns:
   the denominator for session verification coverage.
 - **`premise_check.verdict` (Verdict Span):** Emitted when a verdict is recorded via
   `scripts/verdict.py`. Records:
+  - `premise_check.claim_id`: Reference to the verified claim or report.
+  - `premise_check.verification_id`: Unique identifier for the recorded verification.
   - `report.sender`: Source agent identifier.
   - `report.channel`: Subagent, peer, or background completion.
   - `outcome`: `ACCEPT`, `DOWNGRADE`, `RETURN`, or `NO-CLAIM`.
