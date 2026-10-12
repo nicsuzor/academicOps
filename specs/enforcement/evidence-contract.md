@@ -70,13 +70,13 @@ independently confirming the thing claimed is actually true.
 
 ## The Canonical Structured-Handback Format
 
-This section is the design source for the handback shape and claim ledger. The
-operative ledger format agents follow is the
-[`claim-ledger` skill](../../plugins/ida/skills/claim-ledger/SKILL.md). Agents
+This section is the design source for the handback shape and report argument. The
+operative argument format agents follow is the
+[`premise-check` skill](../../plugins/ida/skills/premise-check/SKILL.md). Agents
 load it when they write a report; the per-message honesty reminder names it.
 
 A task handback couples the boundary verdict and epistemic safeguards with a
-plain-prose answer and a native Argdown claim ledger in the receipts section:
+plain-prose answer and a native Argdown report argument in the receipts section:
 
 ```markdown
 VERDICT: <PASS | PARTIAL | FAIL | BLOCKED | NEEDS-PRINCIPAL>
@@ -88,7 +88,7 @@ CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT R
 
 RECEIPTS:
 
-<the claim ledger, per the claim-ledger skill>
+<the report argument, per the premise-check skill>
 ```
 
 - `PARTIAL` = a legal partial completion -- the existing terminal status `partial`.
