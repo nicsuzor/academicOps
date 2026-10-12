@@ -27,6 +27,10 @@ Candidates, narrowest first:
 
 - `pkb.list_tasks(status="review")` -- parked on a decision only the user can make.
 - `pkb.list_tasks(status="partial")` -- a named remainder someone has to place.
+- **The ask queue** (`specs/workflows/graph-valuation.md#8-r7----budget-for-asking-nic`): items ordered by reach, drained strictly within R7 channel budgets:
+  - _Weekly sitting_: 1 per week (~20 min), at most one link batch (≤ 50 rows) or one pricing set (≤ 10 targets).
+  - _Priority asks_: ≤ 1 per day in the daily digest (proposed hard date within 14 days, or new top-20 opportunity).
+  - _In-conversation valuation_: 0 questions. Over-budget items wait; never interrupt mid-conversation.
 - `pkb.get_task(id)` on each, for the body and the evidence fields.
 
 ### 2. Check each one on the papers

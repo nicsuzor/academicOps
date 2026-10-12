@@ -25,7 +25,7 @@ For each claimed task (releasing child tasks first), call `pkb.release_task` (th
 - `review`: Only when the next step is a decision only Nic can make. Name that decision in the required `reason` as a question for Nic. A pending agent step (QA run or re-run, merge, deploy, retry, routing or dispatch call) is `partial`, never `review`.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
-- Wire directed `blocks` edges to represent dependencies.
+- Wire a `needs` edge from the blocked task to represent dependencies (FR:334).
 
 Task report format:
 
@@ -54,6 +54,6 @@ Compile the overall session outcome:
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Receipts** (Claim Ledger): The load-bearing claims as a claim ledger, written per the `claim-ledger` skill.
+5. **Receipts** (Report Argument): The load-bearing claims as a report argument, written per the `premise-check` skill.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ```

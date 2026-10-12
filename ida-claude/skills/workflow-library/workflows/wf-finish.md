@@ -38,7 +38,7 @@ The implementation worker must satisfy these obligations before marking `status:
 When QA review is required, `/reify` mints a follow-up task with:
 
 - **Title**: `QA: <primary task title>`
-- **Parent**: Same parent as primary task
-- **Depends on**: `[<primary-task-id>]` (hard blocking dependency)
+- **Parent**: Same parent as primary task (or `part_of` edge per FQ1)
+- **Needs**: `[<primary-task-id>]` (hard blocking dependency)
 - **Workflow**: Composes independent verification workflow
 - **Goal**: Independently verify PR deliverable and claims against literal acceptance criteria in a clean context. When verified without reviewer code changes, merge to the base branch per project policy. A reviewer that changes code or pushes fixes must never merge; it must hand off for independent review by filing a follow-up QA task.

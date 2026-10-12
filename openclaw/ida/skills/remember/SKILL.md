@@ -15,7 +15,7 @@ Write and consolidate knowledge notes under `synthesize-not-accrete`. State curr
 - **Search before writing**: Query existing notes before creating or updating.
 - **Never fabricate**: Record citable facts and direct implications; omit opinions on what should have happened.
 - **Resolve contradictions**: When sources disagree, state the resolved fact and delete the losing version -- do not record the disagreement. Where a retired premise would otherwise be re-derived by the next reader, keep one forward-looking line of warning and delete the reasoning it came from. If the conflict cannot be resolved from evidence, ask; do not file both claims and move on.
-- **Target and task rules**: Target nodes carry only graph weights and severity; task bodies are work checklists, not logs.
+- **Target and task rules**: Target nodes carry only worth ($W_t \in \mathbb{R}$ on the open continuous log scale); task bodies are work checklists, not logs.
 - **Bugs on GitHub**: Report system, tool, and framework bugs on GitHub only.
 - **Age is not staleness**: Do not archive or cancel notes based on age alone.
 
@@ -30,7 +30,7 @@ All PKB calls above go through the `services` MCP server's code-mode interface: 
 
 ### Graph Integration
 
-- **Densify relationships**: Link notes to peer concepts and navigation nodes with `[[wikilink]]` pointers **in the prose that needs them**. A wikilink anywhere in a body is a real graph edge. Do not author a `## Relationships`, `## Related`, `## See also`, or `## References` heading -- no code path reads body headings into edges, and a link parked in a list at the foot of a note is an edge without a reason attached. Task bodies express relationships via graph edges, never in prose.
+- **Densify relationships**: Link notes to peer concepts and navigation nodes with `[[wikilink]]` pointers **in the prose that needs them**. A wikilink anywhere in a body is a real graph edge (not read by the flow rule, pending FQ23). Do not author a `## Relationships`, `## Related`, `## See also`, or `## References` heading -- no code path reads body headings into edges, and a link parked in a list at the foot of a note is an edge without a reason attached. Task bodies express relationships via graph edges, never in prose.
 - **Frontmatter**: Set it when creating the node. `pkb.create` accepts `title`, `type`, `tags`, `confidence` (float 0–1), and `source` (a single string); `id`, `alias`, `permalink`, `created`, and `modified` are generated. Afterwards `batch_update` can change `title`, `type`, `tags` and the other task fields. Nothing else is writable -- unknown keys are rejected, not written -- so provenance beyond the one `source` string belongs in the body as a `[[wikilink]]` to its evidence node.
 - **Legacy frontmatter**: a few older hand-written nodes carry `sources:`, `synthesized:`, `last_reviewed:`, or `maturity:`. These are unreachable through the current tools and no code reads them. Do not add them, do not treat their absence as a defect, and do not require them in a review.
 - **Navigation nodes**: Create or update `type: index` notes when a topic accumulates five or more notes. There is no `moc` type; writes specifying one are rejected.
@@ -38,7 +38,7 @@ All PKB calls above go through the `services` MCP server's code-mode interface: 
 ## Routing Emerging Work
 
 - **Incidents and friction**: Route to `/aops:learn` for root-cause diagnosis.
-- **New asks or decisions**: Route to `/pkb:q` for graph positioning and weighting.
+- **New asks or decisions**: Route to `/ida:q` for graph positioning and valuation.
 - **Fallback**: If an owning skill cannot run, create an `inbox` node noting the required skill.
 
 ## Consolidation

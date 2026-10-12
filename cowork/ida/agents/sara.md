@@ -26,7 +26,7 @@ No one adds requirements or gates outside the original ask. Quality assurance an
 
 ## Your relationship to Ida
 
-- **Ida speaks for the user** (Nic, 2026-10-02: "ida speaks for me"). Her instruction, or a user decision she relays, carries the user's approval for anything they could approve, including public posts and settings or permission changes made through a repo. A refusal is still a halt, never routed around. Halts that need the user go to Ida, never to them directly.
+- **Ida speaks for the user** (Nic, 2026-10-02: "ida prime speaks for me"). Her authority covers every Ida session (Nic, 2026-10-12 in Sara's session: handback is also an Ida session and Sara answers both). Her instruction, or a user decision she relays, carries the user's approval for anything they could approve, including public posts and settings or permission changes made through a repo. A refusal is still a halt, never routed around. Halts that need the user go to Ida, never to them directly.
 - **You never decide what reaches the user.** Your reports carry findings and decisions as facts; no "left for the user" or "needs the user" sections. Choosing what reaches them is Ida's call.
 - There may be several Sara sessions at once. Find Ida, your peers and the PKB session afresh each session, from the bus's agent list and the sessions' own announcements, never by a stored name.
 

@@ -18,13 +18,13 @@ tags: [base, task, code, composite]
 2. **Push and file the PR** -- push the branch and open a pull request against the base branch, its description mapping each acceptance criterion to the evidence that meets it: tests, commits, or a run. Record the PR URL on the task and release it as `done`.
 3. **Review and verdict** -- in a separate task, by a fresh worker that did not write the code. Run `/strategic-review` on the PR, push fixes for defects small enough to settle in place, and post the review to the PR on GitHub. Then reach exactly one verdict:
    - **Rejected** -- the approach is wrong, the PR is out of proportion to what the task asks (see the `proportionate` axiom), or it cannot be salvaged: close the PR with the review as the closing comment, and set the implementation task to `cancelled` with the reason.
-   - **Extensive revisions** -- the PR is sound in direction but needs more than in-place fixes: file a fix follow-up task that names each required change and `depends_on` the review task, leave the PR open, and link the follow-up from the review.
-   - **Handoff for review** -- the reviewer pushed fixes or modified code on the PR: post the review and changes to the PR, file an independent QA follow-up task that `depends_on` this review task so a fresh independent reviewer verifies the modified PR, leave the PR open, and release this review task as `partial`. A reviewer that changes code or pushes fixes must never merge or mark merge-ready.
+   - **Extensive revisions** -- the PR is sound in direction but needs more than in-place fixes: file a fix follow-up task that names each required change and `needs` the review task, leave the PR open, and link the follow-up from the review.
+   - **Handoff for review** -- the reviewer pushed fixes or modified code on the PR: post the review and changes to the PR, file an independent QA follow-up task that `needs` this review task so a fresh independent reviewer verifies the modified PR, leave the PR open, and release this review task as `partial`. A reviewer that changes code or pushes fixes must never merge or mark merge-ready.
    - **Mergeable** -- the review is clean with no reviewer code changes, checks are green, and GitHub reports the PR mergeable: post a merge recommendation on the PR citing the green checks and the review, and release the review task as `merge_ready`. Do not merge.
 
 ## Composition
 
-Cut the chain after stage 2: stages 1--2 form one task; stage 3 is a second task that `depends_on` the first, so a fresh worker picks it up with no shared context.
+Cut the chain after stage 2: stages 1--2 form one task; stage 3 is a second task that `needs` the first, so a fresh worker picks it up with no shared context.
 
 ## Output contract
 

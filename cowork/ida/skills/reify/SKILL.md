@@ -17,7 +17,7 @@ Call `/hydrate` on the objective, or on the task if you were given an id.
 
 - Given a task id: read it. If it already fills the template in step 3, go to step 4.
 - If `/hydrate` flags an unfinished task with the same objective, carry on with that task instead of a new one.
-- If it flags a task this objective needs done first, note it for a `depends_on` edge.
+- If it flags a task this objective needs done first, note it for a `needs` edge.
 - You may update an existing task if you need to modify context, acceptance criteria, or instructions. This includes retrying failed tasks; do not create a new task for the same work.
 
 ## 2. Compose workflows
@@ -40,7 +40,7 @@ Then assemble the steps:
 - Default to creating a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
 - Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - If you must split a task, make each task as big as possible.
-- Wire `depends_on` edges only where one unit genuinely requires another's output.
+- Wire `needs` edges only where one unit genuinely requires another's output.
 - Mint multi-task cuts using `pkb.decompose_task`.
 - Write tasks with status `queued` immediately.
 
@@ -77,7 +77,7 @@ Where the project finish template calls for QA review:
 1. Mint an independent follow-up task with status `queued`.
 2. Title: `QA: <primary task title>`.
 3. Set parent to the primary task's parent.
-4. Wire dependency: `depends_on: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
+4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.
 6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and merge to the target branch when verified per the finish template; a reviewer that pushes fixes or changes code must never merge and must hand off for independent review.
 

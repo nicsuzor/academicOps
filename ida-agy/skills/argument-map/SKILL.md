@@ -1,6 +1,6 @@
 ---
 name: "argument-map"
-description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use tools:argument-extraction), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
+description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use ida:argument-extraction), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
 ---
 
 # Argument map
@@ -18,7 +18,7 @@ Produce three things:
 
 ## Reconstruct
 
-- **Extract first with `tools:argument-extraction`.** It sets the Argdown output contract: titles, `source` quotes with locators, implicit premises, and the parser loop. Then reconstruct on top of what it produces.
+- **Extract first with `ida:argument-extraction`.** It sets the Argdown output contract: titles, `source` quotes with locators, implicit premises, and the parser loop. Then reconstruct on top of what it produces.
 - **Follow the text's own structure.** Put the thesis first, then one Argdown section per part of the text, in the text's order. A reader checks a map against the text, so the map should match it.
 - **Reconstruct charitably.** Build the strongest valid version of each step. Where validity needs a premise the author never states, add it, mark it implicit, and tag it `#missing`.
 - **Read claims at the strength the evidence can carry.** When the wording overstates (for example "veto" where the evidence shows "sometimes limits"), narrow your label but keep the author's words verbatim in `source`. Record the narrower reading as a decision.

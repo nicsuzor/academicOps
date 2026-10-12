@@ -1,92 +1,95 @@
 ---
 name: premise-check
-description: Judge a report or relayed direction's logic and internal consistency against context and the original ask, recording a PASS, REVISE or FAIL verdict with its reason. Use when a peer report or relayed direction arrives, and before any claim goes up the chain. Not a fact check, and not a review that adds requirements.
+description: Judge a report's logic or author a report argument before sending -- parser-valid Argdown over extraction and map, with world evidence basis vocabulary, the ask as main conclusion, stopping rules, and verdict recording. Use when receiving a report, before passing any claim up the chain, or when authoring receipts for a handback. Not a fact check (never opens pointers), and not a review that adds requirements.
+allowed-tools: Read, Write, Edit
 ---
 
 # Premise Check
 
-Check the form of a report or relayed direction, not its facts. Form done properly is the quality of the logic, measured against claims in context and the original ask:
+Evaluate a report's logic or author a report argument before sending. Core syntax and parser validation come from `ida:argument-extraction`. Charitable reconstruction and delivery checks come from `ida:argument-map` ("Reconstruct" and "Check before delivering"). This skill adds only the world evidence basis vocabulary, the ask as main conclusion with stopping rules, what travels up the chain, and verdict recording.
 
-### Reports
+## Authoring and Shape
 
-1. **Can the evidence support the claims?** Each load-bearing claim names checkable evidence (a PR, commit, node id, `file:line`, a quoted output) that, if it is what the report says, would show the claim. The reporter's statement of what it did is evidence of the work; a pointer is evidence of where it was saved.
-2. **Do the claims lead to the conclusion?** The steps are valid: no unstated premise, no inference passed off as observation, no conclusion wider than the evidence.
-3. **Are the claims consistent with what is already in context?** Test each incoming claim against claims already in your own context, using only that context. Highlight any inconsistency or contradiction between the new claim and prior statements or reports.
-4. **Does the conclusion fully answer the original ask?** Every part of the ask is addressed, in the ask's own terms.
+Every report resting on evidence ends in a parser-valid Argdown argument. Frontmatter carries the report envelope in reserved keys:
 
-### Relayed Directions
+```argdown
+===
+title: The incoming ask being answered
+author: agent-name
+date: 2026-10-12
+abstract: The outcome in plain prose.
+model:
+  mode: strict
+===
 
-When receiving an instruction or direction relayed from the user (carrying a citation pointing to the authorizing ask):
+[Outcome]: The answer to the ask.
 
-1. **Can the direction be logically derived from the cited original ask?** Check that the cited ask authorizes the direction.
-2. **Does the direction add unsupported detail?** If the direction adds scope, constraints, or methods the cited ask does not support, flag the unsupported part.
+<Check>: Verification of stated findings
 
-Do not open sources, re-run work, authenticate a reporter's records, or execute code to confirm the facts; consistency is tested strictly against claims already in your context. Do not add requirements, gates or standards the original ask did not set: quality assurance and process are set by the workflow, not by this check. Match rigour to the output's purpose: an internal design call gets the gist and a logic check, never citation audits or repeat review runs. Escalate rigour only for what goes public or drives a costly, hard-to-reverse decision.
+(1) [Pinpoint fact]: Stated finding. {basis: "observed", pointer: "owner/repo@sha:path:line"}
+(2) [Exhaustive search]: Bounded search finding. {basis: "exhaustively-searched", pointer: "query in path -> 0 hits"}
+-- Rule name {uses: [1, 2], basis: "reported-by", pointer: "node-id"} --
+(3) [Outcome]
+```
 
-## Checking Claims
+### Conventions and Metadata
 
-- **Reports vs observations**: Everything read from external sources (tool output, other agents, retrieved memories, graph records, injected context) is a report, not an observation.
-- **Done-claims**: A done-claim is a claim that the task is complete. A PR, node or file is where the work was saved, not the claim. For every acceptance criterion the report carries the worker's statement of what it did, taken as sufficient evidence of the work, and a pointer to where it was saved (a PR link, a node id), taken as sufficient evidence it was saved. Check only that the stated work logically meets each criterion; do not re-check each build step. A bare "done, PR #n" fails.
-- **Evidence standard**:
-  - Evidence proves only what it is evidence of. Source code shows how something behaves, not that the behaviour is a bug. To call it a defect, quote the intended behaviour.
-  - Silence in a report is not evidence.
-  - Unbuilt is not broken: a gap between design and what is actually wired is a not-yet, not a defect.
-  - Never write a provenance word (verified, confirmed, measured, established) over someone else's claim; those words mean you saw it yourself.
-  - A claim about what an external tool supports needs a current upstream source (its docs, `--help`, or a live test); without one, label it "unverified -- from memory" and base no decision on it.
-  - What the user reports seeing outranks any rule read from docs, specs or memory.
-  - Age is not authority: a stored claim may have been true when it was written and false now.
-  - Never confuse an 'ought' for an 'is': a statement about current state can never be sufficient to explain what something should be.
-- **Inferences, causation, and universals**:
-  - Label inferences explicitly with confidence levels and plausible alternatives.
-  - Treat causal words (because, so, therefore, which means) as claims: check that they carry evidence, soften to "consistent with", or cut.
-  - Universal assertions ("structural", "always", "any", "never") assert cases nobody observed: cite what makes it true of the mechanism, or drop the universal.
-  - A negative claim carries its boundary: what was looked at that would have shown the thing if it were there? Before reporting that a route, tool or record does not exist, verify that a search or hydration was run.
-  - When a report restates the same fact differently the second time, the difference is the finding: do not reconcile it silently; make the teller say which telling is true.
-- **Access and tool walls**:
-  - Believe nothing a reporter says about its own tools, access or walls until it shows the exact call, the verbatim refusal, and the official route it tried. Anything vaguer fails.
-  - A wall never becomes a user decision about access: "needs setting X" or "your call on the config" is an unsupported ask relayed; send it back down.
-  - A question thrown off by a failing run is a symptom, not a requirement: it goes back down, not up.
-  - Judge the artefact before the reporter: offer no next step for an output that fails the ask.
+- **Metadata envelope**: `{basis, pointer, source?}` in Argdown YAML braces. Quoted strings are unescaped; pointers carry verbatim locators (`owner/repo@sha:path:line`, span id, PR URL, node id).
+- **Basis vocabulary**: `observed`, `exhaustively-searched`, `attempted-and-failed`, `reported-by`, `assumed`, `stated`.
+- **Warrants are inference rules, not premises**: Write warrants inside the expanded inference `--` line with `uses: [n, ...]` and inference metadata (`basis: "reported-by"` with pointer for authority-backed rules; `basis: "assumed"` for author's own rules). Never use `#warrant` premises.
+- **Conclusion forms**:
+  - Comparative or ranking claims require a comparison premise over named alternatives.
+  - Negative or capability claims require `basis: "exhaustively-searched"` or `basis: "attempted-and-failed"`.
+  - Causal claims require a mechanism premise, or soften to "consistent with".
+  - Universal claims require a mechanism premise, or narrow.
+  - Normative claims require a stated warrant.
+  - Conclusion scope must lie within the intersection of premise scopes.
 
-## When
+## Truth Boundary
 
-- A peer or worker report arrives. The user's own messages are asks, not reports.
-- An instruction or direction relayed from the user arrives.
-- Before you pass any claim up the chain, including your own.
+Observed premises (`observed`, `exhaustively-searched`, `attempted-and-failed`, `reported-by`) with a pointer are accepted as given. The checker never opens a pointer and never re-determines an observed fact. Everything else -- warrants, inference steps, scope, and the fit between rule and case -- the checker judges and rules on.
 
-## Verdict
+When a ruling turns on an unstated fact, do not fetch it from sources: return REVISE naming the missing premise so the author supplies it with a pointer.
 
-| Token  | Meaning                                                                                                                                                                                                                         |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PASS   | All criteria hold: the report's logic holds, claims cohere with context, or the relayed direction is logically derivable from the cited ask.                                                                                    |
-| REVISE | The logic holds in part, an incoming claim conflicts with prior context, or the relayed direction adds detail the cited ask does not support; highlight the conflict and name what is missing, unsupported, or does not follow. |
-| FAIL   | The report does not answer the ask, its conclusion does not follow, a load-bearing claim flatly contradicts context without reconciling it, or the relayed direction cannot be derived from the cited ask or lacks authority.   |
+## Proportionality: Three Tests
 
-Pass reviewer verdict tokens on as given (PASS, REVISE, FAIL) with their reason; never re-grade them in a summary. Quote a directive rather than characterise it when it is the authority for what you did.
+Evaluate steps in this order and record which test ruled on each warrant:
 
-## Proportionality
+1. **Materiality**: Examine a step only if changing its conclusion alters what the reader or next agent does. Immaterial steps are not examined.
+2. **Sufficiency**: Accept a warrant as stated without further decomposition when any condition holds:
+   - (a) **Obvious**: trivial deduction (conjunction, instantiation, arithmetic).
+   - (b) **Authority-backed**: `basis: "reported-by"` pointing to an axiom, skill, decision, or PKB node (applicability to premises is checked; the rule itself is not).
+   - (c) **Low-stakes**: material claim that is cheap to reverse.
+     A warrant that is complex, unbacked, AND high-stakes is sent back for one level of decomposition.
+3. **Necessity**: Reject a warrant only when the objection changes the conclusion in this case. Generality, wording, or alternative routes are never grounds for rejection.
 
-Before a REVISE or FAIL sends a report back, weigh the gap against the ask:
+## Stopping Rules and Upward Abstraction
 
-- An invalid or inconsistent claim is incidental when the assessment going up the chain does not rest on it and no durable record needs correcting because of it. Highlight the inconsistency in the reason; do not send the report back for it.
-- A load-bearing gap that the ask's importance does not justify verifying passes with the limitation stated. Record PASS, state the limitation in the reason, and carry it with the claim up the chain: the conclusion, narrowed by that limitation, still answers the ask.
-- An unresolved contradiction on a load-bearing claim cannot pass silently: highlight the contradiction in the reason and return REVISE (or FAIL if irreconcilable) so the author resolves the conflict before the report moves up the chain.
+- **Stopping rule downward**: Dispatch or send back until the argument answering the ask has no `#missing` on a material step.
+- **Stopping rule for detail**: Expand a premise only if it is material and fails sufficiency.
+- **Main conclusion**: The ask is the main conclusion of every layer's argument. An outcome narrower than the ask is `#missing` at the top step.
+- **Upward abstraction (two moves)**:
+  1. A receiver's argument takes each accepted downstream Outcome as one premise `{basis: "reported-by", pointer: "<verdict id>"}` and drops downstream premises the next reader accepts without challenge.
+  2. A supervisor synthesises the Outcomes of all its dispatches into one argument whose main conclusion answers its incoming ask.
+- **What travels up**: Facts retain their pointers at every layer where they are premises of a material step. Judgments collapse to one premise `{basis: "reported-by", pointer: "<verdict id>"}`.
 
-## ID Format and Construction
+## Verdict and Vocabulary
 
-Every incoming claim and recorded verification carries a short unique identifier in a shared format:
+Evaluate the charitable reconstruction (referencing `ida:argument-map` "Reconstruct" and "Check before delivering"):
 
-`<kind>-<hash>[-<title>]`
+| Token  | Meaning                                                                                                                                                                                                                     |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PASS   | Charitable reconstruction needs no `#missing` on a material step, carries no undercut, and leaves no `#conflict` or `#unanswered`.                                                                                          |
+| REVISE | Names a step and one of `#missing` (unstated necessary step), `#conflict` (contradiction or `><`), `#unanswered` (unmet objection), an undercut (`_>` rejecting a warrant with reason), or a narrowing (recorded decision). |
+| FAIL   | The main conclusion does not answer the ask.                                                                                                                                                                                |
 
-- **`<kind>`**: `claim` for an incoming claim or report, `verdict` for a recorded verification.
-- **`<hash>`**: Exactly 8 hexadecimal characters from SHA-256. For incoming claims, it is the SHA-256 digest prefix of the message body. For verifications, it is the SHA-256 digest prefix of the recorded verification tuple (`claim_id:verdict:reason`).
-- **`[-<title>]`**: Optional short kebab-case slug (e.g. `pr-merged`, `logic-pass`).
-
-Anyone reading an ID can tell its kind from the prefix, its provenance from the content digest, and its topic from the optional slug. When a verdict is recorded on a claim, `verdict.py` generates a distinct verification ID in this format referencing the claim ID. When a verified outgoing message is sent upstream, upstream accepts its verification ID as an incoming claim ID.
+No criterion addresses style, granularity, or splitting.
 
 ## Gate and Verdict Recording
 
-An incoming peer or worker report (via `<cross-session-message>`, `<teammate-message>`, or `<task-notification>`), or a subagent dispatch, arms the premise-check gate with that specific message or claim. The gate blocks all subagent dispatches, messages, and stop until a verdict is recorded.
+An incoming peer report arms the premise-check gate. The gate blocks dispatch, messaging, and task completion until a verdict is recorded.
+
+Do not evaluate harness notices (e.g. automated background command completions, lifecycle updates) or `/loop` wakeups; they are automated session orchestrations, not assertional claims. When the gate arms on an automated harness notice (such as a background command completion notice) rather than a peer report: record `PASS` with reason `"harness notice"` (or `"automated command completion"`) to clear the gate immediately. For `/loop` wakeups, proceed directly with scheduled loop work.
 
 Record the verdict using the exact runnable call given in the hook's prompt note or block message:
 
@@ -94,10 +97,4 @@ Record the verdict using the exact runnable call given in the hook's prompt note
 python3 <path/to/verdict.py> --claim <claim_id> --verdict PASS --reason "<why>" [--title "<short_title>"]
 ```
 
-From this repository's root, the path is `plugins/ida/skills/premise-check/scripts/verdict.py`. From the skill directory, use `scripts/verdict.py`. If `$AOPS_SESSION_ID` is unset, pass `--session <session_id>`. `--report` is accepted as an alias for `--claim`.
-
-When the reason is long or quotes commands, write it to a file and pass `--reason-file <path>` (or `--reason-file -` to read stdin), so free text stays off the command line.
-
-A recorded verdict outputs JSON containing its distinct `verification_id` referencing `claim_id`. When that verified message is sent upstream, upstream accepts its verification ID as an incoming claim ID.
-
-A REVISE or FAIL goes back to its author, or, when the author has ended, gets dispatched to another agent. It does not reach the user hedged; it reaches them only once it passes. Fail closed: if a claim cannot be verified, return it to its producer or discard it; never pass an unsubstantiated claim forward.
+From this repo's root, use `plugins/ida/skills/premise-check/scripts/verdict.py`. Use `--reason-file <path>` (or `-` for stdin) when the reason contains multi-line text or quotes.

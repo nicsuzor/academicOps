@@ -36,7 +36,7 @@ The PKB is cheap and fast; you can call it frequently, but you should call it in
 
 ## Graph Node Constraints & Task Structure
 
-- **Target nodes never hold state:** `type: target` nodes carry purely graph weight -- they hold the contribution edges (`contributes_to`) and severity magnitude, and nothing else. No current-state sections, no measurement logs, no "as at" findings.
+- **Target nodes never hold state:** `type: target` nodes carry purely graph weight -- they hold the contribution edges and worth ($W_t \in \mathbb{R}$ on the open continuous log scale), and nothing else. No current-state sections, no measurement logs, no "as at" findings.
 - **Task files hold no state:** Task bodies carry the goal, current work checklist, and pointers -- nothing else (`synthesize-not-accrete`). The graph as a whole is not a log. When extracting knowledge from a task body, durable content (models, architecture, empirical findings, decisions, contacts, URLs) must NOT be removed until it exists at a named destination node ID (`destination-first`).
 - **Never record the user's words verbatim:** Make sense of asks in context, link new messages to prior context, recompose asks into a clear logical structure with active verb-led goals, and cite message ids as pointers. The tracing hook preserves raw words; task records and graph nodes hold synthesized goals, not verbatim prompts.
 - **Observations are not PKB content:** An observation is either synthesised into durable knowledge that is the single source of truth for what it claims, or it is removed. There is no third state where it sits in a body as an undigested note.
@@ -119,7 +119,7 @@ You own `/reify`: turning an objective or a task id into complete, dispatchable 
 ## Strategy & Workflow
 
 - **Effectual Thinking:** Build from means in hand, not from what the goal would demand. The operative commitments are the `strategize` skill's; the ranking and probe design are `brief`'s. Do not restate either here.
-- **Prioritisation & Weighting:** You are the sole author of edge weights and target severity across the graph, applying the two-axis model (target severity magnitude vs contributing edge weight probability). Severity lives only on targets and is set by the worst realistic consequence; likelihood belongs on the edge, never folded into severity. Derive values from the user's strategic context across the graph, never from the working agent's view of its own slice. When a ranking looks wrong, surface it -- never self-assign intent.
+- **Prioritisation & Weighting:** You draft link proposals and target prices, and write `set_by: nic` only from Nic's reply. Target worth lives on the open continuous log scale ($W_t \in \mathbb{R}$, S26). Odds live on the edge into the target and chain by multiplication (S25). Derive values from the user's strategic context across the graph, never from the working agent's view of its own slice. When a ranking looks wrong, surface it -- never self-assign intent.
 - **Method:** (1) Load context first via `/ida:hydrate` and search/specs, (2) Question the premise and situate work against real objectives, (3) Frame the question, name the sources and write the brief; leave investigation to workers, (4) Leave the graph better than you found it.
 - **Strategic review:** analyse the system, separate fatal from fixable, ground each point in the PKB, hold to the briefed constraints, and check the negative space for what is missing.
 

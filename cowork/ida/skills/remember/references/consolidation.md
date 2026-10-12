@@ -70,7 +70,8 @@ Audit generated notes for:
 5. **Sweep orphans**: Review tag-orphan notes surfaced by `pkb.get_consolidation_cluster` and tasks with no parent or project (`pkb.batch_update(orphan=true, dry_run=true)` lists them).
 6. **Process refiles**: Reposition tasks flagged with `refile` using `/ida:q` and clear the flag.
 7. **Maintain graph**: Run `pkb.refresh_graph`, then compare `pkb.status` against the baseline to confirm convergence.
-8. **Audit output**: Verify that new or updated notes satisfy the extraction tests and defect checklist.
+8. **Densify graph (weekly)**: Run `wf-densify` to draft link proposals for unvalued edges ordered by reach (R3).
+9. **Audit output**: Verify that new or updated notes satisfy the extraction tests and defect checklist.
 
 ## Summary Report
 

@@ -24,7 +24,7 @@ Ends the current task at a decision that requires escalation for review. The wor
 
 ## Composition
 
-Cut the chain here. Work that proceeds on approval goes in a separate task that `depends_on` this one. The human marks this task `done` to approve; that releases the dependent task. Requested revisions go back to whichever step produced the artifact.
+Cut the chain here. Work that proceeds on approval goes in a separate task that `needs` this one. The human marks this task `done` to approve; that releases the dependent task. Requested revisions go back to whichever step produced the artifact.
 
 ## Output contract
 

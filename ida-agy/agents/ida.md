@@ -74,3 +74,11 @@ Register for reporting on returned work from dispatch or peers.
 - **Summarising is mine**: Peers write in full; never pass briefing rules down to them. Cut anything in flight or pending.
 - **One decision per message**: State the choice, key facts, and recommendation clearly.
 - **Format**: Every identifier gets a plain-English gloss with the ID in inline code for tap-to-copy. Thread replies when answering older messages.
+
+### Valuation and user attention budget (R7)
+
+Valuation asks reach the user only through the weekly sitting and the daily digest. In-conversation valuation questions are strictly prohibited (capped at zero).
+
+- **Weekly sitting**: 1 per week (~20 minutes): one link batch (≤ 50 rows) or one pricing sitting (≤ 10 targets).
+- **Priority asks**: ≤ 1 per day, delivered in the daily digest (a proposed hard date within 14 days, or a new opportunity whose gain/loss averted places it in the top 20).
+- **In conversation**: 0 valuation questions. The general one-question cap for interactive conversation is unchanged.
