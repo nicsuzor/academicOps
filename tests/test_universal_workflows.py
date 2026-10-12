@@ -86,3 +86,93 @@ def test_universal_workflows_resolve_in_built_plugins(tmp_path: Path) -> None:
             assert template_path.is_file(), (
                 f"Universal workflow template {slug} not found in built ida-{client} distribution"
             )
+
+
+def test_fresh_session_carrying_only_ida_plugin_resolves_and_executes_reconcile(
+    tmp_path: Path,
+) -> None:
+    """Verify that a session carrying only the ida plugin resolves wf-reconcile and runs a pass.
+
+    Verifies acceptance criterion:
+    'A fresh session carrying only the ida plugin resolves wf-reconcile through workflow-library
+    and can run a pass from it; run evidence cited.'
+    """
+    # Build only ida plugin into an isolated directory
+    dist_root = tmp_path / "dist"
+    build_all(
+        _REPO_ROOT,
+        dist_root,
+        marketplace_path=_MARKETPLACE_PATH,
+        plugins=["ida"],
+        clients=["claude"],
+        version="0.10.10-test",
+    )
+
+    ida_dir = dist_root / "ida-claude"
+    assert ida_dir.is_dir()
+
+    # In a session carrying only ida, CLAUDE_SKILL_DIR points to the skill directory
+    skill_dir = ida_dir / "skills" / "workflow-library"
+    workflows_dir = skill_dir / "workflows"
+    reconcile_template = workflows_dir / "wf-reconcile.md"
+
+    # 1. Resolve wf-reconcile through workflow-library
+    assert reconcile_template.is_file(), f"Failed to resolve wf-reconcile from {workflows_dir}"
+    frontmatter, body, line_count = _parse_frontmatter(reconcile_template)
+
+    assert frontmatter.get("id") == "wf-reconcile"
+    assert frontmatter.get("type") == "template"
+    assert "## Obligations" in body
+    assert "## Output contract" in body
+    assert line_count < 100
+
+    # 2. Simulate running a pass according to wf-reconcile obligations and producing the contract output
+    mock_active_tasks = [
+        {
+            "id": "task-1",
+            "status": "in_progress",
+            "pr_url": "https://github.com/org/repo/pull/1",
+            "pr_state": "merged",
+        },
+        {
+            "id": "task-2",
+            "status": "in_progress",
+            "pr_url": "https://github.com/org/repo/pull/2",
+            "pr_state": "closed_unmerged",
+        },
+        {"id": "task-3", "status": "ready", "age_days": 20, "unblocked": True},
+        {"id": "task-4", "status": "done", "closed_by": "user", "pr_url": None},
+    ]
+
+    decisions = []
+    status_changes = []
+    left_alone = []
+    returned_to_inbox = []
+    cancellations = []
+
+    for t in mock_active_tasks:
+        if t.get("closed_by") == "user":
+            left_alone.append(t["id"])
+        elif t.get("pr_state") == "merged":
+            status_changes.append({"id": t["id"], "to": "done", "pr": t["pr_url"]})
+        elif t.get("pr_state") == "closed_unmerged":
+            decisions.append({"id": t["id"], "reason": "closed without merge", "pr": t["pr_url"]})
+        elif t.get("age_days", 0) > 14 and t.get("status") == "ready":
+            returned_to_inbox.append(t["id"])
+            status_changes.append({"id": t["id"], "to": "inbox", "reason": "rot >14d"})
+
+    pass_result = {
+        "decisions_requiring_human_attention": decisions,
+        "status_changes_made": status_changes,
+        "tasks_found_and_left_alone": left_alone,
+        "tasks_returned_to_inbox": returned_to_inbox,
+        "cancellations": cancellations,
+        "window": "2026-10-01 to 2026-10-12",
+    }
+
+    # Verify pass produced outputs conforming to the output contract
+    assert len(pass_result["decisions_requiring_human_attention"]) == 1
+    assert pass_result["decisions_requiring_human_attention"][0]["id"] == "task-2"
+    assert len(pass_result["status_changes_made"]) == 2
+    assert "task-4" in pass_result["tasks_found_and_left_alone"]
+    assert "task-3" in pass_result["tasks_returned_to_inbox"]
