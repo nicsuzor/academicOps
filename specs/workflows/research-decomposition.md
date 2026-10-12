@@ -51,6 +51,8 @@ research review selects 3–4 plus self-consistency as a background check.
 ## Primitives
 
 Semantic labels on existing task types. No new task types, no schema changes.
+The universal composite `wf-research-output` (`plugins/ida/skills/workflow-library/workflows/`)
+carries these as stages by contract; it is the operational home, this table the vocabulary.
 
 | Primitive           | Purpose                                    | Maps to       |
 | ------------------- | ------------------------------------------ | ------------- |
