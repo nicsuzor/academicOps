@@ -41,7 +41,8 @@ claude plugin install rbg@academicOps
 #    API URL is fetched raw with GITHUB_TOKEN.
 if [ -n "${CLAUDE_AUTO_MODE_SETTINGS_URL:-}" ]; then
   auto_mode_json="$(mktemp)"
-  curl -fsSL -H "Accept: application/vnd.github.raw" \
+  curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN:?GITHUB_TOKEN unset}" \
+    -H "Accept: application/vnd.github.raw" \
     "$CLAUDE_AUTO_MODE_SETTINGS_URL" -o "$auto_mode_json"
   python3 -c 'import json, sys; assert "autoMode" in json.load(open(sys.argv[1])), "no autoMode block"' "$auto_mode_json"
   install -d -m 0755 /etc/claude-code/managed-settings.d
