@@ -14,7 +14,6 @@ Domain research skills for academicOps: data analysis, document conversion, diag
 | `extract`             | Document, email, and review extraction workflows.                             |
 | `diagram`             | Mermaid and Excalidraw diagram authoring and sync.                            |
 | `peer-review`         | Academic peer review for manuscripts and grant proposals.                     |
-| `argument-extraction` | Argument reconstruction from a text into parser-valid Argdown.                |
 | `deep-research`       | Deep research prompt generation and PKB integration.                          |
 | `style`               | Writing style guide generation from sample texts.                             |
 | `new-project`         | End-to-end research project repository scaffolding.                           |
