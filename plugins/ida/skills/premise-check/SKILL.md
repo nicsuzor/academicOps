@@ -24,7 +24,8 @@ model:
 
 [Outcome]: The answer to the ask.
 
-<Check>:
+<Check>: Verification of stated findings
+
 (1) [Pinpoint fact]: Stated finding. {basis: "observed", pointer: "owner/repo@sha:path:line"}
 (2) [Exhaustive search]: Bounded search finding. {basis: "exhaustively-searched", pointer: "query in path -> 0 hits"}
 -- Rule name {uses: [1, 2], basis: "reported-by", pointer: "node-id"} --
