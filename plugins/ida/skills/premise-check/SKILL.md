@@ -72,6 +72,18 @@ Before a REVISE or FAIL sends a report back, weigh the gap against the ask:
 - A load-bearing gap that the ask's importance does not justify verifying passes with the limitation stated. Record PASS, state the limitation in the reason, and carry it with the claim up the chain: the conclusion, narrowed by that limitation, still answers the ask.
 - An unresolved contradiction on a load-bearing claim cannot pass silently: highlight the contradiction in the reason and return REVISE (or FAIL if irreconcilable) so the author resolves the conflict before the report moves up the chain.
 
+## ID Format and Construction
+
+Every incoming claim and recorded verification carries a short unique identifier in a shared format:
+
+`<kind>-<hash>[-<title>]`
+
+- **`<kind>`**: `claim` for an incoming claim or report, `verdict` for a recorded verification.
+- **`<hash>`**: Exactly 8 hexadecimal characters from SHA-256. For incoming claims, it is the SHA-256 digest prefix of the message body. For verifications, it is the SHA-256 digest prefix of the recorded verification tuple (`claim_id:verdict:reason`).
+- **`[-<title>]`**: Optional short kebab-case slug (e.g. `pr-merged`, `logic-pass`).
+
+Anyone reading an ID can tell its kind from the prefix, its provenance from the content digest, and its topic from the optional slug. When a verdict is recorded on a claim, `verdict.py` generates a distinct verification ID in this format referencing the claim ID. When a verified outgoing message is sent upstream, upstream accepts its verification ID as an incoming claim ID.
+
 ## Gate and Verdict Recording
 
 An incoming peer or worker report (via `<cross-session-message>`, `<teammate-message>`, or `<task-notification>`), or a subagent dispatch, arms the premise-check gate with that specific message or claim. The gate blocks all subagent dispatches, messages, and stop until a verdict is recorded.
@@ -79,11 +91,13 @@ An incoming peer or worker report (via `<cross-session-message>`, `<teammate-mes
 Record the verdict using the exact runnable call given in the hook's prompt note or block message:
 
 ```bash
-python3 <path/to/verdict.py> --report <report_id> --verdict PASS --reason "<why>"
+python3 <path/to/verdict.py> --claim <claim_id> --verdict PASS --reason "<why>" [--title "<short_title>"]
 ```
 
-From this repository's root, the path is `plugins/ida/skills/premise-check/scripts/verdict.py`. From the skill directory, use `scripts/verdict.py`. If `$AOPS_SESSION_ID` is unset, pass `--session <session_id>`.
+From this repository's root, the path is `plugins/ida/skills/premise-check/scripts/verdict.py`. From the skill directory, use `scripts/verdict.py`. If `$AOPS_SESSION_ID` is unset, pass `--session <session_id>`. `--report` is accepted as an alias for `--claim`.
 
 When the reason is long or quotes commands, write it to a file and pass `--reason-file <path>` (or `--reason-file -` to read stdin), so free text stays off the command line.
+
+A recorded verdict outputs JSON containing its distinct `verification_id` referencing `claim_id`. When that verified message is sent upstream, upstream accepts its verification ID as an incoming claim ID.
 
 A REVISE or FAIL goes back to its author, or, when the author has ended, gets dispatched to another agent. It does not reach the user hedged; it reaches them only once it passes. Fail closed: if a claim cannot be verified, return it to its producer or discard it; never pass an unsubstantiated claim forward.
