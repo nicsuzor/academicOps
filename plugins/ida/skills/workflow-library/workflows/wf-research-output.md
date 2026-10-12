@@ -22,12 +22,16 @@ Sequences research that ends in an output for an audience. Every stage is a cont
 1. **Direction** -- the question or claim, the contribution sought, and the audience it serves: the discipline and the kind of reader, held loosely. Enough to shape the design, since audience sets the standard of analysis; not a commitment to a form or venue. Where one body of research serves several audiences, each audience is its own direction sharing the evidence below, provided each output stands as a contribution on its own.
 2. **Prior work** -- the intellectual neighbourhood: what is already claimed, what is open, and adjacent fields that have met the question with other methods.
 3. **Design** -- a methodology and analytical frame justified against the question and the audience's standards, with any pilot the design needs before it can be trusted. A choice, so a fork where alternatives are live.
-4. **Gates** -- ethics approval, data access, collaborator agreement: each a decision by another party. The task ends there in `review`; work that needs the decision follows in a task that `depends_on` it.
+4. **Gates** -- ethics approval, data access, collaborator agreement: each a decision by another party. The task ends there in `review`; work that needs the decision follows in a task that `depends_on` it. Where no gate applies, record that and the reason, so the absence is a finding and not an omission.
 5. **Evidence** -- data collection and analysis, or conceptual development for theoretical work, to the standard the design set, whatever the eventual venue.
 6. **Form and venue** -- the output's form and venue for this audience, chosen from what the evidence supports. Decided here at the latest; may be revisited when evidence or audience change.
 7. **Output** -- the artefact in that form, to that audience's standards.
 8. **Review** -- an independent verdict from an evaluator who did not author the output, on methodological coherence, literature awareness, ethics and governance, feasibility and assumption hygiene. Resolve defects before release.
 9. **Release and reach** -- submission or publication, and the output put in front of the audience named in stage 1 through a channel that audience uses.
+
+## Maintained throughout
+
+- **The argument map.** From stage 1 on, the project keeps one map of the whole argument as it stands: an Argdown source as the record, with every gap, fork and unmet objection tagged, and a visual rendering derived from that source for quick review. Any stage that changes the argument (a design choice, a finding, a review verdict, a change of direction) updates the source and rebuilds the rendering in the same task; the rendering is never edited by hand.
 
 ## Composition
 
