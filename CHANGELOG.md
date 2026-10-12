@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.10.12](https://github.com/nicsuzor/academicOps/compare/v0.10.11...v0.10.12) (2026-10-12)
+
+### Features
+
+- **skills:** rewrite premise-check as report-argument skill ([86f61a9](https://github.com/nicsuzor/academicOps/commit/86f61a94536ffe1ba21bfefa0cd96783961963cd))
+- **skills:** rewrite premise-check as report-argument skill ([d4392c5](https://github.com/nicsuzor/academicOps/commit/d4392c5dec5378fce43a4dd3e101d12580aee8d0))
+- **skills:** update agent skills and workflows for settled flow rule ([313c769](https://github.com/nicsuzor/academicOps/commit/313c7692cf309c9f4e27161ea09a942145beed53))
+- **skills:** update agent skills for settled flow rule ([143434d](https://github.com/nicsuzor/academicOps/commit/143434d1fec7a8acad2e714bc8693e26cf224393))
+
+### Bug Fixes
+
+- **ida:** restore Nic's quotation and cite session scope in sara agent ([c5c046b](https://github.com/nicsuzor/academicOps/commit/c5c046b19e9dfb903a065568fca73eed8ceb9d9d))
+- **ida:** restore Nic's quotation and cite session scope in sara agent ([0548415](https://github.com/nicsuzor/academicOps/commit/05484153cb455238ce5071c7df676b426a8c5494))
+- **premise-check:** format example argument to parse clean under argdown ([437ed31](https://github.com/nicsuzor/academicOps/commit/437ed311dc158af81a62b9ea60d148d36de3ef75))
+
+### Code Refactoring
+
+- **skills:** move argument skills to ida and delete claim-ledger ([9f30bcd](https://github.com/nicsuzor/academicOps/commit/9f30bcd28dc7fdcf09f5b5af037559c7e04dc689))
+
+### Documentation
+
+- **ida:** handle harness notices and loop wakeups in premise-check instructions ([73d683c](https://github.com/nicsuzor/academicOps/commit/73d683c7b602acdb8ef817f941a4f3a3ce983a2a))
+- **ida:** handle harness notices and loop wakeups in premise-check instructions ([ce928b2](https://github.com/nicsuzor/academicOps/commit/ce928b219942b3f37fdd41ca32d81efdf5f82a02))
+- **specs:** update graph-valuation workflow to product grade and settled status ([73b081a](https://github.com/nicsuzor/academicOps/commit/73b081aa0701503719b3696d23b9f653afd20e17))
+
 ## [0.10.11](https://github.com/nicsuzor/academicOps/compare/v0.10.10...v0.10.11) (2026-10-12)
 
 ### Features
