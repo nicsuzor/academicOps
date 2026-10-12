@@ -935,4 +935,3 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
     assert upstream_verification_id != verification_id
     assert pcg.is_valid_id(upstream_verification_id)
     assert pcg.is_armed(upstream_session) is False
-
