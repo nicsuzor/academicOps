@@ -60,7 +60,7 @@ Evaluate steps in this order and record which test ruled on each warrant:
    - (a) **Obvious**: trivial deduction (conjunction, instantiation, arithmetic).
    - (b) **Authority-backed**: `basis: "reported-by"` pointing to an axiom, skill, decision, or PKB node (applicability to premises is checked; the rule itself is not).
    - (c) **Low-stakes**: material claim that is cheap to reverse.
-   A warrant that is complex, unbacked, AND high-stakes is sent back for one level of decomposition.
+     A warrant that is complex, unbacked, AND high-stakes is sent back for one level of decomposition.
 3. **Necessity**: Reject a warrant only when the objection changes the conclusion in this case. Generality, wording, or alternative routes are never grounds for rejection.
 
 ## Stopping Rules and Upward Abstraction
@@ -77,11 +77,11 @@ Evaluate steps in this order and record which test ruled on each warrant:
 
 Evaluate the charitable reconstruction (referencing `ida:argument-map` "Reconstruct" and "Check before delivering"):
 
-| Token  | Meaning                                                                                                                    |
-| ------ | -------------------------------------------------------------------------------------------------------------------------- |
-| PASS   | Charitable reconstruction needs no `#missing` on a material step, carries no undercut, and leaves no `#conflict` or `#unanswered`. |
+| Token  | Meaning                                                                                                                                                                                                                     |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PASS   | Charitable reconstruction needs no `#missing` on a material step, carries no undercut, and leaves no `#conflict` or `#unanswered`.                                                                                          |
 | REVISE | Names a step and one of `#missing` (unstated necessary step), `#conflict` (contradiction or `><`), `#unanswered` (unmet objection), an undercut (`_>` rejecting a warrant with reason), or a narrowing (recorded decision). |
-| FAIL   | The main conclusion does not answer the ask.                                                                              |
+| FAIL   | The main conclusion does not answer the ask.                                                                                                                                                                                |
 
 No criterion addresses style, granularity, or splitting.
 
