@@ -28,7 +28,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
    - `fake`: Default for captured dates where no real loss lands on it.
    - `soft`: Input carries Nic's acceptance or sent mail agreeing to the date.
    - `hard`: Nic explicitly states the date is hard, or a published real-loss date proposed `hard`.
-   Never derive a date from urgency.
+     Never derive a date from urgency.
 9. **Effort**: Record `effort` duration string when the input states it or work is a known kind (read by the cliff lane).
 10. **Decisions and decomposition probes (FQ8, EVPI)**: When input is a choice between options, wire each option `alternative` to the decision node `D`. Empirical probes/spikes wire `settles` to `D` ($q \in (0, 1]$).
 11. **Do not write**: `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight (FQ25), target worth, `set_by: nic`, `soft_depends_on`, or `supersedes` (FR:448).
@@ -36,6 +36,7 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 ## Headless Context (Email, Mobile Capture)
 
 When invoked headlessly (e.g. correspondence sweep or capture intake):
+
 - Apply the same placement and valuation steps without prompting the user.
 - If the container or targets cannot be identified with confidence, leave the capture note untouched for the next interactive pass (`specs/workflows/capture-intake.md`). Do not guess.
 
@@ -44,6 +45,7 @@ When invoked headlessly (e.g. correspondence sweep or capture intake):
 **Title**: Write a concise, verb-led imperative (e.g. `Implement X`).
 
 **Description**: Synthesize the ask in a minimal task body:
+
 - Link new messages to prior context, recompose asks into a clear logical structure, and cite message IDs as pointers.
 - Do not quote user words verbatim; do not add extraneous narrative or implementation plans.
 - Leave ambiguity unresolved in the task; do not guess at intent.
