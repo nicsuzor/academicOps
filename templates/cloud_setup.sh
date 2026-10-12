@@ -11,6 +11,13 @@ export NO_PROXY="$no_proxy"
 
 #apt-get update && apt-get install -y openssh-client rsync
 
+# 0b) Install Python dependencies required for premise-check verdict OTel tracing (aops_e2188df7)
+pip install --break-system-packages \
+  "opentelemetry-sdk>=1.40.0" \
+  "opentelemetry-exporter-otlp-proto-http>=1.40.0" \
+  "opentelemetry-exporter-otlp-proto-grpc>=1.40.0" \
+  "requests>=2.32.0"
+
 # 1) Runtime credential helper — emits the token fresh, never written to the cached snapshot
 cat > /usr/local/bin/gh-token-askpass <<'EOF'
 #!/bin/bash

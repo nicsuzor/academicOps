@@ -8,6 +8,13 @@ set -euo pipefail
 # 1) Install Tailscale (binary cached; no key needed at this phase).
 command -v tailscale >/dev/null 2>&1 || curl -fsSL https://tailscale.com/install.sh | sh
 
+# 1b) Install Python dependencies required for premise-check verdict OTel tracing (aops_e2188df7)
+pip install --break-system-packages \
+  "opentelemetry-sdk>=1.40.0" \
+  "opentelemetry-exporter-otlp-proto-http>=1.40.0" \
+  "opentelemetry-exporter-otlp-proto-grpc>=1.40.0" \
+  "requests>=2.32.0"
+
 # 1) Runtime credential helper — emits the token fresh, never written to the cached snapshot
 cat > /usr/local/bin/gh-token-askpass <<'EOF'
 #!/bin/bash
