@@ -54,6 +54,6 @@ Compile the overall session outcome:
    - CONFIDENCE: <high | med | low> + <what single check would falsify this>
    - CONFOUND CHECK: <did a clean-room/differential control run? result? -- or "NOT RUN">
 4. **Output**: <branch + commit SHA> | <PR or artifact link>
-5. **Receipts** (Claim Ledger): The load-bearing claims as a claim ledger, written per the `claim-ledger` skill.
+5. **Receipts** (Report Argument): The load-bearing claims as a report argument, written per the `premise-check` skill.
 6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ```
