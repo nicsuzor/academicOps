@@ -161,8 +161,8 @@ def _prompt_text(ctx: HookContext | Any) -> str:
         return ctx
     raw = getattr(ctx, "raw", {}) if ctx is not None else {}
     prompt = raw.get("prompt") if isinstance(raw, dict) else None
-    if prompt is None and hasattr(ctx, "prompt"):
-        prompt = ctx.prompt
+    if prompt is None:
+        prompt = getattr(ctx, "prompt", None)
     if isinstance(prompt, dict):
         prompt = prompt.get("text") or prompt.get("content") or ""
     return str(prompt or "")
