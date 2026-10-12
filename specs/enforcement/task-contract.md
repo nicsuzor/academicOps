@@ -41,8 +41,8 @@ this contract does not restate.
 ### Mechanisms
 
 - **Premise judgment** -- no longer a standalone gate at `claim_task`. The
-  assessment happens earlier, in pauli's `brief` skill: it places and values the
-  work, sorts its assumptions, names its open forks, then settles shape and
+  assessment happens earlier, in `/q`: it places and values the
+  work per [R1](../workflows/graph-valuation.md#3-r1----placement-at-intake-q), sorts its assumptions, names its open forks, then settles shape and
   acceptance criteria. Dispatch surfaces (`/pull`) trust that rather
   than re-judging the premise themselves.
 - **Task-binding invariant** -- no mutating work without a task bound to the

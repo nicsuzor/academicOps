@@ -217,7 +217,7 @@ Before assigning a disposition to any proposal that **adds or escalates** a rule
   downstream, never hand-written.
 - **Priority**: leave `priority` at its default. Never infer, estimate, or
   propagate a band — only the principal sets intent. To make a swept task more
-  important, raise the `stated_weight` of its `contributes_to` edge.
+  important, add a row to the next densify batch.
 - **Verification**: confirm closed issues actually reached `state: closed`.
 - **Handoff**: `Skill(skill="verify", args="Verify cycle <N> of the issue sweep.")`
 - **Halt**: exit after exactly one cycle.

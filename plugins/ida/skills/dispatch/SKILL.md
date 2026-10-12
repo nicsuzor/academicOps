@@ -11,7 +11,7 @@ The task record is the whole message to the worker. Start it as written.
 
 Read each task you were given; for a parent, read its children and take the ready ones.
 
-A task is ready when its status is `queued`, it has no open `depends_on` edges or incomplete children, and it fills the `/reify` task template (Goal, Acceptance, Instructions, Output).
+A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, and it fills the `/reify` task template (Goal, Acceptance, Instructions, Output).
 
 - A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.

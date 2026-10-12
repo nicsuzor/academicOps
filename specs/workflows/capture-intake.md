@@ -47,7 +47,7 @@ confident ones.
 **Grain:** one capture note is one unit of judgment, matching `/reconcile`'s per-task grain.
 
 **Owner:** `ida:q` -- the existing Stage 1 Intake & Capture skill already does exactly this job for
-a natural-language ask (classify, parent, search-and-adopt, densify, value at intake). This route
+a natural-language ask (classify, parent, search-and-adopt, densify, value at intake per [R1](graph-valuation.md#3-r1----placement-at-intake-q)). This route
 invokes it; it does not reimplement classification, parenting, or valuation logic. One canonical
 owner, per the same constraint `/reconcile`'s spec states for closure-loop logic.
 
@@ -72,7 +72,7 @@ defers to it rather than duplicating it.
 - **Task.** The capture becomes the task in place: the same file and the same ID, moved out of
   `notes/mobile-captures/` into the task location, renamed to a task filename, and given task
   frontmatter (`type: task`, status, parent). `/q` then parents, densifies and values it at intake
-  as it would a task it created. No new file is created and no note is left behind. If
+  per [R1](graph-valuation.md#3-r1----placement-at-intake-q) as it would a task it created. No new file is created and no note is left behind. If
   search-and-adopt finds an existing task that already carries the ask, the capture is folded into
   that task (`pkb__update_body`) and deleted under the gate below, as with Note.
 - **Note.** Not an actionable ask -- resolve a destination: an existing canonical topic

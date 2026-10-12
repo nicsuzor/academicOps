@@ -25,7 +25,7 @@ For each claimed task (releasing child tasks first), call `pkb.release_task` (th
 - `review`: Only when the next step is a decision only Nic can make. Name that decision in the required `reason` as a question for Nic. A pending agent step (QA run or re-run, merge, deploy, retry, routing or dispatch call) is `partial`, never `review`.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
-- Wire directed `blocks` edges to represent dependencies.
+- Wire a `needs` edge from the blocked task to represent dependencies (FR:334).
 
 Task report format:
 

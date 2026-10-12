@@ -1,48 +1,58 @@
 ---
 name: q
 type: command
-description: Stage 1 Intake & Capture--place an ask or idea on the graph under the right parent, wire contributes_to/depends_on, densify with wikilinks, and record strategic valuation at intake.
+description: Stage 1 Intake & Capture--place an ask or idea on the graph under the right parent, wire what it serves, propose values, and record strategic placement at intake. Exclude for starting workers on ready tasks (use /dispatch) or decomposing objectives (use /decompose).
 allowed-tools: [Skill, AskUserQuestion, mcp__services__*]
 ---
 
 # /q -- Strategic Intake & Graph Placement
 
-Capture natural-language asks and situate them on the strategic graph: parented, connected, and evaluated at intake.
+Capture natural-language asks and situate them on the strategic graph: parented, connected, and valued at intake per `specs/workflows/graph-valuation.md` (R1).
 
-## Placement
+## Placement and Valuation (R1)
 
-1. Search the PKB for related tasks. Identify how this ask fits with existing, past, or planned work.
-2. Consolidate the graph where possible: use your judgment to merge duplicates, reparent related tasks, split and recombine tasks to create a coherent structure.
-3. Assign a parent task: the ask must be placed under a valid, active parent.
-4. **Densify graph edges**:
-   - `contributes_to`: Wire an edge if this task meaningfully contribtes to a 'target' or another task that is not an ancestor or descendant. Use your best judgment to set the quantum and certainty of the contribution. Provide a one-sentence justification for the edge. Avoid redundant sibling edges under the same parent.
-   - `depends_on`, `soft_depends_on`, `supersedes`: Link dependencies. Use 'depends_on' edges to sequence work that must be done in order. Use 'soft_depends_on' edges to indicate that one task informs or supports another but is not a blocking pre-requisite. Use 'supersedes' edges to indicate that one task replaces or obsoletes another. Avoid redundant sibling edges under the same parent.
+1. **Search before creating**: Search the PKB for related targets and open work the input could serve. Reuse an existing node where one matches.
+2. **Consolidate and place**: Consolidate where possible (merge duplicates, reparent related tasks). Place the node under an active parent container (or `part_of` edge under FQ1).
+3. **Affordable loss check (S24)**: Evaluate affordable loss before admitting commitments. If prospective downside or commitment cost violates affordable loss, flag as a priority ask for Nic rather than admitting to the flow. Flow maths remains unpolluted by subjective risk gating.
+4. **Wire what it serves**: Add one edge per thing the work serves, crossing project boundaries where they apply (U11). Outgoing edges carry the FR §5.1 contract with `set_by: agent-proposed`:
+   - `label`: `serves`, `needs`, `supports`, `alternative`, or `settles`.
+   - `quantum`: Proposed in §5.4 words (`all`, `most`, `a good part`, `some`, `a little`, `none`) or float `0.0..=1.0`; empty reads at default quantum 0.0 (S7). Ask: "If this were never done and everything else were, how much of the target would be lost?" (FR:346).
+   - `probability`: Proposed in §5.5 words (`certain`, `probable`, `expected`, `fifty-fifty`, `uncertain`, `improbable`, `impossible`) or float `0.0..=1.0` (default 1.00). Odds live on the edge into the target and chain by multiplication (S25).
+   - `effect`: `helps` (default) or `harms` (when work endangers a target, S12, U13).
+   - `justification`: One sentence on what the work delivers to the target.
+   - `set_by: agent-proposed`.
+5. **Capital stock hubs (S27)**: Wire foundational investments that expand future optionality (reputation, relationships, tool scaffolding, capital reserves) directly to capital stock targets rather than inventing speculative multi-hop downstream chains.
+6. **A bare idea stays bare**: An idea with no clear link to anything priced gets its container and no other edge (U9, I7). Never invent a link to make it count.
+7. **Opportunity is one node plus its edges**: Mark opportunities as `classification: opportunity` (I9, U10). Adding it changes no other node's fields.
+8. **Dates (R5)**: Record any date as `due` with `deadline_class`:
+   - `fake`: Default for captured dates where no real loss lands on it.
+   - `soft`: Input carries Nic's acceptance or sent mail agreeing to the date.
+   - `hard`: Nic explicitly states the date is hard, or a published real-loss date proposed `hard`.
+   Never derive a date from urgency.
+9. **Effort**: Record `effort` duration string when the input states it or work is a known kind (read by the cliff lane).
+10. **Decisions and decomposition probes (FQ8, EVPI)**: When input is a choice between options, wire each option `alternative` to the decision node `D`. Empirical probes/spikes wire `settles` to `D` ($q \in (0, 1]$).
+11. **Do not write**: `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight (FQ25), target worth, `set_by: nic`, `soft_depends_on`, or `supersedes` (FR:448).
 
-## Metadata
+## Headless Context (Email, Mobile Capture)
 
-5. **Value at intake**: Record your best assessment of marginal benefit, synergies, value of information, and effort where established.
-6. **Intent**: Set `intent` only when the user's own words name a band or its unambiguous equivalent (`critical`/`P0` → 0, `high` → 1, `active`/`do it now` → 2, `planned` → 3, `backlog`/`someday` → 4). If the ask comes directly from the user in their own words, you may set the intent to 'planned' (3) by default. Otherwise leave it unset. Never infer a band from tone, from urgency in the triggering incident, or from the parent's value.
+When invoked headlessly (e.g. correspondence sweep or capture intake):
+- Apply the same placement and valuation steps without prompting the user.
+- If the container or targets cannot be identified with confidence, leave the capture note untouched for the next interactive pass (`specs/workflows/capture-intake.md`). Do not guess.
 
-## Task body
+## Task Body
 
-**Title**: Write a concise, verb-led imperative (e.g. `Implement X`). Do not include unecessary detail -- a short slug is best.
+**Title**: Write a concise, verb-led imperative (e.g. `Implement X`).
 
-**Description**: Capture the ask in a task body without recording the user's words verbatim:
+**Description**: Synthesize the ask in a minimal task body:
+- Link new messages to prior context, recompose asks into a clear logical structure, and cite message IDs as pointers.
+- Do not quote user words verbatim; do not add extraneous narrative or implementation plans.
+- Leave ambiguity unresolved in the task; do not guess at intent.
 
-- Make sense of the words in context, link each new message to what came before, recompose the asks into a clear logical structure, and cite message ids as pointers.
-- Do not quote or record the user's words verbatim; the tracing hook already preserves raw prompts.
-- Do not add implementation steps, execution methods, acceptance criteria, or any additional processes or requirements.
-- Leave all ambiguity unresolved in the task. Do not guess at intent where it is unclear; do not infer extra details or constraints.
-
-**Other sections**: Never restate structured metadata or task edges in the body.
-
-- Interconnections live in edges; significance in metadata; neither belong in prose.
-- Do not add unecessary sections to the task body.
-- Do not add 'references', 'related', or 'see also' sections.
+**Other sections**: Never restate structured metadata or task edges in prose. Interconnections live in edges, not body prose.
 
 ## Output
 
-Return a reference to the task you created or updated, in the short form:
+Return a reference to the task created or updated:
 
 ```markdown
 - Captured [TASK-ID] - [TASK-TITLE] (under [PARENT-ID]: [PARENT-TITLE])
