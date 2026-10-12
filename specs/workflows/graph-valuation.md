@@ -2,7 +2,10 @@
 title: Graph valuation -- how agents capture, value and maintain the graph under the flow rule
 type: spec
 category: workflow
-status: draft
+status: settled
+settled_at: 2026-10-12
+task: aops_bed11e87
+epic: aops_ee1257cb
 depends_on: [flow-rule]
 tags: [spec, workflow, valuation, ranking, densify, deadlines, intake, email, pkb]
 ---
@@ -12,42 +15,56 @@ tags: [spec, workflow, valuation, ranking, densify, deadlines, intake, email, pk
 **Home:** `specs/workflows/graph-valuation.md` in nicsuzor/academicOps. Skills and templates it
 changes are listed in §9.
 
-**Depends on:** the flow-rule spec,
-[`specs/flow-rule.md` in nicsuzor/mem](https://github.com/nicsuzor/mem/blob/main/specs/flow-rule.md)
-(cited below as `FR:<line>`, at mem commit `2c3fef2`). That spec owns the maths, the edge fields and
-the scales. This spec owns everything an agent does around them: who writes which field, when,
-on what evidence, and when Nic is asked.
+**Depends on:** the settled flow-rule spec,
+[`specs/flow-rule.md` in nicsuzor/mem](https://github.com/nicsuzor/mem/blob/main/specs/flow-rule.md).
+That spec owns the maths, the edge fields and the scales. This spec owns everything an agent does
+around them: who writes which field, when, on what evidence, affordable loss assessment, decomposition probes,
+capital stock wiring, and when Nic is asked.
 
-**Brief:** _Ranking physics redesign: requirements brief (draft)_. Tags below follow its numbering:
-`S1`-`S16` settled points, `I1`-`I17` invariants, `G2`-`G11` gaps. `U1`-`U20` are the weighting
-user stories in _PKB Architecture & Prioritization Framework_. `FQn` is question n in FR §15.
-`Kn` is a question this spec raises (§12).
+**Brief:** _Ranking physics redesign: requirements brief_. Tags follow settled numbering:
+`S1`-`S30` settled points, `I1`-`I17` invariants. `U1`-`U20` are the weighting user stories in
+_PKB Architecture & Prioritization Framework_. `FQn` are settled decisions in flow-rule §15.
+`Kn` are the workflow decisions settled in §12.
 
-**Status:** draft. Specifies only and implements nothing. Every rule marked _proposed_ waits on the
-question named beside it.
+**Status: settled (points 1–30 of spec_866ee53d).** This canonical specification governs how agents
+(Pauli, Ida) triage, capture, place, densify, and maintain the task graph under the settled flow model.
 
 ## 0. Summary for Nic
 
 **What this is.** The flow rule sets how worth moves through the graph. This spec covers the
-agents' side of that: placing new work, proposing values, handling dates, retiring dead
-opportunities, and asking you things.
+agents' side of that: placing new work, evaluating affordable loss, connecting decomposition probes,
+wiring capital stock hubs, proposing values, handling dates, retiring dead opportunities, and asking you things.
 
 **Your job shrinks to three inputs.**
 
-1. **Price the targets.** An agent recommends an anchor for each target from the worth scale, with
-   one line of evidence. Negative anchors cover outcomes you want to avoid. You pick. A sitting
-   covers at most ten targets. The 19 unpriced targets take two sittings (FR:467).
-2. **Approve link values in batches of fifty.** Agents draft a value for each link: how much of the
+1. **Price the targets on an open logarithmic scale.** An agent recommends an anchor for each target
+   from the open continuous log scale ($W_t \in \mathbb{R}$, S26; baseline +1.0 for core commitments,
+   up to +10.0 to +100.0+ for moonshots, and negative for anti-targets), with one line of evidence.
+   You pick. A sitting covers at most ten targets.
+2. **Approve link values in batches of fifty.** Agents draft values for links: how much of the
    target it delivers and how likely, with one sentence each. You answer one table with "all", "all
-   except 4, 17", or "17: some". The batch most likely to change the ranking goes first. Anything you
-   have not approved counts as zero, so the graph still works while most links are unvalued.
+   except 4, 17", or "17: some". The batch most likely to change the ranking goes first. Unapproved
+   links count as zero in the flow, so the graph operates cleanly while links await review.
 3. **Say when something is dead.** "Drop the Yale thing" is enough. The agent cancels the
    opportunity and it stops pulling. Nothing is ever retired for being old or quiet.
+
+**Affordable loss outside maths (S24).** Agents (Pauli, Ida) evaluate affordable loss during intake and
+triage. If a commitment or project exceeds affordable loss, it is rejected, paused, or escalated to Nic
+before entering the graph. Flow maths is kept unpolluted by subjective risk gating.
+
+**Decomposition probes and Value of Information (FQ8).** When resolving architectural or empirical
+uncertainties during decomposition, agents create explicit decision nodes `D` with `alternative` options,
+and wire exploratory spikes or research probes via `settles` edges. The engine routes decision value
+(EVPI) directly to the probe.
+
+**Opening futures and capital stocks (S27).** Foundational investments (reputation, funding reserves,
+infrastructure, relationships) that expand future optionality are wired to capital stock hubs. Rather than
+inventing speculative multi-hop downstream chains, work feeds the hub target directly.
 
 **Dates.** Every date gets a class. _Fake_ is the default: a date someone else wrote creates no
 pressure. _Soft_ is a date you agreed to. _Hard_ means a real loss lands on the day, and only hard
 dates surface on their own as they near. Agents may mark a date soft from your own sent mail.
-Marking it hard needs your word, or the rule below. Proposed rule: a soft date that has been pushed
+Marking it hard needs your word, or the rule below. Settled rule: a soft date that has been pushed
 back twice becomes hard on the second push. The agent records why and tells you in one line, and one
 word from you reverses it.
 
@@ -55,17 +72,14 @@ word from you reverses it.
 and how much. A bcc circular with a date in it becomes a note or nothing, never an emergency. A
 sender's name adds no weight.
 
-**How often you are asked (proposed).** One sitting a week of about twenty minutes: one link batch
-or one pricing set. At most one other valuation question a day, sent in the daily digest, and only
-for a proposed hard date within 14 days or a new opportunity that would rank in your top twenty.
-Everything else waits for the batch. Nothing in this spec asks you mid-conversation. At this rate
-the current backlog of 154 inputs (FR:472) clears in about five weeks.
+**How often you are asked.** One sitting a week of about twenty minutes: one link batch (up to 50 rows)
+or one pricing set (at most 10 targets). At most one other valuation question a day, sent in the daily
+digest, and only for a proposed hard date within 14 days or a new opportunity that would rank in your
+top twenty. Everything else waits for the batch. Mid-conversation interruptions are prohibited.
 
-**What goes.** The seven-word "stated weight" scale on links. Severity as something agents set.
+**What goes.** The seven-word "stated weight" scale on links. Severity as an agent-set field.
 Defaulting new asks to "planned". Turning an email date into a deadline. `soft_depends_on` and
 `supersedes` wiring at intake. The weight-repair template becomes the densify template.
-
-**What I need from you:** the eleven questions in §12, most important first.
 
 ## 1. Problem and target
 
@@ -130,13 +144,17 @@ proposals because a proposal moves no worth until pauli writes Nic's approval (F
 
 ## 3. R1 -- Placement at intake (`/q`)
 
-Covers U8, U9, U10, U11, S7, I7, I9.
+Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
 
 1. **Search before creating.** Search the graph for the targets and open work the input could
    serve. Reuse an existing node where one matches. This is the current step 1, unchanged.
 2. **Place.** Give the node its container. Under FQ1 this is a `part_of` edge if the parent edge
    goes, or the parent field if it stays.
-3. **Wire what it serves.** Add one edge per thing the work serves, crossing project boundaries
+3. **Affordable Loss Check (S24).** Agents (Pauli, Ida) evaluate affordable loss (Sarasvathy 2001)
+   before admitting commitments. If prospective downside or commitment cost violates affordable loss,
+   the agent flags it as a priority ask for Nic rather than admitting it to the flow. Flow maths
+   remains unpolluted by subjective risk gating.
+4. **Wire what it serves.** Add one edge per thing the work serves, crossing project boundaries
    where they apply (U11). Each edge carries the FR §5.1 fields:
    - `label`: `serves`, `needs`, `supports`, `alternative` or `settles` (FR:322-329; FQ21).
    - `quantum` and `probability`, as a proposal in the FR §5.4/§5.5 words, or left empty when the
@@ -144,20 +162,25 @@ Covers U8, U9, U10, U11, S7, I7, I9.
    - `effect: harms` when the work puts a target at risk (S12, U13).
    - `justification`: one sentence on what the work delivers to the target.
    - `set_by: agent-proposed`.
-4. **Ask the quantum question as written:** "If this were never done and everything else were, how
+5. **Capital Stock Hubs for Opening Futures (S27).** Foundational investments that expand future
+   optionality (reputation, relationships, tool scaffolding, capital reserves) are wired directly
+   to capital stock targets, avoiding speculative deep dependency trees.
+6. **Ask the quantum question as written:** "If this were never done and everything else were, how
    much of the target would be lost?" (FR:346).
-5. **A bare idea stays bare.** An idea with no clear link to anything priced gets its container and
+7. **A bare idea stays bare.** An idea with no clear link to anything priced gets its container and
    no other edge (U9, I7). Inventing a link to make it count is a defect.
-6. **An opportunity is one node plus its edges** (I9, U10). Mark it as an opportunity: proposed as
+8. **An opportunity is one node plus its edges** (I9, U10). Mark it as an opportunity: proposed as
    `classification: opportunity`, with storage decided by the migration spec. Adding it changes no
    other node's fields: no reparenting, and no edits to the targets' worth.
-7. **Dates.** Record any date as `due` with a `deadline_class` set by R5's capture rule. Never derive
+9. **Dates.** Record any date as `due` with a `deadline_class` set by R5's capture rule. Never derive
    a date from urgency.
-8. **Effort.** Record `effort` when the input states it or the work is a known kind. The cliff lane
-   reads it (FR:425).
-9. **Decisions.** When the input is a choice between options, wire each option `alternative` to the
-   decision and each probe `settles` to it (FR §6; FQ8). Do not price the options.
-10. **Do not write:** `intent` (pending FQ10), `severity` (FQ24), `stakeholder` as a weight
+10. **Effort.** Record `effort` when the input states it or the work is a known kind. The cliff lane
+    reads it (FR:425).
+11. **Decisions & Decomposition Probes (FQ8, EVPI).** When the input is a choice between options, wire
+    each option `alternative` to the decision node `D`. When resolving architectural or empirical
+    uncertainties during decomposition (`decompose`), create spike/probe tasks wired with `settles`
+    to `D` ($q \in (0, 1]$). The engine computes EVPI and allocates decision value to the probe.
+12. **Do not write:** `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight
     (FQ25), target worth, `set_by: nic`, `soft_depends_on`, or `supersedes` (FR:448).
 
 **Headless context** (mobile capture, email). The same steps, but with no question to the user.
@@ -234,11 +257,13 @@ contradicting its own justification. The correction is written as `agent-propose
 
 ## 6. R4 -- Pricing every target
 
-Covers S14, S12, S16, U20, FR:377-391.
+Covers S14, S12, S16, S26, S27, U20, FR:377-391.
 
-- **Scale.** The worth anchors in FR §5.6: five positive (+1.00 to +0.05) and five negative
-  (-1.00 to -0.05). These replace the standing-weight instrument's five positive-only anchors (FQ7,
-  FQ28).
+- **Scale.** The open-ended continuous logarithmic scale ($W_t \in \mathbb{R}$) per FR §5.6 and S26.
+  Mirrored anchors for positive aspirations (+0.05 to +1.00 baseline core commitment, up to +10.00
+  to +100.00+ for transformative moonshots) and negative anti-targets (-0.05 to -1.00, down to -10.00
+  to -100.00 for ruinous catastrophe). These replace the standing-weight instrument's five positive-only
+  anchors (FQ7, FQ28). Targets may also be configured as capital stock hubs (S27).
 - **Recommendation.** pauli drafts one anchor per target and one line of evidence. The evidence is
   what serves the target, how much open work sits behind it, and its old `severity` used only as a
   prompt (FR:391). ida presents the draft as a recommendation. Nic's assent prices the target; an
@@ -456,34 +481,33 @@ Each test can be checked by an observer reading the graph or a transcript.
 | A18 | Harms are wired, not netted               | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero.                                                                          | S12, S16, I15 |
 | A19 | Every changed file changed as §9 says     | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed.                                                                                                                                             | this spec     |
 
-## 12. Questions for Nic
+## 12. Settled decisions
 
-Ordered by how much rides on each. Questions the flow-rule spec already asks are not repeated. This
-spec follows whatever FQ1, FQ8, FQ10, FQ13, FQ18, FQ21, FQ23, FQ24 and FQ25 decide.
+All questions K1–K11 are settled under the product-grade workflow redesign:
 
-1. **K1 (G11): The soft-to-hard rule.** The proposal is to harden a soft date on its second
-   extension, with the agent acting and Nic able to reverse. The alternatives are a different count,
-   or the agent proposing and Nic confirming.
-2. **K2: The budget.** The proposal is one weekly sitting of about 20 minutes, at most one priority
-   ask a day, and no valuation questions in conversation. Is that the right rate, and does a new
-   opportunity in your top twenty justify a priority ask?
-3. **K3 (G10, FQ13): Who retires an opportunity.** The proposal is you, or the opportunity's own
-   source (for example, a closing notice). Should a source statement retire it without telling you?
-4. **K4: Batch expiry.** Should an unanswered batch be withdrawn after 14 days and rebuilt?
-5. **K5: Re-pricing.** Should a target be re-confirmed every 180 days (the old instrument used 90),
-   or never unless you raise it?
-6. **K6: Proposed hard dates.** May an agent set `hard` on published evidence (a funding round's
-   closing date) without asking, or only propose it?
-7. **K7: Email opportunity class.** Should invitations and offers become `opportunity` nodes by
-   default, or only when they name something you have said you want?
-8. **K8: Batch size.** The brief says fifty. Should a batch be smaller when fewer than fifty rows
-   would move anything?
-9. **K9: Pricing sitting size.** The proposal is ten targets. Do you want gain and loss targets
-   mixed or kept apart?
-10. **K10: Agent corrections.** May agents correct a value on in-node evidence without a batch row,
-    still marked `agent-proposed`?
-11. **K11 (G5, FQ11): Fun.** If fun is a priced target, `/q` wires to it like any other. If it is a
-    display signal, `/q` records it as a tag. Which?
+1. **K1 (G11): The soft-to-hard rule. Settled (§7.1):** A soft deadline hardens to `hard` upon its
+   second extension. The agent records the history and notes it in the daily digest; a single word
+   from Nic reverses it.
+2. **K2: The budget. Settled (§0, §8):** One weekly sitting of ~20 minutes (one link batch of ≤ 50 rows
+   or one pricing sitting of ≤ 10 targets). At most one priority ask a day in the digest; no
+   mid-conversation interruptions.
+3. **K3 (G10, FQ13): Retiring an opportunity. Settled (§7.2):** Nic's statement ("drop X") or an
+   explicit authoritative world fact found by `/reconcile` (e.g. call closed) retires an opportunity
+   by marking it `cancelled`.
+4. **K4: Batch expiry. Settled (§5):** An unanswered batch is withdrawn after 14 days and rebuilt
+   with fresh reach ordering.
+5. **K5: Re-pricing. Settled (§6):** Targets are re-confirmed after 180 days in a routine pricing sitting.
+6. **K6: Proposed hard dates. Settled (§7.1):** Agents propose `hard` on published evidence; it enters
+   the priority ask queue if due within 14 days, otherwise waits for the weekly sitting.
+7. **K7: Email opportunity class. Settled (§4):** Invitations and offers become `opportunity` nodes
+   when they name something Nic has indicated an interest in or that contributes to a known target.
+8. **K8: Batch size. Settled (§5):** Batches are capped at 50 rows, ordered by reach.
+9. **K9: Pricing sitting size. Settled (§6):** Capped at 10 targets per sitting. Positive and negative
+   targets are judged in the same sitting to maintain ratio consistency.
+10. **K10: Agent corrections. Settled (§5):** Agents may correct mechanical errors on in-node evidence
+    unasked, marked `agent-proposed`.
+11. **K11 (G5, FQ11): Fun. Settled:** Fun is treated as a strategic target or capital stock hub if
+    explicitly priced by Nic, and as a contextual tag otherwise.
 
 ## 13. Behaviour removed
 
