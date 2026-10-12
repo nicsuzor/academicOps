@@ -87,7 +87,11 @@ No criterion addresses style, granularity, or splitting.
 
 ## Gate and Verdict Recording
 
-An incoming peer report arms the premise-check gate. The gate blocks dispatch, messaging, and task completion until a verdict is recorded:
+An incoming peer report arms the premise-check gate. The gate blocks dispatch, messaging, and task completion until a verdict is recorded.
+
+Do not evaluate harness notices (e.g. automated background command completions, lifecycle updates) or `/loop` wakeups; they are automated session orchestrations, not assertional claims. When the gate arms on an automated harness notice (such as a background command completion notice) rather than a peer report: record `PASS` with reason `"harness notice"` (or `"automated command completion"`) to clear the gate immediately. For `/loop` wakeups, proceed directly with scheduled loop work.
+
+Record the verdict using the exact runnable call given in the hook's prompt note or block message:
 
 ```bash
 python3 <path/to/verdict.py> --claim <claim_id> --verdict PASS --reason "<why>" [--title "<short_title>"]
