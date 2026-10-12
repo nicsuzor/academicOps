@@ -779,20 +779,23 @@ def test_stop_block_message_contains_three_elements():
     # 2. that the gate blocks until a verdict is recorded
     assert "blocks until a verdict is recorded" in res.inject_text
     # 3. the exact runnable call that records one
-    assert "python3" in res.inject_text
+    assert "uv run --project" in res.inject_text
     assert "verdict.py" in res.inject_text
     assert "--claim" in res.inject_text or "--report" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
     # The script path in the stop block message must exist on disk
-    cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("python3 ")][0]
-    script_path = Path(shlex.split(cmd_line)[1])
+    cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("uv run ")][0]
+    script_path = Path(shlex.split(cmd_line)[5])
     assert script_path.is_file(), f"script path does not exist: {script_path}"
 
 
 def test_format_verdict_command_resolves_runnable_script():
     cmd = pcg.format_verdict_command(claim_id="my claim with spaces")
-    assert cmd.startswith("python3 ")
+    parts = shlex.split(cmd)
+    assert parts[:3] == ["uv", "run", "--project"]
+    assert parts[4] == "python3"
+    assert Path(parts[3]).is_dir()
     assert (
         "--claim 'my claim with spaces'" in cmd
         or '--claim "my claim with spaces"' in cmd
@@ -802,8 +805,7 @@ def test_format_verdict_command_resolves_runnable_script():
     assert "--verdict PASS" in cmd
     assert '--reason "<why>"' in cmd
     # The script path in the command must exist on disk
-    parts = shlex.split(cmd)
-    script_path = Path(parts[1])
+    script_path = Path(parts[5])
     assert script_path.is_file(), f"script path does not exist: {script_path}"
 
 
