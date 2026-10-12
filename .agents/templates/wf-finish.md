@@ -32,7 +32,7 @@ Before marking `status: done`, the worker must:
 
 1. Ensure test suite and linter pass (`uv run pytest`, `uv run ruff check`).
 2. Push feature branch (`task/<id>-<slug>`) to remote and open a PR targeting `dev`.
-3. Check off each acceptance criterion on the PKB task with pinpoint evidence (`file:line`, command output, PR link).
+3. Update acceptance criteria on the PKB task: tick an item only with evidence of that item itself; leave any other item unticked with its limit stated, citing pinpoint evidence (`file:line`, command output, PR link).
 4. Mark task `status: done` and release claim.
 
 ## Follow-up QA Task Specification

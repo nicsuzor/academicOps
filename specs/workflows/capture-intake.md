@@ -1,5 +1,5 @@
 ---
-title: Capture Intake — Mobile/Webhook Pickup into the PKB
+title: Capture Intake -- Mobile/Webhook Pickup into the PKB
 type: spec
 category: workflow
 status: draft
@@ -75,8 +75,8 @@ defers to it rather than duplicating it.
   as it would a task it created. No new file is created and no note is left behind. If
   search-and-adopt finds an existing task that already carries the ask, the capture is folded into
   that task (`pkb__update_body`) and deleted under the gate below, as with Note.
-- **Note.** Not an actionable ask -- resolve a destination via the PKB's graph-hygiene
-  Destination Rule: an existing canonical topic note (synthesize in via
+- **Note.** Not an actionable ask -- resolve a destination: an existing canonical topic
+  note (synthesize in via
   `pkb__update_body`) or a new one (`pkb__create(type="knowledge", ...)`), never left as an
   unparented capture.
 - **Expand.** Not a fourth destination type -- maps to the Task path with

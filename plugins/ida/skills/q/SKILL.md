@@ -27,9 +27,10 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 **Title**: Write a concise, verb-led imperative (e.g. `Implement X`). Do not include unecessary detail -- a short slug is best.
 
-**Description**: Capture the ask in a task body without additional detail:
+**Description**: Capture the ask in a task body without recording the user's words verbatim:
 
-- You may rephrase or expand the prompt you were given to better capture the essence of the ask.
+- Make sense of the words in context, link each new message to what came before, recompose the asks into a clear logical structure, and cite message ids as pointers.
+- Do not quote or record the user's words verbatim; the tracing hook already preserves raw prompts.
 - Do not add implementation steps, execution methods, acceptance criteria, or any additional processes or requirements.
 - Leave all ambiguity unresolved in the task. Do not guess at intent where it is unclear; do not infer extra details or constraints.
 

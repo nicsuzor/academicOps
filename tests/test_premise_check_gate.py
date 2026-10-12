@@ -273,6 +273,101 @@ def test_cli_rejects_free_text_as_the_verdict(monkeypatch):
     assert pcg.is_armed(session_id) is True
 
 
+def test_record_verdict_by_id_clears_gate():
+    session_id = "sess-clear-by-id"
+    report_id = "report-a1b2c3d4"
+    pcg.arm(session_id, claim_id=report_id)
+    assert pcg.is_armed(session_id) is True
+
+    result = pcv.record_verdict(
+        session_id=session_id,
+        claim_id=report_id,
+        verdict="PASS",
+        reason="Logic holds against the original ask.",
+        tracer_mod=_StubTracer(config=None),
+    )
+    assert result["ok"] is True
+    assert result["claim_id"] == report_id
+    assert result["disarmed"] is True
+    assert pcg.is_armed(session_id) is False
+
+
+def test_record_verdict_refuses_wrong_report_id_and_stays_armed():
+    session_id = "sess-wrong-id"
+    report_id = "report-expected-123"
+    pcg.arm(session_id, claim_id=report_id)
+    assert pcg.is_armed(session_id) is True
+
+    with pytest.raises(ValueError, match="unknown or mismatched report id 'report-wrong-999'"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="report-wrong-999",
+            verdict="PASS",
+            reason="Logic holds.",
+            tracer_mod=_StubTracer(config=None),
+        )
+    assert pcg.is_armed(session_id) is True
+
+
+def test_record_verdict_refuses_when_not_armed():
+    session_id = "sess-not-armed"
+    assert pcg.is_armed(session_id) is False
+
+    with pytest.raises(ValueError, match="no premise check is currently armed"):
+        pcv.record_verdict(
+            session_id=session_id,
+            claim_id="report-123",
+            verdict="PASS",
+            reason="Logic holds.",
+            tracer_mod=_StubTracer(config=None),
+        )
+
+
+def test_cli_refuses_wrong_report_id_and_exits_one(capsys, monkeypatch):
+    session_id = "sess-cli-wrong"
+    report_id = "report-real-123"
+    pcg.arm(session_id, claim_id=report_id)
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+
+    rc = pcv.main(
+        [
+            "--report",
+            "report-wrong-456",
+            "--verdict",
+            "PASS",
+            "--reason",
+            "holds",
+            "--session",
+            session_id,
+        ]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "unknown or mismatched report id 'report-wrong-456'" in err
+    assert pcg.is_armed(session_id) is True
+
+
+def test_cli_refuses_unknown_report_id_when_not_armed(capsys, monkeypatch):
+    session_id = "sess-cli-not-armed"
+    monkeypatch.setattr(pcv, "_import_claude_code_tracer", lambda: None)
+
+    rc = pcv.main(
+        [
+            "--report",
+            "report-unknown",
+            "--verdict",
+            "PASS",
+            "--reason",
+            "holds",
+            "--session",
+            session_id,
+        ]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "no premise check is currently armed" in err
+
+
 # ---------------------------------------------------------------------------
 # 4. Telemetry and "the check ran" are separable
 # ---------------------------------------------------------------------------
@@ -544,39 +639,54 @@ def test_sara_is_gated_like_ida(agent_type):
 # ---------------------------------------------------------------------------
 
 
-def test_derive_claim_id_extracts_incoming_peer_message_details():
+def test_derive_claim_id_generates_short_id_without_message_text():
     ctx1 = _prompt_ctx(
         "s1", '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>'
     )
     claim1 = pcg._derive_claim_id(ctx1)
-    assert "twin-a" in claim1
-    assert "PR #12 is merged." in claim1
+    # Must carry no message text, only a short id
+    assert "PR #12 is merged." not in claim1
+    assert "twin-a" not in claim1
+    assert claim1.startswith("report-")
 
     ctx2 = _prompt_ctx("s2", '<teammate-message teammate_id="worker">done</teammate-message>')
     claim2 = pcg._derive_claim_id(ctx2)
-    assert "worker" in claim2
-    assert "done" in claim2
+    assert "done" not in claim2
+    assert "worker" not in claim2
+    assert claim2.startswith("report-")
 
     ctx3 = _prompt_ctx("s3", "\n  <task-notification>\nworker finished\n</task-notification>")
     claim3 = pcg._derive_claim_id(ctx3)
-    assert "worker finished" in claim3
+    assert "worker finished" not in claim3
+    assert claim3.startswith("report-")
+
+    # Explicit id attribute on peer envelope is respected
+    ctx4 = _prompt_ctx(
+        "s4",
+        '<cross-session-message from="twin-a" id="rep-explicit-42">PR #12 is merged.</cross-session-message>',
+    )
+    claim4 = pcg._derive_claim_id(ctx4)
+    assert claim4 == "rep-explicit-42"
 
 
-def test_arm_handler_returns_prompt_note_with_three_elements():
+def test_arm_handler_returns_prompt_note_with_three_elements_and_no_message_text():
     session_id = "sess-note-1"
     prompt = '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>'
-    res = pcg.premise_check_arm(_prompt_ctx(session_id, prompt))
+    ctx = _prompt_ctx(session_id, prompt)
+    claim_id = pcg._derive_claim_id(ctx)
+    res = pcg.premise_check_arm(ctx)
     assert res is not None
     assert res.kind == dispatch.Kind.ADVISE
-    # 1. which incoming message armed the gate
-    assert "twin-a" in res.inject_text
-    assert "PR #12 is merged." in res.inject_text
+    # 1. which incoming message armed the gate (by report id, carrying no message text)
+    assert claim_id in res.inject_text
+    assert "PR #12 is merged." not in res.inject_text
+    assert "PR #12 is merged." not in res.user_text
     # 2. that the gate blocks until a verdict is recorded
     assert "blocks until a verdict is recorded" in res.inject_text
     # 3. the exact runnable call that records one
     assert "python3" in res.inject_text
     assert "verdict.py" in res.inject_text
-    assert "--report" in res.inject_text
+    assert f"--report {claim_id}" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
 

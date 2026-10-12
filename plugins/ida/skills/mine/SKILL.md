@@ -12,7 +12,7 @@ Ask: $ARGUMENTS
 
 The user is signalling that this ask must not be dropped, even if it takes days and many sessions.
 
-1. Have the PKB session hydrate the ask. If an open task already covers it, attach the user's words to that task verbatim, add the `ida-tracked` tag, and soft-link it from the themed parent it belongs to; never reparent project work. If nothing covers it, create a task assigned to ida, status `queued`, tagged `ida-tracked`, with the user's words verbatim as the goal, under the themed parent in the agents' own PKB project that it belongs to. Create a theme parent only when none fits.
+1. Have the PKB session hydrate the ask. If an open task already covers it, attach the ask to that task, made sense of in context, add the `ida-tracked` tag, and soft-link it from the themed parent it belongs to; never reparent project work. If nothing covers it, create a task assigned to ida, status `queued`, tagged `ida-tracked`, with the ask, recomposed into a clear goal citing message ids, under the themed parent in the agents' own PKB project that it belongs to. Create a theme parent only when none fits.
 2. Have the PKB session make sure the tracked ask's parent reaches one of the user's existing targets at a strong weight, with a one-line justification.
 3. If work can start now, start it in the same turn: brief the session that does the work.
 4. Tell the user the task's id and plain-English title, through the user-facing session.

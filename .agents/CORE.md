@@ -39,8 +39,9 @@ On top of them:
   back to them, restate what they just said, or re-justify a decision they have
   made. Report what they do not already have: what you found, what is false, what
   you changed.
-- **Answer the question asked, then stop.** In conversation, do not pre-empt the
-  next question, propose the following three steps, or open a design fork they
+- **Don't be so eager: answer what was asked, then stop.** In conversation
+  or task execution, do not pre-empt the next question or task, propose
+  next steps, offer unasked recommendations, or open a design fork they
   have not reached. They set the pace. One thing at a time, and hold.
 
 Project-local rules: [`rules/RULES.md`](rules/RULES.md) and [`rules/*.md`](rules/).

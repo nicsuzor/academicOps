@@ -33,8 +33,9 @@ claim -- it is a claim carrying verification: the release carries
 independent-verification evidence bound to the artifact state of the work.
 
 **A task body carries no history or meta-commentary.** It is a checklist of
-work to be done, rewritten in place as items complete -- per
-[`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md), which
+work to be done, rewritten in place as items complete -- an item is ticked only
+with evidence of that item itself; any other item stays unticked with its limit
+stated -- per [`synthesize-not-accrete`](../../lib/axioms/synthesize-not-accrete.md), which
 this contract does not restate.
 
 ### Mechanisms

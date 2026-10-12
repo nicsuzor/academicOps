@@ -58,6 +58,11 @@ are filled in has performed neither.
   own success in the prescribed format, unread by the workflow's reviewer, is not
   a boundary check -- it is the worker completing a form. The structured handback
   shape exists to make a claim _cheap to verify_, never to make verification optional.
+- **Direct evidence required for ticking acceptance criteria.** An acceptance
+  criterion on a task is ticked only with evidence of that item itself. A worker
+  that cannot verify or build an item must leave that item unticked and state its
+  limit explicitly beside it; citing substitute or indirect evidence (e.g. citing
+  unit tests when an image build fails) never licenses ticking the item.
 
 This is the operative meaning of "boundary check" and "QA-around" in
 [workflow.md](workflow.md#the-five-step-shape): each is a distinct agent

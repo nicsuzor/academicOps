@@ -824,9 +824,13 @@ def _find_tool_use_id(transcript_path: str, tool_name: str, tool_input: dict) ->
             except Exception:
                 continue
             if entry.get("type") == "assistant":
-                for block in entry.get("message", {}).get("content", []):
+                for block in reversed(entry.get("message", {}).get("content", [])):
                     if block.get("type") == "tool_use" and block.get("name") == tool_name:
-                        return block.get("id")
+                        if tool_input:
+                            if block.get("input") == tool_input:
+                                return block.get("id")
+                        else:
+                            return block.get("id")
     except Exception as e:
         log.debug("Failed to find tool_use_id: %s", e)
     return None

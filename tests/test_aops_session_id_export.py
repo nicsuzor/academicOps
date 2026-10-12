@@ -56,6 +56,60 @@ def test_session_start_keeps_existing_env_file_entries(tmp_path, monkeypatch):
     assert values["AOPS_SESSION_ID"] == SESSION
 
 
+def test_session_start_isolates_git_config_env_vars(tmp_path, monkeypatch):
+    env_file = tmp_path / "env.sh"
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/custom/gitconfig")
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    handlers.session_start(_ctx())
+    values = handlers._read_env_file(env_file)
+    assert values["GIT_CONFIG_GLOBAL"] == "/custom/gitconfig"
+    assert values["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert "GIT_CONFIG_GLOBAL" not in os.environ
+    assert "GIT_CONFIG_NOSYSTEM" not in os.environ
+
+
+def test_session_start_git_isolation_on_when_aops_git_config_global_set(tmp_path, monkeypatch):
+    env_file = tmp_path / "env.sh"
+    custom_config = tmp_path / "custom.gitconfig"
+    custom_config.write_text("# custom git config\n")
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+    monkeypatch.delenv("GIT_CONFIG_GLOBAL", raising=False)
+    monkeypatch.delenv("GIT_CONFIG_NOSYSTEM", raising=False)
+    monkeypatch.setenv("AOPS_GIT_CONFIG_GLOBAL", str(custom_config))
+    handlers.session_start(_ctx())
+    values = handlers._read_env_file(env_file)
+    assert values["GIT_CONFIG_GLOBAL"] == str(custom_config)
+    assert values["GIT_CONFIG_NOSYSTEM"] == "1"
+
+
+def test_session_start_git_isolation_off_when_aops_git_config_global_unset(tmp_path, monkeypatch):
+    env_file = tmp_path / "env.sh"
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+    monkeypatch.delenv("GIT_CONFIG_GLOBAL", raising=False)
+    monkeypatch.delenv("GIT_CONFIG_NOSYSTEM", raising=False)
+    monkeypatch.delenv("AOPS_GIT_CONFIG_GLOBAL", raising=False)
+    handlers.session_start(_ctx())
+    values = handlers._read_env_file(env_file)
+    assert "GIT_CONFIG_GLOBAL" not in values
+    assert "GIT_CONFIG_NOSYSTEM" not in values
+
+
+def test_session_start_assumes_no_gitconfig_path_when_unset(tmp_path, monkeypatch):
+    env_file = tmp_path / "env.sh"
+    gitconfig_claude = tmp_path / ".gitconfig-claude"
+    gitconfig_claude.write_text("# claude git config\n")
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+    monkeypatch.delenv("GIT_CONFIG_GLOBAL", raising=False)
+    monkeypatch.delenv("GIT_CONFIG_NOSYSTEM", raising=False)
+    monkeypatch.delenv("AOPS_GIT_CONFIG_GLOBAL", raising=False)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    handlers.session_start(_ctx())
+    values = handlers._read_env_file(env_file)
+    assert "GIT_CONFIG_GLOBAL" not in values
+    assert "GIT_CONFIG_NOSYSTEM" not in values
+
+
 def test_each_session_writes_its_own_id(tmp_path, monkeypatch):
     """A nested session inheriting a parent's AOPS_SESSION_ID still writes its
     own: the premise-check gate keys its state by this session's id."""

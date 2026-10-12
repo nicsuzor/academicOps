@@ -49,7 +49,16 @@ The long pass. It reads the whole active graph, so it runs as a scheduled run --
 
 ## Per-Task Checks
 
-For a task marked `done`:
+### Principal Closures vs. Worker Delegations
+
+Reconcile audits _agent and worker_ completion claims. Closures made directly by the user/principal (e.g. cancelled or marked done on the dashboard, in UI, or via direct user directives) are self-authorizing and presumed intentional.
+
+- **No completion receipts for user closures**: Reconcile must never demand worker completion receipts, release summaries, or audit notes for tasks closed directly by the user.
+- **Never flag user closures as defects or anomalies**: A user closure must never be flagged as "closed without an outcome", "dropped with no reason given", or an unverified anomaly, and must never be demoted or escalated to `review` or `inbox` unless affirmative evidence on the record proves an unintentional error.
+
+### Worker Delegations
+
+For a worker task marked `done`:
 
 - **Pull request matching**: Unconditionally recognize merged PRs; inspect unmerged or closed PRs.
 - **Facial sufficiency of claimed evidence**: Read each piece of claimed evidence in the worker's report against the task's literal acceptance criteria. Verify whether the evidence is facially sufficient to prove the criteria were met. Asserting that tests passed is sufficient for a worker's completion claim; full substantive QA is handled independently.
@@ -57,23 +66,24 @@ For a task marked `done`:
 
 ## Set the Status on Each Task
 
-Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass. Status meanings are the PKB taxonomy's ("Status Values and Transitions"); this table applies them:
+Every task this sweep reads leaves it in the one status that matches its evidence. A status that no longer describes the task is a defect you fix in the same pass:
 
-| Task is in    | Evidence on the record                                                               | Set it to                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `done`        | Claimed evidence passes facial sufficiency and scope                                 | `done` (unchanged)                                                                                    |
-| `done`        | Fails either check and cannot be remedied in-session                                 | `review`, per Failed-Check Outcome                                                                    |
-| any open      | Its PR is merged and its acceptance criteria are met                                 | `done`                                                                                                |
-| `review`      | The body names a decision escalated for review that is still open                    | Settle it per Settle Decisions Before Escalation; leave it in `review` only if it requires escalation |
-| `review`      | The work is claimed complete and no decision is escalated (parked for merge or QA)   | Judge it as a `done` claim: `done` if it passes, else stays `review` per Failed-Check Outcome         |
-| `review`      | Agent work remains and no decision is escalated (parked on a tool, blocker or retry) | `queued` if the task was queued before its claim; otherwise `inbox`                                   |
-| `in_progress` | No live claim: unmodified for more than 24 hours                                     | `queued`                                                                                              |
-| `partial`     | Increment delivered and a live follow-up task carries the remainder                  | `partial` (unchanged)                                                                                 |
-| any open      | A world-fact trigger fired                                                           | `cancelled`, per the sweep's world-fact step                                                          |
+| Task is in            | Evidence on the record                                                               | Set it to                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `done` (user closure) | Direct closure by user/principal (dashboard, UI, direct directive)                   | `done` (unchanged, exempt from completion receipts)                                                   |
+| `done` (worker)       | Claimed evidence passes facial sufficiency and scope                                 | `done` (unchanged)                                                                                    |
+| `done` (worker)       | Fails either check and cannot be remedied in-session                                 | `review`, per Failed-Check Outcome                                                                    |
+| any open              | Its PR is merged and its acceptance criteria are met                                 | `done`                                                                                                |
+| `review`              | The body names a decision escalated for review that is still open                    | Settle it per Settle Decisions Before Escalation; leave it in `review` only if it requires escalation |
+| `review`              | The work is claimed complete and no decision is escalated (parked for merge or QA)   | Judge it as a `done` claim: `done` if it passes, else stays `review` per Failed-Check Outcome         |
+| `review`              | Agent work remains and no decision is escalated (parked on a tool, blocker or retry) | `queued` if the task was queued before its claim; otherwise `inbox`                                   |
+| `in_progress`         | No live claim: unmodified for more than 24 hours                                     | `queued`                                                                                              |
+| `partial`             | Increment delivered and a live follow-up task carries the remainder                  | `partial` (unchanged)                                                                                 |
+| any open              | A world-fact trigger fired                                                           | `cancelled`, per the sweep's world-fact step                                                          |
 
 - **`review` means waiting on an escalated decision.** Leave a task there only when the body names a decision that must be escalated under Settle Decisions Before Escalation. Agent work never waits in `review`.
 - **`queued` stays an escalated gate.** Set `queued` only to restore a promotion already made during review: a stuck `in_progress` task, or a `review` task parked after a queued claim. Never promote `inbox` or `ready` work to `queued`.
-- **Use only the statuses in the table.** Never write `merge_ready` or any status outside the taxonomy.
+- **Use only the statuses in the table.** Never write `merge_ready` or any other status the table does not name.
 
 ## Settle Decisions Before Escalation
 

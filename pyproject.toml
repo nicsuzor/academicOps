@@ -1,6 +1,6 @@
 [project]
 name = "academicops"
-version = "0.10.9"
+version = "0.10.10"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
@@ -18,7 +18,7 @@ dependencies = [
   "claude-code-log>=1.5.0",
   # OTel span emission, declared for every plugin in
   # templates/plugin/pyproject.template.toml (see plugins/rbg/hooks/evaluator_otel_trace.py,
-  # plugins/orchestrate/hooks/claude_code_tracer.py, plugins/orchestrate/hooks/agy_tracer.py) —
+  # plugins/ida/hooks/claude_code_tracer.py, plugins/ida/hooks/agy_tracer.py) —
   # duplicated here, like every other plugin-scoped dependency, so the shared
   # dev venv basedpyright and pytest run under can resolve it too.
   "opentelemetry-sdk>=1.40.0",

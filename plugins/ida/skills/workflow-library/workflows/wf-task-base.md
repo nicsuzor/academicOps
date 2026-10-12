@@ -10,4 +10,4 @@ tags: [base, task]
   - <criterion>
   - <criterion>
 - [ ] **OUTPUT:** <destination repo or URI (no local paths, polecats run isolated)>
-- **REPORT:** Use /ida:dump to update your task. Do not append your observations as a log; update the prose to reflect current state and delete any content that is no longer relevant, true, or that reflects prior state or prior instructions. Update the ACCEPTANCE CRITERIA block to check off each item and, on the same line, provide a relevant extract of your evidence supporting your assertion that the criterion is complete/incomplete, along with a citation for the source of the evidence.
+- **REPORT:** Use /ida:dump to update your task. Do not append your observations as a log; update the prose to reflect current state and delete any content that is no longer relevant, true, or that reflects prior state or prior instructions. Update the ACCEPTANCE CRITERIA block: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. On the same line, provide a relevant extract of your evidence supporting your assertion, along with a citation for the source of the evidence.
