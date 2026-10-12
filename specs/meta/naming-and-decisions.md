@@ -66,12 +66,12 @@ flowchart TD
 ### Representation Principles
 
 1. **Mutually Exclusive Option Nodes:**
-   - When a design fork or architectural choice arises, represent the alternatives as concrete option branches/nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`).
-   - The options are wired as mutually blocking or conflicting branches. Progress on downstream work is blocked until one option is chosen and the unselected alternative is cancelled or deleted.
+   - When a design fork or architectural choice arises, represent the alternatives as concrete option branches/nodes (e.g. `Option A: Use SQLite` and `Option B: Use DuckDB`) wired with `alternative` edges to the decision node `D` (FQ8).
+   - Choosing an option resolves the decision, adopting the selected branch and cancelling the competing alternative.
 2. **Dynamic Emergence of Questions:**
    - Open architectural decisions are surfaced dynamically by agents inspecting graph topology (detecting unresolved option forks on the critical path) rather than by querying a bucket of stale "decision" tickets.
 3. **Empirical Unknowns as Probes:**
-   - Where a decision depends on missing runtime data or benchmarks, mint an empirical probe task (`classification: probe`, e.g. `Benchmark SQLite vs DuckDB query latency`). Wire the blocked work `depends_on` the probe.
+   - Where a decision depends on missing runtime data or benchmarks, mint an empirical probe task (`classification: probe`, e.g. `Benchmark SQLite vs DuckDB query latency`). Wire the probe via a `settles` edge to the decision node `D` ($q \in (0, 1]$), allocating EVPI to it; blocked work wires `needs` to the probe.
 4. **Resolution by Pruning:**
    - Deciding an option consists of selecting the winning node, completing/adopting it, and cancelling/pruning the competing node (`status: cancelled`). This immediately unblocks downstream dependency edges without manual decision-task administrative overhead.
 
@@ -147,4 +147,4 @@ Graph density means meaningful semantic and causal connectivity, not redundant c
 
 1. **Parent/Child is Already an Edge:** Setting `parent_id` on a node automatically places and connects it within the parent's hierarchy.
 2. **No Redundant Descendant Wiring:** Do **not** wire edges between siblings or descendants under the same parent unless there is a specific, verifiable interaction (such as an explicit causal dependency `depends_on`, `supersedes`, or cross-branch data flow).
-3. **Density Means Causal and Strategic Edges:** Densify the graph by wiring `contributes_to` (with `stated_weight` to the target/goal it serves), hard `depends_on` (real blockers), and `supersedes` (replacing obsolete nodes).
+3. **Density Means Causal and Strategic Edges:** Densify the graph by wiring edges carrying the FR edge contract (`label`: `serves`, `needs`, `supports`, `alternative`, `settles`; `quantum`; `probability`; `effect`: `helps` | `harms`; `justification`; `set_by: agent-proposed`).

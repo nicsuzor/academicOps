@@ -27,7 +27,7 @@ maturity-gated modes. It replaces no stage of that pipeline and restates none of
 
 - `plugins/ida/skills/q/SKILL.md` -- placement and valuation
 - `plugins/ida/skills/decompose/SKILL.md` -- assumption sorting, fork ranking, probe design
-- `plugins/ida/skills/brief/SKILL.md` -- process composition and sizing; cuts to the primitives
+- `plugins/ida/skills/q/SKILL.md` -- process composition, placement, and sizing; cuts to the primitives
   below and records review obligations as acceptance criteria on the task body
 - `specs/workflows/conceptual-review-workflow.md` -- the review layer; runs the lenses below in
   place of its general registry, with its critique protocol, convergence rules, and formality

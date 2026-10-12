@@ -39,13 +39,15 @@ The long pass. It reads the whole active graph, so it runs as a scheduled run --
 3. **Reconcile pull requests**: Match open and closed pull requests to tasks by structured identifiers (`pr_url`, task ID in PR body or branch, recorded branch, `polecat/` prefix, exact title).
    - **Merged PRs**: Confirm `status: done` on observed merged PRs.
    - **Closed without merge**: Surface for routing if unsure how to update the corresponding task.
-4. **Cancel on world-facts**: Cancel tasks only on affirmative evidence recorded in the node body:
+4. **Cancel on world-facts and retirements (R6)**: Cancel tasks only on affirmative evidence recorded in the node body:
    - _Referent destroyed_: Target artifact was deleted, verified across checkouts and refs.
    - _Superseded by merge_: Merged PR mooted or settled the task's question.
    - _Premise falsified_: Named assumption or precondition no longer holds.
-5. **Assure next tasks**: Give each unfinished piece of work a next task, per Next-Task Assurance.
-6. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations. Do not send failed `done` tasks to inbox. Do not demote a task that is the only next task for unfinished work (see Next-Task Assurance). Surface a stale one in the sweep's result instead.
-7. **Take up check leftovers**: Act on each `## For the next sweep` line on tasks in the window (`pkb.search(query="For the next sweep")`), then strike it through with the outcome.
+   - _Source-stated retirement (R6)_: An opportunity's own source (e.g. call closed) confirms it is no longer open, or Nic's statement ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source. Never retire for age, silence, a passed fake date, or low rank.
+5. **Deadline upkeep (R5)**: Re-read open `soft` and `hard` dates against sent mail and inbound mail. When a soft deadline is extended for the second time, set `deadline_class: hard`, append `{previous_due, new_due, class: "hard", changed_at, by: "reconcile", reason: "extended twice"}` to `deadline_history`, and flag one line in the digest. Record a counterpart's extension as an extension, and a counterpart's withdrawal as grounds for retirement (R6).
+6. **Assure next tasks**: Give each unfinished piece of work a next task, per Next-Task Assurance.
+7. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations. Do not send failed `done` tasks to inbox. Do not demote a task that is the only next task for unfinished work (see Next-Task Assurance). Surface a stale one in the sweep's result instead.
+8. **Take up check leftovers**: Act on each `## For the next sweep` line on tasks in the window (`pkb.search(query="For the next sweep")`), then strike it through with the outcome.
 
 ## Per-Task Checks
 
@@ -93,7 +95,7 @@ A decision must be escalated only when one of these holds:
 
 - **Unrecorded fact**: the answer turns on something only the reviewer knows that the record does not hold -- external preferences, unrecorded health or relationships, or off-graph state.
 - **External commitment**: acting on it speaks or commits outside the graph, spends money, or cannot be undone.
-- **Reserved field**: it sets a reserved field, such as `intent`, and no ruling on record covers the case.
+- **Reserved field**: it sets a reserved field, such as `intent`, `deadline_class: hard`, target worth, or `set_by: nic`, and no ruling on record covers the case.
 
 Pull-request base, merge readiness, style commits, review depth, sequencing, tool choice and security hygiene meet none of these; rule on them.
 
