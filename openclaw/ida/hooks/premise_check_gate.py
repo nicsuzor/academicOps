@@ -51,6 +51,51 @@ _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
 # Tools that are blocked while the check is armed
 _BLOCKED_TOOLS = ["Agent", "Task", "invoke_subagent", "SendMessage", "AskUserQuestion", "Dump"]
 
+ID_PATTERN = re.compile(
+    r"^(?P<kind>claim|verdict|report)-(?P<hash>[0-9a-f]{8})(?:-(?P<title>[a-z0-9]+(?:-[a-z0-9]+)*))?$"
+)
+
+
+def slugify_title(title: str | None) -> str:
+    """Convert an arbitrary title string into a lowercase kebab-case slug."""
+    if not title:
+        return ""
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", title.strip().lower()).strip("-")
+    return slug[:40]
+
+
+def build_id(kind: str, content: str, title: str | None = None) -> str:
+    """Build a short id in the shared format: <kind>-<hash>[-<title>]."""
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:8]
+    slug = slugify_title(title)
+    if slug:
+        return f"{kind}-{digest}-{slug}"
+    return f"{kind}-{digest}"
+
+
+def is_valid_id(identifier: str) -> bool:
+    """Return True if identifier conforms to the shared id format."""
+    return bool(ID_PATTERN.match(identifier.strip()))
+
+
+def parse_id(identifier: str) -> dict[str, str | None] | None:
+    """Parse an id into its components: kind, hash, and optional title slug."""
+    match = ID_PATTERN.match(identifier.strip())
+    if not match:
+        return None
+    return match.groupdict()
+
+
+def mint_verification_id(
+    claim_id: str,
+    verdict: str,
+    reason: str,
+    title: str | None = None,
+) -> str:
+    """Mint a verification id in the shared format referencing the verified content."""
+    content = f"{claim_id}:{verdict}:{reason}"
+    return build_id("verdict", content, title=title)
+
 
 # ---------------------------------------------------------------------------
 # State: is the premise check armed (awaiting verdict) or disarmed?
@@ -112,7 +157,14 @@ def arm(session_id: str, claim_id: str | None = None) -> None:
     _save_state(session_id, state)
 
 
-def disarm(session_id: str, claim_id: str, verdict: str, reason: str) -> None:
+def disarm(
+    session_id: str,
+    claim_id: str,
+    verdict: str,
+    reason: str,
+    verification_id: str = "",
+    title: str | None = None,
+) -> None:
     """Disarm the premise check after a verdict is recorded."""
     state = _load_state(session_id)
     claim_ids = state.get("claim_ids") or []
@@ -129,12 +181,17 @@ def disarm(session_id: str, claim_id: str, verdict: str, reason: str) -> None:
         state["pending"] = False
         state["claim_id"] = claim_id
 
-    state["last_verdict"] = {
+    last_verdict: dict[str, Any] = {
         "claim_id": claim_id,
         "verdict": verdict,
         "reason": reason,
         "recorded_at": _now(),
     }
+    if verification_id:
+        last_verdict["verification_id"] = verification_id
+    if title:
+        last_verdict["title"] = title
+    state["last_verdict"] = last_verdict
     _save_state(session_id, state)
 
 
@@ -193,7 +250,7 @@ def format_verdict_command(
     script_path = resolve_verdict_script(hooks_dir)
     quoted_script = shlex.quote(str(script_path))
     quoted_claim = shlex.quote(claim_id)
-    cmd = f'python3 {quoted_script} --report {quoted_claim} --verdict PASS --reason "<why>"'
+    cmd = f'python3 {quoted_script} --claim {quoted_claim} --verdict PASS --reason "<why>"'
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
     return cmd
@@ -205,20 +262,26 @@ def _derive_claim_id(ctx: HookContext) -> str:
         match = re.search(r"<([a-zA-Z0-9_\-]+)([^>]*)>(.*?)(?:</\1>|$)", prompt, re.DOTALL)
         if match:
             attrs = match.group(2)
-            id_match = re.search(r'\b(?:id|report_id|task_id)=["\']([^"\']+)["\']', attrs)
+            id_match = re.search(
+                r'\b(?:id|report_id|claim_id|verification_id|task_id)=["\']([^"\']+)["\']',
+                attrs,
+            )
             if id_match:
                 cid = id_match.group(1).strip()
                 if cid and re.match(r"^[a-zA-Z0-9_\-\.:]+$", cid):
                     return cid
 
-            digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:8]
-            return f"report-{digest}"
+            title_match = re.search(
+                r'\b(?:title|short_title|slug)=["\']([^"\']+)["\']',
+                attrs,
+            )
+            title = title_match.group(1).strip() if title_match else None
+            return build_id("claim", prompt, title=title)
 
         prompt_snippet = prompt.strip()
         if prompt_snippet:
-            digest = hashlib.sha256(prompt_snippet.encode("utf-8")).hexdigest()[:8]
-            return f"report-{digest}"
-        return f"report-{uuid.uuid4().hex[:8]}"
+            return build_id("claim", prompt_snippet)
+        return build_id("claim", uuid.uuid4().hex)
 
     for call in ctx.tool_calls:
         if call.get("tool_name") in _DISPATCH_TOOLS:
@@ -242,7 +305,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
         if call_id:
             return str(call_id)
 
-    return "report-unnamed"
+    return "claim-unnamed"
 
 
 def _is_override_active() -> bool:
