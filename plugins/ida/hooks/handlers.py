@@ -362,7 +362,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
 
 
 def be_quiet(ctx: HookContext) -> Result | None:
-    """Remind Ida Prime to strip its reply down to what is load-bearing on stop."""
+    """Remind Ida to strip its reply down to what is load-bearing on stop."""
     if not _is_ida(ctx):
         return None
     if ctx.raw.get("background_tasks"):
@@ -371,7 +371,7 @@ def be_quiet(ctx: HookContext) -> Result | None:
 
 
 def quiet_channel_reply(ctx: HookContext) -> Result | None:
-    """Deny channel replies once for Ida Prime to enforce honesty and ADHD executive protection."""
+    """Deny channel replies once for Ida to enforce honesty and ADHD executive protection."""
     if not _is_ida(ctx):
         return None
     if not _is_channel_reply_tool(ctx.tool):
