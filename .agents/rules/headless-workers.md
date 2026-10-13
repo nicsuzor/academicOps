@@ -1,11 +1,12 @@
 ---
 trigger: always_on
-description: Headless workers cannot pause interactively; a task needing a decision only Nic can make files a review artifact and ends, and pending agent steps release as partial.
+description: Headless workers cannot pause interactively or escalate to the user; approval boundaries file artifacts on the record, and review is transient help rather than a decision wait state.
 ---
 
 ## Workers cannot pause for a person
 
-Workers operate headless in execution environments that may not support interactive prompts. No worker-facing instruction or template tells a worker to pause, wait for approval, or query the user mid-task.
+Workers operate headless in execution environments that may not support interactive prompts. No worker-facing instruction or template tells a worker to pause, wait for approval, query mid-task, or escalate to the user.
 
-- A worker that reaches an approval boundary, meaning a decision only Nic (the user) can make, files a review artifact (its exact form left to repository or user preference), marks the task for review, and finishes execution. A QA, code-review or merge step is agent work, not an approval boundary: the worker releases the task as `partial` with a follow-up task carrying that step.
-- Work that proceeds after approval is scheduled as a separate downstream task that depends on the approval task being completed.
+- A worker hands back on the record and never to the user. Whichever agent one level up next reads it decides what happens.
+- When an approval boundary or decision point is reached, the worker files the complete artifact on the record and does not release the task as `done` when dependent implementation work requires an explicit approval decision; it structures the approval boundary per the review rules (e.g. `partial` with a queued review task wired with `depends_on`, or an explicit decision task) so dependent work remains strictly blocked until approval is recorded. Work that proceeds after the decision is scheduled as a separate downstream task that depends on it.
+- `review` means a worker needs help to finish the task; it is transient and never a waiting state for decisions. If a worker needs help from a higher level, it releases as `review` documenting what help is needed on the record. Any reconcile pass reading a `review` task transitions it immediately.

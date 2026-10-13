@@ -22,7 +22,8 @@ For each claimed task (releasing child tasks first), call `pkb.release_task` (th
 
 - `done`: All acceptance criteria are fully met with verified evidence recorded in the task's Report section: quoted output, `file:line` citations, counts, and the specimen run where requested. An empty, template, or bare-assertion report is released as `partial`.
 - `partial`: Agent work remains -- a scope seam, an external dependency, or a missing tool. A follow-up task carries the remainder; record it under Next.
-- `review`: Only when the next step is a decision only Nic can make. Name that decision in the required `reason` as a question for Nic. A pending agent step (QA run or re-run, merge, deploy, retry, routing or dispatch call) is `partial`, never `review`.
+- `review`: The worker needs help to finish the task. Transient, never a waiting state: a worker hands back on the record, documenting what help is needed in `reason`, and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
+- `failed`: The task cannot be completed and has reached a terminal failure. Document failure evidence and root cause.
 - `cancelled`: Task is obsolete or invalidated. Document reason.
 - `in_progress`: Use only if an active successor session is immediately continuing work.
 - Wire a `needs` edge from the blocked task to represent dependencies (FR:334).

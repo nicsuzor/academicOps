@@ -20,7 +20,7 @@ Specifies how tasks in `nicsuzor/academicOps` finish. All individual task change
 - **Target branch for tasks**: `dev`. Individual tasks must not target `main`.
 - **Delivery mechanism**: Open a pull request targeting `dev` (`gh pr create --base dev --fill`).
 - **Merging to dev**: Merge on green. Where QA is required, the follow-up verifying task reviews the PR and merges it to `dev` upon successful verification.
-- **Releases to main**: A PR from `dev` into `main` merges only with Nic's review.
+- **Releases to main**: A PR from `dev` into `main` merges only on explicit release approval.
 - **Commit trailer**: Commits must carry `Task: <task-id>` (and `Epic: <epic-id>` if applicable).
 - **QA review**:
   - **Required**: For any changes touching plugins, hooks, skills, agents, runtimes, or scripts. `/reify` mints a follow-up verifying task.

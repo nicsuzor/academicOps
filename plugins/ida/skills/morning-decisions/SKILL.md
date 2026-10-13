@@ -12,7 +12,7 @@ Walk the user through pending morning decisions — daily emails, tasks awaiting
 Harvest candidate decisions that genuinely require the user's judgment:
 
 - **Daily email / inbox**: Unread messages requiring personal approval, response, or scheduling.
-- **Task graph / open asks**: Tasks in `review` or `partial` status waiting on a decision only the user can make.
+- **Task graph / open asks**: Tasks assigned to the user-facing agent (`assignee="ida"`, or tagged `ida-tracked`) that reached the top of the escalation chain requiring user decision, or `partial` tasks needing placement.
 - **External reviews**: PR reviews or external requests blocking active work.
 
 Filter out noise: Items that can be resolved autonomously or are purely informational do not become decision cards.
