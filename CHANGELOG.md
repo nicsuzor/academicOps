@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.13](https://github.com/nicsuzor/academicOps/compare/v0.10.12...v0.10.13) (2026-10-13)
+
+### Bug Fixes
+
+- **ida:** forward PKB credentials through launchd; call pkb_search on the CLI path ([12a9835](https://github.com/nicsuzor/academicOps/commit/12a983561e3fa36e24bdcb9b655d8ac55691f9b3))
+- **ida:** resolve verify script and project path from hook cwd as absolute paths ([59304db](https://github.com/nicsuzor/academicOps/commit/59304db59f20ec57b2ea32366869d703bf200594))
+- **ida:** resolve verify script and project path from hook cwd as absolute paths ([4f76d15](https://github.com/nicsuzor/academicOps/commit/4f76d1565e0d5caf9ae4177744060f223f82e96d))
+
 ## [0.10.12](https://github.com/nicsuzor/academicOps/compare/v0.10.11...v0.10.12) (2026-10-12)
 
 ### Features
