@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ida Telegram</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1 class="logo">Ida</h1>
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="details">Details</button>
+        <button class="tab-btn" data-tab="questions">Questions <span id="q-badge" class="badge">0</span></button>
+        <button class="tab-btn" data-tab="review">Review</button>
+        <button class="tab-btn" data-tab="anchor">Anchor</button>
+      </nav>
+    </header>
+
+    <main class="content-container">
+      <!-- Details View -->
+      <section id="view-details" class="view active">
+        <div id="details-content" class="card">
+          <p class="muted">No details page selected. Open a message with "🔍 Details" in Telegram to inspect.</p>
+        </div>
+      </section>
+
+      <!-- Questions View -->
+      <section id="view-questions" class="view">
+        <div id="questions-list"></div>
+      </section>
+
+      <!-- Review View -->
+      <section id="view-review" class="view">
+        <div id="review-content" class="card">
+          <p class="muted">No pending permissions or PR diffs waiting for review.</p>
+        </div>
+      </section>
+
+      <!-- Anchor View -->
+      <section id="view-anchor" class="view">
+        <div class="card">
+          <h2>Current Focus</h2>
+          <p id="anchor-focus" class="highlight">Stand by</p>
+          <div class="meta-row">
+            <span class="label">Task ID:</span>
+            <span id="anchor-task" class="mono">-</span>
+          </div>
+          <div class="gauge-container">
+            <div class="label-row">
+              <span>Context Window</span>
+              <span id="anchor-pct">0%</span>
+            </div>
+            <div class="gauge-bar">
+              <div id="anchor-gauge" class="gauge-fill" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="actions-row">
+            <button id="btn-stop" class="btn btn-danger">🛑 Stop Session</button>
+            <a id="btn-dashboard" class="btn btn-outline" href="https://academicops.org" target="_blank">Open Dashboard</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
