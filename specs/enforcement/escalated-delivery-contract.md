@@ -42,7 +42,7 @@ However, an architectural blind spot exists between **task graph completion** an
 
 ### 1.5 Review-State Gap: `wf-escalated-approval`
 
-- **Failure Point:** In universal template `wf-escalated-approval`, step 2 originally released the task as `status: review` and stopped, specifying delivery only _"in the form the project or user preferences name"_. Because no user preference names a default delivery channel, review tasks sat in `review` silently on the graph without notifying the user. Under the updated lifecycle, approval gates end in `done` (or `partial`) with the complete artifact filed on the record and downstream work depending on it, rather than waiting indefinitely in `review`.
+- **Failure Point:** In universal template `wf-escalated-approval`, step 2 originally released the task as `status: review` and stopped, specifying delivery only _"in the form the project or user preferences name"_. Because no user preference names a default delivery channel, review tasks sat in `review` silently on the graph without notifying the user. Under the updated lifecycle, approval gates structure the boundary per the review rules (e.g. `partial` with a queued review task wired with `depends_on`, or an explicit decision task) with the complete artifact filed on the record and downstream work strictly blocked until approval is recorded, rather than waiting indefinitely in `review` or releasing as `done` prematurely.
 
 ### 1.6 Prior Structural Attempts & The Parked Mechanical Trigger
 
@@ -133,8 +133,8 @@ The escalated delivery gate covers **both** completed tasks with human origin an
 1. **Terminal Done Delivery:** A task with `origin` cannot reach `status: done` from the principal's perspective until an outbound delivery action occurs:
    - For `channel: telegram`: An outbound message sent to the originating chat containing the artifact summary, permanent links, and next actions.
    - For `channel: claude_turn` / `agy_session`: Direct presentation of the completed artifact to the human turn.
-2. **Escalated Approval Delivery (e.g. `wf-escalated-approval`):** Tasks that hand over artifacts for escalated explicit decisions release as `status: done` (with the complete artifact filed on the record) and cut the execution chain there, with downstream work depending on them.
-   - **Delivery goes through Ida:** In `plugins/ida/skills/workflow-library/workflows/wf-escalated-approval.md`, Step 2 mandates routing delivery through the record: file an Ida-held follow-up (or tag the task `ida-tracked` with `assignee: ida`) so review requests reach the user-facing session (Ida Prime). Ida Prime actively posts the card to the user's originating channel (Telegram), lists the item on the review surface named in the user's preferences, and surfaces it during the surfacing pass (§2.5). Tasks never wait in `review` for human decisions.
+2. **Escalated Approval Delivery (e.g. `wf-escalated-approval`):** Tasks that hand over artifacts for escalated explicit decisions structure the approval boundary per the review rules (e.g. releasing as `status: partial` with a queued review task wired with `depends_on`, or an explicit decision task) so dependent implementation work remains strictly blocked until approval is recorded, rather than releasing as `done` prematurely.
+   - **Escalation on the record:** In `plugins/ida/skills/workflow-library/workflows/wf-escalated-approval.md`, Step 2 routes delivery through the record and enforces one-level-per-hop escalation: whichever agent one level up next reads the record decides what happens under the bazaar model, rather than workers assigning directly to Ida.
 3. **Delivery Evidence:** The releasing agent or coordinator must record `delivery_evidence`:
    ```yaml
    delivery_evidence:
@@ -267,7 +267,7 @@ See [§2.7 Task Modification Discipline: The Workers-Append Rule](#27-task-modif
 - [ ] **AC-3 (Settled Status `ida_held`):** Status `ida_held` is established for Ida-held follow-ups; creation requires a valid `trigger`.
 - [ ] **AC-4 (Delivery Gate Enforcement):** `pkb_release_task` with `status: done` on an `origin`-bearing task requires `delivery_evidence`.
 - [ ] **AC-5 (Reconcile Catch):** Peer reconcile demotes any `done` task with `origin` that lacks valid `delivery_evidence`.
-- [ ] **AC-6 (Escalated Approval Delivery via Ida Prime):** `wf-escalated-approval` routes delivery through Ida Prime so review items are actively surfaced to the user on their originating channel and on the review surface named in the user's preferences, ending the task in `done` with dependent work following.
+- [ ] **AC-6 (Escalated Approval Delivery):** `wf-escalated-approval` structures approval on the record and enforces one-level-per-hop escalation, keeping dependent work strictly blocked until approval is recorded.
 - [ ] **AC-7 (Project-Tracked Surfacing):** The bare surfacing pass lists both tasks under Ida's task tree and domain tasks bearing `ida-tracked` tags.
 - [ ] **AC-8 (Workers-Append Rule):** See [§2.7 Task Modification Discipline: The Workers-Append Rule](#27-task-modification-discipline-the-workers-append-rule).
 
