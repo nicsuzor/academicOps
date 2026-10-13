@@ -18,6 +18,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 2. **Reconcile pull requests**: Match closed pull requests to tasks by structured indicators (`pr_url`, body task ID, recorded branch, `polecat/` prefix, exact title).
    - **Merged PRs**: Write `status: done` unconditionally on an observed merged PR (`pr_url`, merge timestamp, branch). Do not re-judge acceptance criteria.
    - **Closed without merge**: Surface for routing; never auto-complete or auto-requeue.
+   - **Open PR with complete deliverable and dependent follow-up**: When a task in `partial` or `queued` has its own deliverable complete (open PR, passing tests/CI, acceptance criteria satisfied on the record) and an independent follow-up task depends on it (such as QA, merge, or deploy): write `status: done` so the dependent follow-up is unblocked. A worker whose own deliverable is complete releases `done`, even when a follow-up that depends on it is still to run; `partial` is only for the worker's own unfinished acceptance items. Never send or leave a complete deliverable in `partial` or `queued` because of a dependent follow-up.
 3. **The Review Lifecycle**: `review` means a worker needs help to finish the task; it is transient, never a waiting state. Under the bazaar model, any pass reading a `review` task owns the outcome in that pass and mints any needed tasks; nothing is deferred to a later sweep or the original dispatcher. Bring the record to reality and take exactly one outcome:
    - `ready` or `queued`: not finished properly, an agent can finish it.
    - `partial` plus a new review task queued for an agent, wired so the source cannot complete before it (source `depends_on` it).
@@ -41,7 +42,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 
 ## Must not
 
-- Must not write `done` on any evidence other than an observed merged PR (or clean finished part of a split task).
+- Must not write `done` on any evidence other than an observed merged PR, a task whose own deliverable is complete and whose follow-up depends on it, or a clean finished part of a split task.
 - Must not leave tasks in `review` or route tasks to `review` as a waiting state.
 - Must not defer `review` outcomes to a later pass or to the original dispatcher.
 - Must not escalate outside the framework (escalation is one level per hop on the record).

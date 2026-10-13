@@ -36,6 +36,9 @@ first-class terminal state (`partial`), not a species of failure. It satisfies
 option 1 for everything that shipped, plus explicit deferral disclosure for the
 remainder under the partial-work coverage partition (`tested | declared-deferred | illegal-gap`,
 defined in [`spec-partial-work-tight-loop-delivery.md`](../polecat/spec-partial-work-tight-loop-delivery.md)).
+A worker whose own deliverable is complete releases its task `done`, even when a
+follow-up that depends on it (QA, merge, deploy) is still to run; `partial` is
+only for the worker's own unfinished acceptance items.
 The two-option rule is untouched: partial is option 1 for the shipped chunk,
 with the deferred remainder disclosed rather than silent.
 

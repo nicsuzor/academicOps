@@ -33,7 +33,7 @@ Before marking `status: done`, the worker must:
 1. Ensure test suite and linter pass (`uv run pytest`, `uv run ruff check`).
 2. Push feature branch (`task/<id>-<slug>`) to remote and open a PR targeting `dev`.
 3. Update acceptance criteria on the PKB task: tick an item only with evidence of that item itself; leave any other item unticked with its limit stated, citing pinpoint evidence (`file:line`, command output, PR link).
-4. Mark task `status: done` and release claim.
+4. Mark task `status: done` and release claim. A worker whose own deliverable is complete releases its task `done`, even when a follow-up that depends on it (QA, merge, deploy) is still to run; `partial` is only for the worker's own unfinished acceptance items.
 
 ## Follow-up QA Task Specification
 
