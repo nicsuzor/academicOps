@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.15](https://github.com/nicsuzor/academicOps/compare/v0.10.14...v0.10.15) (2026-10-13)
+
+
+### Features
+
+* **ida-telegram:** implement Telegram channel plugin and Mini App ([550984b](https://github.com/nicsuzor/academicOps/commit/550984b872382ab3cdfa37d17f968db1ed1df396))
+* **ida-telegram:** implement Telegram channel plugin and Mini App ([e7ef541](https://github.com/nicsuzor/academicOps/commit/e7ef541f876463db927c59410c036e12f2e5d29f))
+
+
+### Bug Fixes
+
+* **ida-telegram:** run ask-user-question hook under node ([ea5cde5](https://github.com/nicsuzor/academicOps/commit/ea5cde558d864c96ef186b01acf28be6cf0f3ec5))
+* **ida-telegram:** update manifest hooks command to node ([246f443](https://github.com/nicsuzor/academicOps/commit/246f443d51b570f2077e91bbfa2f0bb628d24b6d))
+
 ## [0.10.14](https://github.com/nicsuzor/academicOps/compare/v0.10.13...v0.10.14) (2026-10-13)
 
 ### Features
