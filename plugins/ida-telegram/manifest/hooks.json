@@ -11,7 +11,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "bun run \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-user-question.ts\""
+                "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-user-question.js\""
               }
             ]
           }
