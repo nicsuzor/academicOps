@@ -1,5 +1,5 @@
 ---
-description: Truth maintenance over the task graph -- reconcile merged PRs, move review tasks to reality under the bazaar model, record world-fact cancellations, and demote affected tasks to inbox.
+description: Truth maintenance over the task graph -- reconcile merged PRs, move review tasks to reality under the bazaar model, write items reaching the user to today's daily note, record world-fact cancellations, and demote affected tasks to inbox.
 id: wf-reconcile
 tags:
   - wf-template
@@ -10,7 +10,7 @@ type: template
 
 ## What this step does
 
-Maintains truth over the task graph: establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, writes them back, and returns touched tasks to `inbox` for re-planning.
+Maintains truth over the task graph: establishes facts about in-flight work and landed changes, brings `review` tasks up to date with reality, checks returned work on the papers, writes items that have reached the user to today's daily note, and returns touched tasks to `inbox` for re-planning.
 
 ## Obligations
 
@@ -25,15 +25,19 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
    - `failed`: terminal failure with documented root cause.
      Nothing is left in `review`.
 4. **Settle decisions before escalation**: Escalation is one level per hop on the record, never jumping tiers. Each agent escalates at most one level; only the front agent at the top of the chain speaks outside the framework. Settle open decisions yourself first where record or reversible judgment allows. If an unrecorded fact, external commitment, or reserved field forces escalation, reduce to a single one-line question in `reason`, queue a review task for the next escalation level, wire `depends_on`, and transition source task to `partial` (outcome 2).
-5. **Aged tasks and stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified) reset to `queued`. Rot (>14d in `ready`/`queued`) demotes to `status: inbox`. Never route aged items to `review`.
-6. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
-7. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
+5. **Check returned work on the papers**: Verify the account of returned work on the record before deciding what reaches the user:
+   - _Chain of evidence_: verify `pr_url`, `completion_evidence`, or named artifact exists.
+   - _Soundness_: verify cited evidence actually answers acceptance criteria. If insufficient, return to `ready`/`queued` or `partial` with an agent review task (outcome 1 or 2); never escalate unproven claims to the user.
+   - _Liveness_: verify question is still live; discard moot items settled by events.
+6. **Aged tasks and stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified) reset to `queued`. Rot (>14d in `ready`/`queued`) demotes to `status: inbox`. Never route aged items to `review`.
+7. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
+8. **Cancel on world-facts**: Cancel only on affirmative evidence recorded in the node body:
    - _Referent destroyed_: target artifact was deleted, verified across checkouts and refs.
    - _Superseded by merge_: merged PR mooted or settled the task's question.
    - _Premise falsified_: named assumption or precondition no longer holds.
    - _Source-stated retirement_: opportunity's source confirms it is no longer open, or explicit principal instruction ("drop X"). Set `status: cancelled` with reason starting `not ripe:` quoting statement and source.
-8. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`), then read back to confirm status.
-9. **Daily note boundary**: The pass does not append to or own daily-note sections. Each daily-note section has one owning mechanism (`## Left over from today` owned solely by prompt-settle; `## Asks filed` owned solely by capture intake; daily note structure owned by daily template). Reconcile emits its result to the caller and must not append unowned sections to daily notes.
+9. **Two-step mutation contract**: Write annotation/evidence to markdown body first, then mutate frontmatter `status` via `pkb.update_task` (never `batch_update`), then read back to confirm status.
+10. **Daily note integration**: Every reconcile pass writes items that have reached the user under the one-level escalation rule (e.g. review tasks reaching the front agent `ida` at the top of the chain requiring user decision, or open questions/asks needing user choice) to today's daily note (PKB note `YYYYMMDD-daily`) in the named section `## With you`. For each item reaching the user, write a concise entry with its title, pointers (task ID, PR URL, artifact), and clear choice. Reconcile owns writing escalated items to `## With you`; it must not append unowned sections outside `## With you`.
 
 ## Must not
 
@@ -52,13 +56,14 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 - Must not prune, re-plan, or restructure (delegate repositioning to `/q`).
 - Must not write `focus_score`, `intent`, `priority`, or `severity`.
 - Must not promote `inbox` or `ready` work into `queued`.
-- Must not append unowned sections to the daily note.
+- Must not append unowned sections to the daily note outside `## With you`.
+- Must not write items with unverified or insufficient evidence to the daily note.
 
 ## Output contract
 
 Emit one synthesized result:
 
-1. Rulings made without escalation and review tasks minted/escalated (task ID, reviewer level, one-line question, source task transitioned).
+1. Rulings made without escalation, review tasks minted/escalated, and items written to the daily note `## With you` (task ID, reviewer level, one-line question, source task transitioned).
 2. Status changes made (with task IDs and PR links).
 3. Tasks found and left alone.
 4. Tasks returned to `inbox`.
