@@ -2,7 +2,7 @@
 """Measurement harness for the pkb `UserPromptSubmit` injection hook.
 
 Answers three questions with numbers, not impression, before anyone touches
-`plugins/pkb/hooks/handlers.py`:
+`plugins/ida/hooks/handlers.py`:
 
 1. **Hook overhead** — the cost `dispatch.py` + `handlers.py` add on top of
    the search itself: process spawn, module import, string handling. Measured
@@ -45,8 +45,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LIB_HOOKS = REPO_ROOT / "lib" / "hooks"
-PKB_HOOKS = REPO_ROOT / "plugins" / "pkb" / "hooks"
+PKB_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
 
 # --------------------------------------------------------------------------
 # Fixed, versioned prompt set. Both families are turns the user plausibly types;
@@ -145,16 +144,10 @@ def measure_hook_overhead(repeats: int) -> dict:
         subprocess.run(["mktemp", "-d"], capture_output=True, text=True, check=True).stdout.strip()
     )
     hooks_dir = tmp / "hooks"
-    shutil.copytree(LIB_HOOKS, hooks_dir, ignore=shutil.ignore_patterns("__pycache__"))
-    for item in PKB_HOOKS.iterdir():
-        if item.name == "__pycache__":
-            continue
-        if item.is_dir():
-            shutil.copytree(item, hooks_dir / item.name, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, hooks_dir / item.name)
+    shutil.copytree(PKB_HOOKS, hooks_dir, ignore=shutil.ignore_patterns("__pycache__"))
 
-    stub = tmp / "pkb"
+    # The hook's CLI path runs `fastmcp call`; a stub on PATH stands in for it.
+    stub = tmp / "fastmcp"
     stub.write_text(
         "#!/bin/sh\necho '1. Stub result (score: 0.50)'\necho '   stub/doc.md'\n",
         encoding="utf-8",
@@ -169,6 +162,20 @@ def measure_hook_overhead(repeats: int) -> dict:
         }
     )
 
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k
+        not in (
+            "PKB_MCP_HEADERS",
+            "PKB_MCP_TOKEN",
+            "CF_ACCESS_CLIENT_ID",
+            "CF_ACCESS_CLIENT_SECRET",
+        )
+    }
+    env["PATH"] = f"{tmp}{os.pathsep}{env.get('PATH', '')}"
+    env["PKB_MCP_URL"] = "http://stub.invalid/mcp"
+
     latencies = []
     try:
         for _ in range(repeats):
@@ -180,6 +187,7 @@ def measure_hook_overhead(repeats: int) -> dict:
                 capture_output=True,
                 timeout=30,
                 cwd=str(hooks_dir),
+                env=env,
             )
             t1 = time.perf_counter()
             if proc.returncode != 0:
@@ -198,7 +206,7 @@ def measure_hook_overhead(repeats: int) -> dict:
 
 async def _one_search(client, prompt: str, family: str) -> SearchSample:
     t0 = time.perf_counter()
-    res = await client.call_tool("pkb__search", {"query": prompt, "limit": 5, "format": "json"})
+    res = await client.call_tool("pkb_search", {"query": prompt, "limit": 5, "format": "json"})
     t1 = time.perf_counter()
     text = next((getattr(b, "text", "") for b in res.content if getattr(b, "text", "")), "")
     payload_bytes = len(text.encode())
@@ -233,7 +241,7 @@ async def measure_backend(repeats: int) -> list[SearchSample]:
     async with Client(url) as client:
         # Warm-up call, excluded from the distribution -- first call pays
         # model/index cold-start, which every subsequent real fire does not.
-        await client.call_tool("pkb__search", {"query": "warmup", "limit": 1})
+        await client.call_tool("pkb_search", {"query": "warmup", "limit": 1})
         for family, prompts in PROMPT_FAMILIES.items():
             for prompt in prompts:
                 for _ in range(repeats):

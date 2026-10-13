@@ -28,6 +28,9 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
       launchctl getenv GENAI_ENGINE_TRACE_ENDPOINT   # expect http://<AOPS_SERVICES_HOST>:4316
       launchctl getenv GENAI_ENGINE_TRACE_PROTOCOL
       launchctl getenv GENAI_ENGINE_TASK_ID
+      launchctl getenv PKB_MCP_URL
+      for v in PKB_MCP_HEADERS PKB_MCP_TOKEN CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET; do
+        [ -n "$(launchctl getenv $v)" ] && echo "$v set" || echo "$v UNSET"; done
   Restart Claude.app fully (quit, not just close-window) after install/update --
   launchctl setenv only reaches processes launched after it runs.
 
@@ -37,7 +40,9 @@ launchctl kickstart -k gui/$(id -u)/com.aops.envvars  # forces RunAtLoad
   Uninstall:
       launchctl unload ~/Library/LaunchAgents/com.aops.envvars.plist
       launchctl unsetenv AOPS_SESSIONS POLECAT_HOME ACA_DATA \
-                         GH_TOKEN GITHUB_TOKEN AOPS_BOT_GH_TOKEN
+                         GH_TOKEN GITHUB_TOKEN AOPS_BOT_GH_TOKEN \
+                         PKB_MCP_URL PKB_MCP_HEADERS PKB_MCP_TOKEN \
+                         CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
       rm ~/Library/LaunchAgents/com.aops.envvars.plist
 
   Paths used:

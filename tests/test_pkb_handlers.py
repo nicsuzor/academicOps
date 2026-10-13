@@ -1,4 +1,4 @@
-"""Tests for the UserPromptSubmit / PKB-search hook in plugins/pkb/hooks/handlers.py."""
+"""Tests for the UserPromptSubmit / PKB-search hook in plugins/ida/hooks/handlers.py."""
 
 from __future__ import annotations
 
@@ -33,6 +33,22 @@ sys.modules["pkb_handlers"] = handlers
 handlers_spec.loader.exec_module(handlers)
 
 from dispatch import HookContext, load_message_pair  # type: ignore[import-not-found]
+
+
+@pytest.fixture(autouse=True)
+def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the developer's real PKB credentials out of every test.
+
+    With credentials in the environment the hook takes the authenticated HTTP
+    path, so tests of the CLI path would silently test the wrong branch.
+    """
+    for var in (
+        "PKB_MCP_HEADERS",
+        "PKB_MCP_TOKEN",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
+    ):
+        monkeypatch.delenv(var, raising=False)
 
 
 @pytest.fixture
@@ -95,7 +111,7 @@ def test_user_prompt_submit_truncates_prompt_to_200():
         out = handlers._run_pkb_search(long_prompt)
         assert out == "result line"
         assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
-    assert mock_run.call_args[0][0][3:5] == ["pkb__search", "--input-json"]
+    assert mock_run.call_args[0][0][3:5] == ["pkb_search", "--input-json"]
     assert "a" * 200 in mock_run.call_args[0][0][5]
 
 
@@ -117,7 +133,7 @@ def test_user_prompt_submit_strips_ansi_from_prompt():
         out = handlers._run_pkb_search(ansi_prompt)
         assert out == "result line"
         assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
-    assert mock_run.call_args[0][0][3:5] == ["pkb__search", "--input-json"]
+    assert mock_run.call_args[0][0][3:5] == ["pkb_search", "--input-json"]
     assert "red text with bold" in mock_run.call_args[0][0][5]
 
 
