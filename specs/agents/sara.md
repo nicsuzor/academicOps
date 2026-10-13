@@ -112,19 +112,19 @@ reading durable evidence, never by asking a running worker how it is going.
 ```
 queued → in_progress → done (deliverable accepted)
                 │
-                ├→ review (needs human judgment; finish/merge failed)
-                └→ partial (terminal: chunk handed back, remainder carried by
-                            continue tasks — see
-                            [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
+                ├→ review (transient: worker needs help; moved on by reconcile)
+                ├→ partial (terminal: chunk handed back, remainder carried by
+                │           continue tasks — see
+                │           [[specs/polecat/spec-partial-work-tight-loop-delivery.md]] §4)
+                └→ failed (terminal: execution aborted, invalid premise, or unrecoverable error)
 ```
 
 `done` means the deliverable was accepted — evidence + output URL recorded on the
 PKB task; a merged PR is the code-surface instance of this.
 
 The canonical status set is the PKB taxonomy's, mirrored in this repository
-at [[tests/policy.toml]] under `[aops.taxonomy]` and enforced against every
-shipped skill by [[tests/test_skill_status_vocabulary.py]]. The supervisor uses
-that set without extensions (`partial` is part of it).
+at [[tests/policy.toml]] under `[aops.taxonomy]`. The supervisor uses
+that set without extensions (`partial` and `failed` are part of it).
 
 ## Related
 

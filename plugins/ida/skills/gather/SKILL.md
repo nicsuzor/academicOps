@@ -25,7 +25,8 @@ Pull the candidate set yourself via the `services` MCP code-mode interface
 
 Candidates, narrowest first:
 
-- `pkb.list_tasks(status="review")` -- parked on a decision only the user can make.
+- `pkb.list_tasks(assignee="ida")` -- tasks assigned to the user-facing agent that reached the top of the escalation chain.
+- Tasks tagged `ida-tracked` or under Ida's tree with open questions or decision cards.
 - `pkb.list_tasks(status="partial")` -- a named remainder someone has to place.
 - **The ask queue** (`specs/workflows/graph-valuation.md#8-r7----budget-for-asking-nic`): items ordered by reach, drained strictly within R7 channel budgets:
   - _Weekly sitting_: 1 per week (~20 min), at most one link batch (≤ 50 rows) or one pricing set (≤ 10 targets).
@@ -73,7 +74,7 @@ exists to prevent.
 
 ## Must not
 
-- Set task status. The dispatcher chooses `partial` / `review` / `queued`; workers mark tasks `done` after `/pull`; `/reconcile` verifies claimed evidence.
+- Set task status. Supervisors choose `partial` / `queued`; workers mark tasks `done` or `partial` after `/pull`; `/reconcile` brings `review` tasks to reality and verifies claimed evidence.
 - Prescribe the remedy for work you judged insufficient.
 - Relay a worker's self-report, summary, or confidence as if it were a finding.
 - Dispatch, re-dispatch, or fix anything.

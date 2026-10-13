@@ -28,9 +28,9 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 - Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations. An item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated.
 - Mark the task `done` via `/dump` only when its `## Report` section records concrete evidence demonstrating delivery against each acceptance item: quoted output, `file:line` citations, counts, and the specimen run where the task asks for one. Asserting that tests ran or that work was done without concrete evidence in the report is insufficient; if any acceptance item lacks evidence in the Report, release as `partial` naming the missing evidence.
-- Release as `done` or `partial` by default. `review` is the exception.
+- Release as `done` or `partial` by default.
 - If agent work remains -- an external blocker, a missing tool, a scope seam, or a next step such as a QA run or re-run, a merge, a deploy, a retry, or a routing or dispatch call -- release as `partial` with a follow-up task carrying the remainder, and wire a `needs` edge from the blocked task to any blocker (FR:334).
-- Release as `review` only when the next step is a decision only Nic can make: a choice that turns on Nic's priorities, preferences or authority, such as approving a spec or picking between options only Nic can own. Name that decision in the required `reason` as a question for Nic. If the `reason` names an action an agent could take, the release is `partial`, not `review`.
+- `review` means a worker needs help to finish the task. It is transient, never a waiting state for decisions. Release as `review` only when the worker cannot finish without help from a higher level, recording what help is needed on the record in `reason`. A worker hands back on the record and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
 
 ### 5. Handover
 

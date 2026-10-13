@@ -23,8 +23,8 @@ Sequences an ask that needs investigation and an agreed design before anything i
 1. **Research** -- grounded findings on the problem space and the candidate approaches, with primary citations and a recommended direction.
 2. **Spec** -- a complete specification built on those findings: design, interfaces, and falsifiable acceptance criteria mapped to tests, or runs for instruction text.
 3. **Review** -- an independent verdict on the research and on the spec, from an evaluator who did not author them, covering factual claims, rule compliance, and proportionality. Resolve defects before advancing.
-4. **Approval** -- the full spec, not a summary, handed to the human who commissioned the work for an explicit decision. The task ends here in `review`.
-5. **Implementation** -- in a separate task that `needs` the approval task, so it cannot start until the spec is approved. Implementation of the approved spec, test-first for code that executes, an independent check against its acceptance criteria, and a sign-off summary for the human.
+4. **Approval** -- the full spec, not a summary, filed on the record for an explicit decision. The research and spec task ends here in `done`.
+5. **Implementation** -- in a separate task that `depends_on` the spec task, so it cannot start until the spec is approved. Implementation of the approved spec, test-first for code that executes, an independent check against its acceptance criteria, and a sign-off summary.
 
 ## Composition
 
@@ -35,7 +35,7 @@ Cut the chain at stage 4: stages 1–4 form one task and stage 5 another. Reques
 - Research findings with citations.
 - The full specification.
 - Review verdicts on both.
-- The spec filed for approval, with the approval task released as `review`.
+- The spec filed for approval, with the spec task released as `done`.
 
 ## When to include
 
