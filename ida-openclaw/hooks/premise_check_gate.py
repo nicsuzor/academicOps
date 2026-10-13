@@ -226,17 +226,36 @@ def is_peer_report(ctx: HookContext) -> bool:
     return text.startswith(_PEER_ENVELOPES)
 
 
+def _hooks_base(hooks_dir: Path | None = None) -> Path:
+    if hooks_dir:
+        if hooks_dir.is_absolute():
+            return hooks_dir
+        # If relative, resolve against the hook process's current working directory
+        cand = (Path.cwd() / hooks_dir).resolve()
+        if (cand.parent / "skills" / "premise-check" / "scripts" / "verdict.py").is_file() or (
+            cand / "premise_check_verdict.py"
+        ).is_file():
+            return cand
+        if cand.is_dir() and cand.name == "hooks":
+            return cand
+    # Check if cwd is the plugin root (the hook's working directory under Claude Code/agy)
+    cwd = Path.cwd().resolve()
+    if (cwd / "skills" / "premise-check" / "scripts" / "verdict.py").is_file():
+        return cwd / "hooks"
+    if (cwd / "premise_check_verdict.py").is_file():
+        return cwd
+    return Path(__file__).resolve().parent
+
+
 def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:
-    if hooks_dir and hooks_dir.is_absolute():
-        base = hooks_dir
-    else:
-        base = Path(__file__).resolve().parent
+    base = _hooks_base(hooks_dir)
+    plugin_dir = base.parent if base.name == "hooks" else base
     # 1. Skill script: <plugin-dir>/skills/premise-check/scripts/verdict.py
-    skill_script = base.parent / "skills" / "premise-check" / "scripts" / "verdict.py"
+    skill_script = (plugin_dir / "skills" / "premise-check" / "scripts" / "verdict.py").resolve()
     if skill_script.is_file():
         return skill_script
     # 2. Hook script: <plugin-dir>/hooks/premise_check_verdict.py
-    hook_script = base / "premise_check_verdict.py"
+    hook_script = (base / "premise_check_verdict.py").resolve()
     if hook_script.is_file():
         return hook_script
     return skill_script
@@ -247,10 +266,18 @@ def format_verdict_command(
     hooks_dir: Path | None = None,
     session_id: str = "",
 ) -> str:
+    base = _hooks_base(hooks_dir)
+    plugin_dir = base.parent if base.name == "hooks" else base
     script_path = resolve_verdict_script(hooks_dir)
-    quoted_script = shlex.quote(str(script_path))
+    # Run in the plugin's own environment, the same one the hooks use, so the
+    # verdict span can import opentelemetry.
+    quoted_project = shlex.quote(str(plugin_dir.resolve()))
+    quoted_script = shlex.quote(str(script_path.resolve()))
     quoted_claim = shlex.quote(claim_id)
-    cmd = f'python3 {quoted_script} --claim {quoted_claim} --verdict PASS --reason "<why>"'
+    cmd = (
+        f"uv run --project {quoted_project} python3 {quoted_script}"
+        f' --claim {quoted_claim} --verdict PASS --reason "<why>"'
+    )
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
     return cmd

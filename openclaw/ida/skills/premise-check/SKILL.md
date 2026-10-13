@@ -94,7 +94,7 @@ Do not evaluate harness notices (e.g. automated background command completions, 
 Record the verdict using the exact runnable call given in the hook's prompt note or block message:
 
 ```bash
-python3 <path/to/verdict.py> --claim <claim_id> --verdict PASS --reason "<why>" [--title "<short_title>"]
+uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict PASS --reason "<why>" [--title "<short_title>"]
 ```
 
-From this repo's root, use `plugins/ida/skills/premise-check/scripts/verdict.py`. Use `--reason-file <path>` (or `-` for stdin) when the reason contains multi-line text or quotes.
+From this repo's root, use `uv run python3 plugins/ida/skills/premise-check/scripts/verdict.py`. Use `--reason-file <path>` (or `-` for stdin) when the reason contains multi-line text or quotes.
