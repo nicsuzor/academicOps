@@ -43,6 +43,7 @@ def no_ambient_pkb_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     path, so tests of the CLI path would silently test the wrong branch.
     """
     for var in (
+        "PKB_MCP_URL",
         "PKB_MCP_HEADERS",
         "PKB_MCP_TOKEN",
         "CF_ACCESS_CLIENT_ID",
@@ -97,72 +98,45 @@ def test_user_prompt_submit_truncates_prompt_to_200():
     """Prompt query is truncated to 200 characters when passed to pkb search."""
     long_prompt = "a" * 350
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
-        patch("subprocess.run") as mock_run,
+        patch.object(
+            handlers, "_search_via_fastmcp_client", return_value="result line"
+        ) as mock_client,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_proc = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "a" * 200],
-            returncode=0,
-            stdout="result line\n",
-            stderr="",
-        )
-        mock_run.return_value = mock_proc
         out = handlers._run_pkb_search(long_prompt)
         assert out == "result line"
-        assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
-    assert mock_run.call_args[0][0][3:5] == ["pkb_search", "--input-json"]
-    assert "a" * 200 in mock_run.call_args[0][0][5]
+        mock_client.assert_called_once_with("http://test", "a" * 200, {})
 
 
 def test_user_prompt_submit_strips_ansi_from_prompt():
     """ANSI escape sequences in prompt are stripped before passing to pkb search."""
     ansi_prompt = "\x1b[31mred text\x1b[0m with \x1b[1mbold\x1b[0m"
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
-        patch("subprocess.run") as mock_run,
+        patch.object(
+            handlers, "_search_via_fastmcp_client", return_value="result line"
+        ) as mock_client,
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_proc = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "red text with bold"],
-            returncode=0,
-            stdout="result line\n",
-            stderr="",
-        )
-        mock_run.return_value = mock_proc
         out = handlers._run_pkb_search(ansi_prompt)
         assert out == "result line"
-        assert mock_run.call_args[0][0][:2] == ["/usr/bin/mcp", "call"]
-    assert mock_run.call_args[0][0][3:5] == ["pkb_search", "--input-json"]
-    assert "red text with bold" in mock_run.call_args[0][0][5]
+        mock_client.assert_called_once_with("http://test", "red text with bold", {})
 
 
 def test_run_pkb_search_uses_measured_timeout():
-    """subprocess timeout matches the measured backend-latency ceiling, not the old 15s guess."""
-    with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
-        patch("subprocess.run") as mock_run,
-        patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
-    ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout="result\n", stderr=""
-        )
-        handlers._run_pkb_search("q")
-        assert mock_run.call_args.kwargs["timeout"] == handlers._SEARCH_TIMEOUT_SECONDS
-        assert handlers._SEARCH_TIMEOUT_SECONDS < 15
+    """FastMCP client search timeout matches the measured backend-latency ceiling, not the old 15s guess."""
+    assert handlers._SEARCH_TIMEOUT_SECONDS < 15
+    assert handlers._SEARCH_TIMEOUT_SECONDS > 0
 
 
 def test_run_pkb_search_caps_oversized_output():
     """Output larger than the injection budget is truncated with a marker, regardless of source."""
     huge = "x" * (handlers._MAX_INJECT_CHARS * 2)
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
-        patch("subprocess.run") as mock_run,
+        patch.object(
+            handlers, "_search_via_fastmcp_client", return_value=handlers._cap_output(huge)
+        ),
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=huge, stderr=""
-        )
         out = handlers._run_pkb_search("q")
         assert out is not None
         assert len(out) == handlers._MAX_INJECT_CHARS
@@ -173,13 +147,9 @@ def test_run_pkb_search_leaves_normal_output_untouched():
     """Output well under the cap passes through byte-for-byte."""
     normal = "1. Some doc (score: 0.08)\n   path/to/doc.md\n   an extract of the match."
     with (
-        patch("shutil.which", return_value="/usr/bin/mcp"),
-        patch("subprocess.run") as mock_run,
+        patch.object(handlers, "_search_via_fastmcp_client", return_value=normal),
         patch.dict("os.environ", {"PKB_MCP_URL": "http://test"}),
     ):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["/usr/bin/mcp", "search", "q"], returncode=0, stdout=normal, stderr=""
-        )
         out = handlers._run_pkb_search("q")
         assert out == normal
 
@@ -407,26 +377,98 @@ def test_resolve_mcp_headers_logs_malformed_json(caplog):
     assert any("PKB_MCP_HEADERS" in r.getMessage() for r in caplog.records)
 
 
-def test_run_pkb_search_with_headers_never_falls_back_to_unauthenticated_cli():
-    """With headers configured, a failed HTTP search returns None; it does not
-    retry unauthenticated through the CLI and double the prompt's wait."""
+def test_search_over_http_with_no_auth_headers_set():
+    """PKB search uses in-process HTTP client even when no auth headers are set in the environment."""
     with (
-        patch.object(handlers, "_resolve_mcp_headers", return_value={"X-Auth": "t"}),
-        patch.object(handlers, "_search_via_fastmcp_client", return_value=None) as mock_http,
-        patch("subprocess.run") as mock_subproc,
+        patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}, clear=True),
+        patch.object(
+            handlers, "_search_via_fastmcp_client", return_value="1. Match in PKB"
+        ) as mock_http,
+    ):
+        assert handlers._resolve_mcp_headers() == {}
+        out = handlers._run_pkb_search("query text")
+        assert out == "1. Match in PKB"
+        mock_http.assert_called_once_with("https://pkb.example.com", "query text", {})
+
+
+def test_run_pkb_search_has_no_subprocess_or_cli_route():
+    """_run_pkb_search reaches the PKB over HTTP only and has no CLI or subprocess route."""
+    with (
+        patch.object(handlers, "_search_via_fastmcp_client", return_value="result") as mock_http,
         patch.dict("os.environ", {"PKB_MCP_URL": "https://mcp.example.com"}),
     ):
-        assert handlers._run_pkb_search("query text") is None
-        mock_http.assert_called_once_with("https://mcp.example.com", "query text", {"X-Auth": "t"})
-        mock_subproc.assert_not_called()
+        out = handlers._run_pkb_search("query text")
+        assert out == "result"
+        mock_http.assert_called_once_with("https://mcp.example.com", "query text", {})
+        # Handlers module must not import or use subprocess for searching
+        assert not hasattr(handlers, "subprocess")
+
+
+def test_http_failure_surfaces_as_hook_failure_naming_the_error():
+    """When HTTP access fails, the hook raises the failure naming the error rather than returning honesty."""
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        raw={"prompt": "what is the plan?"},
+        hooks_dir=PKB_HOOKS,
+        agent_type="ida:ida",
+    )
+    with (
+        patch.dict("os.environ", {"PKB_MCP_URL": "https://pkb.example.com"}),
+        patch.object(
+            handlers,
+            "_search_via_fastmcp_client",
+            side_effect=RuntimeError("connection refused to https://pkb.example.com"),
+        ),
+    ):
+        with pytest.raises(RuntimeError, match="connection refused to https://pkb.example.com"):
+            handlers.search_the_pkb(ctx)
+
+
+def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path):
+    """End-to-end dispatch confirms an HTTP failure surfaces naming the error, not returning honesty."""
+    env = dict(os.environ)
+    env["PKB_MCP_URL"] = "http://127.0.0.1:9"  # Unreachable port ensures HTTP connection failure
+    for var in (
+        "PKB_MCP_HEADERS",
+        "PKB_MCP_TOKEN",
+        "CF_ACCESS_CLIENT_ID",
+        "CF_ACCESS_CLIENT_SECRET",
+    ):
+        env.pop(var, None)
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0
+    # The failure must be reported in stderr naming the handler and error
+    assert "search_the_pkb" in proc.stderr
+    # The output must NOT be the honesty message
+    expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
+    data = json.loads(proc.stdout)
+    content = data.get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert expected_honesty not in content
+    # The failure is surfaced naming the error
+    assert "search_the_pkb" in content and "failed with" in content
 
 
 def test_search_via_fastmcp_client_is_bounded_by_timeout():
-    """A stalled backend cannot hold the prompt past the search timeout."""
+    """A stalled backend raises TimeoutError rather than returning None and falling back."""
     import asyncio
     import time
 
-    async def stall(*_args):
+    async def stall(*_args, **_kwargs):
         await asyncio.sleep(30)
 
     with (
@@ -434,5 +476,6 @@ def test_search_via_fastmcp_client_is_bounded_by_timeout():
         patch.object(handlers, "_SEARCH_TIMEOUT_SECONDS", 0.2),
     ):
         start = time.monotonic()
-        assert handlers._search_via_fastmcp_client("https://x", "q", {"A": "b"}) is None
+        with pytest.raises(TimeoutError):
+            handlers._search_via_fastmcp_client("https://x", "q", {"A": "b"})
         assert time.monotonic() - start < 5

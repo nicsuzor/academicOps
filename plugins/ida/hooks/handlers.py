@@ -9,9 +9,7 @@ import logging
 import os
 import re
 import shlex
-import shutil
 import socket
-import subprocess
 import tempfile
 from collections.abc import Callable
 from datetime import datetime
@@ -258,17 +256,13 @@ def _search_via_fastmcp_client(mcp_url: str, query: str, headers: dict[str, str]
     """Search the PKB in-process over streamable HTTP with the given headers.
 
     The whole connect-and-call is bounded by `_SEARCH_TIMEOUT_SECONDS`. Any
-    failure is logged and returns None; there is no second transport to try.
+    failure is raised so the hook fails loudly rather than falling back.
     """
-    try:
-        return asyncio.run(
-            asyncio.wait_for(
-                _call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS
-            )
+    return asyncio.run(
+        asyncio.wait_for(
+            _call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS
         )
-    except Exception as exc:
-        log.warning("PKB search over HTTP failed: %r", exc)
-        return None
+    )
 
 
 def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
@@ -282,52 +276,7 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
         return None
 
     headers = _resolve_mcp_headers()
-    if headers:
-        return _search_via_fastmcp_client(mcp_url, query, headers)
-
-    mcp_bin = shutil.which("fastmcp") or shutil.which("mcp")
-    if not mcp_bin:
-        log.warning("fastmcp/mcp binary not found for UserPromptSubmit hook")
-        return None
-
-    try:
-        env = dict(os.environ)
-        env["NO_COLOR"] = "1"
-        env["AOPS_OFFLINE"] = "true"
-
-        cmd = [
-            mcp_bin,
-            "call",
-            mcp_url,
-            "pkb_search",
-            "--input-json",
-            json.dumps({"query": query}),
-        ]
-
-        mcp_token = os.environ.get("PKB_MCP_TOKEN")
-        if mcp_token:
-            cmd.extend(["--auth", mcp_token])
-        else:
-            cmd.extend(["--auth", "none"])
-
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=_SEARCH_TIMEOUT_SECONDS,
-            cwd=str(cwd) if cwd and Path(cwd).is_dir() else None,
-            env=env,
-        )
-        if proc.returncode == 0:
-            out = proc.stdout.strip()
-            out = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", out).strip()
-            if out:
-                return _cap_output(out)
-        else:
-            log.warning("mcp search exited with returncode %s: %s", proc.returncode, proc.stderr)
-    except Exception as exc:
-        log.warning("mcp search execution failed: %s", exc)
-    return None
+    return _search_via_fastmcp_client(mcp_url, query, headers)
 
 
 def search_the_pkb(ctx: HookContext) -> Result | None:
