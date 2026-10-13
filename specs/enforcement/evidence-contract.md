@@ -212,7 +212,12 @@ is non-delegable to mechanical parsers.
 ## Where This Binds
 
 - **Layer 2 -- `release_task`/`complete_task`** ([task-contract.md](task-contract.md)).
-  The completion claim itself must satisfy this contract.
+  The completion claim itself must satisfy this contract. `/pull` mandates
+  invoking `/dump` for the final handover and for logging results at the end of
+  every job, whatever its release status, and `/dump`'s `release_task` body
+  update includes an Argdown proof (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
+  that supports a complete and valid answer to each original direction given or
+  question posed.
 - **Layer 3 -- workflow boundary-check and QA-around**
   ([workflow.md](workflow.md#the-five-step-shape)). Both steps read a handback in
   this shape and apply Substance over form.

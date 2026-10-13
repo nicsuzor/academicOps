@@ -73,7 +73,13 @@ this contract does not restate.
   [spec-partial-work-tight-loop-delivery.md](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)
   (the existing terminal status in the canonical taxonomy -- a partial handback
   is a legal terminal outcome, not a failure; that spec owns partial
-  semantics, which this bullet does not restate). A worker whose own deliverable
+  semantics, which this bullet does not restate). `/pull` mandates invoking
+  `/dump` for the final handover and for logging results at the end of every
+  job, whatever its release status (`done`, `partial`, `review`, `failed`,
+  `cancelled`, or `in_progress`), and `/dump`'s `release_task` body update
+  includes an Argdown proof (per [`premise-check`](../../plugins/ida/skills/premise-check/SKILL.md))
+  that supports a complete and valid answer to each original direction given or
+  question posed. A worker whose own deliverable
   is complete releases its task `done`, even when a follow-up that depends on it
   (QA, merge, deploy) is still to run; `partial` is reserved strictly for the
   worker's own unfinished acceptance items. Only silent, undisclosed

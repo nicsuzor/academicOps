@@ -1,11 +1,11 @@
 ---
 name: pull
-description: Claim a queued PKB task, execute it to completion with subagents, record verified results, and hand over.
+description: Claim a queued PKB task, execute it to completion with subagents, record verified results, and hand over via /dump.
 ---
 
 # Pull
 
-Claim and execute a queued PKB task, directing subagents to deliver against stated acceptance criteria.
+Claim and execute a queued PKB task, directing subagents to deliver against stated acceptance criteria, then invoke `/dump` to log results and hand over.
 
 ## Procedure
 
@@ -34,4 +34,4 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 ### 5. Handover
 
-Invoke `/dump` to commit changes, release tasks, and emit the final handover report.
+Invoke `/dump` at the end of every job, whatever its release status (`done`, `partial`, `review`, `failed`, `cancelled`, or `in_progress`). `/dump` is mandatory for the final handover and for logging results at the end of every job, because exiting or releasing directly omits the task-body proof and session handover report.
