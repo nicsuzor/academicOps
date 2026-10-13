@@ -259,9 +259,7 @@ def _search_via_fastmcp_client(mcp_url: str, query: str, headers: dict[str, str]
     failure is raised so the hook fails loudly rather than falling back.
     """
     return asyncio.run(
-        asyncio.wait_for(
-            _call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS
-        )
+        asyncio.wait_for(_call_pkb_search(mcp_url, query, headers), timeout=_SEARCH_TIMEOUT_SECONDS)
     )
 
 
