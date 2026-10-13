@@ -23,7 +23,7 @@ Verify the framework's plugins actually work — hooks, MCP, skills, subagent to
 
 A **persistently blank pane** — no spinner, no text at all — is a different failure signature from a busy spinner, not just a slower version of the same thing: it can mean an unrendered confirmation dialog (a trust prompt, an onboarding wizard) is sitting there waiting for input nobody sent, which looks identical to a dead hang from process state alone (alive, idle, zero CPU). Before concluding a worker is truly stuck, check for exactly this — one blind keypress is a cheap, non-destructive way to find out.
 
-**Computed ≠ Delivered ≠ Seen.** A hook-log record proves a gate _computed_ output; a clean exit code plus the client's wire payload proves it was _delivered_; only the rendered transcript or pane proves the agent or user actually _saw_ it. State which layer each piece of evidence proves — see [[wf-session-hook-forensics]] for the full treatment of this distinction.
+**Computed ≠ Delivered ≠ Seen.** A hook-log record proves a gate _computed_ output; a clean exit code plus the client's wire payload proves it was _delivered_; only the rendered transcript or pane proves the agent or reader actually _saw_ it. State which layer each piece of evidence proves — see [[wf-session-hook-forensics]] for the full treatment of this distinction.
 
 ## 1. The surface matrix
 
@@ -49,7 +49,7 @@ Run when infrastructure, gate definitions, the plugin allowlist, or the containe
 
 State these axes up front, then judge each independently with its own evidence (pass / fail / inconclusive — don't force a binary where the evidence doesn't support one):
 
-1. **Hooks** fire for the events that actually occurred (computed layer), deliver cleanly (clean exit, no stderr), and the expected user-facing text actually appears in the pane (seen layer).
+1. **Hooks** fire for the events that actually occurred (computed layer), deliver cleanly (clean exit, no stderr), and the expected prompt-facing text actually appears in the pane (seen layer).
 2. **Responses** are appropriate to the prompt and to any gate constraint in effect — the agent waits or complies rather than routing around a block. Test the full cycle: trigger the gate, satisfy it, confirm the original task resumes rather than stalling.
 3. **Execution** — at least one real tool or shell call returns genuine success inside the container. "Blocked by a gate as designed" is a separate axis from this one, not a failure of it.
 4. **Gates** — the gates that actually fire match what the tools invoked should trigger, produce the right state transition at the right point, and run in the mode the current dispatch configuration specifies. A gate that's supposed to block something but never visibly does is _inconclusive_, not a pass — don't round that up.

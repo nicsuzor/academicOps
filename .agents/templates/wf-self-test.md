@@ -21,11 +21,11 @@ End-to-end self-test of the session infrastructure itself — hook gates, MCP/PK
 
 ## 1. Hook gates verification
 
-Test the layers of session infrastructure in order, and for each layer verify it fires **and** that its output lands on the correct channel (agent-only vs. user-visible vs. both — see §3):
+Test the layers of session infrastructure in order, and for each layer verify it fires **and** that its output lands on the correct channel (agent-only vs. client-visible vs. both — see §3):
 
 - SessionStart — principles loaded, session state written (agent-only channel).
 - MCP/PKB — semantic search and task metadata answer, the server is responsive.
-- PreToolUse — a hydration/gate check blocks the operation it's meant to block, and the user can see why.
+- PreToolUse — a hydration/gate check blocks the operation it's meant to block, and the client can see why.
 - A PKB write — confirm it actually unblocks whatever gate was waiting on it.
 - Any periodic compliance check — confirm it fires per its own instructions.
 - Skills — invoke a representative sample and confirm they run.
@@ -75,17 +75,17 @@ On any failure: file one issue per root cause, not per symptom, and append to an
 
 ## 3. Hook output channel routing
 
-Verifies every configured hook routes its output to the channel it's meant to reach — this is a regression class in its own right (a gate meant to log silently that instead leaks a wall of text to the user, or a gate meant to inform the user that instead only reaches agent context, are both real failure modes that have shipped before).
+Verifies every configured hook routes its output to the channel it's meant to reach — this is a regression class in its own right (a gate meant to log silently that instead leaks a wall of text to the client, or a gate meant to inform the client that instead only reaches agent context, are both real failure modes that have shipped before).
 
-**Channel model**: one channel is user-visible surface; the other is the agent's own next-turn context. A hook's disposition — which channel(s) it's meant to reach — is a property of that specific (client, event, gate) combination and should be looked up from the live authoritative source at test time, never assumed from memory or a stale local note, since gates get added, retired, and reclassified.
+**Channel model**: one channel is client-visible surface; the other is the agent's own next-turn context. A hook's disposition — which channel(s) it's meant to reach — is a property of that specific (client, event, gate) combination and should be looked up from the live authoritative source at test time, never assumed from memory or a stale local note, since gates get added, retired, and reclassified.
 
 **Pre-flight**: confirm hooks are executing at all before judging routing (Step 0) — total hook failure reads as "no findings" here, which is the wrong conclusion; confirm at least one hook processed successfully first.
 
-**Verification approach**: read the live hook configuration and gate implementation to identify active payloads; look up the intended channel for each; then either trigger it in a real session or evaluate post-hoc from session artefacts. One known false-positive shape to watch for: a "warn" verdict on a stop-type hook can trigger a legacy fallback path that leaks agent-only content to the user channel — check the verdict type before concluding a routing bug.
+**Verification approach**: read the live hook configuration and gate implementation to identify active payloads; look up the intended channel for each; then either trigger it in a real session or evaluate post-hoc from session artefacts. One known false-positive shape to watch for: a "warn" verdict on a stop-type hook can trigger a legacy fallback path that leaks agent-only content to the client channel — check the verdict type before concluding a routing bug.
 
-**Compute the expected disposition, don't restate a memorised table.** For the (client, event) pair under test, derive from the live channel specification: does any message reach the user at all; does the agent receive context, and via which mechanism (non-blocking delivery, or block-to-inject — noting that on at least one client family a block's "reason" text is the agent's only channel and is _also_ user-visible, so there is no such thing as a pure agent-only block channel on that client); and is there a "agent gets the full body, user gets only a short summary" split disposition available on this client/event at all (this disposition has historically been retired on at least one client after being found to silently discard blocking output from co-located gates sharing the same hook entry — don't assume it's live without checking the current mechanism).
+**Compute the expected disposition, don't restate a memorised table.** For the (client, event) pair under test, derive from the live channel specification: does any message reach the client at all; does the agent receive context, and via which mechanism (non-blocking delivery, or block-to-inject — noting that on at least one client family a block's "reason" text is the agent's only channel and is _also_ client-visible, so there is no such thing as a pure agent-only block channel on that client); and is there a "agent gets the full body, client gets only a short summary" split disposition available on this client/event at all (this disposition has historically been retired on at least one client after being found to silently discard blocking output from co-located gates sharing the same hook entry — don't assume it's live without checking the current mechanism).
 
-**Pass/fail is computed from those fields, not read off a fixed table**: agent-full/user-summary → the agent transcript must contain the full body and the user pane only a short summary, never the full body (flag as a drift finding if you find equipment for this disposition present but the code disagrees that it's reachable); agent-only → no user-visible message, but the agent gets the content; user-only → the reverse; both → same text reaches both sides; unmapped/inert → no live channel at all, the event is log-only or dropped by the client — record and move on, not a bug.
+**Pass/fail is computed from those fields, not read off a fixed table**: agent-full/client-summary → the agent transcript must contain the full body and the client pane only a short summary, never the full body (flag as a drift finding if you find equipment for this disposition present but the code disagrees that it's reachable); agent-only → no client-visible message, but the agent gets the content; client-only → the reverse; both → same text reaches both sides; unmapped/inert → no live channel at all, the event is log-only or dropped by the client — record and move on, not a bug.
 
 Any mismatch between the computed expectation and what you actually observe in the pane/transcript is a routing bug — file it with the session id, the transcript excerpt, the agent's verbatim answer, and which specific expectation it contradicts. Don't attempt to fix routing inside a self-test session.
 

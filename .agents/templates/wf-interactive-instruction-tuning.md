@@ -20,12 +20,12 @@ type: template
 
 ## Purpose
 
-This workflow establishes a generalizable, human-in-the-loop procedure for verifying framework features step-by-step with a live target agent instance (`agy` or `claude`).
+This workflow establishes a generalizable step-by-step procedure for verifying framework features with a live target agent instance (`agy` or `claude`).
 
-Instead of running an agent end-to-end unsupervised (where failures are hard to isolate), the driver agent and user walk through the expected task plan one discrete step at a time. If the target agent deviates, fails, or produces sub-optimal results:
+Instead of running an agent end-to-end unsupervised (where failures are hard to isolate), the driver agent walks through the expected task plan one discrete step at a time. If the target agent deviates, fails, or produces sub-optimal results:
 
 1. The target session is stopped/killed immediately.
-2. The user and driver discuss prompt/instruction gaps ("how to persuade the agent").
+2. The driver analyzes prompt/instruction gaps ("how to persuade the agent").
 3. Instruction/code fixes are made in-place.
 4. Hot distribution artifacts (`./dist/`) are rebuilt so the target reloads updated plugins on restart.
 5. The step is re-tested interactively until it passes cleanly.
@@ -38,7 +38,7 @@ Instead of running an agent end-to-end unsupervised (where failures are hard to 
 
 1. **Thorough PKB & Spec Search**:
    - Query PKB, `specs/`, `.agents/skills/`, and `plugins/` for relevant specifications, rules, axioms, and prior art.
-   - Map out all hard invariants (paths, schemas, rules, formatting, user data preservation).
+   - Map out all hard invariants (paths, schemas, rules, formatting, input data preservation).
 2. **Formulate Step-by-Step Expected Micro-Actions**:
    - Break down the task into numbered, granular micro-steps.
    - For each micro-step, specify:
@@ -70,7 +70,7 @@ For each step in the micro-action sequence:
    - **PASS**: Output matches expected behavior. Record observation and proceed to next step.
    - **FAIL / DEVIATION**:
      - **Kill Target**: `/exit` or `tmux kill-session -t "$TMUX_NAME"`.
-     - **Persuasion Analysis**: User and driver analyze why the model failed (unclear prompt, missing constraint in SKILL.md, tool edge case).
+     - **Persuasion Analysis**: Analyze why the model failed (unclear prompt, missing constraint in SKILL.md, tool edge case).
      - **Apply Fix In-Place**: Update prompt instructions, skill definition, or plugin code. Rebuild `./dist/` (`make build` / plugin sync).
      - **Re-Test Step**: Restart target instance, re-inject step prompt, and verify fix.
 

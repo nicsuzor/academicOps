@@ -95,7 +95,7 @@ Worker sessions can usually be distinguished from interactive ones by `cwd` cont
 - **A compliance gate firing repeatedly in a long session** — normal; expected as operation count climbs.
 - **Several consecutive Stop denies then an auto-approve** — the escape hatch, not compliance; investigate whether the agent tried to satisfy the gate between denies or just retried blindly.
 - **Zero hook JSONL for an entire provider/class of session** — either that provider hasn't run under the current hook system, or its integration is broken; treat as an open question requiring its own investigation, not evidence of "nothing happened."
-- **Operations-vs-turns confusion** — always decode a stated threshold or count against operations (tool calls), not turns (user prompts), unless a source explicitly says otherwise.
+- **Operations-vs-turns confusion** — always decode a stated threshold or count against operations (tool calls), not turns (input turns), unless a source explicitly says otherwise.
 
 ## When to include
 

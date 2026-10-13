@@ -28,11 +28,11 @@ A process for creating and maintaining a flat, diagnostically useful enforcement
 ## 1. Rule Formulation & Logical Binding Principles
 
 1. **Explain Operative Intent (What the Rule is Trying to Accomplish):**
-   - Rules must clearly state what the system or component is trying to do or prevent, rather than repeating cryptic shorthand slogans (e.g. do not write _"ida parks a thread; only the user ends a conversation"_; write _"Ida must not unilaterally mark an open user thread or request as finished, buffering in-flight work until the user explicitly confirms completion"_).
+   - Rules must clearly state what the system or component is trying to do or prevent, rather than repeating cryptic shorthand slogans (e.g. do not write _"ida parks a thread; only the principal ends a conversation"_; write _"Ida must not unilaterally mark an open conversation or request as finished, buffering in-flight work until explicit confirmation of completion"_).
 2. **Logical Accuracy & Binding Scope:**
-   - Express general prohibitions accurately across the system (e.g. _"Agents other than ida must not communicate directly with the user"_).
-   - Pair general prohibitions with the specific behavioural obligations on the designated agent (e.g. _"Ida must communicate with the user in a concise and accommodating manner"_).
-   - **Persona instructions only bind the agent whose file contains them.** Logically, instructions in `ida.md` cannot bind other agents; the mechanism for _"Agents other than ida must not talk to the user"_ must reflect what actually restrains those other agents (or be marked `not enforced`).
+   - Express general prohibitions accurately across the system (e.g. _"Agents other than ida must not communicate directly across the client channel"_).
+   - Pair general prohibitions with the specific behavioural obligations on the designated agent (e.g. _"Ida communicates across the client channel in a concise and accommodating manner"_).
+   - **Persona instructions only bind the agent whose file contains them.** Logically, instructions in `ida.md` cannot bind other agents; the mechanism for _"Agents other than ida must not speak on the client channel"_ must reflect what actually restrains those other agents (or be marked `not enforced`).
 
 ## 2. Table Schema & Vocabulary
 

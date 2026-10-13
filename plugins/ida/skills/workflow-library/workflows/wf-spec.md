@@ -16,7 +16,7 @@ Authors a complete, unambiguous technical specification grounded in the evidence
 
 ## Procedure
 
-1. **Problem statement and target** -- define the problem, user/caller context, and required capabilities.
+1. **Problem statement and target** -- define the problem, caller/system context, and required capabilities.
 2. **Architecture and data flow** -- describe the components and what each owns, and external integration points.
 3. **Interface contracts** -- define data types, function signatures, schemas, or protocols with precision.
 4. **Acceptance criteria** -- formulate concrete, observable, and falsifiable acceptance criteria for completion.

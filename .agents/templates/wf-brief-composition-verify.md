@@ -71,7 +71,7 @@ Every test case is evaluated against the three readers defined in `brief/SKILL.m
 1. **Cold Executor**: A cold agent reading only the task body can start execution immediately without asking what has already been tried or what they are allowed to touch.
 2. **Independent Evaluator**: A separate agent arriving later reaches a definitive verdict from the evidence the brief demanded, without redoing the investigation.
 3. **Structural & Epistemic Soundness**:
-   - Body clearly identifies what the work is built from, which beliefs carry evidence vs hopes, which forks are open, what probe settles each, and what is waiting on the user.
+   - Body clearly identifies what the work is built from, which beliefs carry evidence vs hopes, which forks are open, what probe settles each, and what is waiting on confirmation.
    - Graph structure: Single node, well connected, with a `contributes_to` edge to a real target.
    - Epistemic grounding: Every claim about the world was observed this pass with citations; standard judging the unit is named with gaps recorded.
    - Sizing rationale (brief/SKILL.md: "Cut only at forks and boundaries... Never cut on size or feel."): Explicitly states why the unit was or was not cut (no-cut default vs fork cut vs responsibility-boundary cut).
@@ -122,7 +122,7 @@ Every test case is evaluated against the three readers defined in `brief/SKILL.m
 
 ### Case 4: Case That Should HALT (brief/SKILL.md: "the unit is not briefable... stop" or "Do not resolve a fork the work uncovers")
 
-- **Shape**: Task resting on a dead premise (a non-existent module or retired tool) or an unresolvable user trade-off.
+- **Shape**: Task resting on a dead premise (a non-existent module or retired tool) or an unresolvable trade-off.
 - **Prompt**: `"Update the situate skill in plugins/aops/skills/situate/SKILL.md to support dynamic template weighting."`
 - **Locked Pass Criteria**:
   - Re-verifies premises against the world (brief/SKILL.md step 1); discovers `situate` skill was retired and no longer exists.
@@ -135,7 +135,7 @@ Every test case is evaluated against the three readers defined in `brief/SKILL.m
 ### Case 5: Composition From Multiple `wf-` Templates (brief/SKILL.md: "Enumerate the workflow components available")
 
 - **Shape**: Complex task requiring composition from core process template + dynamic PKB templates.
-- **Prompt**: `"Develop a new MCP tool pkb__export_graph, served by the services MCP server, rude outputs GraphViz DOT syntax, including automated test coverage, independent QA verification, and user documentation update."`
+- **Prompt**: `"Develop a new MCP tool pkb__export_graph, served by the services MCP server, rude outputs GraphViz DOT syntax, including automated test coverage, independent QA verification, and documentation update."`
 - **Locked Pass Criteria**:
   - Composes `feature-dev` (core process) + `wf-tdd-cycle` (inner loop) + `wf-qa-verify` (outer review loop) + `wf-handover`.
   - Explicitly states the proportionality justification for each composed template.
