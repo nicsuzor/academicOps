@@ -7,6 +7,8 @@ description: Turn an objective, or a task id, into complete dispatchable tasks o
 
 The task is the whole message to the worker. Write it once, keep it short, and leave it on the graph for `/dispatch`.
 
+A polecat is a short-running container: it gets in, does one unit of work it controls, records the evidence, and gets out cleanly. It never sees the whole objective through. Everything after its unit is a follow-up task on the graph, and the workflow decides what those follow-ups are.
+
 Nothing is written to the graph until steps 1-2 have passed: a task created early survives every check that later fails.
 
 ## 1. Hydrate
@@ -37,9 +39,10 @@ Then assemble the steps:
 
 ## 3. Write each task
 
-- Default to creating a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
-- Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
-- If you must split a task, make each task as big as possible.
+- Default to a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
+- Cut at every wait: a step that can only complete after something the worker does not control happens (CI, review, merge, deploy, a reply) starts a new task, wired by `needs` to the task before it. Otherwise cut only where independent sessions are strictly required (e.g. forks, loops, independent reviews).
+- Make each task as big as possible within those cuts.
+- Write each follow-up the workflow calls for as its own task. Never fold a follow-up into the primary task or into another follow-up.
 - Wire `needs` edges only where one unit genuinely requires another's output.
 - Mint multi-task cuts using `pkb.decompose_task`.
 - Write tasks with status `queued` immediately.
@@ -47,7 +50,7 @@ Then assemble the steps:
 ```markdown
 ## Goal
 
-[ Concise description of the purpose of the task, describing the required end state, naming the repository or project and the objective. Recompose the ask into a clear logical structure; never quote the user's words verbatim. ]
+[ Concise description of the purpose of the task, describing the end state of this unit of work (not the whole objective), naming the repository or project and the objective. Recompose the ask into a clear logical structure; never quote the user's words verbatim. ]
 
 ## Context
 
@@ -59,7 +62,7 @@ Then assemble the steps:
 
 ## Instructions
 
-[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. ]
+[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. The last step is a clean finish drawn from the finish template: deliver (e.g. push and open the PR), record the evidence, release the task, and exit. The finish waits for nothing; what comes after it is a follow-up task. ]
 
 ## Output
 
@@ -89,15 +92,9 @@ Where the project finish template calls for QA review:
 - Every heading is a prompt for you to fill, and there is no slot for restrictions or exclusions: say what has to be done, not what shouldn't.
 - Keep each task under 150 words. Include only what the worker cannot find for itself.
 - Assume the worker could run anywhere; never reference local paths, tools, or conventions.
-- Leave out methods, tool names, runtime hints, notes on the worker's limits, summaries of linked notes, counts and history.
+- Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
-
-**Exclusions:**
-
-- Omit execution methods, command scripts, or implementation hints.
-- Omit summaries of linked notes; reference documents by pointer.
-- Omit provenance, changelogs, session narratives, and perishable counts or SHAs.
 - Do not create standalone decision tasks or file questions as tasks.
 
 ## 4. Report
