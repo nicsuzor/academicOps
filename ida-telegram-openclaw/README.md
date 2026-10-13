@@ -27,6 +27,10 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
 - **Voice In & Out:**
   - Voice notes transcribed via pluggable script without spending tool calls.
   - Voice replies via speech synthesis for spoken audio delivery.
+- **Native Bot Commands:**
+  - Registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, and `/up` via `setMyCommands` at `botCommandScopeChat` for each `allowFrom` chat on startup, surviving channel restarts and overriding `all_private_chats` defaults.
+  - Excludes reserved official-plugin commands (`/start`, `/help`, `/status`).
+  - Enriches bare menu taps (commands with no arguments) with each command's defined no-argument behavior (`meta.default_action` and `meta.skill`).
 - **Concurrency & Host Locks:**
   - Gated to `IDA_TELEGRAM_ROLE=primary`.
   - Non-primary instances register zero tools, run no poller, and leave hooks inert.

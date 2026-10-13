@@ -10,6 +10,7 @@ export interface WebContext {
   sessionSecret: string;
   emitChannelEvent: (event: string, content: string, meta: Record<string, unknown>) => void;
   resolvePermissionRelay?: (id: string, decision: "allow" | "deny") => void;
+  editTelegramCard?: (chatId: number, messageId: number, text: string) => Promise<void>;
 }
 
 export function handleApiRequest(req: Request, ctx: WebContext): Response | Promise<Response> {
@@ -104,6 +105,9 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
             status: 404,
             headers: { "Content-Type": "application/json" },
           });
+        }
+        if (ctx.editTelegramCard && result.question.chatId && result.question.messageId) {
+          await ctx.editTelegramCard(result.question.chatId, result.question.messageId, result.cardText);
         }
         ctx.emitChannelEvent(
           result.channelEvent.event,

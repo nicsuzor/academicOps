@@ -1,3 +1,5 @@
+import { getBareCommandBehavior, normalizeCommandName } from "./commands.js";
+
 export interface TelegramUser {
   id: number;
   is_bot: boolean;
@@ -24,6 +26,9 @@ export interface TelegramMessage {
   document?: { file_id: string; file_name?: string };
   voice?: { file_id: string; duration: number };
   audio?: { file_id: string; duration: number };
+  reply_markup?: {
+    inline_keyboard?: Array<Array<{ text: string; callback_data?: string }>>;
+  };
 }
 
 export interface TelegramReactionUpdate {
@@ -76,18 +81,47 @@ export function parseInboundUpdate(
     // Check for bot command (starts with '/')
     const text = msg.text || "";
     if (text.startsWith("/")) {
-      const parts = text.split(" ");
-      const cmd = parts[0];
+      const parts = text.trim().split(/\s+/);
+      const rawCmdToken = parts[0] || "";
+      const cmdName = normalizeCommandName(rawCmdToken);
+      const cmd = `/${cmdName}`;
+      const args = parts.slice(1).join(" ").trim();
+      const cmdSpec = getBareCommandBehavior(cmdName);
+
+      const meta: Record<string, unknown> = {
+        message_id: msg.message_id,
+        chat_id: msg.chat.id,
+        command: cmd,
+        args,
+        user_id: userId,
+      };
+
+      if (cmdSpec) {
+        meta.skill = cmdSpec.skill;
+      }
+
+      if (msg.reply_to_message) {
+        meta.reply_to_message_id = msg.reply_to_message.message_id;
+        if (msg.quote?.text) {
+          meta.quoted_text = msg.quote.text;
+        } else if (msg.reply_to_message.text) {
+          meta.quoted_text = msg.reply_to_message.text.substring(0, 300);
+        }
+      }
+
+      if (!args && cmdSpec) {
+        meta.default_action = cmdSpec.bareAction;
+        return {
+          event: "bot_command",
+          content: `${cmd} — ${cmdSpec.bareAction}`,
+          meta,
+        };
+      }
+
       return {
         event: "bot_command",
-        content: text,
-        meta: {
-          message_id: msg.message_id,
-          chat_id: msg.chat.id,
-          command: cmd,
-          args: parts.slice(1).join(" "),
-          user_id: userId,
-        },
+        content: args ? `${cmd} ${args}` : cmd,
+        meta,
       };
     }
 

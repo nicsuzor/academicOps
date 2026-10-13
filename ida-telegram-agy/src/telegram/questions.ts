@@ -24,6 +24,7 @@ export interface StoredQuestion extends QuestionPayload {
   selectedOptions?: number[];
   answeredChoice?: string;
   messageId?: number;
+  promptMessageId?: number;
 }
 
 export interface QuestionButton {
@@ -47,6 +48,7 @@ export interface QuestionAnswerEvent {
 export interface ResolveAnswerResult {
   cardText: string;
   channelEvent: QuestionAnswerEvent;
+  question: StoredQuestion;
 }
 
 export class QuestionBroker {
@@ -106,6 +108,31 @@ export class QuestionBroker {
     };
   }
 
+  public setMessageId(id: string, messageId: number) {
+    const q = this.questions.get(id);
+    if (q) {
+      q.messageId = messageId;
+      this.saveState();
+    }
+  }
+
+  public setPromptMessageId(id: string, promptMessageId: number) {
+    const q = this.questions.get(id);
+    if (q) {
+      q.promptMessageId = promptMessageId;
+      this.saveState();
+    }
+  }
+
+  public findQuestionByPromptMessageId(promptMessageId: number): StoredQuestion | undefined {
+    for (const q of this.questions.values()) {
+      if (q.status === "pending" && q.promptMessageId === promptMessageId) {
+        return q;
+      }
+    }
+    return undefined;
+  }
+
   public getPendingQuestions(): StoredQuestion[] {
     return Array.from(this.questions.values()).filter((q) => q.status === "pending");
   }
@@ -114,12 +141,34 @@ export class QuestionBroker {
     return this.questions.get(id);
   }
 
+  public toggleOption(id: string, optionIndex: number): QuestionCard | null {
+    const q = this.questions.get(id);
+    if (!q || q.status !== "pending" || !q.multiSelect) return null;
+
+    const selected = new Set(q.selectedOptions || []);
+    if (selected.has(optionIndex)) {
+      selected.delete(optionIndex);
+    } else {
+      selected.add(optionIndex);
+    }
+    q.selectedOptions = Array.from(selected).sort((a, b) => a - b);
+    this.saveState();
+    return this.renderQuestionCard(id);
+  }
+
   public renderQuestionCard(id: string): QuestionCard | null {
     const q = this.questions.get(id);
     if (!q) return null;
 
-    let text = q.header ? `*${q.header}*\n\n` : "";
+    let text = q.header ? `**${q.header}**\n\n` : "";
     text += q.question;
+
+    if (q.options.some((opt) => opt.description)) {
+      const optionLines = q.options.map((opt, idx) =>
+        opt.description ? `${idx + 1}. **${opt.label}** — ${opt.description}` : `${idx + 1}. **${opt.label}**`
+      );
+      text += `\n\n${optionLines.join("\n")}`;
+    }
 
     const buttons: QuestionButton[] = [];
 
@@ -133,7 +182,7 @@ export class QuestionBroker {
         });
       });
       buttons.push({
-        text: "Done",
+        text: "✅ Done",
         callbackData: `q:${id}:0:done`,
       });
     } else {
@@ -157,14 +206,16 @@ export class QuestionBroker {
 
   public async resolveAnswer(
     id: string,
-    optionIndex: number | "done",
+    optionIndex: number | "done" | "other",
     customText?: string
   ): Promise<ResolveAnswerResult | null> {
     const q = this.questions.get(id);
     if (!q || q.status !== "pending") return null;
 
     let choice = "";
-    if (typeof optionIndex === "number") {
+    if (customText !== undefined && (optionIndex === "other" || typeof optionIndex !== "number")) {
+      choice = customText;
+    } else if (typeof optionIndex === "number" && !Number.isNaN(optionIndex)) {
       const opt = q.options[optionIndex];
       choice = opt ? opt.label : `Option ${optionIndex + 1}`;
     } else if (optionIndex === "done") {
@@ -178,7 +229,11 @@ export class QuestionBroker {
     q.answeredChoice = choice;
     this.saveState();
 
-    const cardText = `*${q.question}*\n\nSelected: ${choice} ✅`;
+    const qLines = q.question.split("\n");
+    qLines[0] = `**${qLines[0]}**`;
+    const formattedQuestion = qLines.join("\n");
+    const headerPrefix = q.header ? `**${q.header}**\n\n` : "";
+    const cardText = `${headerPrefix}${formattedQuestion}\n\nSelected: ${choice} ✅`;
     const channelEvent: QuestionAnswerEvent = {
       event: "question_answer",
       question_id: id,
@@ -187,6 +242,7 @@ export class QuestionBroker {
       turn_id: q.turnId,
     };
 
-    return { cardText, channelEvent };
+    return { cardText, channelEvent, question: q };
   }
 }
+

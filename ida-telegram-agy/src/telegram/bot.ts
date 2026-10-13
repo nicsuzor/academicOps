@@ -1,5 +1,5 @@
 import { PluginConfig } from "../config.js";
-import { FormattedMessage } from "./format.js";
+import { FormattedMessage, formatMarkdownToEntities } from "./format.js";
 import { parseInboundUpdate, TelegramUpdate } from "./inbound.js";
 import { QuestionBroker } from "./questions.js";
 import { FeedbackManager } from "./feedback.js";
@@ -15,10 +15,18 @@ import { tmpdir } from "node:os";
 
 const execFileAsync = promisify(execFile);
 
+export interface ReplyButtonOption {
+  label: string;
+  callback_data?: string;
+  url?: string;
+  web_app?: string;
+}
+
 export interface SendReplyOptions {
   chatId: number;
   formatted: FormattedMessage;
   detailsId?: string;
+  buttons?: ReplyButtonOption[];
   voice?: boolean;
   replyTo?: number;
   feedback?: boolean;
@@ -75,10 +83,28 @@ export class TelegramBotClient {
   }
 
   public async sendReply(opts: SendReplyOptions): Promise<{ messageId: number } | null> {
-    const { chatId, formatted, detailsId, voice, replyTo, feedback, review } = opts;
+    const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
 
     // Build inline keyboard
     const inlineKeyboard: Array<Array<Record<string, unknown>>> = [];
+
+    // Custom decision / action buttons (vertical rows, recommendation first per FR-1.1 / FR-2.2)
+    if (buttons && buttons.length > 0) {
+      for (const b of buttons) {
+        const btnObj: Record<string, unknown> = { text: b.label };
+        if (b.callback_data) {
+          btnObj.callback_data = b.callback_data;
+        } else if (b.url) {
+          btnObj.url = b.url;
+        } else if (b.web_app) {
+          btnObj.web_app = { url: b.web_app };
+        } else {
+          btnObj.callback_data = `action:${b.label}`;
+        }
+        inlineKeyboard.push([btnObj]);
+      }
+    }
+
     const actionRow: Array<Record<string, unknown>> = [];
 
     // Feedback buttons
@@ -161,12 +187,18 @@ export class TelegramBotClient {
   }
 
   public async sendQuestionCard(chatId: number, qid: string, card: { text: string; buttons: Array<{ text: string; callbackData: string }> }) {
+    const formatted = formatMarkdownToEntities(card.text);
     const inline_keyboard = card.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
-    return await this.callApi("sendMessage", {
+    const res = await this.callApi("sendMessage", {
       chat_id: chatId,
-      text: card.text,
+      text: formatted.plainText,
+      entities: formatted.entities,
       reply_markup: { inline_keyboard },
     });
+    if (res?.ok && res?.result?.message_id) {
+      this.broker.setMessageId(qid, res.result.message_id);
+    }
+    return res;
   }
 
   public async sendPermissionCard(permId: string, toolName: string, input: Record<string, unknown>) {
@@ -204,12 +236,42 @@ export class TelegramBotClient {
   }
 
   public async editMessage(chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) {
+    const formatted = formatMarkdownToEntities(text);
     return await this.callApi("editMessageText", {
       chat_id: chatId,
       message_id: messageId,
-      text,
+      text: formatted.plainText,
+      entities: formatted.entities,
       reply_markup: replyMarkup,
     });
+  }
+
+  public async registerCommands(): Promise<boolean> {
+    if (!this.config.isPrimary || this.config.botCommands.length === 0) {
+      return false;
+    }
+
+    let allOk = true;
+    for (const chatId of this.config.allowFrom) {
+      const res = await this.callApi("setMyCommands", {
+        commands: this.config.botCommands,
+        scope: { type: "chat", chat_id: chatId },
+      });
+      if (!res?.ok) {
+        allOk = false;
+      }
+    }
+    return allOk;
+  }
+
+  public async getRegisteredCommands(chatId: number): Promise<Array<{ command: string; description: string }>> {
+    const res = await this.callApi("getMyCommands", {
+      scope: { type: "chat", chat_id: chatId },
+    });
+    if (res?.ok && Array.isArray(res.result)) {
+      return res.result;
+    }
+    return [];
   }
 
   public async startPolling() {
@@ -223,6 +285,8 @@ export class TelegramBotClient {
       console.error(`[ida-telegram] Cannot acquire host lock: ${lock.reason}. Exiting.`);
       return;
     }
+
+    await this.registerCommands();
 
     this.isRunning = true;
 
@@ -275,7 +339,29 @@ export class TelegramBotClient {
       await this.setReaction(update.message.chat.id, update.message.message_id, "👀");
     }
 
-    // 2. Handle Callback Queries (Buttons)
+    // 2. Check if message is a reply to a force_reply "✏️ Other" question prompt
+    if (
+      update.message?.from?.id &&
+      this.config.allowFrom.includes(update.message.from.id) &&
+      update.message.reply_to_message &&
+      update.message.text
+    ) {
+      const pendingQ = this.broker.findQuestionByPromptMessageId(update.message.reply_to_message.message_id);
+      if (pendingQ) {
+        const res = await this.broker.resolveAnswer(pendingQ.id, "other", update.message.text);
+        if (res) {
+          const targetMsgId = pendingQ.messageId || update.message.reply_to_message.message_id;
+          await this.editMessage(update.message.chat.id, targetMsgId, res.cardText, { inline_keyboard: [] });
+          this.emitChannelEvent(
+            `Question answered: ${res.channelEvent.choice}`,
+            res.channelEvent as unknown as Record<string, unknown>
+          );
+        }
+        return;
+      }
+    }
+
+    // 3. Handle Callback Queries (Buttons)
     if (update.callback_query) {
       const cb = update.callback_query;
       const data = cb.data || "";
@@ -287,11 +373,43 @@ export class TelegramBotClient {
       if (data.startsWith("q:")) {
         const parts = data.split(":");
         const qid = parts[1];
-        const optIdx = parts[3] === "done" ? "done" : parseInt(parts[3], 10);
+        const action = parts[3];
+        const q = this.broker.getQuestion(qid);
 
+        if (action === "other") {
+          if (cb.message) {
+            const promptTitle = q?.header || q?.question || qid;
+            const promptRes = await this.callApi("sendMessage", {
+              chat_id: cb.message.chat.id,
+              text: `✏️ Reply to this message with your answer for: ${promptTitle}`,
+              reply_parameters: { message_id: cb.message.message_id },
+              reply_markup: { force_reply: true, selective: true },
+            });
+            if (promptRes?.ok && promptRes?.result?.message_id) {
+              this.broker.setPromptMessageId(qid, promptRes.result.message_id);
+            }
+          }
+          return;
+        }
+
+        if (q?.multiSelect && action !== "done") {
+          const optIdx = parseInt(action, 10);
+          const updatedCard = this.broker.toggleOption(qid, optIdx);
+          if (updatedCard && cb.message) {
+            const inline_keyboard = updatedCard.buttons.map((b) => [{ text: b.text, callback_data: b.callbackData }]);
+            await this.callApi("editMessageReplyMarkup", {
+              chat_id: cb.message.chat.id,
+              message_id: cb.message.message_id,
+              reply_markup: { inline_keyboard },
+            });
+          }
+          return;
+        }
+
+        const optIdx = action === "done" ? "done" : parseInt(action, 10);
         const res = await this.broker.resolveAnswer(qid, optIdx);
         if (res && cb.message) {
-          await this.editMessage(cb.message.chat.id, cb.message.message_id, res.cardText);
+          await this.editMessage(cb.message.chat.id, cb.message.message_id, res.cardText, { inline_keyboard: [] });
           this.emitChannelEvent(
             `Question answered: ${res.channelEvent.choice}`,
             res.channelEvent as unknown as Record<string, unknown>
@@ -363,13 +481,42 @@ export class TelegramBotClient {
         await this.editMessage(
           cb.message.chat.id,
           cb.message.message_id,
-          `${cb.message.text}\n\n*${outcomeText}*`
+          `${cb.message.text}\n\n*${outcomeText}*`,
+          { inline_keyboard: [] }
         );
+        return;
+      }
+
+      // Custom action / decision buttons on reply cards (FR-1.1 / FR-8)
+      if (cb.message && this.config.allowFrom.includes(cb.from.id)) {
+        const kbRows = cb.message.reply_markup?.inline_keyboard || [];
+        const matchedBtn = kbRows.flat().find((b) => b.callback_data === data);
+        const label = matchedBtn?.text || data;
+        const splitIdx = data.indexOf(":");
+        const callbackPrefix = splitIdx !== -1 ? data.substring(0, splitIdx) : data;
+        const originalText = cb.message.text || "";
+
+        await this.editMessage(
+          cb.message.chat.id,
+          cb.message.message_id,
+          `${originalText}\n\nSelected: ${label} ✅`,
+          { inline_keyboard: [] }
+        );
+
+        this.emitChannelEvent(`tapped ${label}`, {
+          event: "button_tap",
+          callback_id: cb.id,
+          callback_prefix: callbackPrefix,
+          payload: data,
+          label,
+          target_message_id: cb.message.message_id,
+          user_id: cb.from.id,
+        });
         return;
       }
     }
 
-    // 3. Voice Notes
+    // 4. Voice Notes
     if (update.message?.voice || update.message?.audio) {
       const voice = update.message.voice || update.message.audio;
       const fileId = voice?.file_id;
@@ -414,10 +561,11 @@ export class TelegramBotClient {
       }
     }
 
-    // 4. General Inbound (text, reactions, commands)
+    // 5. General Inbound (text, reactions, commands)
     const event = parseInboundUpdate(update, this.config.allowFrom);
     if (event) {
       this.emitChannelEvent(event.content, event.meta);
     }
   }
 }
+

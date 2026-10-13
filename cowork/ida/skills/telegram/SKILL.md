@@ -35,6 +35,17 @@ Nic reads on his phone between other commitments. Cognitive load is the binding 
 - **Voice in:** Spoken voice notes from the user are transcribed automatically before reaching Ida (`voice: true`).
 - **Voice replies:** Set `voice: true` on `reply` when appropriate. Under `voice_replies: mirror` (default), Ida automatically mirrors voice notes with a spoken summary of Tier 1 content while keeping text in the chat caption.
 
+## Bot Commands
+
+The plugin registers `/decide`, `/q`, `/mine`, `/reconcile`, `/hydrate`, and `/up` in the chat's native Telegram command menu. When tapped in the menu, Telegram sends the bare command with no arguments and the plugin attaches `meta.default_action` and `meta.skill`:
+
+- **`/decide` (no args):** Invoke `/ida:decide` to read `## With you` in today's daily note and present the first open decision card.
+- **`/q` (with or without args):** Invoke `/ida:q`. If tapped bare without arguments, capture the replied-to or immediately preceding uncaptured ask in chat, or ask what to capture.
+- **`/mine` (with or without args):** Invoke `/ida:mine`. With an ask, track it as `ida-tracked`; tapped bare, pass through all `ida-tracked` tasks and report what is due.
+- **`/reconcile` (no args):** Invoke `/ida:reconcile` (`wf-reconcile`) and update `## With you` in today's daily note.
+- **`/hydrate` (with or without args):** Invoke `/ida:hydrate`. If tapped bare, extract ambiguous terms from the replied-to message or active topic, or ask which terms to hydrate.
+- **`/up` (no args):** Invoke `/ida:up` on the user's last correction.
+
 ## Reactions
 
 Reactions indicate progress on inbound messages:

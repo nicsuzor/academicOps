@@ -25,16 +25,18 @@ describe("Progressive disclosure: Format and Entities", () => {
   });
 
   test("handles blockquotes and expandable blockquotes (>!)", () => {
-    const text = "> Standard quote\n>! Expandable evidence\nNormal text";
+    const text = "**Header**\n\n> Standard quote\n>! Expandable `code` evidence\n\nNormal text";
     const { plainText, entities } = formatMarkdownToEntities(text);
 
     const stdQuote = entities.find((e) => e.type === "blockquote");
     expect(stdQuote).toBeDefined();
+    expect(plainText.slice(stdQuote!.offset, stdQuote!.offset + stdQuote!.length)).toBe("Standard quote");
 
     const expQuote = entities.find((e) => e.type === "expandable_blockquote");
     expect(expQuote).toBeDefined();
-    expect(plainText).toContain("Standard quote");
-    expect(plainText).toContain("Expandable evidence");
+    expect(plainText.slice(expQuote!.offset, expQuote!.offset + expQuote!.length)).toBe(
+      "Expandable code evidence"
+    );
   });
 
   test("formats markdown tables: pre if <= 36 cols, stacked cards if > 36 cols", () => {

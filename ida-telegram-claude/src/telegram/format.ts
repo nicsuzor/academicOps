@@ -52,30 +52,31 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
+    const sep = i > 0 ? "\n" : "";
 
     if (rawLine.startsWith(">!")) {
       if (!inExpQuote) {
         closeQuote();
         inExpQuote = true;
-        quoteStartOffset = out.length;
+        quoteStartOffset = out.length + sep.length;
       }
       const lineContent = rawLine.substring(2).trimStart();
-      out += (i > 0 && out.length > 0 && !out.endsWith("\n") ? "\n" : "") + lineContent;
+      out += sep + lineContent;
       continue;
     } else if (rawLine.startsWith(">")) {
       if (!inStdQuote) {
         closeQuote();
         inStdQuote = true;
-        quoteStartOffset = out.length;
+        quoteStartOffset = out.length + sep.length;
       }
       const lineContent = rawLine.substring(1).trimStart();
-      out += (i > 0 && out.length > 0 && !out.endsWith("\n") ? "\n" : "") + lineContent;
+      out += sep + lineContent;
       continue;
     } else {
       if (inStdQuote || inExpQuote) {
         closeQuote();
       }
-      out += (i > 0 && out.length > 0 && !out.endsWith("\n") ? "\n" : "") + rawLine;
+      out += sep + rawLine;
     }
   }
   closeQuote();

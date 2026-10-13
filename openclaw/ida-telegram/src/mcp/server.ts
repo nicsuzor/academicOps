@@ -189,6 +189,7 @@ export class StdioMcpServer {
           chatId,
           formatted,
           detailsId,
+          buttons: args.buttons as Array<{ label: string; callback_data?: string; url?: string; web_app?: string }> | undefined,
           voice: isVoice,
           replyTo,
           feedback,
@@ -229,24 +230,30 @@ export class StdioMcpServer {
         return { success: false, error: "No questions provided" };
       }
 
-      const q = questions[0];
-      const result = await this.broker.askUser({
-        question: q.question,
-        header: q.header,
-        options: q.options,
-        multiSelect: q.multiSelect,
-        allowOther: q.allowOther,
-        chatId: defaultChatId,
-      });
+      const postedIds: string[] = [];
+      for (const q of questions) {
+        const result = await this.broker.askUser({
+          question: q.question,
+          header: q.header,
+          options: q.options,
+          multiSelect: q.multiSelect,
+          allowOther: q.allowOther,
+          chatId: defaultChatId,
+        });
+        postedIds.push(result.questionId);
 
-      if (this.bot) {
-        const card = this.broker.renderQuestionCard(result.questionId);
-        if (card) {
-          await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
+        if (this.bot) {
+          const card = this.broker.renderQuestionCard(result.questionId);
+          if (card) {
+            await this.bot.sendQuestionCard(defaultChatId, result.questionId, card);
+          }
         }
       }
 
-      return result.message;
+      if (postedIds.length === 1) {
+        return `Question ${postedIds[0]} posted to Nic. Do not assume an answer; continue other work or end your turn.`;
+      }
+      return `Questions ${postedIds.join(", ")} posted to Nic. Do not assume an answer; continue other work or end your turn.`;
     }
 
     if (name === "anchor") {
