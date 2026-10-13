@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-user-question.ts\""
+          }
+        ]
+      }
+    ]
+  }
+}

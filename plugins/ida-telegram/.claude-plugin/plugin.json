@@ -1,0 +1,22 @@
+{
+  "name": "ida-telegram",
+  "description": "Ida's custom Telegram channel and Mini App plugin for Claude Code",
+  "version": "0.1.0",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "aops",
+    "telegram",
+    "ida",
+    "mini-app"
+  ],
+  "mcpServers": {
+    "telegram": {
+      "command": "bun",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server.ts"]
+    }
+  }
+}

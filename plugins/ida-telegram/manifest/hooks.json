@@ -1,0 +1,23 @@
+{
+  "manifestVersion": "1.0",
+  "name": "ida-telegram",
+  "clients": {
+    "__base__": {},
+    "claude": {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "matcher": "AskUserQuestion",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bun run \"${CLAUDE_PLUGIN_ROOT}/hooks/ask-user-question.ts\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "agy": {}
+  }
+}

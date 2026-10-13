@@ -32,3 +32,9 @@ directory = "aops-debug"
 name = "aops-debug"
 description = "Debug plugin that dumps raw hook payloads."
 category = "productivity"
+
+[[plugins]]
+directory = "ida-telegram"
+name = "ida-telegram"
+description = "Ida's custom Telegram channel and Mini App plugin for Claude Code."
+category = "productivity"

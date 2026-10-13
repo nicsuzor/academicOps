@@ -1,33 +1,51 @@
 ---
 name: telegram
-description: Reaction and format rules for replying to the user over a Telegram channel. Load once when a Telegram channel is attached, before the first reply, and keep the rules for the session. Adds formatting on top of the persona's "Thinking with the user" and "Briefing on returned work" rules; it does not replace them. Not for other channels or for composing the brief's content.
+description: Reaction, structure, and disclosure rules for replying to the user over Telegram. Load once when a Telegram channel is attached, before the first reply, and keep the rules for the session. Adds formatting on top of the persona's "Thinking with the user" and "Briefing on returned work" rules; it does not replace them. Not for other channels or for composing the brief's content.
 ---
 
 # Telegram replies
 
 The persona's "Thinking with the user" and "Briefing on returned work" rules decide what a message says. These rules decide how it looks on a phone.
 
+## Progressive Disclosure & Length Budget
+
+Nic reads on his phone between other commitments. Cognitive load is the binding constraint.
+
+- **Length budget (~100 words):** Chat replies are strictly budgeted to ~100 words (Glance Rule, D9). Lead with a bold headline and a few concise bullets.
+- **Tier 1 (Chat):** Bold one-line headline first (the takeaway or decision needed), followed by short bullet points.
+- **Tier 2 (Expandable Evidence):** Evidence and receipts go in an expandable blockquote starting with `>!`. Telegram renders this collapsed by default so the user opens it only if they want it. Standard quotes use `>`.
+- **Tier 3 (Mini App Details):** Deep context, long logs, code snippets, and background go in the `detail` parameter of the `reply` tool (`reply({ text, detail })`). The plugin attaches a `🔍 Details` button opening the Mini App. If chat text exceeds the budget, the plugin automatically relocates overflow to the Details page without dropping any content.
+- **Standard Markdown:** Write standard Markdown (`**bold**`, `*italic*`, `` `code` ``, `codeblocks`, `[links](https://example.com)`). Do not escape MarkdownV2 characters; the plugin converts Markdown directly into native Telegram UTF-16 entities.
+
+## Questions
+
+- **Asynchronous, always:** Post structured questions using `ask_user({ questions: [{ question, options }] })`. Options must be vertical with Ida's recommendation first (`"(Recommended)"`).
+- **Never wait or assume:** Questions never block or time out. After calling `ask_user`, continue with other ready work or end your turn. When the user replies, the answer arrives as a channel notification event.
+
+## Reviews & PRs
+
+- **Diff review in Mini App:** When presenting a PR or branch for review, pass `review: { repo, pr }` to `reply`. The plugin renders an inline `🔍 Review diff` button allowing the user to inspect changes and send back approval or critique.
+
+## Cognitive Anchor
+
+- **Keep the anchor current:** Call `anchor({ focus, task_id, waiting_on, delegations })` whenever primary focus changes or work is delegated. This populates the Mini App's live status view.
+
+## Voice
+
+- **Voice in:** Spoken voice notes from the user are transcribed automatically before reaching Ida (`voice: true`).
+- **Voice replies:** Set `voice: true` on `reply` when appropriate. Under `voice_replies: mirror` (default), Ida automatically mirrors voice notes with a spoken summary of Tier 1 content while keeping text in the chat caption.
+
 ## Reactions
 
-The reaction on each user message shows its state, so the user can see progress without opening a reply. A message holds one reaction; setting a new one replaces it.
+Reactions indicate progress on inbound messages:
 
-- **React 👀 before anything else**, including hydration. It means read and thinking.
-- **Move the reaction on as the state changes:**
-  - ✍ captured: the dump, decision or fact is written to the PKB.
-  - 👨‍💻 briefed and running in the background.
-  - 🤔 a question back to the user is waiting in a reply.
-  - 💔 failed or blocked; the reply names what refused.
+- **The plugin sets 👀 automatically on arrival:** You do not need to spend a tool call setting 👀.
+- **Advance the reaction as state transitions:**
+  - ✍ captured: fact, decision, or intake written to PKB.
+  - 👨‍💻 briefed and dispatched to background workers.
+  - 🤔 a question back to the user is waiting in chat.
+  - 💔 blocked or failed; reply names the refusal.
   - 🎉 done and answered.
-  - 🫡 done, and no reply is owed.
-- **End on the reaction that fits the message, not only the done mark:** 🏆 the user reports finishing something hard; 🤝 a decision agreed; 💯 exactly right; 🔥 a strong idea; 🙏 thanks; 🤣 a joke; 🤯 surprising news; 😢 bad news. Vary them.
-- **Acknowledge with a reaction, never a text.** A "got it" message is one more notification to read.
-- **Telegram accepts only these reactions.** Send each string exactly as listed; several carry no emoji variation selector (`✍`, not `✍️`), and any other string is rejected:
+  - 🫡 done, and no reply was owed.
+- **Telegram allowed reactions:** Send only valid reaction strings:
   ❤ 👍 👎 🔥 🥰 👏 😁 🤔 🤯 😱 🤬 😢 🎉 🤩 🤮 💩 🙏 👌 🕊 🤡 🥱 🥴 😍 🐳 ❤‍🔥 🌚 🌭 💯 🤣 ⚡ 🍌 🏆 💔 🤨 😐 🍓 🍾 💋 🖕 😈 😴 😭 🤓 👻 👨‍💻 👀 🎃 🙈 😇 😨 🤝 ✍ 🤗 🫡 🎅 🎄 ☃ 💅 🤪 🗿 🆒 💘 🙉 🦄 😘 💊 🙊 😎 👾 🤷‍♂ 🤷 🤷‍♀ 😡
-
-## Formatting
-
-- **Bold one-line headline first**: the result, or the decision needed.
-- **Evidence goes in an expandable blockquote** (`**>` … `||`), sent with `format: 'markdownv2'`, so the user opens it only if they want it. Escape MarkdownV2's reserved characters yourself, because the channel sends the text as written.
-- **No `#` headings and no `|` tables.** MarkdownV2 and plain text render neither; they arrive as literal characters or get the send rejected. Use bold lines and bullets.
-- **Keep each reply under 4096 characters.** Longer text is split into chunks, and a split can break a formatting span.
-- **If a send fails, resend it as plain text** (`format: 'text'`) rather than retrying the same markup.
