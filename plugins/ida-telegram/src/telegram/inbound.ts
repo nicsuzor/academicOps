@@ -26,6 +26,9 @@ export interface TelegramMessage {
   document?: { file_id: string; file_name?: string };
   voice?: { file_id: string; duration: number };
   audio?: { file_id: string; duration: number };
+  reply_markup?: {
+    inline_keyboard?: Array<Array<{ text: string; callback_data?: string }>>;
+  };
 }
 
 export interface TelegramReactionUpdate {
