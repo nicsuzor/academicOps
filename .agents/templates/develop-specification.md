@@ -16,7 +16,7 @@ implementation without this template first is scope-creep waiting to happen.
    feature worth specifying.
 2. **Create the spec document** from the standard template.
 3. **Problem statement** — collaborative: what, why, for whom.
-4. **Acceptance criteria** — user-owned, including a persona paragraph and any
+4. **Acceptance criteria** — defined with the principal perspective, including a persona paragraph and any
    qualitative dimensions, not just mechanical checks.
 5. **Scope** — propose initial scope, explicitly define boundaries (what's out).
 6. **Dependencies** — required infrastructure/data; document error handling.
@@ -27,8 +27,8 @@ implementation without this template first is scope-creep waiting to happen.
 9. **Effort and risk** — estimates, mitigation plans.
 10. **Rule-compliance review** — verify the draft specification against framework
     axioms and rules (proportionality, single source of truth, closure) before
-    user review. Resolve any required changes before advancing.
-11. **Review** — full summary review with the user.
+    review. Resolve any required changes before advancing.
+11. **Review** — record the full summary review on the record for review.
 12. **Finalize and submit** — open a PR for bazaar review; implementation
     proceeds only after approval (compose [[wf-escalated-approval]] for the
     go-ahead if the spec commits to something hard to walk back).
@@ -36,4 +36,4 @@ implementation without this template first is scope-creep waiting to happen.
 ## Verification before proceeding to implementation
 
 Acceptance criteria section complete; each criterion maps to its test where
-code executes, or to its verification otherwise; user confirms these criteria define "done".
+code executes, or to its verification otherwise; criteria confirmed on the record to define "done".

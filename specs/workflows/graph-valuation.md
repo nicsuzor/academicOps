@@ -19,7 +19,7 @@ changes are listed in §9.
 [`specs/flow-rule.md` in nicsuzor/mem](https://github.com/nicsuzor/mem/blob/main/specs/flow-rule.md).
 That spec owns the maths, the edge fields and the scales. This spec owns everything an agent does
 around them: who writes which field, when, on what evidence, affordable loss assessment, decomposition probes,
-capital stock wiring, and when Nic is asked.
+capital stock wiring, and valuation.
 
 **Brief:** _Ranking physics redesign: requirements brief_. Tags follow settled numbering:
 `S1`-`S30` settled points, `I1`-`I17` invariants. `U1`-`U20` are the weighting user stories in
@@ -29,27 +29,26 @@ _PKB Architecture & Prioritization Framework_. `FQn` are settled decisions in fl
 **Status: settled (points 1–30 of spec_866ee53d).** This canonical specification governs how agents
 (Pauli, Ida) triage, capture, place, densify, and maintain the task graph under the settled flow model.
 
-## 0. Summary for Nic
+## 0. Executive Summary
 
 **What this is.** The flow rule sets how worth moves through the graph. This spec covers the
 agents' side of that: placing new work, evaluating affordable loss, connecting decomposition probes,
 wiring capital stock hubs, proposing values, handling dates, retiring dead opportunities, and asking you things.
 
-**Your job shrinks to three inputs.**
+**The principal's role shrinks to direct corrections.**
 
-1. **Price the targets on an open logarithmic scale.** An agent recommends an anchor for each target
-   from the open continuous log scale ($W_t \in \mathbb{R}$, S26; baseline +1.0 for core commitments,
-   up to +10.0 to +100.0+ for moonshots, and negative for anti-targets), with one line of evidence.
-   You pick. A sitting covers at most ten targets.
-2. **Approve link values in batches of fifty.** Agents draft values for links: how much of the
-   target it delivers and how likely, with one sentence each. You answer one table with "all", "all
-   except 4, 17", or "17: some". The batch most likely to change the ranking goes first. Unapproved
-   links count as zero in the flow, so the graph operates cleanly while links await review.
+1. **Target pricing by agent estimation.** Agents work out the best approximate worth for each target
+   and write it directly to the graph on the bounded continuous scale ($W_t \in [-1.0, 1.0]$; positive
+   aspirations up to +1.00, core commitments around +0.70 to +0.80, and negative anti-targets down to -1.00)
+   with one line of evidence, never set `intent`, and the principal corrects values directly on the graph.
+2. **Densify link values in batches of fifty.** Agents draft and write values for unvalued edges ordered
+   by reach: how much of the target it delivers and how likely, with one sentence each, written as
+   `agent-proposed`. Corrections are made directly on the graph.
 3. **Say when something is dead.** "Drop the Yale thing" is enough. The agent cancels the
    opportunity and it stops pulling. Nothing is ever retired for being old or quiet.
 
 **Affordable loss outside maths (S24).** Agents (Pauli, Ida) evaluate affordable loss during intake and
-triage. If a commitment or project exceeds affordable loss, it is rejected, paused, or escalated to Nic
+triage. If a commitment or project exceeds affordable loss, it is rejected, paused, or escalated on the record
 before entering the graph. Flow maths is kept unpolluted by subjective risk gating.
 
 **Decomposition probes and Value of Information (FQ8).** When resolving architectural or empirical
@@ -91,25 +90,25 @@ Defaulting new asks to "planned". Turning an email date into a deadline. `soft_d
 - pauli authors "target severity magnitude vs contributing edge weight probability"
   (`plugins/ida/agents/pauli.md:104`).
 - The weight-repair template validates a seven-word scale that mixes amount with likelihood (S2).
-- No routine turns agent proposals into approved values at a rate Nic can sustain (S7, U20).
+- No routine turns agent proposals into approved values at a sustainable rate (S7, U20).
 - Email dates become hard emergencies (calibration case 1, U1).
 - Nothing classes deadlines (S5) or retires opportunities (S6).
 
 **Target.**
 
-- Every value the flow rule reads comes from one of two places. Nic supplies target worth and
-  approved link values. Agents propose everything else, labelled as proposals, and it is read at the
-  default until approved (FR:474).
+- Target worth is estimated and written directly by agents with evidence on the bounded continuous
+  scale ($W_t \in [-1.0, 1.0]$), leaving `intent` untouched, with corrections made directly
+  on the graph. Agents propose link values (`agent-proposed`), which are read at the default until
+  calibrated (FR:474).
 - Every categorical choice the flow rule moved out of the maths has exactly one agent owner here:
   deadline class, soft-to-hard, ripeness, triage, and human gates (S1, FR:422-433).
-- Nic's input is bounded by a stated budget (§8).
 
 ## 2. Architecture and data flow
 
 ```mermaid
 flowchart LR
   subgraph In[Inputs]
-    A[Ask from Nic]
+    A[Ask]
     E[Email]
     C[Mobile capture]
     O[Opportunity]
@@ -118,29 +117,24 @@ flowchart LR
   E --> T["Email placement (R2)"] --> Q
   Q -->|node + edges<br/>set_by: agent-proposed| G[(PKB graph)]
   G --> F[Flow rule<br/>mem engine] --> D[Display<br/>dashboard, focus]
-  G --> P["Densify draft (R3)<br/>pauli, weekly"] --> AQ[[Ask queue]]
-  G --> PR["Pricing draft (R4)"] --> AQ
-  G --> DL["Deadline review (R5)"] --> AQ
-  AQ --> I["ida presents<br/>within budget (R7)"] --> N((Nic))
-  N -->|approve / price / drop| W["pauli writes<br/>set_by: nic"] --> G
-  N -->|"drop X"| R["Retire (R6)"] --> G
+  G --> P["Densify (R3)<br/>pauli, weekly"] --> G
+  G --> PR["Target pricing (R4)<br/>agent estimation"] --> G
+  G --> DL["Deadline upkeep (R5)"] --> G
+  R["Retire (R6)"] --> G
 ```
 
 **Roles** (each a single owner, so no routine is implemented twice):
 
-| Role                    | Owner                                                                          | Reads                            | Writes                                                            |
-| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------- | ----------------------------------------------------------------- |
-| Placement at intake     | `/q` (`plugins/ida/skills/q/SKILL.md`)                                         | graph search, the input          | node, edges at `set_by: agent-proposed`, `due` + `deadline_class` |
-| Email placement         | correspondence sweep, module C (PKB-tier template `wf-email-sweep`) → `/q`     | mailbox, graph                   | through `/q` only                                                 |
-| Densify drafting        | pauli, run by the new universal template `wf-densify`                          | flow outputs (`stake`), edges    | proposals only                                                    |
-| Pricing drafting        | pauli, run by the new universal template `wf-price-targets`                    | targets, their contributors      | proposals only                                                    |
-| Deadline upkeep         | `/reconcile` (`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) | `due`, class, history, sent mail | class transitions per R5                                          |
-| Retirement              | `/reconcile` for source-stated closures; pauli for Nic's word                  | Nic's input, world facts         | `status: cancelled` + reason                                      |
-| Asking Nic              | ida only, through `/decide` (drawing from daily note)                          | ask queue                        | nothing                                                           |
-| Writing approved values | pauli                                                                          | Nic's reply                      | `set_by: nic`, readback                                           |
+| Role                | Owner                                                                          | Reads                            | Writes                                                              |
+| ------------------- | ------------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------- |
+| Placement at intake | `/q` (`plugins/ida/skills/q/SKILL.md`)                                         | graph search, the input          | node, edges at `set_by: agent-proposed`, `due` + `deadline_class`   |
+| Email placement     | correspondence sweep, module C (PKB-tier template `wf-email-sweep`) → `/q`     | mailbox, graph                   | through `/q` only                                                   |
+| Densify             | pauli, run by universal template `wf-densify`                                  | flow outputs (`stake`), edges    | edge proposals (`set_by: agent-proposed`)                           |
+| Target pricing      | pauli, run by universal template `wf-price-targets`                            | targets, their contributors      | writes approximate target worth directly, leaves `intent` untouched |
+| Deadline upkeep     | `/reconcile` (`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) | `due`, class, history, sent mail | class transitions per R5                                            |
+| Retirement          | `/reconcile` for source-stated closures; pauli for direct instructions         | input, world facts               | `status: cancelled` + reason                                        |
 
-pauli stays "sole author of edge weights" (`plugins/ida/agents/pauli.md:104`). `/q` may write
-proposals because a proposal moves no worth until pauli writes Nic's approval (FR:474).
+pauli estimates target worth and edge weights, leaving `intent` untouched. Corrections are made directly on the graph.
 
 ## 3. R1 -- Placement at intake (`/q`)
 
@@ -152,7 +146,7 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
    goes, or the parent field if it stays.
 3. **Affordable Loss Check (S24).** Agents (Pauli, Ida) evaluate affordable loss (Sarasvathy 2001)
    before admitting commitments. If prospective downside or commitment cost violates affordable loss,
-   the agent flags it as a priority ask for Nic rather than admitting it to the flow. Flow maths
+   the agent flags it as a priority ask rather than admitting it to the flow. Flow maths
    remains unpolluted by subjective risk gating.
 4. **Wire what it serves.** Add one edge per thing the work serves, crossing project boundaries
    where they apply (U11). Each edge carries the FR §5.1 fields:
@@ -181,9 +175,9 @@ Covers U8, U9, U10, U11, S7, S24, S27, I7, I9.
     uncertainties during decomposition (`decompose`), create spike/probe tasks wired with `settles`
     to `D` ($q \in (0, 1]$). The engine computes EVPI and allocates decision value to the probe.
 12. **Do not write:** `intent` (FQ10), `severity` (FQ24), `stakeholder` as a weight
-    (FQ25), target worth, `set_by: nic`, `soft_depends_on`, or `supersedes` (FR:448).
+    (FQ25), target worth, `soft_depends_on`, or `supersedes` (FR:448).
 
-**Headless context** (mobile capture, email). The same steps, but with no question to the user.
+**Headless context** (mobile capture, email). The same steps, headless with no interactive prompt.
 Where the container or the targets cannot be identified, leave the input untouched for the next
 interactive pass. This matches the capture-intake contract (`specs/workflows/capture-intake.md`).
 
@@ -197,10 +191,10 @@ asks "through intake" (module C). This spec adds a placement judgment to that st
 1. **Classify first**: `noise`, `reference`, `action` or `opportunity`. This keeps the existing
    classification (email triage guide) and adds `opportunity` for invitations and offers.
 2. **`noise`** gets nothing. **`reference`** becomes a knowledge note or nothing. A circular or bcc
-   message is `reference` unless it asks Nic by name for something only he can give.
+   message is `reference` unless it asks by name for something only they can give.
 3. **`action` and `opportunity`** go to `/q` in the headless context, carrying the message id. The
    edges `/q` proposes cite the message in their justification.
-4. **Dates in the message** are captured `fake`. They become `soft` only where Nic's sent mail
+4. **Dates in the message** are captured `fake`. They become `soft` only where sent mail
    accepts the date, and `hard` only through R5. A sender's own stated date ("by next Monday")
    creates no pressure (U15).
 5. **The sender's name adds no worth** (FR:498). Who is waiting is context in the body, and moves
@@ -238,46 +232,28 @@ siblings is one row for their container, not one row each.
 | # | Work | → Target (worth) | Label | Proposed quantum | Probability | Effect | Why (one sentence) |
 | - | ---- | ---------------- | ----- | ---------------- | ----------- | ------ | ------------------ |
 
-**Nic's approval step.** This is the only step that writes `set_by: nic`.
+**Proposal and direct write.** Agents write proposals directly with `set_by: agent-proposed`.
 
-- Reply grammar: `all` | `all except <#,#>` | `<#>: <quantum word>[, <probability word>]` |
-  `<#>: drop` | `<#>: harms`. Items can be combined, separated by `;`.
-- pauli writes exactly the rows approved or amended, sets `set_by: nic`, re-reads each edge, and
-  reports the readback.
-- Rows excluded or not answered stay `agent-proposed` and re-enter a later batch.
-- `drop` sets the quantum to `none` with `set_by: nic`. It does not delete the edge.
-- Silence approves nothing. A batch unanswered after 14 days is withdrawn and rebuilt with fresh
-  ordering (K4).
+- pauli evaluates each row in the batch, writes the edge with `set_by: agent-proposed`, re-reads each edge, and reports the readback without parse warnings.
+- Direct corrections are made on the graph as needed.
+- `drop` sets the quantum to `none`. It does not delete the edge.
 
-**Agent corrections without Nic.** An agent may correct a row without asking only on evidence in
+**Agent corrections.** An agent may correct a row without asking on evidence in
 the node itself. This keeps the weight-repair template's four tests: a word outside the scale; an
 edge to the wrong class of node; a justification describing a different target; a weight
-contradicting its own justification. The correction is written as `agent-proposed`, never as
-`nic`.
+contradicting its own justification. The correction is written as `agent-proposed`.
 
 ## 6. R4 -- Pricing every target
 
 Covers S14, S12, S16, S26, S27, U20, FR:377-391.
 
-- **Scale.** The open-ended continuous logarithmic scale ($W_t \in \mathbb{R}$) per FR §5.6 and S26.
-  Mirrored anchors for positive aspirations (+0.05 to +1.00 baseline core commitment, up to +10.00
-  to +100.00+ for transformative moonshots) and negative anti-targets (-0.05 to -1.00, down to -10.00
-  to -100.00 for ruinous catastrophe). These replace the standing-weight instrument's five positive-only
-  anchors (FQ7, FQ28). Targets may also be configured as capital stock hubs (S27).
-- **Recommendation.** pauli drafts one anchor per target and one line of evidence. The evidence is
-  what serves the target, how much open work sits behind it, and its old `severity` used only as a
-  prompt (FR:391). ida presents the draft as a recommendation. Nic's assent prices the target; an
-  unanswered draft prices nothing, so the target stays at 0 (FR:389).
-- **Sitting.** At most ten targets, outer bounds first: one Critical and one Low-or-Minor anchor
-  set first. Gain and loss targets are priced in the same sitting, so their ratios are judged
-  together (S16).
-- **Consistency pass**, in the same sitting: ordering is transitive, and the ratios are plausible
-  ("about one Critical balances three Substantial"). This is the existing instrument's procedure,
-  kept.
-- **Re-confirmation.** A target priced more than 180 days ago gets one row in a pricing sitting
-  (K5). Its stored worth never decays.
-- **New targets.** An agent never creates a target. Work that fits no target goes into the ask
-  queue as a finding.
+- **Scale.** The bounded continuous scale within server-enforced engine bounds ($W_t \in [-1.0, 1.0]$).
+  Mirrored anchors for positive aspirations (+0.05 up to +1.00, with core commitments around +0.70 to +0.80 and top-tier moonshots at +1.00) and negative anti-targets (-0.05 down to -1.00 for ruinous catastrophe). These replace the standing-weight instrument's five positive-only anchors (FQ7, FQ28). Targets may also be configured as capital stock hubs (S27).
+- **Agent estimation and direct write.** pauli works out the best approximate worth for each unpriced target and one line of evidence. The evidence is what serves the target, how much open work sits behind it, and its old `severity` used only as a prompt (FR:391). pauli writes the estimated `worth` directly to the target node via `pkb.update_task` and leaves `intent` untouched. Corrections are made directly on the graph.
+- **Batches.** At most ten targets per run, outer bounds first: one Critical and one Low-or-Minor anchor evaluated first. Gain and loss targets are priced in the same pass, so their ratios are judged together (S16).
+- **Consistency pass**: Ordering is transitive, and the ratios are plausible ("about one Critical balances three Substantial"). This is the existing instrument's procedure, kept.
+- **Re-confirmation.** A target priced more than 180 days ago is re-evaluated in a routine pricing pass (K5). Its stored worth never decays.
+- **New targets.** An agent never creates a target. Work that fits no target is recorded as a finding.
 
 ## 7. Rules outside the maths
 
@@ -287,16 +263,16 @@ Covers S5, S13, U14, U15, G11, FR:424-426.
 
 **Classes:**
 
-| Class  | Meaning                                                                    | Who may set it                                                |
-| ------ | -------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `fake` | Someone wrote a date; no loss lands on it                                  | default for every captured date (FQ18)                        |
-| `soft` | Nic accepted the date; slipping it has a cost but can be negotiated        | an agent, citing Nic's own words or sent mail that accepts it |
-| `hard` | A real loss lands on the date (a round closes, a legal or employment duty) | Nic; or the soft-to-hard rule below                           |
+| Class  | Meaning                                                                    | Who may set it                                                    |
+| ------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `fake` | Someone wrote a date; no loss lands on it                                  | default for every captured date (FQ18)                            |
+| `soft` | the date was accepted; slipping it has a cost but can be negotiated        | an agent, citing explicit acceptance or sent mail that accepts it |
+| `hard` | A real loss lands on the date (a round closes, a legal or employment duty) | the principal; or the soft-to-hard rule below                     |
 
 **Capture rule.** A new date is `fake` unless one of these holds:
 
-- the input carries Nic's acceptance: `soft`;
-- Nic says the date is hard: `hard`.
+- the input carries the principal's acceptance: `soft`;
+- direct instruction indicates the date is hard: `hard`.
 
 An agent that judges a date hard on evidence (a published closing date, say) _proposes_ `hard`. A
 proposed hard date within 14 days goes into the ask queue as a priority ask (§8). One further away
@@ -311,7 +287,7 @@ agent writing the extension sets the class to `hard`. It records the reason "ext
 together with the history, and puts one line in the next daily digest. A reply of `soft` reverses
 it. A `fake` date never hardens by extension, because nobody is holding it.
 
-**Hard → anything** is Nic's call only.
+**Hard → anything** is the principal's call only.
 
 **Who checks.** `/reconcile` re-reads open `soft` and `hard` dates against sent mail and inbound
 mail. It records a counterpart's extension as an extension, and a counterpart's withdrawal as
@@ -323,7 +299,7 @@ Covers S6, U19, I9, G10, FQ13.
 
 **One input.** Two kinds of statement retire an opportunity:
 
-- Nic's statement in any channel ("drop X", "X is dead");
+- the principal's statement in any channel ("drop X", "X is dead");
 - a statement from the opportunity's own source (for example, the call has closed) found by
   `/reconcile` as a world fact.
 
@@ -341,7 +317,7 @@ ranking. Agents do not ask "is this still ripe?" on a timer (S6; age is not stal
 
 Covers U12, I10, FR §6.
 
-A decision node keeps its `alternative` and `settles` edges. When Nic decides, the decision node is
+A decision node keeps its `alternative` and `settles` edges. When a decision is made, the decision node is
 set `done` and the losing alternatives `cancelled`. Its `decision_value` then reads zero by the rule
 (I10). No agent sets an option's worth.
 
@@ -353,19 +329,19 @@ When asked "why does X carry this?", an agent answers from the flow outputs only
 priced targets in X's `stake` map and the edge route to each. It never answers from a ranking
 position or a display order.
 
-## 8. R7 -- Budget for asking Nic
+## 8. R7 -- Budget for direct queries
 
 Covers U20, S11, and the attention rules already in `plugins/ida/agents/ida.md:120-125`. The brief
 sets no budget; the figures below are proposed (K2).
 
 | Channel         | Budget                                     | Content                                                                                                                                       |
 | --------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Weekly sitting  | 1 per week, about 20 minutes               | one link batch (≤ 50 rows) **or** one pricing set (≤ 10 targets)                                                                              |
+| Routine notice  | 1 per week                                 | summary of direct graph pricing and densify changes                                                                                           |
 | Priority ask    | ≤ 1 per day, in the daily digest           | a proposed `hard` date within 14 days; or a new opportunity whose `gain` or `loss_averted` would place it in the top 20 under the current key |
 | In conversation | 0 valuation questions                      | ida's one-question cap is unchanged; valuation never uses it                                                                                  |
 | Notices         | 1 line each in the digest, no reply needed | soft→hard hardenings, retirements from source statements                                                                                      |
 
-**The ask queue.** Every item that would otherwise interrupt Nic goes into one queue: ambiguous
+**The ask queue.** Every item that would otherwise interrupt the principal goes into one queue: ambiguous
 placements, "no target fits", proposed hard dates further out, and pricing for new targets. Items
 are ordered by reach (§5) and drained only through the channels above. An item over budget waits.
 It never escalates by repetition, and an unanswered item is not re-asked in the same week. This
@@ -383,11 +359,11 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | File                                                                                                                                                | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `plugins/ida/skills/q/SKILL.md`                                                                                                                     | Steps 4-6 are replaced by R1. Description :4 changes from "wire contributes_to/depends_on" to "wire what it serves, propose values". :18 becomes the FR §5.1 edge contract with `set_by: agent-proposed`. :19 keeps `needs` and drops `soft_depends_on` and `supersedes`. :23 keeps effort and adds dates with class (R5). :24: the default `intent` of 3 is removed, and the line goes entirely if FQ10 drops the field. A headless context is added (R1). |
-| `plugins/ida/agents/pauli.md`                                                                                                                       | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and target prices, and writes `set_by: nic` only from Nic's reply. :23 "carry … severity magnitude" becomes "carry worth".                                                                                                                                                                                                   |
-| `plugins/ida/agents/ida.md`                                                                                                                         | Adds that valuation asks reach the user only through the weekly sitting and the digest (R7). The one-question cap :125 is unchanged.                                                                                                                                                                                                                                                                                                                        |
+| `plugins/ida/agents/pauli.md`                                                                                                                       | :104 "two-axis model (target severity magnitude vs contributing edge weight probability)" becomes: pauli drafts link proposals and estimates target prices directly, leaving intent untouched. :23 "carry … severity magnitude" becomes "carry worth".                                                                                                                                                                                                      |
+| `plugins/ida/agents/ida.md`                                                                                                                         | Adds that valuation asks reach the attention queue through routine notice and the digest (R7). The one-question cap :125 is unchanged.                                                                                                                                                                                                                                                                                                                      |
 | `plugins/ida/skills/remember/SKILL.md`                                                                                                              | :22 "carry only graph weights and severity" becomes "carry only worth". :37 "a wikilink … is a real graph edge" is qualified as not read by the flow, pending FQ23. :45 `/pkb:q` becomes `/ida:q`.                                                                                                                                                                                                                                                          |
 | `plugins/ida/skills/remember/references/consolidation.md`                                                                                           | Adds a weekly densify stage that runs `wf-densify` (R3).                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`                                                                                     | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard`, target worth and `set_by: nic`.                                                                                                                                                                                                                                                                                                                |
+| `plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`                                                                                     | Adds deadline upkeep (R5) and source-stated retirement (R6). :49 reserved fields add `deadline_class: hard` and target worth.                                                                                                                                                                                                                                                                                                                               |
 | `plugins/ida/skills/decide/SKILL.md`                                                                                                                | Draws open items from the daily note (which carries ask queue items from reconcile per R7).                                                                                                                                                                                                                                                                                                                                                                 |
 | `plugins/ida/skills/decompose/SKILL.md`                                                                                                             | :21 and :30: probes wire `settles` and options wire `alternative` (FQ8). `depends_on` becomes `needs`; `soft_depends_on` becomes `supports` at the default quantum.                                                                                                                                                                                                                                                                                         |
 | `plugins/ida/skills/reify/SKILL.md`, `plugins/ida/skills/dispatch/SKILL.md`                                                                         | `depends_on` becomes `needs` in :20, :43, :79-80 and dispatch :14. Readiness keeps its meaning (FR:517).                                                                                                                                                                                                                                                                                                                                                    |
@@ -398,7 +374,7 @@ keeps pauli's rule "never raise the same non-blocking concern twice"
 | PKB-tier template `wf-weight-repair`                                                                                                                | Retired in favour of `wf-densify`. Its granularity rule, correction tests and "measure from the source of record" rule move across.                                                                                                                                                                                                                                                                                                                         |
 | PKB-tier template `wf-email-sweep`                                                                                                                  | Module C gains R2 steps 1-6.                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | PKB note _Email Triage Workflow Patterns & Guardrails_                                                                                              | Adds the `opportunity` class, the date rule (R2.4) and the no-weight-from-sender rule (R2.5).                                                                                                                                                                                                                                                                                                                                                               |
-| PKB spec _Standing-Weight Elicitation Instrument_                                                                                                   | Superseded by R4 and FR §5.6. The rules "Nic prices; agents may recommend" and "no decay" are kept.                                                                                                                                                                                                                                                                                                                                                         |
+| PKB spec _Standing-Weight Elicitation Instrument_                                                                                                   | Superseded by R4 and FR §5.6. Agents estimate and write target worth directly with evidence; stored worth has no decay.                                                                                                                                                                                                                                                                                                                                     |
 | `.agents/skills/triage/SKILL.md`                                                                                                                    | :219-220 "raise the `stated_weight`" becomes "add a row to the next densify batch".                                                                                                                                                                                                                                                                                                                                                                         |
 | `specs/meta/naming-and-decisions.md`                                                                                                                | :150 densify text changes to the FR edge contract. :68-76 option nodes become `alternative` edges.                                                                                                                                                                                                                                                                                                                                                          |
 | `specs/workflows/capture-intake.md`, `specs/workflows/research-decomposition.md`, `specs/enforcement/task-contract.md`                              | References to "valued at intake" now point to R1. The stale `brief` skill references (`specs/enforcement/task-contract.md:43`, `specs/workflows/research-decomposition.md:30`) are corrected to `/q`.                                                                                                                                                                                                                                                       |
@@ -416,8 +392,7 @@ agents james, marsha, rbg, sara; and all tools-plugin skills.
 ## 10. Interface contracts
 
 **Edge write.** Every agent edge write carries the FR §5.1 fields, with `set_by` in
-`{agent-proposed, nic}`. `migrated` is written only by the migration. Writing `set_by: nic` is
-allowed only inside R3 or R4, and only for a row Nic's reply names. Each write is followed by a
+`{agent-proposed, nic}`. `migrated` is written only by the migration. Direct writes use `agent-proposed`. Each write is followed by a
 `pkb.get_task` readback with no `parse_warnings`.
 
 **Batch message.** The §5 table, numbered 1..n with n ≤ 50, preceded by one line giving the pool
@@ -459,27 +434,27 @@ on the mem build.
 
 Each test can be checked by an observer reading the graph or a transcript.
 
-| #   | Criterion                                 | Test (observable)                                                                                                                                                                                                                          | Traces to     |
-| --- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| A1  | `/q` writes only proposals                | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: nic`, `intent`, `severity` or target worth.                | S7, U9, R1    |
-| A2  | A bare idea carries nothing               | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0.                                                                                                               | U9, I7        |
-| A3  | An opportunity is one node                | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ.                                                                                                                 | U10, I9       |
-| A4  | The circular stays quiet                  | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15       |
-| A5  | No worth from a sender                    | Two fixture emails, identical except the sender (a strategic contact versus an unknown). They produce identical edge proposals.                                                                                                            | FR:498, U1    |
-| A6  | Densify batch shape                       | One `wf-densify` run produces one message with ≤ 50 rows, sorted by reach in descending order, each row carrying every column.                                                                                                             | S7, U20       |
-| A7  | Approval writes exactly what was approved | Reply `all except 3; 5: some`. Afterwards, rows 1, 2 and 4 read `set_by: nic` with the proposed values, row 5 reads `some` with `set_by: nic`, and row 3 is still `agent-proposed`. The readback is in the transcript.                     | U20, R3       |
-| A8  | Silence approves nothing                  | Leave a batch unanswered for 14 days. No edge in it changed `set_by`, and the batch is withdrawn.                                                                                                                                          | U20           |
-| A9  | Unapproved means default                  | Before approval, the flow output for a row's source equals its output with that edge's quantum set to the default.                                                                                                                         | FR:474, S7    |
-| A10 | Pricing needs assent                      | After a sitting where Nic answers 6 of 10, exactly 6 targets carry worth, and the other 4 read 0.                                                                                                                                          | S14, R4       |
-| A11 | Dates default to fake                     | `/q` on an input with a date and no acceptance gives `deadline_class: fake`, and the cliff lane does not surface it.                                                                                                                       | S5, U15, I17  |
-| A12 | Soft hardens on the second extension      | Fixture: soft date, extended once, then again. After the second extension the class is `hard`, `deadline_history` has two entries, and the next digest has one line about it. After the first extension the class is still `soft`.         | S5, G11, K1   |
-| A13 | Fake never hardens                        | Extend a `fake` date three times. The class is still `fake`.                                                                                                                                                                               | S5            |
-| A14 | One input retires                         | Nic says "drop X". X reads `cancelled` with a `not ripe:` reason, and no other node's fields changed. X's flow pull is zero on the next run.                                                                                               | S6, U19, I9   |
-| A15 | Nothing retires by age                    | Over a 30-day replay of sleep-cycle and reconcile runs on a fixture graph, no opportunity is cancelled without a quoted statement.                                                                                                         | S6            |
-| A16 | Budget held                               | Over one week of transcripts there is ≤ 1 sitting, ≤ 7 priority asks, 0 in-conversation valuation questions, and no queue item presented twice.                                                                                            | R7, K2        |
-| A17 | Weights explain themselves                | Ask "why does X carry this?" for 5 nodes. Each answer names priced targets and routes matching X's `stake` map.                                                                                                                            | U18, I12      |
-| A18 | Harms are wired, not netted               | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero.                                                                          | S12, S16, I15 |
-| A19 | Every changed file changed as §9 says     | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed.                                                                                                                                             | this spec     |
+| #   | Criterion                             | Test (observable)                                                                                                                                                                                                                          | Traces to     |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| A1  | `/q` writes only proposals            | Run `/q` on three fixture asks. `get_task` on each new node shows every outgoing edge with `label`, `effect`, a justification and `set_by: agent-proposed`. None shows `set_by: nic`, `intent`, `severity` or target worth.                | S7, U9, R1    |
+| A2  | A bare idea carries nothing           | `/q` on an idea that names no target. The node has a container and no other edge. Flow `gain` and `loss_averted` are both 0.                                                                                                               | U9, I7        |
+| A3  | An opportunity is one node            | Fingerprint every other node's fields before and after `/q` on an opportunity. Only the new node and its own edges differ.                                                                                                                 | U10, I9       |
+| A4  | The circular stays quiet              | Replay calibration case 1 (the "Dear Friends" Copyright Plus forward) through R2. It is classed `reference`, or captured with `deadline_class: fake` and no edge above the default quantum. It is not in the top 50 under any display key. | U1, U15       |
+| A5  | No worth from a sender                | Two fixture emails, identical except the sender (a strategic contact versus an unknown). They produce identical edge proposals.                                                                                                            | FR:498, U1    |
+| A6  | Densify batch shape                   | One `wf-densify` run produces one message with ≤ 50 rows, sorted by reach in descending order, each row carrying every column.                                                                                                             | S7, U20       |
+| A7  | Densify writes proposals directly     | One `wf-densify` run writes edge proposals as `agent-proposed` without pausing for sign-off. The readback is in the transcript.                                                                                                            | U20, R3       |
+| A8  | Silence approves nothing              | Leave a batch unanswered for 14 days. No edge in it changed `set_by`, and the batch is withdrawn.                                                                                                                                          | U20           |
+| A9  | Unapproved means default              | Before approval, the flow output for a row's source equals its output with that edge's quantum set to the default.                                                                                                                         | FR:474, S7    |
+| A10 | Target pricing by agent estimation    | Agents work out approximate target worth and write it directly to the target node with evidence, leaving `intent` untouched.                                                                                                               | S14, R4       |
+| A11 | Dates default to fake                 | `/q` on an input with a date and no acceptance gives `deadline_class: fake`, and the cliff lane does not surface it.                                                                                                                       | S5, U15, I17  |
+| A12 | Soft hardens on the second extension  | Fixture: soft date, extended once, then again. After the second extension the class is `hard`, `deadline_history` has two entries, and the next digest has one line about it. After the first extension the class is still `soft`.         | S5, G11, K1   |
+| A13 | Fake never hardens                    | Extend a `fake` date three times. The class is still `fake`.                                                                                                                                                                               | S5            |
+| A14 | One input retires                     | A statement says "drop X". X reads `cancelled` with a `not ripe:` reason, and no other node's fields changed. X's flow pull is zero on the next run.                                                                                       | S6, U19, I9   |
+| A15 | Nothing retires by age                | Over a 30-day replay of sleep-cycle and reconcile runs on a fixture graph, no opportunity is cancelled without a quoted statement.                                                                                                         | S6            |
+| A16 | Budget held                           | Over one week of transcripts there is ≤ 1 sitting, ≤ 7 priority asks, 0 in-conversation valuation questions, and no queue item presented twice.                                                                                            | R7, K2        |
+| A17 | Weights explain themselves            | Ask "why does X carry this?" for 5 nodes. Each answer names priced targets and routes matching X's `stake` map.                                                                                                                            | U18, I12      |
+| A18 | Harms are wired, not netted           | `/q` on work that advances one target and endangers another. It produces two edges, one `helps` and one `harms`, and the flow output shows both figures non-zero.                                                                          | S12, S16, I15 |
+| A19 | Every changed file changed as §9 says | Diff of the implementation PR against §9: every row is present, and no unlisted skill changed.                                                                                                                                             | this spec     |
 
 ## 12. Settled decisions
 
@@ -487,11 +462,11 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 
 1. **K1 (G11): The soft-to-hard rule. Settled (§7.1):** A soft deadline hardens to `hard` upon its
    second extension. The agent records the history and notes it in the daily digest; a single word
-   from Nic reverses it.
+   from the user reverses it.
 2. **K2: The budget. Settled (§0, §8):** One weekly sitting of ~20 minutes (one link batch of ≤ 50 rows
    or one pricing sitting of ≤ 10 targets). At most one priority ask a day in the digest; no
    mid-conversation interruptions.
-3. **K3 (G10, FQ13): Retiring an opportunity. Settled (§7.2):** Nic's statement ("drop X") or an
+3. **K3 (G10, FQ13): Retiring an opportunity. Settled (§7.2):** An explicit statement ("drop X") or an
    explicit authoritative world fact found by `/reconcile` (e.g. call closed) retires an opportunity
    by marking it `cancelled`.
 4. **K4: Batch expiry. Settled (§5):** An unanswered batch is withdrawn after 14 days and rebuilt
@@ -500,14 +475,14 @@ All questions K1–K11 are settled under the product-grade workflow redesign:
 6. **K6: Proposed hard dates. Settled (§7.1):** Agents propose `hard` on published evidence; it enters
    the priority ask queue if due within 14 days, otherwise waits for the weekly sitting.
 7. **K7: Email opportunity class. Settled (§4):** Invitations and offers become `opportunity` nodes
-   when they name something Nic has indicated an interest in or that contributes to a known target.
+   when they name something of indicated interest or that contributes to a known target.
 8. **K8: Batch size. Settled (§5):** Batches are capped at 50 rows, ordered by reach.
 9. **K9: Pricing sitting size. Settled (§6):** Capped at 10 targets per sitting. Positive and negative
    targets are judged in the same sitting to maintain ratio consistency.
 10. **K10: Agent corrections. Settled (§5):** Agents may correct mechanical errors on in-node evidence
     unasked, marked `agent-proposed`.
 11. **K11 (G5, FQ11): Fun. Settled:** Fun is treated as a strategic target or capital stock hub if
-    explicitly priced by Nic, and as a contextual tag otherwise.
+    explicitly priced, and as a contextual tag otherwise.
 
 ## 13. Behaviour removed
 

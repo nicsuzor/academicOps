@@ -51,8 +51,8 @@ ground truth from nothing.
 an accuracy correction (the artifact asserts something false) or a
 legibility/design correction (the artifact is true but hard to read or use).
 They take different fixes — don't let a design pass quietly change a claim, or
-an accuracy fix hide inside a redesign. **Human decision point where the
-classification isn't obvious** — ask rather than guess which job this is.
+an accuracy fix hide inside a redesign. **Decision point on the record where the
+classification isn't obvious** — record the ambiguity on the record rather than guessing which job this is.
 
 **3. Read the artifact's existing conventions before adding anything.**
 Extend what is already there; never fork a second notation, a parallel
@@ -66,8 +66,7 @@ labelled twice.
 presenting, verify rule compliance (proportionality, axioms, data boundaries);
 resolve any `REVISE` or `REJECT` findings before the owner reads the pass.
 Put the current state in front of the owner. Expect them to mark it up.
-Do not defend the previous version — it was a step, not a commitment. **Human
-decision point: the pass halts here for the owner's read**, same discipline
+Do not defend the previous version — it was a step, not a commitment. **Review boundary: the pass files the artifact on the record for review**, same discipline
 as `wf-escalated-approval`.
 
 **6. Carry feedback into the rework brief near-verbatim.** Brief with goal +
@@ -89,10 +88,10 @@ not yet a finished pass.
 
 ## Gates
 
-Steps 2 and 5 are human decision points. Step 2 halts only when the
-accuracy-vs-legibility split is genuinely unclear; step 5 halts every pass —
+Steps 2 and 5 are review boundaries. Step 2 halts only when the
+accuracy-vs-legibility split is genuinely unclear; step 5 gates every pass —
 the artifact does not advance on the agent's own read of whether it's good
-enough.
+enough without an explicit review decision on the record.
 
 ## Riders
 
@@ -229,12 +228,12 @@ rather than diagram work with the word "excalidraw" filed off.
   — version control, where the medium has it, is the history; a second file
   is drift waiting to happen.
 - **Steps 1–4 are the design conversation itself; nothing downstream of step 6
-  starts before step 5's human read has happened.**
+  starts before step 5's review decision on the record has happened.**
 
 ## Declared stakes
 
 Where the artifact is a design record for something that will be built (a
-map), a bad pass costs a wrongly-built feature downstream — the two human
+map), a bad pass costs a wrongly-built feature downstream — the two review
 gates (steps 2, 5) are what make that recoverable. Where the artifact is the
 deliverable itself (a methodology section, a shopping list), a bad pass costs
 the owner's trust that the artifact reflects what they actually said; the same

@@ -29,8 +29,7 @@ rather than compose it per task is settled ground and the settlement was against
 
 The care this template obliges: two runs, blind, with the executor's verbatim
 prompt and raw output kept; every load-bearing claim in the output checked at
-its source; the carried defects below checked by name; and the result put in
-front of the user, who decides whether it is sufficient rather than being asked
+its source; the carried defects below checked by name; and the result recorded on the record for a sufficiency judgment rather than being asked
 to pick from options.
 
 ## Yardsticks
@@ -85,8 +84,8 @@ These bind the iteration rather than the output:
   where the next executor can search, they cost the next run its blindness.
 - **Two runs per iteration.** One run cannot separate a wording change's effect
   from agent variance, so a single run is never evidence that an edit worked.
-- **Show the user the output.** Each turn ends by putting what the runs produced
-  in front of the user for a sufficiency judgment. The loop continues or stops
+- **Record the output on the record.** Each turn ends by recording what the runs produced
+  on the record for a sufficiency judgment. The loop continues or stops
   on that judgment, not on this template's reading of it.
 
 ## Exit
@@ -94,5 +93,4 @@ These bind the iteration rather than the output:
 Two blind runs happened with their prompts and raw outputs kept outside the PKB;
 every load-bearing claim in the outputs is verified, falsified or marked
 unverified; all five carried defects are checked and each is cleared or recorded
-as reproduced with the obligation it breaches; and the user has the produced
-output in front of them and has said whether it is sufficient.
+as reproduced with the obligation it breaches; and the produced output is filed on the record with the sufficiency assessment recorded.

@@ -77,7 +77,7 @@ Do not select this when:
    name, and it is visible without leaving the page.
 
 5. **Summarise to a decision.** What the run establishes, what it does not, and
-   the smallest set of choices that would change the next run — put to the user
+   the smallest set of choices that would change the next run — recorded on the record
    as choices, not as a plan already made. A halt, a refusal, or a run that
    could not proceed is a result and is reported as one.
 
@@ -96,5 +96,4 @@ same symptom next run.
 The spec used is named and was read before the run; the executor's verbatim
 prompt and raw output are archived; the artifact's condition is stated; every
 load-bearing claim is either verified, falsified, or marked unverified; each
-defect cites the obligation it breaches; and the user has an explicit decision
-in front of them.
+defect cites the obligation it breaches; and the decision choices are recorded on the record.

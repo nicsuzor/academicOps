@@ -48,7 +48,7 @@ flowchart TD
 ### Step 2: Dispatch Contextless Subagent
 
 - Launch a subagent via `invoke_subagent` (e.g., `research` or `agy`).
-- **Constraint:** Supply **only** the bare user prompt. Do not provide pre-digested hints, file paths, or search shortcuts.
+- **Constraint:** Supply **only** the bare input prompt. Do not provide pre-digested hints, file paths, or search shortcuts.
 - Set role to `Contextless Evaluator`.
 
 ### Step 3: Conduct Independent Ground-Truth Audit (Parent Pass)

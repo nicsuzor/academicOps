@@ -25,11 +25,11 @@ Universal rule-compliance review gate: evaluates an artifact, specification, des
 The invoking workflow provides:
 
 1. **Target artifact** -- the document, specification, design proposal, code diff, or decision under review.
-2. **Context and intent** -- original user prompt, commission objective, or task acceptance criteria.
+2. **Context and intent** -- commission objective, task acceptance criteria, or parent task context.
 3. **Rule sources** -- assembled in priority order:
    - Framework axioms: `plugins/rbg/axioms/` (inviolable baseline).
    - Project-local rules: `$CWD/.agents/rules/`.
-   - User-scoped rules: read from active PKB rules.
+   - Account-scoped rules: read from active PKB rules.
 
 ## Procedure
 
@@ -70,4 +70,4 @@ The structured review artifact containing exactly one verdict token, itemized re
 
 ## When to include
 
-Any workflow that produces an intellectual artifact, specification, design proposal, code change, or decision for review, before human presentation or acceptance.
+Any workflow that produces an intellectual artifact, specification, design proposal, code change, or decision for review, before delivery or escalated sign-off.

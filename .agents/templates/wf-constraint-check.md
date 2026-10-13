@@ -52,7 +52,7 @@ N violated:
 1. **[Type]**: [constraint] — **Violation**: [what's missing/wrong] — **Remediation**: [fix]
 ```
 
-A violated plan is revised or escalated to human review — it does not proceed to dispatch as-is.
+A violated plan is revised or escalated for review on the record — it does not proceed to dispatch as-is.
 
 ## Declared stakes
 
