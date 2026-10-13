@@ -212,6 +212,34 @@ export class TelegramBotClient {
     });
   }
 
+  public async registerCommands(): Promise<boolean> {
+    if (!this.config.isPrimary || this.config.botCommands.length === 0) {
+      return false;
+    }
+
+    let allOk = true;
+    for (const chatId of this.config.allowFrom) {
+      const res = await this.callApi("setMyCommands", {
+        commands: this.config.botCommands,
+        scope: { type: "chat", chat_id: chatId },
+      });
+      if (!res?.ok) {
+        allOk = false;
+      }
+    }
+    return allOk;
+  }
+
+  public async getRegisteredCommands(chatId: number): Promise<Array<{ command: string; description: string }>> {
+    const res = await this.callApi("getMyCommands", {
+      scope: { type: "chat", chat_id: chatId },
+    });
+    if (res?.ok && Array.isArray(res.result)) {
+      return res.result;
+    }
+    return [];
+  }
+
   public async startPolling() {
     if (!this.config.isPrimary) {
       console.log("[ida-telegram] Non-primary instance: poller disabled.");
@@ -223,6 +251,8 @@ export class TelegramBotClient {
       console.error(`[ida-telegram] Cannot acquire host lock: ${lock.reason}. Exiting.`);
       return;
     }
+
+    await this.registerCommands();
 
     this.isRunning = true;
 

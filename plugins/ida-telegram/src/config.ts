@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { resolveBotCommands, type TelegramBotCommand } from "./telegram/commands.js";
 
 export interface PluginConfig {
   botToken: string;
@@ -15,6 +16,7 @@ export interface PluginConfig {
   socketPath: string;
   githubToken?: string;
   miniAppUrl?: string;
+  botCommands: TelegramBotCommand[];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
@@ -45,5 +47,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     socketPath,
     githubToken: env.GITHUB_TOKEN,
     miniAppUrl: env.MINI_APP_URL,
+    botCommands: resolveBotCommands(env.TELEGRAM_BOT_COMMANDS),
   };
 }
