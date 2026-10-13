@@ -23,7 +23,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
    - `partial` plus a new review task queued for an agent, wired so the source cannot complete before it (source `depends_on` it).
    - `done` plus a queued follow-up task (clean split of partly-finished work).
    - `failed`: terminal failure with documented root cause.
-   Nothing is left in `review`.
+     Nothing is left in `review`.
 4. **Settle decisions before escalation**: Escalation is one level per hop on the record, never jumping tiers. Each agent escalates at most one level; only the front agent at the top of the chain speaks outside the framework. Settle open decisions yourself first where record or reversible judgment allows. If an unrecorded fact, external commitment, or reserved field forces escalation, reduce to a single one-line question in `reason`, queue a review task for the next escalation level, wire `depends_on`, and transition source task to `partial` (outcome 2).
 5. **Aged tasks and stale claims**: Stale `in_progress` tasks with no live claim (>24h unmodified) reset to `queued`. Rot (>14d in `ready`/`queued`) demotes to `status: inbox`. Never route aged items to `review`.
 6. **Demote affected tasks**: Set unblocked dependents, siblings of landed work, rot (>14d in `ready`/`queued`), and invalidated assumption nodes to `status: inbox` with explanatory annotations.
