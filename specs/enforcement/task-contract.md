@@ -73,9 +73,10 @@ this contract does not restate.
   [spec-partial-work-tight-loop-delivery.md](../polecat/spec-partial-work-tight-loop-delivery.md#the-partial-terminal-state)
   (the existing terminal status in the canonical taxonomy -- a partial handback
   is a legal terminal outcome, not a failure; that spec owns partial
-  semantics, which this bullet does not restate). A worker whose own deliverable
-  is complete releases its task `done`, even when a follow-up that depends on it
-  (QA, merge, deploy) is still to run; `partial` is reserved strictly for the
+  semantics, which this bullet does not restate). A worker whose deliverable
+  is a PR releases its task `review` once the PR is open and exits; the
+  repository merges it and `/reconcile` writes `done` on the merge, which
+  unblocks dependent follow-ups (QA, deploy); `partial` is reserved strictly for the
   worker's own unfinished acceptance items. Only silent, undisclosed
   abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the

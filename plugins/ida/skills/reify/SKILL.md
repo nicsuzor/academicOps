@@ -40,7 +40,7 @@ Then assemble the steps:
 ## 3. Write each task
 
 - Default to a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
-- Cut at every wait: a step that can only complete after something the worker does not control happens (CI, review, merge, deploy, a reply) starts a new task, wired by `needs` to the task before it. Otherwise cut only where independent sessions are strictly required (e.g. forks, loops, independent reviews).
+- Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - Make each task as big as possible within those cuts.
 - Write each follow-up the workflow calls for as its own task. Never fold a follow-up into the primary task or into another follow-up.
 - Wire `needs` edges only where one unit genuinely requires another's output.
@@ -62,7 +62,7 @@ Then assemble the steps:
 
 ## Instructions
 
-[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. The last step is a clean finish drawn from the finish template: deliver (e.g. push and open the PR), record the evidence, release the task, and exit. The finish waits for nothing; what comes after it is a follow-up task. ]
+[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. The last step is the finish template's finish: deliver, record the evidence, release the task, and exit. ]
 
 ## Output
 
@@ -80,9 +80,9 @@ Where the project finish template calls for QA review:
 1. Mint an independent follow-up task with status `queued`.
 2. Title: `QA: <primary task title>`.
 3. Set parent to the primary task's parent.
-4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
+4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.
-6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and merge to the target branch when verified per the finish template; a reviewer that pushes fixes or changes code must never merge and must hand off for independent review.
+6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the merged deliverable and claims against literal acceptance criteria; a reviewer that changes code delivers it through the finish template and hands off for independent review.
 
 ### Requirements for writing tasks
 
