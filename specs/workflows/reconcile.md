@@ -8,14 +8,15 @@ tags: [spec, workflow, reconcile, github, pkb, closure-loop]
 
 # GH ↔ PKB Reconcile
 
-The reconcile procedure itself lives in `plugins/ida/skills/reconcile/SKILL.md` and is not
+The reconcile procedure itself lives in universal workflow template `wf-reconcile`
+(`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) and is not
 restated here. This spec carries the design constraints that bind it, the frontmatter and
 event-log surfaces it reads and writes, and the target shape of the GitHub-issue leg it does not
 yet cover.
 
 ## Coverage
 
-The skill's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
+The procedure's scope is tasks and the pull requests they resolve against. Four closure gaps exist;
 one is covered.
 
 | Gap                                                                                    | State                                 |
@@ -27,8 +28,8 @@ one is covered.
 
 ## Design constraints
 
-1. **One canonical owner.** The procedure lives in one skill. Other skills invoke it; they do not
-   re-implement it.
+1. **One canonical owner.** The procedure lives in universal workflow template `wf-reconcile`. Other
+   workflows and skills invoke it; they do not re-implement it.
 2. **No shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces
    (frontmatter fields, the GH API's `closingIssuesReferences`, frontmatter URLs). Anywhere prose
    is involved, an agent reads it.
@@ -109,7 +110,7 @@ to `needs_user_call` regardless of confidence. `needs_user_call` also covers an 
 with `state_reason: not_planned` or `duplicate`, and a `gates_on` event firing on a task with
 multiple blocking issues.
 
-This routing governs **matching** only. The skill's own cancellation authority -- a world-fact
+This routing governs **matching** only. The procedure's own cancellation authority -- a world-fact
 established under a written evidence burden -- is separate and does not route through it.
 
 ## DRY discipline
