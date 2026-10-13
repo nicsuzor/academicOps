@@ -231,15 +231,16 @@ def resolve_verdict_script(hooks_dir: Path | None = None) -> Path:
         base = hooks_dir
     else:
         base = Path(__file__).resolve().parent
+    plugin_dir = base.parent
     # 1. Skill script: <plugin-dir>/skills/premise-check/scripts/verdict.py
-    skill_script = base.parent / "skills" / "premise-check" / "scripts" / "verdict.py"
+    skill_script = plugin_dir / "skills" / "premise-check" / "scripts" / "verdict.py"
     if skill_script.is_file():
-        return skill_script
+        return skill_script.relative_to(plugin_dir)
     # 2. Hook script: <plugin-dir>/hooks/premise_check_verdict.py
     hook_script = base / "premise_check_verdict.py"
     if hook_script.is_file():
-        return hook_script
-    return skill_script
+        return hook_script.relative_to(plugin_dir)
+    return Path("skills/premise-check/scripts/verdict.py")
 
 
 def format_verdict_command(

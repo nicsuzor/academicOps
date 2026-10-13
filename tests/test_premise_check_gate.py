@@ -784,10 +784,13 @@ def test_stop_block_message_contains_three_elements():
     assert "--claim" in res.inject_text or "--report" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
-    # The script path in the stop block message must exist on disk
+    # The script path in the stop block message must be relative and exist relative to plugin root
     cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("python3 ")][0]
     script_path = Path(shlex.split(cmd_line)[1])
-    assert script_path.is_file(), f"script path does not exist: {script_path}"
+    assert not script_path.is_absolute(), f"script path must be relative, got: {script_path}"
+    assert (_PLUGIN_ROOT / script_path).is_file(), (
+        f"script path does not exist: {_PLUGIN_ROOT / script_path}"
+    )
 
 
 def test_format_verdict_command_resolves_runnable_script():
@@ -801,20 +804,23 @@ def test_format_verdict_command_resolves_runnable_script():
     )
     assert "--verdict PASS" in cmd
     assert '--reason "<why>"' in cmd
-    # The script path in the command must exist on disk
+    # The script path in the command must be relative and exist relative to plugin root
     parts = shlex.split(cmd)
     script_path = Path(parts[1])
-    assert script_path.is_file(), f"script path does not exist: {script_path}"
+    assert not script_path.is_absolute(), f"script path must be relative, got: {script_path}"
+    assert (_PLUGIN_ROOT / script_path).is_file(), (
+        f"script path does not exist: {_PLUGIN_ROOT / script_path}"
+    )
 
 
-def test_resolve_verdict_script_with_empty_or_relative_hooks_dir_resolves_absolute_existing_file():
+def test_resolve_verdict_script_with_empty_or_relative_hooks_dir_resolves_relative_existing_file():
     script_default = pcg.resolve_verdict_script(Path())
-    assert script_default.is_absolute()
-    assert script_default.is_file()
+    assert not script_default.is_absolute()
+    assert (_PLUGIN_ROOT / script_default).is_file()
 
     script_none = pcg.resolve_verdict_script(None)
-    assert script_none.is_absolute()
-    assert script_none.is_file()
+    assert not script_none.is_absolute()
+    assert (_PLUGIN_ROOT / script_none).is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -935,3 +941,157 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
     assert upstream_verification_id != verification_id
     assert pcg.is_valid_id(upstream_verification_id)
     assert pcg.is_armed(upstream_session) is False
+
+
+def test_each_hook_message_naming_verify_script_prints_relative_path():
+    session_id = "sess-rel-paths"
+    claim = '<cross-session-message from="twin">PR #42 is ready.</cross-session-message>'
+
+    # 1. Arm message (UserPromptSubmit)
+    ctx_prompt = _prompt_ctx(session_id, claim)
+    arm_res = pcg.premise_check_arm(ctx_prompt)
+    assert arm_res is not None
+    for text in (arm_res.inject_text, arm_res.user_text):
+        assert text, "expected non-empty text"
+        cmd_lines = [line for line in text.splitlines() if line.startswith("python3 ")]
+        assert cmd_lines, f"expected python3 command in: {text}"
+        for line in cmd_lines:
+            script_token = shlex.split(line)[1]
+            p = Path(script_token)
+            assert not p.is_absolute(), f"script path must be relative, got: {p}"
+            assert (_PLUGIN_ROOT / p).is_file(), f"script path not found at: {_PLUGIN_ROOT / p}"
+
+    # 2. Block on dispatch (PreToolUse)
+    pcg.arm(session_id, claim_id=claim)
+    pre_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert pre_res is not None
+    for text in (pre_res.inject_text, pre_res.user_text):
+        assert text, "expected non-empty text"
+        cmd_lines = [line for line in text.splitlines() if line.startswith("python3 ")]
+        assert cmd_lines, f"expected python3 command in: {text}"
+        for line in cmd_lines:
+            script_token = shlex.split(line)[1]
+            p = Path(script_token)
+            assert not p.is_absolute(), f"script path must be relative, got: {p}"
+            assert (_PLUGIN_ROOT / p).is_file(), f"script path not found at: {_PLUGIN_ROOT / p}"
+
+    # 3. Block on Stop (Stop)
+    stop_ctx = dispatch.HookContext(
+        client="claude",
+        event="Stop",
+        session_id=session_id,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+    )
+    stop_res = pcg.premise_check_handler(stop_ctx)
+    assert stop_res is not None
+    for text in (stop_res.inject_text, stop_res.user_text):
+        assert text, "expected non-empty text"
+        cmd_lines = [line for line in text.splitlines() if line.startswith("python3 ")]
+        assert cmd_lines, f"expected python3 command in: {text}"
+        for line in cmd_lines:
+            script_token = shlex.split(line)[1]
+            p = Path(script_token)
+            assert not p.is_absolute(), f"script path must be relative, got: {p}"
+            assert (_PLUGIN_ROOT / p).is_file(), f"script path not found at: {_PLUGIN_ROOT / p}"
+
+
+def test_printed_path_runs_from_hook_cwd_under_claude_code_and_agy(tmp_path):
+    import os
+    import subprocess
+
+    from build.build import build_all
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        _REPO_ROOT,
+        dist_root,
+        marketplace_path=_REPO_ROOT / "build" / "marketplace.toml",
+        plugins=["ida"],
+        version="0.0.0-test",
+    )
+
+    for client in ("claude", "agy"):
+        build_dir = dist_root / f"ida-{client}"
+        hooks_dir = build_dir / "hooks"
+        session_id = f"sess-run-{client}"
+        claim_id = f"claim-{client}-123"
+
+        cmd = pcg.format_verdict_command(
+            claim_id=claim_id, hooks_dir=hooks_dir, session_id=session_id
+        )
+        parts = shlex.split(cmd)
+        script_rel = parts[1]
+        assert not Path(script_rel).is_absolute(), f"printed path must be relative: {script_rel}"
+
+        # 1. Test running from built plugin directory (the hook's cwd)
+        res_build = subprocess.run(
+            ["python3", script_rel, "--help"],
+            cwd=build_dir,
+            capture_output=True,
+            text=True,
+        )
+        assert res_build.returncode == 0, (
+            f"{client} failed to run from build dir:\n{res_build.stderr}"
+        )
+        assert "usage: premise_check_verdict.py" in res_build.stdout
+
+        # 2. Test running a real verdict from the hook's cwd
+        pcg.arm(session_id, claim_id=claim_id)
+        res_verdict = subprocess.run(
+            [
+                "python3",
+                script_rel,
+                "--claim",
+                claim_id,
+                "--verdict",
+                "PASS",
+                "--reason",
+                f"Verified under {client}",
+                "--session",
+                session_id,
+            ],
+            cwd=build_dir,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "AOPS_PREMISE_GATE_DIR": str(tmp_path / "gate_state")},
+        )
+        assert res_verdict.returncode == 0, (
+            f"{client} verdict command failed:\n{res_verdict.stderr}"
+        )
+        assert "PASS" in res_verdict.stdout
+
+        # 3. Test running from source plugin root (_PLUGIN_ROOT)
+        res_src = subprocess.run(
+            ["python3", script_rel, "--help"],
+            cwd=_PLUGIN_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        assert res_src.returncode == 0, (
+            f"{client} failed to run from source plugin root:\n{res_src.stderr}"
+        )
+        assert "usage: premise_check_verdict.py" in res_src.stdout
+
+
+def test_no_hook_resolves_script_path_from_env_var():
+    import ast
+
+    hook_file = _HOOKS_DIR / "premise_check_gate.py"
+    tree = ast.parse(hook_file.read_text(encoding="utf-8"))
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in (
+            "resolve_verdict_script",
+            "format_verdict_command",
+        ):
+            for subnode in ast.walk(node):
+                if isinstance(subnode, ast.Attribute) and subnode.attr in ("environ", "getenv"):
+                    assert node.name != "resolve_verdict_script", (
+                        "resolve_verdict_script must not access environment variables"
+                    )
+                if isinstance(subnode, ast.Constant) and isinstance(subnode.value, str):
+                    for forbidden in ("CLAUDE_PLUGIN_ROOT", "AGY_PLUGIN_ROOT", "PLUGIN_ROOT"):
+                        assert forbidden not in subnode.value, (
+                            f"{node.name} must not reference {forbidden}"
+                        )
