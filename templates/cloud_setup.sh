@@ -36,15 +36,19 @@ claude plugin install tools@academicOps
 claude plugin install rbg@academicOps
 
 # 4) Auto-mode trust rules as a managed-settings drop-in (the classifier ignores
-#    autoMode in repo settings). Set CLAUDE_AUTO_MODE_SETTINGS_URL in the
-#    environment to a settings JSON holding an autoMode block; a GitHub contents
-#    API URL is fetched raw with GITHUB_TOKEN.
-if [ -n "${CLAUDE_AUTO_MODE_SETTINGS_URL:-}" ]; then
+#    autoMode in repo settings). Set CLAUDE_AUTO_MODE_SETTINGS_REPO (a git URL)
+#    and CLAUDE_AUTO_MODE_SETTINGS_PATH (a settings JSON in that repo holding an
+#    autoMode block). The repo is fetched with git, the same direct route and
+#    askPass token as step 2.
+if [ -n "${CLAUDE_AUTO_MODE_SETTINGS_REPO:-}" ]; then
+  git config --global url."$CLAUDE_AUTO_MODE_SETTINGS_REPO".insteadOf "$CLAUDE_AUTO_MODE_SETTINGS_REPO"
+  auto_mode_repo="$(mktemp -d)"
   auto_mode_json="$(mktemp)"
-  curl -fsSL -H "Accept: application/vnd.github.raw" \
-    "$CLAUDE_AUTO_MODE_SETTINGS_URL" -o "$auto_mode_json"
+  git clone --quiet --depth 1 --no-checkout --filter=blob:none \
+    "$CLAUDE_AUTO_MODE_SETTINGS_REPO" "$auto_mode_repo"
+  git -C "$auto_mode_repo" show "HEAD:${CLAUDE_AUTO_MODE_SETTINGS_PATH:?CLAUDE_AUTO_MODE_SETTINGS_PATH unset}" > "$auto_mode_json"
   python3 -c 'import json, sys; assert "autoMode" in json.load(open(sys.argv[1])), "no autoMode block"' "$auto_mode_json"
   install -d -m 0755 /etc/claude-code/managed-settings.d
   install -m 0644 "$auto_mode_json" /etc/claude-code/managed-settings.d/auto-mode.json
-  rm -f "$auto_mode_json"
+  rm -rf "$auto_mode_repo" "$auto_mode_json"
 fi
