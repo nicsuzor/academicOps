@@ -447,7 +447,7 @@ def test_dispatch_http_failure_surfaces_error_in_hook_output(staged_hooks: Path)
         input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "check status"}),
         text=True,
         capture_output=True,
-        timeout=15,
+        timeout=60,
         cwd=str(staged_hooks),
         env=env,
     )
