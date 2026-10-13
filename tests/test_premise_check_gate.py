@@ -779,20 +779,23 @@ def test_stop_block_message_contains_three_elements():
     # 2. that the gate blocks until a verdict is recorded
     assert "blocks until a verdict is recorded" in res.inject_text
     # 3. the exact runnable call that records one
-    assert "python3" in res.inject_text
+    assert "uv run --project" in res.inject_text
     assert "verdict.py" in res.inject_text
     assert "--claim" in res.inject_text or "--report" in res.inject_text
     assert "--verdict PASS" in res.inject_text
     assert '--reason "<why>"' in res.inject_text
     # The script path in the stop block message must exist on disk
-    cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("python3 ")][0]
-    script_path = Path(shlex.split(cmd_line)[1])
+    cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("uv run ")][0]
+    script_path = Path(shlex.split(cmd_line)[5])
     assert script_path.is_file(), f"script path does not exist: {script_path}"
 
 
 def test_format_verdict_command_resolves_runnable_script():
     cmd = pcg.format_verdict_command(claim_id="my claim with spaces")
-    assert cmd.startswith("python3 ")
+    parts = shlex.split(cmd)
+    assert parts[:3] == ["uv", "run", "--project"]
+    assert parts[4] == "python3"
+    assert Path(parts[3]).is_dir()
     assert (
         "--claim 'my claim with spaces'" in cmd
         or '--claim "my claim with spaces"' in cmd
@@ -802,8 +805,7 @@ def test_format_verdict_command_resolves_runnable_script():
     assert "--verdict PASS" in cmd
     assert '--reason "<why>"' in cmd
     # The script path in the command must exist on disk
-    parts = shlex.split(cmd)
-    script_path = Path(parts[1])
+    script_path = Path(parts[5])
     assert script_path.is_file(), f"script path does not exist: {script_path}"
 
 
@@ -935,3 +937,215 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
     assert upstream_verification_id != verification_id
     assert pcg.is_valid_id(upstream_verification_id)
     assert pcg.is_armed(upstream_session) is False
+
+
+def test_each_hook_message_naming_verify_script_prints_absolute_path():
+    session_id = "sess-abs-paths"
+    claim = '<cross-session-message from="twin">PR #42 is ready.</cross-session-message>'
+
+    def _assert_command_has_absolute_paths(text: str):
+        cmd_lines = [line for line in text.splitlines() if "verdict.py" in line]
+        assert cmd_lines, f"expected verdict.py command line in: {text}"
+        for line in cmd_lines:
+            tokens = shlex.split(line)
+            # Find script token
+            script_tokens = [t for t in tokens if t.endswith("verdict.py")]
+            assert script_tokens, f"no verdict.py token found in line: {line}"
+            script_path = Path(script_tokens[0])
+            assert script_path.is_absolute(), f"script path must be absolute, got: {script_path}"
+            assert script_path.is_file(), f"script path does not exist: {script_path}"
+            # If --project is present, project dir must also be absolute and exist
+            if "--project" in tokens:
+                proj_idx = tokens.index("--project") + 1
+                proj_path = Path(tokens[proj_idx])
+                assert proj_path.is_absolute(), f"project path must be absolute, got: {proj_path}"
+                assert proj_path.is_dir(), f"project path does not exist: {proj_path}"
+
+    # 1. Arm message (UserPromptSubmit)
+    ctx_prompt = _prompt_ctx(session_id, claim)
+    arm_res = pcg.premise_check_arm(ctx_prompt)
+    assert arm_res is not None
+    assert arm_res.inject_text and arm_res.user_text
+    _assert_command_has_absolute_paths(arm_res.inject_text)
+    _assert_command_has_absolute_paths(arm_res.user_text)
+
+    # 2. Block on dispatch (PreToolUse)
+    pcg.arm(session_id, claim_id=claim)
+    pre_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    assert pre_res is not None
+    assert pre_res.inject_text and pre_res.user_text
+    _assert_command_has_absolute_paths(pre_res.inject_text)
+    _assert_command_has_absolute_paths(pre_res.user_text)
+
+    # 3. Block on Stop (Stop)
+    stop_ctx = dispatch.HookContext(
+        client="claude",
+        event="Stop",
+        session_id=session_id,
+        agent_type="ida:ida",
+        hooks_dir=_HOOKS_DIR,
+    )
+    stop_res = pcg.premise_check_handler(stop_ctx)
+    assert stop_res is not None
+    assert stop_res.inject_text and stop_res.user_text
+    _assert_command_has_absolute_paths(stop_res.inject_text)
+    _assert_command_has_absolute_paths(stop_res.user_text)
+
+
+def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_path):
+    import os
+    import subprocess
+
+    from build.build import build_all
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        _REPO_ROOT,
+        dist_root,
+        marketplace_path=_REPO_ROOT / "build" / "marketplace.toml",
+        plugins=["ida"],
+        version="0.0.0",
+    )
+
+    gate_dir = tmp_path / "gate_state"
+    gate_dir.mkdir(parents=True, exist_ok=True)
+
+    for client in ("claude", "agy"):
+        build_dir = dist_root / f"ida-{client}"
+        hooks_dir = build_dir / "hooks"
+        session_id = f"sess-run-{client}"
+        claim_id = f"claim-{client}-123"
+
+        cmd = pcg.format_verdict_command(
+            claim_id=claim_id, hooks_dir=hooks_dir, session_id=session_id
+        )
+        tokens = shlex.split(cmd)
+
+        # Verify command contains absolute paths
+        script_tokens = [t for t in tokens if t.endswith("verdict.py")]
+        assert script_tokens, f"no verdict.py token in: {cmd}"
+        script_path = Path(script_tokens[0])
+        assert script_path.is_absolute(), f"script path must be absolute: {script_path}"
+        assert script_path.is_file(), f"script path not found: {script_path}"
+
+        if "--project" in tokens:
+            proj_idx = tokens.index("--project") + 1
+            proj_path = Path(tokens[proj_idx])
+            assert proj_path.is_absolute(), f"project path must be absolute: {proj_path}"
+            assert proj_path.is_dir(), f"project path not found: {proj_path}"
+
+        # Distinct directory representing an agent running from /workspace or scratch
+        outside_dir = tmp_path / f"outside-workspace-{client}"
+        outside_dir.mkdir(parents=True, exist_ok=True)
+
+        # 1. Test running help from outside cwd
+        help_cmd = [*tokens[: tokens.index("--claim")], "--help"]
+        res_help = subprocess.run(
+            help_cmd,
+            cwd=outside_dir,
+            capture_output=True,
+            text=True,
+        )
+        assert res_help.returncode == 0, (
+            f"{client} failed --help from outside dir:\n{res_help.stderr}"
+        )
+        assert "usage: premise_check_verdict.py" in res_help.stdout
+
+        # 2. Test running a real verdict from outside cwd
+        pcg.arm(session_id, claim_id=claim_id)
+        assert pcg.is_armed(session_id) is True
+
+        run_tokens = shlex.split(cmd.replace("<why>", f"Verified under {client} from outside cwd"))
+        res_verdict = subprocess.run(
+            run_tokens,
+            cwd=outside_dir,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "AOPS_PREMISE_GATE_DIR": str(gate_dir)},
+        )
+        assert res_verdict.returncode == 0, (
+            f"{client} verdict command failed from outside dir:\n{res_verdict.stderr}"
+        )
+        assert "PASS" in res_verdict.stdout
+        assert '"ok": true' in res_verdict.stdout
+
+        # Verify gate was disarmed
+        assert pcg.is_armed(session_id) is False
+
+
+def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, monkeypatch):
+    import os
+    import subprocess
+
+    from build.build import build_all
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        _REPO_ROOT,
+        dist_root,
+        marketplace_path=_REPO_ROOT / "build" / "marketplace.toml",
+        plugins=["ida"],
+        version="0.0.0",
+    )
+
+    gate_dir = tmp_path / "gate_state_rel"
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("AOPS_PREMISE_GATE_DIR", str(gate_dir))
+
+    build_dir = dist_root / "ida-claude"
+    session_id = "sess-rel-hooks"
+    claim_id = "claim-rel-hooks"
+
+    # When cwd is the plugin root and hooks_dir is relative (e.g. Path("hooks"))
+    monkeypatch.chdir(build_dir)
+    cmd = pcg.format_verdict_command(
+        claim_id=claim_id, hooks_dir=Path("hooks"), session_id=session_id
+    )
+    tokens = shlex.split(cmd)
+
+    script_tokens = [t for t in tokens if t.endswith("verdict.py")]
+    assert script_tokens
+    script_path = Path(script_tokens[0])
+    assert script_path.is_absolute(), f"script path must be absolute: {script_path}"
+    assert script_path.is_file()
+
+    # Outside cwd execution
+    outside_dir = tmp_path / "outside-rel-test"
+    outside_dir.mkdir(parents=True, exist_ok=True)
+    pcg.arm(session_id, claim_id=claim_id)
+
+    run_tokens = shlex.split(cmd.replace("<why>", "Verified relative hooks_dir resolution"))
+    res = subprocess.run(
+        run_tokens,
+        cwd=outside_dir,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "AOPS_PREMISE_GATE_DIR": str(gate_dir)},
+    )
+    assert res.returncode == 0, f"execution failed:\n{res.stderr}"
+    assert "PASS" in res.stdout
+    assert pcg.is_armed(session_id) is False
+
+
+def test_printed_command_independent_of_env_vars(monkeypatch, tmp_path):
+    # Set misleading environment variables
+    fake_claude = tmp_path / "fake-claude-root"
+    fake_agy = tmp_path / "fake-agy-root"
+    fake_plugin = tmp_path / "fake-plugin-root"
+    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(fake_claude))
+    monkeypatch.setenv("AGY_PLUGIN_ROOT", str(fake_agy))
+    monkeypatch.setenv("PLUGIN_ROOT", str(fake_plugin))
+
+    cmd = pcg.format_verdict_command(
+        claim_id="env-test-claim", hooks_dir=_HOOKS_DIR, session_id="sess-env-test"
+    )
+    assert str(fake_claude) not in cmd
+    assert str(fake_agy) not in cmd
+    assert str(fake_plugin) not in cmd
+
+    tokens = shlex.split(cmd)
+    script_tokens = [t for t in tokens if t.endswith("verdict.py")]
+    assert script_tokens
+    script_path = Path(script_tokens[0])
+    assert script_path.is_absolute()
+    assert script_path.is_file()
