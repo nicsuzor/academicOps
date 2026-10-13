@@ -31,7 +31,7 @@ async function main() {
     process.exit(0);
   }
 
-  let payload: any;
+  let payload;
   try {
     payload = JSON.parse(inputData);
   } catch {
