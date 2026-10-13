@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.10.14](https://github.com/nicsuzor/academicOps/compare/v0.10.13...v0.10.14) (2026-10-13)
+
+### Features
+
+- **ida:** add wf-reconcile universal workflow template to workflow-library (aops_wf_reconcile_workflow) ([4a7d3ae](https://github.com/nicsuzor/academicOps/commit/4a7d3aea3aaadf6bae0d970f11c7051761b47f8b))
+- **ida:** add wf-reconcile universal workflow template to workflow-library (aops_wf_reconcile_workflow) ([e1112ac](https://github.com/nicsuzor/academicOps/commit/e1112ac36024a6449d07dc825b17e7177f0501dc))
+- **ida:** fold gather into reconcile and replace morning-decisions with decide ([6080ad6](https://github.com/nicsuzor/academicOps/commit/6080ad67e35f040b62bcdd8a15cf4273cd5d662b))
+- **ida:** fold gather into reconcile and replace morning-decisions with decide ([95fd4e1](https://github.com/nicsuzor/academicOps/commit/95fd4e13c867f6b59e84245c18732f2a92931b2c))
+- rewrite review lifecycle so reconcile passes move review tasks on ([e6227b9](https://github.com/nicsuzor/academicOps/commit/e6227b9f4a5657536af7d1b9996f8b673717c24e))
+- rewrite review lifecycle so reconcile passes move review tasks on ([616f9bf](https://github.com/nicsuzor/academicOps/commit/616f9bfadc59a5fa081fb0d4b3e62e6e4b92cbca))
+- **verify:** require building image and checking content for container QA ([fe17937](https://github.com/nicsuzor/academicOps/commit/fe1793793ecf0657d568cd42c1b0a73356f817a5))
+
+### Bug Fixes
+
+- **ida:** make UserPromptSubmit PKB search HTTP-only and delete CLI fallback ([86c57ca](https://github.com/nicsuzor/academicOps/commit/86c57cae62878a32274b363ba8a569674ebf7448))
+- **ida:** make UserPromptSubmit PKB search HTTP-only and delete CLI fallback ([c8ed829](https://github.com/nicsuzor/academicOps/commit/c8ed8296ec5511323b836698dfec474842e11031))
+- **lifecycle:** release complete deliverable as done when dependent follow-up remains ([0fb9249](https://github.com/nicsuzor/academicOps/commit/0fb92497800b9d81b6fdd735b7717dee029ee02b))
+- **lifecycle:** release complete deliverable as done when dependent follow-up remains ([0b22ce2](https://github.com/nicsuzor/academicOps/commit/0b22ce24f60590b5fcffae2af9e0befcc8206f43))
+- **workflows:** block implementation on approval and enforce one-level-per-hop escalation ([92fdb3c](https://github.com/nicsuzor/academicOps/commit/92fdb3c092bf54f25305bdc644fd640e6ac77ba0))
+
+### Code Refactoring
+
+- **tests:** cut bespoke test machinery and policy assertions per rbg review ([3074b49](https://github.com/nicsuzor/academicOps/commit/3074b49e4ad87ee0d63aa0646d75edcad54d37eb))
+
+### Documentation
+
+- **specs:** correct stale plugins/pkb paths and premise-check spec ([1caa8f8](https://github.com/nicsuzor/academicOps/commit/1caa8f8b185c19e17cc76e3ba54d89b7661afda8))
+- **specs:** correct stale plugins/pkb paths and premise-check verdicts/gate ([7d05d78](https://github.com/nicsuzor/academicOps/commit/7d05d7819a0842525f3f6c940e9aed5278dbfa0b))
+
+### Tests
+
+- **ida:** increase subprocess timeout in end-to-end hook dispatch test ([18635d0](https://github.com/nicsuzor/academicOps/commit/18635d0f4031e28c5edfa33bd7f3e7f30a245445))
+- **workflows:** add failing test for universal workflow resolution (aops_wf_reconcile_workflow) ([d5f6b00](https://github.com/nicsuzor/academicOps/commit/d5f6b00f1050806b654d6f33e642729e8efccd91))
+
 ## [0.10.13](https://github.com/nicsuzor/academicOps/compare/v0.10.12...v0.10.13) (2026-10-13)
 
 ### Bug Fixes
