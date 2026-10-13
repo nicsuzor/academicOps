@@ -11,8 +11,6 @@ lib/                    Shared source, never shipped as-is. Most of it is inject
   agy/                  Shared config for the agy client.
   hooks/                Hook runtime shared by every plugin that hooks
                         (dispatch.py).
-  polecat/              The container launcher, its entrypoint and baked image
-                        defaults; injected into `plugins/aops`.
   py/                   Shared Python helpers, including the transcript
                         pipeline (`py/transcripts/`).
   telemetry/            Shared observability config, injected into whichever
@@ -23,20 +21,16 @@ templates/              Build-time file templates, GitHub Actions workflow
                         templates, and the GitHub-agent worker template.
 scripts/                Repo tooling, not shipped in any plugin.
 plugins/                Plugin sources. Only what a client needs.
-  aops/                 james (container worker), marsha (QA), sara
-                        (supervisor); review and workflow-composition skills;
-                        observability hooks; the polecat CLI.
   ida/                  ida -- the interactive face, and the only agent that
-                        talks to the user.
-  pkb/                  pauli -- sole writer to the Personal Knowledge Base;
-                        memory, capture, and workflow-template skills; the
-                        PKB MCP server.
-  rbg/                  rbg -- rule enforcement: an advisory turn-by-turn
-                        evaluator plus a stop-side rule-check gate.
+                        talks to the user; james, marsha, sara, pauli (the
+                        PKB graph agent) and rbg; PKB, workflow, review and
+                        premise-check skills; session, PKB-search, tracing
+                        and premise-check hooks.
+  rbg/                  Rule enforcement: the axioms, an advisory
+                        turn-by-turn evaluator plus a stop-side rule-check
+                        gate.
   tools/                Domain research skills.
-  ts/                   Tailscale bring-up for remote/cloud sessions.
   aops-debug/           Debug plugin that dumps raw hook payloads.
-plugins.disabled/       Retired sources, excluded from the build.
 specs/                  Design intent.
 tests/                  Test suite.
 .agents/                Rules for agents working ON this repository.
@@ -51,15 +45,12 @@ Tests, specs, and development tooling live outside `plugins/`.
 `build/marketplace.toml` maps directory to marketplace name and is the single
 source of truth for the built plugin set.
 
-| Directory            | Owns                                                                                                                                                                                                                                            |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins/aops`       | james (`plugins/aops/agents/james.md`), marsha (`plugins/aops/agents/marsha.md`), sara (`plugins/aops/agents/sara.md`); review, workflow-composition, hydrate, and learn skills; observability hooks.                                           |
-| `plugins/ida`        | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; ida-twin (`plugins/ida/agents/ida-twin.md`) -- the same face plus a downstream twin in one session, launched directly and never routed to. |
-| `plugins/pkb`        | pauli (`plugins/pkb/agents/pauli.md`) -- sole writer to the PKB; capture, memory, decomposition, and workflow-template skills; the `services` PKB MCP server.                                                                                   |
-| `plugins/rbg`        | rbg (`plugins/rbg/agents/rbg.md`) -- rule enforcement: an advisory turn-by-turn evaluator plus a stop-side rule-check gate.                                                                                                                     |
-| `plugins/tools`      | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding).                                                                                                                                     |
-| `plugins/ts`         | Tailscale bring-up for remote/cloud sessions.                                                                                                                                                                                                   |
-| `plugins/aops-debug` | Debug plugin that dumps raw hook payloads.                                                                                                                                                                                                      |
+| Directory            | Owns                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins/ida`        | ida (`plugins/ida/agents/ida.md`) -- the interactive face and the only agent that talks to the user; james, marsha, sara, rbg, and pauli (`plugins/ida/agents/pauli.md`) -- the PKB graph agent for memory, planning, decomposition, and graph writes; capture, memory, decomposition, dispatch, workflow-library, review, and premise-check skills; session, PKB-search, tracing, and premise-check hooks. |
+| `plugins/rbg`        | Rule enforcement: the axioms (`plugins/rbg/axioms/`), an advisory turn-by-turn evaluator plus a stop-side rule-check gate. The rbg agent itself is `plugins/ida/agents/rbg.md`.                                                                                                                                                                                                                             |
+| `plugins/tools`      | Domain research skills (data analysis, document conversion, diagramming, peer review, project scaffolding).                                                                                                                                                                                                                                                                                                 |
+| `plugins/aops-debug` | Debug plugin that dumps raw hook payloads.                                                                                                                                                                                                                                                                                                                                                                  |
 
 Each plugin's own `README.md` is the fuller description; this table is not a
 second copy of it.
@@ -70,15 +61,12 @@ Every plugin hook shares one runtime, `lib/hooks/dispatch.py`, injected at
 build time. Which client-visible events fire, in what order, and the
 `refuse` / `block` / advisory disposition contract are stated there; this
 table names only which plugin registers which event and to what end, read
-from each plugin's own hooks/handlers.py (e.g. `plugins/aops/hooks/handlers.py`):
+from each plugin's own hooks/handlers.py (e.g. `plugins/ida/hooks/handlers.py`):
 
-| Plugin | Events registered                                                                                                               | What it's for                                                                                                                                                                                              |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aops` | `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`, `PostToolBatch`, `SubagentStart` | Session credential/path setup, OTel tracing spans, the honesty reminder on subagent spawn, and the quiet/hearsay advisories on `PostToolBatch`.                                                            |
-| `ida`  | `PreToolUse`, `Stop`                                                                                                            | `PreToolUse` runs the premise-check handler; `Stop` is registered with no handlers yet.                                                                                                                    |
-| `pkb`  | `UserPromptSubmit`                                                                                                              | Grounds the incoming prompt in a PKB search before the agent replies.                                                                                                                                      |
-| `rbg`  | `PreToolUse`, `Stop`, `SubagentStop` (declared, unwired)                                                                        | Rule-compliance evaluation and the stop-side rule-check gate, as designed. `HANDLERS` in `plugins/rbg/hooks/handlers.py` currently has every entry commented out, so this pillar ships no live hook today. |
-| `ts`   | `SessionStart`                                                                                                                  | Joins the tailnet when `CLAUDE_CODE_REMOTE=true` and `TS_AUTHKEY` is set.                                                                                                                                  |
+| Plugin | Events registered                                                                                                                                                                                                                                                                                                                                        | What it's for                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ida`  | Claude Code: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `Stop`, `SubagentStop`, `StopFailure`, `PermissionRequest`, `PermissionDenied`, `Notification`, `PreCompact`, `PostCompact`, `SessionEnd`. agy: `PreInvocation` (canonical `UserPromptSubmit`), `PreToolUse`, `PostToolUse`, `Stop` | Session credential/path setup and session-id export on `SessionStart`; OTel tracing spans; on `UserPromptSubmit`, grounds the user's prompt in a PKB search (`search_the_pkb`, see [prompt hydration](agents/prompt-hydration.md)) and flags a peer report as hearsay for ida and sara; the premise-check gate, armed on `UserPromptSubmit`, `PostToolUse` and `PostToolBatch` and enforced on `PreToolUse` and `Stop` (see [report verification](enforcement/report-verification.md)). |
+| `rbg`  | `PreToolUse`, `Stop`, `SubagentStop` (declared, unwired)                                                                                                                                                                                                                                                                                                 | Rule-compliance evaluation and the stop-side rule-check gate, as designed. `HANDLERS` in `plugins/rbg/hooks/handlers.py` currently has every entry commented out, so this pillar ships no live hook today.                                                                                                                                                                                                                                                                              |
 
 `plugins/tools` and `plugins/aops-debug` ship no hooks or a debug-only
 passthrough respectively; see each plugin's own README.
