@@ -1,0 +1,124 @@
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+export const MCP_TOOLS: ToolDefinition[] = [
+  {
+    name: "reply",
+    description:
+      "Send a message to Nic over Telegram with progressive disclosure, expandable blockquotes, and Details button.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID (defaults to primary user)" },
+        text: { type: "string", description: "Markdown text for chat (tier 1 and 2)" },
+        detail: { type: "string", description: "Optional deep markdown for Details page (tier 3)" },
+        buttons: { type: "array", description: "Optional custom inline keyboard buttons" },
+        voice: { type: "boolean", description: "Send tier 1 as a spoken voice note" },
+        reply_to: { type: "integer", description: "Telegram message ID to reply to" },
+        feedback: { type: "boolean", description: "Whether to attach 👍/👎 buttons (default true)" },
+        review: {
+          type: "object",
+          description: "Attach PR diff review card",
+          properties: {
+            repo: { type: "string" },
+            pr: { type: "integer" },
+          },
+        },
+      },
+      required: ["text"],
+    },
+  },
+  {
+    name: "react",
+    description: "Set an emoji reaction on a Telegram message.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer", description: "Telegram chat ID" },
+        message_id: { type: "integer", description: "Message ID to react to" },
+        reaction: { type: "string", description: "Emoji reaction string from allowed set" },
+      },
+      required: ["message_id", "reaction"],
+    },
+  },
+  {
+    name: "ask_user",
+    description: "Post an asynchronous question to Nic over Telegram with vertical choice buttons.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        questions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              question: { type: "string" },
+              header: { type: "string" },
+              options: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    description: { type: "string" },
+                  },
+                  required: ["label"],
+                },
+              },
+              multiSelect: { type: "boolean" },
+              allowOther: { type: "boolean" },
+            },
+            required: ["question", "options"],
+          },
+        },
+      },
+      required: ["questions"],
+    },
+  },
+  {
+    name: "anchor",
+    description: "Update the live cognitive anchor with Ida's current focus, task, and waiting-on state.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        focus: { type: "string", description: "Current focus summary" },
+        task_id: { type: "string", description: "Current PKB task ID" },
+        waiting_on: { type: "array", items: { type: "string" } },
+        delegations: { type: "array", items: { type: "string" } },
+      },
+      required: ["focus"],
+    },
+  },
+  {
+    name: "edit_message",
+    description: "Edit an existing Telegram message sent by the bot.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chat_id: { type: "integer" },
+        message_id: { type: "integer" },
+        text: { type: "string" },
+      },
+      required: ["message_id", "text"],
+    },
+  },
+  {
+    name: "download_attachment",
+    description: "Download a Telegram attachment or voice note to a local path.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file_id: { type: "string" },
+        destination: { type: "string" },
+      },
+      required: ["file_id"],
+    },
+  },
+];

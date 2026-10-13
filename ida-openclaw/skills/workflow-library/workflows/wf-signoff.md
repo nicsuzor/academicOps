@@ -1,7 +1,7 @@
 ---
 alias:
   - wf-signoff
-description: Author a concise, one-page human-facing summary digest for decision or release sign-off.
+description: Author a concise, one-page summary digest for decision or release sign-off.
 id: wf-signoff
 tags:
   - wf-template
@@ -12,7 +12,7 @@ type: template
 
 ## What this step does
 
-Produces the one-page prose summary for user when a full task or epic completes: what was delivered, against what it was asked to do, with every checked claim carrying a resolvable link. This is the human-facing capstone of the workflow -- not a re-review, a synthesis of what the other steps already established.
+Produces the one-page prose summary on the record when a full task or epic completes: what was delivered, against what it was asked to do, with every checked claim carrying a resolvable link. This is the synthesis capstone of the workflow -- not a re-review, a synthesis of what the other steps already established.
 
 ## Output contract
 
@@ -25,4 +25,4 @@ The signoff brief must:
 
 ## When to include
 
-Every task/epic that reaches human sign-off -- i.e., anything user needs to read to decide "is this actually done." Write one at the level a human actually reviews, not per subtask.
+Every task or epic that reaches escalated sign-off -- i.e., anything requiring an explicit sign-off decision on the record to confirm completion. Write one at the level of the full unit under review, not per subtask.

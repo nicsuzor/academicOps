@@ -51,7 +51,7 @@ Maintains truth over the task graph: establishes facts about in-flight work and 
 - Must not reset abandoned claims to `ready` or forward uncertified work to dispatcher.
 - Must not close or cancel without required evidence written to the node body.
 - Must not cancel on missing paths appearing only in narrative or provenance prose.
-- Must not re-open or adjudicate settled human decisions or merged pull requests.
+- Must not re-open or adjudicate settled principal decisions or merged pull requests.
 - Must not annotate a body with status changes without mutating frontmatter `status`.
 - Must not use `batch_update` for status mutations or demotions.
 - Must not prune, re-plan, or restructure (delegate repositioning to `/q`).

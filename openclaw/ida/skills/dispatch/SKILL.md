@@ -7,13 +7,16 @@ description: Start polecat workers on queued tasks already on the graph, given t
 
 The task record is the whole message to the worker. Start it as written.
 
+A polecat is a short-running container: it gets in, does its task, and gets out cleanly. Follow-up lives on the task graph, where the workflow puts it, never in a worker waiting for it.
+
 ## 1. Check each task is ready
 
 Read each task you were given; for a parent, read its children and take the ready ones.
 
-A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, and it fills the `/reify` task template (Goal, Acceptance, Instructions, Output).
+A task is ready when its status is `queued`, it has no open `needs` edges or incomplete children, and it fills the `/reify` task template (Goal, Acceptance, Instructions, Output), and its Instructions end in a clean finish step with nothing left to wait for.
 
 - A QA follow-up stays queued until its hard dependency completes; it is not ready yet.
+- A task with a step that waits on something the worker does not control (CI, review, merge, deploy, a reply), or that folds follow-ups into itself, is not ready: send it to `/reify` to be cut.
 - Send a task that is unready or underspecified to `/reify` with its id, because writing and rewriting tasks is that skill's job. Dispatch the rest.
 
 ## 2. Start the workers
