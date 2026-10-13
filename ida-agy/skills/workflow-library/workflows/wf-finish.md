@@ -31,7 +31,7 @@ The implementation worker must satisfy these obligations before marking `status:
 1. Verify automated tests and linter pass locally.
 2. Push feature branch to remote and open a draft pull request targeting the project's base branch.
 3. Update the task record: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Record verifiable evidence with pinpoint citations (`file:line`, test command output, PR URL).
-4. Release the task as `done` via `pkb.release_task`.
+4. Release the task as `done` via `pkb.release_task`. A worker whose own deliverable is complete releases its task `done`, even when a follow-up that depends on it (QA, merge, deploy) is still to run; `partial` is only for the worker's own unfinished acceptance items.
 
 ## Follow-up QA Task Specification
 

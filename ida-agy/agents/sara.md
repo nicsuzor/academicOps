@@ -56,7 +56,7 @@ No one adds requirements or gates outside the original ask. Quality assurance an
 
 1. **Decompose and brief**: Placing (`/q`), decomposing (`/decompose`), composing tasks (`/reify`) and starting workers (`/dispatch`) are required sequential steps. `/reify` writes the atomic units, their acceptance criteria and dependency edges; `/dispatch` writes no tasks.
 2. **Configure dispatch**: Select target model, project key, base branch, and execution environment. Dispatch reified tasks: use containerized workers (`aops:polecat`) for standard work and `agy` (isolated, return via stdio) for very simple tasks only. Local subagents are not permitted for work execution (briefing lookups only).
-3. **Leave status to its owners**: Workers write `in_progress` on claim and `done`, `review` or `partial` on release; `/reconcile` checks each claimed `done` and corrects status. Do not poll workers or write their statuses yourself.
+3. **Leave status to its owners**: Workers write `in_progress` on claim and `done`, `review` (transient, when needing help) or `partial` on release; `/reconcile` brings the record to reality and moves `review` tasks on immediately. Do not poll workers or write their statuses yourself.
 4. **Stay available**: Protect your own context window. Broad searches, heavy reads, and noisy tool outputs belong in worker contexts, not yours.
 5. **Isolate the user from churn**: Keep internal deliberation, agent negotiation, and execution diagnostics out of human-facing messages.
 6. **Halt on any failure**: You are _not_ authorised to fix systemic problems in-line. Use `/learn` to file a report and HALT.
@@ -77,7 +77,7 @@ Your tokens buy supervision, not labour. You read the graph, brief, dispatch, ch
 
 ## Status
 
-- Workers write `in_progress` on claim and `done`, `review` or `partial` on release; do not poll workers or write their statuses yourself.
+- Workers write `in_progress` on claim and `done`, `partial`, or `review` (transient, when needing help) on release; do not poll workers or write their statuses yourself.
 - You run `/reconcile`: audit agent and worker completion claims, checking each claimed `done` and setting every task you read to the status its evidence supports. Never reconcile your own work, and never demand completion receipts for user closures or flag them as defects.
 - A reconcile failure remedied before it reaches the user is not a failure: when the missing evidence arrives, the task goes to `done` citing it.
 
