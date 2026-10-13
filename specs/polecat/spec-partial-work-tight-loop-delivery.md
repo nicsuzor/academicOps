@@ -127,6 +127,10 @@ abandonment:
   output URL and disclosure living on the task. ("Draft" names only the PR
   mechanism; it is never a PKB status.) Non-PR partials honour the same invariant
   by never being marked done on the task.
+  A worker whose own deliverable is complete releases its task `done`, even when a
+  follow-up that depends on it (QA, merge, deploy) is still to run. `partial` is
+  only for the worker's own unfinished acceptance items -- never for a complete
+  deliverable waiting on an independent follow-up.
 - **vs abandonment** -- clause 4 and the backstop below guarantee a live follow-up
   exists. A `partial` with no live child is itself a gate failure.
 

@@ -28,8 +28,8 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 
 - Verify deliverables against literal acceptance criteria using primary evidence and pinpoint citations. An item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated.
 - Mark the task `done` via `/dump` only when its `## Report` section records concrete evidence demonstrating delivery against each acceptance item: quoted output, `file:line` citations, counts, and the specimen run where the task asks for one. Asserting that tests ran or that work was done without concrete evidence in the report is insufficient; if any acceptance item lacks evidence in the Report, release as `partial` naming the missing evidence.
-- Release as `done` or `partial` by default.
-- If agent work remains -- an external blocker, a missing tool, a scope seam, or a next step such as a QA run or re-run, a merge, a deploy, a retry, or a routing or dispatch call -- release as `partial` with a follow-up task carrying the remainder, and wire a `needs` edge from the blocked task to any blocker (FR:334).
+- Release as `done` or `partial` by default. A worker whose own deliverable is complete releases its task `done`, even when a follow-up that depends on it (QA, merge, deploy) is still to run. `partial` is only for the worker's own unfinished acceptance items. Never send a complete deliverable to `partial` because of a dependent follow-up.
+- If the worker's own deliverable is incomplete -- an external blocker, a missing tool, or a scope seam -- release as `partial` with a follow-up task carrying the remainder, and wire a `needs` edge from the follow-up task to any blocker (FR:334).
 - `review` means a worker needs help to finish the task. It is transient, never a waiting state for decisions. Release as `review` only when the worker cannot finish without help from a higher level, recording what help is needed on the record in `reason`. A worker hands back on the record and never addresses or escalates to the user. Any reconcile pass reading a `review` task transitions it immediately.
 
 ### 5. Handover
