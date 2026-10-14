@@ -1,0 +1,1 @@
+Incoming report from another agent (hearsay): check it per the `premise-check` skill before acting on it, replying to the user, or dispatching next steps. If it isn't in shape, record `REVISE` (`#format`) and return it to the sender.

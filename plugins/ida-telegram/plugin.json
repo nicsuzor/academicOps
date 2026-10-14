@@ -1,0 +1,16 @@
+{
+  "name": "ida-telegram",
+  "description": "Ida's custom Telegram channel and Mini App plugin for Claude Code",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": [
+    "academicOps",
+    "aops",
+    "telegram",
+    "ida",
+    "mini-app"
+  ],
+  "version": "0.10.17"
+}

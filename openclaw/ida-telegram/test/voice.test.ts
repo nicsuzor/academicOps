@@ -12,10 +12,11 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
     });
 
     expect(event.content).toBe("Please verify the latest PR on GitHub.");
-    expect(event.meta.voice).toBe(true);
-    expect(event.meta.duration).toBe(45);
+    expect(event.meta.voice).toBe("true");
+    expect(event.meta.duration).toBe("45");
     expect(event.meta.audio_path).toBe("/workspace/inbox/voice_101.ogg");
-    expect(event.meta.message_id).toBe(101);
+    expect(event.meta.message_id).toBe("101");
+    expect(event.meta.reply_to_message_id).toBe("99");
   });
 
   test("builds voice-in failure event with transcript_error", () => {
@@ -29,6 +30,9 @@ describe("Voice: Inbound transcription and Outbound synthesis", () => {
 
     expect(event.content).toContain("Voice note received; transcription failed: Transcription timeout after 120s");
     expect(event.meta.transcript_error).toBe("Transcription timeout after 120s");
+    expect(event.meta.voice).toBe("true");
+    expect(event.meta.duration).toBe("60");
+    expect(event.meta.message_id).toBe("102");
   });
 
   test("voice out strips markdown, links, quotes, and code blocks from tier 1 text", () => {

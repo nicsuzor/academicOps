@@ -59,7 +59,8 @@ export class TelegramBotClient {
   }
 
   private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
-    const url = `https://api.telegram.org/bot${this.config.botToken}/${method}`;
+    const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+    const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -509,8 +510,9 @@ export class TelegramBotClient {
           callback_prefix: callbackPrefix,
           payload: data,
           label,
-          target_message_id: cb.message.message_id,
-          user_id: cb.from.id,
+          target_message_id: String(cb.message.message_id),
+          chat_id: String(cb.message.chat.id),
+          user_id: String(cb.from.id),
         });
         return;
       }
@@ -527,7 +529,8 @@ export class TelegramBotClient {
           // Download file info
           const fileInfoRes = await this.callApi("getFile", { file_id: fileId });
           const filePath = fileInfoRes.result?.file_path;
-          const downloadUrl = `https://api.telegram.org/file/bot${this.config.botToken}/${filePath}`;
+          const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+          const downloadUrl = `${baseUrl}/file/bot${this.config.botToken}/${filePath}`;
 
           const localAudioPath = join(this.config.stateDir, "inbox", `voice_${Date.now()}.ogg`);
           const res = await fetch(downloadUrl);
@@ -547,7 +550,11 @@ export class TelegramBotClient {
             replyToMessageId: update.message.reply_to_message?.message_id,
           });
 
-          this.emitChannelEvent(voiceEvent.content, voiceEvent.meta);
+          this.emitChannelEvent(voiceEvent.content, {
+            ...voiceEvent.meta,
+            chat_id: String(update.message.chat.id),
+            user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
+          });
           return;
         } catch (e) {
           const failEvent = buildVoiceInEvent({
@@ -555,15 +562,40 @@ export class TelegramBotClient {
             duration,
             messageId: update.message.message_id,
           });
-          this.emitChannelEvent(failEvent.content, failEvent.meta);
+          this.emitChannelEvent(failEvent.content, {
+            ...failEvent.meta,
+            chat_id: String(update.message.chat.id),
+            user_id: update.message.from?.id !== undefined ? String(update.message.from.id) : undefined,
+          });
           return;
         }
       }
     }
 
-    // 5. General Inbound (text, reactions, commands)
+    // 5. General Inbound (text, attachments, reactions, commands)
     const event = parseInboundUpdate(update, this.config.allowFrom);
     if (event) {
+      if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
+        try {
+          const fileInfoRes = await this.callApi("getFile", { file_id: event.meta.file_id });
+          const filePath = fileInfoRes?.result?.file_path;
+          if (filePath) {
+            const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+            const downloadUrl = `${baseUrl}/file/bot${this.config.botToken}/${filePath}`;
+            const inboxDir = join(this.config.stateDir, "inbox");
+            const { mkdirSync } = await import("node:fs");
+            mkdirSync(inboxDir, { recursive: true });
+            const baseName = event.meta.file_name || filePath.split("/").pop() || `file_${Date.now()}`;
+            const localPath = join(inboxDir, `${Date.now()}_${baseName}`);
+            const res = await fetch(downloadUrl);
+            const buf = await res.arrayBuffer();
+            writeFileSync(localPath, Buffer.from(buf));
+            event.meta.attachment_path = localPath;
+          }
+        } catch {
+          // Proceed with emitting attachment event even if download fails
+        }
+      }
       this.emitChannelEvent(event.content, event.meta);
     }
   }

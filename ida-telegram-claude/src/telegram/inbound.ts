@@ -58,10 +58,22 @@ export interface TelegramUpdate {
 export interface InboundChannelEvent {
   event: "message" | "reaction" | "button_tap" | "bot_command" | "voice" | "attachment" | "miniapp";
   content: string;
-  meta: Record<string, unknown>;
+  meta: Record<string, string>;
 }
 
 export type TargetExcerptFetcher = (messageId: number) => string | undefined;
+
+export function sanitizeChannelMeta(raw: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined || value === null) continue;
+    const replaced = key.replace(/[^a-zA-Z0-9_]/g, "_");
+    if (!replaced) continue;
+    const cleanKey = /^[0-9]/.test(replaced) ? `_${replaced}` : replaced;
+    out[cleanKey] = typeof value === "string" ? value : String(value);
+  }
+  return out;
+}
 
 export function parseInboundUpdate(
   update: TelegramUpdate,
@@ -88,20 +100,25 @@ export function parseInboundUpdate(
       const args = parts.slice(1).join(" ").trim();
       const cmdSpec = getBareCommandBehavior(cmdName);
 
-      const meta: Record<string, unknown> = {
-        message_id: msg.message_id,
-        chat_id: msg.chat.id,
+      const meta: Record<string, string> = {
+        event: "bot_command",
+        message_id: String(msg.message_id),
+        chat_id: String(msg.chat.id),
         command: cmd,
         args,
-        user_id: userId,
+        user_id: String(userId),
       };
+
+      if (msg.from?.first_name) {
+        meta.user = msg.from.first_name;
+      }
 
       if (cmdSpec) {
         meta.skill = cmdSpec.skill;
       }
 
       if (msg.reply_to_message) {
-        meta.reply_to_message_id = msg.reply_to_message.message_id;
+        meta.reply_to_message_id = String(msg.reply_to_message.message_id);
         if (msg.quote?.text) {
           meta.quoted_text = msg.quote.text;
         } else if (msg.reply_to_message.text) {
@@ -125,17 +142,68 @@ export function parseInboundUpdate(
       };
     }
 
-    // Text message
-    if (msg.text) {
-      const meta: Record<string, unknown> = {
-        message_id: msg.message_id,
-        chat_id: msg.chat.id,
-        user_id: userId,
-        user: msg.from?.first_name,
+    // Photo / document attachment
+    if ((msg.photo && msg.photo.length > 0) || msg.document) {
+      const meta: Record<string, string> = {
+        event: "attachment",
+        message_id: String(msg.message_id),
+        chat_id: String(msg.chat.id),
+        user_id: String(userId),
       };
 
+      if (msg.from?.first_name) {
+        meta.user = msg.from.first_name;
+      }
+
       if (msg.reply_to_message) {
-        meta.reply_to_message_id = msg.reply_to_message.message_id;
+        meta.reply_to_message_id = String(msg.reply_to_message.message_id);
+        if (msg.quote?.text) {
+          meta.quoted_text = msg.quote.text;
+        } else if (msg.reply_to_message.text) {
+          meta.quoted_text = msg.reply_to_message.text.substring(0, 300);
+        }
+      }
+
+      if (msg.photo && msg.photo.length > 0) {
+        const largestPhoto = msg.photo[msg.photo.length - 1];
+        if (largestPhoto?.file_id) {
+          meta.file_id = largestPhoto.file_id;
+        }
+        return {
+          event: "attachment",
+          content: msg.caption || "[Photo attachment]",
+          meta,
+        };
+      }
+
+      if (msg.document) {
+        meta.file_id = msg.document.file_id;
+        if (msg.document.file_name) {
+          meta.file_name = msg.document.file_name;
+        }
+        return {
+          event: "attachment",
+          content: msg.caption || `[Document: ${msg.document.file_name || msg.document.file_id}]`,
+          meta,
+        };
+      }
+    }
+
+    // Text message
+    if (msg.text) {
+      const meta: Record<string, string> = {
+        event: "message",
+        message_id: String(msg.message_id),
+        chat_id: String(msg.chat.id),
+        user_id: String(userId),
+      };
+
+      if (msg.from?.first_name) {
+        meta.user = msg.from.first_name;
+      }
+
+      if (msg.reply_to_message) {
+        meta.reply_to_message_id = String(msg.reply_to_message.message_id);
         if (msg.quote?.text) {
           meta.quoted_text = msg.quote.text;
         } else if (msg.reply_to_message.text) {
@@ -163,17 +231,23 @@ export function parseInboundUpdate(
     const removed = rx.old_reaction.map((r) => r.emoji).filter(Boolean).join(" ");
     const targetExcerpt = getExcerpt ? getExcerpt(rx.message_id) : undefined;
 
+    const meta: Record<string, string> = {
+      event: "reaction",
+      chat_id: String(rx.chat.id),
+      target_message_id: String(rx.message_id),
+      user_id: String(userId),
+      added,
+      removed,
+    };
+
+    if (targetExcerpt !== undefined) {
+      meta.target_excerpt = targetExcerpt;
+    }
+
     return {
       event: "reaction",
       content: `reacted ${added || "removed"} to ${rx.message_id}`,
-      meta: {
-        chat_id: rx.chat.id,
-        target_message_id: rx.message_id,
-        user_id: userId,
-        added,
-        removed,
-        target_excerpt: targetExcerpt,
-      },
+      meta,
     };
   }
 
@@ -190,16 +264,25 @@ export function parseInboundUpdate(
     const callbackPrefix = splitIndex !== -1 ? rawData.substring(0, splitIndex) : rawData;
     const payload = splitIndex !== -1 ? rawData.substring(splitIndex + 1) : "";
 
+    const meta: Record<string, string> = {
+      event: "button_tap",
+      callback_id: cb.id,
+      callback_prefix: callbackPrefix,
+      payload,
+      user_id: String(userId),
+    };
+
+    if (cb.message?.message_id !== undefined) {
+      meta.target_message_id = String(cb.message.message_id);
+    }
+    if (cb.message?.chat.id !== undefined) {
+      meta.chat_id = String(cb.message.chat.id);
+    }
+
     return {
       event: "button_tap",
       content: `tapped ${payload || callbackPrefix}`,
-      meta: {
-        callback_id: cb.id,
-        callback_prefix: callbackPrefix,
-        payload,
-        target_message_id: cb.message?.message_id,
-        user_id: userId,
-      },
+      meta,
     };
   }
 

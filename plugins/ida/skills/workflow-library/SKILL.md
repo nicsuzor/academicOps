@@ -1,0 +1,93 @@
+---
+name: workflow-library
+description: List, read, add, edit, and retire workflow templates across project, PKB, and universal tiers, or preview composition without minting tasks. Exclude when tracking running jobs (use harness progress tools).
+---
+
+# Workflow Library
+
+Manage composable workflow templates (`type: template`) across three resolution tiers. Every `pkb.<op>(...)` call below runs through the `services` MCP server's code-mode interface (`listToolFiles` → `readToolFile("servers/pkb.pyi")` → `executeToolCode`), not a directly-invocable flat tool.
+
+## Tiers and Resolution
+
+Resolution order is **Project > PKB > Universal**. Higher tiers shadow lower tiers completely; never merge text across tiers.
+
+| Tier         | Location                                            | Enumeration                                                                |
+| ------------ | --------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1. Project   | PKB templates whose `project` is the task's project | `pkb.list_tasks(type="template", project=<project>, include_done=True)`    |
+| 2. PKB       | PKB templates with no `project`                     | `pkb.list_tasks(type="template", include_done=True)`, keep `project: null` |
+| 3. Universal | `${CLAUDE_SKILL_DIR}/workflows/`                    | `Glob ${CLAUDE_SKILL_DIR}/workflows/*.md`                                  |
+
+The project is the `project` field of the task being composed for, or the project the caller names. With neither, the project tier is empty. Templates scoped to any other project are out of scope.
+
+A project template's id is `<project>-<slug>`, so the same slug can exist in several projects. Strip the `<project>-` prefix to get the slug that shadows lower tiers.
+
+Both PKB tiers resolve from the graph alone, so a session needs no checkout of the project's repository. A repository's `.agents/templates/` directory is not a tier.
+
+Enumerate and read universal templates using file tools (`Glob`, `Read`) rather than `Bash`, so resolution succeeds under non-interactive and `dontAsk` permission modes.
+
+## Modes
+
+### list
+
+Enumerate all three tiers live. Return a unified table: **slug \| tier \| coverage \| status**.
+
+- Extract coverage from `description` in frontmatter, or, if that is missing, from the first sentence of `## What this step does`. Read universal template files directly via `Read`; do not run `Bash` loops.
+- Filter out dated instances (`-*-\d{8}-*`), foreign-project templates, and `status: cancelled`.
+- Flag shadowed slugs and templates missing coverage lines.
+
+### view
+
+Resolve the template slug across tiers in precedence order. Output the winning content, identify winning and shadowed tiers, or list near-misses if missing.
+
+### new
+
+1. Check existing library to avoid duplicating covered workflows.
+2. Select destination tier:
+   - **Project**: Specific to one project. Write it to the PKB with `project: <project>` and id `<project>-<slug>`.
+   - **PKB**: Portable personal workflow. Write it to the PKB with no `project`.
+   - **Universal**: Core baseline standard across projects.
+3. Write template using the template schema (<100 lines), to these rules:
+   - **State the contract, not the neighbour.** Say what the step needs as input and what it hands back. Never name another template, in the body or the frontmatter: the composing agent decides at composition time what fills each slot. A composite lists its stages as contract expectations in order ("an independent review verdict on the spec"), not as slugs.
+   - **Write for a headless worker.** The executor runs unattended and asynchronously, with no one to talk to mid-task. A step never pauses, waits, or blocks for a human. Where an approval boundary is reached, the step ends there: the worker files the complete artifact on the record and structures the boundary so dependent work remains strictly blocked until approval is recorded (e.g. releasing as `partial` with a queued review task wired with `depends_on`, or an explicit decision task). Work that follows the decision belongs in a separate task that depends on the approval decision; say so, so the composer cuts the chain at that point.
+   - **Promise only what the executor delivers.** The output contract lists artifacts and state the executing agent itself produces. Another party's act -- a human's approval, a reviewer's verdict -- is never an output-contract term.
+
+### edit
+
+Update existing templates in place.
+
+- **Universal**: Edit the file directly.
+- **PKB**: Pass only the markdown body below the closing `---` to `pkb.update_body` to prevent frontmatter duplication.
+
+### preview
+
+Simulate composition for a stated objective at one of two depths. Never write tasks or mutate the graph; mark the output as a non-minted preview.
+
+- **stage depth** (what `/decompose` asks for): return the composite that covers this class of work as its ordered stages, each with its input and output contract, unresolved. A stage whose filling is a choice among methods, frames or venues stays a named slot; do not pick for it or expand it into steps.
+- **step depth** (what `/reify` asks for): resolve each stage to the templates and skills that fill it across the tiers and combine their steps into one logical sequence (e.g. test-first where code executes, build, then QA). Show the assembled steps and the resulting task brief shape.
+
+Do not ad lib extra requirements or guess at scope; pass any ambiguity in the prompt through to the preview.
+
+### retire
+
+1. Check for tasks governing retirement (`pkb.search`). Halt if unfulfilled dependencies exist.
+2. Delete the artifact (`rm` for universal files, `pkb.delete` for PKB nodes).
+3. Name the superseding workflow in the release message or commit.
+
+A template carries only what a composing agent needs to select it and to know the step is finished, the same sufficient-and-no-more standard `/reify` composes to. Inventing exclusions, contraindications, or gates the work does not call for overshoots it. Components sit on one flat spine, not sorted into types; a composite names its stages by contract, which is the level `/decompose` reads, and leaf templates carry the steps, which is the level `/reify` reads. A template stating an obligation that blocks acceptance rather than a process that proceeds conventionally carries a `wf-` prefix, no frontmatter field needed to say so.
+
+## Template Schema
+
+```yaml
+---
+title: <human name>
+type: template
+description: <one line: what class of work this covers, so a composer can select it>
+tags: [...]
+---
+```
+
+## Constraints
+
+- Query tiers dynamically; do not rely on static indices or memory.
+- Keep templates focused on obligations and exit criteria; leave operational method to skills.
+- Do not mint tasks or dispatch work during library management operations.

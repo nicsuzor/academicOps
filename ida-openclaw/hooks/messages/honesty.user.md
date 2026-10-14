@@ -1,1 +1,1 @@
-Honesty floor: reminded to attach evidence to every claim before handing back.
+Reminded to use `premise-check` when replying to a peer message.

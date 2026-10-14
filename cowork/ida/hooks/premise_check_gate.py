@@ -4,11 +4,11 @@
 Enforces that a supervisor (Ida) evaluates incoming subagent reports against
 logic-check doctrine before dispatching further subagents, contacting the user, or finishing tasks:
 
-- ``premise_check_arm``: a ``PostToolBatch`` / ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
-  an agent finishes calling tools (including subagents, before results return) or receives a peer's report.
-  The user's own messages never arm it.
+- ``premise_check_arm``: a ``PostToolUse`` / ``UserPromptSubmit`` handler that arms the check when
+  an agent finishes a foreground subagent dispatch or receives a peer's report.
+  The user's own messages and background subagent launches never arm it.
 - ``premise_check_handler``: a ``PreToolUse`` / ``Stop`` handler that refuses the
-  supervisor's next subagent dispatch, communication, or stop while armed.
+  supervisor's next subagent dispatch, communication, channel reply, or stop while armed.
 - ``arm()`` / ``disarm()``: state management primitives. Calling ``disarm()``
   clears the check once a verdict is recorded.
 
@@ -48,8 +48,47 @@ _PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notific
 # Tools that dispatch subagents (arming the check)
 _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
 
-# Tools that are blocked while the check is armed
-_BLOCKED_TOOLS = ["Agent", "Task", "invoke_subagent", "SendMessage", "AskUserQuestion", "Dump"]
+# Tools that reach the user directly. Matched on the full name or the last
+# ``__`` segment, case-insensitively.
+_CHANNEL_REPLY_TOOLS = frozenset(
+    name.lower()
+    for name in (
+        "AskUserQuestion",
+        "AskQuestion",
+        "ask_user_question",
+        "ask_question",
+        "ask_user",
+        "reply",
+        "telegram_reply",
+        "telegram_send_message",
+        "discord_reply",
+        "discord_send_message",
+    )
+)
+
+# Non-channel tools blocked while the check is armed
+_GATED_TOOLS = frozenset([*_DISPATCH_TOOLS, "SendMessage", "Dump"])
+
+
+def is_channel_reply_tool(tool_name: str) -> bool:
+    """True when a tool sends a message to the user over a channel or prompt."""
+    if not tool_name:
+        return False
+    tool_lower = tool_name.lower()
+    if tool_lower in _CHANNEL_REPLY_TOOLS or tool_lower.split("__")[-1] in _CHANNEL_REPLY_TOOLS:
+        return True
+    return ("telegram" in tool_lower or "discord" in tool_lower) and (
+        "reply" in tool_lower or "send" in tool_lower or "ask_user" in tool_lower
+    )
+
+
+def _is_blocked_tool(tool_name: str) -> bool:
+    if not tool_name:
+        return False
+    if tool_name in _GATED_TOOLS or tool_name.split("__")[-1] in _GATED_TOOLS:
+        return True
+    return is_channel_reply_tool(tool_name)
+
 
 ID_PATTERN = re.compile(
     r"^(?P<kind>claim|verdict|report)-(?P<hash>[0-9a-f]{8})(?:-(?P<title>[a-z0-9]+(?:-[a-z0-9]+)*))?$"
@@ -226,6 +265,19 @@ def is_peer_report(ctx: HookContext) -> bool:
     return text.startswith(_PEER_ENVELOPES)
 
 
+def is_foreground_dispatch(ctx: HookContext) -> bool:
+    """True when a PostToolUse event is a foreground subagent dispatch."""
+    if ctx.event != "PostToolUse" or ctx.tool not in _DISPATCH_TOOLS:
+        return False
+    tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
+    if not isinstance(tool_input, dict):
+        return True
+    bg = tool_input.get("run_in_background")
+    if isinstance(bg, str):
+        return bg.strip().lower() not in ("true", "1", "yes")
+    return not bool(bg)
+
+
 def _hooks_base(hooks_dir: Path | None = None) -> Path:
     if hooks_dir:
         if hooks_dir.is_absolute():
@@ -276,7 +328,7 @@ def format_verdict_command(
     quoted_claim = shlex.quote(claim_id)
     cmd = (
         f"uv run --project {quoted_project} python3 {quoted_script}"
-        f' --claim {quoted_claim} --verdict PASS --reason "<why>"'
+        f' --claim {quoted_claim} --verdict <PASS|REVISE|FAIL> --reason "<why>"'
     )
     if not os.environ.get("AOPS_SESSION_ID") and session_id:
         cmd += f" --session {shlex.quote(session_id)}"
@@ -321,7 +373,7 @@ def _derive_claim_id(ctx: HookContext) -> str:
                 return str(call_id)
 
     if ctx.tool in _DISPATCH_TOOLS:
-        tool_input = ctx.raw.get("tool_input") or {}
+        tool_input = ctx.raw.get("tool_input") or ctx.raw.get("toolInput") or {}
         if isinstance(tool_input, dict):
             desc = str(tool_input.get("description") or tool_input.get("prompt") or "").strip()
             if desc:
@@ -353,37 +405,27 @@ def _is_override_active() -> bool:
 
 
 def premise_check_arm(ctx: HookContext) -> Result | None:
-    """PostToolBatch/PostToolUse/UserPromptSubmit handler: arm the premise check."""
+    """PostToolUse/UserPromptSubmit handler: arm the premise check."""
     if ctx.agent_type not in _GATED_AGENT_TYPES:
         return None
 
     if ctx.event == "UserPromptSubmit":
-        if is_peer_report(ctx):
-            claim_id = _derive_claim_id(ctx)
-            arm(ctx.session_id, claim_id=claim_id)
-            cmd = format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)
-            inject = (
-                f"A peer report arrived and armed the premise-check gate: {claim_id}.\n"
-                f"The premise-check gate blocks until a verdict is recorded.\n"
-                f"To record a verdict and clear the gate, run:\n"
-                f"{cmd}"
-            )
-            user_msg = (
-                f"Premise-check gate armed by: {claim_id}. "
-                f"The gate blocks until a verdict is recorded. Run:\n{cmd}"
-            )
-            return warn(inject, user_msg)
+        if not is_peer_report(ctx):
+            return None
+    elif ctx.event == "PostToolUse":
+        if not is_foreground_dispatch(ctx):
+            return None
+    else:
         return None
 
-    has_dispatch = any(call.get("tool_name") in _DISPATCH_TOOLS for call in ctx.tool_calls)
-    if not has_dispatch and ctx.tool in _DISPATCH_TOOLS:
-        has_dispatch = True
-
-    if not has_dispatch:
-        return None
-
-    arm(ctx.session_id, claim_id=_derive_claim_id(ctx))
-    return None
+    claim_id = _derive_claim_id(ctx)
+    arm(ctx.session_id, claim_id=claim_id)
+    inject = (
+        f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
+        f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
+    )
+    user_msg = f"Premise-check gate armed by {claim_id}."
+    return warn(inject, user_msg)
 
 
 def premise_check_handler(ctx: HookContext) -> Result | None:
@@ -391,7 +433,7 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
     if ctx.agent_type not in _GATED_AGENT_TYPES:
         return None
 
-    if ctx.event == "PreToolUse" and ctx.tool not in _BLOCKED_TOOLS:
+    if ctx.event == "PreToolUse" and not _is_blocked_tool(ctx.tool):
         return None
 
     mode = (
@@ -413,17 +455,12 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
         else "dispatching another subagent or message"
     )
 
-    cmd = format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)
     reason = (
-        f"The premise-check gate was armed by: {claim_id}.\n"
-        f"The gate blocks until a verdict is recorded before {action_desc}.\n"
-        f"To record a verdict and clear the gate, run:\n"
-        f"{cmd}"
+        f"Premise-check gate armed by {claim_id} blocks {action_desc}; "
+        f"record a verdict per the `premise-check` skill.\n"
+        f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
     )
-    user_msg = (
-        f"Blocked: premise check pending on {claim_id}. "
-        f"The gate blocks until a verdict is recorded. Run:\n{cmd}"
-    )
+    user_msg = f"Blocked: premise-check verdict pending on {claim_id}."
 
     if mode == "warn":
         return warn(reason, user_msg)

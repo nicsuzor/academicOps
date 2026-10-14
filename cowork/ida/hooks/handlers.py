@@ -17,7 +17,13 @@ from pathlib import Path
 from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
-from premise_check_gate import is_peer_report, premise_check_arm, premise_check_handler
+from premise_check_gate import (
+    is_channel_reply_tool,
+    is_foreground_dispatch,
+    is_peer_report,
+    premise_check_arm,
+    premise_check_handler,
+)
 
 Handler = Callable[[HookContext], Result | None]
 
@@ -99,48 +105,6 @@ def is_ida(ctx: HookContext | str | None, *extra_targets: str) -> bool:
 
 _is_ida = is_ida
 _is_agent = is_agent
-
-
-_CHANNEL_REPLY_TOOLS = {
-    "telegram_reply",
-    "discord_reply",
-    "AskUserQuestion",
-    "ask_user_question",
-    "ask_question",
-}
-
-
-def _is_channel_reply_tool(tool_name: str) -> bool:
-    if not tool_name:
-        return False
-    if tool_name in _CHANNEL_REPLY_TOOLS:
-        return True
-    name = tool_name.split("__")[-1]
-    if name in _CHANNEL_REPLY_TOOLS:
-        return True
-    tool_lower = tool_name.lower()
-    name_lower = name.lower()
-    if tool_lower in (
-        "telegram_reply",
-        "discord_reply",
-        "askuserquestion",
-        "ask_user_question",
-        "ask_question",
-        "askquestion",
-    ) or name_lower in (
-        "telegram_reply",
-        "discord_reply",
-        "askuserquestion",
-        "ask_user_question",
-        "ask_question",
-        "askquestion",
-    ):
-        return True
-    if ("telegram" in tool_lower or "discord" in tool_lower) and (
-        "reply" in tool_lower or "send" in tool_lower
-    ):
-        return True
-    return False
 
 
 def _channel_gate_state_dir() -> Path:
@@ -280,10 +244,10 @@ def _run_pkb_search(prompt: str, cwd: str | Path | None = None) -> str | None:
 def search_the_pkb(ctx: HookContext) -> Result | None:
     """Ground every prompt in the PKB before the agent acts on it.
 
-    Tries first to return the output of `pkb search {prompt:200}` wrapped in
-    `<academicOps PKB search results>` tags; if that fails, returns the
-    existing messages. Peer reports are skipped so they trigger hearsay
-    and premise check gates instead of hydrating from the PKB.
+    Returns the output of `pkb search {prompt:200}` wrapped in
+    `<academicOps PKB search results>` tags when matches are found;
+    otherwise returns None. Peer reports are skipped so they trigger
+    hearsay and premise check gates instead of hydrating from the PKB.
     """
     if is_peer_report(ctx):
         return None
@@ -302,10 +266,7 @@ def search_the_pkb(ctx: HookContext) -> Result | None:
             msg = f"<academicOps PKB search results>\n{output}\n</academicOps PKB search results>"
             return warn(msg)
 
-    if is_agent(ctx, "sara", "james"):
-        return None
-
-    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+    return None
 
 
 def be_quiet(ctx: HookContext) -> Result | None:
@@ -318,10 +279,10 @@ def be_quiet(ctx: HookContext) -> Result | None:
 
 
 def quiet_channel_reply(ctx: HookContext) -> Result | None:
-    """Deny channel replies once for Ida to enforce honesty and ADHD executive protection."""
+    """Deny channel replies once for Ida to enforce ADHD executive protection."""
     if not _is_ida(ctx):
         return None
-    if not _is_channel_reply_tool(ctx.tool):
+    if not is_channel_reply_tool(ctx.tool):
         return None
 
     state_path = _channel_gate_state_path(ctx.session_id)
@@ -340,19 +301,12 @@ def quiet_channel_reply(ctx: HookContext) -> Result | None:
     except Exception:
         pass
 
-    honesty_inject, honesty_user = load_message_pair(ctx.hooks_dir, "honesty")
     quiet_inject, quiet_user = load_message_pair(ctx.hooks_dir, "quiet")
 
-    inject_parts = [p for p in (honesty_inject, quiet_inject) if p]
-    combined_inject = "\n\n".join(inject_parts)
-
-    user_parts = [u for u in (honesty_user, quiet_user) if u]
-    combined_user = "\n\n".join(user_parts) if user_parts else None
-
     if ctx.client == "agy":
-        return warn(combined_inject, combined_user)
+        return warn(quiet_inject, quiet_user)
 
-    return refuse(combined_inject, combined_user)
+    return refuse(quiet_inject, quiet_user)
 
 
 channel_reply_gate = quiet_channel_reply
@@ -519,7 +473,11 @@ def _export_session_id(ctx: HookContext) -> bool:
 def session_start(ctx: HookContext) -> Result | None:
     """Handle SessionStart for Claude Code and SessionStart for agy."""
     metadata = _format_session_metadata(ctx)
-    parts = ["aops hook: Session started.", metadata]
+    parts = [
+        "aops hook: Session started.",
+        metadata,
+        "Reports follow `premise-check`: written in its shape and checked on receipt.",
+    ]
     user_parts = [metadata]
     stale_warning = os.environ.get("AOPS_IMAGE_STALENESS_WARNING") or ctx.raw.get(
         "image_staleness_warning"
@@ -551,8 +509,22 @@ def session_start(ctx: HookContext) -> Result | None:
     return warn("\n\n".join(parts), "\n\n".join(user_parts))
 
 
+def honesty_on_peer_message(ctx: HookContext) -> Result | None:
+    """Remind all agents to write replies/reports in premise-check shape when a peer message arrives."""
+    if not is_peer_report(ctx):
+        return None
+    return warn(*load_message_pair(ctx.hooks_dir, "honesty"))
+
+
 def rule_against_hearsay(ctx: HookContext) -> Result | None:
-    """Remind Ida and Sara that an incoming peer report is hearsay; the user's own messages are not."""
+    """Remind Ida and Sara that an incoming peer report or foreground subagent return is hearsay."""
+    if ctx.event == "PostToolUse":
+        if not is_agent(ctx, "ida", "sara"):
+            return None
+        if not is_foreground_dispatch(ctx):
+            return None
+        return warn(*load_message_pair(ctx.hooks_dir, "hearsay"))
+
     clear_channel_gate_state(ctx.session_id)
     if not is_agent(ctx, "ida", "sara"):
         return None
@@ -759,13 +731,13 @@ HANDLERS: dict[str, list] = {
         user_prompt_submit,
         agy_user_prompt_submit,
         search_the_pkb,
+        honesty_on_peer_message,
         rule_against_hearsay,
         premise_check_arm,
     ],
     "PreToolUse": [h for h in (pre_tool, agy_pre_tool, premise_check_handler) if h is not None],
-    "PostToolUse": [post_tool, agy_post_tool, premise_check_arm],
+    "PostToolUse": [post_tool, agy_post_tool, rule_against_hearsay, premise_check_arm],
     "PostToolUseFailure": [post_tool_failure],
-    "PostToolBatch": [premise_check_arm],
     "Stop": [stop, agy_stop, premise_check_handler],
     "SubagentStop": [subagent_stop],
     "StopFailure": [stop_failure],

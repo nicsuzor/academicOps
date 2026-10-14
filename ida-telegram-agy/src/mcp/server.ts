@@ -5,6 +5,7 @@ import { QuestionBroker } from "../telegram/questions.js";
 import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
 import { TelegramBotClient } from "../telegram/bot.js";
+import { sanitizeChannelMeta } from "../telegram/inbound.js";
 import { PermissionRelay } from "./permissions.js";
 
 export class StdioMcpServer {
@@ -33,8 +34,8 @@ export class StdioMcpServer {
       jsonrpc: "2.0",
       method: "notifications/claude/channel",
       params: {
-        content,
-        meta,
+        content: String(content),
+        meta: sanitizeChannelMeta(meta),
       },
     };
     process.stdout.write(JSON.stringify(notification) + "\n");
