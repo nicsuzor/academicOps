@@ -1088,3 +1088,62 @@ def test_ida_declares_no_plugin_mcp_servers(tmp_path):
         (dist_root / "ida-claude" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
     )
     assert "mcpServers" not in plugin_json
+
+
+def test_agy_plugins_dir_prevents_bulk_install_overwrite(tmp_path):
+    """`agy plugin install <dir>` checks `<dir>/plugins/` before bulk-scanning
+    `<dir>` itself. Without `dist/plugins/<name>`, bulk-scanning the bare root
+    iterates `<name>-agy`, `<name>-claude`, and `<name>-openclaw` alphabetically
+    and overwrites `<name>-agy` with `<name>-openclaw` (via `claudeHandler`)."""
+    import os
+    import shutil
+    import subprocess
+
+    dist_root = tmp_path / "dist"
+    build_all(
+        TESTDATA,
+        dist_root,
+        marketplace_path=MARKETPLACE,
+        clients=("claude", "agy", "openclaw"),
+        version=VERSION,
+    )
+
+    agy_plugins_root = dist_root / "plugins"
+    assert agy_plugins_root.is_dir()
+    assert {p.name for p in agy_plugins_root.iterdir() if p.is_dir()} == {
+        "fixture-alpha",
+        "fixture-beta",
+    }
+
+    alpha_agy = agy_plugins_root / "fixture-alpha"
+    assert (alpha_agy / "plugin.json").is_file()
+    assert (alpha_agy / "hooks.json").is_file()
+    assert (alpha_agy / "mcp_config.json").is_file()
+    assert not (alpha_agy / ".claude-plugin").exists()
+    assert not (alpha_agy / ".mcp.json").exists()
+
+    if shutil.which("agy"):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        env = {**os.environ, "HOME": str(fake_home)}
+        res = subprocess.run(
+            ["agy", "plugin", "install", str(dist_root)],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+        assert res.returncode == 0, f"agy plugin install failed:\n{res.stdout}\n{res.stderr}"
+        import_manifest = json.loads(
+            (fake_home / ".gemini" / "config" / "import_manifest.json").read_text(encoding="utf-8")
+        )
+        assert {entry["name"]: entry["source"] for entry in import_manifest["imports"]} == {
+            "fixture-alpha": "antigravity",
+            "fixture-beta": "antigravity",
+        }
+        installed_alpha = fake_home / ".gemini" / "config" / "plugins" / "fixture-alpha"
+        assert (installed_alpha / "plugin.json").is_file()
+        assert (installed_alpha / "hooks.json").is_file()
+        assert (installed_alpha / "mcp_config.json").is_file()
+        assert not (installed_alpha / ".claude-plugin").exists()
+        assert not (installed_alpha / ".mcp.json").exists()
