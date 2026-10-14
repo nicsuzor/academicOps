@@ -22,7 +22,6 @@ Claim and execute a queued PKB task, directing subagents to deliver against stat
 ### 3. Consolidate Findings
 
 - Itemize load-bearing claims in a report argument, written per the `premise-check` skill.
-- Negative and capability assertions require a failed command execution or stated search boundary.
 
 ### 4. Validate Against Criteria
 

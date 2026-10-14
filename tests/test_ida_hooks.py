@@ -49,9 +49,12 @@ def clean_gate_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 # ---------------------------------------------------------------------------
 
 
-def test_hearsay_registered_on_user_prompt_submit():
+def test_hearsay_registered_on_user_prompt_submit_and_post_tool_use():
     assert "UserPromptSubmit" in handlers.HANDLERS
     assert handlers.rule_against_hearsay in handlers.HANDLERS["UserPromptSubmit"]
+    assert "PostToolUse" in handlers.HANDLERS
+    assert handlers.rule_against_hearsay in handlers.HANDLERS["PostToolUse"]
+    assert "PostToolBatch" not in handlers.HANDLERS
 
 
 _PEER_REPORT = '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>'
@@ -74,6 +77,43 @@ def test_hearsay_fires_on_a_peer_report(agent):
     expected_inject, expected_user = load_message_pair(IDA_HOOKS, "hearsay")
     assert res.inject_text == expected_inject
     assert res.user_text == expected_user
+
+
+@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara", "sara"])
+@pytest.mark.parametrize("bg_val", [None, False, "false"])
+def test_hearsay_fires_on_foreground_subagent_post_tool_use(agent, bg_val):
+    tool_input = {"description": "foreground subagent"}
+    if bg_val is not None:
+        tool_input["run_in_background"] = bg_val
+    ctx = HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        agent_type=agent,
+        session_id="s-ida-fg",
+        hooks_dir=IDA_HOOKS,
+        raw={"tool_input": tool_input},
+    )
+    res = handlers.rule_against_hearsay(ctx)
+    assert res is not None
+    assert res.kind is Kind.ADVISE
+    expected_inject, expected_user = load_message_pair(IDA_HOOKS, "hearsay")
+    assert res.inject_text == expected_inject
+    assert res.user_text == expected_user
+
+
+@pytest.mark.parametrize("bg_val", [True, "true", "1", "yes"])
+def test_hearsay_does_not_fire_on_background_subagent_post_tool_use(bg_val):
+    ctx = HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        agent_type="ida:ida",
+        session_id="s-ida-bg",
+        hooks_dir=IDA_HOOKS,
+        raw={"tool_input": {"description": "bg subagent", "run_in_background": bg_val}},
+    )
+    assert handlers.rule_against_hearsay(ctx) is None
 
 
 @pytest.mark.parametrize("prompt", [_USER_MESSAGE, "what's next?"])
@@ -101,6 +141,16 @@ def test_hearsay_does_not_fire_for_non_ida_agents():
         )
         res = handlers.rule_against_hearsay(ctx)
         assert res is None, f"hearsay fired for non-ida agent {agent}"
+        ctx_post = HookContext(
+            client="claude",
+            event="PostToolUse",
+            tool="Agent",
+            agent_type=agent,
+            session_id="s-other",
+            hooks_dir=IDA_HOOKS,
+            raw={"tool_input": {"description": "fg"}},
+        )
+        assert handlers.rule_against_hearsay(ctx_post) is None
 
 
 # ---------------------------------------------------------------------------
@@ -227,9 +277,27 @@ def test_quiet_channel_reply_denies_once_for_ida():
         res1 = handlers.quiet_channel_reply(ctx)
         assert res1 is not None, f"gate did not fire for {tool}"
         assert res1.kind is Kind.REFUSE
-        assert expected_honesty in res1.inject_text
-        assert expected_quiet in res1.inject_text
+        assert res1.inject_text == expected_quiet
+        assert expected_honesty not in res1.inject_text
         assert handlers.quiet_channel_reply(ctx) is None
+
+
+def test_quiet_channel_reply_uses_the_gate_predicate():
+    import premise_check_gate
+
+    assert handlers.is_channel_reply_tool is premise_check_gate.is_channel_reply_tool
+    assert not hasattr(handlers, "_is_channel_reply_tool")
+    assert not hasattr(handlers, "_CHANNEL_REPLY_TOOLS")
+    ctx = HookContext(
+        client="claude",
+        event="PreToolUse",
+        agent_type="ida:ida",
+        session_id="s-chan-pred",
+        tool="Agent",
+        hooks_dir=IDA_HOOKS,
+    )
+    handlers.clear_channel_gate_state("s-chan-pred")
+    assert handlers.quiet_channel_reply(ctx) is None
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
@@ -447,7 +515,8 @@ def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected
         assert search_res is not None
         assert "<academicOps PKB search results>" in search_res.inject_text
 
-        # 2. Hearsay does not fire
+        # 2. Honesty and Hearsay do not fire on user messages
+        assert handlers.honesty_on_peer_message(ctx) is None
         hearsay_res = handlers.rule_against_hearsay(ctx)
         assert hearsay_res is None
 
@@ -486,20 +555,28 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
         mock_search.assert_not_called()
         assert search_res is None
 
-        # 2. Hearsay fires
+        # 2. Honesty fires for peer messages
+        honesty_res = handlers.honesty_on_peer_message(ctx)
+        assert honesty_res is not None
+        expected_honesty, _ = load_message_pair(IDA_HOOKS, "honesty")
+        assert honesty_res.inject_text == expected_honesty
+
+        # 3. Hearsay fires
         hearsay_res = handlers.rule_against_hearsay(ctx)
         assert hearsay_res is not None
         expected_hearsay, _ = load_message_pair(IDA_HOOKS, "hearsay")
         assert hearsay_res.inject_text == expected_hearsay
 
-        # 3. Gate arms
+        # 4. Gate arms
         handlers.premise_check_arm(ctx)
         assert pcg.is_armed(session_id) is True
 
 
-@pytest.mark.parametrize("agent", ["ida", "ida:ida", "ida-prime"])
-def test_honesty_reaches_ida_prime_when_search_empty(agent: str):
-    """When PKB search yields no results on UserPromptSubmit, honesty.md applies to Ida Prime."""
+@pytest.mark.parametrize(
+    "agent", ["ida", "ida:ida", "ida-prime", "sara", "ida:sara", "james", "aops:james", "worker"]
+)
+def test_no_honesty_fallback_when_search_empty(agent: str):
+    """When PKB search yields no results on UserPromptSubmit, search_the_pkb returns None for all agents."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -509,36 +586,63 @@ def test_honesty_reaches_ida_prime_when_search_empty(agent: str):
     )
     with patch.object(handlers, "_run_pkb_search", return_value=None):
         res = handlers.search_the_pkb(ctx)
-        assert res is not None
-        expected_inject, expected_user = load_message_pair(IDA_HOOKS, "honesty")
-        assert res.inject_text == expected_inject
-        assert res.user_text == expected_user
+        assert res is None
 
 
-@pytest.mark.parametrize("agent", ["sara", "ida:sara", "james", "aops:james"])
-def test_honesty_exemption_preserved_for_sara_and_james(agent: str):
-    """Sara and James remain exempted from honesty.md fallback on UserPromptSubmit."""
+@pytest.mark.parametrize(
+    "agent", ["ida:ida", "ida:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
+)
+@pytest.mark.parametrize(
+    "peer_prompt",
+    [
+        '<cross-session-message from="twin-a">PR #12 merged</cross-session-message>',
+        '<teammate-message teammate_id="worker">done</teammate-message>',
+        "<task-notification>worker finished</task-notification>",
+    ],
+)
+def test_honesty_on_peer_message_fires_for_all_agents(agent: str, peer_prompt: str):
+    """When an incoming peer message arrives on UserPromptSubmit, honesty.md fires for all agents."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
         agent_type=agent,
         hooks_dir=IDA_HOOKS,
-        raw={"prompt": "execute task"},
+        raw={"prompt": peer_prompt},
     )
-    with patch.object(handlers, "_run_pkb_search", return_value=None):
-        res = handlers.search_the_pkb(ctx)
-        assert res is None
+    res = handlers.honesty_on_peer_message(ctx)
+    assert res is not None
+    expected_inject, expected_user = load_message_pair(IDA_HOOKS, "honesty")
+    assert res.inject_text == expected_inject
+    assert res.user_text == expected_user
+
+
+def test_session_start_includes_premise_check_pointer():
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="s-session-start",
+        hooks_dir=IDA_HOOKS,
+    )
+    res = handlers.session_start(ctx)
+    assert res is not None
+    assert (
+        "Reports follow `premise-check`: written in its shape and checked on receipt."
+        in res.inject_text
+    )
 
 
 @pytest.mark.parametrize("client", ["claude", "agy"])
-def test_dispatch_honesty_reaches_ida_prime(staged_hooks: Path, client: str):
-    """End-to-end dispatch confirms honesty.md is returned for Ida Prime on prompt submit."""
+@pytest.mark.parametrize("agent", ["ida:ida", "aops:james", "worker"])
+def test_dispatch_honesty_reaches_all_agents_on_peer_message(
+    staged_hooks: Path, client: str, agent: str
+):
+    """End-to-end dispatch confirms honesty.md is returned for all agents on incoming peer message."""
     event = "UserPromptSubmit" if client == "claude" else "PreInvocation"
     payload = {
         "hook_event_name": event,
-        "agent_type": "ida:ida",
-        "session_id": f"s-ida-{client}",
-        "prompt": "general user inquiry without pkb match",
+        "agent_type": agent,
+        "session_id": f"s-peer-{client}-{agent}",
+        "prompt": "<task-notification>worker finished</task-notification>",
     }
     proc = subprocess.run(
         [sys.executable, str(staged_hooks / "dispatch.py"), client, event],
@@ -552,8 +656,9 @@ def test_dispatch_honesty_reaches_ida_prime(staged_hooks: Path, client: str):
     data = json.loads(proc.stdout)
     expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
     if client == "claude":
-        assert data["hookSpecificOutput"]["additionalContext"] == expected_honesty
+        assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
     else:
         assert any(
-            expected_honesty == step.get("ephemeralMessage") for step in data.get("injectSteps", [])
+            expected_honesty in step.get("ephemeralMessage", "")
+            for step in data.get("injectSteps", [])
         )
