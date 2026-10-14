@@ -1,0 +1,315 @@
+---
+id: spec-otel-tracing
+title: Unified OpenTelemetry Tracing and Emitter Architecture
+type: spec
+status: draft
+tags:
+  - spec
+  - observability
+  - otel
+  - phoenix
+  - tracing
+---
+
+# Unified OpenTelemetry Tracing and Emitter Architecture
+
+## Overview
+
+Every academicOps telemetry emitter exports OpenTelemetry spans to a single Arize Phoenix project: `academicOps`. Surface, emitter, repository, agent persona, host, session, and task identity are carried on span attributes rather than encoded in the Phoenix project name.
+
+Routing each emitter or working directory to its own Phoenix project fragments a single session's execution across dozens of projects: a Claude Code or Antigravity session running in a container or worktree writes hook-tracer spans to a directory-named project (`ida`, `aops`, `academicOps`, `dotfiles`, `mem`, `brain`, `workspace`, `overwhelm-dashboard`, `data`, `hooks`, or `wt-*`), native CLI telemetry to `claude-native`, Arize harness telemetry to `antigravity` or `claude-code`, PKB tool spans to `pkb`, and container-dispatch tool spans to `default` or `polecat-mcp`. Consolidating all emitters into `academicOps` with a normalized span-attribute contract allows queries scoped to `academicOps` to inspect and correlate client harnesses, subagents, CI runs, and MCP servers in one place.
+
+## Core Rules
+
+1. Every production academicOps telemetry emitter sets `openinference.project.name = "academicOps"` and `project.name = "academicOps"` on its OpenTelemetry `Resource` (and `openinference-project-name: academicOps` on OTLP/HTTP export headers where supported).
+2. No emitter derives the Phoenix project name from the current working directory, git repository name, git worktree name, `polecat.yaml` project key, or `OTEL_SERVICE_NAME`.
+3. Repository and workspace identity are recorded on span attributes (`aops.repo`, `project.dir`, `cwd`), never in `openinference.project.name`.
+4. Every span in `academicOps` carries `service.name` and `aops.surface` in `spans.attributes` so traffic from different emitters and execution surfaces remains distinguishable in SQL and UI filters.
+5. Because Phoenix strips `service.name` from OTLP `Resource` attributes when serializing `spans.attributes` in SQLite, the OpenTelemetry Collector `traces/phx` pipeline copies `resource.attributes["service.name"]`, `resource.attributes["host.name"]`, and `resource.attributes["aops.surface"]` into `span.attributes` whenever those keys are absent on the span.
+6. Client hook tracers export the active turn's W3C `TRACEPARENT` (`00-<trace_id>-<root_span_id>-01`) alongside `AOPS_SESSION_ID` to `CLAUDE_ENV_FILE` so hook subprocesses (such as `plugins/rbg/hooks/evaluator_otel_trace.py` and `plugins/ida/hooks/premise_check_verdict.py`) parent under the active turn without depending on Claude Code's native exporter.
+7. Automated test suites scrub OTLP export endpoints (`GENAI_ENGINE_TRACE_ENDPOINT`, `GENAI_ENGINE_API_KEY`, `GENAI_ENGINE_TRACE_PROTOCOL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) by default so unit and integration tests never write spans to the live collector or create ephemeral directories as Phoenix projects.
+8. Each execution surface is traced by one canonical emitter. Duplicate emitters (`claude-native` and the Arize `coding-harness-tracing` hooks for Claude Code and Antigravity) are retired in sequence once the academicOps hook tracers (`plugins/ida/hooks/claude_code_tracer.py` and `plugins/ida/hooks/agy_tracer.py`) capture all required turn outputs and subagent spans.
+
+## Boundaries and Constraints
+
+- **In scope**: All academicOps hook tracers (`plugins/ida/hooks/claude_code_tracer.py`, `plugins/ida/hooks/agy_tracer.py`, `plugins/ida/hooks/premise_check_verdict.py`, `plugins/ida/hooks/handlers.py`), CI hook generation (`scripts/ci_otel_hooks.py`), test environment isolation (`tests/conftest.py`), MCP servers (`mem:src/otel/`, `dotfiles:containers/nicwin/polecat-mcp/telemetry.py`), the OTel Collector pipeline (`dotfiles:containers/nicwin/otel/config.yaml`), and client/container tracing configurations in `dotfiles:dotfiles/.env`, `dotfiles:config/claude-native-otel.json`, and `dotfiles:containers/nicwin/nicdev/Dockerfile`.
+- **Out of scope**: External, non-academicOps applications sharing the collector host (such as independent research pipelines with their own project namespaces), and modifications to closed-source third-party binaries (`claude`, `agy`).
+- **Sequencing constraint**: Duplicate emitters must not be removed until the missing-data fixes on the surviving hook tracers are deployed and verified against live session traces.
+
+## Output Contract: Span Attribute Schema
+
+All spans ingested into the `academicOps` Phoenix project conform to the following attribute schema. Standard OpenInference (`openinference.*`, `session.id`, `input.value`, `output.value`, `llm.*`, `tool.*`, `agent.*`, `user.*`) and OpenTelemetry (`service.name`, `host.name`, `gen_ai.*`) keys are used wherever a standard exists; custom `aops.*` attributes are restricted to academicOps domain concepts (`aops.surface`, `aops.repo`, `task.id`, `parent.session_id`) that have no standard OpenInference or OpenTelemetry equivalent.
+
+| Attribute | Convention | Allowed / Expected Values | Emitters Setting It | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| `openinference.project.name` | OpenInference | `"academicOps"` (or `"academicOps-test"` in explicit live-collector smoke tests) | All emitters (`Resource` and/or `Span`) | Routes all academicOps telemetry into the single `academicOps` project in Phoenix. |
+| `service.name` | OpenTelemetry | `"aops-claude-hooks"`, `"aops-agy-hooks"`, `"aops-verdict-hooks"`, `"claude-native"`, `"pkb"`, `"polecat-mcp"` | All emitters (`Resource` and `Span`; enforced on `Span` by OTel Collector `traces/phx`) | Identifies the exact telemetry emitter that produced the span. |
+| `aops.surface` | academicOps | `"claude-code"`, `"agy"`, `"github-actions"`, `"mcp-server"` | All emitters (`Span` or `Resource` promoted by collector) | Distinguishes client harness, CI runner, and MCP server traffic previously split across `ida`, `antigravity`, `github-actions`, `pkb`, and `default`. |
+| `aops.repo` | academicOps | Canonical repo/workspace slug: `"academicOps"`, `"dotfiles"`, `"mem"`, `"brain"`, `"overwhelm-dashboard"`, `"tox"`, `"labeler"`, `"junior"`, `"workspace"`, `"unknown"` | `claude_code_tracer.py`, `agy_tracer.py`, `premise_check_verdict.py` | Preserves per-repository filtering previously encoded by splitting spans across repo-named Phoenix projects. Normalizes `"aops"` to `"academicOps"`. |
+| `session.id` | OpenInference | 36-char dashed UUID (client session ID; on `pkb` MCP spans, the MCP transport session UUID lives at `mcp.session_id`) | `claude_code_tracer.py`, `agy_tracer.py`, `premise_check_verdict.py`, `claude-native` | Primary correlation key grouping all turns, LLM calls, and tool executions for a single client session (`lib/telemetry/phoenix-span-store.md:12-35`). |
+| `parent.session_id` | academicOps | 36-char dashed UUID of the dispatching parent session (when present) | `claude_code_tracer.py`, `agy_tracer.py` (via `AOPS_PARENT_SESSION_ID` or subagent metadata) | Links spawned subagent or polecat worker sessions back to the parent session. |
+| `agent.name` | OpenInference | Persona or role slug: `"ida"`, `"james"`, `"sara"`, `"pauli"`, `"rbg"`, `"marsha"`, `"main"`, `"general-purpose"`, etc. | `claude_code_tracer.py`, `agy_tracer.py` | Identifies which agent persona executed the turn, LLM call, or tool call. |
+| `agent.id` | OpenInference | Session UUID (for main agent) or subagent invocation UUID / hex ID | `claude_code_tracer.py`, `agy_tracer.py` | Distinguishes concurrent subagents sharing the parent's `session.id`. |
+| `host.name` | OpenTelemetry | Hostname or container ID (e.g., `"nicwin"`, `"nicdev"`, `<container-hex>`, `"runnervmmprz5"`) | All emitters (`Resource` and/or `Span`, promoted by collector) | Distinguishes Ida Prime (`nicdev`), host workstations, ephemeral polecat containers, and CI runners. |
+| `cwd` | academicOps | Absolute working directory path (e.g., `"/workspace"`, `"/home/nic/src/academicOps"`) | `claude_code_tracer.py`, `agy_tracer.py`, `premise_check_verdict.py` | Records the exact directory where the hook fired. |
+| `project.dir` | academicOps | Resolved git repository root path (when inside a git checkout) | `claude_code_tracer.py`, `agy_tracer.py`, `premise_check_verdict.py` | Records the checkout root path corresponding to `aops.repo` (distinct from `cwd` when running in a subdirectory). |
+| `task.id` | academicOps | PKB task ID (e.g., `"aops_<hash>"`) when `AOPS_TASK_ID` or `POLECAT_TARGET_TASK` is set | `claude_code_tracer.py`, `agy_tracer.py`, `polecat-mcp` | Correlates spans directly with the claimed PKB task node. |
+| `github.repository`, `github.workflow`, `github.job`, `github.run_id`, `github.run_attempt`, `github.run_url`, `github.sha`, `github.ref`, `github.event_name` | academicOps CI | GitHub Actions run metadata strings | `claude_code_tracer.py` (when `GITHUB_ACTIONS=true`) | Preserves full CI workflow/job/run filtering inside `academicOps` without a separate `github-actions` Phoenix project. |
+
+### Cross-Surface Trace Context and Correlation
+
+Spans inside `academicOps` correlate across two mechanisms:
+
+1. **Intra-session turn hierarchy and W3C `TRACEPARENT`**:
+   - `plugins/ida/hooks/claude_code_tracer.py` creates a per-turn `claude-code-turn` (`CHAIN`) root span in `_start_turn()` (`:2515-2560`), persists `trace_id` and `root_span_id` in its per-session state file (`_state_file_path` at `:725-764`), and parents all `LLM`, `TOOL`, and `AGENT` spans in the turn under that root span.
+   - `plugins/ida/hooks/premise_check_verdict.py:58-62` reads `trace_id` and `root_span_id` from the session state file (`_load_state`) so `premise-check.<verdict>` (`aops-verdict-hooks`) spans share the active turn's `trace_id` and parent under `claude-code-turn`.
+   - `claude_code_tracer.py` writes `TRACEPARENT=00-<trace_id>-<root_span_id>-01` to `CLAUDE_ENV_FILE` (alongside `AOPS_SESSION_ID` from `plugins/ida/hooks/handlers.py:501-516`) so hook subprocesses that extract W3C context from the environment (such as `plugins/rbg/hooks/evaluator_otel_trace.py:149-202`) link to the turn trace even after `claude-native` is retired.
+2. **MCP server correlation (`pkb` and `polecat-mcp`)**:
+   - Requests from client harnesses reach `pkb` and `polecat-mcp` through the `services` MCP portal (`mcp.suzor.com`), which does not currently forward the client's W3C `traceparent` header or client `session.id`. Consequently, `pkb` (`mcp.<tool>`) and `polecat-mcp` (`tools/call <name>`) spans start independent root `trace_id`s (`parent_id IS NULL`).
+   - Consolidating `pkb` and `polecat-mcp` into `academicOps` places client `TOOL` spans and server-side MCP `TOOL` spans in the same Phoenix project so they can be queried together without cross-project joins and correlated by execution time window (`s.start_time` within the client tool span's `[start_time, end_time]`) and payload arguments (`task.id` / node IDs). Where an HTTP caller injects a W3C `traceparent` header directly into an MCP request, both `mem` and `polecat-mcp` extract it via standard OpenTelemetry HTTP propagation.
+
+### Collector Normalization Rule (`traces/phx`)
+
+Phoenix 20.19.0 extracts `openinference.project.name` from the OTLP `Resource` to assign the trace's `project_rowid`, and merges non-service resource attributes into `spans.attributes`, but drops `resource.attributes["service.name"]`. Emitters that rely on SDK-level `Resource` configuration (`mem:src/otel/mod.rs:28-36`, `dotfiles:containers/nicwin/polecat-mcp/telemetry.py:66-74`, `dotfiles:config/claude-native-otel.json:8`) therefore produce `NULL` for `s.attributes ->> '$.service.name'` unless the collector promotes `service.name` to a span attribute.
+
+In `dotfiles:containers/nicwin/otel/config.yaml`, the `transform/normalize_traces` processor must include:
+
+```yaml
+- context: span
+  statements:
+    - set(attributes["service.name"], resource.attributes["service.name"]) where resource.attributes["service.name"] != nil and attributes["service.name"] == nil
+    - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil and attributes["host.name"] == nil
+    - set(attributes["aops.surface"], resource.attributes["aops.surface"]) where resource.attributes["aops.surface"] != nil and attributes["aops.surface"] == nil
+```
+
+And the `traces/phx` pipeline (`dotfiles:containers/nicwin/otel/config.yaml:95-100`) must run `transform/normalize_traces` before `batch`:
+
+```yaml
+traces/phx:
+  receivers: [otlp]
+  processors: [memory_limiter, transform/normalize_traces, batch]
+  exporters: [otlp/phoenix, debug]
+```
+
+## Current Project-to-Emitter Mapping and Required Routing Changes
+
+Every current Phoenix project (71 projects in total) is mapped below by emitter category to its owning repository and `file:line`, why traffic lands there today, and the routing change required to consolidate all traffic into `academicOps`.
+
+| Current Phoenix Project(s) | Emitter(s) | Owning Repo & File:Line | Why Traffic Lands There Today | Required Routing Change |
+| :--- | :--- | :--- | :--- | :--- |
+| **Directory, Repo, and Worktree Projects (31 projects)**: `workspace`, `ida`, `academicOps`, `mem`, `overwhelm-dashboard`, `aops`, `dotfiles`, `brain`, `junior`, `labeler`, `tox`, `data`, `flow-rule`, `twin`, `user`, `daily`, `nicdev`, `nic`, `flow-migration`, `src`, `ida-claude`, `dispatch`, `tmp`, `ao`, `nicwin`, `devwt`, `sara`, `wt-academicOps-*` (3 projects), `wt-ida-*` (2 projects) | academicOps Claude Code hook tracer (`claude-code-turn`, `claude/<model>`, tool spans), academicOps agy hook tracer (`agy session`, `LLM`, tool spans), premise-check verdict hook (`premise-check.<verdict>`) | `plugins/ida/hooks/claude_code_tracer.py:80-286,1817-1976`, `plugins/ida/hooks/agy_tracer.py:25-38,474-490,618-627`, `plugins/ida/hooks/premise_check_verdict.py:48-95` | `resolve_project_name()` (`plugins/ida/hooks/claude_code_tracer.py:236-286`) ignores `PHOENIX_PROJECT_NAME="default"` (`:258-260`) and resolves the project name from git origin, worktree (`wt-*`, `:197-205`), or directory basename (`resolve_project_from_dir`, `:173-233`) and `polecat.yaml` keys (`resolve_canonical_project`, `:87-170`). Because `:112-113` returns the `polecat.yaml` key `"aops"` before checking `DEFAULT_CANONICAL_ALIASES` (`:80-84`), `academicOps` checkouts split between `aops` and `academicOps`. Ida Prime runs in `/workspace/ida/prime`, which resolves to `ida`. `agy_tracer.py` calls `claude_code_tracer.discover_config()`, splitting agy spans across the same directory-named projects. | 1. In `plugins/ida/hooks/claude_code_tracer.py:236-286,423-495`: set `config.project_name` to `"academicOps"` (allowing override via `PHOENIX_PROJECT_NAME` only when explicitly set to a non-`"default"` value).<br>2. Record the resolved canonical repository slug on `aops.repo` (fixing `resolve_canonical_project` so `"aops"` normalizes to `"academicOps"`), and set `project.dir` (`:1855,1967`) to the resolved git root path rather than duplicating `cwd`.<br>3. Set `service.name` per emitter (`"aops-claude-hooks"` in `claude_code_tracer.py`, `"aops-agy-hooks"` in `agy_tracer.py`, and `"aops-verdict-hooks"` in `premise_check_verdict.py:89-95`) and set `aops.surface` (`"claude-code"`, `"agy"`, or `"github-actions"` when `GITHUB_ACTIONS=true`). |
+| **Claude Native Projects (3 projects)**: `claude-native`, `claude-native-p3`, `claude-native-p4` | Claude Code built-in OTel exporter (`claude_code.llm_request`, `claude_code.tool`, `claude_code.tool.execution`, `claude_code.tool.blocked_on_user`, `claude_code.interaction`) | `dotfiles:config/claude-native-otel.json:8`, `dotfiles:containers/nicwin/nicdev/Dockerfile:317,473`, `dotfiles:scripts/install-claude-native-otel.sh:24-60` | `dotfiles:config/claude-native-otel.json:8` sets `OTEL_RESOURCE_ATTRIBUTES="openinference.project.name=claude-native"`, and `dotfiles:scripts/install-claude-native-otel.sh:54` sets `openinference.project.name=claude-native,project.name=claude-native,host.name=<host>`. (`claude-native-p3` and `claude-native-p4` were manual verification probes). | Until retired in Phase 4 of the deduplication plan, update `dotfiles:config/claude-native-otel.json:8` and `dotfiles:scripts/install-claude-native-otel.sh:54` to set `openinference.project.name=academicOps,project.name=academicOps,service.name=claude-native,aops.surface=claude-code`. Then retire `claude-native` once hook-tracer parity is verified. |
+| **PKB Server Project (1 project)**: `pkb` | `pkb` Rust MCP server (`mcp.<tool>` `TOOL` spans and `ensure_graph_fresh` internal spans) | `mem:src/otel/config.rs:40-44`, `mem:src/otel/mod.rs:28-36`, `dotfiles:containers/nicwin/docker-compose.yml:39-40` | `dotfiles:containers/nicwin/docker-compose.yml:39` sets `OTEL_SERVICE_NAME=pkb` without `PHOENIX_PROJECT_NAME`. `mem:src/otel/config.rs:41-44` defaults `project_name` to `service_name` (`"pkb"`), and `mem:src/otel/mod.rs:33` sets `openinference.project.name = "pkb"` on the OTLP `Resource`. | 1. In `dotfiles:containers/nicwin/docker-compose.yml:39-40`, pass `PHOENIX_PROJECT_NAME=${PHOENIX_PROJECT_NAME:?}` (`"academicOps"`) while keeping `OTEL_SERVICE_NAME=pkb`.<br>2. In `mem:src/otel/config.rs:41-44`, default `project_name` to `"academicOps"` when `PHOENIX_PROJECT_NAME` is unset or `"default"`, and add `KeyValue::new("aops.surface", "mcp-server")` in `mem:src/otel/mod.rs:31-35`.<br>3. Promote `resource.attributes["service.name"]` in `dotfiles:containers/nicwin/otel/config.yaml`. |
+| **Default & Polecat MCP Projects (3 projects)**: `default`, `polecat-mcp`, `polecat-mcp-qa` | 1. `polecat-mcp` Python MCP server (`tools/call <name>`, `prompts/list`, `resources/list`, `tools/list`)<br>2. `claude_code_tracer.py` fallback when `cwd` has no git/repo parent | `dotfiles:dotfiles/.env:39`, `dotfiles:containers/nicwin/docker-compose.yml:161,548`, `dotfiles:containers/nicwin/polecat-mcp/telemetry.py:63-80`, `plugins/ida/hooks/claude_code_tracer.py:236-286` | `dotfiles:dotfiles/.env:39` sets `export PHOENIX_PROJECT_NAME="default"`, which `docker-compose.yml:548` forwards into `polecat-mcp`. `telemetry.py:65-72` sets `openinference.project.name = os.environ["PHOENIX_PROJECT_NAME"]` (`"default"`). `claude_code_tracer.py:286` also fell back to `"default"` when `resolve_project_from_dir()` returned `None`. (`polecat-mcp` and `polecat-mcp-qa` were created by manual `PHOENIX_PROJECT_NAME` overrides during probes). | 1. In `dotfiles:dotfiles/.env:39`, change `export PHOENIX_PROJECT_NAME="default"` to `export PHOENIX_PROJECT_NAME="academicOps"`.<br>2. In `dotfiles:containers/nicwin/polecat-mcp/telemetry.py:67-73`, add `"aops.surface": "mcp-server"` to `Resource.create(...)` alongside `"service.name": "polecat-mcp"`.<br>3. In `plugins/ida/hooks/claude_code_tracer.py:286`, fallback `aops.repo` to `"unknown"` while routing `openinference.project.name` to `"academicOps"`. |
+| **CI Project (1 project)**: `github-actions` | `claude_code_tracer.py` invoked by GitHub Actions `claude-code-action` workflows | `scripts/ci_otel_hooks.py:41,115`, `.github/workflows/agent-enforcer.yml`, `.github/workflows/agent-mechanic.yml`, `.github/workflows/agent-pre-admission-responder.yml`, `.github/workflows/agent-qa.yml`, `.github/workflows/lint.yml`, `.github/workflows/build-extension.yml`, `.github/workflows/release-please.yml` | `scripts/ci_otel_hooks.py:41` sets `DEFAULT_PROJECT = "github-actions"` and exports `PHOENIX_PROJECT_NAME=github-actions` in the generated `hook.sh` (`:115`). | In `scripts/ci_otel_hooks.py:41`, change `DEFAULT_PROJECT = "github-actions"` to `DEFAULT_PROJECT = "academicOps"`. In `plugins/ida/hooks/claude_code_tracer.py`, set `aops.surface = "github-actions"` when `os.environ.get("GITHUB_ACTIONS") == "true"`. |
+| **Arize Antigravity Project (1 project)**: `antigravity` | Arize `coding-harness-tracing` Antigravity hooks (`arize-hook-antigravity-pre-invocation`, `arize-hook-antigravity-stop`) | `dotfiles:containers/nicwin/nicdev/Dockerfile:270,272`, `dotfiles:containers/nicwin/nicdev/entrypoint.sh:147-148`, `dotfiles:dotfiles/.gemini/config/hooks.json:1-18` | Installed by `coding-harness-tracing/main/install.sh ... antigravity` (`Dockerfile:270`) and configured in `~/.arize/harness/config.json` to export redacted `Turn`, `LLM: <model>`, and `<tool>` spans to Phoenix project `antigravity`. | Do not re-route; **remove** in Phase 3 of the deduplication plan (`Dockerfile:270,272`, `entrypoint.sh:147-148`, `dotfiles/.gemini/config/hooks.json:1-18`). |
+| **Arize Claude Code Project (1 project)**: `claude-code` | Arize `coding-harness-tracing` Claude Code hooks (`arize-hook-claude-*`) | `dotfiles:containers/nicwin/nicdev/Dockerfile:269,272,461-463`, `dotfiles:containers/nicwin/nicdev/entrypoint.sh:147-148` | Installed by `coding-harness-tracing/main/install.sh ... claude` (`Dockerfile:269`) with project `claude-code`. Removed from host setup and polecat stage (`Dockerfile:325`), but still baked into `base` and `nicdev` seed (`Dockerfile:269,461-463`). | Do not re-route; **remove** the remaining installer and seed lines (`Dockerfile:269,272`, `entrypoint.sh:147-148`) in Phase 3 of the deduplication plan. |
+| **Test Suite and QA Probe Projects (30 projects)**: `academicOps-test`, `hooks`, `test-other-repo`, `test-idle-long`, `test-agy`, `test-idle-work`, `outside_workspace`, `outside-workspace-claude`, `outside-workspace-agy`, and 21 manual QA / task-probe projects (`academicOps-*`, `mem*`, `probe`, `livetrace-*`, `saratest`, `marsha-live`, `wd-*`, `qa*`, `otel-diag`, `ci-otel-smoke`, `aops-repro-probe`) | Pytest suites (`tests/conftest.py`) and manual QA probes invoking `claude_code_tracer.py`, `agy_tracer.py`, or `premise_check_verdict.py` | `tests/conftest.py:44-72`, `tests/test_claude_code_tracer_attributes.py`, `tests/test_shipped_hooks.py`, `plugins/ida/hooks/claude_code_tracer.py:236-286` | `tests/conftest.py:45-46` sets `PHOENIX_PROJECT_NAME="academicOps-test"` but does not scrub `GENAI_ENGINE_TRACE_ENDPOINT` or `GENAI_ENGINE_API_KEY` (`:57-69`). Tests that unset `PHOENIX_PROJECT_NAME` inside `tmp_path` directories fall back to `resolve_project_from_dir(tmp_path)`, creating projects from `tmp_path` directory names (`hooks`, `outside-workspace-*`, `test-*`) and exporting to the live collector. | 1. Add `GENAI_ENGINE_TRACE_ENDPOINT`, `GENAI_ENGINE_API_KEY`, `GENAI_ENGINE_TRACE_PROTOCOL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to `scrub_keys` in `tests/conftest.py:57-69`.<br>2. Removing cwd-based project resolution in `claude_code_tracer.py` guarantees no test directory name can ever become a Phoenix project name. |
+
+## Duplicate Emitter Deduplication Plan
+
+Three pairs of duplicate emitters have operated across Claude Code and Antigravity surfaces. Each pair is analyzed below showing what each copy carries that the other lacks, which copy is retained, and the ordered removal sequence.
+
+### Pair 1: Claude Code Native OTel (`claude-native`) vs academicOps Claude Code Hook Tracer (`plugins/ida/hooks/claude_code_tracer.py`)
+
+| Dimension | `claude-native` (Built-in CLI Exporter) | `claude_code_tracer.py` (academicOps Hook Tracer) |
+| :--- | :--- | :--- |
+| **LLM Prompts & Completions** | **Absent.** `claude_code.llm_request` sets `output.value` only to `{"id": "req_..."}` with no prompt or completion text. `claude_code.interaction` carries `user_prompt` on the interaction span only, with no assistant response. | **Present.** `claude/<model>` and `claude-code-turn` carry full unredacted (except for secret-pattern scrubbing via `<REDACTED_SECRET>`) `input.value`, `output.value`, `llm.input_messages`, and `llm.output_messages`. |
+| **Tool Call Inputs & Outputs** | **Absent.** `claude_code.tool.execution` carries only `tool_use_id` and `duration_ms`. `claude_code.tool` carries `tool_name` and `file_path` for file tools, but no command strings, arguments, or tool outputs. | **Present.** Tool spans carry full JSON `input.value`, `output.value` (secret-scrubbed), `tool.name`, `tool.call_id`, and `tool.json_schema`. |
+| **Subagent LLM & Tool Spans** | **Present.** Fires inside the `claude` process for every API request, including subagents. | **Present via `SubagentStop` stitching; turn-output gap being closed in Phase 1.** `claude_code_tracer.py` stitches subagent JSONL transcripts (`subagents/agent-*.jsonl`) at `SubagentStop`, while Phase 1 closes the remaining gap where turns triggered by `<channel>`, `<cross-session-message>`, or `<task-notification>` envelopes lose turn output. |
+| **API Latency & Streaming Metrics** | **Present.** Carries `ttft_ms`, `first_content_ms`, `duration_ms`, `attempt`, `speed`, `effort`, `request_id`, and `client_request_id`. | **Absent** for `ttft_ms` (Claude Code transcripts record turn/step timestamps and token usage, not time-to-first-token). |
+| **Permission-Wait Spans** | **Present** (`claude_code.tool.blocked_on_user` with `decision` and `duration_ms`). | **Present via hook events** (`Notification: permission_prompt`, `Permission Request`, `Permission Denied`). |
+| **Trace Hierarchy & W3C Context Propagation** | **Process-level `TRACEPARENT` only.** When `CLAUDE_CODE_ENABLE_TELEMETRY=1`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1`, and `OTEL_TRACES_EXPORTER=otlp` are all set, exports a single process-wide `TRACEPARENT` into hook subprocess environments (`plugins/rbg/hooks/evaluator_otel_trace.py:154-179`), but does not group spans by turn. | **Turn-hierarchical.** Nests `LLM`, `TOOL`, and `AGENT` spans under `claude-code-turn` (`CHAIN`), shares turn `trace_id`/`root_span_id` via `_state_file_path` (`plugins/ida/hooks/premise_check_verdict.py:58-62`), and (under Core Rule 6) exports the active turn's `TRACEPARENT` to `CLAUDE_ENV_FILE`. |
+| **Domain Attribution** | **Absent.** Carries Anthropic `user.email` / `organization.id` and `terminal.type`, but no `agent.name`, `aops.repo`, `cwd`, `task.id`, or `github.*`. | **Present.** Sets `agent.name`, `agent.id`, `subagent.id`, `aops.repo`, `cwd`, `project.dir`, `task.id`, and `github.*`. |
+
+- **Copy to keep**: `plugins/ida/hooks/claude_code_tracer.py`.
+- **Copy to remove**: `claude-native` (`dotfiles:config/claude-native-otel.json`, `dotfiles:containers/nicwin/nicdev/Dockerfile:317,473`, `dotfiles:scripts/install-claude-native-otel.sh`).
+
+### Pair 2: Arize `coding-harness-tracing` for Antigravity (`antigravity`) vs academicOps Agy Hook Tracer (`plugins/ida/hooks/agy_tracer.py`)
+
+| Dimension | `antigravity` (Arize `coding-harness-tracing`) | `agy_tracer.py` (academicOps Hook Tracer) |
+| :--- | :--- | :--- |
+| **Prompts, Completions & Tool Payloads** | **Redacted.** Every `Turn`, `LLM`, and `TOOL` span replaces content with `"<redacted (N chars)>"`. | **Full payloads.** Carries complete unredacted (secret-scrubbed) `input.value`, `output.value`, `llm.input_messages`, `llm.output_messages`, and tool arguments/outputs. |
+| **Token Counts** | **Absent.** `LLM` spans carry `llm.model_name` only, with no token usage. | **Present.** Extracts reported prompt, completion, total, and cache-read token counts from the Antigravity conversation database. |
+| **Step & Subagent Coverage** | **Incomplete.** Captures roughly half of the `LLM` steps and collapses multi-turn sessions into a single `Turn` span. | **Complete.** Captures all `LLM` and `TOOL` steps across all `agy session` `CHAIN` turns. |
+| **Model Display Name** | Includes the UI display string in the span name (`"LLM: <Model Display Name>"`). | Sets `llm.model_name` from the step payload and parses `<USER_SETTINGS_CHANGE>` in `llm.input_messages`. |
+| **Domain Attribution** | **Minimal.** Sets `session.id` and `project.name = "workspace"`; no `agent.name`, `host.name`, `user.id`, or `cwd`. | **Complete.** Sets `agent.name`, `agent.id`, `subagent.id`, `host.name`, `user.id`, `cwd`, `project.dir`, and `aops.repo`. |
+
+- **Copy to keep**: `plugins/ida/hooks/agy_tracer.py`.
+- **Copy to remove**: Arize `coding-harness-tracing` for Antigravity (`dotfiles:containers/nicwin/nicdev/Dockerfile:270,272`, `dotfiles:containers/nicwin/nicdev/entrypoint.sh:147-148`, `dotfiles:dotfiles/.gemini/config/hooks.json:1-18`, and `~/.arize` on hosts/volumes).
+
+### Pair 3: Arize `coding-harness-tracing` for Claude Code (`claude-code`) vs academicOps Claude Code Hook Tracer (`plugins/ida/hooks/claude_code_tracer.py`)
+
+| Dimension | `claude-code` (Arize `coding-harness-tracing`) | `claude_code_tracer.py` (academicOps Hook Tracer) |
+| :--- | :--- | :--- |
+| **Prompts, Completions & Tool Payloads** | **Redacted.** All `input.value`, `output.value`, `tool.command`, and `tool.description` fields are `"<redacted (N chars)>"`. | **Full payloads** (secret-scrubbed via `<REDACTED_SECRET>`). |
+| **Slash Command Metadata** | `Turn N` spans parse `command.name`, `command.expansion_type`, and `command.source`. | Captures the expanded `<command-name>` and prompt text directly in `claude-code-turn` `input.value`. |
+| **Domain Attribution & W3C Context** | **Absent.** No `host.name`, `agent.name`, `cwd`, or `TRACEPARENT`. | **Present.** Full domain attributes and turn-level hierarchy. |
+
+- **Copy to keep**: `plugins/ida/hooks/claude_code_tracer.py`.
+- **Copy to remove**: Finish removing Arize `coding-harness-tracing` for Claude Code from `dotfiles:containers/nicwin/nicdev/Dockerfile:269,272` and `dotfiles:containers/nicwin/nicdev/entrypoint.sh:147-148`.
+
+### Ordered Deduplication Sequence
+
+Deduplication executes in four ordered phases so no observability coverage is lost during the transition:
+
+1. **Phase 1 — Land remaining turn-output and `TRACEPARENT` fixes in academicOps hook tracers (Prerequisite)**:
+   - Complete turn-output capture on `<channel>`, `<cross-session-message>`, and `<task-notification>` turns in `plugins/ida/hooks/claude_code_tracer.py` so every turn and subagent `CHAIN`, `LLM`, `TOOL`, and `AGENT` span carries `input.value`, `output.value`, and token usage.
+   - Export the active turn's `TRACEPARENT` from `claude_code_tracer.py` into `CLAUDE_ENV_FILE` so `plugins/rbg/hooks/evaluator_otel_trace.py` continues receiving parent trace context without `claude-native`.
+2. **Phase 2 — Consolidate project routing and collector attribute promotion**:
+   - Deploy the `traces/phx` collector transform (`service.name`, `host.name`, `aops.surface` promotion) in `dotfiles:containers/nicwin/otel/config.yaml`.
+   - Route `claude_code_tracer.py`, `agy_tracer.py`, `premise_check_verdict.py`, `scripts/ci_otel_hooks.py`, `pkb` (`mem:src/otel/config.rs` and `dotfiles:containers/nicwin/docker-compose.yml`), and `polecat-mcp` (`dotfiles:dotfiles/.env` and `dotfiles:containers/nicwin/polecat-mcp/telemetry.py`) to `academicOps`, and scrub OTLP export env vars in `tests/conftest.py`.
+3. **Phase 3 — Remove Arize `coding-harness-tracing` (`antigravity` and `claude-code`)**:
+   - Delete the `coding-harness-tracing` `install.sh` lines for `claude` and `antigravity` and `.arize` seed copy from `dotfiles:containers/nicwin/nicdev/Dockerfile:269-272` and `dotfiles:containers/nicwin/nicdev/entrypoint.sh:147-148`.
+   - Remove `dotfiles:dotfiles/.gemini/config/hooks.json` (`arize-tracing` block) and purge `~/.arize` and `~/.gemini/config/hooks.json` `arize-tracing` entries from persistent host and `nicdev-home` volumes.
+4. **Phase 4 — Retire `claude-native`**:
+   - Once Phase 1 and Phase 2 are verified in `academicOps` across live container and host sessions (confirming subagent LLM/TOOL spans, turn outputs, and `TRACEPARENT` export are present via `claude_code_tracer.py`), remove `dotfiles:config/claude-native-otel.json`, the `COPY` instructions in `dotfiles:containers/nicwin/nicdev/Dockerfile:317,473`, and `/etc/claude-code/managed-settings.d/native-otel.json` on hosts.
+
+## Acceptance Criteria
+
+Each acceptance criterion below must pass against the live Phoenix SQLite database via `executeSql` after a cutover timestamp `<CUTOVER_ISO>` (RFC 3339 UTC timestamp, e.g. `'2026-10-15T00:00:00+00:00'`).
+
+### AC1: Single Target Project (`academicOps`)
+
+All spans ingested after `<CUTOVER_ISO>` land exclusively in the `academicOps` project (0 spans in any other project).
+
+**Verification query**:
+
+```sql
+SELECT p.name AS project_name, COUNT(s.id) AS span_count
+FROM spans s
+JOIN traces t ON s.trace_rowid = t.id
+JOIN projects p ON t.project_rowid = p.id
+WHERE s.start_time >= '<CUTOVER_ISO>'
+GROUP BY p.name
+ORDER BY span_count DESC
+```
+
+**Pass condition**: Exactly one row is returned, with `project_name = 'academicOps'`.
+
+### AC2: Emitter and Surface Distinguishability on Every Span
+
+Every span ingested into `academicOps` after `<CUTOVER_ISO>` carries non-null `service.name` and `aops.surface` attributes in `spans.attributes`, covering hook tracers (`aops-claude-hooks`, `aops-agy-hooks`, `aops-verdict-hooks`) and MCP servers (`pkb`, `polecat-mcp`).
+
+**Verification query**:
+
+```sql
+SELECT
+  s.attributes ->> '$.service.name' AS service_name,
+  s.attributes ->> '$.aops.surface' AS surface,
+  COUNT(s.id) AS span_count
+FROM spans s
+JOIN traces t ON s.trace_rowid = t.id
+JOIN projects p ON t.project_rowid = p.id
+WHERE p.name = 'academicOps'
+  AND s.start_time >= '<CUTOVER_ISO>'
+GROUP BY service_name, surface
+ORDER BY span_count DESC
+```
+
+**Pass condition**: Zero rows have `service_name IS NULL` or `surface IS NULL`, and active emitters (`aops-claude-hooks`, `aops-agy-hooks`, `aops-verdict-hooks`, `pkb`, `polecat-mcp`) appear as distinct `(service_name, surface)` rows.
+
+### AC3: Repository, Host, Agent, and Session Distinguishability on Hook-Tracer Spans
+
+Every client hook-tracer span (`aops.surface IN ('claude-code', 'agy', 'github-actions')`) in `academicOps` after `<CUTOVER_ISO>` carries non-null `session.id`, `aops.repo` (with `"aops"` normalized to `"academicOps"`), `host.name`, and `agent.name`.
+
+**Verification query**:
+
+```sql
+SELECT
+  COUNT(s.id) AS total_hook_spans,
+  SUM(CASE WHEN s.attributes ->> '$.session.id' IS NULL THEN 1 ELSE 0 END) AS missing_session_id,
+  SUM(CASE WHEN s.attributes ->> '$.aops.repo' IS NULL THEN 1 ELSE 0 END) AS missing_repo,
+  SUM(CASE WHEN s.attributes ->> '$.aops.repo' = 'aops' THEN 1 ELSE 0 END) AS unnormalized_aops_slug,
+  SUM(CASE WHEN s.attributes ->> '$.host.name' IS NULL THEN 1 ELSE 0 END) AS missing_host_name,
+  SUM(CASE WHEN s.attributes ->> '$.agent.name' IS NULL THEN 1 ELSE 0 END) AS missing_agent_name
+FROM spans s
+JOIN traces t ON s.trace_rowid = t.id
+JOIN projects p ON t.project_rowid = p.id
+WHERE p.name = 'academicOps'
+  AND s.start_time >= '<CUTOVER_ISO>'
+  AND s.attributes ->> '$.aops.surface' IN ('claude-code', 'agy', 'github-actions')
+```
+
+**Pass condition**: `total_hook_spans > 0` and `missing_session_id = 0`, `missing_repo = 0`, `unnormalized_aops_slug = 0`, `missing_host_name = 0`, `missing_agent_name = 0`.
+
+### AC4: Cross-Surface Coexistence and Turn-Tree Hierarchy in `academicOps`
+
+After `<CUTOVER_ISO>`, both client surface spans (`aops.surface IN ('claude-code', 'agy', 'github-actions')`) and MCP server spans (`aops.surface = 'mcp-server'`, `service.name IN ('pkb', 'polecat-mcp')`) reside in the `academicOps` project, and non-root client turn spans (`LLM`, `TOOL`, `AGENT`, and `aops-verdict-hooks`) parent under their turn `CHAIN` span via `parent_id` within the same `trace_id`.
+
+**Verification query**:
+
+```sql
+SELECT
+  s.attributes ->> '$.aops.surface' AS surface,
+  s.attributes ->> '$.service.name' AS service_name,
+  COUNT(DISTINCT t.id) AS trace_count,
+  COUNT(s.id) AS span_count,
+  SUM(CASE WHEN s.span_kind IN ('LLM', 'TOOL', 'AGENT') AND s.parent_id IS NOT NULL THEN 1 ELSE 0 END) AS parented_child_spans
+FROM spans s
+JOIN traces t ON s.trace_rowid = t.id
+JOIN projects p ON t.project_rowid = p.id
+WHERE p.name = 'academicOps'
+  AND s.start_time >= '<CUTOVER_ISO>'
+GROUP BY surface, service_name
+ORDER BY span_count DESC
+```
+
+**Pass condition**: Rows are present in `academicOps` for both client surfaces (`claude-code` / `agy`) and `mcp-server` (`pkb` / `polecat-mcp`), and for client hook tracers `parented_child_spans > 0`.
+
+### AC5: Zero Duplicate-Emitter Traffic After Deduplication
+
+After Phases 3 and 4 of the deduplication plan complete at `<DEDUP_CUTOVER_ISO>`, zero spans are emitted by `claude-native` or Arize `coding-harness-tracing` (`antigravity`, `claude-code`).
+
+**Verification query**:
+
+```sql
+SELECT
+  p.name AS project_name,
+  s.attributes ->> '$.service.name' AS service_name,
+  s.name AS span_name,
+  COUNT(s.id) AS span_count
+FROM spans s
+JOIN traces t ON s.trace_rowid = t.id
+JOIN projects p ON t.project_rowid = p.id
+WHERE s.start_time >= '<DEDUP_CUTOVER_ISO>'
+  AND (
+    p.name IN ('claude-native', 'antigravity', 'claude-code')
+    OR s.attributes ->> '$.service.name' = 'claude-native'
+    OR s.name LIKE 'claude_code.%'
+    OR s.attributes ->> '$.input.value' LIKE '<redacted (%chars)>'
+  )
+GROUP BY p.name, service_name, span_name
+```
+
+**Pass condition**: Zero rows returned.
+
+### AC6: Zero Test-Suite or Worktree Project Pollution
+
+Running `uv run pytest` or executing work inside git worktrees produces zero spans in `academicOps-test`, `hooks`, `tmp_path`-derived projects, or `wt-*` projects after `<CUTOVER_ISO>`.
+
+**Verification query**:
+
+```sql
+SELECT p.name AS project_name, COUNT(s.id) AS span_count
+FROM spans s
+JOIN traces t ON s.trace_rowid = t.id
+JOIN projects p ON t.project_rowid = p.id
+WHERE s.start_time >= '<CUTOVER_ISO>'
+  AND (
+    p.name IN ('academicOps-test', 'hooks')
+    OR p.name LIKE 'test-%'
+    OR p.name LIKE 'outside%'
+    OR p.name LIKE 'wt-%'
+  )
+GROUP BY p.name
+```
+
+**Pass condition**: Zero rows returned.
+
+## Rationale
+
+- **One project (`academicOps`) over per-emitter or per-repository projects**: In Phoenix, `projects` partition the trace store—cross-project traces cannot render in a single waterfall, and UI searches or evaluations are scoped to one project at a time. Because one academicOps session routinely crosses repositories (`academicOps`, `dotfiles`, `mem`, `brain`), spawns subagents, and calls MCP servers (`pkb`, `polecat-mcp`), only a single project allows end-to-end session inspection.
+- **OpenInference + OpenTelemetry semantic conventions with minimal `aops.*` extensions**: Phoenix's UI natively indexes `session.id`, `input.value`, `output.value`, `openinference.span.kind`, `llm.model_name`, `llm.token_count.*`, `tool.name`, `agent.name`, and `user.id`. Using standard keys for those fields preserves native Phoenix UI rendering (Sessions tab, token/cost rollups, span kind badges), while `aops.surface`, `aops.repo`, `task.id`, and `parent.session_id` capture academicOps-specific routing dimensions cleanly without colliding with OpenInference fields.
+- **Collector-level promotion of `service.name`, `host.name`, and `aops.surface`**: Relying on every emitter to duplicate `Resource` attributes onto every `Span` fails for closed-source emitters (`claude-native`) and third-party middleware (`FastMCP` `OpenTelemetryMiddleware` in `polecat-mcp`). Promoting `resource.attributes["service.name"]`, `resource.attributes["host.name"]`, and `resource.attributes["aops.surface"]` in the OTel Collector's `traces/phx` pipeline solves the Phoenix resource-attribute stripping gap once at the ingestion boundary for all emitters.
+- **Keeping academicOps hook tracers over `claude-native` and Arize `coding-harness-tracing`**: Both Arize `coding-harness-tracing` (`antigravity`, `claude-code`) and `claude-native` omit or redact the actual content of LLM completions and tool inputs/outputs. Once the hook tracers' turn-output and subagent-transcript gaps are closed and `claude_code_tracer.py` exports `TRACEPARENT` to `CLAUDE_ENV_FILE`, the duplicate emitters add only storage overhead and duplicate span noise.
