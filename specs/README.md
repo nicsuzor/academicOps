@@ -22,7 +22,7 @@
 - [enforcement/task-contract.md](enforcement/task-contract.md) -- the work-unit contract (claim → release).
 - [enforcement/workflow.md](enforcement/workflow.md) -- the five-step workflow shape and review-depth call.
 - [enforcement/sign-off.md](enforcement/sign-off.md) -- release-unit-scale sign-off.
-- [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
+- [enforcement/evidence-exchange.md](enforcement/evidence-exchange.md) -- evidence exchange between agents: the contract, who checks what, and how it is enforced.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 
 ## Polecat

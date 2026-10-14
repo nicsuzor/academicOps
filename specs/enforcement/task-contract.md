@@ -83,5 +83,5 @@ this contract does not restate.
   This is Layer 2's instantiation of the universal task-boundary contract --
   the field-by-field shape, the substance-over-form review requirement, and
   the grandfather cutover policy live once, canonically, in
-  [evidence-contract.md](evidence-contract.md); this bullet does not restate
+  [evidence-exchange.md](evidence-exchange.md); this bullet does not restate
   them.
