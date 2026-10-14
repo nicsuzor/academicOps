@@ -26,3 +26,23 @@ Current state list of measures in place to shape agent behavior per axiom.
 | [Axiom: Judgment Is Non-Delegable](../plugins/rbg/axioms/judgment-non-delegable.md) -- Never substitute deterministic techniques (regex, substring, heuristics) for semantic qualitative judgment; use LLMs.           |           |          |        |
 | [Axiom: Proportionate](../plugins/rbg/axioms/proportionate.md) -- Build the least that meets the request; guard a risk by its likelihood × consequence.                                                                |           |          |        |
 | [Axiom: Single Source of Truth](../plugins/rbg/axioms/single-source-of-truth.md) -- Maintain exactly one authoritative copy of every fact, rule, or artifact.                                                          |           |          |        |
+
+## Evidence contract
+
+Measures in place that enforce the [evidence contract](enforcement/evidence-contract.md). The designed system, with its planned changes, is in [evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md).
+
+| Measure                                                                                   | Carrier                                                  | Applies to          | Severity          |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------- | ----------------- |
+| Report format, basis vocabulary, verdict tokens, verdict command                          | `premise-check` skill                                    | All agents          | Guidance          |
+| Report argument in the task handback                                                      | `/pull`, `/dump`                                         | Task workers        | Guidance          |
+| `honesty.md` reminder                                                                     | `UserPromptSubmit`, `search_the_pkb` fallback            | All but Sara, James | Reminder          |
+| Check reminder (`hearsay.md`) on a peer envelope                                          | `UserPromptSubmit`                                       | Ida, Sara           | Reminder          |
+| Gate arms on a peer envelope                                                              | `UserPromptSubmit`                                       | Ida, Sara           | Friction          |
+| Gate arms on any dispatch, including a background launch                                  | `PostToolUse`, `PostToolBatch`                           | Ida, Sara           | Friction          |
+| Gate refuses `Agent`, `Task`, `invoke_subagent`, `SendMessage`, `AskUserQuestion`, `Dump` | `PreToolUse`                                             | Ida, Sara           | Refuse            |
+| Gate blocks `Stop` once per chain                                                         | `Stop`                                                   | Ida, Sara           | Block             |
+| Gate's verdict command, with `--verdict PASS` pre-filled                                  | `premise_check_gate.py`                                  | Ida, Sara           | Friction          |
+| Verdict recording and span                                                                | `verdict.py`, `premise_check_verdict.py`                 | Ida, Sara           | Record            |
+| Gate modes and override variables                                                         | Environment                                              | Ida, Sara           | Config            |
+| `release_task` required fields, presence-only, on tasks created after the check shipped   | PKB server                                               | Task workers        | Prevention        |
+| Substance check: the reviewer opens each pointer and confirms it supports its claim       | [Workflow](enforcement/workflow.md) steps 3-4, `/verify` | QA reviewers        | Verdict (agentic) |
