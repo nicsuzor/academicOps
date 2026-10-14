@@ -4,6 +4,7 @@ import { resolveBotCommands, type TelegramBotCommand } from "./telegram/commands
 
 export interface PluginConfig {
   botToken: string;
+  apiBaseUrl: string;
   role: string;
   isPrimary: boolean;
   allowFrom: number[];
@@ -35,6 +36,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
 
   return {
     botToken: env.TELEGRAM_BOT_TOKEN || "",
+    apiBaseUrl: (env.TELEGRAM_API_BASE_URL || "https://api.telegram.org").replace(/\/+$/, ""),
     role,
     isPrimary,
     allowFrom,
