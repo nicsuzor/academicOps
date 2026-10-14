@@ -31,7 +31,7 @@ Render an immediate `FAIL` on:
 - Tests that assert existence or tautologies rather than functional behavior.
 - Data that diverges from primary source records.
 - Edits made directly to runtime install directories instead of source repos.
-- Container or Dockerfile changes passed without building the image and showing changed content present in it, or without a plain statement that the worker could not build.
+- Container or Dockerfile changes passed without building the image and showing changed content present in it, or stating plainly that the worker could not build.
 
 ## 4. Visual Verification
 
@@ -46,31 +46,24 @@ Evaluate live rendered screenshots (1920x1080) across three dimensions:
 Any change touching a container image or Dockerfile requires:
 
 1. **Built image**: Build the container image.
-2. **Content inspection**: Show the changed content present in the built image (e.g. running a container to inspect target files, verify permissions, or test commands).
-3. **Inability to build**: If the execution environment prevents building (e.g. daemon unavailable or insufficient permissions), provide a plain statement that the worker could not build and state the reason. Never pass container verification based solely on source inspection or host-level tests without a built image or an explicit statement of inability to build.
+2. **Content inspection**: Show the changed content present in the built image (files, permissions, or commands).
+3. **Inability to build**: If the environment prevents building (daemon unavailable or insufficient permissions), state plainly that the worker could not build and why. Never pass on source inspection or host tests alone.
 
-## 6. Verification Report Schema
+## 6. Output Format
+
+Emit the report using `/dump`'s handback envelope and record it on the task record:
 
 ```markdown
-## Verification Report
+## Handover: <agent> <session-id>
 
-**Bar**: [mechanical | fitness | mixed]
-**Verdict**: [PASS | FAIL | REVISE]
-
-### Concrete Observations
-
-[Observed findings with basis tags (`#observed`, `#attempted-and-failed`, etc.) and file:line citations]
-
-### Forcing Checks
-
-0. **Premise test**: [One sentence assessment]
-1. **Sentinel audit**: [Counts and occurrences]
-2. **Principal's-eye read**: [Verbatim headline and validation]
-3. **Floor vs ceiling**: ["Exceptional, or merely working?" answered]
-
-### Recommendation
-
-[Specific remediations and affected criteria for FAIL/REVISE verdicts]
+1. **Task**: Verified target and bar (`mechanical | fitness | mixed`).
+2. **Summary**: Findings, forcing checks (0–3), and remediations for `FAIL`/`REVISE`.
+3. **Verdict & Safeguards**:
+   - VERDICT: <PASS | PARTIAL | FAIL | REVISE | BLOCKED | NEEDS-PRINCIPAL>
+   - GATE: <acceptance criterion tested and observed result>
+   - CONFIDENCE: <high | med | low> + <what single check would falsify this>
+   - CONFOUND CHECK: <clean-room/differential control result, or "NOT RUN">
+4. **Output**: <branch + commit SHA> | <PR or artifact link>
+5. **Receipts** (Report Argument): Load-bearing claims written per the `premise-check` skill.
+6. **Limitations**: Unresolved items, out-of-scope elements, and verbatim error outputs.
 ```
-
-Record the verdict and evidence on the associated task record upon completion.

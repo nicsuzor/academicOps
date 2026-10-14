@@ -154,8 +154,8 @@ def test_run_pkb_search_leaves_normal_output_untouched():
         assert out == normal
 
 
-def test_user_prompt_submit_fallback_when_prompt_is_empty():
-    """When prompt is empty, search_the_pkb falls back to existing messages (honesty)."""
+def test_user_prompt_submit_returns_none_when_prompt_is_empty():
+    """When prompt is empty, search_the_pkb returns None (no honesty fallback)."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -164,17 +164,12 @@ def test_user_prompt_submit_fallback_when_prompt_is_empty():
         agent_type="worker",
     )
 
-    expected_inject, expected_user = load_message_pair(PKB_HOOKS, "honesty")
-
     res = handlers.search_the_pkb(ctx)
-    assert res is not None
-    assert "<academicOps PKB search results>" not in res.inject_text
-    assert res.inject_text == expected_inject
-    assert res.user_text == expected_user
+    assert res is None
 
 
-def test_user_prompt_submit_fallback_when_pkb_search_fails():
-    """When pkb search returns None (binary missing or failure), falls back to existing messages."""
+def test_user_prompt_submit_returns_none_when_pkb_search_returns_none():
+    """When pkb search returns None, search_the_pkb returns None (no honesty fallback)."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",
@@ -183,13 +178,9 @@ def test_user_prompt_submit_fallback_when_pkb_search_fails():
         agent_type="worker",
     )
 
-    expected_inject, _ = load_message_pair(PKB_HOOKS, "honesty")
-
     with patch.object(handlers, "_run_pkb_search", return_value=None):
         res = handlers.search_the_pkb(ctx)
-        assert res is not None
-        assert "<academicOps PKB search results>" not in res.inject_text
-        assert res.inject_text == expected_inject
+        assert res is None
 
 
 def test_user_prompt_submit_ida_injects_pkb_search():
@@ -217,8 +208,8 @@ def test_user_prompt_submit_ida_injects_pkb_search():
 
 
 def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
-    """End-to-end dispatch for Claude Code UserPromptSubmit with search success."""
-    proc = subprocess.run(
+    """End-to-end dispatch for Claude Code UserPromptSubmit: no fallback on user prompt without PKB, honesty on peer report."""
+    proc_user = subprocess.run(
         [
             sys.executable,
             str(staged_hooks / "dispatch.py"),
@@ -231,21 +222,40 @@ def test_dispatch_claude_userpromptsubmit_end_to_end(staged_hooks: Path):
         timeout=15,
         cwd=str(staged_hooks),
     )
-    assert proc.returncode == 0
-    assert proc.stdout.strip(), "hook produced empty stdout"
-    data = json.loads(proc.stdout)
+    assert proc_user.returncode == 0
+    assert proc_user.stdout.strip() == ""
+
+    proc_peer = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "claude",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "prompt": "<task-notification>survey release</task-notification>",
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+    )
+    assert proc_peer.returncode == 0
+    assert proc_peer.stdout.strip(), "hook produced empty stdout on peer report"
+    data = json.loads(proc_peer.stdout)
     specific = data.get("hookSpecificOutput", {})
     assert specific.get("hookEventName") == "UserPromptSubmit"
     content = specific.get("additionalContext", "")
-    # Either PKB search result or the fallback honesty message, byte-for-byte
-    # the file as staged for this run — not a literal restated here.
     expected_inject, _ = load_message_pair(staged_hooks, "honesty")
-    assert content.startswith("<academicOps PKB search results>") or content == expected_inject
+    assert content == expected_inject
 
 
 def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
-    """End-to-end dispatch for AGY PreInvocation (mapped to UserPromptSubmit) with search success."""
-    proc = subprocess.run(
+    """End-to-end dispatch for AGY PreInvocation: no fallback on user prompt without PKB, honesty on peer report."""
+    proc_user = subprocess.run(
         [
             sys.executable,
             str(staged_hooks / "dispatch.py"),
@@ -258,20 +268,40 @@ def test_dispatch_agy_preinvocation_end_to_end(staged_hooks: Path):
         timeout=15,
         cwd=str(staged_hooks),
     )
-    assert proc.returncode == 0
-    assert proc.stdout.strip(), "hook produced empty stdout"
-    data = json.loads(proc.stdout)
+    assert proc_user.returncode == 0
+    assert proc_user.stdout.strip() == ""
+
+    proc_peer = subprocess.run(
+        [
+            sys.executable,
+            str(staged_hooks / "dispatch.py"),
+            "agy",
+            "PreInvocation",
+        ],
+        input=json.dumps(
+            {
+                "hook_event_name": "PreInvocation",
+                "prompt": "<task-notification>survey release</task-notification>",
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+    )
+    assert proc_peer.returncode == 0
+    assert proc_peer.stdout.strip(), "hook produced empty stdout on peer report"
+    data = json.loads(proc_peer.stdout)
     steps = data.get("injectSteps", [])
     assert len(steps) > 0
     msg = steps[0].get("ephemeralMessage", "")
     expected_inject, _ = load_message_pair(staged_hooks, "honesty")
-    assert msg.startswith("<academicOps PKB search results>") or msg == expected_inject
+    assert msg == expected_inject
 
 
-@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara", "james"])
+@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara", "james", "worker"])
 def test_no_honesty_fallback_for_coordinators_when_search_fails(agent):
-    """Ida and Sara get the hearsay reminder on a peer report; the honesty
-    fallback would displace it, since only the first advisory is delivered."""
+    """search_the_pkb never returns an honesty fallback for any agent."""
     ctx = HookContext(
         client="claude",
         event="UserPromptSubmit",

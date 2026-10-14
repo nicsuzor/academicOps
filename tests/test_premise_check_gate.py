@@ -522,13 +522,46 @@ def test_handler_override(monkeypatch, var):
     assert pcg.premise_check_handler(_agent_dispatch_ctx(session_id)) is None
 
 
+@pytest.mark.parametrize(
+    "tool",
+    [
+        "telegram_reply",
+        "telegram_send_message",
+        "discord_reply",
+        "discord_send_message",
+        "ask_user_question",
+        "ask_question",
+        "ask_user",
+        "reply",
+        "mcp__plugin_ida-telegram_telegram__reply",
+        "mcp__plugin_telegram_telegram__reply",
+        "mcp__telegram__reply",
+        "mcp__telegram__send_message",
+    ],
+)
+def test_handler_refuses_channel_reply_tools_while_armed(tool):
+    session_id = f"sess-chan-block-{tool}"
+    pcg.arm(session_id, claim_id="claim-chan-1")
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PreToolUse",
+        tool=tool,
+        session_id=session_id,
+        agent_type="ida:ida",
+    )
+    res = pcg.premise_check_handler(ctx)
+    assert res is not None, f"expected refusal for {tool} while armed"
+    assert res.kind == dispatch.Kind.REFUSE
+    assert "claim-chan-1" in res.inject_text
+
+
 # ---------------------------------------------------------------------------
-# 6. Arming the check on PostToolBatch
+# 6. Arming the check on foreground PostToolUse (never PostToolBatch or background)
 # ---------------------------------------------------------------------------
 
 
-def test_arm_handler_fires_on_agent_batch_for_scoped_agent():
-    session_id = "sess-open-1"
+def test_arm_handler_ignores_post_tool_batch():
+    session_id = "sess-batch-ignored"
     ctx = dispatch.HookContext(
         client="claude",
         event="PostToolBatch",
@@ -537,20 +570,58 @@ def test_arm_handler_fires_on_agent_batch_for_scoped_agent():
         tool_calls=({"tool_name": "Agent", "tool_input": {"description": "verify the claim"}},),
     )
     assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(session_id) is False
+
+
+@pytest.mark.parametrize("bg_val", [None, False, "false", "0", ""])
+def test_arm_handler_fires_on_foreground_post_tool_use_for_scoped_agent(bg_val):
+    session_id = f"sess-fg-{bg_val}"
+    tool_input: dict[str, Any] = {"description": "verify the claim"}
+    if bg_val is not None:
+        tool_input["run_in_background"] = bg_val
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        session_id=session_id,
+        agent_type="ida:ida",
+        raw={"tool_input": tool_input},
+    )
+    res = pcg.premise_check_arm(ctx)
+    assert res is not None
+    assert res.kind == dispatch.Kind.ADVISE
+    assert len(res.inject_text.splitlines()) <= 2
+    assert "verify the claim" in res.inject_text
+    assert "premise-check" in res.inject_text
     assert pcg.is_armed(session_id) is True
     assert pcg.get_state(session_id)["claim_id"] == "verify the claim"
 
 
-def test_arm_handler_ignores_non_agent_batch():
+@pytest.mark.parametrize("bg_val", [True, "true", "True", "1", "yes", 1])
+def test_arm_handler_ignores_background_post_tool_use(bg_val):
+    session_id = f"sess-bg-{bg_val}"
+    ctx = dispatch.HookContext(
+        client="claude",
+        event="PostToolUse",
+        tool="Agent",
+        session_id=session_id,
+        agent_type="ida:ida",
+        raw={"tool_input": {"description": "background worker", "run_in_background": bg_val}},
+    )
+    assert pcg.premise_check_arm(ctx) is None
+    assert pcg.is_armed(session_id) is False
+
+
+def test_arm_handler_ignores_non_dispatch_post_tool_use():
     session_id = "sess-open-2"
     ctx = dispatch.HookContext(
         client="claude",
-        event="PostToolBatch",
+        event="PostToolUse",
+        tool="Bash",
         session_id=session_id,
         agent_type="ida:ida",
-        tool_calls=({"tool_name": "Bash"},),
     )
-    pcg.premise_check_arm(ctx)
+    assert pcg.premise_check_arm(ctx) is None
     assert pcg.is_armed(session_id) is False
 
 
@@ -558,12 +629,13 @@ def test_arm_handler_ignores_non_scoped_agent_type():
     session_id = "sess-open-3"
     ctx = dispatch.HookContext(
         client="claude",
-        event="PostToolBatch",
+        event="PostToolUse",
+        tool="Agent",
         session_id=session_id,
         agent_type="aops:james",
-        tool_calls=({"tool_name": "Agent"},),
+        raw={"tool_input": {"description": "subtask"}},
     )
-    pcg.premise_check_arm(ctx)
+    assert pcg.premise_check_arm(ctx) is None
     assert pcg.is_armed(session_id) is False
 
 
@@ -575,15 +647,17 @@ def test_arm_handler_ignores_non_scoped_agent_type():
 def test_end_to_end_claim_blocks_next_dispatch_until_verdicted():
     session_id = "sess-e2e"
 
-    # A subagent is called by Ida.
-    batch_ctx = dispatch.HookContext(
+    # A foreground subagent finishes and returns to Ida.
+    fg_ctx = dispatch.HookContext(
         client="claude",
-        event="PostToolBatch",
+        event="PostToolUse",
+        tool="Agent",
         session_id=session_id,
         agent_type="ida:ida",
-        tool_calls=({"tool_name": "Agent", "tool_input": {"description": "researched X"}},),
+        raw={"tool_input": {"description": "researched X"}},
     )
-    pcg.premise_check_arm(batch_ctx)
+    arm_res = pcg.premise_check_arm(fg_ctx)
+    assert arm_res is not None
     assert pcg.is_armed(session_id) is True
 
     # Dispatching another subagent before the verdict is refused.
@@ -668,10 +742,8 @@ def test_sara_is_gated_like_ida(agent_type):
 
 
 # ---------------------------------------------------------------------------
-# Prompt note and block message: three required elements
-# 1. which incoming message armed the gate
-# 2. that the gate blocks until a verdict is recorded
-# 3. the exact runnable call that records one
+# Prompt note and block message: concise 2-line pointers naming claim_id and
+# the premise-check skill, with no pre-filled PASS
 # ---------------------------------------------------------------------------
 
 
@@ -718,7 +790,7 @@ def test_derive_claim_id_generates_short_id_without_message_text():
     assert pcg.is_valid_id(claim5)
 
 
-def test_arm_handler_returns_prompt_note_with_three_elements_and_no_message_text():
+def test_arm_handler_returns_two_line_prompt_note_and_no_message_text():
     session_id = "sess-note-1"
     prompt = '<cross-session-message from="twin-a">PR #12 is merged.</cross-session-message>'
     ctx = _prompt_ctx(session_id, prompt)
@@ -726,43 +798,33 @@ def test_arm_handler_returns_prompt_note_with_three_elements_and_no_message_text
     res = pcg.premise_check_arm(ctx)
     assert res is not None
     assert res.kind == dispatch.Kind.ADVISE
-    # 1. which incoming message armed the gate (by report id, carrying no message text)
+    assert len(res.inject_text.splitlines()) <= 2
+    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
     assert claim_id in res.inject_text
+    assert "premise-check" in res.inject_text
     assert "PR #12 is merged." not in res.inject_text
     assert "PR #12 is merged." not in res.user_text
-    # 2. that the gate blocks until a verdict is recorded
-    assert "blocks until a verdict is recorded" in res.inject_text
-    # 3. the exact runnable call that records one
-    assert "python3" in res.inject_text
-    assert "verdict.py" in res.inject_text
-    assert f"--claim {claim_id}" in res.inject_text or f"--report {claim_id}" in res.inject_text
-    assert "--verdict PASS" in res.inject_text
-    assert '--reason "<why>"' in res.inject_text
+    assert "PASS" not in res.inject_text
 
 
-def test_handler_block_message_contains_three_elements():
+def test_handler_block_message_is_two_lines_pointing_to_skill():
     session_id = "sess-block-elements"
-    claim = "cross-session-message from twin-a: PR #12 is merged."
+    claim = "claim-a1b2c3d4"
     pcg.arm(session_id, claim_id=claim)
 
     res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
     assert res is not None
     assert res.kind == dispatch.Kind.REFUSE
-    # 1. which incoming message armed the gate
+    assert len(res.inject_text.splitlines()) <= 2
+    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
     assert claim in res.inject_text
-    # 2. that the gate blocks until a verdict is recorded
-    assert "blocks until a verdict is recorded" in res.inject_text
-    # 3. the exact runnable call that records one
-    assert "python3" in res.inject_text
-    assert "verdict.py" in res.inject_text
-    assert "--claim" in res.inject_text or "--report" in res.inject_text
-    assert "--verdict PASS" in res.inject_text
-    assert '--reason "<why>"' in res.inject_text
+    assert "premise-check" in res.inject_text
+    assert "PASS" not in res.inject_text
 
 
-def test_stop_block_message_contains_three_elements():
+def test_stop_block_message_is_two_lines_pointing_to_skill():
     session_id = "sess-stop-elements"
-    claim = "teammate-message from worker: done"
+    claim = "claim-e5f6a7b8"
     pcg.arm(session_id, claim_id=claim)
 
     stop_ctx = dispatch.HookContext(
@@ -774,20 +836,11 @@ def test_stop_block_message_contains_three_elements():
     res = pcg.premise_check_handler(stop_ctx)
     assert res is not None
     assert res.kind == dispatch.Kind.BLOCK
-    # 1. which incoming message armed the gate
+    assert len(res.inject_text.splitlines()) <= 2
+    assert res.user_text is not None and len(res.user_text.splitlines()) == 1
     assert claim in res.inject_text
-    # 2. that the gate blocks until a verdict is recorded
-    assert "blocks until a verdict is recorded" in res.inject_text
-    # 3. the exact runnable call that records one
-    assert "uv run --project" in res.inject_text
-    assert "verdict.py" in res.inject_text
-    assert "--claim" in res.inject_text or "--report" in res.inject_text
-    assert "--verdict PASS" in res.inject_text
-    assert '--reason "<why>"' in res.inject_text
-    # The script path in the stop block message must exist on disk
-    cmd_line = [line for line in res.inject_text.splitlines() if line.startswith("uv run ")][0]
-    script_path = Path(shlex.split(cmd_line)[5])
-    assert script_path.is_file(), f"script path does not exist: {script_path}"
+    assert "premise-check" in res.inject_text
+    assert "PASS" not in res.inject_text
 
 
 def test_format_verdict_command_resolves_runnable_script():
@@ -802,7 +855,8 @@ def test_format_verdict_command_resolves_runnable_script():
         or "--report 'my claim with spaces'" in cmd
         or '--report "my claim with spaces"' in cmd
     )
-    assert "--verdict PASS" in cmd
+    assert "--verdict <PASS|REVISE|FAIL>" in cmd
+    assert "--verdict PASS" not in cmd
     assert '--reason "<why>"' in cmd
     # The script path in the command must exist on disk
     script_path = Path(parts[5])
@@ -939,57 +993,21 @@ def test_verified_outgoing_message_id_accepted_as_incoming_claim_id_upstream():
     assert pcg.is_armed(upstream_session) is False
 
 
-def test_each_hook_message_naming_verify_script_prints_absolute_path():
-    session_id = "sess-abs-paths"
-    claim = '<cross-session-message from="twin">PR #42 is ready.</cross-session-message>'
-
-    def _assert_command_has_absolute_paths(text: str):
-        cmd_lines = [line for line in text.splitlines() if "verdict.py" in line]
-        assert cmd_lines, f"expected verdict.py command line in: {text}"
-        for line in cmd_lines:
-            tokens = shlex.split(line)
-            # Find script token
-            script_tokens = [t for t in tokens if t.endswith("verdict.py")]
-            assert script_tokens, f"no verdict.py token found in line: {line}"
-            script_path = Path(script_tokens[0])
-            assert script_path.is_absolute(), f"script path must be absolute, got: {script_path}"
-            assert script_path.is_file(), f"script path does not exist: {script_path}"
-            # If --project is present, project dir must also be absolute and exist
-            if "--project" in tokens:
-                proj_idx = tokens.index("--project") + 1
-                proj_path = Path(tokens[proj_idx])
-                assert proj_path.is_absolute(), f"project path must be absolute, got: {proj_path}"
-                assert proj_path.is_dir(), f"project path does not exist: {proj_path}"
-
-    # 1. Arm message (UserPromptSubmit)
-    ctx_prompt = _prompt_ctx(session_id, claim)
-    arm_res = pcg.premise_check_arm(ctx_prompt)
-    assert arm_res is not None
-    assert arm_res.inject_text and arm_res.user_text
-    _assert_command_has_absolute_paths(arm_res.inject_text)
-    _assert_command_has_absolute_paths(arm_res.user_text)
-
-    # 2. Block on dispatch (PreToolUse)
-    pcg.arm(session_id, claim_id=claim)
-    pre_res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
-    assert pre_res is not None
-    assert pre_res.inject_text and pre_res.user_text
-    _assert_command_has_absolute_paths(pre_res.inject_text)
-    _assert_command_has_absolute_paths(pre_res.user_text)
-
-    # 3. Block on Stop (Stop)
-    stop_ctx = dispatch.HookContext(
-        client="claude",
-        event="Stop",
-        session_id=session_id,
-        agent_type="ida:ida",
-        hooks_dir=_HOOKS_DIR,
+def test_format_verdict_command_prints_absolute_paths():
+    cmd = pcg.format_verdict_command(
+        claim_id="claim-abs-paths", hooks_dir=_HOOKS_DIR, session_id="sess-abs-paths"
     )
-    stop_res = pcg.premise_check_handler(stop_ctx)
-    assert stop_res is not None
-    assert stop_res.inject_text and stop_res.user_text
-    _assert_command_has_absolute_paths(stop_res.inject_text)
-    _assert_command_has_absolute_paths(stop_res.user_text)
+    tokens = shlex.split(cmd)
+    script_tokens = [t for t in tokens if t.endswith("verdict.py")]
+    assert script_tokens, f"no verdict.py token found in: {cmd}"
+    script_path = Path(script_tokens[0])
+    assert script_path.is_absolute(), f"script path must be absolute, got: {script_path}"
+    assert script_path.is_file(), f"script path does not exist: {script_path}"
+    if "--project" in tokens:
+        proj_idx = tokens.index("--project") + 1
+        proj_path = Path(tokens[proj_idx])
+        assert proj_path.is_absolute(), f"project path must be absolute, got: {proj_path}"
+        assert proj_path.is_dir(), f"project path does not exist: {proj_path}"
 
 
 def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_path):
@@ -1055,7 +1073,11 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
         pcg.arm(session_id, claim_id=claim_id)
         assert pcg.is_armed(session_id) is True
 
-        run_tokens = shlex.split(cmd.replace("<why>", f"Verified under {client} from outside cwd"))
+        run_tokens = shlex.split(
+            cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
+                "<why>", f"Verified under {client} from outside cwd"
+            )
+        )
         res_verdict = subprocess.run(
             run_tokens,
             cwd=outside_dir,
@@ -1114,7 +1136,11 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
     outside_dir.mkdir(parents=True, exist_ok=True)
     pcg.arm(session_id, claim_id=claim_id)
 
-    run_tokens = shlex.split(cmd.replace("<why>", "Verified relative hooks_dir resolution"))
+    run_tokens = shlex.split(
+        cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
+            "<why>", "Verified relative hooks_dir resolution"
+        )
+    )
     res = subprocess.run(
         run_tokens,
         cwd=outside_dir,

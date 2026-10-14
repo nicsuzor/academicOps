@@ -29,20 +29,23 @@ Current state list of measures in place to shape agent behavior per axiom.
 
 ## Evidence contract
 
-Measures in place that enforce the [evidence contract](enforcement/evidence-contract.md). The designed system, with its planned changes, is in [evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md).
+Measures in place that enforce the [evidence contract](enforcement/evidence-contract.md). The full design and escalation path are in [evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md).
 
-| Measure                                                                                   | Carrier                                                  | Applies to          | Severity          |
-| ----------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------- | ----------------- |
-| Report format, basis vocabulary, verdict tokens, verdict command                          | `premise-check` skill                                    | All agents          | Guidance          |
-| Report argument in the task handback                                                      | `/pull`, `/dump`                                         | Task workers        | Guidance          |
-| `honesty.md` reminder                                                                     | `UserPromptSubmit`, `search_the_pkb` fallback            | All but Sara, James | Reminder          |
-| Check reminder (`hearsay.md`) on a peer envelope                                          | `UserPromptSubmit`                                       | Ida, Sara           | Reminder          |
-| Gate arms on a peer envelope                                                              | `UserPromptSubmit`                                       | Ida, Sara           | Friction          |
-| Gate arms on any dispatch, including a background launch                                  | `PostToolUse`, `PostToolBatch`                           | Ida, Sara           | Friction          |
-| Gate refuses `Agent`, `Task`, `invoke_subagent`, `SendMessage`, `AskUserQuestion`, `Dump` | `PreToolUse`                                             | Ida, Sara           | Refuse            |
-| Gate blocks `Stop` once per chain                                                         | `Stop`                                                   | Ida, Sara           | Block             |
-| Gate's verdict command, with `--verdict PASS` pre-filled                                  | `premise_check_gate.py`                                  | Ida, Sara           | Friction          |
-| Verdict recording and span                                                                | `verdict.py`, `premise_check_verdict.py`                 | Ida, Sara           | Record            |
-| Gate modes and override variables                                                         | Environment                                              | Ida, Sara           | Config            |
-| `release_task` required fields, presence-only, on tasks created after the check shipped   | PKB server                                               | Task workers        | Prevention        |
-| Substance check: the reviewer opens each pointer and confirms it supports its claim       | [Workflow](enforcement/workflow.md) steps 3-4, `/verify` | QA reviewers        | Verdict (agentic) |
+| Measure                                                                                                      | Carrier                                                      | Applies to                 | Severity          |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------- | ----------------- |
+| Report format, basis vocabulary, observed-value rule, contrast test, verdict tokens, verdict command, return | `premise-check` skill                                        | All agents                 | Guidance          |
+| Report argument in the task handback and QA review                                                           | `/pull`, `/dump`, `/verify`                                  | Task workers, QA reviewers | Guidance          |
+| Pointer to `premise-check` (no restated format rules)                                                        | `sara.md`, `/pull` §3, `ida.md`                              | Sara, workers, Ida         | Guidance          |
+| Ida's role: formal checking and attention protection; substance checks prohibited                            | `ida.md`                                                     | Ida                        | Guidance          |
+| Session-wide one-line pointer                                                                                | `SessionStart` (startup, resume, compact)                    | All agents                 | Reminder          |
+| Reply-format reminder (`honesty.md`) on a peer envelope                                                      | `UserPromptSubmit`, peer envelope                            | All agents                 | Reminder          |
+| Check reminder (`hearsay.md`) on a peer envelope or foreground subagent result                               | `UserPromptSubmit` (peer envelope), `PostToolUse` on `Agent` | Ida, Sara                  | Reminder          |
+| Gate arms on a peer envelope or foreground subagent result                                                   | `UserPromptSubmit` (peer envelope), `PostToolUse` on `Agent` | Ida, Sara                  | Friction          |
+| Gate refuses `Agent`, `Task`, `invoke_subagent`, `SendMessage`, `AskUserQuestion`, `Dump`, channel replies   | `PreToolUse`                                                 | Ida, Sara                  | Refuse            |
+| Gate blocks `Stop` once per chain                                                                            | `Stop`                                                       | Ida, Sara                  | Block             |
+| Gate messages at most two lines (agent) and one line (user), naming claim and skill                          | `premise_check_handler`, `premise_check_arm`                 | Ida, Sara                  | Friction          |
+| Verdict recording and span                                                                                   | `verdict.py`, `premise_check_verdict.py`                     | Ida, Sara                  | Record            |
+| Gate modes and override variables                                                                            | Environment                                                  | Ida, Sara                  | Config            |
+| No named or persistent subagents for middle-level agents                                                     | Settings files (`"teammateMode": "in-process"`)              | Ida, Prime, Sara, Pauli    | Prevention        |
+| `release_task` required fields, presence-only, on tasks created after the check shipped                      | PKB server                                                   | Task workers               | Prevention        |
+| Substance check: the reviewer opens each pointer and confirms it supports its claim                          | [Workflow](enforcement/workflow.md) steps 3-4, `/verify`     | QA reviewers               | Verdict (agentic) |
