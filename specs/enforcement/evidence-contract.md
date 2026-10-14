@@ -8,7 +8,7 @@ tags: [enforcement, verification, evidence-contract, premise-check]
 
 # The Evidence Contract
 
-Every report one agent passes to another meets one contract: each load-bearing claim in it carries checkable evidence or a stated failure reason. The contract binds the writer of a report and its receiver. How the framework enforces it is listed in the [enforcement map](../ENFORCEMENT-MAP.md#evidence-contract).
+Every report one agent passes to another meets one contract: each load-bearing claim in it carries checkable evidence or a stated failure reason. The contract binds the writer of a report and its receiver. How the framework enforces it is in [evidence-contract-enforcement.md](evidence-contract-enforcement.md).
 
 ## User stories
 
@@ -25,7 +25,7 @@ As the user, I want every claim that reaches me to carry evidence I could check,
 As an agent receiving a report, I want to judge it from the report alone, so that I can pass it on or send it back without redoing the work.
 
 - The report is in the shape the [`premise-check` skill](../../plugins/ida/skills/premise-check/SKILL.md) defines.
-- Each material premise carries a basis and a pointer.
+- Each material premise carries its basis, and a pointer wherever that basis rests on evidence.
 - A premise about the state of something outside the report quotes the observed value of the field that decides it, beside the pointer.
 - Each state claim rules out the nearest other state that would change the reader's next action. "Blocked on review" says whether review is awaited or changes were requested.
 - The conclusion stays within its premises' scope and answers the original ask.
@@ -43,6 +43,7 @@ As the user, I want each claim to reach me as strong as its evidence and no stro
 As the user, I want every "it does not exist" or "I cannot" to rest on a test, so that a limit is never asserted from absence alone.
 
 - A negative or capability claim cites a failed attempt with its verbatim error, or a bounded search with its query, scope and zero count.
+- A claim that blames something outside the writer's own change cites a control run that isolates it, or travels as unestablished.
 
 ### 5. Honest endings
 
@@ -50,7 +51,7 @@ As an agent that could not finish, I want failure and partial delivery to be com
 
 - "I could not do X, because Y" meets the contract.
 - A partial report carries evidence for what shipped and discloses the deferred remainder under the partial-work coverage partition (`tested | declared-deferred | illegal-gap`, [partial-work spec](../polecat/spec-partial-work-tight-loop-delivery.md)).
-- A deliverable is complete when the writer's own acceptance items are met, whatever follow-up others still run on it (QA, merge, deploy).
+- A deliverable is complete when the writer's own acceptance items are met, whatever follow-up depends on it.
 
 ### 6. Directions relayed intact
 
@@ -63,4 +64,4 @@ As the user, I want my directions to reach a worker as I gave them, so that an a
 - **Load-bearing claim:** a claim the reader would act on, or that a conclusion rests on.
 - **Pointer:** an identifier a reader can open: a commit and line, a span id, a PR or task id, a resolving URL. A pinpoint is best. A command counts as evidence only when its output is the evidence, and then the output is quoted.
 - **Basis:** how the writer knows the claim. The vocabulary is the skill's.
-- **Report format:** the report shape, basis vocabulary and verdict tokens are defined once, in the `premise-check` skill. A task handback (the `/dump` envelope) carries its receipts in that shape.
+- **Report format:** the report shape, basis vocabulary and verdict tokens are defined once, in the `premise-check` skill. A task handback carries its receipts in that shape.

@@ -23,6 +23,7 @@
 - [enforcement/workflow.md](enforcement/workflow.md) -- the five-step workflow shape and review-depth call.
 - [enforcement/sign-off.md](enforcement/sign-off.md) -- release-unit-scale sign-off.
 - [enforcement/evidence-contract.md](enforcement/evidence-contract.md) -- the universal claim-evidence shape.
+- [enforcement/evidence-contract-enforcement.md](enforcement/evidence-contract-enforcement.md) -- the reminders, gate and escalation that hold agents to the evidence contract.
 - [enforcement/auto-mode-classifier.md](enforcement/auto-mode-classifier.md) -- Claude Code auto-mode classifier design and cost model.
 
 ## Polecat
