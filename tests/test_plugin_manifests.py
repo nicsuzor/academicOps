@@ -51,6 +51,11 @@ def get_plugin_dirs():
         for d in cowork_dir.iterdir():
             if d.is_dir() and not d.name.startswith("."):
                 plugin_dirs.append(d)
+    agy_plugins_dir = DIST_ROOT / "plugins"
+    if agy_plugins_dir.is_dir():
+        for d in agy_plugins_dir.iterdir():
+            if d.is_dir() and not d.name.startswith("."):
+                plugin_dirs.append(d)
     if not plugin_dirs:
         raise RuntimeError(f"{DIST_ROOT} contains no built plugin directories — run 'make build'")
     return sorted(plugin_dirs)
@@ -59,7 +64,7 @@ def get_plugin_dirs():
 @pytest.mark.parametrize(
     "plugin_dir",
     get_plugin_dirs(),
-    ids=lambda d: f"cowork/{d.name}" if d.parent.name == "cowork" else d.name,
+    ids=lambda d: f"{d.parent.name}/{d.name}" if d.parent.name in ("cowork", "plugins") else d.name,
 )
 def test_plugin_validates_against_cli(plugin_dir):
     """
@@ -72,7 +77,7 @@ def test_plugin_validates_against_cli(plugin_dir):
         or plugin_dir.parent.name == "cowork"
     ):
         cli_command = ["claude", "plugin", "validate", str(plugin_dir)]
-    elif plugin_dir.name.endswith("-agy"):
+    elif plugin_dir.name.endswith("-agy") or plugin_dir.parent.name == "plugins":
         cli_command = ["agy", "plugin", "validate", str(plugin_dir)]
     else:
         pytest.skip(f"Unrecognized plugin platform for directory: {plugin_dir.name}")
@@ -127,7 +132,7 @@ def _resolve_hook_path(plugin_dir: Path, raw_path: str) -> Path:
 @pytest.mark.parametrize(
     "plugin_dir",
     get_plugin_dirs(),
-    ids=lambda d: f"cowork/{d.name}" if d.parent.name == "cowork" else d.name,
+    ids=lambda d: f"{d.parent.name}/{d.name}" if d.parent.name in ("cowork", "plugins") else d.name,
 )
 def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
     """Every hook command/args script path declared in a built plugin's hooks.json
@@ -149,7 +154,7 @@ def test_hooks_json_script_paths_resolve_to_shipped_files(plugin_dir):
         or plugin_dir.parent.name == "cowork"
     ):
         hooks_json_path = plugin_dir / "hooks" / "hooks.json"
-    elif plugin_dir.name.endswith("-agy"):
+    elif plugin_dir.name.endswith("-agy") or plugin_dir.parent.name == "plugins":
         hooks_json_path = plugin_dir / "hooks.json"
     else:
         pytest.skip(f"Unrecognized plugin platform for directory: {plugin_dir.name}")

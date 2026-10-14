@@ -30,6 +30,7 @@ from build.context import BuildContext, Plugin
 from build.errors import BuildError
 from build.manifest import merge_one_level, render_template, template_stem
 from build.marketplace import (
+    generate_agy_dist,
     generate_cowork_dist,
     generate_local_marketplace,
     generate_openclaw_dist,
@@ -266,6 +267,8 @@ def build_all(
         generate_production_marketplace(decl, resolved_version, dist_root)
         generate_cowork_dist(decl, resolved_version, dist_root)
         generate_openclaw_dist(decl, resolved_version, dist_root)
+    if "agy" in clients:
+        generate_agy_dist(decl, dist_root)
 
     generate_image_metadata(project_root, resolved_version, dist_root, built)
 

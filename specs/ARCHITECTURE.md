@@ -83,7 +83,8 @@ entries), **render manifests** (merge each `manifest/*.template.json`'s
 (client-specific transforms in `build/clients/`), and **package** (tar per
 client). Then `build/marketplace.py` generates the marketplace manifests,
 including the `dist/cowork/` and `dist/openclaw/` directory-marketplace
-channels.
+channels and `dist/plugins/` (Antigravity's native multi-plugin directory,
+populated from `dist/<plugin>-agy`).
 
 ### Client adapters
 
