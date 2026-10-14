@@ -25,6 +25,7 @@ Current state list of measures in place to shape agent behavior per axiom.
 | [Axiom: Honest Epistemics (Don't Make Shit Up)](../plugins/rbg/axioms/honest-epistemics.md) -- If you don't know, say so; tailor claims strictly to available evidence; negative claims require exhaustive search.     |           |          |        |
 | [Axiom: Judgment Is Non-Delegable](../plugins/rbg/axioms/judgment-non-delegable.md) -- Never substitute deterministic techniques (regex, substring, heuristics) for semantic qualitative judgment; use LLMs.           |           |          |        |
 | [Axiom: Proportionate](../plugins/rbg/axioms/proportionate.md) -- Build the least that meets the request; guard a risk by its likelihood × consequence.                                                                |           |          |        |
+| [Axiom: Reasons](../plugins/rbg/axioms/reasons.md) -- Give written, parseable reasons for every claim you rely on or communicate; the format lives in `premise-check`.                                                 |           |          |        |
 | [Axiom: Single Source of Truth](../plugins/rbg/axioms/single-source-of-truth.md) -- Maintain exactly one authoritative copy of every fact, rule, or artifact.                                                          |           |          |        |
 
 ## Evidence contract
