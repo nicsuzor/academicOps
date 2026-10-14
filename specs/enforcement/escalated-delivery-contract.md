@@ -10,7 +10,7 @@ tags: [enforcement, escalated-delivery, task-contract, verification, surfacing, 
 
 ## 1. Problem Statement & Specimen Diagnostics
 
-The academicOps framework enforces rigorous boundaries on task execution: Layer 2 ([`task-contract.md`](task-contract.md)) requires `claim_task` → `release_task` with verifiable evidence written to the PKB task record, and universal task verification ([`evidence-exchange.md`](evidence-exchange.md)) enforces substance-over-form checks.
+The academicOps framework enforces rigorous boundaries on task execution: Layer 2 ([`task-contract.md`](task-contract.md)) requires `claim_task` → `release_task` with verifiable evidence written to the PKB task record, and every claim at a task boundary meets the [evidence contract](evidence-contract.md).
 
 However, an architectural blind spot exists between **task graph completion** and **escalated delivery**:
 

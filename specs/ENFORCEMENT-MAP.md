@@ -27,15 +27,15 @@ Current state list of measures in place to shape agent behavior per axiom.
 | [Axiom: Proportionate](../plugins/rbg/axioms/proportionate.md) -- Build the least that meets the request; guard a risk by its likelihood × consequence.                                                                |           |          |        |
 | [Axiom: Single Source of Truth](../plugins/rbg/axioms/single-source-of-truth.md) -- Maintain exactly one authoritative copy of every fact, rule, or artifact.                                                          |           |          |        |
 
-## Evidence exchange
+## Evidence contract
 
-Every measure for reports passed between agents. The design and reasons are in [evidence-exchange.md](enforcement/evidence-exchange.md); this list does not repeat them. Under **State**:
+Every measure that enforces the [evidence contract](enforcement/evidence-contract.md) on reports passed between agents. Under **State**:
 
 - **in place:** on `dev`.
 - **decided:** approved design, to be built (`aops_d26b4416`).
 - **remove:** in place now, to be taken out (`aops_d26b4416`).
 - **unwired:** kept in the code, not registered.
-- **future:** an escalation option, not built.
+- **future:** an escalation option, not built. These are listed in escalation order, and each is built only when verdict telemetry shows the level below it failing: PASS near 100%, with REVISE rare.
 - **gap:** nothing covers it.
 
 | Measure                                                                                   | Carrier                                      | Applies to                 | Severity          | State    |
@@ -63,8 +63,8 @@ Every measure for reports passed between agents. The design and reasons are in [
 | Verdict recording and span                                                                | `verdict.py`, `premise_check_verdict.py`     | Ida, Sara                  | Record            | in place |
 | Gate modes and override variables                                                         | Environment                                  | Ida, Sara                  | Config            | in place |
 | No named or persistent subagents for middle-level agents                                  | Settings files                               | Ida, Prime, Sara, Pauli    | Prevention        | decided  |
-| `release_task` required fields, presence-only                                             | PKB server                                   | Task workers               | Prevention        | in place |
-| Substance check at boundary-check and QA-around                                           | Workflow steps, `/verify`                    | QA reviewers               | Verdict (agentic) | in place |
+| `release_task` required fields, presence-only, on tasks created after the check shipped   | PKB server                                   | Task workers               | Prevention        | in place |
+| Substance check: the reviewer opens each pointer and confirms it supports its claim       | Workflow steps, `/verify`                    | QA reviewers               | Verdict (agentic) | in place |
 | Container-worker handbacks read from the task record arm no gate                          | None                                         | Sara                       | --                | gap      |
 | `honest_output`                                                                           | `Stop`                                       | All agents                 | Block once        | unwired  |
 | `be_quiet`                                                                                | `Stop`                                       | Ida                        | Block once        | unwired  |
