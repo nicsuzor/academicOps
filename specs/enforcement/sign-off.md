@@ -25,7 +25,7 @@ one-page prose brief in which every delivered/checked claim carries a
 resolvable pointer (command+output, file:line, resolving URL, quoted source)
 or a stated failure reason. A reviewer approving on the strength of the
 brief's rhetorical shape rather than checking its claims has not performed
-sign-off -- see [evidence-contract.md#substance-over-form](evidence-contract.md#substance-over-form).
+sign-off.
 
 ### Mechanisms (the git PR-pipeline instance)
 

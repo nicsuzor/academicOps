@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.16](https://github.com/nicsuzor/academicOps/compare/v0.10.15...v0.10.16) (2026-10-13)
+
+### Features
+
+- **ida-telegram:** add native Telegram bot commands for Ida ([6a501b6](https://github.com/nicsuzor/academicOps/commit/6a501b6031db1b05f317db7d665d5ae326997b4f))
+- **ida-telegram:** register native Telegram bot commands and bare-tap handlers ([9ed8552](https://github.com/nicsuzor/academicOps/commit/9ed85524790b66436ffdab07dcc92af8b7cce3a5))
+- **ida-telegram:** rework decision and result cards for in-app resolution ([eef9249](https://github.com/nicsuzor/academicOps/commit/eef92493455e6380ba9d77d80fc0352ce07c088f))
+- **ida-telegram:** rework decision and result cards for in-app resolution ([2baa77b](https://github.com/nicsuzor/academicOps/commit/2baa77b203c35d917827331c1dbe134d99b99359))
+- **reify:** add component-task appendix to reify output for composite workflows ([b5c1069](https://github.com/nicsuzor/academicOps/commit/b5c1069b8780a8b11a4dd17489d9997977f2c240))
+- **reify:** add component-task appendix to reify output for composite workflows ([5dc8002](https://github.com/nicsuzor/academicOps/commit/5dc8002afa6e8160318ba4e913b4da4813d1fe10))
+
 ## [0.10.15](https://github.com/nicsuzor/academicOps/compare/v0.10.14...v0.10.15) (2026-10-13)
 
 ### Features

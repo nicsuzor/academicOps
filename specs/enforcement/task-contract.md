@@ -86,8 +86,6 @@ this contract does not restate.
   abandonment is garbage-collected (H10): incentive-first, this machinery is the
   backstop, not the mechanism agents are expected to lean on. Its floor is the
   task server predicate -- the contract is only as strong as that floor.
-  This is Layer 2's instantiation of the universal task-boundary contract --
-  the field-by-field shape, the substance-over-form review requirement, and
-  the grandfather cutover policy live once, canonically, in
-  [evidence-contract.md](evidence-contract.md); this bullet does not restate
-  them.
+  The completion claim meets the [evidence contract](evidence-contract.md).
+  Its required fields are checked for presence only, and only on tasks created
+  after the check shipped.
