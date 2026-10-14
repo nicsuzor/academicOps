@@ -30,7 +30,7 @@ Every layer checks logic against the original ask via `/premise-check`. On relay
 Your tokens buy supervision, not labour: read the graph, brief, dispatch, check, and reconcile. Repo reads, code, edits, and noisy output belong in worker contexts.
 
 1. **In-process only**: Do not spawn named or persistent subagents (`"teammateMode": "in-process"`).
-2. **Sequence**: `/q` -> `/decompose` -> `/reify` (writes units, criteria, edges) -> `/dispatch` (writes no tasks) -> `/reconcile` check -> `/premise-check`.
+2. **Sequence**: `/q`, `/decompose`, `/reify` (writes units, criteria, edges) and `/dispatch` (writes no tasks) are required sequential steps.
 3. **Isolate churn**: Keep internal deliberation and diagnostics out of human-facing messages.
 
 ## Dispatching

@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit
 
 # Premise Check
 
-Author or check report arguments (`ida:argument-extraction` for syntax/validation; `ida:argument-map` for reconstruction/delivery).
+Author or check report arguments (syntax and validation: `ida:argument-extraction`; reconstruction: `ida:argument-map`).
 
 ## Authoring and Shape
 
@@ -33,28 +33,29 @@ model:
 ```
 
 - **Metadata**: `{basis, pointer, source?}` with verbatim locators (`owner/repo@sha:path:line`, span IDs, URLs, node IDs).
-- **Basis vocabulary**: `observed` (`#direct`), `exhaustively-searched` / `attempted-and-failed` (`#absent` negative proofs via search boundary or failed command), `reported-by` (`#derived` / `#user`), `assumed` / `stated` (`#inferred`); tags `#format`, `#missing`, `#conflict`, `#unanswered`.
-- **Observed-value rule**: State premises (`observed` / `#direct` or `#derived`) quote the deciding field's observed value (`status: MERGED`, `conclusion: FAILURE`, `state: running`) beside the pointer; a bare pointer proves existence only.
+- **Basis vocabulary**: `observed`, `exhaustively-searched` / `attempted-and-failed` (search boundary or failed command), `reported-by`, `assumed`, `stated`; tags `#format`, `#missing`, `#conflict`, `#unanswered`.
+- **Observed-value rule**: State premises (`observed` or `reported-by`) quote the deciding field's observed value (`status: MERGED`, `conclusion: FAILURE`) beside the pointer; a bare pointer proves existence only.
 - **Warrants & conclusions**: Put warrants in the `--` line (`uses: [n, ...]`, `basis: "reported-by"` or `"assumed"`), never as `#warrant`. Rankings need comparison premises; negatives/capabilities need `exhaustively-searched` or `attempted-and-failed`; causal/universals need a mechanism; scope stays within premise scopes.
 
 ## Formal Check and Stopping Rules
 
 Accept observed premises with pointers as given; never open pointers or re-determine facts:
 
-- **Kickback (`REVISE` `#format`)**: If an incoming report lacks a report argument in this skill's shape, record `REVISE` (`#format`) and return it to the sender to rewrite before checking substance.
+- **Kickback (`REVISE` `#format`)**: A report without an argument in this shape gets `REVISE` (`#format`); the sender rewrites it before substance is checked.
 - **Contrast test**: For each load-bearing premise, name the nearest world state that changes the next action. If the cited evidence looks the same in that state, record `REVISE` (`#missing`).
+- **Truth boundary**: A `REVISE` (`#missing`) names the step and the unexcluded state or missing premise for the author to supply with a pointer.
 - **Relayed directions**: For `'direction...' (derived from: ask summary [source:id])`, verify derivation from the cited ask and flag unsupported detail.
-- **Proportionality & stopping**: Check only material steps; accept obvious, authority-backed, or low-stakes warrants without decomposition; reject only when an objection changes the conclusion. Dispatch/return until `[Ask]` / `[Outcome]` has no material `#missing`. Synthesise accepted Outcomes upward as `{basis: "reported-by", pointer: "<verdict id>"}`, keeping material fact pointers.
+- **Proportionality & stopping**: Check only material steps; accept obvious, authority-backed, or low-stakes warrants whole; reject only when an objection changes the conclusion. No criterion addresses style, granularity, or splitting. Dispatch/return until `[Ask]` / `[Outcome]` has no material `#missing`. Synthesise accepted Outcomes upward as `{basis: "reported-by", pointer: "<verdict id>"}`, keeping material fact pointers.
 
 ## Recording the Verdict
 
 - **PASS**: No material `#missing`, undercut (`_>`), `#conflict` (`><`), or `#unanswered`.
 - **REVISE**: Step + `#format`, `#missing`, `#conflict`, `#unanswered`, `_>`, or narrowing; return to sender (never pass unchecked/hedged claims to the user).
 - **FAIL**: Conclusion does not answer the ask.
-- **Harness notices**: Record `PASS` (`"harness notice"`) on automated command/lifecycle notices; proceed directly on `/loop` wakeups.
+- **Harness notices**: Record `PASS` (`"harness notice"`) on automated notices; proceed on `/loop` wakeups.
 
 ```bash
 uv run --project <plugin-dir> python3 <plugin-dir>/skills/premise-check/scripts/verdict.py --claim <claim_id> --verdict <PASS|REVISE|FAIL> --reason "<why>" [--title "<short_title>"]
 ```
 
-Use `--reason-file <path>` (or `-`) for multi-line text.
+Use `--reason-file <path>` (or `-`) for multiline text.
