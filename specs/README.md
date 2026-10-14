@@ -7,6 +7,7 @@
 - [transcript-pipeline.md](transcript-pipeline.md) -- session-transcript ingestion, normalization, and output.
 - [otel-tracing.md](otel-tracing.md) -- unified OpenTelemetry tracing to the `academicOps` Phoenix project, span attribute schema, cross-surface correlation, and single-emitter architecture.
 - [meta/doc-taxonomy.md](meta/doc-taxonomy.md) -- the five document kinds and where each lives.
+- [meta/writing-specs.md](meta/writing-specs.md) -- the spec template and the rules every spec follows.
 - [meta/naming-and-decisions.md](meta/naming-and-decisions.md) -- task naming, filename standards, and graph-relationship decision representation.
 
 ## Agents
