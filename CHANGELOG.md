@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.10.17](https://github.com/nicsuzor/academicOps/compare/v0.10.16...v0.10.17) (2026-10-14)
+
+### Features
+
+- **ida:** implement evidence-contract enforcement and hook triggers (aops_d26b4416) ([a4917ca](https://github.com/nicsuzor/academicOps/commit/a4917cabc3cff1920b6445a55fce7cbb13abf5c3))
+- **ida:** implement evidence-exchange contract and hook triggers (aops_d26b4416) ([e57bba5](https://github.com/nicsuzor/academicOps/commit/e57bba5522477b37c67891deda3c3672138f8016))
+- **ida:** make /pull require /dump with Argdown proof in release body ([7b31921](https://github.com/nicsuzor/academicOps/commit/7b3192114265dfa964856d53a2dd459bcc2c9a3a))
+- **ida:** make /pull require /dump with Argdown proof in release body ([a3eef54](https://github.com/nicsuzor/academicOps/commit/a3eef5475358b3ffa8e5e880650a3a3a9300384c))
+
+### Bug Fixes
+
+- **build:** populate dist/plugins/ for agy multi-plugin installation ([764d19b](https://github.com/nicsuzor/academicOps/commit/764d19bda4162301e404a879d82b881e3a7f943d))
+- **build:** populate dist/plugins/ for agy multi-plugin installation ([58ac099](https://github.com/nicsuzor/academicOps/commit/58ac09982fc6d80c5aa9a3819eabe82141bfd2a6))
+- **ida-telegram:** serialize channel notification meta values as strings ([50f2ab6](https://github.com/nicsuzor/academicOps/commit/50f2ab60565473c9f24e3ccc8df3a6ce2b68cd78))
+
+### Documentation
+
+- **specs:** add draft unified OTel tracing and emitter dedup spec (aops_0bdf8d62) ([b44641b](https://github.com/nicsuzor/academicOps/commit/b44641bdb24085bffe2067f1cae6ca9f6de88a11))
+- **specs:** add unified OpenTelemetry tracing and emitter architecture spec ([8d5ab90](https://github.com/nicsuzor/academicOps/commit/8d5ab90a4892ddb45a9b341547f4dc9f5e21cf57))
+- **specs:** address PR [#2911](https://github.com/nicsuzor/academicOps/issues/2911) review feedback and remove personal migration section ([ab8f3a3](https://github.com/nicsuzor/academicOps/commit/ab8f3a3ca26a08e0bdce78f0f4dd1d361370dde1))
+- **specs:** apply strategic-review fixes to otel-tracing spec ([5070890](https://github.com/nicsuzor/academicOps/commit/507089029b7bc9a8453907e72a879676b585d556))
+
 ## [0.10.16](https://github.com/nicsuzor/academicOps/compare/v0.10.15...v0.10.16) (2026-10-13)
 
 ### Features
