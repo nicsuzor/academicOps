@@ -804,7 +804,11 @@ def test_arm_handler_returns_two_line_prompt_note_and_no_message_text():
     assert "premise-check" in res.inject_text
     assert "PR #12 is merged." not in res.inject_text
     assert "PR #12 is merged." not in res.user_text
-    assert "PASS" not in res.inject_text
+    cmd = pcg.format_verdict_command(claim_id, ctx.hooks_dir, session_id)
+    assert res.inject_text.splitlines()[1] == cmd
+    assert "--verdict <PASS|REVISE|FAIL>" in res.inject_text
+    assert "--verdict PASS" not in res.inject_text
+    assert cmd not in res.user_text
 
 
 def test_handler_block_message_is_two_lines_pointing_to_skill():
@@ -812,14 +816,19 @@ def test_handler_block_message_is_two_lines_pointing_to_skill():
     claim = "claim-a1b2c3d4"
     pcg.arm(session_id, claim_id=claim)
 
-    res = pcg.premise_check_handler(_agent_dispatch_ctx(session_id))
+    ctx = _agent_dispatch_ctx(session_id)
+    res = pcg.premise_check_handler(ctx)
     assert res is not None
     assert res.kind == dispatch.Kind.REFUSE
-    assert len(res.inject_text.splitlines()) <= 2
+    assert len(res.inject_text.splitlines()) == 2
     assert res.user_text is not None and len(res.user_text.splitlines()) == 1
     assert claim in res.inject_text
     assert "premise-check" in res.inject_text
-    assert "PASS" not in res.inject_text
+    cmd = pcg.format_verdict_command(claim, ctx.hooks_dir, session_id)
+    assert res.inject_text.splitlines()[1] == cmd
+    assert "--verdict <PASS|REVISE|FAIL>" in res.inject_text
+    assert "--verdict PASS" not in res.inject_text
+    assert cmd not in res.user_text
 
 
 def test_stop_block_message_is_two_lines_pointing_to_skill():
@@ -836,11 +845,13 @@ def test_stop_block_message_is_two_lines_pointing_to_skill():
     res = pcg.premise_check_handler(stop_ctx)
     assert res is not None
     assert res.kind == dispatch.Kind.BLOCK
-    assert len(res.inject_text.splitlines()) <= 2
+    assert len(res.inject_text.splitlines()) == 2
     assert res.user_text is not None and len(res.user_text.splitlines()) == 1
     assert claim in res.inject_text
     assert "premise-check" in res.inject_text
-    assert "PASS" not in res.inject_text
+    cmd = pcg.format_verdict_command(claim, stop_ctx.hooks_dir, session_id)
+    assert res.inject_text.splitlines()[1] == cmd
+    assert "--verdict PASS" not in res.inject_text
 
 
 def test_format_verdict_command_resolves_runnable_script():

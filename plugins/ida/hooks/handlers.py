@@ -18,6 +18,7 @@ from typing import Any
 
 from dispatch import HookContext, Result, block, load_message_pair, refuse, warn
 from premise_check_gate import (
+    is_channel_reply_tool,
     is_foreground_dispatch,
     is_peer_report,
     premise_check_arm,
@@ -104,48 +105,6 @@ def is_ida(ctx: HookContext | str | None, *extra_targets: str) -> bool:
 
 _is_ida = is_ida
 _is_agent = is_agent
-
-
-_CHANNEL_REPLY_TOOLS = {
-    "telegram_reply",
-    "discord_reply",
-    "AskUserQuestion",
-    "ask_user_question",
-    "ask_question",
-}
-
-
-def _is_channel_reply_tool(tool_name: str) -> bool:
-    if not tool_name:
-        return False
-    if tool_name in _CHANNEL_REPLY_TOOLS:
-        return True
-    name = tool_name.split("__")[-1]
-    if name in _CHANNEL_REPLY_TOOLS:
-        return True
-    tool_lower = tool_name.lower()
-    name_lower = name.lower()
-    if tool_lower in (
-        "telegram_reply",
-        "discord_reply",
-        "askuserquestion",
-        "ask_user_question",
-        "ask_question",
-        "askquestion",
-    ) or name_lower in (
-        "telegram_reply",
-        "discord_reply",
-        "askuserquestion",
-        "ask_user_question",
-        "ask_question",
-        "askquestion",
-    ):
-        return True
-    if ("telegram" in tool_lower or "discord" in tool_lower) and (
-        "reply" in tool_lower or "send" in tool_lower
-    ):
-        return True
-    return False
 
 
 def _channel_gate_state_dir() -> Path:
@@ -323,7 +282,7 @@ def quiet_channel_reply(ctx: HookContext) -> Result | None:
     """Deny channel replies once for Ida to enforce ADHD executive protection."""
     if not _is_ida(ctx):
         return None
-    if not _is_channel_reply_tool(ctx.tool):
+    if not is_channel_reply_tool(ctx.tool):
         return None
 
     state_path = _channel_gate_state_path(ctx.session_id)

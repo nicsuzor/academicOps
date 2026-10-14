@@ -282,6 +282,24 @@ def test_quiet_channel_reply_denies_once_for_ida():
         assert handlers.quiet_channel_reply(ctx) is None
 
 
+def test_quiet_channel_reply_uses_the_gate_predicate():
+    import premise_check_gate
+
+    assert handlers.is_channel_reply_tool is premise_check_gate.is_channel_reply_tool
+    assert not hasattr(handlers, "_is_channel_reply_tool")
+    assert not hasattr(handlers, "_CHANNEL_REPLY_TOOLS")
+    ctx = HookContext(
+        client="claude",
+        event="PreToolUse",
+        agent_type="ida:ida",
+        session_id="s-chan-pred",
+        tool="Agent",
+        hooks_dir=IDA_HOOKS,
+    )
+    handlers.clear_channel_gate_state("s-chan-pred")
+    assert handlers.quiet_channel_reply(ctx) is None
+
+
 @pytest.mark.parametrize("client", ["claude", "agy"])
 def test_pretooluse_channel_reply_passes_through_for_ida(staged_hooks: Path, client: str):
     payload = {

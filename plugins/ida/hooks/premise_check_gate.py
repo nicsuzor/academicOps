@@ -48,42 +48,46 @@ _PEER_ENVELOPES = ("<cross-session-message", "<teammate-message", "<task-notific
 # Tools that dispatch subagents (arming the check)
 _DISPATCH_TOOLS = ["Agent", "Task", "invoke_subagent"]
 
-# Tools that are blocked while the check is armed
-_BLOCKED_TOOLS = [
-    "Agent",
-    "Task",
-    "invoke_subagent",
-    "SendMessage",
-    "AskUserQuestion",
-    "Dump",
-    "telegram_reply",
-    "telegram_send_message",
-    "discord_reply",
-    "discord_send_message",
-    "ask_user_question",
-    "ask_question",
-    "ask_user",
-    "reply",
-    "mcp__plugin_ida-telegram_telegram__reply",
-    "mcp__plugin_telegram_telegram__reply",
-    "mcp__telegram__reply",
-    "mcp__telegram__send_message",
-]
+# Tools that reach the user directly. Matched on the full name or the last
+# ``__`` segment, case-insensitively.
+_CHANNEL_REPLY_TOOLS = frozenset(
+    name.lower()
+    for name in (
+        "AskUserQuestion",
+        "AskQuestion",
+        "ask_user_question",
+        "ask_question",
+        "ask_user",
+        "reply",
+        "telegram_reply",
+        "telegram_send_message",
+        "discord_reply",
+        "discord_send_message",
+    )
+)
+
+# Non-channel tools blocked while the check is armed
+_GATED_TOOLS = frozenset([*_DISPATCH_TOOLS, "SendMessage", "Dump"])
+
+
+def is_channel_reply_tool(tool_name: str) -> bool:
+    """True when a tool sends a message to the user over a channel or prompt."""
+    if not tool_name:
+        return False
+    tool_lower = tool_name.lower()
+    if tool_lower in _CHANNEL_REPLY_TOOLS or tool_lower.split("__")[-1] in _CHANNEL_REPLY_TOOLS:
+        return True
+    return ("telegram" in tool_lower or "discord" in tool_lower) and (
+        "reply" in tool_lower or "send" in tool_lower or "ask_user" in tool_lower
+    )
 
 
 def _is_blocked_tool(tool_name: str) -> bool:
     if not tool_name:
         return False
-    if tool_name in _BLOCKED_TOOLS:
+    if tool_name in _GATED_TOOLS or tool_name.split("__")[-1] in _GATED_TOOLS:
         return True
-    if tool_name.split("__")[-1] in _BLOCKED_TOOLS:
-        return True
-    tool_lower = tool_name.lower()
-    if ("telegram" in tool_lower or "discord" in tool_lower) and (
-        "reply" in tool_lower or "send" in tool_lower or "ask_user" in tool_lower
-    ):
-        return True
-    return False
+    return is_channel_reply_tool(tool_name)
 
 
 ID_PATTERN = re.compile(
@@ -417,8 +421,8 @@ def premise_check_arm(ctx: HookContext) -> Result | None:
     claim_id = _derive_claim_id(ctx)
     arm(ctx.session_id, claim_id=claim_id)
     inject = (
-        f"Premise-check gate armed by {claim_id}.\n"
-        f"The gate blocks until a verdict is recorded per the `premise-check` skill."
+        f"Premise-check gate armed by {claim_id}; record a verdict per the `premise-check` skill.\n"
+        f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
     )
     user_msg = f"Premise-check gate armed by {claim_id}."
     return warn(inject, user_msg)
@@ -452,8 +456,9 @@ def premise_check_handler(ctx: HookContext) -> Result | None:
     )
 
     reason = (
-        f"Premise-check gate armed by {claim_id}; blocks before {action_desc}.\n"
-        f"Record a verdict per the `premise-check` skill to clear the gate."
+        f"Premise-check gate armed by {claim_id} blocks {action_desc}; "
+        f"record a verdict per the `premise-check` skill.\n"
+        f"{format_verdict_command(claim_id, ctx.hooks_dir, ctx.session_id)}"
     )
     user_msg = f"Blocked: premise-check verdict pending on {claim_id}."
 
