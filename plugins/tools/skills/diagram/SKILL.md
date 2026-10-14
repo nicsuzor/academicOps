@@ -62,6 +62,18 @@ Identify the chart's core objective (the action or decision it enables) and read
 4. **Annotations**: Contextual commentary (`--preset sticky`).
 5. **Connectors**: Solid flows or dashed telemetry (`--curved`, `--stroke-style dashed`).
 
+### Argument maps and mind maps: hand-drawn, not geometric
+
+Learned on Joel Cooper's thesis map (October 2026). A tree of claims (thesis, parts, chapters, sections, sub-sections) reads best as compact clusters with short curved edges, not as a sunburst, a ring, or a column grid. Geometric scaffolding (outer circles, radii, dashed rings, status bands) reads as spiderweb and hides the hierarchy it was meant to show.
+
+- **One cluster per chapter, one zone per part.** Fix the chapter claim at the cluster centre. Fan its sections outward (away from the parent), about 150 degrees wide and about 330 px out; fan each section's leaves outward from the section, 60 to 80 degrees wide and about 200 px out. Place chapters as compact stacks or rows per part (Part 1 across the top, Parts 2 and 3 as left and right stacks), never on an arc around the root: an arc makes every part's bounding zone contain the centre, so zones overlap. Draw the part zone from its chapters' boxes only, not from the part claim near the root.
+- **Size boxes to the text.** Wrap at `(width - 28) / (font * 0.62)` characters for Virgil and set the box width to the longest line; four font sizes (22 / 17 / 14 / 12) mark four levels. The CLI render draws bound text unwrapped, so text fit is checked from the stored lines, not from the picture.
+- **Short curved edges.** Three-point arrows (`roundness: {type: 2}`) with the control point offset perpendicular to the chord by 12% of its length, capped at 60 px; alternate the side by a hash of the endpoints so neighbouring arrows do not stack. Arrows run from reason to claim.
+- **Relax, then repair.** After placement, push overlapping boxes apart (margin about 28 px, roots fixed, sections half-weight) with a weak spring back to each box's parent. Then run a crossing pass that tests each arrow's two curved segments against every unrelated box and nudges the offending box 45 px off the chord, re-relaxing after each round. Zero crossings and zero overlaps are reachable in under 80 rounds for 110 boxes.
+- **Five colours, not eleven.** Claim (yellow), evidence (green), theory (purple), gap (orange dashed: a missing step or a premise needing evidence), objection (red: an unanswered objection or a conflict). Put the finer status (missing versus needs evidence, duplicate) in the text, as a prefix, not in the palette. Part colour goes on the zone border and caption only.
+- **Chapter canvases carry the detail.** The overview shows thesis to sub-section. One canvas per chapter repeats that chapter's cluster at larger type and adds the warrant blocks (which premises together license which claim) as a dotted panel beside the cluster, with no arrows, so they never cross the tree.
+- **Generate, do not hand-place.** Derive the canvas from the argument source (an Argdown tree exported to JSON) so a change in the argument re-renders every picture; keep `id`s stable by slugging the claim title. Validate with `pkb-excalidraw check`, then an own segment-versus-box check on the real polylines: the CLI `arrows-check` tests chords and reports false positives on routed or curved arrows.
+
 ### CLI tools and invariants
 
 `pkb-excalidraw` is the preferred way to read and edit `.excalidraw` files; use it before reading or writing the JSON directly, because its mutations refuse to save a file that fails validation. Run `pkb-excalidraw --help` for the full command set.
