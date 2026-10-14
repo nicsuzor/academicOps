@@ -9,7 +9,7 @@ import { acquireHostLock, releaseHostLock, calculate409Backoff } from "../role.j
 import { hostname } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -33,6 +33,13 @@ export interface SendReplyOptions {
   review?: { repo: string; pr?: number };
 }
 
+export interface SendReplyResult {
+  messageId: number;
+  voiceSent?: boolean;
+  voiceMessageId?: number;
+  voiceError?: string;
+}
+
 export class TelegramBotClient {
   private config: PluginConfig;
   private broker: QuestionBroker;
@@ -43,6 +50,7 @@ export class TelegramBotClient {
   private lastUpdateId = 0;
   private conflictCount = 0;
   private lastAlertTime = 0;
+  private lastInboundWasVoiceByChat = new Map<number, boolean>();
 
   constructor(
     config: PluginConfig,
@@ -58,6 +66,10 @@ export class TelegramBotClient {
     this.emitChannelEvent = emitChannelEvent;
   }
 
+  public isLastInboundVoice(chatId: number): boolean {
+    return this.lastInboundWasVoiceByChat.get(chatId) === true;
+  }
+
   private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
     const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
     const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
@@ -68,6 +80,42 @@ export class TelegramBotClient {
     });
     const json = await res.json();
     return json;
+  }
+
+  private async callVoiceApi(
+    chatId: number,
+    oggBuffer: Buffer,
+    options: {
+      caption?: string;
+      captionEntities?: unknown[];
+      replyTo?: number;
+      inlineKeyboard?: Array<Array<Record<string, unknown>>>;
+    }
+  ): Promise<any> {
+    const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
+    const url = `${baseUrl}/bot${this.config.botToken}/sendVoice`;
+    const formData = new FormData();
+    formData.append("chat_id", String(chatId));
+    formData.append("voice", new Blob([oggBuffer], { type: "audio/ogg" }), "reply.ogg");
+
+    if (options.caption !== undefined) {
+      formData.append("caption", options.caption);
+    }
+    if (options.captionEntities && options.captionEntities.length > 0) {
+      formData.append("caption_entities", JSON.stringify(options.captionEntities));
+    }
+    if (options.replyTo) {
+      formData.append("reply_parameters", JSON.stringify({ message_id: options.replyTo }));
+    }
+    if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+      formData.append("reply_markup", JSON.stringify({ inline_keyboard: options.inlineKeyboard }));
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+    return await res.json();
   }
 
   public async setReaction(chatId: number, messageId: number, emoji: string): Promise<boolean> {
@@ -83,7 +131,7 @@ export class TelegramBotClient {
     }
   }
 
-  public async sendReply(opts: SendReplyOptions): Promise<{ messageId: number } | null> {
+  public async sendReply(opts: SendReplyOptions): Promise<SendReplyResult | null> {
     const { chatId, formatted, detailsId, buttons, voice, replyTo, feedback, review } = opts;
 
     // Build inline keyboard
@@ -136,21 +184,90 @@ export class TelegramBotClient {
       ]);
     }
 
-    // Check voice out
-    if (voice && this.config.voiceSpeakCmd) {
-      try {
-        const spoken = prepareVoiceText(formatted.plainText);
-        const tempText = join(tmpdir(), `voice_out_${Date.now()}.txt`);
-        const tempOgg = join(tmpdir(), `voice_out_${Date.now()}.ogg`);
-        writeFileSync(tempText, spoken, "utf-8");
+    let voiceError: string | undefined;
 
-        await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg]);
+    // Check voice out (FR-7)
+    if (voice) {
+      if (!this.config.voiceSpeakCmd) {
+        voiceError = "VOICE_SPEAK_CMD is not configured";
+      } else {
+        const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const tempText = join(tmpdir(), `voice_out_${stamp}.txt`);
+        const tempOgg = join(tmpdir(), `voice_out_${stamp}.ogg`);
+        try {
+          const spoken = prepareVoiceText(formatted.plainText);
+          writeFileSync(tempText, spoken, "utf-8");
 
-        // If caption fits under 1024, attach caption to sendVoice
-        // Otherwise send voice then send text separately
-        // (Note: in test / dry-run, fallback to text)
-      } catch (e) {
-        console.error("Voice TTS failed, falling back to text:", e);
+          await execFileAsync(this.config.voiceSpeakCmd, [tempText, tempOgg]);
+
+          if (!existsSync(tempOgg)) {
+            throw new Error(`TTS script did not produce output file: ${tempOgg}`);
+          }
+          const oggBuffer = readFileSync(tempOgg);
+          if (oggBuffer.byteLength === 0) {
+            throw new Error(`TTS script produced an empty audio file: ${tempOgg}`);
+          }
+
+          // FR-7.3: If caption fits under 1024 UTF-16 code units, attach caption and entities to sendVoice.
+          // Otherwise send voice first, then send text message separately.
+          if (formatted.plainText.length <= 1024) {
+            const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
+              caption: formatted.plainText,
+              captionEntities: formatted.entities,
+              replyTo,
+              inlineKeyboard,
+            });
+            if (voiceRes?.ok && voiceRes?.result) {
+              return {
+                messageId: voiceRes.result.message_id,
+                voiceSent: true,
+              };
+            }
+            throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
+          } else {
+            const voiceRes = await this.callVoiceApi(chatId, oggBuffer, {
+              replyTo,
+            });
+            if (!voiceRes?.ok || !voiceRes?.result) {
+              throw new Error(voiceRes?.description || "Telegram sendVoice API call failed");
+            }
+            const voiceMessageId: number = voiceRes.result.message_id;
+
+            const textPayload: Record<string, unknown> = {
+              chat_id: chatId,
+              text: formatted.plainText,
+              entities: formatted.entities,
+            };
+            if (inlineKeyboard.length > 0) {
+              textPayload.reply_markup = { inline_keyboard: inlineKeyboard };
+            }
+
+            let textRes = await this.callApi("sendMessage", textPayload);
+            if (!textRes?.ok || !textRes?.result) {
+              textRes = await this.callApi("sendMessage", {
+                chat_id: chatId,
+                text: formatted.plainText,
+                reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
+              });
+            }
+
+            return {
+              messageId: textRes?.result?.message_id ?? voiceMessageId,
+              voiceMessageId,
+              voiceSent: true,
+            };
+          }
+        } catch (e) {
+          voiceError = e instanceof Error ? e.message : String(e);
+          console.error("Voice TTS failed, falling back to text:", e);
+        } finally {
+          try {
+            if (existsSync(tempText)) unlinkSync(tempText);
+            if (existsSync(tempOgg)) unlinkSync(tempOgg);
+          } catch {
+            // Ignore temp cleanup errors
+          }
+        }
       }
     }
 
@@ -170,6 +287,9 @@ export class TelegramBotClient {
 
     const res = await this.callApi("sendMessage", payload);
     if (res.ok && res.result) {
+      if (voice) {
+        return { messageId: res.result.message_id, voiceSent: false, voiceError };
+      }
       return { messageId: res.result.message_id };
     }
 
@@ -181,6 +301,9 @@ export class TelegramBotClient {
     });
 
     if (fallbackRes.ok && fallbackRes.result) {
+      if (voice) {
+        return { messageId: fallbackRes.result.message_id, voiceSent: false, voiceError };
+      }
       return { messageId: fallbackRes.result.message_id };
     }
 
@@ -335,8 +458,10 @@ export class TelegramBotClient {
   }
 
   private async handleUpdate(update: TelegramUpdate) {
-    // 1. If inbound message from Nic, immediately set 👀 reaction (FR-9)
+    // 1. If inbound message from Nic, immediately set 👀 reaction (FR-9) and record voice-vs-text for FR-7.1 mirror
     if (update.message?.from?.id && this.config.allowFrom.includes(update.message.from.id)) {
+      const isInboundVoice = Boolean(update.message.voice || update.message.audio);
+      this.lastInboundWasVoiceByChat.set(update.message.chat.id, isInboundVoice);
       await this.setReaction(update.message.chat.id, update.message.message_id, "👀");
     }
 
@@ -532,7 +657,9 @@ export class TelegramBotClient {
           const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
           const downloadUrl = `${baseUrl}/file/bot${this.config.botToken}/${filePath}`;
 
-          const localAudioPath = join(this.config.stateDir, "inbox", `voice_${Date.now()}.ogg`);
+          const inboxDir = join(this.config.stateDir, "inbox");
+          mkdirSync(inboxDir, { recursive: true });
+          const localAudioPath = join(inboxDir, `voice_${Date.now()}.ogg`);
           const res = await fetch(downloadUrl);
           const buf = await res.arrayBuffer();
           writeFileSync(localAudioPath, Buffer.from(buf));
