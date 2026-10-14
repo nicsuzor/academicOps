@@ -1,11 +1,11 @@
 ---
 name: premise-check
-description: Author or verify an agent handback report argument in standardised Chained Toulmin Argdown -- enforcing basis vocabulary, the ask as main conclusion, non-flat inference chains, contrast testing, granularity stopping rules, and verdict recording. Use when receiving a subagent report, passing verified claims up the chain, or authoring handback receipts.
+description: Author or verify an agent handback report argument in standardised Chained Toulmin Argdown -- enforcing basis vocabulary, the ask as main conclusion, non-flat inference chains, contrast testing, granularity stopping rules, and verdict recording. Use when receiving a subagent report, passing verified claims up the chain, or authoring handback receipts. Not a fact check or requirement review, and not for extracting a text's argument (use argument-extraction).
 ---
 
 # Premise Check
 
-Author or verify report arguments using the standardised **Chained Toulmin Argdown** contract so every handback receipt links observed facts to `[Outcome]` through explicit warrants, bounded scopes, and dynamic stopping rules.
+Author or verify report arguments using the standardised **Chained Toulmin Argdown** contract so every handback receipt links observed facts to `[Outcome]` through explicit warrants, bounded scopes, and dynamic stopping rules. Argdown syntax and parser validation: `ida:argument-extraction`.
 
 ## When to Use
 
@@ -43,10 +43,11 @@ model:
 ## Authoring Rules
 
 - **No flat premise lists (2-to-3 Premise Cap)**: Never dump 4 or more premises above a single `-- Warrant --` line. Group co-dependent facts (at most 2 to 3 premises) above the specific `-- Warrant --` that licenses their intermediate conclusion, then chain `(3) [Intermediate State]` into the next `-- Warrant --` bar to reach `[Outcome]`.
-- **Metadata schema (`{basis, pointer, source?}`)**:
+- **Metadata schema (`{basis, pointer, source?, reason?}`)**:
   - `basis`: `"observed"`, `"exhaustively-searched"`, `"attempted-and-failed"`, `"method-bounded"`, `"reported-by"`, `"theory"`, `"stated"`, or `"assumed"`.
   - `pointer`: Verbatim locator (`owner/repo@sha:path:line`, span/node ID, URL, citation, or exact shell query).
-  - Diagnostic tags when flagging issues: `#format`, `#missing`, `#scope-drift`, `#conflict`, `#unanswered`.
+  - `reason`: For `basis: "assumed"` only, the logical gap the premise or warrant bridges; an assumed item carries no `pointer` or `source`.
+  - Diagnostic tags when flagging issues, written before the `{metadata}`: `#format`, `#missing`, `#scope-drift`, `#method-gap`, `#conflict`, `#unanswered`.
 - **Observed-value rule**: Premises with `basis: "observed"` or `"reported-by"` must quote the deciding field's observed value or verbatim text (`status: MERGED`, `p = 0.004`, `66% unavailable`) inline or in `source` alongside the `pointer`. A bare pointer proves existence only, not content.
 - **Warrants live in the `--` inference bar**: Always write the licensing rule, mechanism, or policy inside `-- Warrant name {uses: [1, 2], basis: "...", pointer: "..."} --`, never as a numbered `#warrant` premise.
 - **Match basis to claim type**:

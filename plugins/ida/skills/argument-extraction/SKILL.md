@@ -1,6 +1,6 @@
 ---
 name: argument-extraction
-description: Extract and reconstruct the argument a text or draft makes -- main conclusion, chained premises, warrants, and evidence traceability -- and emit it as parser-valid Chained Toulmin Argdown at a controlled level of granularity. Use for "extract the argument", "map the argument", "reconstruct the reasoning", "argdown this". Not for evaluating or auditing the argument (use argument-audit or premise-check).
+description: Extract and reconstruct the argument a text or draft makes -- main conclusion, chained premises, warrants, and evidence traceability -- and emit it as parser-valid Chained Toulmin Argdown at a controlled level of granularity. Use for "extract the argument", "map the argument", "reconstruct the reasoning", "argdown this". Not for evaluating the argument (use argument-audit), for a readable map with gaps tagged (use argument-map), or for agent handback reports (use premise-check).
 ---
 
 # Argument Extraction
@@ -60,7 +60,7 @@ Every stated premise and stated warrant carries `{basis, pointer, source}`:
 
 - `basis`:
   - `"observed"`: Empirical finding, qualitative quote, dataset metric, or pinpoint state.
-  - `"method-bounded"`: Sampling frame, operational definition, or bounded negative search (`"40k films checked on JustWatch AU Jan 2026"`).
+  - `"method-bounded"`: Sampling frame, operational definition, or bounded negative search (`"every title in the catalogue checked on a named date"`).
   - `"theory"`: Theoretical principle, causal mechanism, legal rule, or normative standard from scholarship or doctrine.
   - `"reported-by"`: Claim adopted from a cited secondary source or upstream verified report.
   - `"stated"`: Author's research question, scoping definition, or thesis roadmap claim.
@@ -72,10 +72,12 @@ Every stated premise and stated warrant carries `{basis, pointer, source}`:
 
 Ensure the output is strict, parser-valid Argdown:
 
-- Keep each statement (`(1) [Title]: text {metadata}`) on a single line.
+- Keep each statement (`(1) [Title]: text #tag {metadata}`) on one line, or put its `{metadata}` alone on an indented continuation line. Tags come before the `{metadata}`; the parser rejects a tag after it.
+- Put a relation (`+>`, `->`, `_>`, `><`) on its own indented line below the statement, never inline after it.
+- Write the inference-bar text without commas: the parser splits bar text on commas into separate inference rules, so a comma breaks the warrant into fragments.
 - Put a blank line between `<Argument>` blocks and before/after headings.
 - Escape literal underscores inside statement text as `\_`, and never leave unescaped `[` `]` `<` `>` inside statement prose (escapes do not apply inside quoted `source` strings).
-- If `@argdown/cli` is available in the environment, run `npx --no-install @argdown/cli json --logParserErrors --throwExceptions <file>.argdown <outdir>` and repair any syntax errors (up to 3 attempts) before finishing.
+- Run `npx -y @argdown/cli json --logParserErrors --throwExceptions <file>.argdown <outdir>`. On a syntax error, inspect the parser message, correct the syntax, and retry (at most 3 attempts; if still invalid, halt and report the error). Then read the JSON and confirm every argument appears with its premises and reaches the main conclusion, through a relation or through a conclusion title reused as a premise of another argument.
 
 ## Output Template
 
@@ -109,6 +111,10 @@ model:
 (5) [Section Claim]: Resulting claim that supports the main conclusion.
   +> [Core Thesis]
 ```
+
+## Example
+
+`references/example-mill-on-liberty.argdown`: Mill, _On Liberty_, ch. II, the four-grounds recapitulation, at `meso` granularity.
 
 ## Gotchas
 
