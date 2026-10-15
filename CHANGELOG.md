@@ -2,43 +2,38 @@
 
 ## [0.10.18](https://github.com/nicsuzor/academicOps/compare/v0.10.17...v0.10.18) (2026-10-15)
 
-
 ### Features
 
-* **q:** specify in-place conversion for task-like mobile captures ([7b4aec6](https://github.com/nicsuzor/academicOps/commit/7b4aec6d0438c20f1ddfc93dd602c187ebe1cef4))
-* **reify:** list source workflows and skills in task appendix ([2c36e47](https://github.com/nicsuzor/academicOps/commit/2c36e4783666d508064775d1a21da582e55f627b))
-
+- **q:** specify in-place conversion for task-like mobile captures ([7b4aec6](https://github.com/nicsuzor/academicOps/commit/7b4aec6d0438c20f1ddfc93dd602c187ebe1cef4))
+- **reify:** list source workflows and skills in task appendix ([2c36e47](https://github.com/nicsuzor/academicOps/commit/2c36e4783666d508064775d1a21da582e55f627b))
 
 ### Bug Fixes
 
-* **ida-telegram:** bot runtime feedback row preservation, cancel handler, and FR-6.1/FR-9 verification ([20ee146](https://github.com/nicsuzor/academicOps/commit/20ee1466d5de34182b950f4091573e81a7fcdb1f))
-* **ida-telegram:** implement Mini App Details, Review, Questions, and Anchor tabs per spec_7a9caca5 ([47c784f](https://github.com/nicsuzor/academicOps/commit/47c784f1584bfe9d1787305106a581e6af75555c))
-* **ida-telegram:** implement Mini App Details, Review, Questions, and Anchor tabs per spec_7a9caca5 ([d1bbce2](https://github.com/nicsuzor/academicOps/commit/d1bbce239fd368e9e3689f086d56eebfb1ac4f45))
-* **ida-telegram:** implement sendVoice delivery and FR-7 voice reply outcomes ([824e3b4](https://github.com/nicsuzor/academicOps/commit/824e3b4a7a522c0a6d6adbd3354a308f9b08c164))
-* **ida-telegram:** implement sendVoice delivery and FR-7 voice reply outcomes ([aec63ac](https://github.com/nicsuzor/academicOps/commit/aec63acc150935d0620af999b435af1b4c72b847))
-* **ida-telegram:** preserve non-feedback buttons on feedback callbacks, add fb:up toast and fb:cancel handler, and test FR-6.1/FR-9 ([8fa6ed7](https://github.com/nicsuzor/academicOps/commit/8fa6ed7513b55948ae52c3f5a35e9818791faf9c))
-* **ida-telegram:** render Details button when reply is sent with detail ([8aacd99](https://github.com/nicsuzor/academicOps/commit/8aacd997983301148cc29b3a7dc838eb4edeafcc))
-* **ida-telegram:** render Details button when reply is sent with detail ([70b4e3e](https://github.com/nicsuzor/academicOps/commit/70b4e3ea4e3bd67627cfab5311cb0b7ea4370e50))
-* make the chained Toulmin skills parse and follow the single-source rule ([c21d170](https://github.com/nicsuzor/academicOps/commit/c21d170a8d83470745bd6d29057603a4f427b115))
-* **tracer:** align agy hook tracer tool outputs, turn boundaries, and plugin enablement ([6990624](https://github.com/nicsuzor/academicOps/commit/6990624a5ba5731a689aff4453489b529da50107))
-
+- **ida-telegram:** bot runtime feedback row preservation, cancel handler, and FR-6.1/FR-9 verification ([20ee146](https://github.com/nicsuzor/academicOps/commit/20ee1466d5de34182b950f4091573e81a7fcdb1f))
+- **ida-telegram:** implement Mini App Details, Review, Questions, and Anchor tabs per spec_7a9caca5 ([47c784f](https://github.com/nicsuzor/academicOps/commit/47c784f1584bfe9d1787305106a581e6af75555c))
+- **ida-telegram:** implement Mini App Details, Review, Questions, and Anchor tabs per spec_7a9caca5 ([d1bbce2](https://github.com/nicsuzor/academicOps/commit/d1bbce239fd368e9e3689f086d56eebfb1ac4f45))
+- **ida-telegram:** implement sendVoice delivery and FR-7 voice reply outcomes ([824e3b4](https://github.com/nicsuzor/academicOps/commit/824e3b4a7a522c0a6d6adbd3354a308f9b08c164))
+- **ida-telegram:** implement sendVoice delivery and FR-7 voice reply outcomes ([aec63ac](https://github.com/nicsuzor/academicOps/commit/aec63acc150935d0620af999b435af1b4c72b847))
+- **ida-telegram:** preserve non-feedback buttons on feedback callbacks, add fb:up toast and fb:cancel handler, and test FR-6.1/FR-9 ([8fa6ed7](https://github.com/nicsuzor/academicOps/commit/8fa6ed7513b55948ae52c3f5a35e9818791faf9c))
+- **ida-telegram:** render Details button when reply is sent with detail ([8aacd99](https://github.com/nicsuzor/academicOps/commit/8aacd997983301148cc29b3a7dc838eb4edeafcc))
+- **ida-telegram:** render Details button when reply is sent with detail ([70b4e3e](https://github.com/nicsuzor/academicOps/commit/70b4e3ea4e3bd67627cfab5311cb0b7ea4370e50))
+- make the chained Toulmin skills parse and follow the single-source rule ([c21d170](https://github.com/nicsuzor/academicOps/commit/c21d170a8d83470745bd6d29057603a4f427b115))
+- **tracer:** align agy hook tracer tool outputs, turn boundaries, and plugin enablement ([6990624](https://github.com/nicsuzor/academicOps/commit/6990624a5ba5731a689aff4453489b529da50107))
 
 ### Documentation
 
-* **ida-telegram:** document Mini App tab behaviours per spec_7a9caca5 FR-4.3 to FR-4.7 ([14d2cf8](https://github.com/nicsuzor/academicOps/commit/14d2cf8c9642c7869e9186d5421492097487363b))
-* **specs:** add Stop last_assistant_message fallback and agy tracer parity to otel-tracing spec ([dafd4bc](https://github.com/nicsuzor/academicOps/commit/dafd4bc22940ce703d89128dce9b2aa86a9b67ad))
-* **specs:** add Stop last_assistant_message fallback and agy tracer parity to otel-tracing spec ([6223ae7](https://github.com/nicsuzor/academicOps/commit/6223ae7ea0555443401d4b7e3379a244b3b6e316))
-
+- **ida-telegram:** document Mini App tab behaviours per spec_7a9caca5 FR-4.3 to FR-4.7 ([14d2cf8](https://github.com/nicsuzor/academicOps/commit/14d2cf8c9642c7869e9186d5421492097487363b))
+- **specs:** add Stop last_assistant_message fallback and agy tracer parity to otel-tracing spec ([dafd4bc](https://github.com/nicsuzor/academicOps/commit/dafd4bc22940ce703d89128dce9b2aa86a9b67ad))
+- **specs:** add Stop last_assistant_message fallback and agy tracer parity to otel-tracing spec ([6223ae7](https://github.com/nicsuzor/academicOps/commit/6223ae7ea0555443401d4b7e3379a244b3b6e316))
 
 ### Build System
 
-* per-plugin clients; ship ida-telegram for claude and openclaw only ([06512fa](https://github.com/nicsuzor/academicOps/commit/06512fa0119e63cf5de1823b7f8334f35b6f04bc))
-* per-plugin clients; ship ida-telegram for claude and openclaw only ([a3bbe81](https://github.com/nicsuzor/academicOps/commit/a3bbe811e8a42897d70417d7398d7b487c31edab))
-
+- per-plugin clients; ship ida-telegram for claude and openclaw only ([06512fa](https://github.com/nicsuzor/academicOps/commit/06512fa0119e63cf5de1823b7f8334f35b6f04bc))
+- per-plugin clients; ship ida-telegram for claude and openclaw only ([a3bbe81](https://github.com/nicsuzor/academicOps/commit/a3bbe811e8a42897d70417d7398d7b487c31edab))
 
 ### Tests
 
-* **ida-telegram:** add failing Mini App tab tests for FR-4.3 to FR-4.7 ([973b6f6](https://github.com/nicsuzor/academicOps/commit/973b6f6b9376c7d36b5cfb977a529743d379a861))
+- **ida-telegram:** add failing Mini App tab tests for FR-4.3 to FR-4.7 ([973b6f6](https://github.com/nicsuzor/academicOps/commit/973b6f6b9376c7d36b5cfb977a529743d379a861))
 
 ## [0.10.17](https://github.com/nicsuzor/academicOps/compare/v0.10.16...v0.10.17) (2026-10-14)
 
