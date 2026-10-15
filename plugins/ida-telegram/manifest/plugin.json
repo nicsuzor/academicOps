@@ -24,7 +24,6 @@
           "args": ["${CLAUDE_PLUGIN_ROOT}/server.ts"]
         }
       }
-    },
-    "agy": {}
+    }
   }
 }
