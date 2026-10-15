@@ -2,27 +2,24 @@
 
 ## [0.10.19](https://github.com/nicsuzor/academicOps/compare/v0.10.18...v0.10.19) (2026-10-15)
 
-
 ### Features
 
-* **workflows:** judge low-risk internal bugfixes by unblocked run ([71959ab](https://github.com/nicsuzor/academicOps/commit/71959ab3183faa2d64539fb427b31b40100cc569))
-* **workflows:** judge low-risk internal bugfixes by unblocked run ([be8a90e](https://github.com/nicsuzor/academicOps/commit/be8a90e10562fb0fd96a8c508d41c4381cf998cb))
-
+- **workflows:** judge low-risk internal bugfixes by unblocked run ([71959ab](https://github.com/nicsuzor/academicOps/commit/71959ab3183faa2d64539fb427b31b40100cc569))
+- **workflows:** judge low-risk internal bugfixes by unblocked run ([be8a90e](https://github.com/nicsuzor/academicOps/commit/be8a90e10562fb0fd96a8c508d41c4381cf998cb))
 
 ### Bug Fixes
 
-* **debug,reify:** direct root-cause asks to examine mechanism lifecycle ([b5693cf](https://github.com/nicsuzor/academicOps/commit/b5693cfb5e42cd4bda35f71197ba87fea506e986))
-* **debug,reify:** direct root-cause asks to examine mechanism lifecycle ([a283ab7](https://github.com/nicsuzor/academicOps/commit/a283ab7f60e028271b56336940df457e60d347ec)), closes [#2940](https://github.com/nicsuzor/academicOps/issues/2940)
-* **hooks:** run each hook event through a single handler ([261b821](https://github.com/nicsuzor/academicOps/commit/261b82152073376c506256324b090fe5c48be1f7))
-* **hooks:** run each hook event through a single handler and emit single-line systemMessage ([e053a48](https://github.com/nicsuzor/academicOps/commit/e053a48842f934d8a8ef6788d25f55657341f8ed))
-
+- **debug,reify:** direct root-cause asks to examine mechanism lifecycle ([b5693cf](https://github.com/nicsuzor/academicOps/commit/b5693cfb5e42cd4bda35f71197ba87fea506e986))
+- **debug,reify:** direct root-cause asks to examine mechanism lifecycle ([a283ab7](https://github.com/nicsuzor/academicOps/commit/a283ab7f60e028271b56336940df457e60d347ec)), closes [#2940](https://github.com/nicsuzor/academicOps/issues/2940)
+- **hooks:** run each hook event through a single handler ([261b821](https://github.com/nicsuzor/academicOps/commit/261b82152073376c506256324b090fe5c48be1f7))
+- **hooks:** run each hook event through a single handler and emit single-line systemMessage ([e053a48](https://github.com/nicsuzor/academicOps/commit/e053a48842f934d8a8ef6788d25f55657341f8ed))
 
 ### Documentation
 
-* **polecat:** design silent James failure detection across launch, exit, and reconcile (aops_114f1631) ([1945d21](https://github.com/nicsuzor/academicOps/commit/1945d214733bf209fb37a475b9950d266b307bf4))
-* **polecat:** specify silent James failure detection across launch, exit, and reconcile (aops_114f1631) ([1eb1394](https://github.com/nicsuzor/academicOps/commit/1eb1394965dfa0d49a987c2bd299e08722d5d94e))
-* **specs:** rewrite observability spec for cross-surface correlation ([3705471](https://github.com/nicsuzor/academicOps/commit/37054710215a00233524c1b4a8429feef2cc23a7))
-* **specs:** rewrite observability spec for cross-surface correlation ([d13e158](https://github.com/nicsuzor/academicOps/commit/d13e15810a42883caa453de5312bff5fce1dbfb9))
+- **polecat:** design silent James failure detection across launch, exit, and reconcile (aops_114f1631) ([1945d21](https://github.com/nicsuzor/academicOps/commit/1945d214733bf209fb37a475b9950d266b307bf4))
+- **polecat:** specify silent James failure detection across launch, exit, and reconcile (aops_114f1631) ([1eb1394](https://github.com/nicsuzor/academicOps/commit/1eb1394965dfa0d49a987c2bd299e08722d5d94e))
+- **specs:** rewrite observability spec for cross-surface correlation ([3705471](https://github.com/nicsuzor/academicOps/commit/37054710215a00233524c1b4a8429feef2cc23a7))
+- **specs:** rewrite observability spec for cross-surface correlation ([d13e158](https://github.com/nicsuzor/academicOps/commit/d13e15810a42883caa453de5312bff5fce1dbfb9))
 
 ## [0.10.18](https://github.com/nicsuzor/academicOps/compare/v0.10.17...v0.10.18) (2026-10-15)
 
