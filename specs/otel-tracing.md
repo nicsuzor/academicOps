@@ -106,7 +106,7 @@ A turn is everything Claude Code does in answer to one prompt that fired `UserPr
 
 ### Rules
 
-1. `UserPromptSubmit` opens the turn and records the transcript's byte length as the turn's `transcript_offset`.
+1. `UserPromptSubmit` opens the turn and records the transcript's byte length as the turn's `transcript_offset`, or, when the prompt's own entry is already written and no assistant entry follows it, that entry's start.
 2. A turn's entries are the transcript entries written from `transcript_offset` on.
 3. Entries from `transcript_offset` that precede the first prompt entry, in any of the three shapes, belong to the previous turn and are not read into this turn.
 4. A turn's entries end at the next typed prompt or `queued_command` entry; `isMeta` entries inside a turn (skill bodies, caveats) do not end it.
@@ -115,7 +115,7 @@ A turn is everything Claude Code does in answer to one prompt that fired `UserPr
 7. A hook fired inside an in-process subagent never opens a turn; between turns, its tool spans go to the turn the last `Stop` closed.
 8. `Stop` waits up to `FINAL_RESPONSE_WAIT_S` (3 s) for an assistant entry carrying `last_assistant_message` to reach the transcript, then emits every `LLM` span of the turn not yet emitted.
 9. `Stop` sets the turn root's `output.value` to `last_assistant_message`; without one, to the output of the turn's last `LLM` span.
-10. The turn last closed, by `Stop` or by a `UserPromptSubmit` that fired while it ran, stays in session state; the next `UserPromptSubmit` or `SessionEnd`, or a `Stop` under Rule 11, emits into that turn's trace any of its `LLM` spans written after it closed.
+10. The turn last closed, by `Stop` or by a `UserPromptSubmit` that fired while it ran, stays in session state until another turn closes; every `UserPromptSubmit`, `Stop`, and `SessionEnd` meanwhile emits into that turn's trace any of its `LLM` spans written after it closed.
 11. A `Stop` that finds no prompt entry from the open turn's `transcript_offset`, after a `UserPromptSubmit` closed the previous turn while it ran, ends that previous turn: its later `LLM` spans go to its trace and the open turn stays open.
 12. Each API response (`message.id`) is emitted as an `LLM` span once per session, into the first turn that reads it.
 13. At `SessionEnd`, when the last `Stop`-closed turn's `last_assistant_message` never reached the transcript, the tracer emits one `LLM` span for it under that turn's root, with `aops.llm.source = "stop.last_assistant_message"`, `output.value` set to that message, and no token counts or `llm.message.id`.

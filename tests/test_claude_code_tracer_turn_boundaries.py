@@ -8,6 +8,8 @@ followed by a typed prompt. ``midturn_notification.jsonl`` holds a
 ``<task-notification>`` that arrived while a turn was running, written as a
 ``queued_command`` attachment. ``queued_prompt_during_notification.jsonl``
 holds a typed prompt queued while a ``<task-notification>`` turn ran.
+``midturn_notification_late_final.jsonl`` holds a mid-turn notification
+whose final response was written seconds after its Stop.
 
 The replay fires UserPromptSubmit before the turn's prompt is written, and
 Stop before the turn's final response is written: Claude Code awaits the
@@ -146,7 +148,8 @@ def _by_trace(exporter: _CollectingExporter) -> list[tuple[object, list[str]]]:
             sorted(
                 sp.attributes["llm.message.id"]
                 for sp in exporter.spans
-                if sp.context.trace_id == root.context.trace_id and sp.name.startswith("claude/")
+                if sp.context.trace_id == root.context.trace_id
+                and "llm.message.id" in sp.attributes
             ),
         )
         for root in roots
@@ -351,3 +354,68 @@ def test_final_response_never_written_is_sent_from_stop_payload_at_session_end(
     assert llm[0].attributes["aops.llm.source"] == "stop.last_assistant_message"
     assert llm[0].parent.span_id == root.context.span_id
     assert root.attributes["output.value"] == _final_text(turn)
+
+
+def test_live_hook_order_of_a_mid_turn_notification_with_late_final_responses(
+    tracer_env, monkeypatch
+):
+    """Hook order of the session the fixture comes from.
+
+    The ``queued_command`` attachment is written before its UserPromptSubmit
+    reads the transcript; the notification turn's final response lands only
+    after its Stop gave up and after the next prompt was queued; the last
+    turn's response is never written.
+    """
+    monkeypatch.setattr(cct, "FINAL_RESPONSE_WAIT_S", 0.0, raising=False)
+    lines = _lines("midturn_notification_late_final.jsonl")
+    (m1, m2), (_, queued), (_, last_prompt), (last, end) = _turns(lines)
+    assert _entry(lines[queued]).get("type") == "attachment"
+    notification_turn = lines[queued:last]
+    notification_final = queued + _final_start(notification_turn)
+    m3_enqueued = next(
+        i
+        for i in range(queued, last)
+        if (e := _entry(lines[i])).get("type") == "queue-operation"
+        and e.get("operation") == "enqueue"
+    )
+    transcript = tracer_env / "session.jsonl"
+    transcript.write_text("".join(lines[:m1]))
+    exporter = _CollectingExporter()
+
+    def write(a: int, b: int) -> None:
+        with transcript.open("a") as fh:
+            fh.writelines(lines[a:b])
+
+    def prompt(i: int) -> None:
+        _hook(cct.handle_user_prompt_submit, transcript, prompt=_prompt_text(_entry(lines[i])))
+
+    with patch.object(cct, "_create_exporter", return_value=exporter):
+        _replay(transcript, lines, [(m1, m2)])
+        prompt(m2)
+        write(m2, queued + 1)
+        prompt(queued)
+        write(queued + 1, m3_enqueued)
+        _hook(cct.handle_stop, transcript, last_assistant_message=_final_text(notification_turn))
+        prompt(last)
+        write(m3_enqueued, last)
+        _hook(cct.handle_stop, transcript, last_assistant_message="M3-after-midturn")
+        write(last, end)
+        _hook(cct.handle_session_end, transcript)
+
+    traced = _by_trace(exporter)
+    assert len(traced) == 4
+    (_, m2_ids), (n_root, n_ids), (m3_root, _) = traced[1:]
+    assert m2_ids == sorted(_response_ids(lines[m2:queued]))
+    assert n_ids == sorted(_response_ids(notification_turn))
+    assert n_root.attributes["output.value"] == _final_text(notification_turn)
+    assert m3_root.attributes["output.value"] == "M3-after-midturn"
+    m3_llm = [
+        sp
+        for sp in exporter.spans
+        if sp.context.trace_id == m3_root.context.trace_id
+        and sp.attributes.get("openinference.span.kind") == "LLM"
+    ]
+    assert [sp.attributes.get("aops.llm.source") for sp in m3_llm] == [
+        "stop.last_assistant_message"
+    ]
+    assert notification_final > queued

@@ -954,6 +954,39 @@ def _last_prompt_offset(transcript_path: str | None) -> int:
     return last
 
 
+def _turn_anchor(transcript_path: str | None, prompt: str) -> int:
+    """Byte offset a turn opened by UserPromptSubmit for *prompt* reads from.
+
+    The transcript's end, unless *prompt*'s own entry is already written and
+    unanswered: a ``queued_command`` attachment can be written while the hook
+    runs. Then the start of that entry.
+    """
+    size = _transcript_size(transcript_path)
+    want = prompt.strip()[:200]
+    if not transcript_path or not want:
+        return size
+    offset = 0
+    found: int | None = None
+    try:
+        with open(transcript_path, "rb") as fh:
+            for raw in fh:
+                if offset >= size:
+                    break
+                try:
+                    entry = json.loads(raw)
+                except ValueError:
+                    entry = {}
+                if isinstance(entry, dict):
+                    if entry.get("type") == "assistant":
+                        found = None
+                    elif _opens_turn(entry) and _prompt_text(entry).strip()[:200] == want:
+                        found = offset
+                offset += len(raw)
+    except OSError:
+        return size
+    return size if found is None else found
+
+
 def _next_turn_number(state: dict, prior_human_count: int) -> int:
     """Return the next turn number and store it on *state*.
 
@@ -2699,7 +2732,6 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
     # project-dir changes (e.g. gh pr create writing to a worktree dir) do
     # not silently redirect us to a shadow transcript file.
     _emit_closed_turn_tail(state, config)
-    state.pop("closed_trace", None)
     if state.get("current_trace"):
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
@@ -2761,7 +2793,7 @@ def _start_turn(data: dict, config: dict, session_id: str) -> None:
         "parent_span_id": parent_span_id,
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
-        "transcript_offset": _transcript_size(transcript_path),
+        "transcript_offset": _turn_anchor(transcript_path, prompt),
         "prompt_preview": _truncate(prompt) if prompt else "",
     }
 
@@ -3209,6 +3241,10 @@ def handle_stop(data: dict, config: dict) -> None:
             _emit_closed_turn_tail(state, config)
             _save_state(session_id, state)
             return
+
+        # The turn closed before this one can still have responses landing;
+        # this Stop replaces it as the closed turn.
+        _emit_closed_turn_tail(state, config)
 
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
