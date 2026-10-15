@@ -35,10 +35,14 @@ Capture natural-language asks and situate them on the strategic graph: parented,
 
 ## Headless Context (Email, Mobile Capture)
 
-When invoked headlessly (e.g. correspondence sweep or capture intake):
+When invoked headlessly (e.g. correspondence sweep or `notes/mobile-captures/` intake):
 
-- Apply the same placement and valuation steps without prompting the user.
-- If the container or targets cannot be identified with confidence, leave the capture note untouched for the next interactive pass (`specs/workflows/capture-intake.md`). Do not guess.
+1. **Read for homophones**: Treat voice-dictated captures as phonetic transcripts; resolve homophones in context before judging meaning or ambiguity.
+2. **Classify and route each capture**:
+   - **Task** (or **Expand** probe): If an existing task already carries the ask (Step 1), fold the capture into that task (`update_body`) and `delete` the capture after the write succeeds. Otherwise, convert the capture into a task in place via `convert_document(id=<capture-id>, type="task", status="ready"|"inbox")` so the same file and ID move out of `notes/mobile-captures/` into `tasks/` with task frontmatter, then set the verb-led imperative `title`, `parent`, `project`, `classification` (`probe` for Expand), R1 `links`, and task body via `update_task` and `update_body`. Do not create a replacement task or edit PKB files on disk to simulate conversion.
+   - **Note** (or **Expand** into an existing note): Synthesize into the target note (`update_body`) or create a canonical note (`create(type="knowledge", ...)`), then `delete` the capture only after the destination write succeeds.
+   - **Discard**: Delete the capture via `delete`.
+3. **Defer when uncertain**: Apply R1 placement and valuation without prompting the user. If the classification, parent container, or target cannot be identified with confidence, or if `convert_document` fails, leave the capture note untouched in `notes/mobile-captures/` for the next interactive pass (`specs/workflows/capture-intake.md`). Do not guess.
 
 ## Task Body
 

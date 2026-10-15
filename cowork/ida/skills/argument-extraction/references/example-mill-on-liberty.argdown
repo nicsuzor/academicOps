@@ -1,55 +1,73 @@
 ===
 title: Mill, On Liberty (1859), ch. II, closing recapitulation
 source: Project Gutenberg eBook #34901, lines 2312-2335
+granularity:
+  level: meso
+  floor: "Accept Mill's stated epistemic and psychological observations in the recapitulation as leaf nodes without unpacking his earlier historical examples."
+model:
+  mode: strict
 ===
 
-# Main conclusion
+# Main Conclusion
 
-[Free Opinion]: Freedom of thought and expression is necessary for human well-being.
-  {source: "We have now recognised the necessity to the mental well-being of mankind (on which all their other well-being depends) of freedom of opinion, and freedom of the expression of opinion, on four distinct grounds", locator: "para. 1"}
+[Free Expression Necessary]: Freedom of opinion and its expression is essential to human mental well-being.
+    {basis: "stated", pointer: "para. 1", source: "We have now recognised the necessity to the mental well-being of mankind (on which all their other well-being depends) of freedom of opinion, and freedom of the expression of opinion, on four distinct grounds"}
 
-# Arguments
+# Part 1: Epistemic Grounds (When the Silenced Opinion Is True or Partly True)
 
-<Fallibility>: Silencing an opinion assumes an infallibility no one has.
+<Ground 1 - Fallibility>: Silencing an opinion risks suppressing truth by presuming an infallibility no human possesses.
 
-(1) Any silenced opinion might actually be true.
-    {source: "if any opinion is compelled to silence, that opinion may, for aught we can certainly know, be true", locator: "para. 2"}
-(2) Refusing to hear an opinion presumes our own judgment cannot be mistaken.
-    {source: "To deny this is to assume our own infallibility.", locator: "para. 2"}
-(3) No one is infallible.
-    {implicit: true, reason: "needed for (1)-(2) to yield (4); Mill leaves it unstated here"}
-----
-(4) Silencing ideas risks suppressing truth based on an unwarranted claim of certainty.
-  +> [Free Opinion]
+(1) [Silenced Opinion May Be True]: Any opinion forced into silence may, for all we can certainly know, be true.
+    {basis: "stated", pointer: "para. 2", source: "if any opinion is compelled to silence, that opinion may, for aught we can certainly know, be true"}
+-- Presumed Infallibility Warrant: Suppressing a potentially true view is only rational if the censor cannot be mistaken {uses: [1], basis: "stated", pointer: "para. 2", source: "To deny this is to assume our own infallibility."} --
+(2) [Censorship Assumes Infallibility]: Refusing to hear an opinion presumes that our own judgment is infallible.
+-- Human Fallibility Warrant: No person or authority or majority is infallible {uses: [2], basis: "assumed", reason: "Established earlier in ch. II; left implicit in the closing recapitulation"} --
+(3) [Blocks Whole Truth]: Silencing an opinion unjustifiably risks suppressing the truth.
 
-<Partial Truth>: Even an erroneous opinion supplies the part of the truth the prevailing view lacks.
+<Ground 2 - Partial Truth>: Even when a silenced opinion is mostly false, suppressing it prevents us from completing the partial truth held by orthodoxy.
 
-(1) Even mistaken opinions often contain elements of truth.
-    {source: "though the silenced opinion be an error, it may, and very commonly does, contain a portion of truth", locator: "para. 3"}
-(2) The prevailing view on any topic is rarely the whole truth.
-    {source: "the general or prevailing opinion on any subject is rarely or never the whole truth", locator: "para. 3"}
-(3) Missing aspects of the truth emerge only when opposing viewpoints clash.
-    {source: "it is only by the collision of adverse opinions, that the remainder of the truth has any chance of being supplied", locator: "para. 3"}
-----
-(4) Silencing erroneous views removes the debate needed to complete the truth.
-  +> [Free Opinion]
+(1) [Error Holds Partial Truth]: Even a mistaken opinion commonly contains a portion of the truth.
+    {basis: "stated", pointer: "para. 3", source: "though the silenced opinion be an error, it may, and very commonly does, contain a portion of truth"}
+(2) [Orthodoxy Is Incomplete]: The prevailing opinion on any complex subject is rarely or never the whole truth.
+    {basis: "stated", pointer: "para. 3", source: "the general or prevailing opinion on any subject is rarely or never the whole truth"}
+-- Adversarial Synthesis Warrant: Missing elements of truth emerge only when opposing opinions collide in open debate {uses: [1, 2], basis: "theory", pointer: "para. 3", source: "it is only by the collision of adverse opinions, that the remainder of the truth has any chance of being supplied"} --
+(3) [Blocks Truth Synthesis]: Silencing erroneous opinions removes the only mechanism that can supply the remainder of the truth.
 
-<Dead Dogma>: Uncontested truth is held as prejudice.
+<Epistemic Branch Synthesis>: Whether a dissenting opinion is wholly true or partly erroneous, silencing it deprives humanity of truth.
 
-(1) Without vigorous debate, people hold even true beliefs as prejudices rather than reasoned ideas.
-    {source: "unless it is suffered to be, and actually is, vigorously and earnestly contested, it will, by most of those who receive it, be held in the manner of a prejudice, with little comprehension or feeling of its rational grounds", locator: "para. 4"}
-(2) Holding beliefs as prejudices without understanding their rational basis harms mental well-being.
-    {implicit: true, reason: "links (1) to the thesis's 'mental well-being'"}
-----
-(3) Even completely true beliefs need open challenge to remain understood.
-  +> [Free Opinion]
+(1) [Blocks Whole Truth]
+(2) [Blocks Truth Synthesis]
+-- Exhaustive Truth-Seeking Warrant: A dissenting opinion containing any truth is either wholly true or partly true so censorship obstructs truth in both cases {uses: [1, 2], basis: "assumed", reason: "Groups Grounds 1 and 2 into the truth-discovery branch of Mill's case-split"} --
+(3) [Deprives Humanity of Truth]: Suppressing opinion obstructs humanity's access to truth.
 
-<Lost Meaning>: Uncontested doctrine loses its meaning and its effect on conduct.
+# Part 2: Intellectual and Moral Grounds (Even When Received Opinion Is Already the Whole Truth)
 
-(1) When never challenged, a doctrine risks losing its meaning and its practical influence on conduct.
-    {source: "the meaning of the doctrine itself will be in danger of being lost, or enfeebled, and deprived of its vital effect on the character and conduct", locator: "para. 4"}
-(2) Reducing a belief to empty recitation prevents genuine, deeply felt conviction from developing.
-    {source: "the dogma becoming a mere formal profession, inefficacious for good, but cumbering the ground, and preventing the growth of any real and heartfelt conviction, from reason or personal experience", locator: "para. 4"}
-----
-(3) Suppressing debate robs even true doctrines of their vitality and power.
-  +> [Free Opinion]
+<Ground 3 - Dead Dogma>: Without contestation, even a completely true belief degenerates into an uncomprehended prejudice.
+
+(1) [Uncontested Truth Becomes Prejudice]: Unless a true belief is vigorously and earnestly contested, most believers hold it as a passive prejudice with little comprehension of its rational grounds.
+    {basis: "stated", pointer: "para. 4", source: "unless it is suffered to be, and actually is, vigorously and earnestly contested, it will, by most of those who receive it, be held in the manner of a prejudice, with little comprehension or feeling of its rational grounds"}
+-- Rational Understanding Warrant: True beliefs must be understood through their rational grounds rather than held as uncomprehended prejudices {uses: [1], basis: "assumed", reason: "Connects holding truth as a prejudice in para. 4 to intellectual harm"} --
+(2) [Erodes Rational Comprehension]: Silencing challenges strips believers of any genuine comprehension of why their true beliefs are true.
+
+<Ground 4 - Lost Vitality>: Without contestation, true doctrine loses its meaning and decays into hollow conformity that blocks real conviction.
+
+(1) [Doctrine Loses Vital Effect]: An unchallenged doctrine loses its meaning and its vital influence on character and conduct.
+    {basis: "stated", pointer: "para. 4", source: "the meaning of the doctrine itself will be in danger of being lost, or enfeebled, and deprived of its vital effect on the character and conduct"}
+-- Hollow Profession Warrant: When a doctrine loses its vital effect it becomes a dead formal profession that prevents heartfelt conviction from developing through reason or experience {uses: [1], basis: "stated", pointer: "para. 4", source: "the dogma becoming a mere formal profession, inefficacious for good, but cumbering the ground, and preventing the growth of any real and heartfelt conviction, from reason or personal experience"} --
+(2) [Kills Moral Vitality]: Suppressing debate reduces living moral conviction to sterile, empty recitation.
+
+<Conviction Branch Synthesis>: Even when orthodoxy is entirely true, silencing dissent corrupts how that truth is understood and lived.
+
+(1) [Erodes Rational Comprehension]
+(2) [Kills Moral Vitality]
+-- Living Conviction Warrant: Holding a truth properly requires both comprehending its rational grounds and feeling its vital force on conduct {uses: [1, 2], basis: "assumed", reason: "Combines Mill's cognitive (Ground 3) and character/conduct (Ground 4) harms"} --
+(3) [Corrupts How Truth Is Held]: Suppressing challenges to true beliefs degrades rational comprehension and moral conviction.
+
+# Part 3: Thesis Convergence
+
+<Mental Well-Being Synthesis>: Because censorship either deprives us of truth or corrupts how we hold truth, free expression is indispensable to mental well-being.
+
+(1) [Deprives Humanity of Truth]
+(2) [Corrupts How Truth Is Held]
+-- Mental Well-Being Warrant: Human mental well-being depends both on discovering true beliefs and on holding them as rationally understood living convictions whether or not a challenged view turns out to be true {uses: [1, 2], basis: "assumed", reason: "Bridges the four grounds (paras. 2-4) back to 'the mental well-being of mankind' in para. 1"} --
+(3) [Free Expression Necessary]

@@ -42,7 +42,16 @@ export interface CritiqueResult {
 
 export interface InlineButton {
   text: string;
-  callback_data: string;
+  callback_data?: string;
+  url?: string;
+  web_app?: { url: string };
+  [key: string]: unknown;
+}
+
+function isFeedbackButton(btn: InlineButton): boolean {
+  const cb = btn.callback_data;
+  if (!cb) return false;
+  return cb.startsWith("fb:") || cb === "noop";
 }
 
 export class FeedbackManager {
@@ -58,6 +67,60 @@ export class FeedbackManager {
     if (!existsSync(this.stateDir)) {
       mkdirSync(this.stateDir, { recursive: true });
     }
+  }
+
+  public getInitialFeedbackButtons(): InlineButton[] {
+    return [
+      { text: "👍", callback_data: "fb:up" },
+      { text: "👎", callback_data: "fb:down" },
+    ];
+  }
+
+  public replaceFeedbackButtonsInKeyboard(
+    existingKeyboard: InlineButton[][] | undefined,
+    replacementRows: InlineButton[][]
+  ): InlineButton[][] {
+    if (!existingKeyboard || existingKeyboard.length === 0) {
+      return replacementRows;
+    }
+
+    const result: InlineButton[][] = [];
+    let replaced = false;
+
+    for (const row of existingKeyboard) {
+      const hasFeedback = row.some(isFeedbackButton);
+      if (!hasFeedback) {
+        result.push(row);
+        continue;
+      }
+
+      const preservedInRow = row.filter((b) => !isFeedbackButton(b));
+      if (!replaced) {
+        replaced = true;
+        if (replacementRows.length > 0 && preservedInRow.length > 0) {
+          const rowsCopy = replacementRows.map((r) => [...r]);
+          rowsCopy[rowsCopy.length - 1].push(...preservedInRow);
+          result.push(...rowsCopy);
+        } else {
+          result.push(...replacementRows);
+          if (preservedInRow.length > 0) {
+            result.push(preservedInRow);
+          }
+        }
+      } else if (preservedInRow.length > 0) {
+        if (result.length > 0) {
+          result[result.length - 1] = [...result[result.length - 1], ...preservedInRow];
+        } else {
+          result.push(preservedInRow);
+        }
+      }
+    }
+
+    if (!replaced) {
+      result.push(...replacementRows);
+    }
+
+    return result;
   }
 
   public async handleUpvote(input: UpvoteInput): Promise<UpvoteResult> {
@@ -129,3 +192,4 @@ export class FeedbackManager {
     }
   }
 }
+

@@ -1,6 +1,6 @@
 ---
 name: "argument-map"
-description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use ida:argument-extraction), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
+description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use ida:argument-extraction), for a formal sufficiency audit without a page (use ida:argument-audit), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
 ---
 
 # Argument map
@@ -18,9 +18,9 @@ Produce three things:
 
 ## Reconstruct
 
-- **Extract first with `ida:argument-extraction`.** It sets the Argdown output contract: titles, `source` quotes with locators, implicit premises, and the parser loop. Then reconstruct on top of what it produces.
+- **Extract first with `ida:argument-extraction`.** It sets the Argdown output contract: titles, chained Toulmin blocks with warrants in the inference bar, `{basis, pointer, source}` metadata, assumed premises (`{basis: "assumed", reason}`), and the parser loop. Then reconstruct on top of what it produces.
 - **Follow the text's own structure.** Put the thesis first, then one Argdown section per part of the text, in the text's order. A reader checks a map against the text, so the map should match it.
-- **Reconstruct charitably.** Build the strongest valid version of each step. Where validity needs a premise the author never states, add it, mark it implicit, and tag it `#missing`.
+- **Reconstruct charitably.** Build the strongest valid version of each step. Where validity needs a premise the author never states, add it with `{basis: "assumed", reason: "..."}` and tag it `#missing`; where the missing link is the inference rule itself, write it in the `-- Warrant --` bar with `basis: "assumed"`.
 - **Read claims at the strength the evidence can carry.** When the wording overstates (for example "veto" where the evidence shows "sometimes limits"), narrow your label but keep the author's words verbatim in `source`. Record the narrower reading as a decision.
 - **Attribute relations correctly.** Support is `+>`, attack is `->`, and undercut is `_>` (it attacks the inference, not a premise). Attach each relation to the argument that concludes or first states the claim, never to one that only borrows it as a premise. Otherwise the map shows links the text never makes.
 - **Tag what is open.** Define the legend in the frontmatter. Keep any categories the author already uses (for example evidence versus theory) as extra tags.
@@ -35,6 +35,15 @@ Produce three things:
 - **Put each new item in the part where it does its work.** Do not append it as a new part, because an appended block reads as a separate argument and hides how it changes the existing steps.
 - **Merge restatements.** If an item restates an existing claim, merge it into that claim and keep both locators.
 - **Re-check relations.** Afterwards, re-check every relation that touches a changed claim.
+
+## Shape it as a tree when the job is structure
+
+When the map's job is to lock a text's structure (parts, chapters, sections), rebuild the source as a tree and draw it as panels.
+
+- **Headings are the outline.** One Argdown heading per part, chapter, section and sub-section, in the text's order. Each claim rests on at most three children, written as nested relation lists; a child with more reasons gets an intermediate claim, which is the next heading. Objections are attack children; the reply is an attack child of the objection.
+- **Premise-conclusion blocks only at the warrant level**, where evidence and theory are checked against the step they license.
+- **Lint before drawing.** `references/tree_lint.py` exports the tree from the Argdown JSON and reports any claim with more than three supports, numbering breaks and orphans.
+- **Draw with `references/gen_panels.py`**: one overview (root headline, a row of chapter panels per part, sections as columns, reasons as small boxes, arrows only for moves between chapters from a links file) and one canvas per chapter with its warrant blocks beside the panel. Drawing rules are the diagram skill's.
 
 ## Check before delivering
 

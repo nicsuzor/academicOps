@@ -40,13 +40,13 @@ Then assemble the steps:
 ## 3. Write each task
 
 - Default to a single task with steps as a linear checklist; every extra cut costs a hand-off and loses context.
-- Cut at every wait: a step that can only complete after something the worker does not control happens (CI, review, merge, deploy, a reply) starts a new task, wired by `needs` to the task before it. Otherwise cut only where independent sessions are strictly required (e.g. forks, loops, independent reviews).
+- Cut into separate leaves only when independent sessions are strictly required (e.g. forks, loops, independent reviews).
 - Make each task as big as possible within those cuts.
 - Write each follow-up the workflow calls for as its own task. Never fold a follow-up into the primary task or into another follow-up.
 - Wire `needs` edges only where one unit genuinely requires another's output.
 - Mint multi-task cuts using `pkb.decompose_task`.
 - Write tasks with status `queued` immediately.
-- Close every task written from a composite workflow with an appendix section listing that workflow's component tasks in execution order.
+- Close every task with an appendix section listing the workflow templates and skills it was composed from.
 
 ```markdown
 ## Goal
@@ -63,7 +63,7 @@ Then assemble the steps:
 
 ## Instructions
 
-[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. The last step is a clean finish drawn from the finish template: deliver (e.g. push and open the PR), record the evidence, release the task, and exit. The finish waits for nothing; what comes after it is a follow-up task. ]
+[ Each step the worker must follow, drawn only from the composed workflow templates. The workflow templates are the only source of truth for instructions, obligations, and required processes. Add none of your own, because the workflow is where that judgement is maintained. The last step is the finish template's finish: deliver, record the evidence, release the task, and exit. ]
 
 ## Output
 
@@ -73,9 +73,9 @@ Then assemble the steps:
 
 [ Any special reporting requirements; default should be to update the task record with evidence next to each acceptance criterion: an item is ticked only with evidence of that item itself; any other item stays unticked with its limit stated. Workers should not add timestamped logs or other ephemeral data to the task record. Rewrite the record rather than appending information, and delete any temporary notes or logs, any outdated or incorrect information, and any irrelevant instructions or steps. Leave only current state. ]
 
-## Appendix: Component tasks
+## Appendix: Sources
 
-[ Present only when written from a composite workflow. List that workflow's component tasks in sequence, each with its role or deliverable. ]
+[ List the workflow templates and skills this task was composed from (e.g. wf-task-base + wf-finish + wf-qa). ]
 ```
 
 ### Mint QA follow-up when required
@@ -85,9 +85,9 @@ Where the project finish template calls for QA review:
 1. Mint an independent follow-up task with status `queued`.
 2. Title: `QA: <primary task title>`.
 3. Set parent to the primary task's parent.
-4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary worker completes.
+4. Wire dependency: `needs: [<primary_task_id>]` so the QA task stays blocked until the primary task is `done`.
 5. Record the QA task ID in the primary task's `follow_up_tasks`.
-6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the PR deliverable and claims against literal acceptance criteria, and merge to the target branch when verified per the finish template; a reviewer that pushes fixes or changes code must never merge and must hand off for independent review.
+6. Compose the designated QA template (`wf-qa`, `wf-signoff`, or `wf-fact-check`): instructions direct the reviewer to independently verify the merged deliverable and claims against literal acceptance criteria; a reviewer that changes code delivers it through the finish template and hands off for independent review.
 
 ### Requirements for writing tasks
 
@@ -100,7 +100,7 @@ Where the project finish template calls for QA review:
 - Leave out methods, command scripts, tool names, runtime hints, notes on the worker's limits, summaries of linked notes (point to them instead), provenance, changelogs, session narratives, counts, SHAs and history.
 - Change an existing task only for a defect you can point to in its text; otherwise leave it as written.
 - A skill may be a step, even the only step: write `invoke /<skill-name>` and leave its implementation to the skill. A workflow template is never a step; its steps are.
-- Close every task written from a composite workflow with an appendix section listing that workflow's component tasks in sequence.
+- Close every task with an appendix section listing the workflow templates and skills it was composed from.
 - Do not create standalone decision tasks or file questions as tasks.
 
 ## 4. Report

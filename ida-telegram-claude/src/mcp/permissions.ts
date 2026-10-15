@@ -7,6 +7,9 @@ export interface PendingPermission {
   parsed: ParsedPermissionView;
   resolve: (decision: "allow" | "deny") => void;
   createdAt: string;
+  chatId?: number;
+  messageId?: number;
+  cardText?: string;
 }
 
 export class PermissionRelay {
@@ -31,12 +34,23 @@ export class PermissionRelay {
     return item;
   }
 
-  public resolve(id: string, decision: "allow" | "deny"): boolean {
+  public setMessageInfo(id: string, chatId: number, messageId: number, cardText?: string) {
     const item = this.pending.get(id);
-    if (!item) return false;
+    if (item) {
+      item.chatId = chatId;
+      item.messageId = messageId;
+      if (cardText !== undefined) {
+        item.cardText = cardText;
+      }
+    }
+  }
+
+  public resolve(id: string, decision: "allow" | "deny"): PendingPermission | null {
+    const item = this.pending.get(id);
+    if (!item) return null;
     item.resolve(decision);
     this.pending.delete(id);
-    return true;
+    return item;
   }
 
   public get(id: string): PendingPermission | undefined {

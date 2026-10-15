@@ -18,12 +18,13 @@ Ida's custom Telegram channel and Mini App plugin for Claude Code.
   - Inline `👍` and `👎` on replies.
   - Upvotes recorded to trace sinks without waking the agent.
   - Downvotes prompt critique tags (`Too verbose`, `Wrong premise`, etc.) and emit a single `feedback_down` event to invoke `/ida:learn`.
-- **Mini App Security & Review:**
+- **Mini App Security, Details, Review, Questions & Anchor:**
   - Loopback-only Bun HTTP server (`127.0.0.1:<port>`) serving `/app/*` and `/api/app/*`.
   - Telegram `initData` HMAC-SHA256 validation with 1-hour expiration and `allowFrom` whitelist check.
-  - Permission diff viewer for `Edit`, `Write`, and `Bash` tool approvals.
-  - PR diff browser for reviewing changes without directly mutating GitHub.
-  - Live Cognitive Anchor tracking current focus, task IDs, delegations, and context window metrics.
+  - **Details tab (`FR-4.3`, `FR-1.6`):** Renders stored Details Markdown as formatted HTML (headings, inline formatting, collapsible `>!` quotes, syntax-highlighted code blocks, and HTML `<table>` elements).
+  - **Review tab (`FR-4.4`, `FR-4.5`):** Displays live pending tool permission requests (`Bash` copyable scripts, `Edit`/`MultiEdit`/`Write` unified diffs, JSON inputs) with `Allow` / `Deny` actions that resolve the relay and edit the Telegram chat card (`Allowed via Mini App ✅`), alongside PR/branch diffs fetched via `GITHUB_TOKEN` with a file tree, syntax-highlighted hunks, and `Approve` / `Request changes` actions that emit channel events to Ida without mutating GitHub directly.
+  - **Questions tab (`FR-4.6`):** Renders pending questions with `header`, option `description` lines, Recommended badges, radio options for single-select, checkboxes with a Submit button for `multiSelect`, a free-text input box for custom answers, and the `"To answer by voice, send a voice note in chat"` hint.
+  - **Anchor tab (`FR-4.7`):** Displays live `focus`, `taskId`, `uptime`, `waitingOn`, `delegations`, `pendingQuestions`, `recentTurns` (inbound and outbound), context window gauge (`contextTokens`), `🛑 Stop Session`, and the overwhelm dashboard link.
 - **Voice In & Out:**
   - Voice notes transcribed via pluggable script without spending tool calls.
   - Voice replies via speech synthesis for spoken audio delivery.

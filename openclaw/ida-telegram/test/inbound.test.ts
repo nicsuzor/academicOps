@@ -392,5 +392,190 @@ describe("Inbound completeness: Updates routing and parsing", () => {
       rmSync(stateDir, { recursive: true, force: true });
     }
   });
+
+  test("FR-9: sets 👀 reaction on every inbound allowFrom message on arrival, and sets no reaction on disallowed users, callback_query, or message_reaction", async () => {
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { QuestionBroker } = await import("../src/telegram/questions.js");
+    const { FeedbackManager } = await import("../src/telegram/feedback.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+    const { mkdtempSync, rmSync, writeFileSync, chmodSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-fr9-"));
+    const transcribeScript = join(stateDir, "transcribe.sh");
+    writeFileSync(transcribeScript, `#!/bin/sh\necho "Voice transcript"\n`, "utf-8");
+    chmodSync(transcribeScript, 0o755);
+
+    const config = {
+      botToken: "test-token",
+      apiBaseUrl: "https://api.telegram.org",
+      role: "primary",
+      isPrimary: true,
+      allowFrom: [12345678],
+      maxChatChars: 1200,
+      voiceReplies: "off" as const,
+      voiceTranscribeCmd: transcribeScript,
+      voiceSpeakCmd: "",
+      port: 8093,
+      stateDir,
+      socketPath: join(stateDir, "hook.sock"),
+      miniAppUrl: "https://ida.example.ts.net",
+      botCommands: [],
+    };
+
+    const broker = new QuestionBroker(stateDir);
+    const feedback = new FeedbackManager(stateDir);
+    const permRelay = new PermissionRelay();
+
+    const reactionCalls: Array<{ chat_id: unknown; message_id: unknown; reaction: unknown }> = [];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/file/bot")) {
+        return new Response(new Uint8Array([0x4f, 0x67, 0x67, 0x53]), { status: 200 });
+      }
+      const method = urlStr.split("/").pop() || "";
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (method === "setMessageReaction") {
+        reactionCalls.push({
+          chat_id: body.chat_id,
+          message_id: body.message_id,
+          reaction: body.reaction,
+        });
+      }
+      if (method === "getFile") {
+        return new Response(JSON.stringify({ ok: true, result: { file_path: "files/item.dat" } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const bot = new TelegramBotClient(config, broker, feedback, permRelay, () => {});
+
+      // 1. Plain text message from allowFrom user
+      await (bot as any).handleUpdate({
+        update_id: 201,
+        message: {
+          message_id: 601,
+          date: 1700000001,
+          chat: { id: 12345678, type: "private" },
+          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          text: "First message",
+        },
+      });
+
+      // 2. Quote-reply message from allowFrom user
+      await (bot as any).handleUpdate({
+        update_id: 202,
+        message: {
+          message_id: 602,
+          date: 1700000002,
+          chat: { id: 12345678, type: "private" },
+          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          text: "Reply to earlier",
+          reply_to_message: {
+            message_id: 600,
+            date: 1700000000,
+            chat: { id: 12345678, type: "private" },
+            text: "Earlier",
+          },
+        },
+      });
+
+      // 3. Photo attachment from allowFrom user
+      await (bot as any).handleUpdate({
+        update_id: 203,
+        message: {
+          message_id: 603,
+          date: 1700000003,
+          chat: { id: 12345678, type: "private" },
+          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          photo: [{ file_id: "ph_603", file_size: 500 }],
+        },
+      });
+
+      // 4. Bot command from allowFrom user
+      await (bot as any).handleUpdate({
+        update_id: 204,
+        message: {
+          message_id: 604,
+          date: 1700000004,
+          chat: { id: 12345678, type: "private" },
+          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          text: "/decide",
+        },
+      });
+
+      // 5. Voice note from allowFrom user
+      await (bot as any).handleUpdate({
+        update_id: 205,
+        message: {
+          message_id: 605,
+          date: 1700000005,
+          chat: { id: 12345678, type: "private" },
+          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          voice: { file_id: "vf_605", duration: 4 },
+        },
+      });
+
+      expect(reactionCalls).toEqual([
+        { chat_id: 12345678, message_id: 601, reaction: [{ type: "emoji", emoji: "👀" }] },
+        { chat_id: 12345678, message_id: 602, reaction: [{ type: "emoji", emoji: "👀" }] },
+        { chat_id: 12345678, message_id: 603, reaction: [{ type: "emoji", emoji: "👀" }] },
+        { chat_id: 12345678, message_id: 604, reaction: [{ type: "emoji", emoji: "👀" }] },
+        { chat_id: 12345678, message_id: 605, reaction: [{ type: "emoji", emoji: "👀" }] },
+      ]);
+
+      reactionCalls.length = 0;
+
+      // 6. Disallowed user message -> zero reactions
+      await (bot as any).handleUpdate({
+        update_id: 206,
+        message: {
+          message_id: 606,
+          date: 1700000006,
+          chat: { id: 99999999, type: "private" },
+          from: { id: 99999999, is_bot: false, first_name: "Stranger" },
+          text: "Unauthorized",
+        },
+      });
+
+      // 7. Callback query -> zero reactions
+      await (bot as any).handleUpdate({
+        update_id: 207,
+        callback_query: {
+          id: "cb_607",
+          from: { id: 12345678, is_bot: false, first_name: "Nic" },
+          message: {
+            message_id: 601,
+            date: 1700000001,
+            chat: { id: 12345678, type: "private" },
+            text: "First message",
+          },
+          data: "fb:up",
+        },
+      });
+
+      // 8. Message reaction update -> zero reactions
+      await (bot as any).handleUpdate({
+        update_id: 208,
+        message_reaction: {
+          chat: { id: 12345678, type: "private" },
+          message_id: 601,
+          user: { id: 12345678, is_bot: false, first_name: "Nic" },
+          date: 1700000008,
+          old_reaction: [],
+          new_reaction: [{ type: "emoji", emoji: "🔥" }],
+        },
+      });
+
+      expect(reactionCalls).toEqual([]);
+    } finally {
+      globalThis.fetch = origFetch;
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
 });
+
 

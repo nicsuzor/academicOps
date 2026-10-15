@@ -206,23 +206,36 @@ export class QuestionBroker {
 
   public async resolveAnswer(
     id: string,
-    optionIndex: number | "done" | "other",
-    customText?: string
+    optionIndex?: number | "done" | "other",
+    customText?: string,
+    optionIndices?: number[]
   ): Promise<ResolveAnswerResult | null> {
     const q = this.questions.get(id);
     if (!q || q.status !== "pending") return null;
 
     let choice = "";
-    if (customText !== undefined && (optionIndex === "other" || typeof optionIndex !== "number")) {
-      choice = customText;
+    const trimmedCustom = customText !== undefined ? customText.trim() : "";
+
+    if (Array.isArray(optionIndices) && optionIndices.length > 0) {
+      q.selectedOptions = optionIndices;
+      const selected = optionIndices.map((i) => q.options[i]?.label).filter(Boolean);
+      if (trimmedCustom) {
+        selected.push(trimmedCustom);
+      }
+      choice = selected.join(", ") || "None";
+    } else if (trimmedCustom && (optionIndex === "other" || typeof optionIndex !== "number")) {
+      choice = trimmedCustom;
     } else if (typeof optionIndex === "number" && !Number.isNaN(optionIndex)) {
       const opt = q.options[optionIndex];
       choice = opt ? opt.label : `Option ${optionIndex + 1}`;
     } else if (optionIndex === "done") {
       const selected = (q.selectedOptions || []).map((i) => q.options[i]?.label).filter(Boolean);
+      if (trimmedCustom) {
+        selected.push(trimmedCustom);
+      }
       choice = selected.join(", ") || "None";
-    } else if (customText) {
-      choice = customText;
+    } else if (trimmedCustom) {
+      choice = trimmedCustom;
     }
 
     q.status = "answered";

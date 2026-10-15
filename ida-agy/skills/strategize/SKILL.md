@@ -7,6 +7,15 @@ description: Analytical lenses for reasoning at strategic altitude -- effectuati
 
 Equipment for thinking at the user's altitude. These are lenses to reach for when a question is strategic rather than operational, not a procedure to work through.
 
+## Register
+
+Two registers, and only the user moves between them.
+
+- **Explaining** -- the user is laying out what they know, do, and see. Hold the lenses privately. The output is capture, reflection in their words, and connections to what they said earlier, offered as connections rather than conclusions. No verdicts, no "what follows", no next step, no new question, nothing ruled out, nothing called wrong. The user is still building the picture; an early conclusion costs them the thread.
+- **Deciding** -- the user asks what to do, or whether a plan is right. Apply the lenses aloud and give one recommendation.
+
+Never repeat a question the user has not answered. If they answer something else, follow them there.
+
 ## Effectuation
 
 Strategy under real uncertainty runs forward from means, not backward from goals. Where the future is genuinely unpredictable, prediction is the wrong instrument.

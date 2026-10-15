@@ -127,11 +127,15 @@ def resolve_gemini_tokens(
     input_text: str = "",
     output_text: str = "",
     thinking_text: str = "",
+    reported_input_tokens: int | None = None,
+    reported_cache_read_tokens: int | None = None,
+    reported_output_tokens: int | None = None,
 ) -> dict[str, Any]:
     """Resolve token usage for a Gemini step.
 
-    Checks the Antigravity conversation SQLite database for reported usage.
-    Falls back to a heuristic estimate if the database is missing or unreadable.
+    Checks the Antigravity conversation SQLite database for reported usage,
+    then inline reported token counts on the transcript step entry, and falls
+    back to a heuristic estimate (~4 chars/token) when neither is available.
     """
     candidate_db_paths: list[Path] = []
     app_data_dir = os.environ.get("ANTIGRAVITY_APP_DATA_DIR")
@@ -139,6 +143,9 @@ def resolve_gemini_tokens(
         candidate_db_paths.append(Path(app_data_dir) / "conversations" / f"{session_id}.db")
 
     if session_id:
+        candidate_db_paths.append(
+            Path.home() / ".gemini" / "antigravity" / "conversations" / f"{session_id}.db"
+        )
         candidate_db_paths.append(
             Path.home() / ".gemini" / "antigravity-cli" / "conversations" / f"{session_id}.db"
         )
@@ -177,5 +184,23 @@ def resolve_gemini_tokens(
                         return tok
             except Exception:
                 pass
+
+    if reported_input_tokens is not None or reported_output_tokens is not None:
+        fresh = int(reported_input_tokens or 0)
+        cached = int(reported_cache_read_tokens or 0)
+        completion = int(reported_output_tokens or 0)
+        prompt = fresh + cached
+        total = prompt + completion
+        if prompt > 0 or completion > 0:
+            return {
+                "prompt": prompt,
+                "completion": completion,
+                "total": total,
+                "cache_read": cached,
+                "cache_write": 0,
+                "thoughts": max(0, len(thinking_text or "") // 4),
+                "type": "reported",
+                "estimate_method": "reported: antigravity transcript.jsonl step usage",
+            }
 
     return _estimate_tokens(input_text, output_text, thinking_text)

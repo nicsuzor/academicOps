@@ -84,3 +84,23 @@ export function prepareVoiceText(markdown: string): string {
 
   return text;
 }
+
+export function splitVoiceTier2Quotes(markdown: string): { tier1Text: string; tier2Quotes: string } {
+  const lines = markdown.split("\n");
+  const tier1Lines: string[] = [];
+  const tier2Lines: string[] = [];
+
+  for (const line of lines) {
+    if (line.trim().startsWith(">")) {
+      tier2Lines.push(line);
+    } else {
+      tier1Lines.push(line);
+    }
+  }
+
+  return {
+    tier1Text: tier1Lines.join("\n").trim(),
+    tier2Quotes: tier2Lines.join("\n").trim(),
+  };
+}
+

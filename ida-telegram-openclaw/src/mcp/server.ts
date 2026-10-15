@@ -6,6 +6,7 @@ import { processReplyOverflow } from "../telegram/overflow.js";
 import { formatMarkdownToEntities, normalizeReaction } from "../telegram/format.js";
 import { TelegramBotClient } from "../telegram/bot.js";
 import { sanitizeChannelMeta } from "../telegram/inbound.js";
+import { splitVoiceTier2Quotes } from "../telegram/voice.js";
 import { PermissionRelay } from "./permissions.js";
 
 export class StdioMcpServer {
@@ -30,6 +31,7 @@ export class StdioMcpServer {
   }
 
   public emitChannelNotification(content: string, meta: Record<string, unknown>) {
+    this.store.recordTurn("in", String(content));
     const notification = {
       jsonrpc: "2.0",
       method: "notifications/claude/channel",
@@ -136,14 +138,15 @@ export class StdioMcpServer {
     // Permission request from Claude Code channel relay
     if (method === "claude/channel/permission") {
       const p = params as { id: string; tool_name: string; tool_input: Record<string, unknown> };
+      const decisionPromise = new Promise<"allow" | "deny">((resolve) => {
+        this.permRelay.register(p.id, p.tool_name, p.tool_input, resolve);
+      });
       // Forward permission prompt to Telegram with Review button
       if (this.bot) {
         await this.bot.sendPermissionCard(p.id, p.tool_name, p.tool_input);
       }
       // Hold permission resolution until Nic approves in chat or Mini App
-      const decision = await new Promise<"allow" | "deny">((resolve) => {
-        this.permRelay.register(p.id, p.tool_name, p.tool_input, resolve);
-      });
+      const decision = await decisionPromise;
       return {
         jsonrpc: "2.0",
         id,
@@ -165,14 +168,34 @@ export class StdioMcpServer {
       const text = (args.text as string) || "";
       const detail = args.detail as string | undefined;
       const chatId = (args.chat_id as number) || defaultChatId;
-      const isVoice = !!args.voice;
       const replyTo = args.reply_to as number | undefined;
       const feedback = args.feedback !== false;
 
+      // FR-7.1: Determine whether voice reply is requested explicitly or via voice_replies setting
+      let isVoice = false;
+      if (typeof args.voice === "boolean") {
+        isVoice = args.voice;
+      } else if (this.config.voiceReplies === "always") {
+        isVoice = true;
+      } else if (this.config.voiceReplies === "mirror" && this.bot?.isLastInboundVoice(chatId)) {
+        isVoice = true;
+      }
+
+      // FR-7.2 & FR-7.3: For voice replies, Tier 2 quotes go behind Details along with Tier 3
+      let effectiveText = text;
+      let effectiveDetail = detail;
+      if (isVoice) {
+        const { tier1Text, tier2Quotes } = splitVoiceTier2Quotes(text);
+        if (tier2Quotes) {
+          effectiveText = tier1Text;
+          effectiveDetail = detail ? `${tier2Quotes}\n\n---\n\n${detail}` : tier2Quotes;
+        }
+      }
+
       // 1. Process overflow
       const overflowRes = processReplyOverflow({
-        text,
-        detail,
+        text: effectiveText,
+        detail: effectiveDetail,
         maxChatChars: this.config.maxChatChars,
       });
 
@@ -180,6 +203,12 @@ export class StdioMcpServer {
       if (overflowRes.combinedDetail) {
         detailsId = this.store.storeDetails(overflowRes.combinedDetail);
       }
+
+      const reviewArg = args.review as { repo: string; pr?: number; base?: string; head?: string } | undefined;
+      if (reviewArg?.repo) {
+        this.store.addReview(reviewArg);
+      }
+      this.store.recordTurn("out", overflowRes.chatText);
 
       // 2. Format entities
       const formatted = formatMarkdownToEntities(overflowRes.chatText);
@@ -194,9 +223,26 @@ export class StdioMcpServer {
           voice: isVoice,
           replyTo,
           feedback,
-          review: args.review as { repo: string; pr?: number } | undefined,
+          review: reviewArg,
         });
-        return { success: true, messageId: sendRes?.messageId, detailsId };
+
+        const out: Record<string, unknown> = {
+          success: true,
+          messageId: sendRes?.messageId,
+        };
+        if (detailsId !== undefined) {
+          out.detailsId = detailsId;
+        }
+        if (sendRes?.voiceSent !== undefined) {
+          out.voiceSent = sendRes.voiceSent;
+        }
+        if (sendRes?.voiceMessageId !== undefined) {
+          out.voiceMessageId = sendRes.voiceMessageId;
+        }
+        if (sendRes?.voiceError !== undefined) {
+          out.voiceError = sendRes.voiceError;
+        }
+        return out;
       }
 
       return { success: true, preview: formatted.plainText, detailsId };
@@ -242,6 +288,7 @@ export class StdioMcpServer {
           chatId: defaultChatId,
         });
         postedIds.push(result.questionId);
+        this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
         if (this.bot) {
           const card = this.broker.renderQuestionCard(result.questionId);
@@ -262,12 +309,28 @@ export class StdioMcpServer {
       const taskId = args.task_id as string | undefined;
       const waitingOn = args.waiting_on as string[] | undefined;
       const delegations = args.delegations as string[] | undefined;
+      const ctxRaw = args.context_tokens as
+        | { used_tokens?: number; total_tokens?: number; percentage?: number }
+        | undefined;
+      let contextTokens: { usedTokens: number; totalTokens: number; percentage: number } | undefined;
+      if (ctxRaw) {
+        const usedTokens = Number(ctxRaw.used_tokens || 0);
+        const totalTokens = Number(ctxRaw.total_tokens || 200000);
+        const percentage =
+          typeof ctxRaw.percentage === "number"
+            ? ctxRaw.percentage
+            : totalTokens > 0
+              ? Math.round((usedTokens / totalTokens) * 100)
+              : 0;
+        contextTokens = { usedTokens, totalTokens, percentage };
+      }
 
       this.store.setAnchor({
         focus,
         taskId,
         waitingOn,
         delegations,
+        ...(contextTokens ? { contextTokens } : {}),
       });
 
       return { success: true, focus };
