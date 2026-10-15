@@ -106,11 +106,11 @@ install-dev: build
 	done
 	@mkdir -p ~/.gemini/config/plugins
 	@for p in $(PLUGIN_NAMES); do \
-		command -v agy >/dev/null 2>&1 && (agy plugin uninstall $$p >/dev/null 2>&1 || true; agy plugin uninstall "$$p" && echo "✓ agy $$p uninstalled" || echo "x agy $$p uninstall failed"); \
+		command -v agy >/dev/null 2>&1 && (agy plugin uninstall "$$p" >/dev/null 2>&1 || true); \
 		rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
 		if [ -d "$(DIST)/$$p-agy" ]; then \
 			cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"; \
-			command -v agy >/dev/null 2>&1 && (agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 && echo "✓ agy $$p installed" || true); \
+			command -v agy >/dev/null 2>&1 && (agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 && agy plugin enable "$$p" >/dev/null 2>&1 && echo "✓ agy $$p installed and enabled" || true); \
 		fi; \
 	done || true
 	@uv run python -m build.install install --dist-root $(DIST)
@@ -130,11 +130,20 @@ uninstall-dev:
 	@command claude plugin marketplace update academicOps
 	@echo "✓ release marketplace restored"
 
-install:
+install: build-agy
 	@command claude plugin marketplace remove academicOps >/dev/null 2>&1 || true
 	@command claude plugin marketplace add $(DIST_REPO)
 	@command claude plugin marketplace update academicOps
 	@for p in $(PLUGIN_NAMES); do $(call claude_install,$$p,academicOps); done
+	@mkdir -p ~/.gemini/config/plugins
+	@for p in $(PLUGIN_NAMES); do \
+		if [ -d "$(DIST)/$$p-agy" ]; then \
+			command -v agy >/dev/null 2>&1 && (agy plugin uninstall "$$p" >/dev/null 2>&1 || true); \
+			rm -rf ~/.gemini/config/plugins/$$p ~/.gemini/config/plugins/aops-$$p; \
+			cp -R "$(DIST)/$$p-agy" ~/.gemini/config/plugins/$$p && echo "✓ ~/.gemini/config/plugins/$$p installed"; \
+			command -v agy >/dev/null 2>&1 && (agy plugin install "$(DIST)/$$p-agy" >/dev/null 2>&1 && agy plugin enable "$$p" >/dev/null 2>&1 && echo "✓ agy $$p installed and enabled" || true); \
+		fi; \
+	done || true
 
 # --- Maintenance ---
 
