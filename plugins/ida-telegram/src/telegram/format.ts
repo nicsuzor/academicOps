@@ -25,26 +25,31 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
   const entities: TelegramEntity[] = [];
   let out = "";
 
-  // Process line by line to handle blockquotes first
+  // Process line by line to group consecutive blockquotes (> and >!)
   const lines = markdown.split("\n");
   let inStdQuote = false;
   let inExpQuote = false;
   let quoteStartOffset = 0;
+  const quoteSpans: Array<{
+    type: "blockquote" | "expandable_blockquote";
+    outStart: number;
+    outEnd: number;
+  }> = [];
 
   function closeQuote() {
     if (inStdQuote) {
-      entities.push({
+      quoteSpans.push({
         type: "blockquote",
-        offset: quoteStartOffset,
-        length: out.length - quoteStartOffset,
+        outStart: quoteStartOffset,
+        outEnd: out.length,
       });
       inStdQuote = false;
     }
     if (inExpQuote) {
-      entities.push({
+      quoteSpans.push({
         type: "expandable_blockquote",
-        offset: quoteStartOffset,
-        length: out.length - quoteStartOffset,
+        outStart: quoteStartOffset,
+        outEnd: out.length,
       });
       inExpQuote = false;
     }
@@ -81,12 +86,14 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
   }
   closeQuote();
 
-  // Now scan inline markup in `out`
-  // We handle ```pre```, `code`, **bold**, *italic*, [link](url)
+  // Scan inline markup in `out` while tracking `out` -> `cleanText` UTF-16 offsets
   let cleanText = "";
   let idx = 0;
+  const outToCleanOffset = new Array<number>(out.length + 1);
 
   while (idx < out.length) {
+    outToCleanOffset[idx] = cleanText.length;
+
     // 1. Triple backticks (pre)
     if (out.startsWith("```", idx)) {
       const endPre = out.indexOf("```", idx + 3);
@@ -107,6 +114,9 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           length: code.length,
           language: lang || undefined,
         });
+        for (let k = idx + 1; k <= endPre + 3; k++) {
+          outToCleanOffset[k] = cleanText.length;
+        }
         idx = endPre + 3;
         continue;
       }
@@ -124,6 +134,9 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: code.length,
         });
+        for (let k = idx + 1; k <= endCode + 1; k++) {
+          outToCleanOffset[k] = cleanText.length;
+        }
         idx = endCode + 1;
         continue;
       }
@@ -141,6 +154,9 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: boldText.length,
         });
+        for (let k = idx + 1; k <= endBold + 2; k++) {
+          outToCleanOffset[k] = cleanText.length;
+        }
         idx = endBold + 2;
         continue;
       }
@@ -162,6 +178,9 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
             length: linkText.length,
             url: linkUrl,
           });
+          for (let k = idx + 1; k <= closeParen + 1; k++) {
+            outToCleanOffset[k] = cleanText.length;
+          }
           idx = closeParen + 1;
           continue;
         }
@@ -180,6 +199,9 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
           offset: startOffset,
           length: italicText.length,
         });
+        for (let k = idx + 1; k <= endItalic + 1; k++) {
+          outToCleanOffset[k] = cleanText.length;
+        }
         idx = endItalic + 1;
         continue;
       }
@@ -188,46 +210,25 @@ export function formatMarkdownToEntities(markdown: string): FormattedMessage {
     cleanText += out[idx];
     idx++;
   }
+  outToCleanOffset[out.length] = cleanText.length;
 
-  // Shift blockquote entity lengths based on stripped markdown characters in quotes
-  // Simple re-scan for quotes in cleanText
-  const finalEntities: TelegramEntity[] = [];
-  const linesClean = cleanText.split("\n");
-  let runningOffset = 0;
-
-  for (let i = 0; i < lines.length && i < linesClean.length; i++) {
-    const rawLine = lines[i];
-    const cleanLine = linesClean[i];
-    const lineLen = cleanLine.length + (i < linesClean.length - 1 ? 1 : 0);
-
-    if (rawLine.startsWith(">!")) {
-      finalEntities.push({
-        type: "expandable_blockquote",
-        offset: runningOffset,
-        length: cleanLine.length,
+  for (const span of quoteSpans) {
+    const start = outToCleanOffset[span.outStart] ?? 0;
+    const end = outToCleanOffset[span.outEnd] ?? cleanText.length;
+    if (end > start) {
+      entities.push({
+        type: span.type,
+        offset: start,
+        length: end - start,
       });
-    } else if (rawLine.startsWith(">")) {
-      finalEntities.push({
-        type: "blockquote",
-        offset: runningOffset,
-        length: cleanLine.length,
-      });
-    }
-    runningOffset += lineLen;
-  }
-
-  // Merge non-quote entities with quote entities
-  for (const ent of entities) {
-    if (ent.type !== "blockquote" && ent.type !== "expandable_blockquote") {
-      finalEntities.push(ent);
     }
   }
 
-  finalEntities.sort((a, b) => a.offset - b.offset);
+  entities.sort((a, b) => a.offset - b.offset);
 
   return {
     plainText: cleanText,
-    entities: finalEntities,
+    entities,
   };
 }
 

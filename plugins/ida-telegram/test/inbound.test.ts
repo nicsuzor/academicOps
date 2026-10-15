@@ -87,6 +87,69 @@ describe("Inbound completeness: Updates routing and parsing", () => {
     expect(result?.meta.target_excerpt).toBe("Previous message text for 88");
   });
 
+  test("TelegramBotClient populates target_excerpt when user reacts to a message", async () => {
+    const { TelegramBotClient } = await import("../src/telegram/bot.js");
+    const { QuestionBroker } = await import("../src/telegram/questions.js");
+    const { FeedbackManager } = await import("../src/telegram/feedback.js");
+    const { PermissionRelay } = await import("../src/mcp/permissions.js");
+    const { formatMarkdownToEntities } = await import("../src/telegram/format.js");
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const stateDir = mkdtempSync(join(tmpdir(), "ida-tg-rx-"));
+    try {
+      const config = {
+        botToken: "test-token",
+        apiBaseUrl: "https://api.telegram.org",
+        role: "primary",
+        isPrimary: true,
+        allowFrom: [12345678],
+        maxChatChars: 1200,
+        voiceReplies: "off" as const,
+        voiceTranscribeCmd: "",
+        voiceSpeakCmd: "",
+        port: 0,
+        stateDir,
+        socketPath: join(stateDir, "hook.sock"),
+        botCommands: [],
+      };
+      const broker = new QuestionBroker(stateDir);
+      const feedback = new FeedbackManager(stateDir);
+      const permRelay = new PermissionRelay();
+      const events: Array<{ content: string; meta: Record<string, unknown> }> = [];
+
+      const bot = new TelegramBotClient(config, broker, feedback, permRelay, (content, meta) => {
+        events.push({ content, meta });
+      });
+      (bot as any).callApi = async () => ({ ok: true, result: { message_id: 500 } });
+
+      await bot.sendReply({
+        chatId: 12345678,
+        formatted: formatMarkdownToEntities("Deployment finished cleanly on hospital."),
+      });
+
+      await (bot as any).handleUpdate({
+        update_id: 90,
+        message_reaction: {
+          chat: { id: 12345678, type: "private" },
+          message_id: 500,
+          user: { id: 12345678, is_bot: false, first_name: "Nic" },
+          date: Date.now(),
+          old_reaction: [],
+          new_reaction: [{ type: "emoji", emoji: "🔥" }],
+        },
+      });
+
+      expect(events.length).toBe(1);
+      expect(events[0].meta.event).toBe("reaction");
+      expect(events[0].meta.target_message_id).toBe("500");
+      expect(events[0].meta.target_excerpt).toBe("Deployment finished cleanly on hospital.");
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
   test("delivers non-question button tap events", () => {
     const update: TelegramUpdate = {
       update_id: 5,

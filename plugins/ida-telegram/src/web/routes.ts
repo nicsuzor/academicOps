@@ -133,8 +133,9 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
       focus: "Standing by",
       updatedAt: new Date().toISOString(),
     };
+    const contextTokens = anchor.contextTokens || ctx.store.resolveContextTokens() || undefined;
     const pendingQuestions = ctx.broker.getPendingQuestions().length;
-    return new Response(JSON.stringify({ ...anchor, pendingQuestions }), {
+    return new Response(JSON.stringify({ ...anchor, contextTokens, pendingQuestions }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

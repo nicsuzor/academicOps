@@ -51,6 +51,7 @@ export class TelegramBotClient {
   private conflictCount = 0;
   private lastAlertTime = 0;
   private lastInboundWasVoiceByChat = new Map<number, boolean>();
+  private messageExcerpts = new Map<number, string>();
 
   constructor(
     config: PluginConfig,
@@ -70,6 +71,18 @@ export class TelegramBotClient {
     return this.lastInboundWasVoiceByChat.get(chatId) === true;
   }
 
+  private recordMessageExcerpt(messageId: number | undefined, text: string | undefined) {
+    if (messageId === undefined || !text) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const excerpt = trimmed.length > 160 ? `${trimmed.slice(0, 157)}...` : trimmed;
+    this.messageExcerpts.set(messageId, excerpt);
+  }
+
+  public getMessageExcerpt(messageId: number): string | undefined {
+    return this.messageExcerpts.get(messageId);
+  }
+
   private async callApi(method: string, payload: Record<string, unknown>): Promise<any> {
     const baseUrl = this.config.apiBaseUrl || "https://api.telegram.org";
     const url = `${baseUrl}/bot${this.config.botToken}/${method}`;
@@ -79,6 +92,10 @@ export class TelegramBotClient {
       body: JSON.stringify(payload),
     });
     const json = await res.json();
+    if (json?.ok && json?.result?.message_id && (method === "sendMessage" || method === "editMessageText")) {
+      const text = typeof payload.text === "string" ? payload.text : json.result.text;
+      this.recordMessageExcerpt(json.result.message_id, text);
+    }
     return json;
   }
 
@@ -115,7 +132,11 @@ export class TelegramBotClient {
       method: "POST",
       body: formData,
     });
-    return await res.json();
+    const json = await res.json();
+    if (json?.ok && json?.result?.message_id && options.caption) {
+      this.recordMessageExcerpt(json.result.message_id, options.caption);
+    }
+    return json;
   }
 
   public async setReaction(chatId: number, messageId: number, emoji: string): Promise<boolean> {
@@ -218,6 +239,7 @@ export class TelegramBotClient {
               inlineKeyboard,
             });
             if (voiceRes?.ok && voiceRes?.result) {
+              this.recordMessageExcerpt(voiceRes.result.message_id, formatted.plainText);
               return {
                 messageId: voiceRes.result.message_id,
                 voiceSent: true,
@@ -251,8 +273,10 @@ export class TelegramBotClient {
               });
             }
 
+            const finalMessageId = textRes?.result?.message_id ?? voiceMessageId;
+            this.recordMessageExcerpt(finalMessageId, formatted.plainText);
             return {
-              messageId: textRes?.result?.message_id ?? voiceMessageId,
+              messageId: finalMessageId,
               voiceMessageId,
               voiceSent: true,
             };
@@ -287,6 +311,7 @@ export class TelegramBotClient {
 
     const res = await this.callApi("sendMessage", payload);
     if (res.ok && res.result) {
+      this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
       if (voice) {
         return { messageId: res.result.message_id, voiceSent: false, voiceError };
       }
@@ -301,6 +326,7 @@ export class TelegramBotClient {
     });
 
     if (fallbackRes.ok && fallbackRes.result) {
+      this.recordMessageExcerpt(fallbackRes.result.message_id, formatted.plainText);
       if (voice) {
         return { messageId: fallbackRes.result.message_id, voiceSent: false, voiceError };
       }
@@ -321,19 +347,31 @@ export class TelegramBotClient {
     });
     if (res?.ok && res?.result?.message_id) {
       this.broker.setMessageId(qid, res.result.message_id);
+      this.recordMessageExcerpt(res.result.message_id, formatted.plainText);
     }
     return res;
   }
 
-  public async sendPermissionCard(permId: string, toolName: string, input: Record<string, unknown>) {
+  public async sendPermissionCard(
+    permId: string,
+    toolName: string,
+    input: Record<string, unknown>,
+    description?: string,
+    inputPreview?: string
+  ) {
     const defaultChatId = this.config.allowFrom[0];
     if (!defaultChatId) return;
 
     let summary = `Permission request: *${toolName}*`;
-    if (toolName === "Bash") {
-      summary += `\n\`\`\`bash\n${input.command || ""}\n\`\`\``;
-    } else if (toolName === "Edit" || toolName === "Write") {
-      summary += `\nTarget: \`${input.file_path || input.target_file || ""}\``;
+    if (description) {
+      summary += `\n${description}`;
+    }
+    if (toolName === "Bash" && input.command) {
+      summary += `\n\`\`\`bash\n${input.command}\n\`\`\``;
+    } else if ((toolName === "Edit" || toolName === "Write") && (input.file_path || input.target_file)) {
+      summary += `\nTarget: \`${input.file_path || input.target_file}\``;
+    } else if (inputPreview) {
+      summary += `\n\`\`\`\n${inputPreview}\n\`\`\``;
     }
 
     const inline_keyboard: Array<Array<Record<string, unknown>>> = [
@@ -352,15 +390,20 @@ export class TelegramBotClient {
       ]);
     }
 
-    return await this.callApi("sendMessage", {
+    const res = await this.callApi("sendMessage", {
       chat_id: defaultChatId,
       text: summary,
       reply_markup: { inline_keyboard },
     });
+    if (res?.ok && res?.result?.message_id) {
+      this.recordMessageExcerpt(res.result.message_id, summary);
+    }
+    return res;
   }
 
   public async editMessage(chatId: number, messageId: number, text: string, replyMarkup?: Record<string, unknown>) {
     const formatted = formatMarkdownToEntities(text);
+    this.recordMessageExcerpt(messageId, formatted.plainText);
     return await this.callApi("editMessageText", {
       chat_id: chatId,
       message_id: messageId,
@@ -458,6 +501,10 @@ export class TelegramBotClient {
   }
 
   private async handleUpdate(update: TelegramUpdate) {
+    if (update.message?.message_id && (update.message.text || update.message.caption)) {
+      this.recordMessageExcerpt(update.message.message_id, update.message.text || update.message.caption);
+    }
+
     // 1. If inbound message from Nic, immediately set 👀 reaction (FR-9) and record voice-vs-text for FR-7.1 mirror
     if (update.message?.from?.id && this.config.allowFrom.includes(update.message.from.id)) {
       const isInboundVoice = Boolean(update.message.voice || update.message.audio);
@@ -700,7 +747,7 @@ export class TelegramBotClient {
     }
 
     // 5. General Inbound (text, attachments, reactions, commands)
-    const event = parseInboundUpdate(update, this.config.allowFrom);
+    const event = parseInboundUpdate(update, this.config.allowFrom, (msgId) => this.getMessageExcerpt(msgId));
     if (event) {
       if (event.event === "attachment" && event.meta.file_id && this.config.botToken) {
         try {
