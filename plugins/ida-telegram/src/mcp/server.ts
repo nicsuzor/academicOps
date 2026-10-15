@@ -31,6 +31,7 @@ export class StdioMcpServer {
   }
 
   public emitChannelNotification(content: string, meta: Record<string, unknown>) {
+    this.store.recordTurn("in", String(content));
     const notification = {
       jsonrpc: "2.0",
       method: "notifications/claude/channel",
@@ -137,14 +138,15 @@ export class StdioMcpServer {
     // Permission request from Claude Code channel relay
     if (method === "claude/channel/permission") {
       const p = params as { id: string; tool_name: string; tool_input: Record<string, unknown> };
+      const decisionPromise = new Promise<"allow" | "deny">((resolve) => {
+        this.permRelay.register(p.id, p.tool_name, p.tool_input, resolve);
+      });
       // Forward permission prompt to Telegram with Review button
       if (this.bot) {
         await this.bot.sendPermissionCard(p.id, p.tool_name, p.tool_input);
       }
       // Hold permission resolution until Nic approves in chat or Mini App
-      const decision = await new Promise<"allow" | "deny">((resolve) => {
-        this.permRelay.register(p.id, p.tool_name, p.tool_input, resolve);
-      });
+      const decision = await decisionPromise;
       return {
         jsonrpc: "2.0",
         id,
@@ -202,6 +204,12 @@ export class StdioMcpServer {
         detailsId = this.store.storeDetails(overflowRes.combinedDetail);
       }
 
+      const reviewArg = args.review as { repo: string; pr?: number; base?: string; head?: string } | undefined;
+      if (reviewArg?.repo) {
+        this.store.addReview(reviewArg);
+      }
+      this.store.recordTurn("out", overflowRes.chatText);
+
       // 2. Format entities
       const formatted = formatMarkdownToEntities(overflowRes.chatText);
 
@@ -215,7 +223,7 @@ export class StdioMcpServer {
           voice: isVoice,
           replyTo,
           feedback,
-          review: args.review as { repo: string; pr?: number } | undefined,
+          review: reviewArg,
         });
 
         const out: Record<string, unknown> = {
@@ -280,6 +288,7 @@ export class StdioMcpServer {
           chatId: defaultChatId,
         });
         postedIds.push(result.questionId);
+        this.store.recordTurn("out", q.header ? `${q.header}: ${q.question}` : q.question);
 
         if (this.bot) {
           const card = this.broker.renderQuestionCard(result.questionId);
@@ -300,12 +309,28 @@ export class StdioMcpServer {
       const taskId = args.task_id as string | undefined;
       const waitingOn = args.waiting_on as string[] | undefined;
       const delegations = args.delegations as string[] | undefined;
+      const ctxRaw = args.context_tokens as
+        | { used_tokens?: number; total_tokens?: number; percentage?: number }
+        | undefined;
+      let contextTokens: { usedTokens: number; totalTokens: number; percentage: number } | undefined;
+      if (ctxRaw) {
+        const usedTokens = Number(ctxRaw.used_tokens || 0);
+        const totalTokens = Number(ctxRaw.total_tokens || 200000);
+        const percentage =
+          typeof ctxRaw.percentage === "number"
+            ? ctxRaw.percentage
+            : totalTokens > 0
+              ? Math.round((usedTokens / totalTokens) * 100)
+              : 0;
+        contextTokens = { usedTokens, totalTokens, percentage };
+      }
 
       this.store.setAnchor({
         focus,
         taskId,
         waitingOn,
         delegations,
+        ...(contextTokens ? { contextTokens } : {}),
       });
 
       return { success: true, focus };

@@ -37,6 +37,7 @@ async function main() {
   const webContext = {
     store,
     broker,
+    permRelay,
     config,
     sessionSecret,
     emitChannelEvent: (event: string, content: string, meta: Record<string, unknown>) => {

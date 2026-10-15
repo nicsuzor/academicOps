@@ -1,11 +1,14 @@
 import { PluginStore } from "../store.js";
 import { QuestionBroker } from "../telegram/questions.js";
+import { PermissionRelay } from "../mcp/permissions.js";
 import { verifySessionToken, verifyTelegramInitData, createSessionToken } from "./auth.js";
+import { fetchPrDiff, FormattedPrDiff } from "./review.js";
 import { PluginConfig } from "../config.js";
 
 export interface WebContext {
   store: PluginStore;
   broker: QuestionBroker;
+  permRelay?: PermissionRelay;
   config: PluginConfig;
   sessionSecret: string;
   emitChannelEvent: (event: string, content: string, meta: Record<string, unknown>) => void;
@@ -98,8 +101,8 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     return (async () => {
       try {
         const body = await req.json();
-        const { questionId, optionIndex, customText } = body;
-        const result = await ctx.broker.resolveAnswer(questionId, optionIndex, customText);
+        const { questionId, optionIndex, customText, optionIndices } = body;
+        const result = await ctx.broker.resolveAnswer(questionId, optionIndex, customText, optionIndices);
         if (!result) {
           return new Response(JSON.stringify({ error: "Question not found or already answered" }), {
             status: 404,
@@ -133,11 +136,27 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
       focus: "Standing by",
       updatedAt: new Date().toISOString(),
     };
-    const pendingQuestions = ctx.broker.getPendingQuestions().length;
-    return new Response(JSON.stringify({ ...anchor, pendingQuestions }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    const pending = ctx.broker.getPendingQuestions();
+    const pendingQuestionItems = pending.map((q) => ({
+      id: q.id,
+      header: q.header,
+      question: q.question,
+    }));
+    const recentTurns = ctx.store.getRecentTurns();
+    const uptimeSeconds = ctx.store.getUptimeSeconds();
+    return new Response(
+      JSON.stringify({
+        ...anchor,
+        pendingQuestions: pending.length,
+        pendingQuestionItems,
+        recentTurns,
+        uptimeSeconds,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
   // 5. Stop session control: POST /api/app/stop
@@ -152,14 +171,70 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     });
   }
 
-  // 6. Review permission: POST /api/app/review/permission
+  // 6. Review state: GET /api/app/review (pending permissions + PR/branch diffs)
+  if (path === "/api/app/review" && req.method === "GET") {
+    return (async () => {
+      const permissions = (ctx.permRelay ? ctx.permRelay.list() : []).map((p) => ({
+        id: p.id,
+        toolName: p.toolName,
+        createdAt: p.createdAt,
+        parsed: p.parsed,
+      }));
+
+      const storedReviews = [...ctx.store.getReviews()];
+      const qRepo = url.searchParams.get("repo");
+      const qPr = url.searchParams.get("pr");
+      const qBase = url.searchParams.get("base");
+      const qHead = url.searchParams.get("head");
+      if (qRepo && (qPr || (qBase && qHead))) {
+        const prNum = qPr ? parseInt(qPr, 10) : undefined;
+        const alreadyStored = storedReviews.some(
+          (r) => r.repo === qRepo && r.pr === prNum && r.base === (qBase || undefined) && r.head === (qHead || undefined)
+        );
+        if (!alreadyStored) {
+          storedReviews.push(
+            ctx.store.addReview({
+              repo: qRepo,
+              pr: prNum,
+              base: qBase || undefined,
+              head: qHead || undefined,
+            })
+          );
+        }
+      }
+
+      const reviews: FormattedPrDiff[] = [];
+      for (const rev of storedReviews) {
+        const formatted = await fetchPrDiff(rev, ctx.config.githubToken);
+        reviews.push(formatted);
+      }
+
+      return new Response(JSON.stringify({ permissions, reviews }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    })();
+  }
+
+  // 7. Review permission resolution: POST /api/app/review/permission
   if (path === "/api/app/review/permission" && req.method === "POST") {
     return (async () => {
       const body = await req.json();
-      const { permId, decision } = body; // 'allow' or 'deny'
+      const { permId, decision } = body as { permId: string; decision: "allow" | "deny" };
+      const perm = ctx.permRelay?.get(permId);
+
       if (ctx.resolvePermissionRelay) {
         ctx.resolvePermissionRelay(permId, decision);
+      } else if (ctx.permRelay) {
+        ctx.permRelay.resolve(permId, decision);
       }
+
+      if (ctx.editTelegramCard && perm?.chatId && perm?.messageId) {
+        const outcomeText = decision === "allow" ? "Allowed via Mini App ✅" : "Denied via Mini App ❌";
+        const baseText = perm.cardText || `Permission request: *${perm.toolName}*`;
+        await ctx.editTelegramCard(perm.chatId, perm.messageId, `${baseText}\n\n*${outcomeText}*`);
+      }
+
       return new Response(JSON.stringify({ success: true, decision }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -167,7 +242,7 @@ export function handleApiRequest(req: Request, ctx: WebContext): Response | Prom
     })();
   }
 
-  // 7. Review PR: POST /api/app/review/pr
+  // 8. Review PR action: POST /api/app/review/pr
   if (path === "/api/app/review/pr" && req.method === "POST") {
     return (async () => {
       const body = await req.json();
